@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>HodgkinHuxley.qml</file>
+        <file>Compartment.qml</file>
+    </qresource>
+</RCC>
