@@ -1,6 +1,14 @@
 import QtQuick 2.0
 
 Rectangle {
+    id: compartmentRoot
+
+    signal dragStarted
+    signal dragEnded
+
+    property vector2d velocity
+    property bool dragging: false
+
     property real targetVoltage: 0.0
     property bool forceTargetVoltage: false
 
@@ -67,7 +75,7 @@ Rectangle {
             var axialCurrent = 0
             for(var i in connections) {
                 var connection = connections[i]
-                axialCurrent += 1 * (V - connection.voltage)
+                axialCurrent += connection.axialConductance * (V - connection.otherCompartment(compartmentRoot).voltage)
             }
 
             var dV = dt * ((1.0 / cm) * (- gL * (V - EL) - gNa * m3 * h * (V - ENa) - gK * n4 * (V - EK) - axialCurrent))
@@ -79,13 +87,35 @@ Rectangle {
         voltage = _nextVoltage
     }
 
-    color: "#deabcd"
+    color: Qt.rgba((voltage + 100) / (150), 1.0, 1.0, 1.0)
 
-    width: 100
-    height: 62
+    width: 60
+    height: 50
+    radius: Math.min(width, height) / 10
+    border.color: Qt.rgba((voltage + 100) / (150), 0.5, 0.5, 1.0)
+    border.width: Math.max(1.0, Math.min(width / height) / 10.0)
+    antialiasing: true
+    smooth: true
 
     Text {
         anchors.centerIn: parent
         text: voltage.toFixed(2)
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        drag.target: parent
+        onPressed: {
+            compartmentRoot.dragging = true
+            dragStarted()
+            console.log("Drag started!")
+        }
+        onReleased: {
+            compartmentRoot.dragging = false
+        }
+
+//        onDragChanged: {
+//            console.log("Drag!")
+//        }
     }
 }
