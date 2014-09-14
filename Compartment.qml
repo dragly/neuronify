@@ -126,15 +126,13 @@ Rectangle {
         anchors.fill: parent
         drag.target: parent
         onPressed: {
+            compartmentRoot.clicked(compartmentRoot, mouse)
             compartmentRoot.dragging = true
             dragStarted()
             console.log("Drag started!")
         }
         onReleased: {
             compartmentRoot.dragging = false
-        }
-        onClicked: {
-            compartmentRoot.clicked(compartmentRoot, mouse)
         }
 
 //        onDragChanged: {

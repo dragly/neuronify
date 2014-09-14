@@ -322,19 +322,70 @@ Rectangle {
         }
     }
 
-    Plot {
-        id: plot
-        strokeStyle: "blue"
-    }
+    Rectangle {
+        id: measurementRoot
 
-    Plot {
-        id: plot2
-        strokeStyle: "green"
-    }
+        property var compartmentPlots: []
+        signal droppedConnectionCreator(var compartment, var connectionCreator)
 
-    Plot {
-        id: plot3
-        strokeStyle: "red"
+        function addCompartment(compartment) {
+            var newCompartments = measurementRoot.compartmentPlots
+            var plotComponent = Qt.createComponent("Plot.qml")
+            var plot = plotComponent.createObject(measurementRoot, {strokeStyle: "blue"})
+            newCompartments.push({compartment: compartment, plot: plot})
+            measurementRoot.compartmentPlots = newCompartments
+        }
+
+        width: 400
+        height: 200
+        color: "lightgreen"
+        x: 100
+        y: 300
+
+        Timer {
+            id: plotTimer
+            interval: 24
+            running: true
+            repeat: true
+            onTriggered: {
+                    for(var i in measurementRoot.compartmentPlots) {
+                        var compartmentPlot = measurementRoot.compartmentPlots[i]
+                        var plot = compartmentPlot.plot
+                        var compartment = compartmentPlot.compartment
+                        plot.addPoint(compartment.voltage)
+                    }
+            }
+        }
+
+        Rectangle {
+            id: connectionCreator
+
+            Component.onCompleted: {
+                resetPosition()
+            }
+
+            function resetPosition() {
+                connectionCreator.x = measurementRoot.width - width / 2
+                connectionCreator.y = measurementRoot.height - height / 2
+            }
+
+            color: "blue"
+            border.width: 1.0
+            border.color: "lightblue"
+            radius: width
+            width: measurementRoot.width * 0.1
+            height: width
+
+            MouseArea {
+                id: connectionCreatorMouseArea
+                anchors.fill: parent
+                drag.target: parent
+                onReleased: {
+                    measurementRoot.droppedConnectionCreator(measurementRoot, connectionCreator)
+                    connectionCreator.resetPosition()
+                }
+            }
+        }
     }
 
     Timer {
@@ -360,9 +411,6 @@ Rectangle {
                 var compartment = compartments[i]
                 compartment.finalizeStep()
             }
-            plot.addPoint(compartments[0].voltage)
-            plot2.addPoint(compartments[1].voltage)
-            plot3.addPoint(compartments[compartments.length - 1].voltage)
         }
     }
 }

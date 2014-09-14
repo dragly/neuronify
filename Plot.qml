@@ -33,12 +33,17 @@ Canvas {
         ctx.fillStyle = canvasRoot.fillStyle;
         ctx.lineWidth = canvasRoot.lineWidth;
         ctx.beginPath();
-        ctx.moveTo(0,100 - data[0]);
-        var x = 0;
+        var minValue = -100
+        var maxValue = 100
+        var normalizedValue = (data[0] - minValue) / (maxValue - minValue)
+        var y = canvasRoot.height - normalizedValue * canvasRoot.height
+        ctx.moveTo(0, y);
+        var x = 0
         for(var i in data) {
-            var y = data[i];
-            ctx.lineTo(x,100 - y);
-            x += 1;
+            normalizedValue = (data[i] - minValue) / (maxValue - minValue)
+            y = canvasRoot.height - normalizedValue * canvasRoot.height
+            ctx.lineTo(x,y);
+            x += 1 * canvasRoot.width / data.length;
         }
         ctx.stroke();
         ctx.restore();
