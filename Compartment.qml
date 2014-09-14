@@ -55,9 +55,13 @@ Rectangle {
         var betan = potassiumActivationBeta
         var dn = dt * (alphan * (1 - n) - betan * n)
 
-        sodiumActivation += dm
-        sodiumInactivation += dh
-        potassiumActivation += dn
+        m += dm
+        h += dh
+        n += dn
+
+        m = Math.max(0.0, Math.min(1.0, m))
+        h = Math.max(0.0, Math.min(1.0, h))
+        n = Math.max(0.0, Math.min(1.0, n))
 
         if(forceTargetVoltage) {
             voltage = targetVoltage
@@ -81,6 +85,10 @@ Rectangle {
             var dV = dt * ((1.0 / cm) * (- gL * (V - EL) - gNa * m3 * h * (V - ENa) - gK * n4 * (V - EK) - axialCurrent))
             _nextVoltage = voltage + dV
         }
+
+        sodiumActivation = m
+        sodiumInactivation = h
+        potassiumActivation = n
     }
 
     function finalizeStep() {
