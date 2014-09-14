@@ -1,12 +1,15 @@
 import QtQuick 2.0
+import "paths"
 
 Rectangle {
     id: compartmentRoot
 
+    signal clicked(var compartment, var mouse)
     signal dragStarted
-    signal dragEnded
+    signal droppedConnectionCreator(var compartment, var connectionCreator)
 
     property vector2d velocity
+    property bool selected: false
     property bool dragging: false
 
     property real targetVoltage: 0.0
@@ -39,6 +42,13 @@ Rectangle {
         sodiumActivation = 0
         potassiumActivation = 0
         sodiumInactivation = 0
+    }
+
+    function removeConnection(connection) {
+        var connectionIndex = connections.indexOf(connection)
+        if(connectionIndex > -1) {
+            connections.splice(connectionIndex, 1)
+        }
     }
 
     function stepForward() {
@@ -92,7 +102,9 @@ Rectangle {
     }
 
     function finalizeStep() {
-        voltage = _nextVoltage
+        if(!forceTargetVoltage) {
+            voltage = _nextVoltage
+        }
     }
 
     color: Qt.rgba((voltage + 100) / (150), 1.0, 1.0, 1.0)
@@ -100,7 +112,7 @@ Rectangle {
     width: 60
     height: 50
     radius: Math.min(width, height) / 10
-    border.color: Qt.rgba((voltage + 100) / (150), 0.5, 0.5, 1.0)
+    border.color: selected ? "black" : Qt.rgba((voltage + 100) / (150), 0.5, 0.5, 1.0)
     border.width: Math.max(1.0, Math.min(width / height) / 10.0)
     antialiasing: true
     smooth: true
@@ -121,9 +133,48 @@ Rectangle {
         onReleased: {
             compartmentRoot.dragging = false
         }
+        onClicked: {
+            compartmentRoot.clicked(compartmentRoot, mouse)
+        }
 
 //        onDragChanged: {
 //            console.log("Drag!")
 //        }
+    }
+
+    SCurve {
+        z: -1
+        startPoint: Qt.point(compartmentRoot.width / 2, compartmentRoot.height / 2)
+        endPoint: Qt.point(connectionCreator.x + connectionCreator.width / 2, connectionCreator.y + connectionCreator.width / 2)
+    }
+
+    Rectangle {
+        id: connectionCreator
+
+        Component.onCompleted: {
+            resetPosition()
+        }
+
+        function resetPosition() {
+            connectionCreator.x = compartmentRoot.width - width / 2
+            connectionCreator.y = compartmentRoot.height - height / 2
+        }
+
+        color: "blue"
+        border.width: 1.0
+        border.color: "lightblue"
+        radius: width
+        width: compartmentRoot.width * 0.25
+        height: width
+
+        MouseArea {
+            id: connectionCreatorMouseArea
+            anchors.fill: parent
+            drag.target: parent
+            onReleased: {
+                compartmentRoot.droppedConnectionCreator(compartmentRoot, connectionCreator)
+                connectionCreator.resetPosition()
+            }
+        }
     }
 }

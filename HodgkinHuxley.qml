@@ -12,34 +12,83 @@ Rectangle {
         var previousCompartment = undefined
         var previousCompartment2 = undefined
         for(var i = 0; i < 10; i++) {
-            var component = Qt.createComponent("Compartment.qml")
-            var compartment = component.createObject(compartmentLayer, {x: i * 5, y: i * 10})
-            compartment.dragStarted.connect(resetOrganize)
+            var compartment = createCompartment({x: 200 + i * 100, y: 200 + (Math.random()) * 10})
             if(previousCompartment) {
-                var connectionComponent = Qt.createComponent("Connection.qml")
-                var connection = connectionComponent.createObject(connectionLayer, {
-                                                                      sourceCompartment: previousCompartment,
-                                                                      targetCompartment: compartment
-                                                                  })
-
-                previousCompartment.connections.push(connection)
-                compartment.connections.push(connection)
-                connections.push(connection)
+                createConnection(previousCompartment, compartment)
             }
-            if(previousCompartment2) {
-                var connectionComponent = Qt.createComponent("Connection.qml")
-                var connection = connectionComponent.createObject(connectionLayer, {
-                                                                      sourceCompartment: previousCompartment2,
-                                                                      targetCompartment: compartment
-                                                                  })
-
-                previousCompartment2.connections.push(connection)
-                compartment.connections.push(connection)
-                connections.push(connection)
-            }
-            compartments.push(compartment)
+//            if(previousCompartment2) {
+//                createConnection(previousCompartment2, compartment)
+//            }
             previousCompartment2 = previousCompartment
             previousCompartment = compartment
+        }
+    }
+
+    function selectCompartment(compartment, mouse) {
+        compartmentControls.compartment = compartment
+        for(var i in compartments) {
+            var otherCompartment = compartments[i]
+            if(otherCompartment !== compartment) {
+                otherCompartment.selected = false
+            }
+        }
+        compartment.selected = true
+    }
+
+    function createCompartment(properties) {
+        var component = Qt.createComponent("Compartment.qml")
+        var compartment = component.createObject(compartmentLayer, properties)
+        compartment.dragStarted.connect(resetOrganize)
+        compartment.clicked.connect(selectCompartment)
+        compartment.droppedConnectionCreator.connect(createConnectionToPoint)
+        compartments.push(compartment)
+        return compartment
+    }
+
+    function createConnection(sourceCompartment, targetCompartment) {
+        var connectionComponent = Qt.createComponent("Connection.qml")
+        var connection = connectionComponent.createObject(connectionLayer, {
+                                                              sourceCompartment: sourceCompartment,
+                                                              targetCompartment: targetCompartment
+                                                          })
+
+        sourceCompartment.connections.push(connection)
+        targetCompartment.connections.push(connection)
+        connections.push(connection)
+        return connection
+    }
+
+    function createConnectionToPoint(sourceCompartment, connectionCreator) {
+        var connectionCreated = false
+        for(var i in compartments) {
+            var targetCompartment = compartments[i]
+            if(targetCompartment === sourceCompartment) {
+                continue
+            }
+            var mouse2 = targetCompartment.mapFromItem(sourceCompartment, connectionCreator.x + connectionCreator.width / 2, connectionCreator.y + connectionCreator.height / 2)
+            var tolerance = connectionCreator.width / 2 + targetCompartment.width * 0.1
+            if(mouse2.x > -tolerance && mouse2.x < targetCompartment.width + tolerance
+                    && mouse2.y > -tolerance && mouse2.y < targetCompartment.height + tolerance) {
+                var connectionAlreadyExists = false
+                for(var j in connections) {
+                    var existingConnection = connections[j]
+                    if((existingConnection.sourceCompartment === sourceCompartment && existingConnection.targetCompartment === targetCompartment)
+                            || (existingConnection.targetCompartment === sourceCompartment && existingConnection.sourceCompartment === targetCompartment)) {
+                        connectionAlreadyExists = true
+                        break
+                    }
+                }
+                if(connectionAlreadyExists) {
+                    console.log("Connection already exists!")
+                    break
+                }
+
+                createConnection(sourceCompartment, targetCompartment)
+                connectionCreated = true
+            }
+        }
+        if(connectionCreated) {
+            resetOrganize()
         }
     }
 
@@ -113,6 +162,7 @@ Rectangle {
 
         var maxAppliedVelocity = 0.0
         var maxVelocity = simulatorRoot.width * 1.0
+        var minVelocity = simulatorRoot.width * 0.5
         for(var i in compartments) {
             var compartment = compartments[i]
             var velocity = Math.sqrt(compartment.velocity.x*compartment.velocity.x + compartment.velocity.y*compartment.velocity.y)
@@ -125,7 +175,7 @@ Rectangle {
             compartment.y += compartment.velocity.y * dt
         }
 
-        if(maxAppliedVelocity < simulatorRoot.width * 0.01 && !anyDragging) {
+        if(maxAppliedVelocity < minVelocity && !anyDragging) {
             console.log("Stopping timer with max velocity: " + maxAppliedVelocity)
             layoutTimer.stop()
         }
@@ -135,6 +185,33 @@ Rectangle {
 
     width: 400
     height: 300
+
+    MouseArea {
+        anchors.fill: parent
+        onClicked: {
+            compartmentControls.compartment = null
+            for(var i in compartments) {
+                var compartment = compartments[i]
+                compartment.selected = false
+            }
+        }
+    }
+
+    Rectangle {
+        id: compartmentCreator
+        width: 60
+        height: 40
+        color: "red"
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+            onReleased: {
+                createCompartment({x: compartmentCreator.x, y: compartmentCreator.y})
+                compartmentCreator.x = 0
+                compartmentCreator.y = 0
+            }
+        }
+    }
 
     Item {
         id: connectionLayer
@@ -146,16 +223,19 @@ Rectangle {
         anchors.fill: parent
     }
 
-    Button {
-        text: "Organize"
-        onClicked: organize()
-    }
-
     Column {
+        id: compartmentControls
+        property Compartment compartment: null
+        enabled: compartment ? true : false
         anchors {
             right: parent.right
             top: parent.top
         }
+
+        onCompartmentChanged: {
+            targetVoltageCheckbox.checked = compartment ? compartment.forceTargetVoltage : false
+        }
+
         Slider {
             id: polarizationSlider
             minimumValue: -100
@@ -171,7 +251,7 @@ Rectangle {
 
             text: "Polarize!"
             onClicked: {
-                compartments[0].voltage += polarizationSlider.value
+                compartmentControls.compartment.voltage += polarizationSlider.value
             }
         }
 
@@ -180,16 +260,17 @@ Rectangle {
 
             text: "Reset!"
             onClicked: {
-                for(var i in compartments) {
-                    var compartment = compartments[i]
-                    compartment.reset()
-                }
+                compartment.reset()
             }
         }
 
         CheckBox {
             id: targetVoltageCheckbox
             text: "Lock to target voltage"
+            onCheckedChanged: {
+                compartmentControls.compartment.forceTargetVoltage = checked
+                compartmentControls.compartment.targetVoltage = targetVoltageSlider.value
+            }
         }
 
         Text {
@@ -200,6 +281,44 @@ Rectangle {
             id: targetVoltageSlider
             minimumValue: -120
             maximumValue: 80.0
+            onValueChanged: {
+                compartmentControls.compartment.targetVoltage = value
+            }
+        }
+
+        Button {
+            text: "Disconnect"
+            onClicked: {
+                var compartmentToDelete = compartmentControls.compartment
+                var connectionsNew = connections
+                var connectionsToDelete = compartmentToDelete.connections
+                compartmentToDelete.connections = []
+                var connectionsToDestroy = []
+                for(var i in connectionsToDelete) {
+                    var connection = connectionsToDelete[i]
+                    var connectionIndex = connections.indexOf(connection)
+                    if(connectionIndex > -1) {
+                        connectionsNew.splice(connectionIndex, 1)
+                    }
+                    connection.targetCompartment.removeConnection(connection)
+                    connection.sourceCompartment.removeConnection(connection)
+                    connection.destroy()
+                }
+                connections = connectionsNew
+            }
+        }
+
+        Button {
+            text: "Delete"
+            onClicked: {
+                var compartmentToDelete = compartment
+                compartment = null
+                compartmentControls.compartment = null
+                for(var i in connections) {
+                    var connection = connections[i]
+
+                }
+            }
         }
     }
 
@@ -233,22 +352,13 @@ Rectangle {
         running: true
         repeat: true
         onTriggered: {
-            if(targetVoltageCheckbox.checked) {
-                compartments[0].voltage = targetVoltageSlider.value
-            }
             for(var i in compartments) {
                 var compartment = compartments[i]
                 compartment.stepForward()
             }
-            if(targetVoltageCheckbox.checked) {
-                compartments[0].voltage = targetVoltageSlider.value
-            }
             for(var i in compartments) {
                 var compartment = compartments[i]
                 compartment.finalizeStep()
-            }
-            if(targetVoltageCheckbox.checked) {
-                compartments[0].voltage = targetVoltageSlider.value
             }
             plot.addPoint(compartments[0].voltage)
             plot2.addPoint(compartments[1].voltage)
