@@ -170,7 +170,7 @@ Rectangle {
         border.width: 1.0
         border.color: "#f7fbff"
         radius: width
-        width: compartmentRoot.width * 0.3
+        width: compartmentRoot.width * 0.37
         height: width
 
         MouseArea {
