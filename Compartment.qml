@@ -107,12 +107,12 @@ Rectangle {
         }
     }
 
-    color: "#9ecae1"
+    color: "#c6dbef"
 
     Rectangle {
         anchors.fill: parent
         radius: parent.radius
-        color: "#deebf7"
+        color: "#f7fbff"
         opacity: (voltage + 100) / (150)
     }
 

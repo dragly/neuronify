@@ -299,7 +299,9 @@ Rectangle {
         id: compartmentCreator
         width: 60
         height: 40
-        color: "red"
+        color: "#c6dbef"
+        border.color: "#6baed6"
+        border.width: 1.0
 
         Component.onCompleted: {
             resetPosition()
@@ -324,7 +326,9 @@ Rectangle {
         id: voltmeterCreator
         width: 60
         height: 40
-        color: "blue"
+        color: "#deebf7"
+        border.color: "#9ecae1"
+        border.width: 1.0
 
         Component.onCompleted: {
             resetPosition()
@@ -359,7 +363,17 @@ Rectangle {
         anchors {
             right: parent.right
             top: parent.top
+            rightMargin: compartmentControls.compartment ? 0.0 : -width
+            bottom: parent.bottom
         }
+        Behavior on anchors.rightMargin {
+            NumberAnimation {
+                duration: 350
+                easing.type: Easing.InOutCubic
+            }
+        }
+
+        color: "#f7fbff"
         width: parent.width * 0.2
         ColumnLayout {
             id: compartmentControls
@@ -368,11 +382,6 @@ Rectangle {
             spacing: 10
             onCompartmentChanged: {
                 targetVoltageCheckbox.checked = compartment ? compartment.forceTargetVoltage : false
-                if(compartment === null) {
-                    enabled = false
-                } else {
-                    enabled = true
-                }
             }
 
             Slider {
@@ -445,6 +454,10 @@ Rectangle {
                 onClicked: {
                     simulatorRoot.deleteCompartment(compartmentControls.compartment)
                 }
+            }
+            Item {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
             }
         }
     }

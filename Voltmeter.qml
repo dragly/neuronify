@@ -11,8 +11,8 @@ Rectangle {
 
     width: 100
     height: 100
-    color: "#f7fbff"
-    border.color: "#deebf7"
+    color: "#deebf7"
+    border.color: "#9ecae1"
     border.width: 1.0
 
     function addCompartment(compartment) {
