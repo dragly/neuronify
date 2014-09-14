@@ -107,12 +107,19 @@ Rectangle {
         }
     }
 
-    color: Qt.rgba((voltage + 100) / (150), 1.0, 1.0, 1.0)
+    color: "#9ecae1"
 
-    width: 60
+    Rectangle {
+        anchors.fill: parent
+        radius: parent.radius
+        color: "#deebf7"
+        opacity: (voltage + 100) / (150)
+    }
+
+    width: 70
     height: 50
     radius: Math.min(width, height) / 10
-    border.color: selected ? "black" : Qt.rgba((voltage + 100) / (150), 0.5, 0.5, 1.0)
+    border.color: selected ? "#08306b" : "#6baed6"
     border.width: Math.max(1.0, Math.min(width / height) / 10.0)
     antialiasing: true
     smooth: true
@@ -120,6 +127,7 @@ Rectangle {
     Text {
         anchors.centerIn: parent
         text: voltage.toFixed(2)
+        font.pixelSize: compartmentRoot.width * 0.19
     }
 
     MouseArea {
@@ -158,11 +166,11 @@ Rectangle {
             connectionCreator.y = compartmentRoot.height - height / 2
         }
 
-        color: "blue"
+        color: "#4292c6"
         border.width: 1.0
-        border.color: "lightblue"
+        border.color: "#f7fbff"
         radius: width
-        width: compartmentRoot.width * 0.25
+        width: compartmentRoot.width * 0.3
         height: width
 
         MouseArea {

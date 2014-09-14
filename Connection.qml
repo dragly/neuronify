@@ -16,7 +16,7 @@ Item {
 
     SCurve {
         id: sCurve
-
+        color: "#4292c6"
         startPoint: Qt.point(sourceCompartment.x + sourceCompartment.width / 2.0, sourceCompartment.y + sourceCompartment.height / 2)
         endPoint: Qt.point(targetCompartment.x + targetCompartment.width / 2.0, targetCompartment.y + targetCompartment.height / 2)
     }

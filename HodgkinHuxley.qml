@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.2
+import QtQuick.Layouts 1.1
 
 Rectangle {
     id: simulatorRoot
@@ -195,7 +196,7 @@ Rectangle {
 
     function organize() {
         var currentOrganizeTime = Date.now()
-        var dt = (currentOrganizeTime - lastOrganizeTime) / 1000.0
+        var dt = Math.min(0.032, (currentOrganizeTime - lastOrganizeTime) / 1000.0)
         var springLength = simulatorRoot.width * 0.1
         var anyDragging = false
 
@@ -217,7 +218,7 @@ Rectangle {
             var lengthDiff = length - springLength
             var xDelta = lengthDiff * xDiff / length
             var yDelta = lengthDiff * yDiff / length
-            var kFactor = lengthDiff > 0 ? 0.02 : 0.01
+            var kFactor = lengthDiff > 0 ? 0.015 : 0.007
             var k = kFactor * simulatorRoot.width
             if(!source.dragging) {
                 source.velocity.x -= 0.5 * k * xDelta
@@ -244,7 +245,7 @@ Rectangle {
                 var lengthDiff = length - minDistance
                 var xDelta = lengthDiff * xDiff / length
                 var yDelta = lengthDiff * yDiff / length
-                var k = simulatorRoot.width * 0.01
+                var k = simulatorRoot.width * 0.005
                 if(!compartmentA.dragging) {
                     compartmentA.velocity.x -= 0.5 * k * xDelta
                     compartmentA.velocity.y -= 0.5 * k * yDelta
@@ -281,6 +282,7 @@ Rectangle {
 
     width: 400
     height: 300
+    color: "#f7fbff"
 
     MouseArea {
         anchors.fill: parent
@@ -353,82 +355,96 @@ Rectangle {
         anchors.fill: parent
     }
 
-    Column {
-        id: compartmentControls
-        property Compartment compartment: null
-        enabled: compartment ? true : false
+    Rectangle {
         anchors {
             right: parent.right
             top: parent.top
         }
-
-        onCompartmentChanged: {
-            targetVoltageCheckbox.checked = compartment ? compartment.forceTargetVoltage : false
-        }
-
-        Slider {
-            id: polarizationSlider
-            minimumValue: -100
-            maximumValue: 100
-        }
-
-        Text {
-            text: "Polarization jump: " + polarizationSlider.value.toFixed(1) + " mV"
-        }
-
-        Button {
-            id: polarizeButton
-
-            text: "Polarize!"
-            onClicked: {
-                compartmentControls.compartment.voltage += polarizationSlider.value
+        width: parent.width * 0.2
+        ColumnLayout {
+            id: compartmentControls
+            property Compartment compartment: null
+            anchors.fill: parent
+            spacing: 10
+            onCompartmentChanged: {
+                targetVoltageCheckbox.checked = compartment ? compartment.forceTargetVoltage : false
+                if(compartment === null) {
+                    enabled = false
+                } else {
+                    enabled = true
+                }
             }
-        }
 
-        Button {
-            id: resetButton
-
-            text: "Reset!"
-            onClicked: {
-                compartment.reset()
+            Slider {
+                id: polarizationSlider
+                minimumValue: -100
+                maximumValue: 100
+                Layout.fillWidth: true
             }
-        }
 
-        CheckBox {
-            id: targetVoltageCheckbox
-            text: "Lock to target voltage"
-            onCheckedChanged: {
-                compartmentControls.compartment.forceTargetVoltage = checked
-                compartmentControls.compartment.targetVoltage = targetVoltageSlider.value
+            Text {
+                text: "Polarization jump: " + polarizationSlider.value.toFixed(1) + " mV"
             }
-        }
 
-        Text {
-            text: "Target voltage: " + targetVoltageSlider.value.toFixed(1) + " mV"
-        }
+            Button {
+                id: polarizeButton
+                Layout.fillWidth: true
 
-        Slider {
-            id: targetVoltageSlider
-            minimumValue: -120
-            maximumValue: 80.0
-            onValueChanged: {
-                compartmentControls.compartment.targetVoltage = value
+                text: "Polarize!"
+                onClicked: {
+                    compartmentControls.compartment.voltage += polarizationSlider.value
+                }
             }
-        }
 
-        Button {
-            id: disconnectButton
-            text: "Disconnect"
+            Button {
+                id: resetButton
+                Layout.fillWidth: true
 
-            onClicked: {
-                simulatorRoot.disconnectCompartment(compartmentControls.compartment)
+                text: "Reset!"
+                onClicked: {
+                    compartment.reset()
+                }
             }
-        }
 
-        Button {
-            text: "Delete"
-            onClicked: {
-                simulatorRoot.deleteCompartment(compartmentControls.compartment)
+            CheckBox {
+                id: targetVoltageCheckbox
+                text: "Lock to target voltage"
+                onCheckedChanged: {
+                    compartmentControls.compartment.forceTargetVoltage = checked
+                    compartmentControls.compartment.targetVoltage = targetVoltageSlider.value
+                }
+            }
+
+            Text {
+                text: "Target voltage: " + targetVoltageSlider.value.toFixed(1) + " mV"
+            }
+
+            Slider {
+                id: targetVoltageSlider
+                minimumValue: -120
+                maximumValue: 80.0
+                Layout.fillWidth: true
+                onValueChanged: {
+                    compartmentControls.compartment.targetVoltage = value
+                }
+            }
+
+            Button {
+                id: disconnectButton
+                text: "Disconnect"
+                Layout.fillWidth: true
+
+                onClicked: {
+                    simulatorRoot.disconnectCompartment(compartmentControls.compartment)
+                }
+            }
+
+            Button {
+                text: "Delete"
+                Layout.fillWidth: true
+                onClicked: {
+                    simulatorRoot.deleteCompartment(compartmentControls.compartment)
+                }
             }
         }
     }

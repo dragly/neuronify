@@ -6,13 +6,13 @@ Rectangle {
 
     property var compartmentPlots: []
 //    signal droppedConnectionCreator(var compartment, var connectionCreator)
-    property var colors: ["red", "blue", "green", "orange", "pink"]
+    property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentColor: 0
 
     width: 100
     height: 100
-    color: "lightgrey"
-    border.color: "darkgrey"
+    color: "#f7fbff"
+    border.color: "#deebf7"
     border.width: 1.0
 
     function addCompartment(compartment) {
@@ -64,7 +64,7 @@ Rectangle {
 
     Rectangle {
         id: resizeRectangle
-        color: "yellow"
+        color: "#9ecae1"
 
         Component.onCompleted: {
             resetPosition()
