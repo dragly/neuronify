@@ -5,7 +5,14 @@ Canvas {
     property color strokeStyle:  Qt.darker(fillStyle, 1.4)
     property color fillStyle: "#b40000" // red
     property real alpha: 1.0
-    property var data: new Array(1000)
+    property var data: new Array(100)
+
+    Component.onCompleted: {
+        for(var i = 0; i < data.length; i++) {
+            data[i] = -9999.0
+        }
+    }
+
     antialiasing: true
 
     onScaleChanged: requestPaint()
@@ -39,10 +46,21 @@ Canvas {
         var y = canvasRoot.height - normalizedValue * canvasRoot.height
         ctx.moveTo(0, y);
         var x = 0
+        var started = false
         for(var i in data) {
             normalizedValue = (data[i] - minValue) / (maxValue - minValue)
             y = canvasRoot.height - normalizedValue * canvasRoot.height
-            ctx.lineTo(x,y);
+
+            if(!started) {
+                ctx.moveTo(x,y);
+            } else {
+                ctx.lineTo(x,y);
+            }
+
+            if(data[i] > -9999) {
+                started = true
+            }
+
             x += 1 * canvasRoot.width / data.length;
         }
         ctx.stroke();

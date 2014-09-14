@@ -6,6 +6,8 @@ Rectangle {
 
     property real lastOrganizeTime: Date.now()
     property var compartments: []
+    property var voltmeters: []
+    property var voltmeterConnections: []
     property var connections: []
 
     Component.onCompleted: {
@@ -16,12 +18,105 @@ Rectangle {
             if(previousCompartment) {
                 createConnection(previousCompartment, compartment)
             }
-//            if(previousCompartment2) {
-//                createConnection(previousCompartment2, compartment)
-//            }
+            //            if(previousCompartment2) {
+            //                createConnection(previousCompartment2, compartment)
+            //            }
             previousCompartment2 = previousCompartment
             previousCompartment = compartment
         }
+    }
+
+    function deleteCompartment(compartment) {
+        disconnectCompartment(compartment)
+        var compartmentsNew = simulatorRoot.compartments
+        if(compartmentControls.compartment === compartment) {
+            compartmentControls.compartment = null
+        }
+        var compartmentIndex = compartmentsNew.indexOf(compartment)
+        if(compartmentIndex > -1) {
+            compartmentsNew.splice(compartmentIndex, 1)
+        }
+        compartments = compartmentsNew
+        compartment.destroy()
+    }
+
+    function disconnectCompartment(compartment) {
+        var connectionsNew = connections
+        var connectionsToDelete = compartment.connections
+        compartment.connections = []
+        var connectionsToDestroy = []
+        for(var i in connectionsToDelete) {
+            var connection = connectionsToDelete[i]
+            var connectionIndex = connections.indexOf(connection)
+            if(connectionIndex > -1) {
+                connectionsNew.splice(connectionIndex, 1)
+            }
+            connection.targetCompartment.removeConnection(connection)
+            connection.sourceCompartment.removeConnection(connection)
+            connection.destroy()
+        }
+        for(var i in voltmeters) {
+            var voltmeter = voltmeters[i]
+            voltmeter.removeCompartment(compartment)
+        }
+        var voltmeterConnectionsNew = voltmeterConnections
+        for(var i in voltmeterConnections) {
+            var voltmeterConnection = voltmeterConnections[i]
+            if(voltmeterConnection.targetCompartment === compartment) {
+                voltmeterConnectionsNew.splice(voltmeterConnections.indexOf(voltmeterConnection), 1)
+                voltmeterConnection.destroy()
+            }
+        }
+        voltmeterConnections = voltmeterConnectionsNew
+
+        connections = connectionsNew
+    }
+
+    function isItemUnderConnector(item, source, connector) {
+        var mouse2 = item.mapFromItem(source,
+                                      connector.x + connector.width / 2,
+                                      connector.y + connector.height / 2)
+        var tolerance = connector.width / 2 + item.width * 0.1
+        if(mouse2.x > -tolerance && mouse2.x < item.width + tolerance
+                && mouse2.y > -tolerance && mouse2.y < item.height + tolerance) {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    function compartmentUnderConnector(source, connector) {
+        var compartment = undefined
+        for(var i in compartments) {
+            var targetCompartment = compartments[i]
+            if(isItemUnderConnector(targetCompartment, source, connector)) {
+                compartment = targetCompartment
+            }
+        }
+        return compartment
+    }
+
+    function voltmeterUnderConnector(source, connector) {
+        var voltmeter = undefined
+        for(var i in voltmeters) {
+            var targetVoltmeter = voltmeters[i]
+            if(isItemUnderConnector(targetVoltmeter, source, connector)) {
+                voltmeter = targetVoltmeter
+            }
+        }
+        return voltmeter
+    }
+
+    function connectVoltmeterToCompartment(voltmeter, compartment) {
+        voltmeter.addCompartment(compartment)
+        var connectionComponent = Qt.createComponent("Connection.qml")
+        var connection = connectionComponent.createObject(connectionLayer, {
+                                                              sourceCompartment: voltmeter,
+                                                              targetCompartment: compartment
+                                                          })
+        var voltmeterConnectionsNew = voltmeterConnections
+        voltmeterConnectionsNew.push(connection)
+        voltmeterConnections = voltmeterConnectionsNew
     }
 
     function selectCompartment(compartment, mouse) {
@@ -45,6 +140,13 @@ Rectangle {
         return compartment
     }
 
+    function createVoltmeter(properties) {
+        var component = Qt.createComponent("Voltmeter.qml")
+        var voltmeter = component.createObject(compartmentLayer, properties)
+        voltmeters.push(voltmeter)
+        return voltmeter
+    }
+
     function createConnection(sourceCompartment, targetCompartment) {
         var connectionComponent = Qt.createComponent("Connection.qml")
         var connection = connectionComponent.createObject(connectionLayer, {
@@ -59,37 +161,31 @@ Rectangle {
     }
 
     function createConnectionToPoint(sourceCompartment, connectionCreator) {
-        var connectionCreated = false
-        for(var i in compartments) {
-            var targetCompartment = compartments[i]
-            if(targetCompartment === sourceCompartment) {
-                continue
-            }
-            var mouse2 = targetCompartment.mapFromItem(sourceCompartment, connectionCreator.x + connectionCreator.width / 2, connectionCreator.y + connectionCreator.height / 2)
-            var tolerance = connectionCreator.width / 2 + targetCompartment.width * 0.1
-            if(mouse2.x > -tolerance && mouse2.x < targetCompartment.width + tolerance
-                    && mouse2.y > -tolerance && mouse2.y < targetCompartment.height + tolerance) {
-                var connectionAlreadyExists = false
-                for(var j in connections) {
-                    var existingConnection = connections[j]
-                    if((existingConnection.sourceCompartment === sourceCompartment && existingConnection.targetCompartment === targetCompartment)
-                            || (existingConnection.targetCompartment === sourceCompartment && existingConnection.sourceCompartment === targetCompartment)) {
-                        connectionAlreadyExists = true
-                        break
-                    }
-                }
-                if(connectionAlreadyExists) {
-                    console.log("Connection already exists!")
-                    break
-                }
+        var targetVoltmeter = voltmeterUnderConnector(sourceCompartment, connectionCreator)
+        if(targetVoltmeter) {
+            connectVoltmeterToCompartment(targetVoltmeter, sourceCompartment)
+            return
+        }
 
-                createConnection(sourceCompartment, targetCompartment)
-                connectionCreated = true
+        var targetCompartment = compartmentUnderConnector(sourceCompartment, connectionCreator)
+        if(!targetCompartment || targetCompartment === sourceCompartment) {
+            return
+        }
+        var connectionAlreadyExists = false
+        for(var j in connections) {
+            var existingConnection = connections[j]
+            if((existingConnection.sourceCompartment === sourceCompartment && existingConnection.targetCompartment === targetCompartment)
+                    || (existingConnection.targetCompartment === sourceCompartment && existingConnection.sourceCompartment === targetCompartment)) {
+                connectionAlreadyExists = true
+                break
             }
         }
-        if(connectionCreated) {
-            resetOrganize()
+        if(connectionAlreadyExists) {
+            console.log("Connection already exists!")
+            return
         }
+        createConnection(sourceCompartment, targetCompartment)
+        resetOrganize()
     }
 
     function resetOrganize() {
@@ -202,13 +298,47 @@ Rectangle {
         width: 60
         height: 40
         color: "red"
+
+        Component.onCompleted: {
+            resetPosition()
+        }
+
+        function resetPosition() {
+            compartmentCreator.x = 0
+            compartmentCreator.y = 0
+        }
+
         MouseArea {
             anchors.fill: parent
             drag.target: parent
             onReleased: {
                 createCompartment({x: compartmentCreator.x, y: compartmentCreator.y})
-                compartmentCreator.x = 0
-                compartmentCreator.y = 0
+                compartmentCreator.resetPosition()
+            }
+        }
+    }
+
+    Rectangle {
+        id: voltmeterCreator
+        width: 60
+        height: 40
+        color: "blue"
+
+        Component.onCompleted: {
+            resetPosition()
+        }
+
+        function resetPosition() {
+            voltmeterCreator.x = 0
+            voltmeterCreator.y = 50
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+            onReleased: {
+                createVoltmeter({x: voltmeterCreator.x, y: voltmeterCreator.y})
+                voltmeterCreator.resetPosition()
             }
         }
     }
@@ -287,103 +417,18 @@ Rectangle {
         }
 
         Button {
+            id: disconnectButton
             text: "Disconnect"
+
             onClicked: {
-                var compartmentToDelete = compartmentControls.compartment
-                var connectionsNew = connections
-                var connectionsToDelete = compartmentToDelete.connections
-                compartmentToDelete.connections = []
-                var connectionsToDestroy = []
-                for(var i in connectionsToDelete) {
-                    var connection = connectionsToDelete[i]
-                    var connectionIndex = connections.indexOf(connection)
-                    if(connectionIndex > -1) {
-                        connectionsNew.splice(connectionIndex, 1)
-                    }
-                    connection.targetCompartment.removeConnection(connection)
-                    connection.sourceCompartment.removeConnection(connection)
-                    connection.destroy()
-                }
-                connections = connectionsNew
+                simulatorRoot.disconnectCompartment(compartmentControls.compartment)
             }
         }
 
         Button {
             text: "Delete"
             onClicked: {
-                var compartmentToDelete = compartment
-                compartment = null
-                compartmentControls.compartment = null
-                for(var i in connections) {
-                    var connection = connections[i]
-
-                }
-            }
-        }
-    }
-
-    Rectangle {
-        id: measurementRoot
-
-        property var compartmentPlots: []
-        signal droppedConnectionCreator(var compartment, var connectionCreator)
-
-        function addCompartment(compartment) {
-            var newCompartments = measurementRoot.compartmentPlots
-            var plotComponent = Qt.createComponent("Plot.qml")
-            var plot = plotComponent.createObject(measurementRoot, {strokeStyle: "blue"})
-            newCompartments.push({compartment: compartment, plot: plot})
-            measurementRoot.compartmentPlots = newCompartments
-        }
-
-        width: 400
-        height: 200
-        color: "lightgreen"
-        x: 100
-        y: 300
-
-        Timer {
-            id: plotTimer
-            interval: 24
-            running: true
-            repeat: true
-            onTriggered: {
-                    for(var i in measurementRoot.compartmentPlots) {
-                        var compartmentPlot = measurementRoot.compartmentPlots[i]
-                        var plot = compartmentPlot.plot
-                        var compartment = compartmentPlot.compartment
-                        plot.addPoint(compartment.voltage)
-                    }
-            }
-        }
-
-        Rectangle {
-            id: connectionCreator
-
-            Component.onCompleted: {
-                resetPosition()
-            }
-
-            function resetPosition() {
-                connectionCreator.x = measurementRoot.width - width / 2
-                connectionCreator.y = measurementRoot.height - height / 2
-            }
-
-            color: "blue"
-            border.width: 1.0
-            border.color: "lightblue"
-            radius: width
-            width: measurementRoot.width * 0.1
-            height: width
-
-            MouseArea {
-                id: connectionCreatorMouseArea
-                anchors.fill: parent
-                drag.target: parent
-                onReleased: {
-                    measurementRoot.droppedConnectionCreator(measurementRoot, connectionCreator)
-                    connectionCreator.resetPosition()
-                }
+                simulatorRoot.deleteCompartment(compartmentControls.compartment)
             }
         }
     }

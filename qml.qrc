@@ -8,5 +8,6 @@
         <file>Connection.qml</file>
         <file>paths/BezierCurve.qml</file>
         <file>paths/SCurve.qml</file>
+        <file>Voltmeter.qml</file>
     </qresource>
 </RCC>

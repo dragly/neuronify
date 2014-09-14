@@ -2,8 +2,8 @@ import QtQuick 2.0
 import "paths"
 
 Item {
-    property Compartment sourceCompartment
-    property Compartment targetCompartment
+    property var sourceCompartment
+    property var targetCompartment
     property real axialConductance: 1.0
 
     function otherCompartment(currentCompartment) {
