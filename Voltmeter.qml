@@ -75,6 +75,7 @@ Rectangle {
         for(var i in connectionPlots) {
             var connectionPlot = connectionPlots[i]
             resetMinMax(connectionPlot.plot)
+            connectionPlot.plot.clearData()
         }
     }
 

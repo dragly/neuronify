@@ -11,6 +11,7 @@ PropertiesPanel {
         if(!compartmentControlsRoot.compartment) {
             return
         }
+        targetVoltageSlider.value = compartment.targetVoltage
         targetVoltageCheckbox.checked = compartment.forceTargetVoltage
     }
     ColumnLayout {

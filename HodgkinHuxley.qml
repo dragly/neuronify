@@ -12,27 +12,27 @@ Rectangle {
     property var voltmeterConnections: []
     property var compartmentConnections: []
 
+    width: 400
+    height: 300
+    color: "#f7fbff"
+
     Component.onCompleted: {
         var previousCompartment = undefined
         var previousCompartment2 = undefined
-        var compartment1 = createCompartment({x: 100, y: 200})
-        compartment1.targetVoltage = 50.0
-        compartment1.forceTargetVoltage = true
-        previousCompartment = compartment1
         for(var i = 0; i < 5; i++) {
             var compartment = createCompartment({x: 300 + i * 100, y: 200 + (Math.random()) * 10})
             if(previousCompartment) {
                 connectCompartments(previousCompartment, compartment)
             }
-            //            if(previousCompartment2) {
-            //                createConnection(previousCompartment2, compartment)
-            //            }
-            previousCompartment2 = previousCompartment
-            previousCompartment = compartment
-            if(i === 0 || i === 4) {
+            if(i === 0) {
+                compartment.targetVoltage = -12.0
+                compartment.forceTargetVoltage = true
+            }
+            if(i === 1 || i === 4) {
                 var voltmeter = createVoltmeter({x: 300 + i * 100, y: 400})
                 connectVoltmeter(compartment, voltmeter)
             }
+            previousCompartment = compartment
         }
     }
 
@@ -365,10 +365,6 @@ Rectangle {
 
         lastOrganizeTime = currentOrganizeTime
     }
-
-    width: 400
-    height: 300
-    color: "#f7fbff"
 
     MouseArea {
         anchors.fill: parent

@@ -10,18 +10,22 @@ Canvas {
     property real maximumValue: 100.0
     property int paintsSinceLastReset: 100
 
-    Component.onCompleted: {
-        for(var i = 0; i < data.length; i++) {
-            data[i] = -Infinity
-        }
-    }
-
     antialiasing: true
 
     onScaleChanged: requestPaint()
     onDataChanged: requestPaint()
 
     anchors.fill: parent
+
+    Component.onCompleted: {
+        clearData()
+    }
+
+    function clearData() {
+        for(var i = 0; i < data.length; i++) {
+            data[i] = -Infinity
+        }
+    }
 
     function addPoint(point) {
         var newData = data
