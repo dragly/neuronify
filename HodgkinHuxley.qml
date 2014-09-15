@@ -469,8 +469,8 @@ Rectangle {
 
             Slider {
                 id: targetVoltageSlider
-                minimumValue: -120
-                maximumValue: 80.0
+                minimumValue: -100.0
+                maximumValue: 100.0
                 Layout.fillWidth: true
                 onValueChanged: {
                     compartmentControls.compartment.targetVoltage = value

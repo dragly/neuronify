@@ -29,24 +29,12 @@ Rectangle {
 
         var newList = voltmeterRoot.connectionPlots
         var plotComponent = Qt.createComponent("Plot.qml")
-        var plot = plotComponent.createObject(voltmeterRoot, {strokeStyle: color})
+        var plot = plotComponent.createObject(plotLayer, {strokeStyle: color})
         resetMinMax(plot)
         newList.push({connection: connection, plot: plot})
         voltmeterRoot.connectionPlots = newList
         currentColor += 1
     }
-
-//    function removeCompartment(compartment) {
-//        for(var i in connectionPlots) {
-//            var compartmentPlot = connectionPlots[i]
-//            var compartmentOther = compartmentPlot.connection.sourceCompartment
-//            if(compartmentOther === compartment) {
-//                connectionPlots.splice(i, 1)
-//                compartmentPlot.plot.destroy()
-//                break
-//            }
-//        }
-//    }
 
     function removeConnection(connection) {
         for(var i in connectionPlots) {
@@ -76,8 +64,8 @@ Rectangle {
             maximumValue = 3e3
             break
         case "potassiumCurrent":
-            minimumValue = -1e4
-            maximumValue = 1e4
+            minimumValue = -5e3
+            maximumValue = 5e3
             break
         case "leakCurrent":
             minimumValue = -1e2
@@ -88,6 +76,11 @@ Rectangle {
             var connectionPlot = connectionPlots[i]
             resetMinMax(connectionPlot.plot)
         }
+    }
+
+    Item {
+        id: plotLayer
+        anchors.fill: parent
     }
 
     Text {
