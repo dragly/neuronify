@@ -8,5 +8,10 @@
         <file>paths/BezierCurve.qml</file>
         <file>paths/SCurve.qml</file>
         <file>Voltmeter.qml</file>
+        <file>hud/PropertiesPanel.qml</file>
+        <file>hud/CompartmentControls.qml</file>
+        <file>hud/VoltmeterControls.qml</file>
+        <file>hud/ConnectionControls.qml</file>
+        <file>CreationControls.qml</file>
     </qresource>
 </RCC>

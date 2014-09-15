@@ -120,12 +120,13 @@ Rectangle {
     radius: Math.min(width, height) / 10
     color: "#6baed6"
     border.color: selected ? "#08306b" : "#2171b5"
-    border.width: selected ? Math.max(3.0, Math.min(width / height) * 0.3) : Math.max(1.0, Math.min(width / height) * 0.1)
+    border.width: selected ? 3.0 : 1.0
     antialiasing: true
     smooth: true
 
     Rectangle {
         anchors.fill: parent
+        anchors.margins: 2.0
         radius: parent.radius
         color: "#f7fbff"
         opacity: (voltage + 100) / (150)

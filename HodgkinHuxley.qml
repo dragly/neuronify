@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.2
 import QtQuick.Layouts 1.1
+import "hud"
 
 Rectangle {
     id: simulatorRoot
@@ -14,8 +15,12 @@ Rectangle {
     Component.onCompleted: {
         var previousCompartment = undefined
         var previousCompartment2 = undefined
-        for(var i = 0; i < 10; i++) {
-            var compartment = createCompartment({x: 200 + i * 100, y: 200 + (Math.random()) * 10})
+        var compartment1 = createCompartment({x: 100, y: 200})
+        compartment1.targetVoltage = 50.0
+        compartment1.forceTargetVoltage = true
+        previousCompartment = compartment1
+        for(var i = 0; i < 5; i++) {
+            var compartment = createCompartment({x: 300 + i * 100, y: 200 + (Math.random()) * 10})
             if(previousCompartment) {
                 connectCompartments(previousCompartment, compartment)
             }
@@ -24,6 +29,10 @@ Rectangle {
             //            }
             previousCompartment2 = previousCompartment
             previousCompartment = compartment
+            if(i === 0 || i === 4) {
+                var voltmeter = createVoltmeter({x: 300 + i * 100, y: 400})
+                connectVoltmeter(compartment, voltmeter)
+            }
         }
     }
 
@@ -368,60 +377,6 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        id: compartmentCreator
-        width: 60
-        height: 40
-        color: "#c6dbef"
-        border.color: "#6baed6"
-        border.width: 1.0
-
-        Component.onCompleted: {
-            resetPosition()
-        }
-
-        function resetPosition() {
-            compartmentCreator.x = 0
-            compartmentCreator.y = 0
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            drag.target: parent
-            onReleased: {
-                createCompartment({x: compartmentCreator.x, y: compartmentCreator.y})
-                compartmentCreator.resetPosition()
-            }
-        }
-    }
-
-    Rectangle {
-        id: voltmeterCreator
-        width: 60
-        height: 40
-        color: "#deebf7"
-        border.color: "#9ecae1"
-        border.width: 1.0
-
-        Component.onCompleted: {
-            resetPosition()
-        }
-
-        function resetPosition() {
-            voltmeterCreator.x = 0
-            voltmeterCreator.y = 50
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            drag.target: parent
-            onReleased: {
-                createVoltmeter({x: voltmeterCreator.x, y: voltmeterCreator.y})
-                voltmeterCreator.resetPosition()
-            }
-        }
-    }
-
     Item {
         id: connectionLayer
         anchors.fill: parent
@@ -432,284 +387,25 @@ Rectangle {
         anchors.fill: parent
     }
 
-    Rectangle {
-        anchors {
-            right: parent.right
-            top: parent.top
-            rightMargin: compartmentControls.compartment ? 0.0 : -width
-            bottom: parent.bottom
+    CreationControls {
+        onCreateCompartment: {
+            simulatorRoot.createCompartment(position)
         }
-        Behavior on anchors.rightMargin {
-            NumberAnimation {
-                duration: 350
-                easing.type: Easing.InOutCubic
-            }
-        }
-
-        color: "#f7fbff"
-        width: parent.width * 0.2
-        ColumnLayout {
-            id: compartmentControls
-            property Compartment compartment: null
-            anchors.fill: parent
-            spacing: 10
-            onCompartmentChanged: {
-                if(!compartmentControls.compartment) {
-                    return
-                }
-                targetVoltageCheckbox.checked = compartment.forceTargetVoltage
-            }
-
-            Slider {
-                id: polarizationSlider
-                minimumValue: -100
-                maximumValue: 100
-                Layout.fillWidth: true
-            }
-
-            Text {
-                text: "Polarization jump: " + polarizationSlider.value.toFixed(1) + " mV"
-            }
-
-            Button {
-                id: polarizeButton
-                Layout.fillWidth: true
-
-                text: "Polarize!"
-                onClicked: {
-                    compartmentControls.compartment.voltage += polarizationSlider.value
-                }
-            }
-
-            Button {
-                id: resetButton
-                Layout.fillWidth: true
-
-                text: "Reset!"
-                onClicked: {
-                    for(var i in compartments) {
-                        var compartment = compartments[i]
-                        compartment.reset()
-                    }
-                }
-            }
-
-            CheckBox {
-                id: targetVoltageCheckbox
-                text: "Clamp voltage:" + targetVoltageSlider.value.toFixed(1) + " mV"
-                onCheckedChanged: {
-                    if(!compartmentControls.compartment) {
-                        return
-                    }
-                    compartmentControls.compartment.forceTargetVoltage = checked
-                    compartmentControls.compartment.targetVoltage = targetVoltageSlider.value
-                }
-            }
-
-            Slider {
-                id: targetVoltageSlider
-                minimumValue: -100.0
-                maximumValue: 100.0
-                Layout.fillWidth: true
-                onValueChanged: {
-                    compartmentControls.compartment.targetVoltage = value
-                }
-            }
-
-            Button {
-                id: disconnectButton
-                text: "Disconnect"
-                Layout.fillWidth: true
-
-                onClicked: {
-                    simulatorRoot.disconnectCompartment(compartmentControls.compartment)
-                }
-            }
-
-            Button {
-                text: "Delete"
-                Layout.fillWidth: true
-                onClicked: {
-                    simulatorRoot.deleteCompartment(compartmentControls.compartment)
-                }
-            }
-            Item {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-            }
+        onCreateVoltmeter: {
+            simulatorRoot.createVoltmeter(position)
         }
     }
 
-    Rectangle {
-        anchors {
-            right: parent.right
-            top: parent.top
-            rightMargin: voltmeterControls.voltmeter ? 0.0 : -width
-            bottom: parent.bottom
-        }
-        color: "#f7fbff"
-        width: parent.width * 0.2
-        Behavior on anchors.rightMargin {
-            NumberAnimation {
-                duration: 350
-                easing.type: Easing.InOutCubic
-            }
-        }
-        ColumnLayout {
-            id: voltmeterControls
-            property Voltmeter voltmeter: null
-
-            anchors.fill: parent
-            spacing: 10
-
-            onVoltmeterChanged: {
-                if(!voltmeterControls.voltmeter) {
-                    return
-                }
-                var voltmeter = voltmeterControls.voltmeter
-                switch(voltmeter.mode) {
-                case "voltage":
-                    voltageRadioButton.checked = true
-                    break
-                case "sodiumCurrent":
-                    sodiumCurrentRadioButton.checked = true
-                    break
-                case "potassiumCurrent":
-                    potassiumCurrentRadioButton.checked = true
-                    break
-                case "leakCurrent":
-                    leakCurrentRadioButton.checked = true
-                    break
-                }
-            }
-
-            Text {
-                text: "Mode:"
-            }
-
-            ExclusiveGroup {
-                id: modeGroup
-            }
-
-            RadioButton {
-                id: voltageRadioButton
-                text: "Voltage"
-                exclusiveGroup: modeGroup
-                onCheckedChanged: {
-                    if(checked) {
-                        voltmeterControls.voltmeter.mode = "voltage"
-                    }
-                }
-            }
-
-            RadioButton {
-                id: sodiumCurrentRadioButton
-                text: "Sodium current"
-                exclusiveGroup: modeGroup
-                onCheckedChanged: {
-                    if(checked) {
-                        voltmeterControls.voltmeter.mode = "sodiumCurrent"
-                    }
-                }
-            }
-
-            RadioButton {
-                id: potassiumCurrentRadioButton
-                text: "Potassium current"
-                exclusiveGroup: modeGroup
-                onCheckedChanged: {
-                    if(checked) {
-                        voltmeterControls.voltmeter.mode = "potassiumCurrent"
-                    }
-                }
-            }
-
-            RadioButton {
-                id: leakCurrentRadioButton
-                text: "Leak current"
-                exclusiveGroup: modeGroup
-                onCheckedChanged: {
-                    if(checked) {
-                        voltmeterControls.voltmeter.mode = "leakCurrent"
-                    }
-                }
-            }
-
-            Button {
-                text: "Delete"
-                onClicked: {
-                    simulatorRoot.deleteVoltmeter(voltmeterControls.voltmeter)
-                }
-            }
-
-            Item {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-            }
-        }
+    CompartmentControls {
+        id: compartmentControls
     }
 
-    Rectangle {
-        anchors {
-            right: parent.right
-            top: parent.top
-            rightMargin: connectionControls.connection ? 0.0 : -width
-            bottom: parent.bottom
-        }
-        color: "#f7fbff"
-        width: parent.width * 0.2
-        Behavior on anchors.rightMargin {
-            NumberAnimation {
-                duration: 350
-                easing.type: Easing.InOutCubic
-            }
-        }
-        ColumnLayout {
-            id: connectionControls
-            property Connection connection: null
+    VoltmeterControls {
+        id: voltmeterControls
+    }
 
-            anchors.fill: parent
-            spacing: 10
-
-            onConnectionChanged: {
-                if(!connectionControls.connection) {
-                    return
-                }
-
-                axialConductanceSlider.value = connection.axialConductance
-            }
-
-            Text {
-                text: "Axial conductance: " + axialConductanceSlider.value.toFixed(2)
-            }
-
-            Slider {
-                id: axialConductanceSlider
-                minimumValue: 0.01
-                maximumValue: 100
-                onValueChanged: {
-                    if(!connectionControls.connection) {
-                        return
-                    }
-                    connectionControls.connection.axialConductance = axialConductanceSlider.value
-                }
-            }
-
-            Button {
-                text: "Delete"
-                onClicked: {
-                    if(!connectionControls.connection) {
-                        return
-                    }
-                    simulatorRoot.deleteConnection(connectionControls.connection)
-                }
-            }
-
-            Item {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-            }
-        }
+    ConnectionControls {
+        id: connectionControls
     }
 
     Timer {

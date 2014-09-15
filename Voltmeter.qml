@@ -15,8 +15,8 @@ Rectangle {
     property real minimumValue: -100.0
     property real maximumValue: 100.0
 
-    width: 100
-    height: 100
+    width: 180
+    height: 120
     color: "#deebf7"
     border.color: selected ? "#08306b" : "#9ecae1"
     border.width: selected ? 3.0 : 1.0
