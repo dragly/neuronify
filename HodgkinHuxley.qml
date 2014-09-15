@@ -41,16 +41,55 @@ Rectangle {
         compartment.destroy()
     }
 
+    function deleteVoltmeter(voltmeter) {
+        if(voltmeterControls.voltmeter === voltmeter) {
+            voltmeterControls.voltmeter = null
+        }
+        var connectionsToRemove = []
+        var connectionPlots = voltmeter.connectionPlots
+        for(var i in connectionPlots) {
+            var connectionPlot = connectionPlots[i]
+            connectionsToRemove.push(connectionPlot.connection)
+        }
+        for(var i in connectionsToRemove) {
+            deleteConnection(connectionsToRemove[i])
+        }
+        var voltmeterIndex = simulatorRoot.voltmeters.indexOf(voltmeter)
+        if(voltmeterIndex > -1) {
+            simulatorRoot.voltmeters.splice(voltmeterIndex, 1)
+        }
+        voltmeter.destroy()
+    }
+
+    function disconnectVoltmeter(voltmeter) {
+        var connectionsToDelete = voltmeter.connectionPlots
+        for(var i in connectionsToDelete) {
+            var connection = connectionsToDelete[i]
+            deleteConnection(connection)
+        }
+        var voltmeterConnectionsNew = voltmeterConnections
+        for(var i in voltmeterConnections) {
+            var voltmeterConnection = voltmeterConnections[i]
+            if(voltmeterConnection.targetCompartment === voltmeter) {
+                voltmeterConnectionsNew.splice(voltmeterConnections.indexOf(voltmeterConnection), 1)
+                voltmeterConnection.destroy()
+            }
+        }
+        voltmeterConnections = voltmeterConnectionsNew
+    }
+
     function deleteConnection(connection) {
-        var connectionsNew = compartmentConnections
         var connectionIndex = compartmentConnections.indexOf(connection)
         if(connectionIndex > -1) {
-            connectionsNew.splice(connectionIndex, 1)
+            compartmentConnections.splice(connectionIndex, 1)
+        }
+        var voltmeterConnectionIndex = voltmeterConnections.indexOf(connection)
+        if(voltmeterConnectionIndex > -1) {
+            voltmeterConnections.splice(voltmeterConnectionIndex, 1)
         }
         connection.targetCompartment.removeConnection(connection)
         connection.sourceCompartment.removeConnection(connection)
         connection.destroy()
-        compartmentConnections = connectionsNew
     }
 
     function disconnectCompartment(compartment) {
@@ -545,7 +584,7 @@ Rectangle {
             }
 
             Text {
-                text: "Measure:"
+                text: "Mode:"
             }
 
             ExclusiveGroup {
@@ -593,6 +632,13 @@ Rectangle {
                     if(checked) {
                         voltmeterControls.voltmeter.mode = "leakCurrent"
                     }
+                }
+            }
+
+            Button {
+                text: "Delete"
+                onClicked: {
+                    simulatorRoot.deleteVoltmeter(voltmeterControls.voltmeter)
                 }
             }
 
