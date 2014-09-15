@@ -15,11 +15,12 @@ Canvas {
     width: Math.max(startPoint.x, endPoint.x, controlPoint1.x, controlPoint2.x) - x + 1
     height: Math.max(startPoint.y, endPoint.y, controlPoint1.y, controlPoint2.y) - y + 1
 
-    onLineWidthChanged:requestPaint();
-    onStartPointChanged: requestPaint();
-    onEndPointChanged: requestPaint();
-    onControlPoint1Changed: requestPaint();
-    onControlPoint2Changed: requestPaint();
+    onLineWidthChanged: requestPaint()
+    onStartPointChanged: requestPaint()
+    onEndPointChanged: requestPaint()
+    onControlPoint1Changed: requestPaint()
+    onControlPoint2Changed: requestPaint()
+    onColorChanged: requestPaint()
 
     function relativeX(x) {
         return x - canvas.x;
