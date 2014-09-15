@@ -9,7 +9,7 @@ Rectangle {
     property var compartments: []
     property var voltmeters: []
     property var voltmeterConnections: []
-    property var connections: []
+    property var compartmentConnections: []
 
     Component.onCompleted: {
         var previousCompartment = undefined
@@ -17,7 +17,7 @@ Rectangle {
         for(var i = 0; i < 10; i++) {
             var compartment = createCompartment({x: 200 + i * 100, y: 200 + (Math.random()) * 10})
             if(previousCompartment) {
-                createConnection(previousCompartment, compartment)
+                connectCompartments(previousCompartment, compartment)
             }
             //            if(previousCompartment2) {
             //                createConnection(previousCompartment2, compartment)
@@ -41,24 +41,25 @@ Rectangle {
         compartment.destroy()
     }
 
+    function deleteConnection(connection) {
+        var connectionsNew = compartmentConnections
+        var connectionIndex = compartmentConnections.indexOf(connection)
+        if(connectionIndex > -1) {
+            connectionsNew.splice(connectionIndex, 1)
+        }
+        connection.targetCompartment.removeConnection(connection)
+        connection.sourceCompartment.removeConnection(connection)
+        connection.destroy()
+        compartmentConnections = connectionsNew
+    }
+
     function disconnectCompartment(compartment) {
-        var connectionsNew = connections
         var connectionsToDelete = compartment.connections
         compartment.connections = []
         var connectionsToDestroy = []
         for(var i in connectionsToDelete) {
             var connection = connectionsToDelete[i]
-            var connectionIndex = connections.indexOf(connection)
-            if(connectionIndex > -1) {
-                connectionsNew.splice(connectionIndex, 1)
-            }
-            connection.targetCompartment.removeConnection(connection)
-            connection.sourceCompartment.removeConnection(connection)
-            connection.destroy()
-        }
-        for(var i in voltmeters) {
-            var voltmeter = voltmeters[i]
-            voltmeter.removeCompartment(compartment)
+            deleteConnection(connection)
         }
         var voltmeterConnectionsNew = voltmeterConnections
         for(var i in voltmeterConnections) {
@@ -69,8 +70,6 @@ Rectangle {
             }
         }
         voltmeterConnections = voltmeterConnectionsNew
-
-        connections = connectionsNew
     }
 
     function isItemUnderConnector(item, source, connector) {
@@ -108,34 +107,63 @@ Rectangle {
         return voltmeter
     }
 
-    function connectVoltmeterToCompartment(voltmeter, compartment) {
-        voltmeter.addCompartment(compartment)
-        var connectionComponent = Qt.createComponent("Connection.qml")
-        var connection = connectionComponent.createObject(connectionLayer, {
-                                                              sourceCompartment: voltmeter,
-                                                              targetCompartment: compartment
-                                                          })
-        var voltmeterConnectionsNew = voltmeterConnections
-        voltmeterConnectionsNew.push(connection)
-        voltmeterConnections = voltmeterConnectionsNew
+    function deselectAll() {
+        deselectCompartmentConnections()
+        deselectCompartments()
+        deselectVoltmeters()
+        deselectVoltmeterConnections()
     }
 
-    function selectCompartment(compartment, mouse) {
-        compartmentControls.compartment = compartment
-        for(var i in compartments) {
-            var otherCompartment = compartments[i]
-            if(otherCompartment !== compartment) {
-                otherCompartment.selected = false
-            }
+    function deselectAllInList(listName) {
+        for(var i in listName) {
+            var listObject = listName[i]
+            listObject.selected = false
         }
+    }
+
+    function deselectVoltmeterConnections() {
+        connectionControls.connection = null
+        deselectAllInList(voltmeterConnections)
+    }
+
+    function deselectCompartmentConnections() {
+        connectionControls.connection = null
+        deselectAllInList(compartmentConnections)
+    }
+
+    function deselectCompartments() {
+        compartmentControls.compartment = null
+        deselectAllInList(compartments)
+    }
+
+    function deselectVoltmeters() {
+        voltmeterControls.voltmeter = null
+        deselectAllInList(voltmeters)
+    }
+
+    function clickedCompartment(compartment) {
+        deselectAll()
+        compartmentControls.compartment = compartment
         compartment.selected = true
+    }
+
+    function clickedConnection(connection) {
+        deselectAll()
+        connectionControls.connection = connection
+        connection.selected = true
+    }
+
+    function clickedVoltmeter(voltmeter) {
+        deselectAll()
+        voltmeterControls.voltmeter = voltmeter
+        voltmeter.selected = true
     }
 
     function createCompartment(properties) {
         var component = Qt.createComponent("Compartment.qml")
         var compartment = component.createObject(compartmentLayer, properties)
         compartment.dragStarted.connect(resetOrganize)
-        compartment.clicked.connect(selectCompartment)
+        compartment.clicked.connect(clickedCompartment)
         compartment.droppedConnectionCreator.connect(createConnectionToPoint)
         compartments.push(compartment)
         return compartment
@@ -145,26 +173,38 @@ Rectangle {
         var component = Qt.createComponent("Voltmeter.qml")
         var voltmeter = component.createObject(compartmentLayer, properties)
         voltmeters.push(voltmeter)
+        voltmeter.clicked.connect(clickedVoltmeter)
         return voltmeter
     }
 
-    function createConnection(sourceCompartment, targetCompartment) {
+    function createConnection(sourceObject, targetObject) {
         var connectionComponent = Qt.createComponent("Connection.qml")
         var connection = connectionComponent.createObject(connectionLayer, {
-                                                              sourceCompartment: sourceCompartment,
-                                                              targetCompartment: targetCompartment
+                                                              sourceCompartment: sourceObject,
+                                                              targetCompartment: targetObject
                                                           })
+        connection.clicked.connect(clickedConnection)
+        return connection
+    }
 
+    function connectCompartments(sourceCompartment, targetCompartment) {
+        var connection = createConnection(sourceCompartment, targetCompartment)
         sourceCompartment.connections.push(connection)
         targetCompartment.connections.push(connection)
-        connections.push(connection)
+        compartmentConnections.push(connection)
         return connection
+    }
+
+    function connectVoltmeter(compartment, voltmeter) {
+        var connection = createConnection(compartment, voltmeter)
+        voltmeter.addConnection(connection)
+        voltmeterConnections.push(connection)
     }
 
     function createConnectionToPoint(sourceCompartment, connectionCreator) {
         var targetVoltmeter = voltmeterUnderConnector(sourceCompartment, connectionCreator)
         if(targetVoltmeter) {
-            connectVoltmeterToCompartment(targetVoltmeter, sourceCompartment)
+            connectVoltmeter(sourceCompartment, targetVoltmeter)
             return
         }
 
@@ -173,8 +213,8 @@ Rectangle {
             return
         }
         var connectionAlreadyExists = false
-        for(var j in connections) {
-            var existingConnection = connections[j]
+        for(var j in compartmentConnections) {
+            var existingConnection = compartmentConnections[j]
             if((existingConnection.sourceCompartment === sourceCompartment && existingConnection.targetCompartment === targetCompartment)
                     || (existingConnection.targetCompartment === sourceCompartment && existingConnection.sourceCompartment === targetCompartment)) {
                 connectionAlreadyExists = true
@@ -182,10 +222,9 @@ Rectangle {
             }
         }
         if(connectionAlreadyExists) {
-            console.log("Connection already exists!")
             return
         }
-        createConnection(sourceCompartment, targetCompartment)
+        connectCompartments(sourceCompartment, targetCompartment)
         resetOrganize()
     }
 
@@ -208,8 +247,8 @@ Rectangle {
             }
         }
 
-        for(var i in connections) {
-            var connection = connections[i]
+        for(var i in compartmentConnections) {
+            var connection = compartmentConnections[i]
             var source = connection.sourceCompartment
             var target = connection.targetCompartment
             var xDiff = source.x - target.x
@@ -273,7 +312,6 @@ Rectangle {
         }
 
         if(maxAppliedVelocity < minVelocity && !anyDragging) {
-            console.log("Stopping timer with max velocity: " + maxAppliedVelocity)
             layoutTimer.stop()
         }
 
@@ -287,11 +325,7 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         onClicked: {
-            compartmentControls.compartment = null
-            for(var i in compartments) {
-                var compartment = compartments[i]
-                compartment.selected = false
-            }
+            deselectAll()
         }
     }
 
@@ -381,7 +415,10 @@ Rectangle {
             anchors.fill: parent
             spacing: 10
             onCompartmentChanged: {
-                targetVoltageCheckbox.checked = compartment ? compartment.forceTargetVoltage : false
+                if(!compartmentControls.compartment) {
+                    return
+                }
+                targetVoltageCheckbox.checked = compartment.forceTargetVoltage
             }
 
             Slider {
@@ -411,21 +448,23 @@ Rectangle {
 
                 text: "Reset!"
                 onClicked: {
-                    compartment.reset()
+                    for(var i in compartments) {
+                        var compartment = compartments[i]
+                        compartment.reset()
+                    }
                 }
             }
 
             CheckBox {
                 id: targetVoltageCheckbox
-                text: "Lock to target voltage"
+                text: "Clamp voltage:" + targetVoltageSlider.value.toFixed(1) + " mV"
                 onCheckedChanged: {
+                    if(!compartmentControls.compartment) {
+                        return
+                    }
                     compartmentControls.compartment.forceTargetVoltage = checked
                     compartmentControls.compartment.targetVoltage = targetVoltageSlider.value
                 }
-            }
-
-            Text {
-                text: "Target voltage: " + targetVoltageSlider.value.toFixed(1) + " mV"
             }
 
             Slider {
@@ -455,6 +494,171 @@ Rectangle {
                     simulatorRoot.deleteCompartment(compartmentControls.compartment)
                 }
             }
+            Item {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    Rectangle {
+        anchors {
+            right: parent.right
+            top: parent.top
+            rightMargin: voltmeterControls.voltmeter ? 0.0 : -width
+            bottom: parent.bottom
+        }
+        color: "#f7fbff"
+        width: parent.width * 0.2
+        Behavior on anchors.rightMargin {
+            NumberAnimation {
+                duration: 350
+                easing.type: Easing.InOutCubic
+            }
+        }
+        ColumnLayout {
+            id: voltmeterControls
+            property Voltmeter voltmeter: null
+
+            anchors.fill: parent
+            spacing: 10
+
+            onVoltmeterChanged: {
+                if(!voltmeterControls.voltmeter) {
+                    return
+                }
+                var voltmeter = voltmeterControls.voltmeter
+                switch(voltmeter.mode) {
+                case "voltage":
+                    voltageRadioButton.checked = true
+                    break
+                case "sodiumCurrent":
+                    sodiumCurrentRadioButton.checked = true
+                    break
+                case "potassiumCurrent":
+                    potassiumCurrentRadioButton.checked = true
+                    break
+                case "leakCurrent":
+                    leakCurrentRadioButton.checked = true
+                    break
+                }
+            }
+
+            Text {
+                text: "Measure:"
+            }
+
+            ExclusiveGroup {
+                id: modeGroup
+            }
+
+            RadioButton {
+                id: voltageRadioButton
+                text: "Voltage"
+                exclusiveGroup: modeGroup
+                onCheckedChanged: {
+                    if(checked) {
+                        voltmeterControls.voltmeter.mode = "voltage"
+                    }
+                }
+            }
+
+            RadioButton {
+                id: sodiumCurrentRadioButton
+                text: "Sodium current"
+                exclusiveGroup: modeGroup
+                onCheckedChanged: {
+                    if(checked) {
+                        voltmeterControls.voltmeter.mode = "sodiumCurrent"
+                    }
+                }
+            }
+
+            RadioButton {
+                id: potassiumCurrentRadioButton
+                text: "Potassium current"
+                exclusiveGroup: modeGroup
+                onCheckedChanged: {
+                    if(checked) {
+                        voltmeterControls.voltmeter.mode = "potassiumCurrent"
+                    }
+                }
+            }
+
+            RadioButton {
+                id: leakCurrentRadioButton
+                text: "Leak current"
+                exclusiveGroup: modeGroup
+                onCheckedChanged: {
+                    if(checked) {
+                        voltmeterControls.voltmeter.mode = "leakCurrent"
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    Rectangle {
+        anchors {
+            right: parent.right
+            top: parent.top
+            rightMargin: connectionControls.connection ? 0.0 : -width
+            bottom: parent.bottom
+        }
+        color: "#f7fbff"
+        width: parent.width * 0.2
+        Behavior on anchors.rightMargin {
+            NumberAnimation {
+                duration: 350
+                easing.type: Easing.InOutCubic
+            }
+        }
+        ColumnLayout {
+            id: connectionControls
+            property Connection connection: null
+
+            anchors.fill: parent
+            spacing: 10
+
+            onConnectionChanged: {
+                if(!connectionControls.connection) {
+                    return
+                }
+
+                axialConductanceSlider.value = connection.axialConductance
+            }
+
+            Text {
+                text: "Axial conductance: " + axialConductanceSlider.value.toFixed(2)
+            }
+
+            Slider {
+                id: axialConductanceSlider
+                minimumValue: 0.01
+                maximumValue: 100
+                onValueChanged: {
+                    if(!connectionControls.connection) {
+                        return
+                    }
+                    connectionControls.connection.axialConductance = axialConductanceSlider.value
+                }
+            }
+
+            Button {
+                text: "Delete"
+                onClicked: {
+                    if(!connectionControls.connection) {
+                        return
+                    }
+                    simulatorRoot.deleteConnection(connectionControls.connection)
+                }
+            }
+
             Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true

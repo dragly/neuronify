@@ -4,7 +4,7 @@ import "paths"
 Rectangle {
     id: compartmentRoot
 
-    signal clicked(var compartment, var mouse)
+    signal clicked(var compartment)
     signal dragStarted
     signal droppedConnectionCreator(var compartment, var connectionCreator)
 
@@ -34,6 +34,10 @@ Rectangle {
     property real potassiumActivationAlpha: 0.01 * ((voltage + 55) / (1.0 - Math.exp(-(voltage + 55) / 10.0)))
     property real potassiumActivationBeta: 0.125 * Math.exp(- (voltage + 65) / 80)
     property real dt: 0.01
+
+    property real sodiumCurrent: 0.0
+    property real potassiumCurrent: 0.0
+    property real leakCurrent: meanLeakConductance * (voltage - leakPotential)
 
     property var connections: []
 
@@ -73,18 +77,19 @@ Rectangle {
         h = Math.max(0.0, Math.min(1.0, h))
         n = Math.max(0.0, Math.min(1.0, n))
 
+        var gL = meanLeakConductance
+        var gNa = meanSodiumConductance
+        var gK = meanPotassiumConductance
+        var EL = leakPotential
+        var ENa = sodiumPotential
+        var EK = potassiumPotential
+        var V = voltage
+        var m3 = m*m*m
+        var n4 = n*n*n*n
+
         if(forceTargetVoltage) {
             voltage = targetVoltage
         } else {
-            var gL = meanLeakConductance
-            var gNa = meanSodiumConductance
-            var gK = meanPotassiumConductance
-            var EL = leakPotential
-            var ENa = sodiumPotential
-            var EK = potassiumPotential
-            var V = voltage
-            var m3 = m*m*m
-            var n4 = n*n*n*n
 
             var axialCurrent = 0
             for(var i in connections) {
@@ -95,6 +100,9 @@ Rectangle {
             var dV = dt * ((1.0 / cm) * (- gL * (V - EL) - gNa * m3 * h * (V - ENa) - gK * n4 * (V - EK) - axialCurrent))
             _nextVoltage = voltage + dV
         }
+
+        sodiumCurrent = gNa * m3 * h * (V - ENa)
+        potassiumCurrent = gK * n4 * (V - EK)
 
         sodiumActivation = m
         sodiumInactivation = h
@@ -107,7 +115,14 @@ Rectangle {
         }
     }
 
-    color: "#c6dbef"
+    width: 70
+    height: 50
+    radius: Math.min(width, height) / 10
+    color: "#6baed6"
+    border.color: selected ? "#08306b" : "#2171b5"
+    border.width: selected ? Math.max(3.0, Math.min(width / height) * 0.3) : Math.max(1.0, Math.min(width / height) * 0.1)
+    antialiasing: true
+    smooth: true
 
     Rectangle {
         anchors.fill: parent
@@ -116,17 +131,9 @@ Rectangle {
         opacity: (voltage + 100) / (150)
     }
 
-    width: 70
-    height: 50
-    radius: Math.min(width, height) / 10
-    border.color: selected ? "#08306b" : "#6baed6"
-    border.width: Math.max(1.0, Math.min(width / height) / 10.0)
-    antialiasing: true
-    smooth: true
-
     Text {
         anchors.centerIn: parent
-        text: voltage.toFixed(2)
+        text: voltage.toFixed(1)
         font.pixelSize: compartmentRoot.width * 0.19
     }
 
@@ -134,27 +141,31 @@ Rectangle {
         anchors.fill: parent
         drag.target: parent
         onPressed: {
-            compartmentRoot.clicked(compartmentRoot, mouse)
             compartmentRoot.dragging = true
             dragStarted()
-            console.log("Drag started!")
         }
+
+        onClicked: {
+            compartmentRoot.clicked(compartmentRoot)
+        }
+
         onReleased: {
             compartmentRoot.dragging = false
         }
 
-//        onDragChanged: {
-//            console.log("Drag!")
-//        }
+        //        onDragChanged: {
+        //            console.log("Drag!")
+        //        }
     }
 
     SCurve {
         z: -1
+        color: "#4292c6"
         startPoint: Qt.point(compartmentRoot.width / 2, compartmentRoot.height / 2)
         endPoint: Qt.point(connectionCreator.x + connectionCreator.width / 2, connectionCreator.y + connectionCreator.width / 2)
     }
 
-    Rectangle {
+    Item {
         id: connectionCreator
 
         Component.onCompleted: {
@@ -166,12 +177,18 @@ Rectangle {
             connectionCreator.y = compartmentRoot.height - height / 2
         }
 
-        color: "#4292c6"
-        border.width: 1.0
-        border.color: "#f7fbff"
-        radius: width
         width: compartmentRoot.width * 0.37
         height: width
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: parent.width / 2.0
+            height: width
+            color: "#4292c6"
+            border.color: "#f7fbff"
+            border.width: 1.0
+            radius: width
+        }
 
         MouseArea {
             id: connectionCreatorMouseArea

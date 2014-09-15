@@ -2,6 +2,9 @@ import QtQuick 2.0
 import "paths"
 
 Item {
+    id: connectionRoot
+    signal clicked(var connection)
+    property bool selected: false
     property var sourceCompartment
     property var targetCompartment
     property real axialConductance: 1.0
@@ -16,8 +19,18 @@ Item {
 
     SCurve {
         id: sCurve
-        color: "#4292c6"
+        color: connectionRoot.selected ? "#08306b" : "#4292c6"
         startPoint: Qt.point(sourceCompartment.x + sourceCompartment.width / 2.0, sourceCompartment.y + sourceCompartment.height / 2)
         endPoint: Qt.point(targetCompartment.x + targetCompartment.width / 2.0, targetCompartment.y + targetCompartment.height / 2)
+
+        MouseArea {
+            anchors.centerIn: parent
+            width: Math.max(40, parent.width)
+            height: Math.max(40, parent.height)
+
+            onClicked: {
+                connectionRoot.clicked(connectionRoot)
+            }
+        }
     }
 }
