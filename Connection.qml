@@ -8,6 +8,7 @@ Item {
     property var sourceCompartment
     property var targetCompartment
     property real conductance: 1.0
+    property color color: "#4292c6"
 
     function otherCompartment(currentCompartment) {
         if(currentCompartment === sourceCompartment) {
@@ -19,7 +20,7 @@ Item {
 
     SCurve {
         id: sCurve
-        color: connectionRoot.selected ? "#08306b" : "#4292c6"
+        color: connectionRoot.selected ? "#08306b" : connectionRoot.color
         startPoint: Qt.point(sourceCompartment.x + sourceCompartment.width / 2.0, sourceCompartment.y + sourceCompartment.height / 2)
         endPoint: Qt.point(targetCompartment.x + targetCompartment.width / 2.0, targetCompartment.y + targetCompartment.height / 2)
 

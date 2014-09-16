@@ -31,6 +31,7 @@ Rectangle {
         var newList = voltmeterRoot.connectionPlots
         var plotComponent = Qt.createComponent("Plot.qml")
         var plot = plotComponent.createObject(plotLayer, {strokeStyle: color})
+        connection.color = color
         resetMinMax(plot)
         newList.push({connection: connection, plot: plot})
         voltmeterRoot.connectionPlots = newList
