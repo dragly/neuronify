@@ -13,6 +13,7 @@ PropertiesPanel {
         }
         targetVoltageSlider.value = compartment.targetVoltage
         targetVoltageCheckbox.checked = compartment.forceTargetVoltage
+        passiveCheckbox.checked = compartmentControlsRoot.compartment.passive
     }
     ColumnLayout {
         anchors.fill: parent
@@ -23,6 +24,14 @@ PropertiesPanel {
             minimumValue: -100
             maximumValue: 100
             Layout.fillWidth: true
+        }
+
+        CheckBox {
+            id: passiveCheckbox
+            text: "Passive"
+            onCheckedChanged: {
+                compartmentControlsRoot.compartment.passive = checked
+            }
         }
 
         Text {

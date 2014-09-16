@@ -7,7 +7,7 @@ Item {
     property bool selected: false
     property var sourceCompartment
     property var targetCompartment
-    property real axialConductance: 1.0
+    property real conductance: 1.0
 
     function otherCompartment(currentCompartment) {
         if(currentCompartment === sourceCompartment) {

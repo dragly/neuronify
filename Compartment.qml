@@ -11,6 +11,7 @@ Rectangle {
     property vector2d velocity
     property bool selected: false
     property bool dragging: false
+    property bool passive: false
 
     property real targetVoltage: 0.0
     property bool forceTargetVoltage: false
@@ -94,10 +95,16 @@ Rectangle {
             var axialCurrent = 0
             for(var i in connections) {
                 var connection = connections[i]
-                axialCurrent += connection.axialConductance * (V - connection.otherCompartment(compartmentRoot).voltage)
+                axialCurrent += connection.conductance * (V - connection.otherCompartment(compartmentRoot).voltage)
             }
 
-            var dV = dt * ((1.0 / cm) * (- gL * (V - EL) - gNa * m3 * h * (V - ENa) - gK * n4 * (V - EK) - axialCurrent))
+            var sodiumCurrent = 0
+            var potassiumCurrent = 0
+            if(!passive) {
+                sodiumCurrent = gNa * m3 * h * (V - ENa)
+                potassiumCurrent = gK * n4 * (V - EK)
+            }
+            var dV = dt * (1.0 / cm) * (- gL * (V - EL) - sodiumCurrent - potassiumCurrent - axialCurrent)
             _nextVoltage = voltage + dV
         }
 

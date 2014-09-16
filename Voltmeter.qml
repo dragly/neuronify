@@ -11,6 +11,7 @@ Rectangle {
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentColor: 0
     property string mode: "voltage"
+    property string title: "V"
 
     property real minimumValue: -100.0
     property real maximumValue: 100.0
@@ -58,18 +59,22 @@ Rectangle {
         case "voltage":
             minimumValue = -100
             maximumValue = 100
+            title = "V"
             break
         case "sodiumCurrent":
             minimumValue = -3e3
             maximumValue = 3e3
+            title = "I (Na)"
             break
         case "potassiumCurrent":
             minimumValue = -5e3
             maximumValue = 5e3
+            title = "I (K)"
             break
         case "leakCurrent":
             minimumValue = -1e2
             maximumValue = 1e2
+            title = "I (L)"
             break
         }
         for(var i in connectionPlots) {
@@ -86,10 +91,21 @@ Rectangle {
 
     Text {
         anchors {
+            right: parent.right
+            top: parent.top
+            margins: parent.height * 0.04
+        }
+        font.pixelSize: 12
+        text: voltmeterRoot.title
+    }
+
+    Text {
+        anchors {
             left: parent.left
             top: parent.top
             margins: parent.height * 0.04
         }
+        font.pixelSize: 12
         text: maximumValue.toFixed(0)
     }
 
@@ -99,6 +115,7 @@ Rectangle {
             bottom: parent.bottom
             margins: parent.height * 0.04
         }
+        font.pixelSize: 12
         text: minimumValue.toFixed(0)
     }
 

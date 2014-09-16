@@ -11,8 +11,7 @@ PropertiesPanel {
         if(!connectionControlsRoot.connection) {
             return
         }
-
-        axialConductanceSlider.value = connection.axialConductance
+        conductanceSlider.value = conductanceSlider.inverseScaledConductance(connection.conductance)
     }
 
     revealed: connectionControlsRoot.connection ? true : false
@@ -22,18 +21,27 @@ PropertiesPanel {
         spacing: 10
 
         Text {
-            text: "Axial conductance: " + axialConductanceSlider.value.toFixed(2)
+            text: "Connection conductance: " + conductanceSlider.scaledConductance(conductanceSlider.value).toFixed(2)
         }
 
         Slider {
-            id: axialConductanceSlider
-            minimumValue: 0.01
-            maximumValue: 100
+            id: conductanceSlider
+
+            function scaledConductance(value) {
+                return Math.exp(value)
+            }
+
+            function inverseScaledConductance(value) {
+                return Math.log(value)
+            }
+
+            minimumValue: inverseScaledConductance(0.01)
+            maximumValue: inverseScaledConductance(50)
             onValueChanged: {
                 if(!connectionControlsRoot.connection) {
                     return
                 }
-                connectionControlsRoot.connection.axialConductance = axialConductanceSlider.value
+                connectionControlsRoot.connection.conductance = scaledConductance(conductanceSlider.value)
             }
         }
 
