@@ -11,7 +11,10 @@ Rectangle {
         bottom: parent.bottom
     }
 
-    color: "#f7fbff"
+
+    color: "#deebf7"
+    border.color: "#9ecae1"
+    border.width: 1.0
     width: parent.width * 0.1
 
     Behavior on anchors.leftMargin {

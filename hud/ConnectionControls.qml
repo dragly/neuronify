@@ -7,6 +7,10 @@ PropertiesPanel {
     id: connectionControlsRoot
     property Connection connection: null
 
+    color: "#deebf7"
+    border.color: "#9ecae1"
+    border.width: 1.0
+
     onConnectionChanged: {
         if(!connectionControlsRoot.connection) {
             return

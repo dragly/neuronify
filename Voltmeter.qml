@@ -16,6 +16,8 @@ Rectangle {
     property real minimumValue: -100.0
     property real maximumValue: 100.0
 
+    property real lastUpdateTime: Date.now()
+
     width: 180
     height: 120
     color: "#deebf7"
@@ -55,6 +57,30 @@ Rectangle {
         plot.maximumValue = maximumValue
     }
 
+    function stepForward(dt) {
+        var currentUpdateTime = Date.now()
+        var timeDiff = currentUpdateTime - lastUpdateTime
+        if(timeDiff < 36) {
+            return
+        }
+
+        for(var i in voltmeterRoot.connectionPlots) {
+            var connectionPlot = voltmeterRoot.connectionPlots[i]
+            var plot = connectionPlot.plot
+            var compartment = connectionPlot.connection.sourceCompartment
+            if(mode === "voltage") {
+                plot.addPoint(compartment.voltage)
+            } else if(mode === "sodiumCurrent") {
+                plot.addPoint(compartment.sodiumCurrent)
+            } else if(mode === "potassiumCurrent") {
+                plot.addPoint(compartment.potassiumCurrent)
+            } else if(mode === "leakCurrent") {
+                plot.addPoint(compartment.leakCurrent)
+            }
+        }
+        lastUpdateTime = currentUpdateTime
+    }
+
     onModeChanged: {
         switch(mode) {
         case "voltage":
@@ -63,13 +89,13 @@ Rectangle {
             title = "V"
             break
         case "sodiumCurrent":
-            minimumValue = -3e3
-            maximumValue = 3e3
+            minimumValue = -2e3
+            maximumValue = 2e3
             title = "I (Na)"
             break
         case "potassiumCurrent":
-            minimumValue = -5e3
-            maximumValue = 5e3
+            minimumValue = -3e3
+            maximumValue = 3e3
             title = "I (K)"
             break
         case "leakCurrent":
@@ -120,28 +146,15 @@ Rectangle {
         text: minimumValue.toFixed(0)
     }
 
-    Timer {
-        id: plotTimer
-        interval: 24
-        running: true
-        repeat: true
-        onTriggered: {
-            for(var i in voltmeterRoot.connectionPlots) {
-                var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var plot = connectionPlot.plot
-                var compartment = connectionPlot.connection.sourceCompartment
-                if(mode === "voltage") {
-                    plot.addPoint(compartment.voltage)
-                } else if(mode === "sodiumCurrent") {
-                    plot.addPoint(compartment.sodiumCurrent)
-                } else if(mode === "potassiumCurrent") {
-                    plot.addPoint(compartment.potassiumCurrent)
-                } else if(mode === "leakCurrent") {
-                    plot.addPoint(compartment.leakCurrent)
-                }
-            }
-        }
-    }
+//    Timer {
+//        id: plotTimer
+//        interval: 24
+//        running: true
+//        repeat: true
+//        onTriggered: {
+
+//        }
+//    }
 
     MouseArea {
         anchors.fill: parent

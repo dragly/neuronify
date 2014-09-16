@@ -5,6 +5,10 @@ import ".."
 
 PropertiesPanel {
     id: compartmentControlsRoot
+
+    signal disconnectClicked
+    signal deleteClicked
+
     property Compartment compartment: null
     revealed: compartmentControlsRoot.compartment ? true : false
     onCompartmentChanged: {
@@ -48,19 +52,6 @@ PropertiesPanel {
             }
         }
 
-        Button {
-            id: resetButton
-            Layout.fillWidth: true
-
-            text: "Reset!"
-            onClicked: {
-                for(var i in compartments) {
-                    var compartment = compartments[i]
-                    compartment.reset()
-                }
-            }
-        }
-
         CheckBox {
             id: targetVoltageCheckbox
             text: "Clamp voltage:" + targetVoltageSlider.value.toFixed(1) + " mV"
@@ -89,9 +80,8 @@ PropertiesPanel {
             id: disconnectButton
             text: "Disconnect"
             Layout.fillWidth: true
-
             onClicked: {
-                simulatorRoot.disconnectCompartment(compartmentControlsRoot.compartment)
+                disconnectClicked()
             }
         }
 
@@ -99,7 +89,7 @@ PropertiesPanel {
             text: "Delete"
             Layout.fillWidth: true
             onClicked: {
-                simulatorRoot.deleteCompartment(compartmentControlsRoot.compartment)
+                deleteClicked()
             }
         }
         Item {

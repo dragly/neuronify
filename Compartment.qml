@@ -34,11 +34,11 @@ Rectangle {
     property real potassiumActivation: 1.0
     property real potassiumActivationAlpha: 0.01 * ((voltage + 55) / (1.0 - Math.exp(-(voltage + 55) / 10.0)))
     property real potassiumActivationBeta: 0.125 * Math.exp(- (voltage + 65) / 80)
-    property real dt: 0.01
+//    property real dt: 0.01
 
     property real sodiumCurrent: 0.0
     property real potassiumCurrent: 0.0
-    property real leakCurrent: meanLeakConductance * (voltage - leakPotential)
+    property real leakCurrent: 0.0
 
     property var connections: []
 
@@ -56,7 +56,7 @@ Rectangle {
         }
     }
 
-    function stepForward() {
+    function stepForward(dt) {
         var m = sodiumActivation
         var alpham = sodiumActivationAlpha
         var betam = sodiumActivationBeta
@@ -98,18 +98,20 @@ Rectangle {
                 axialCurrent += connection.conductance * (V - connection.otherCompartment(compartmentRoot).voltage)
             }
 
-            var sodiumCurrent = 0
-            var potassiumCurrent = 0
-            if(!passive) {
+            leakCurrent = gL * (V - EL)
+            if(passive) {
+                sodiumCurrent = 0
+                potassiumCurrent = 0
+            } else {
                 sodiumCurrent = gNa * m3 * h * (V - ENa)
                 potassiumCurrent = gK * n4 * (V - EK)
             }
-            var dV = dt * (1.0 / cm) * (- gL * (V - EL) - sodiumCurrent - potassiumCurrent - axialCurrent)
+            var dV = dt * (1.0 / cm) * (- leakCurrent - sodiumCurrent - potassiumCurrent - axialCurrent)
             _nextVoltage = voltage + dV
         }
 
-        sodiumCurrent = gNa * m3 * h * (V - ENa)
-        potassiumCurrent = gK * n4 * (V - EK)
+//        sodiumCurrent = gNa * m3 * h * (V - ENa)
+//        potassiumCurrent = gK * n4 * (V - EK)
 
         sodiumActivation = m
         sodiumInactivation = h

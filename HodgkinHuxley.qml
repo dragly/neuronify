@@ -7,6 +7,7 @@ Rectangle {
     id: simulatorRoot
 
     property real lastOrganizeTime: Date.now()
+    property real lastStepTime: Date.now()
     property var compartments: []
     property var voltmeters: []
     property var voltmeterConnections: []
@@ -251,6 +252,18 @@ Rectangle {
     function createConnectionToPoint(sourceCompartment, connectionCreator) {
         var targetVoltmeter = voltmeterUnderConnector(sourceCompartment, connectionCreator)
         if(targetVoltmeter) {
+            var connectionAlreadyExists = false
+            for(var j in voltmeterConnections) {
+                var existingConnection = voltmeterConnections[j]
+                if((existingConnection.sourceCompartment === sourceCompartment && existingConnection.targetCompartment === targetVoltmeter)
+                        || (existingConnection.targetCompartment === sourceCompartment && existingConnection.sourceCompartment === targetVoltmeter)) {
+                    connectionAlreadyExists = true
+                    break
+                }
+            }
+            if(connectionAlreadyExists) {
+                return
+            }
             connectVoltmeter(sourceCompartment, targetVoltmeter)
             return
         }
@@ -393,6 +406,12 @@ Rectangle {
 
     CompartmentControls {
         id: compartmentControls
+        onDisconnectClicked: {
+            simulatorRoot.disconnectCompartment(compartment)
+        }
+        onDeleteClicked: {
+            simulatorRoot.deleteCompartment(compartment)
+        }
     }
 
     VoltmeterControls {
@@ -401,6 +420,66 @@ Rectangle {
 
     ConnectionControls {
         id: connectionControls
+    }
+
+    Rectangle {
+        id: playbackControls
+
+        anchors {
+            bottom: parent.bottom
+            left: parent.left
+        }
+
+        color: "#deebf7"
+        border.color: "#9ecae1"
+        border.width: 1.0
+
+        width: parent.width / 2.0
+        height: parent.height * 0.08
+
+        RowLayout {
+            spacing: 10
+            anchors.fill: parent
+            anchors.margins: 10
+
+            CheckBox {
+                id: playingCheckbox
+                text: "Simulate"
+                checked: true
+            }
+
+            Text {
+                text: "Speed: "
+            }
+
+            Slider {
+                id: playbackSpeedSlider
+                property real realValue: Math.pow(10, value)
+                minimumValue: -1
+                maximumValue: 1
+            }
+
+            Text {
+                text: playbackSpeedSlider.realValue.toFixed(1) + " x"
+            }
+
+            Button {
+                id: resetButton
+
+                text: "Reset!"
+                onClicked: {
+                    for(var i in compartments) {
+                        var compartment = compartments[i]
+                        compartment.reset()
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+            }
+        }
     }
 
     Timer {
@@ -415,17 +494,31 @@ Rectangle {
 
     Timer {
         interval: 1
-        running: true
+        running: playingCheckbox.checked
         repeat: true
+        onRunningChanged: {
+            if(running) {
+                lastStepTime = Date.now()
+            }
+        }
+
         onTriggered: {
+            var currentTime = Date.now()
+            var dt = (currentTime - lastStepTime) / 1000
+            dt *= playbackSpeedSlider.realValue
             for(var i in compartments) {
                 var compartment = compartments[i]
-                compartment.stepForward()
+                compartment.stepForward(dt)
             }
             for(var i in compartments) {
                 var compartment = compartments[i]
-                compartment.finalizeStep()
+                compartment.finalizeStep(dt)
             }
+            for(var i in voltmeters) {
+                var voltmeter = voltmeters[i]
+                voltmeter.stepForward(dt)
+            }
+            lastStepTime = currentTime
         }
     }
 }
