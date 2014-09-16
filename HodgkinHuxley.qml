@@ -112,9 +112,8 @@ Rectangle {
         var voltmeterConnectionsNew = voltmeterConnections
         for(var i in voltmeterConnections) {
             var voltmeterConnection = voltmeterConnections[i]
-            if(voltmeterConnection.targetCompartment === compartment) {
-                voltmeterConnectionsNew.splice(voltmeterConnections.indexOf(voltmeterConnection), 1)
-                voltmeterConnection.destroy()
+            if(voltmeterConnection.sourceCompartment === compartment) {
+                deleteConnection(voltmeterConnection)
             }
         }
         voltmeterConnections = voltmeterConnectionsNew
