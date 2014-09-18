@@ -3,7 +3,12 @@ import QtQuick.Layouts 1.1
 
 Rectangle {
     id: creationControlsRoot
-    property bool revealed: false
+
+    signal createCompartment(var position)
+    signal createVoltmeter(var position)
+
+    property bool revealed: true
+
     anchors {
         left: parent.left
         top: parent.top
@@ -11,11 +16,10 @@ Rectangle {
         bottom: parent.bottom
     }
 
-
     color: "#deebf7"
     border.color: "#9ecae1"
     border.width: 1.0
-    width: parent.width * 0.1
+    width: parent.width * 0.07
 
     Behavior on anchors.leftMargin {
         NumberAnimation {
@@ -24,26 +28,24 @@ Rectangle {
         }
     }
 
-    signal createCompartment(var position)
-    signal createVoltmeter(var position)
-
-    Rectangle {
-        anchors.left: parent.right
-        width: 40
-        height: 40
-        color: "#deebf7"
-        border.width: 1.0
-        border.color: "#6baed6"
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                creationControlsRoot.revealed = !creationControlsRoot.revealed
-            }
-        }
-    }
+//    Rectangle {
+//        anchors.left: parent.right
+//        width: 40
+//        height: 40
+//        color: "#deebf7"
+//        border.width: 1.0
+//        border.color: "#6baed6"
+//        MouseArea {
+//            anchors.fill: parent
+//            onClicked: {
+//                creationControlsRoot.revealed = !creationControlsRoot.revealed
+//            }
+//        }
+//    }
 
     ColumnLayout {
         id: layout
+
         function reset() {
             var oldSpacing = spacing
             spacing = 0
@@ -55,20 +57,32 @@ Rectangle {
             margins: 10
         }
         spacing: 10
+
         Rectangle {
             id: compartmentCreator
-            width: 60
-            height: 40
+            radius: width * 0.1
+            Layout.fillWidth: true
+            Layout.minimumHeight: width * 0.67
             color: "#c6dbef"
             border.color: "#6baed6"
-            border.width: 1.0
+            border.width: 2.0
 
-            Component.onCompleted: {
-//                resetPosition()
-            }
 
             function resetPosition() {
                 layout.reset()
+            }
+
+            Rectangle {
+                anchors {
+                    horizontalCenter: parent.right
+                    verticalCenter: parent.bottom
+                }
+                width: parent.width * 0.2
+                height: width
+                color: "#4292c6"
+                border.color: "#f7fbff"
+                border.width: 1.0
+                radius: width
             }
 
             MouseArea {
@@ -83,8 +97,9 @@ Rectangle {
 
         Rectangle {
             id: voltmeterCreator
-            width: 60
-            height: 40
+
+            Layout.fillWidth: true
+            Layout.minimumHeight: width * 0.67
             color: "#deebf7"
             border.color: "#9ecae1"
             border.width: 1.0
@@ -95,6 +110,20 @@ Rectangle {
 
             function resetPosition() {
                 layout.reset()
+            }
+
+            Canvas {
+                anchors.fill: parent
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.strokeStyle = "#e41a1c"
+                    ctx.beginPath()
+                    var w = width
+                    var h = height
+                    ctx.moveTo(h * 0.2, h * 0.2)
+                    ctx.bezierCurveTo(w*0.5, h*0.2, w*0.5, h*0.8, w - h*0.2, h*0.8)
+                    ctx.stroke()
+                }
             }
 
             MouseArea {
