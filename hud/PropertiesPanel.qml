@@ -10,12 +10,19 @@ Rectangle {
     }
 
     color: "#f7fbff"
-    width: parent.width * 0.2
+    width: parent.width * 0.25
+
+    border.color: "#9ecae1"
+    border.width: 1.0
 
     Behavior on anchors.rightMargin {
         NumberAnimation {
             duration: 350
             easing.type: Easing.InOutCubic
         }
+    }
+
+    MouseArea {
+        anchors.fill: parent
     }
 }

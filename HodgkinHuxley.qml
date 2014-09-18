@@ -456,7 +456,7 @@ Rectangle {
                 id: playbackSpeedSlider
                 property real realValue: Math.pow(10, value)
                 minimumValue: -1
-                maximumValue: 1
+                maximumValue: 0.7
             }
 
             Text {
@@ -505,6 +505,7 @@ Rectangle {
         onTriggered: {
             var currentTime = Date.now()
             var dt = (currentTime - lastStepTime) / 1000
+            dt = Math.min(0.010, dt)
             dt *= playbackSpeedSlider.realValue
             for(var i in compartments) {
                 var compartment = compartments[i]

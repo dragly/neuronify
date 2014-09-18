@@ -33,6 +33,7 @@ PropertiesPanel {
 
         anchors.fill: parent
         spacing: 10
+        anchors.margins: 10
 
         Text {
             text: "Mode:"

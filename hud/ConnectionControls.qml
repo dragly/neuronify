@@ -7,10 +7,6 @@ PropertiesPanel {
     id: connectionControlsRoot
     property Connection connection: null
 
-    color: "#deebf7"
-    border.color: "#9ecae1"
-    border.width: 1.0
-
     onConnectionChanged: {
         if(!connectionControlsRoot.connection) {
             return
@@ -23,6 +19,7 @@ PropertiesPanel {
 
         anchors.fill: parent
         spacing: 10
+        anchors.margins: 10
 
         Text {
             text: "Connection conductance: " + conductanceSlider.scaledConductance(conductanceSlider.value).toFixed(2)
@@ -31,6 +28,10 @@ PropertiesPanel {
         Slider {
             id: conductanceSlider
 
+            minimumValue: inverseScaledConductance(0.01)
+            maximumValue: inverseScaledConductance(50)
+            Layout.fillWidth: true
+
             function scaledConductance(value) {
                 return Math.exp(value)
             }
@@ -38,9 +39,6 @@ PropertiesPanel {
             function inverseScaledConductance(value) {
                 return Math.log(value)
             }
-
-            minimumValue: inverseScaledConductance(0.01)
-            maximumValue: inverseScaledConductance(50)
             onValueChanged: {
                 if(!connectionControlsRoot.connection) {
                     return
