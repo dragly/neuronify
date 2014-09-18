@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.2
 import QtQuick.Layouts 1.1
+import QtQuick.Controls.Styles 1.2
 import ".."
 
 PropertiesPanel {
@@ -21,14 +22,8 @@ PropertiesPanel {
     }
     ColumnLayout {
         anchors.fill: parent
+        anchors.margins: 10
         spacing: 10
-
-        Slider {
-            id: polarizationSlider
-            minimumValue: -100
-            maximumValue: 100
-            Layout.fillWidth: true
-        }
 
         CheckBox {
             id: passiveCheckbox
@@ -40,6 +35,13 @@ PropertiesPanel {
 
         Text {
             text: "Polarization jump: " + polarizationSlider.value.toFixed(1) + " mV"
+        }
+
+        Slider {
+            id: polarizationSlider
+            minimumValue: -100
+            maximumValue: 100
+            Layout.fillWidth: true
         }
 
         Button {
