@@ -26,7 +26,7 @@ Rectangle {
                 connectCompartments(previousCompartment, compartment)
             }
             if(i === 0) {
-                compartment.targetVoltage = -12.0
+                compartment.targetVoltage = -6.0
                 compartment.forceTargetVoltage = true
             }
             if(i === 1 || i === 4) {
@@ -210,6 +210,7 @@ Rectangle {
     function createCompartment(properties) {
         var component = Qt.createComponent("Compartment.qml")
         var compartment = component.createObject(compartmentLayer, properties)
+        compartment.x = Math.max(compartment.x, creationControls.width)
         compartment.dragStarted.connect(resetOrganize)
         compartment.clicked.connect(clickedCompartment)
         compartment.droppedConnectionCreator.connect(createConnectionToPoint)
@@ -220,6 +221,7 @@ Rectangle {
     function createVoltmeter(properties) {
         var component = Qt.createComponent("Voltmeter.qml")
         var voltmeter = component.createObject(compartmentLayer, properties)
+        voltmeter.x = Math.max(voltmeter.x, creationControls.width)
         voltmeters.push(voltmeter)
         voltmeter.clicked.connect(clickedVoltmeter)
         return voltmeter
@@ -331,6 +333,7 @@ Rectangle {
 
         for(var i = 0; i < compartments.length; i++) {
             var minDistance = springLength * 0.8
+            var guard = 1.0
             var compartmentA = compartments[i]
             for(var j = i + 1; j < compartments.length; j++) {
                 var compartmentB = compartments[j]
@@ -338,6 +341,9 @@ Rectangle {
                 var yDiff = compartmentA.y - compartmentB.y
                 var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
                 if(length > minDistance) {
+                    continue
+                }
+                if(length < guard) {
                     continue
                 }
 
@@ -356,22 +362,28 @@ Rectangle {
             }
         }
 
-        var maxAppliedVelocity = 0.0
-        var maxVelocity = simulatorRoot.width * 1.0
-        var minVelocity = simulatorRoot.width * 0.5
+        var maxAppliedSpeed = 0.0
+        var maxSpeed = simulatorRoot.width * 1.0
+        var minSpeed = simulatorRoot.width * 0.5
         for(var i in compartments) {
             var compartment = compartments[i]
-            var velocity = Math.sqrt(compartment.velocity.x*compartment.velocity.x + compartment.velocity.y*compartment.velocity.y)
-            if(velocity > maxVelocity) {
-                compartment.velocity.x *= (maxVelocity / velocity)
+            var speed = Math.sqrt(compartment.velocity.x*compartment.velocity.x + compartment.velocity.y*compartment.velocity.y)
+            if(speed > maxSpeed && speed > 0) {
+                compartment.velocity.x *= (maxSpeed / speed)
+                compartment.velocity.y *= (maxSpeed / speed)
             }
 
-            maxAppliedVelocity = Math.max(maxAppliedVelocity, compartment.velocity.x*compartment.velocity.x + compartment.velocity.y*compartment.velocity.y)
+            maxAppliedSpeed = Math.max(maxAppliedSpeed, compartment.velocity.x*compartment.velocity.x + compartment.velocity.y*compartment.velocity.y)
             compartment.x += compartment.velocity.x * dt
             compartment.y += compartment.velocity.y * dt
+
+            compartment.x = Math.max(compartment.x, creationControls.width - compartment.width * 0.5)
+            compartment.y = Math.max(compartment.y,  - compartment.height * 0.5)
+            compartment.x = Math.min(compartment.x, simulatorRoot.width - compartment.width * 0.5)
+            compartment.y = Math.min(compartment.y, simulatorRoot.height - playbackControls.height - compartment.height  * 0.5)
         }
 
-        if(maxAppliedVelocity < minVelocity && !anyDragging) {
+        if(maxAppliedSpeed < minSpeed && !anyDragging) {
             layoutTimer.stop()
         }
 
@@ -396,6 +408,7 @@ Rectangle {
     }
 
     CreationControls {
+        id: creationControls
         onCreateCompartment: {
             simulatorRoot.createCompartment(position)
         }
@@ -428,14 +441,13 @@ Rectangle {
         anchors {
             bottom: parent.bottom
             left: parent.left
+            right: parent.right
         }
+        height: parent.height * 0.08
 
         color: "#deebf7"
         border.color: "#9ecae1"
         border.width: 1.0
-
-        width: parent.width / 2.0
-        height: parent.height * 0.08
 
         RowLayout {
             spacing: 10
@@ -456,7 +468,8 @@ Rectangle {
                 id: playbackSpeedSlider
                 property real realValue: Math.pow(10, value)
                 minimumValue: -1
-                maximumValue: 0.7
+                maximumValue: 1.4
+                Layout.fillWidth: true
             }
 
             Text {
@@ -505,8 +518,8 @@ Rectangle {
         onTriggered: {
             var currentTime = Date.now()
             var dt = (currentTime - lastStepTime) / 1000
-            dt = Math.min(0.010, dt)
             dt *= playbackSpeedSlider.realValue
+            dt = Math.min(0.050, dt)
             for(var i in compartments) {
                 var compartment = compartments[i]
                 compartment.stepForward(dt)
