@@ -19,11 +19,45 @@ PropertiesPanel {
         targetVoltageSlider.value = compartment.targetVoltage
         targetVoltageCheckbox.checked = compartment.forceTargetVoltage
         passiveCheckbox.checked = compartmentControlsRoot.compartment.passive
+        lengthSlider.value = compartment.length
+        diameterSlider.value = compartment.diameter
     }
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 10
+
+        Text {
+            text: "Length: " + lengthSlider.value.toFixed(1)
+        }
+
+        Slider {
+            id: lengthSlider
+            minimumValue: 0.6
+            maximumValue: 1.8
+            onValueChanged: {
+                if(!compartmentControlsRoot.compartment) {
+                    return
+                }
+                compartmentControlsRoot.compartment.length = value
+            }
+        }
+
+        Text {
+            text: "Diameter: " + diameterSlider.value.toFixed(1)
+        }
+
+        Slider {
+            id: diameterSlider
+            minimumValue: 0.5
+            maximumValue: 1.4
+            onValueChanged: {
+                if(!compartmentControlsRoot.compartment) {
+                    return
+                }
+                compartmentControlsRoot.compartment.diameter = value
+            }
+        }
 
         CheckBox {
             id: passiveCheckbox

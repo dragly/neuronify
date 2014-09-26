@@ -26,8 +26,8 @@ Item {
 
         MouseArea {
             anchors.centerIn: parent
-            width: Math.max(40, parent.width)
-            height: Math.max(40, parent.height)
+            width: Math.max(40, Math.min(parent.width, parent.height))
+            height: Math.max(40, Math.min(parent.width, parent.height))
 
             onClicked: {
                 connectionRoot.clicked(connectionRoot)

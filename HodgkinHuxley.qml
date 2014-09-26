@@ -212,6 +212,8 @@ Rectangle {
         var compartment = component.createObject(compartmentLayer, properties)
         compartment.x = Math.max(compartment.x, creationControls.width)
         compartment.dragStarted.connect(resetOrganize)
+        compartment.widthChanged.connect(resetOrganize)
+        compartment.heightChanged.connect(resetOrganize)
         compartment.clicked.connect(clickedCompartment)
         compartment.droppedConnectionCreator.connect(createConnectionToPoint)
         compartments.push(compartment)
@@ -295,10 +297,14 @@ Rectangle {
         layoutTimer.start()
     }
 
+    function compartmentCenter(compartment) {
+        return Qt.vector2d(compartment.x + compartment.width / 2, compartment.y + compartment.height / 2)
+    }
+
     function organize() {
         var currentOrganizeTime = Date.now()
         var dt = Math.min(0.032, (currentOrganizeTime - lastOrganizeTime) / 1000.0)
-        var springLength = simulatorRoot.width * 0.1
+        var springLength = simulatorRoot.width * 0.03
         var anyDragging = false
 
         for(var i in compartments) {
@@ -313,10 +319,13 @@ Rectangle {
             var connection = compartmentConnections[i]
             var source = connection.sourceCompartment
             var target = connection.targetCompartment
-            var xDiff = source.x - target.x
-            var yDiff = source.y - target.y
+            var totalSpringLength = source.width / 2.0 + target.width / 2.0 + springLength
+            var sourceCenter = compartmentCenter(source)
+            var targetCenter = compartmentCenter(target)
+            var xDiff = sourceCenter.x - targetCenter.x
+            var yDiff = sourceCenter.y - targetCenter.y
             var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
-            var lengthDiff = length - springLength
+            var lengthDiff = length - totalSpringLength
             var xDelta = lengthDiff * xDiff / length
             var yDelta = lengthDiff * yDiff / length
             var kFactor = lengthDiff > 0 ? 0.015 : 0.007
@@ -337,8 +346,11 @@ Rectangle {
             var compartmentA = compartments[i]
             for(var j = i + 1; j < compartments.length; j++) {
                 var compartmentB = compartments[j]
-                var xDiff = compartmentA.x - compartmentB.x
-                var yDiff = compartmentA.y - compartmentB.y
+                var totalMinDistance = source.width / 2.0 + target.width / 2.0 + minDistance
+                var centerA = compartmentCenter(compartmentA)
+                var centerB = compartmentCenter(compartmentB)
+                var xDiff = centerA.x - centerB.x
+                var yDiff = centerA.y - centerB.y
                 var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
                 if(length > minDistance) {
                     continue
@@ -347,7 +359,7 @@ Rectangle {
                     continue
                 }
 
-                var lengthDiff = length - minDistance
+                var lengthDiff = length - totalMinDistance
                 var xDelta = lengthDiff * xDiff / length
                 var yDelta = lengthDiff * yDiff / length
                 var k = simulatorRoot.width * 0.005
@@ -468,7 +480,7 @@ Rectangle {
                 id: playbackSpeedSlider
                 property real realValue: Math.pow(10, value)
                 minimumValue: -1
-                maximumValue: 1.4
+                maximumValue: 1.2
                 Layout.fillWidth: true
             }
 
@@ -518,6 +530,7 @@ Rectangle {
         onTriggered: {
             var currentTime = Date.now()
             var dt = (currentTime - lastStepTime) / 1000
+            dt *= 3.0
             dt *= playbackSpeedSlider.realValue
             dt = Math.min(0.050, dt)
             for(var i in compartments) {

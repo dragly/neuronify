@@ -8,6 +8,8 @@ Rectangle {
     signal dragStarted
     signal droppedConnectionCreator(var compartment, var connectionCreator)
 
+    property real _baseWidth: 70
+
     property vector2d velocity
     property bool selected: false
     property bool dragging: false
@@ -34,6 +36,10 @@ Rectangle {
     property real potassiumActivation: 0.5
     property real potassiumActivationAlpha: 0.01 * ((voltage + 55) / (1.0 - Math.exp(-(voltage + 55) / 10.0)))
     property real potassiumActivationBeta: 0.125 * Math.exp(- (voltage + 65) / 80)
+
+    property real axialResistance: 0.5
+    property real length: 1.0
+    property real diameter: 0.8
 //    property real dt: 0.01
 
     property real sodiumCurrent: 0.0
@@ -41,6 +47,15 @@ Rectangle {
     property real leakCurrent: 0.0
 
     property var connections: []
+
+    width: _baseWidth * length
+    height: _baseWidth * diameter
+    radius: Math.min(width, height) / 10
+    color: "#6baed6"
+    border.color: selected ? "#08306b" : "#2171b5"
+    border.width: selected ? 3.0 : 1.0
+    antialiasing: true
+    smooth: true
 
     function reset() {
         voltage = 0
@@ -93,9 +108,12 @@ Rectangle {
         } else {
 
             var axialCurrent = 0
+            var d = diameter
+            var Ra = axialResistance
+            var l = length
             for(var i in connections) {
                 var connection = connections[i]
-                axialCurrent += connection.conductance * (V - connection.otherCompartment(compartmentRoot).voltage)
+                axialCurrent += d / (4 * Ra * l * l) * (V - connection.otherCompartment(compartmentRoot).voltage)
             }
 
             leakCurrent = gL * (V - EL)
@@ -124,14 +142,12 @@ Rectangle {
         }
     }
 
-    width: 70
-    height: 50
-    radius: Math.min(width, height) / 10
-    color: "#6baed6"
-    border.color: selected ? "#08306b" : "#2171b5"
-    border.width: selected ? 3.0 : 1.0
-    antialiasing: true
-    smooth: true
+    onWidthChanged: {
+        connectionCreator.resetPosition()
+    }
+    onHeightChanged: {
+        connectionCreator.resetPosition()
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -144,7 +160,7 @@ Rectangle {
     Text {
         anchors.centerIn: parent
         text: voltage.toFixed(1)
-        font.pixelSize: compartmentRoot.width * 0.19
+        font.pixelSize: 14
     }
 
     MouseArea {
@@ -187,7 +203,7 @@ Rectangle {
             connectionCreator.y = compartmentRoot.height - height / 2
         }
 
-        width: compartmentRoot.width * 0.37
+        width: compartmentRoot._baseWidth * 0.37
         height: width
 
         Rectangle {
