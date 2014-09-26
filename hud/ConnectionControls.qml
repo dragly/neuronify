@@ -21,32 +21,6 @@ PropertiesPanel {
         spacing: 10
         anchors.margins: 10
 
-//        Text {
-//            text: "Connection conductance: " + conductanceSlider.scaledConductance(conductanceSlider.value).toFixed(2)
-//        }
-
-//        Slider {
-//            id: conductanceSlider
-
-//            minimumValue: inverseScaledConductance(0.01)
-//            maximumValue: inverseScaledConductance(50)
-//            Layout.fillWidth: true
-
-//            function scaledConductance(value) {
-//                return Math.exp(value)
-//            }
-
-//            function inverseScaledConductance(value) {
-//                return Math.log(value)
-//            }
-//            onValueChanged: {
-//                if(!connectionControlsRoot.connection) {
-//                    return
-//                }
-//                connectionControlsRoot.connection.conductance = scaledConductance(conductanceSlider.value)
-//            }
-//        }
-
         Button {
             text: "Delete"
             onClicked: {
