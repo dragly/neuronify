@@ -33,6 +33,7 @@ PropertiesPanel {
 
         Slider {
             id: lengthSlider
+            Layout.fillWidth: true
             minimumValue: 0.6
             maximumValue: 1.8
             onValueChanged: {
@@ -49,6 +50,7 @@ PropertiesPanel {
 
         Slider {
             id: diameterSlider
+            Layout.fillWidth: true
             minimumValue: 0.5
             maximumValue: 1.4
             onValueChanged: {

@@ -445,6 +445,9 @@ Rectangle {
 
     ConnectionControls {
         id: connectionControls
+        onDeleteClicked: {
+            simulatorRoot.deleteConnection(connection)
+        }
     }
 
     Rectangle {

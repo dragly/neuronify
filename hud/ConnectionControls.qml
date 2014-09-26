@@ -7,11 +7,12 @@ PropertiesPanel {
     id: connectionControlsRoot
     property Connection connection: null
 
+    signal deleteClicked
+
     onConnectionChanged: {
         if(!connectionControlsRoot.connection) {
             return
         }
-        conductanceSlider.value = conductanceSlider.inverseScaledConductance(connection.conductance)
     }
 
     revealed: connectionControlsRoot.connection ? true : false
@@ -27,7 +28,7 @@ PropertiesPanel {
                 if(!connectionControlsRoot.connection) {
                     return
                 }
-                simulatorRoot.deleteConnection(connectionControlsRoot.connection)
+                connectionControlsRoot.deleteClicked()
             }
         }
 
