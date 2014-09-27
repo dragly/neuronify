@@ -16,7 +16,9 @@ Rectangle {
 
     width: 400
     height: 300
-    color: "#f7fbff"
+    color: "#deebf7"
+    antialiasing: true
+    smooth: true
 
     Component.onCompleted: {
         var previousCompartment = undefined
@@ -36,8 +38,7 @@ Rectangle {
             }
             previousCompartment = compartment
         }
-
-        createSynapse({x: 100, y: 100, selected: true})
+        createSynapse({x: 200, y: 100})
     }
 
     function deleteCompartment(compartment) {
@@ -189,7 +190,7 @@ Rectangle {
     }
 
     function deselectSynapses() {
-//        compartmentControls.compartment = null
+        //        compartmentControls.compartment = null
         deselectAllInList(synapses)
     }
 
@@ -206,7 +207,7 @@ Rectangle {
 
     function clickedSynapse(synapse) {
         deselectAll()
-//        compartmentControls.compartment = compartment
+        //        compartmentControls.compartment = compartment
         synapse.selected = true
     }
 
@@ -419,8 +420,8 @@ Rectangle {
 
             compartment.x = Math.max(compartment.x, creationControls.width - compartment.width * 0.5)
             compartment.y = Math.max(compartment.y,  - compartment.height * 0.5)
-            compartment.x = Math.min(compartment.x, simulatorRoot.width - compartment.width * 0.5)
-            compartment.y = Math.min(compartment.y, simulatorRoot.height - playbackControls.height - compartment.height  * 0.5)
+            compartment.x = Math.min(compartment.x, compartmentLayer.width - compartment.width * 0.5)
+            compartment.y = Math.min(compartment.y, compartmentLayer.height - playbackControls.height - compartment.height  * 0.5)
         }
 
         if(maxAppliedSpeed < minSpeed && !anyDragging) {
@@ -430,30 +431,76 @@ Rectangle {
         lastOrganizeTime = currentOrganizeTime
     }
 
-    MouseArea {
+    Item {
+        id: workspaceFlickable
         anchors.fill: parent
-        onClicked: {
-            deselectAll()
+//        contentWidth: 3840 // * workspace.scale
+//        contentHeight: 2160 // * workspace.scale
+
+        MouseArea {
+            id: workspaceMouseArea
+            anchors.fill: parent
+
+            drag.target: workspace
+
+            property vector2d last
+            property vector2d image
+
+            onWheel: {
+                var relativeMouse = mapToItem(workspace, wheel.x, wheel.y)
+                workspaceScale.origin.x = relativeMouse.x
+                workspaceScale.origin.y = relativeMouse.y
+                workspaceScale.xScale = Math.min(1.0, Math.max(0.1, workspaceScale.xScale + wheel.angleDelta.y * 0.001))
+                var newPosition = mapFromItem(workspace, relativeMouse.x, relativeMouse.y)
+                workspace.x += wheel.x - newPosition.x
+                workspace.y += wheel.y - newPosition.y
+            }
+
+            onClicked: {
+//                workspaceScale.origin.x = mouse.x
+//                workspaceScale.origin.y = mouse.y
+                    deselectAll()
+            }
         }
-    }
 
-    Item {
-        id: connectionLayer
-        anchors.fill: parent
-    }
+        Item {
+            id: workspace
 
-    Item {
-        id: compartmentLayer
-        anchors.fill: parent
+            width: 3840
+            height: 2160
+
+            transform: Scale {
+                id: workspaceScale
+                yScale: xScale
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: "#f7fbff"
+            }
+
+            Item {
+                id: connectionLayer
+                anchors.fill: parent
+            }
+
+            Item {
+                id: compartmentLayer
+                anchors.fill: parent
+            }
+        }
+
     }
 
     CreationControls {
         id: creationControls
         onCreateCompartment: {
-            simulatorRoot.createCompartment(position)
+            var workspacePosition = simulatorRoot.mapToItem(compartmentLayer, position.x, position.y)
+            simulatorRoot.createCompartment(workspacePosition)
         }
         onCreateVoltmeter: {
-            simulatorRoot.createVoltmeter(position)
+            var workspacePosition = simulatorRoot.mapToItem(compartmentLayer, position.x, position.y)
+            simulatorRoot.createVoltmeter(workspacePosition)
         }
     }
 
