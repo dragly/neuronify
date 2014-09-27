@@ -10,6 +10,7 @@ Rectangle {
     property real lastStepTime: Date.now()
     property var compartments: []
     property var voltmeters: []
+    property var synapses: []
     property var voltmeterConnections: []
     property var compartmentConnections: []
 
@@ -35,6 +36,8 @@ Rectangle {
             }
             previousCompartment = compartment
         }
+
+        createSynapse({x: 100, y: 100, selected: true})
     }
 
     function deleteCompartment(compartment) {
@@ -159,6 +162,7 @@ Rectangle {
         deselectCompartmentConnections()
         deselectCompartments()
         deselectVoltmeters()
+        deselectSynapses()
         deselectVoltmeterConnections()
     }
 
@@ -184,6 +188,11 @@ Rectangle {
         deselectAllInList(compartments)
     }
 
+    function deselectSynapses() {
+//        compartmentControls.compartment = null
+        deselectAllInList(synapses)
+    }
+
     function deselectVoltmeters() {
         voltmeterControls.voltmeter = null
         deselectAllInList(voltmeters)
@@ -193,6 +202,12 @@ Rectangle {
         deselectAll()
         compartmentControls.compartment = compartment
         compartment.selected = true
+    }
+
+    function clickedSynapse(synapse) {
+        deselectAll()
+//        compartmentControls.compartment = compartment
+        synapse.selected = true
     }
 
     function clickedConnection(connection) {
@@ -218,6 +233,19 @@ Rectangle {
         compartment.droppedConnectionCreator.connect(createConnectionToPoint)
         compartments.push(compartment)
         return compartment
+    }
+
+    function createSynapse(properties) {
+        var component = Qt.createComponent("Synapse.qml")
+        var synapse = component.createObject(compartmentLayer, properties)
+        synapse.x = Math.max(synapse.x, creationControls.width)
+        synapse.dragStarted.connect(resetOrganize)
+        synapse.widthChanged.connect(resetOrganize)
+        synapse.heightChanged.connect(resetOrganize)
+        synapse.clicked.connect(clickedSynapse)
+        synapse.droppedConnectionCreator.connect(createConnectionToPoint)
+        synapses.push(synapse)
+        return synapse
     }
 
     function createVoltmeter(properties) {

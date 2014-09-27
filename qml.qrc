@@ -13,5 +13,6 @@
         <file>hud/VoltmeterControls.qml</file>
         <file>hud/ConnectionControls.qml</file>
         <file>CreationControls.qml</file>
+        <file>Synapse.qml</file>
     </qresource>
 </RCC>
