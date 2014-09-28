@@ -40,7 +40,9 @@ Rectangle {
             }
             previousCompartment = compartment
         }
-        createSynapse({x: 200, y: 100})
+        var synapse = createSynapse({x: 600, y: 100})
+//        connectSynapse(previousCompartment, synapse)
+        connectVoltmeter(synapse.postSynapse, voltmeter)
     }
 
     function deleteFromList(list, item) {
@@ -253,9 +255,9 @@ Rectangle {
     }
 
     function connectSynapse(compartment, synapse, connector) {
-        var compartmentUnderConnector = synapse.compartmentUnderConnector(compartmentLayer.mapToItem(synapse, connector.x, connector.y))
+        var compartmentUnderConnector = synapse.compartmentUnderConnector(compartment.mapToItem(synapse, connector.x, connector.y))
         var connection = createConnection(compartment, compartmentUnderConnector)
-        compartment.addConnection(compartmentUnderConnector)
+        compartment.addConnection(connection)
         compartmentUnderConnector.addConnection(connection)
         connections.push(connection)
     }
@@ -600,9 +602,17 @@ Rectangle {
                 var compartment = compartments[i]
                 compartment.stepForward(dt)
             }
+            for(var i in synapses) {
+                var synapse = synapses[i]
+                synapse.stepForward(dt)
+            }
             for(var i in compartments) {
                 var compartment = compartments[i]
-                compartment.finalizeStep(dt)
+                compartment.finalizeStep()
+            }
+            for(var i in synapses) {
+                var synapse = synapses[i]
+                synapse.finalizeStep()
             }
             for(var i in voltmeters) {
                 var voltmeter = voltmeters[i]

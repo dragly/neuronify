@@ -21,8 +21,8 @@ Item {
     SCurve {
         id: sCurve
         color: connectionRoot.selected ? "#08306b" : connectionRoot.color
-        startPoint: Qt.point(itemA.x + itemA.width / 2.0, itemA.y + itemA.height / 2)
-        endPoint: Qt.point(itemB.x + itemB.width / 2.0, itemB.y + itemB.height / 2)
+        startPoint: Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y)
+        endPoint: Qt.point(itemB.connectionPoint.x, itemB.connectionPoint.y)
 
         MouseArea {
             anchors.centerIn: parent

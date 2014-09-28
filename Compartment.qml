@@ -9,6 +9,7 @@ Rectangle {
     signal dragStarted
     property vector2d velocity
     property bool dragging: false
+    property vector2d connectionPoint: Qt.vector2d(x + width / 2.0, y + width / 2.0)
 
     signal droppedConnector(var compartment, var connector)
 
