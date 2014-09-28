@@ -6,10 +6,21 @@ Item {
     property bool selected: false
     signal clicked(var synapse)
     signal dragStarted
-    signal droppedConnectionCreator(var sourceCompartment, var connectionCreator)
+    property vector2d velocity
+    property bool dragging: false
+
+    property var connections: []
 
     width: 100
     height: 70
+
+    function stepForward(dt) {
+
+    }
+
+    function finalizeStep() {
+
+    }
 
     Rectangle {
         anchors {
@@ -45,6 +56,14 @@ Item {
         drag.target: parent
         onClicked: {
             synapseRoot.clicked(synapseRoot)
+        }
+        onPressed: {
+            synapseRoot.dragging = true
+            dragStarted()
+        }
+
+        onReleased: {
+            synapseRoot.dragging = false
         }
     }
 }

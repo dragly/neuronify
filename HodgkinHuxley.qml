@@ -8,11 +8,12 @@ Rectangle {
 
     property real lastOrganizeTime: Date.now()
     property real lastStepTime: Date.now()
+    property var connections: [] // List used to deselect all connections
+    property var organizedItems: []
+    property var organizedConnections: []
     property var compartments: []
     property var voltmeters: []
-    property var synapses: []
-    property var voltmeterConnections: []
-    property var compartmentConnections: []
+    //    property var connections: []
 
     width: 400
     height: 300
@@ -41,17 +42,20 @@ Rectangle {
         createSynapse({x: 200, y: 100})
     }
 
+    function deleteFromList(list, item) {
+        var itemIndex = list.indexOf(item)
+        if(itemIndex > -1) {
+            list.splice(itemIndex, 1)
+        }
+    }
+
     function deleteCompartment(compartment) {
         disconnectCompartment(compartment)
-        var compartmentsNew = simulatorRoot.compartments
         if(compartmentControls.compartment === compartment) {
             compartmentControls.compartment = null
         }
-        var compartmentIndex = compartmentsNew.indexOf(compartment)
-        if(compartmentIndex > -1) {
-            compartmentsNew.splice(compartmentIndex, 1)
-        }
-        compartments = compartmentsNew
+        deleteFromList(compartments, compartment)
+        deleteFromList(organizedItems, compartment)
         compartment.destroy()
         resetOrganize()
     }
@@ -81,29 +85,14 @@ Rectangle {
         var connectionsToDelete = voltmeter.connectionPlots
         for(var i in connectionsToDelete) {
             var connection = connectionsToDelete[i]
-            deleteConnection(connection)
+            deleteConnection(connection.connection)
         }
-        var voltmeterConnectionsNew = voltmeterConnections
-        for(var i in voltmeterConnections) {
-            var voltmeterConnection = voltmeterConnections[i]
-            if(voltmeterConnection.targetCompartment === voltmeter) {
-                voltmeterConnectionsNew.splice(voltmeterConnections.indexOf(voltmeterConnection), 1)
-                voltmeterConnection.destroy()
-            }
-        }
-        voltmeterConnections = voltmeterConnectionsNew
         resetOrganize()
     }
 
     function deleteConnection(connection) {
-        var connectionIndex = compartmentConnections.indexOf(connection)
-        if(connectionIndex > -1) {
-            compartmentConnections.splice(connectionIndex, 1)
-        }
-        var voltmeterConnectionIndex = voltmeterConnections.indexOf(connection)
-        if(voltmeterConnectionIndex > -1) {
-            voltmeterConnections.splice(voltmeterConnectionIndex, 1)
-        }
+        deleteFromList(organizedConnections, connection)
+        deleteFromList(connections, connection)
         connection.targetCompartment.removeConnection(connection)
         connection.sourceCompartment.removeConnection(connection)
         connection.destroy()
@@ -118,14 +107,6 @@ Rectangle {
             var connection = connectionsToDelete[i]
             deleteConnection(connection)
         }
-        var voltmeterConnectionsNew = voltmeterConnections
-        for(var i in voltmeterConnections) {
-            var voltmeterConnection = voltmeterConnections[i]
-            if(voltmeterConnection.sourceCompartment === compartment) {
-                deleteConnection(voltmeterConnection)
-            }
-        }
-        voltmeterConnections = voltmeterConnectionsNew
         resetOrganize()
     }
 
@@ -165,8 +146,6 @@ Rectangle {
         deselectCompartmentConnections()
         deselectCompartments()
         deselectVoltmeters()
-        deselectSynapses()
-        deselectVoltmeterConnections()
     }
 
     function deselectAllInList(listName) {
@@ -176,24 +155,14 @@ Rectangle {
         }
     }
 
-    function deselectVoltmeterConnections() {
+    function deselectConnections() {
         connectionControls.connection = null
-        deselectAllInList(voltmeterConnections)
-    }
-
-    function deselectCompartmentConnections() {
-        connectionControls.connection = null
-        deselectAllInList(compartmentConnections)
+        deselectAllInList(connections)
     }
 
     function deselectCompartments() {
         compartmentControls.compartment = null
         deselectAllInList(compartments)
-    }
-
-    function deselectSynapses() {
-        //        compartmentControls.compartment = null
-        deselectAllInList(synapses)
     }
 
     function deselectVoltmeters() {
@@ -235,6 +204,7 @@ Rectangle {
         compartment.clicked.connect(clickedCompartment)
         compartment.droppedConnectionCreator.connect(createConnectionToPoint)
         compartments.push(compartment)
+        organizedItems.push(compartment)
         resetOrganize()
         return compartment
     }
@@ -247,8 +217,9 @@ Rectangle {
         synapse.widthChanged.connect(resetOrganize)
         synapse.heightChanged.connect(resetOrganize)
         synapse.clicked.connect(clickedSynapse)
-        synapse.droppedConnectionCreator.connect(createConnectionToPoint)
-        synapses.push(synapse)
+        //        synapse.droppedConnectionCreator.connect(createConnectionToPoint)
+        compartments.push(synapse)
+        organizedItems.push(synapse)
         resetOrganize()
         return synapse
     }
@@ -277,49 +248,46 @@ Rectangle {
         var connection = createConnection(sourceCompartment, targetCompartment)
         sourceCompartment.connections.push(connection)
         targetCompartment.connections.push(connection)
-        compartmentConnections.push(connection)
+        organizedConnections.push(connection)
+        connections.push(connection)
         return connection
     }
 
     function connectVoltmeter(compartment, voltmeter) {
         var connection = createConnection(compartment, voltmeter)
         voltmeter.addConnection(connection)
-        voltmeterConnections.push(connection)
+        connections.push(connection)
+    }
+
+    function connectionExists(itemA, itemB) {
+        var connectionAlreadyExists = false
+        for(var j in connections) {
+            var existingConnection = connections[j]
+            if((existingConnection.sourceCompartment === itemA && existingConnection.targetCompartment === itemB)
+                    || (existingConnection.targetCompartment === itemB && existingConnection.sourceCompartment === itemA)) {
+                connectionAlreadyExists = true
+                break
+            }
+        }
+        return connectionAlreadyExists
     }
 
     function createConnectionToPoint(sourceCompartment, connectionCreator) {
         var targetVoltmeter = voltmeterUnderConnector(sourceCompartment, connectionCreator)
         if(targetVoltmeter) {
-            var connectionAlreadyExists = false
-            for(var j in voltmeterConnections) {
-                var existingConnection = voltmeterConnections[j]
-                if((existingConnection.sourceCompartment === sourceCompartment && existingConnection.targetCompartment === targetVoltmeter)
-                        || (existingConnection.targetCompartment === sourceCompartment && existingConnection.sourceCompartment === targetVoltmeter)) {
-                    connectionAlreadyExists = true
-                    break
-                }
+            if(!connectionExists(sourceCompartment, targetVoltmeter)) {
+                connectVoltmeter(sourceCompartment, targetVoltmeter)
             }
-            if(connectionAlreadyExists) {
-                return
-            }
-            connectVoltmeter(sourceCompartment, targetVoltmeter)
             return
         }
-
         var targetCompartment = compartmentUnderConnector(sourceCompartment, connectionCreator)
-        if(!targetCompartment || targetCompartment === sourceCompartment) {
+        if(!targetCompartment) {
             return
         }
-        var connectionAlreadyExists = false
-        for(var j in compartmentConnections) {
-            var existingConnection = compartmentConnections[j]
-            if((existingConnection.sourceCompartment === sourceCompartment && existingConnection.targetCompartment === targetCompartment)
-                    || (existingConnection.targetCompartment === sourceCompartment && existingConnection.sourceCompartment === targetCompartment)) {
-                connectionAlreadyExists = true
-                break
-            }
+        if(targetCompartment === sourceCompartment) {
+            return
         }
-        if(connectionAlreadyExists) {
+        if(connectionExists(sourceCompartment, targetCompartment)) {
             return
         }
         connectCompartments(sourceCompartment, targetCompartment)
@@ -349,8 +317,8 @@ Rectangle {
             }
         }
 
-        for(var i in compartmentConnections) {
-            var connection = compartmentConnections[i]
+        for(var i in organizedConnections) {
+            var connection = organizedConnections[i]
             var source = connection.sourceCompartment
             var target = connection.targetCompartment
             var totalSpringLength = source.width / 2.0 + target.width / 2.0 + springLength
@@ -374,12 +342,12 @@ Rectangle {
             }
         }
 
-        for(var i = 0; i < compartments.length; i++) {
+        for(var i = 0; i < organizedItems.length; i++) {
             var minDistance = 50
             var guard = 1.0
-            var compartmentA = compartments[i]
-            for(var j = i + 1; j < compartments.length; j++) {
-                var compartmentB = compartments[j]
+            var compartmentA = organizedItems[i]
+            for(var j = i + 1; j < organizedItems.length; j++) {
+                var compartmentB = organizedItems[j]
                 var totalMinDistance = Math.max(compartmentA.height, compartmentA.width) / 2.0
                         + Math.max(compartmentB.height, compartmentB.width) / 2.0
                         + minDistance
@@ -441,8 +409,8 @@ Rectangle {
     Item {
         id: workspaceFlickable
         anchors.fill: parent
-//        contentWidth: 3840 // * workspace.scale
-//        contentHeight: 2160 // * workspace.scale
+        //        contentWidth: 3840 // * workspace.scale
+        //        contentHeight: 2160 // * workspace.scale
 
         MouseArea {
             id: workspaceMouseArea
@@ -464,9 +432,9 @@ Rectangle {
             }
 
             onClicked: {
-//                workspaceScale.origin.x = mouse.x
-//                workspaceScale.origin.y = mouse.y
-                    deselectAll()
+                //                workspaceScale.origin.x = mouse.x
+                //                workspaceScale.origin.y = mouse.y
+                deselectAll()
             }
         }
 

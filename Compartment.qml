@@ -4,15 +4,16 @@ import "paths"
 Rectangle {
     id: compartmentRoot
 
+    property bool selected: false
     signal clicked(var compartment)
     signal dragStarted
+    property vector2d velocity
+    property bool dragging: false
+
     signal droppedConnectionCreator(var compartment, var connectionCreator)
 
     property real _baseWidth: 70
 
-    property vector2d velocity
-    property bool selected: false
-    property bool dragging: false
     property bool passive: false
 
     property real targetVoltage: 0.0

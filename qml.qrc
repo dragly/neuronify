@@ -14,5 +14,6 @@
         <file>hud/ConnectionControls.qml</file>
         <file>CreationControls.qml</file>
         <file>Synapse.qml</file>
+        <file>GraphItem.qml</file>
     </qresource>
 </RCC>
