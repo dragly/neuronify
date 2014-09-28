@@ -165,9 +165,9 @@ Rectangle {
         }
     }
 
-    Rectangle {
+    Item {
         id: resizeRectangle
-        color: "#9ecae1"
+//        color: "#9ecae1"
 
         Component.onCompleted: {
             resetPosition()
@@ -178,16 +178,16 @@ Rectangle {
             y = voltmeterRoot.height - height / 2
         }
 
-        width: 20
-        height: 20
+        width: 40
+        height: 40
         MouseArea {
             anchors.fill: parent
             drag.target: parent
             onPositionChanged: {
                 if(drag.active) {
                     var relativePosition = resizeRectangle.mapToItem(voltmeterRoot, 0, 0)
-                    voltmeterRoot.width = relativePosition.x
-                    voltmeterRoot.height = relativePosition.y
+                    voltmeterRoot.width = relativePosition.x + resizeRectangle.width / 2
+                    voltmeterRoot.height = relativePosition.y + resizeRectangle.width / 2
                     resizeRectangle.resetPosition()
                 }
             }
