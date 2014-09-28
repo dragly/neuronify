@@ -42,6 +42,7 @@ Item {
 
     MouseArea {
         anchors.fill: parent
+        drag.target: parent
         onClicked: {
             synapseRoot.clicked(synapseRoot)
         }
