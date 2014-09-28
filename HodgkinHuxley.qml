@@ -53,6 +53,7 @@ Rectangle {
         }
         compartments = compartmentsNew
         compartment.destroy()
+        resetOrganize()
     }
 
     function deleteVoltmeter(voltmeter) {
@@ -73,6 +74,7 @@ Rectangle {
             simulatorRoot.voltmeters.splice(voltmeterIndex, 1)
         }
         voltmeter.destroy()
+        resetOrganize()
     }
 
     function disconnectVoltmeter(voltmeter) {
@@ -90,6 +92,7 @@ Rectangle {
             }
         }
         voltmeterConnections = voltmeterConnectionsNew
+        resetOrganize()
     }
 
     function deleteConnection(connection) {
@@ -104,6 +107,7 @@ Rectangle {
         connection.targetCompartment.removeConnection(connection)
         connection.sourceCompartment.removeConnection(connection)
         connection.destroy()
+        resetOrganize()
     }
 
     function disconnectCompartment(compartment) {
@@ -122,6 +126,7 @@ Rectangle {
             }
         }
         voltmeterConnections = voltmeterConnectionsNew
+        resetOrganize()
     }
 
     function isItemUnderConnector(item, source, connector) {
@@ -137,26 +142,23 @@ Rectangle {
         }
     }
 
-    function compartmentUnderConnector(source, connector) {
-        var compartment = undefined
-        for(var i in compartments) {
-            var targetCompartment = compartments[i]
+    function itemUnderConnector(itemList, source, connector) {
+        var item = undefined
+        for(var i in itemList) {
+            var targetCompartment = itemList[i]
             if(isItemUnderConnector(targetCompartment, source, connector)) {
-                compartment = targetCompartment
+                item = targetCompartment
             }
         }
-        return compartment
+        return item
+    }
+
+    function compartmentUnderConnector(source, connector) {
+        return itemUnderConnector(compartments, source, connector)
     }
 
     function voltmeterUnderConnector(source, connector) {
-        var voltmeter = undefined
-        for(var i in voltmeters) {
-            var targetVoltmeter = voltmeters[i]
-            if(isItemUnderConnector(targetVoltmeter, source, connector)) {
-                voltmeter = targetVoltmeter
-            }
-        }
-        return voltmeter
+        return itemUnderConnector(voltmeters, source, connector)
     }
 
     function deselectAll() {
@@ -233,6 +235,7 @@ Rectangle {
         compartment.clicked.connect(clickedCompartment)
         compartment.droppedConnectionCreator.connect(createConnectionToPoint)
         compartments.push(compartment)
+        resetOrganize()
         return compartment
     }
 
@@ -246,6 +249,7 @@ Rectangle {
         synapse.clicked.connect(clickedSynapse)
         synapse.droppedConnectionCreator.connect(createConnectionToPoint)
         synapses.push(synapse)
+        resetOrganize()
         return synapse
     }
 
@@ -255,6 +259,7 @@ Rectangle {
         voltmeter.x = Math.max(voltmeter.x, creationControls.width)
         voltmeters.push(voltmeter)
         voltmeter.clicked.connect(clickedVoltmeter)
+        resetOrganize()
         return voltmeter
     }
 
@@ -333,7 +338,7 @@ Rectangle {
     function organize() {
         var currentOrganizeTime = Date.now()
         var dt = Math.min(0.032, (currentOrganizeTime - lastOrganizeTime) / 1000.0)
-        var springLength = simulatorRoot.width * 0.03
+        var springLength = simulatorRoot.width * 0.04
         var anyDragging = false
 
         for(var i in compartments) {
@@ -357,7 +362,7 @@ Rectangle {
             var lengthDiff = length - totalSpringLength
             var xDelta = lengthDiff * xDiff / length
             var yDelta = lengthDiff * yDiff / length
-            var kFactor = lengthDiff > 0 ? 0.015 : 0.007
+            var kFactor = lengthDiff > 0 ? 0.015 : 0.005
             var k = kFactor * simulatorRoot.width
             if(!source.dragging) {
                 source.velocity.x -= 0.5 * k * xDelta
@@ -370,28 +375,30 @@ Rectangle {
         }
 
         for(var i = 0; i < compartments.length; i++) {
-            var minDistance = springLength * 0.8
+            var minDistance = 50
             var guard = 1.0
             var compartmentA = compartments[i]
             for(var j = i + 1; j < compartments.length; j++) {
                 var compartmentB = compartments[j]
-                var totalMinDistance = source.width / 2.0 + target.width / 2.0 + minDistance
+                var totalMinDistance = Math.max(compartmentA.height, compartmentA.width) / 2.0
+                        + Math.max(compartmentB.height, compartmentB.width) / 2.0
+                        + minDistance
                 var centerA = compartmentCenter(compartmentA)
                 var centerB = compartmentCenter(compartmentB)
                 var xDiff = centerA.x - centerB.x
                 var yDiff = centerA.y - centerB.y
                 var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
-                if(length > minDistance) {
-                    continue
-                }
                 if(length < guard) {
                     continue
                 }
-
                 var lengthDiff = length - totalMinDistance
+                if(lengthDiff > 0.0) {
+                    continue
+                }
+
                 var xDelta = lengthDiff * xDiff / length
                 var yDelta = lengthDiff * yDiff / length
-                var k = simulatorRoot.width * 0.005
+                var k = simulatorRoot.width * 0.007
                 if(!compartmentA.dragging) {
                     compartmentA.velocity.x -= 0.5 * k * xDelta
                     compartmentA.velocity.y -= 0.5 * k * yDelta
