@@ -26,10 +26,15 @@ Item {
 
         MouseArea {
             anchors.centerIn: parent
+            propagateComposedEvents: true
             width: Math.max(40, Math.min(parent.width, parent.height))
             height: Math.max(40, Math.min(parent.width, parent.height))
 
             onClicked: {
+                if(connectionRoot.selected) {
+                    mouse.accepted = false
+                }
+
                 connectionRoot.clicked(connectionRoot)
             }
         }
