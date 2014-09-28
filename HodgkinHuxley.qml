@@ -143,7 +143,7 @@ Rectangle {
     }
 
     function deselectAll() {
-        deselectCompartmentConnections()
+        deselectConnections()
         deselectCompartments()
         deselectVoltmeters()
     }
@@ -280,6 +280,7 @@ Rectangle {
             }
             return
         }
+
         var targetCompartment = compartmentUnderConnector(sourceCompartment, connectionCreator)
         if(!targetCompartment) {
             return
