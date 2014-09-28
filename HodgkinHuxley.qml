@@ -12,6 +12,7 @@ Rectangle {
     property var organizedItems: []
     property var organizedConnections: []
     property var compartments: []
+    property var synapses: []
     property var voltmeters: []
     //    property var connections: []
 
@@ -93,8 +94,8 @@ Rectangle {
     function deleteConnection(connection) {
         deleteFromList(organizedConnections, connection)
         deleteFromList(connections, connection)
-        connection.targetCompartment.removeConnection(connection)
-        connection.sourceCompartment.removeConnection(connection)
+        connection.itemB.removeConnection(connection)
+        connection.itemA.removeConnection(connection)
         connection.destroy()
         resetOrganize()
     }
@@ -126,20 +127,12 @@ Rectangle {
     function itemUnderConnector(itemList, source, connector) {
         var item = undefined
         for(var i in itemList) {
-            var targetCompartment = itemList[i]
-            if(isItemUnderConnector(targetCompartment, source, connector)) {
-                item = targetCompartment
+            var itemB = itemList[i]
+            if(isItemUnderConnector(itemB, source, connector)) {
+                item = itemB
             }
         }
         return item
-    }
-
-    function compartmentUnderConnector(source, connector) {
-        return itemUnderConnector(compartments, source, connector)
-    }
-
-    function voltmeterUnderConnector(source, connector) {
-        return itemUnderConnector(voltmeters, source, connector)
     }
 
     function deselectAll() {
@@ -202,7 +195,7 @@ Rectangle {
         compartment.widthChanged.connect(resetOrganize)
         compartment.heightChanged.connect(resetOrganize)
         compartment.clicked.connect(clickedCompartment)
-        compartment.droppedConnectionCreator.connect(createConnectionToPoint)
+        compartment.droppedConnector.connect(createConnectionToPoint)
         compartments.push(compartment)
         organizedItems.push(compartment)
         resetOrganize()
@@ -217,8 +210,8 @@ Rectangle {
         synapse.widthChanged.connect(resetOrganize)
         synapse.heightChanged.connect(resetOrganize)
         synapse.clicked.connect(clickedSynapse)
-        //        synapse.droppedConnectionCreator.connect(createConnectionToPoint)
-        compartments.push(synapse)
+        //        synapse.droppedConnector.connect(createConnectionToPoint)
+        synapses.push(synapse)
         organizedItems.push(synapse)
         resetOrganize()
         return synapse
@@ -237,17 +230,17 @@ Rectangle {
     function createConnection(sourceObject, targetObject) {
         var connectionComponent = Qt.createComponent("Connection.qml")
         var connection = connectionComponent.createObject(connectionLayer, {
-                                                              sourceCompartment: sourceObject,
-                                                              targetCompartment: targetObject
+                                                              itemA: sourceObject,
+                                                              itemB: targetObject
                                                           })
         connection.clicked.connect(clickedConnection)
         return connection
     }
 
-    function connectCompartments(sourceCompartment, targetCompartment) {
-        var connection = createConnection(sourceCompartment, targetCompartment)
-        sourceCompartment.connections.push(connection)
-        targetCompartment.connections.push(connection)
+    function connectCompartments(itemA, itemB) {
+        var connection = createConnection(itemA, itemB)
+        itemA.addConnection(connection)
+        itemB.addConnection(connection)
         organizedConnections.push(connection)
         connections.push(connection)
         return connection
@@ -259,12 +252,20 @@ Rectangle {
         connections.push(connection)
     }
 
+    function connectSynapse(compartment, synapse, connector) {
+        var compartmentUnderConnector = synapse.compartmentUnderConnector(compartmentLayer.mapToItem(synapse, connector.x, connector.y))
+        var connection = createConnection(compartment, compartmentUnderConnector)
+        compartment.addConnection(compartmentUnderConnector)
+        compartmentUnderConnector.addConnection(connection)
+        connections.push(connection)
+    }
+
     function connectionExists(itemA, itemB) {
         var connectionAlreadyExists = false
         for(var j in connections) {
             var existingConnection = connections[j]
-            if((existingConnection.sourceCompartment === itemA && existingConnection.targetCompartment === itemB)
-                    || (existingConnection.targetCompartment === itemB && existingConnection.sourceCompartment === itemA)) {
+            if((existingConnection.itemA === itemA && existingConnection.itemB === itemB)
+                    || (existingConnection.itemB === itemB && existingConnection.itemA === itemA)) {
                 connectionAlreadyExists = true
                 break
             }
@@ -272,26 +273,34 @@ Rectangle {
         return connectionAlreadyExists
     }
 
-    function createConnectionToPoint(sourceCompartment, connectionCreator) {
-        var targetVoltmeter = voltmeterUnderConnector(sourceCompartment, connectionCreator)
-        if(targetVoltmeter) {
-            if(!connectionExists(sourceCompartment, targetVoltmeter)) {
-                connectVoltmeter(sourceCompartment, targetVoltmeter)
+    function createConnectionToPoint(itemA, connector) {
+        var targetSynapse = itemUnderConnector(synapses, itemA, connector)
+        if(targetSynapse) {
+            if(!connectionExists(itemA, targetSynapse)) {
+                connectSynapse(itemA, targetSynapse, connector)
+                return
             }
-            return
         }
 
-        var targetCompartment = compartmentUnderConnector(sourceCompartment, connectionCreator)
-        if(!targetCompartment) {
+        var targetVoltmeter = itemUnderConnector(voltmeters, itemA, connector)
+        if(targetVoltmeter) {
+            if(!connectionExists(itemA, targetVoltmeter)) {
+                connectVoltmeter(itemA, targetVoltmeter)
+                return
+            }
+        }
+
+        var itemB = itemUnderConnector(compartments, itemA, connector)
+        if(!itemB) {
             return
         }
-        if(targetCompartment === sourceCompartment) {
+        if(itemB === itemA) {
             return
         }
-        if(connectionExists(sourceCompartment, targetCompartment)) {
+        if(connectionExists(itemA, itemB)) {
             return
         }
-        connectCompartments(sourceCompartment, targetCompartment)
+        connectCompartments(itemA, itemB)
         resetOrganize()
     }
 
@@ -310,18 +319,18 @@ Rectangle {
         var springLength = simulatorRoot.width * 0.04
         var anyDragging = false
 
-        for(var i in compartments) {
-            var compartment = compartments[i]
-            compartment.velocity = Qt.vector2d(0,0)
-            if(compartment.dragging) {
+        for(var i in organizedItems) {
+            var item = organizedItems[i]
+            item.velocity = Qt.vector2d(0,0)
+            if(item.dragging) {
                 anyDragging = true
             }
         }
 
         for(var i in organizedConnections) {
             var connection = organizedConnections[i]
-            var source = connection.sourceCompartment
-            var target = connection.targetCompartment
+            var source = connection.itemA
+            var target = connection.itemB
             var totalSpringLength = source.width / 2.0 + target.width / 2.0 + springLength
             var sourceCenter = compartmentCenter(source)
             var targetCenter = compartmentCenter(target)
@@ -382,22 +391,22 @@ Rectangle {
         var maxAppliedSpeed = 0.0
         var maxSpeed = simulatorRoot.width * 1.0
         var minSpeed = simulatorRoot.width * 0.5
-        for(var i in compartments) {
-            var compartment = compartments[i]
-            var speed = Math.sqrt(compartment.velocity.x*compartment.velocity.x + compartment.velocity.y*compartment.velocity.y)
+        for(var i in organizedItems) {
+            var item = organizedItems[i]
+            var speed = Math.sqrt(item.velocity.x*item.velocity.x + item.velocity.y*item.velocity.y)
             if(speed > maxSpeed && speed > 0) {
-                compartment.velocity.x *= (maxSpeed / speed)
-                compartment.velocity.y *= (maxSpeed / speed)
+                item.velocity.x *= (maxSpeed / speed)
+                item.velocity.y *= (maxSpeed / speed)
             }
 
-            maxAppliedSpeed = Math.max(maxAppliedSpeed, compartment.velocity.x*compartment.velocity.x + compartment.velocity.y*compartment.velocity.y)
-            compartment.x += compartment.velocity.x * dt
-            compartment.y += compartment.velocity.y * dt
+            maxAppliedSpeed = Math.max(maxAppliedSpeed, item.velocity.x*item.velocity.x + item.velocity.y*item.velocity.y)
+            item.x += item.velocity.x * dt
+            item.y += item.velocity.y * dt
 
-            compartment.x = Math.max(compartment.x, creationControls.width - compartment.width * 0.5)
-            compartment.y = Math.max(compartment.y,  - compartment.height * 0.5)
-            compartment.x = Math.min(compartment.x, compartmentLayer.width - compartment.width * 0.5)
-            compartment.y = Math.min(compartment.y, compartmentLayer.height - playbackControls.height - compartment.height  * 0.5)
+            item.x = Math.max(item.x, creationControls.width - item.width * 0.5)
+            item.y = Math.max(item.y,  - item.height * 0.5)
+            item.x = Math.min(item.x, compartmentLayer.width - item.width * 0.5)
+            item.y = Math.min(item.y, compartmentLayer.height - playbackControls.height - item.height  * 0.5)
         }
 
         if(maxAppliedSpeed < minSpeed && !anyDragging) {

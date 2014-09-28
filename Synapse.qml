@@ -14,6 +14,14 @@ Item {
     width: 100
     height: 70
 
+    function compartmentUnderConnector(position) {
+        if(position.x < 50) {
+            return preSynapse
+        } else {
+            return postSynapse
+        }
+    }
+
     function stepForward(dt) {
 
     }
@@ -23,6 +31,22 @@ Item {
     }
 
     Rectangle {
+        id: preSynapse
+        property bool selected: parent.selected
+        property vector2d velocity
+        property var connections: []
+
+        function addConnection(connection) {
+            connections.push(connection)
+        }
+
+        function removeConnection(connection) {
+            var connectionIndex = connections.indexOf(connection)
+            if(connectionIndex > -1) {
+                connections.splice(connectionIndex, 1)
+            }
+        }
+
         anchors {
             left: parent.left
             verticalCenter: parent.verticalCenter
@@ -37,7 +61,7 @@ Item {
     }
 
     Rectangle {
-
+        id: postSynapse
         anchors {
             right: parent.right
             verticalCenter: parent.verticalCenter

@@ -67,7 +67,7 @@ Rectangle {
         for(var i in voltmeterRoot.connectionPlots) {
             var connectionPlot = voltmeterRoot.connectionPlots[i]
             var plot = connectionPlot.plot
-            var compartment = connectionPlot.connection.sourceCompartment
+            var compartment = connectionPlot.connection.itemA
             if(mode === "voltage") {
                 plot.addPoint(compartment.voltage)
             } else if(mode === "sodiumCurrent") {

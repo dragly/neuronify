@@ -10,7 +10,7 @@ Rectangle {
     property vector2d velocity
     property bool dragging: false
 
-    signal droppedConnectionCreator(var compartment, var connectionCreator)
+    signal droppedConnector(var compartment, var connector)
 
     property real _baseWidth: 70
 
@@ -63,6 +63,10 @@ Rectangle {
         sodiumActivation = 0
         potassiumActivation = 0
         sodiumInactivation = 0
+    }
+
+    function addConnection(otherCompartment) {
+        connections.push(otherCompartment)
     }
 
     function removeConnection(connection) {
@@ -144,10 +148,10 @@ Rectangle {
     }
 
     onWidthChanged: {
-        connectionCreator.resetPosition()
+        connector.resetPosition()
     }
     onHeightChanged: {
-        connectionCreator.resetPosition()
+        connector.resetPosition()
     }
 
     Rectangle {
@@ -189,19 +193,19 @@ Rectangle {
         z: -1
         color: "#4292c6"
         startPoint: Qt.point(compartmentRoot.width / 2, compartmentRoot.height / 2)
-        endPoint: Qt.point(connectionCreator.x + connectionCreator.width / 2, connectionCreator.y + connectionCreator.width / 2)
+        endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
     }
 
     Item {
-        id: connectionCreator
+        id: connector
 
         Component.onCompleted: {
             resetPosition()
         }
 
         function resetPosition() {
-            connectionCreator.x = compartmentRoot.width - width / 2
-            connectionCreator.y = compartmentRoot.height - height / 2
+            connector.x = compartmentRoot.width - width / 2
+            connector.y = compartmentRoot.height - height / 2
         }
 
         width: compartmentRoot._baseWidth * 0.37
@@ -218,12 +222,12 @@ Rectangle {
         }
 
         MouseArea {
-            id: connectionCreatorMouseArea
+            id: connectorMouseArea
             anchors.fill: parent
             drag.target: parent
             onReleased: {
-                compartmentRoot.droppedConnectionCreator(compartmentRoot, connectionCreator)
-                connectionCreator.resetPosition()
+                compartmentRoot.droppedConnector(compartmentRoot, connector)
+                connector.resetPosition()
             }
         }
     }

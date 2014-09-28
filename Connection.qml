@@ -5,24 +5,24 @@ Item {
     id: connectionRoot
     signal clicked(var connection)
     property bool selected: false
-    property var sourceCompartment
-    property var targetCompartment
+    property var itemA
+    property var itemB
     property real conductance: 1.0
     property color color: "#4292c6"
 
     function otherCompartment(currentCompartment) {
-        if(currentCompartment === sourceCompartment) {
-            return targetCompartment
+        if(currentCompartment === itemA) {
+            return itemB
         } else {
-            return sourceCompartment
+            return itemA
         }
     }
 
     SCurve {
         id: sCurve
         color: connectionRoot.selected ? "#08306b" : connectionRoot.color
-        startPoint: Qt.point(sourceCompartment.x + sourceCompartment.width / 2.0, sourceCompartment.y + sourceCompartment.height / 2)
-        endPoint: Qt.point(targetCompartment.x + targetCompartment.width / 2.0, targetCompartment.y + targetCompartment.height / 2)
+        startPoint: Qt.point(itemA.x + itemA.width / 2.0, itemA.y + itemA.height / 2)
+        endPoint: Qt.point(itemB.x + itemB.width / 2.0, itemB.y + itemB.height / 2)
 
         MouseArea {
             anchors.centerIn: parent
