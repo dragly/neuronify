@@ -84,7 +84,7 @@ PropertiesPanel {
             id: polarizeButton
             Layout.fillWidth: true
 
-            text: "Polarize!"
+            text: "Depolarize!"
             onClicked: {
                 compartmentControlsRoot.compartment.voltage += polarizationSlider.value
             }

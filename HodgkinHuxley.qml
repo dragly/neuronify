@@ -96,16 +96,15 @@ Rectangle {
     function deleteConnection(connection) {
         deleteFromList(organizedConnections, connection)
         deleteFromList(connections, connection)
-        connection.itemB.removeConnection(connection)
         connection.itemA.removeConnection(connection)
+        connection.itemB.removeConnection(connection)
         connection.destroy()
         resetOrganize()
     }
 
     function disconnectCompartment(compartment) {
-        var connectionsToDelete = compartment.connections
+        var connectionsToDelete = compartment.connections.concat(compartment.passiveConnections)
         compartment.connections = []
-        var connectionsToDestroy = []
         for(var i in connectionsToDelete) {
             var connection = connectionsToDelete[i]
             deleteConnection(connection)
@@ -251,6 +250,7 @@ Rectangle {
     function connectVoltmeter(compartment, voltmeter) {
         var connection = createConnection(compartment, voltmeter)
         voltmeter.addConnection(connection)
+        compartment.addPassiveConnection(connection)
         connections.push(connection)
     }
 

@@ -49,6 +49,7 @@ Rectangle {
     property real leakCurrent: 0.0
 
     property var connections: []
+    property var passiveConnections: []
 
     width: _baseWidth * length
     height: _baseWidth * diameter
@@ -66,14 +67,24 @@ Rectangle {
         sodiumInactivation = 0
     }
 
-    function addConnection(otherCompartment) {
-        connections.push(otherCompartment)
+    function addConnection(connection) {
+        connections.push(connection)
+    }
+
+    function addPassiveConnection(connection) {
+        passiveConnections.push(connection)
     }
 
     function removeConnection(connection) {
         var connectionIndex = connections.indexOf(connection)
         if(connectionIndex > -1) {
             connections.splice(connectionIndex, 1)
+            return
+        }
+        var connectionIndex2 = passiveConnections.indexOf(connection)
+        if(connectionIndex2 > -1) {
+            passiveConnections.splice(connectionIndex, 1)
+            return
         }
     }
 

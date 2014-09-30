@@ -41,6 +41,7 @@ Item {
         property bool selected: parent.selected
         property vector2d velocity
         property var connections: []
+        property var passiveConnections: []
         property vector2d connectionPoint: Qt.vector2d(x + synapseRoot.x + width / 2.0, y + synapseRoot.y + width / 2.0)
         property real voltage: 0.0
         property real _nextVoltage: 0.0
@@ -51,10 +52,20 @@ Item {
             connections.push(connection)
         }
 
+        function addPassiveConnection(connection) {
+            passiveConnections.push(connection)
+        }
+
         function removeConnection(connection) {
             var connectionIndex = connections.indexOf(connection)
             if(connectionIndex > -1) {
                 connections.splice(connectionIndex, 1)
+                return
+            }
+            var connectionIndex2 = passiveConnections.indexOf(connection)
+            if(connectionIndex2 > -1) {
+                passiveConnections.splice(connectionIndex, 1)
+                return
             }
         }
 
@@ -100,6 +111,7 @@ Item {
         property bool selected: parent.selected
         property vector2d velocity
         property var connections: []
+        property var passiveConnections: []
         property vector2d connectionPoint: Qt.vector2d(x + synapseRoot.x + width / 2.0, y + synapseRoot.y + width / 2.0)
         property real voltage: 0.0
         property var spikes: []
@@ -116,10 +128,20 @@ Item {
             connections.push(connection)
         }
 
+        function addPassiveConnection(connection) {
+            passiveConnections.push(connection)
+        }
+
         function removeConnection(connection) {
             var connectionIndex = connections.indexOf(connection)
             if(connectionIndex > -1) {
                 connections.splice(connectionIndex, 1)
+                return
+            }
+            var connectionIndex2 = passiveConnections.indexOf(connection)
+            if(connectionIndex2 > -1) {
+                passiveConnections.splice(connectionIndex, 1)
+                return
             }
         }
 
