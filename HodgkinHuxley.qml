@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import "hud"
 
@@ -12,8 +12,11 @@ Rectangle {
     property var organizedItems: []
     property var organizedConnections: []
     property var compartments: []
+    property var neurons: []
     property var synapses: []
     property var voltmeters: []
+    property real currentTimeStep: 0.0
+    property real time: 0.0
     //    property var connections: []
 
     width: 400
@@ -40,9 +43,9 @@ Rectangle {
             }
             previousCompartment = compartment
         }
-        var synapse = createSynapse({x: 600, y: 100})
+//        var synapse = createSynapse({x: 600, y: 100})
 //        connectSynapse(previousCompartment, synapse)
-        connectVoltmeter(synapse.postSynapse, voltmeter)
+//        connectVoltmeter(synapse.postSynapse, voltmeter)
     }
 
     function deleteFromList(list, item) {
@@ -188,9 +191,24 @@ Rectangle {
         voltmeter.selected = true
     }
 
+    function createNeuron(properties) {
+        var component = Qt.createComponent("Neuron.qml")
+        var neuron = component.createObject(neuronLayer, properties)
+        neuron.x = Math.max(neuron.x, creationControls.width)
+        neuron.dragStarted.connect(resetOrganize)
+        neuron.widthChanged.connect(resetOrganize)
+        neuron.heightChanged.connect(resetOrganize)
+//        neuron.clicked.connect(clickedCompartment)
+//        neuron.droppedConnector.connect(createConnectionToPoint)
+        neurons.push(neuron)
+        organizedItems.push(neuron)
+        resetOrganize()
+        return neuron
+    }
+
     function createCompartment(properties) {
         var component = Qt.createComponent("Compartment.qml")
-        var compartment = component.createObject(compartmentLayer, properties)
+        var compartment = component.createObject(neuronLayer, properties)
         compartment.x = Math.max(compartment.x, creationControls.width)
         compartment.dragStarted.connect(resetOrganize)
         compartment.widthChanged.connect(resetOrganize)
@@ -205,7 +223,7 @@ Rectangle {
 
     function createSynapse(properties) {
         var component = Qt.createComponent("Synapse.qml")
-        var synapse = component.createObject(compartmentLayer, properties)
+        var synapse = component.createObject(neuronLayer, properties)
         synapse.x = Math.max(synapse.x, creationControls.width)
         synapse.dragStarted.connect(resetOrganize)
         synapse.widthChanged.connect(resetOrganize)
@@ -220,7 +238,7 @@ Rectangle {
 
     function createVoltmeter(properties) {
         var component = Qt.createComponent("Voltmeter.qml")
-        var voltmeter = component.createObject(compartmentLayer, properties)
+        var voltmeter = component.createObject(neuronLayer, properties)
         voltmeter.x = Math.max(voltmeter.x, creationControls.width)
         voltmeters.push(voltmeter)
         voltmeter.clicked.connect(clickedVoltmeter)
@@ -311,8 +329,8 @@ Rectangle {
         layoutTimer.start()
     }
 
-    function compartmentCenter(compartment) {
-        return Qt.vector2d(compartment.x + compartment.width / 2, compartment.y + compartment.height / 2)
+    function itemCenter(item) {
+        return Qt.vector2d(item.x + item.width / 2, item.y + item.height / 2)
     }
 
     function organize() {
@@ -334,8 +352,8 @@ Rectangle {
             var source = connection.itemA
             var target = connection.itemB
             var totalSpringLength = source.width / 2.0 + target.width / 2.0 + springLength
-            var sourceCenter = compartmentCenter(source)
-            var targetCenter = compartmentCenter(target)
+            var sourceCenter = itemCenter(source)
+            var targetCenter = itemCenter(target)
             var xDiff = sourceCenter.x - targetCenter.x
             var yDiff = sourceCenter.y - targetCenter.y
             var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
@@ -357,14 +375,14 @@ Rectangle {
         for(var i = 0; i < organizedItems.length; i++) {
             var minDistance = 50
             var guard = 1.0
-            var compartmentA = organizedItems[i]
+            var itemA = organizedItems[i]
             for(var j = i + 1; j < organizedItems.length; j++) {
-                var compartmentB = organizedItems[j]
-                var totalMinDistance = Math.max(compartmentA.height, compartmentA.width) / 2.0
-                        + Math.max(compartmentB.height, compartmentB.width) / 2.0
+                var itemB = organizedItems[j]
+                var totalMinDistance = Math.max(itemA.height, itemA.width) / 2.0
+                        + Math.max(itemB.height, itemB.width) / 2.0
                         + minDistance
-                var centerA = compartmentCenter(compartmentA)
-                var centerB = compartmentCenter(compartmentB)
+                var centerA = itemCenter(itemA)
+                var centerB = itemCenter(itemB)
                 var xDiff = centerA.x - centerB.x
                 var yDiff = centerA.y - centerB.y
                 var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
@@ -379,13 +397,13 @@ Rectangle {
                 var xDelta = lengthDiff * xDiff / length
                 var yDelta = lengthDiff * yDiff / length
                 var k = simulatorRoot.width * 0.007
-                if(!compartmentA.dragging) {
-                    compartmentA.velocity.x -= 0.5 * k * xDelta
-                    compartmentA.velocity.y -= 0.5 * k * yDelta
+                if(!itemA.dragging) {
+                    itemA.velocity.x -= 0.5 * k * xDelta
+                    itemA.velocity.y -= 0.5 * k * yDelta
                 }
-                if(!compartmentB.dragging) {
-                    compartmentB.velocity.x += 0.5 * k * xDelta
-                    compartmentB.velocity.y += 0.5 * k * yDelta
+                if(!itemB.dragging) {
+                    itemB.velocity.x += 0.5 * k * xDelta
+                    itemB.velocity.y += 0.5 * k * yDelta
                 }
             }
         }
@@ -407,8 +425,8 @@ Rectangle {
 
             item.x = Math.max(item.x, creationControls.width - item.width * 0.5)
             item.y = Math.max(item.y,  - item.height * 0.5)
-            item.x = Math.min(item.x, compartmentLayer.width - item.width * 0.5)
-            item.y = Math.min(item.y, compartmentLayer.height - playbackControls.height - item.height  * 0.5)
+            item.x = Math.min(item.x, neuronLayer.width - item.width * 0.5)
+            item.y = Math.min(item.y, neuronLayer.height - playbackControls.height - item.height  * 0.5)
         }
 
         if(maxAppliedSpeed < minSpeed && !anyDragging) {
@@ -472,7 +490,7 @@ Rectangle {
             }
 
             Item {
-                id: compartmentLayer
+                id: neuronLayer
                 anchors.fill: parent
             }
         }
@@ -481,12 +499,18 @@ Rectangle {
 
     CreationControls {
         id: creationControls
+        onCreateNeuron: {
+            var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
+            simulatorRoot.createNeuron(workspacePosition)
+        }
+
         onCreateCompartment: {
-            var workspacePosition = simulatorRoot.mapToItem(compartmentLayer, position.x, position.y)
+            var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
             simulatorRoot.createCompartment(workspacePosition)
         }
+
         onCreateVoltmeter: {
-            var workspacePosition = simulatorRoot.mapToItem(compartmentLayer, position.x, position.y)
+            var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
             simulatorRoot.createVoltmeter(workspacePosition)
         }
     }
@@ -565,6 +589,14 @@ Rectangle {
                 }
             }
 
+            Text {
+                text: "dt: " + currentTimeStep.toFixed(1)
+            }
+
+            Text {
+                text: "Time: " + time.toFixed(3) + " ms"
+            }
+
             Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
@@ -598,6 +630,8 @@ Rectangle {
             dt *= 3.0
             dt *= playbackSpeedSlider.realValue
             dt = Math.min(0.050, dt)
+            currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
+            time += dt
             for(var i in compartments) {
                 var compartment = compartments[i]
                 compartment.stepForward(dt)

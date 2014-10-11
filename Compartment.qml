@@ -20,6 +20,9 @@ Rectangle {
     property real targetVoltage: 0.0
     property bool forceTargetVoltage: false
 
+    property real clampCurrent: 0.0
+    property bool clampCurrentEnabled: false
+
     property real voltage: 0.0
     property real _nextVoltage: 0.0
     property real meanSodiumConductance: 120
@@ -141,7 +144,12 @@ Rectangle {
                 sodiumCurrent = gNa * m3 * h * (V - ENa)
                 potassiumCurrent = gK * n4 * (V - EK)
             }
-            var dV = dt * (1.0 / cm) * (- leakCurrent - sodiumCurrent - potassiumCurrent - axialCurrent)
+            var realClampCurrent = 0.0
+            if(clampCurrentEnabled) {
+                realClampCurrent = clampCurrent
+            }
+
+            var dV = dt * (1.0 / cm) * (- leakCurrent - sodiumCurrent - potassiumCurrent - axialCurrent + realClampCurrent)
             _nextVoltage = voltage + dV
         }
 

@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.1
 Rectangle {
     id: creationControlsRoot
 
+    signal createNeuron(var position)
     signal createCompartment(var position)
     signal createVoltmeter(var position)
 
@@ -57,6 +58,43 @@ Rectangle {
             margins: 10
         }
         spacing: 10
+
+        Rectangle {
+            id: neuronCreator
+            radius: width
+            Layout.fillWidth: true
+            Layout.minimumHeight: width
+            color: "#c6dbef"
+            border.color: "#6baed6"
+            border.width: 2.0
+
+
+            function resetPosition() {
+                layout.reset()
+            }
+
+            Rectangle {
+                anchors {
+                    horizontalCenter: parent.right
+                    verticalCenter: parent.bottom
+                }
+                width: parent.width * 0.2
+                height: width
+                color: "#4292c6"
+                border.color: "#f7fbff"
+                border.width: 1.0
+                radius: width
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                drag.target: parent
+                onReleased: {
+                    createNeuron({x: neuronCreator.x, y: neuronCreator.y})
+                    compartmentCreator.resetPosition()
+                }
+            }
+        }
 
         Rectangle {
             id: compartmentCreator

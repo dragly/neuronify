@@ -15,5 +15,6 @@
         <file>CreationControls.qml</file>
         <file>Synapse.qml</file>
         <file>GraphItem.qml</file>
+        <file>Neuron.qml</file>
     </qresource>
 </RCC>

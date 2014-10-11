@@ -1,7 +1,7 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
-import QtQuick.Controls.Styles 1.2
+import QtQuick.Controls.Styles 1.1
 import ".."
 
 PropertiesPanel {
@@ -21,6 +21,8 @@ PropertiesPanel {
         passiveCheckbox.checked = compartmentControlsRoot.compartment.passive
         lengthSlider.value = compartment.length
         diameterSlider.value = compartment.diameter
+        clampCurrentSlider.value = compartment.clampCurrent
+        clampCurrentCheckbox.checked = compartment.clampCurrentEnabled
     }
     ColumnLayout {
         anchors.fill: parent
@@ -110,7 +112,42 @@ PropertiesPanel {
             tickmarksEnabled: true
             Layout.fillWidth: true
             onValueChanged: {
+                if(!compartmentControlsRoot.compartment) {
+                    return
+                }
                 compartmentControlsRoot.compartment.targetVoltage = value
+            }
+        }
+
+        CheckBox {
+            id: clampCurrentCheckbox
+            text: "Current clamp: " + clampCurrentSlider.value.toFixed(1) + " mA"
+            onCheckedChanged: {
+                if(!compartmentControlsRoot.compartment) {
+                    return
+                }
+                compartmentControlsRoot.compartment.clampCurrentEnabled = checked
+                compartmentControlsRoot.compartment.clampCurrent = clampCurrentSlider.value
+            }
+        }
+
+        Text {
+            text: "Current clamp: " + clampCurrentSlider.value.toFixed(1) + " mA"
+        }
+
+        Slider {
+            id: clampCurrentSlider
+            minimumValue: -100.0
+            maximumValue: 100.0
+            stepSize: 1.0
+            tickmarksEnabled: true
+            Layout.fillWidth: true
+            onValueChanged: {
+                if(!compartmentControlsRoot.compartment) {
+                    return
+                }
+
+                compartmentControlsRoot.compartment.clampCurrent = value
             }
         }
 
