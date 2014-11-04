@@ -24,28 +24,24 @@ Rectangle {
     color: "#deebf7"
     antialiasing: true
     smooth: true
+    focus: true
 
     Component.onCompleted: {
         var previousCompartment = undefined
         var previousCompartment2 = undefined
-        for(var i = 0; i < 5; i++) {
-            var compartment = createCompartment({x: 300 + i * 100, y: 200 + (Math.random()) * 10})
+        for(var i = 0; i < 2; i++) {
+            var neuron = createNeuron({x: 300 + i * 100, y: 200 + (Math.random()) * 10})
             if(previousCompartment) {
-                connectCompartments(previousCompartment, compartment)
+                connectNeurons(previousCompartment, neuron)
             }
             if(i === 0) {
-                compartment.targetVoltage = -6.0
-                compartment.forceTargetVoltage = true
+                neuron.clampCurrent = 75.0
+                neuron.clampCurrentEnabled = true
             }
-            if(i === 1 || i === 4) {
-                var voltmeter = createVoltmeter({x: 300 + i * 100, y: 400})
-                connectVoltmeter(compartment, voltmeter)
-            }
-            previousCompartment = compartment
+            var voltmeter = createVoltmeter({x: 300 + i * 200, y: 400})
+            connectVoltmeterToNeuron(neuron, voltmeter)
+            previousCompartment = neuron
         }
-//        var synapse = createSynapse({x: 600, y: 100})
-//        connectSynapse(previousCompartment, synapse)
-//        connectVoltmeter(synapse.postSynapse, voltmeter)
     }
 
     function deleteFromList(list, item) {
@@ -56,13 +52,20 @@ Rectangle {
     }
 
     function deleteCompartment(compartment) {
+        deselectAll()
         disconnectCompartment(compartment)
-        if(compartmentControls.compartment === compartment) {
-            compartmentControls.compartment = null
-        }
         deleteFromList(compartments, compartment)
         deleteFromList(organizedItems, compartment)
         compartment.destroy()
+        resetOrganize()
+    }
+
+    function deleteNeuron(neuron) {
+        deselectAll()
+        disconnectNeuron(neuron)
+        deleteFromList(neurons, neuron)
+        deleteFromList(organizedItems, neuron)
+        neuron.destroy()
         resetOrganize()
     }
 
@@ -107,7 +110,15 @@ Rectangle {
 
     function disconnectCompartment(compartment) {
         var connectionsToDelete = compartment.connections.concat(compartment.passiveConnections)
-        compartment.connections = []
+        for(var i in connectionsToDelete) {
+            var connection = connectionsToDelete[i]
+            deleteConnection(connection)
+        }
+        resetOrganize()
+    }
+
+    function disconnectNeuron(neuron) {
+        var connectionsToDelete = neuron.connections.concat(neuron.passiveConnections)
         for(var i in connectionsToDelete) {
             var connection = connectionsToDelete[i]
             deleteConnection(connection)
@@ -139,12 +150,6 @@ Rectangle {
         return item
     }
 
-    function deselectAll() {
-        deselectConnections()
-        deselectCompartments()
-        deselectVoltmeters()
-    }
-
     function deselectAllInList(listName) {
         for(var i in listName) {
             var listObject = listName[i]
@@ -152,25 +157,27 @@ Rectangle {
         }
     }
 
-    function deselectConnections() {
+    function deselectAll() {
         connectionControls.connection = null
-        deselectAllInList(connections)
-    }
-
-    function deselectCompartments() {
         compartmentControls.compartment = null
-        deselectAllInList(compartments)
-    }
-
-    function deselectVoltmeters() {
         voltmeterControls.voltmeter = null
+        neuronControls.neuron = null
+        deselectAllInList(connections)
+        deselectAllInList(compartments)
         deselectAllInList(voltmeters)
+        deselectAllInList(neurons)
     }
 
     function clickedCompartment(compartment) {
         deselectAll()
         compartmentControls.compartment = compartment
         compartment.selected = true
+    }
+
+    function clickedNeuron(neuron) {
+        deselectAll()
+        neuronControls.neuron = neuron
+        neuron.selected = true
     }
 
     function clickedSynapse(synapse) {
@@ -198,8 +205,8 @@ Rectangle {
         neuron.dragStarted.connect(resetOrganize)
         neuron.widthChanged.connect(resetOrganize)
         neuron.heightChanged.connect(resetOrganize)
-//        neuron.clicked.connect(clickedCompartment)
-//        neuron.droppedConnector.connect(createConnectionToPoint)
+        neuron.clicked.connect(clickedNeuron)
+        neuron.droppedConnector.connect(createConnectionToPoint)
         neurons.push(neuron)
         organizedItems.push(neuron)
         resetOrganize()
@@ -262,6 +269,17 @@ Rectangle {
         itemB.addConnection(connection)
         organizedConnections.push(connection)
         connections.push(connection)
+        resetOrganize()
+        return connection
+    }
+
+    function connectNeurons(itemA, itemB) {
+        var connection = createConnection(itemA, itemB)
+        itemA.addConnection(connection)
+        itemB.addPassiveConnection(connection)
+        organizedConnections.push(connection)
+        connections.push(connection)
+        resetOrganize()
         return connection
     }
 
@@ -270,6 +288,14 @@ Rectangle {
         voltmeter.addConnection(connection)
         compartment.addPassiveConnection(connection)
         connections.push(connection)
+    }
+
+    function connectVoltmeterToNeuron(neuron, voltmeter) {
+        var connection = createConnection(neuron, voltmeter)
+        voltmeter.addConnection(connection)
+        neuron.addPassiveConnection(connection)
+        connections.push(connection)
+        return connection
     }
 
     function connectSynapse(compartment, synapse, connector) {
@@ -310,6 +336,19 @@ Rectangle {
             }
         }
 
+        var targetNeuron = itemUnderConnector(neurons, itemA, connector)
+        if(targetNeuron) {
+            if(connectionExists(itemA, targetNeuron)) {
+                return
+            }
+            if(itemA === targetNeuron) {
+                return
+            }
+
+            connectNeurons(itemA, targetNeuron)
+            return
+        }
+
         var itemB = itemUnderConnector(compartments, itemA, connector)
         if(!itemB) {
             return
@@ -321,7 +360,6 @@ Rectangle {
             return
         }
         connectCompartments(itemA, itemB)
-        resetOrganize()
     }
 
     function resetOrganize() {
@@ -334,9 +372,13 @@ Rectangle {
     }
 
     function organize() {
+        if(!creationControls.autoLayout) {
+            return
+        }
+
         var currentOrganizeTime = Date.now()
         var dt = Math.min(0.032, (currentOrganizeTime - lastOrganizeTime) / 1000.0)
-        var springLength = simulatorRoot.width * 0.04
+        var springLength = simulatorRoot.width * 0.06
         var anyDragging = false
 
         for(var i in organizedItems) {
@@ -455,7 +497,7 @@ Rectangle {
                 var relativeMouse = mapToItem(workspace, wheel.x, wheel.y)
                 workspaceScale.origin.x = relativeMouse.x
                 workspaceScale.origin.y = relativeMouse.y
-                workspaceScale.xScale = Math.min(1.0, Math.max(0.1, workspaceScale.xScale + wheel.angleDelta.y * 0.001))
+                workspaceScale.xScale = Math.min(2.0, Math.max(0.1, workspaceScale.xScale + wheel.angleDelta.y * 0.001))
                 var newPosition = mapFromItem(workspace, relativeMouse.x, relativeMouse.y)
                 workspace.x += wheel.x - newPosition.x
                 workspace.y += wheel.y - newPosition.y
@@ -525,6 +567,16 @@ Rectangle {
         }
     }
 
+    NeuronControls {
+        id: neuronControls
+        onDisconnectClicked: {
+            simulatorRoot.disconnectNeuron(neuron)
+        }
+        onDeleteClicked: {
+            simulatorRoot.deleteNeuron(neuron)
+        }
+    }
+
     VoltmeterControls {
         id: voltmeterControls
     }
@@ -538,6 +590,8 @@ Rectangle {
 
     Rectangle {
         id: playbackControls
+
+        property real speed: Math.pow(10, playbackSpeedSlider.value)
 
         anchors {
             bottom: parent.bottom
@@ -567,14 +621,13 @@ Rectangle {
 
             Slider {
                 id: playbackSpeedSlider
-                property real realValue: Math.pow(10, value)
                 minimumValue: -1
                 maximumValue: 1.2
                 Layout.fillWidth: true
             }
 
             Text {
-                text: playbackSpeedSlider.realValue.toFixed(1) + " x"
+                text: playbackControls.speed.toFixed(1) + " x"
             }
 
             Button {
@@ -590,7 +643,7 @@ Rectangle {
             }
 
             Text {
-                text: "dt: " + currentTimeStep.toFixed(1)
+                text: "dt: " + currentTimeStep.toFixed(3)
             }
 
             Text {
@@ -627,14 +680,19 @@ Rectangle {
         onTriggered: {
             var currentTime = Date.now()
             var dt = (currentTime - lastStepTime) / 1000
+            var trueDt = dt
             dt *= 3.0
-            dt *= playbackSpeedSlider.realValue
+            dt *= playbackControls.speed
             dt = Math.min(0.050, dt)
             currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
             time += dt
             for(var i in compartments) {
                 var compartment = compartments[i]
                 compartment.stepForward(dt)
+            }
+            for(var i in neurons) {
+                var neuron = neurons[i]
+                neuron.stepForward(dt)
             }
             for(var i in synapses) {
                 var synapse = synapses[i]
@@ -643,6 +701,10 @@ Rectangle {
             for(var i in compartments) {
                 var compartment = compartments[i]
                 compartment.finalizeStep()
+            }
+            for(var i in neurons) {
+                var neuron = neurons[i]
+                neuron.finalizeStep(dt)
             }
             for(var i in synapses) {
                 var synapse = synapses[i]
@@ -653,6 +715,18 @@ Rectangle {
                 voltmeter.stepForward(dt)
             }
             lastStepTime = currentTime
+        }
+    }
+
+    Keys.onPressed: {
+        if(event.key === Qt.Key_Delete) {
+            if(voltmeterControls.voltmeter) {
+                deleteVoltmeter(voltmeterControls.voltmeter)
+            } else if(compartmentControls.compartment) {
+                deleteCompartment(compartmentControls.compartment)
+            } else if(neuronControls.neuron) {
+                deleteNeuron(neuronControls.neuron)
+            }
         }
     }
 }

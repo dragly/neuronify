@@ -1,4 +1,5 @@
 import QtQuick 2.0
+import "paths"
 
 Rectangle {
     id: neuronRoot
@@ -8,78 +9,102 @@ Rectangle {
     signal dragStarted
     property vector2d velocity
     property bool dragging: false
+    signal droppedConnector(var neuron, var connector)
 
+    property real adaptationIncreaseOnFire: 1.0
     property real voltage: -100.0
     property real acceleration: 0.0
     property real speed: 0.0
     property real cm: 1.0
     property real timeSinceFire: 0.0
-    property bool auto: false
-    property var outputNeurons: []
+    property var connections: []
+    property var passiveConnections: []
+//    property var outputNeurons: []
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property bool firedLastTime: false
     property real synapticConductance: 0.0
-    property real adaptationConduction: 0.0
+    property real adaptationConductance: 0.0
+    property real membraneRestingPotential: -65.0
+    property real synapsePotential: 50.0
+    property real outputStimulation: 4.0
+    property real clampCurrent: 0.0
+    property bool clampCurrentEnabled: false
 
-    width: parent.width * 0.03
+    width: parent.width * 0.015
     height: width
-    radius: width
-    color: "#6baed6"
+    radius: width / 2
+    color: outputStimulation > 0.0 ? "#6baed6" : "#e41a1c"
     border.color: selected ? "#08306b" : "#2171b5"
     border.width: selected ? 3.0 : 1.0
 
-    function addOutput(neuron) {
-        outputNeurons.push(neuron)
+    function addConnection(connection) {
+        connections.push(connection)
+    }
+
+    function addPassiveConnection(connection) {
+        passiveConnections.push(connection)
     }
 
     function stepForward(dt) {
+        timeSinceFire += dt
         checkFire(dt)
 
         var gs = synapticConductance
-        var dgs = -gs / 10.0 * dt
+        var dgs = -gs / 1.0 * dt
+        var gadapt = adaptationConductance
+        var dgadapt = -gadapt / 1.0 * dt
 
         var V = voltage
         var Rm = 1.0
-        var Em = -65.0
-        var Is = gs * (V - 50)
-        var Ia = 0.0
-        if(auto) {
-            Ia = -100.0
+        var Em = membraneRestingPotential
+        var Es = synapsePotential
+        var Is = gs * (V - Es)
+        var Iadapt = gadapt * (V - Em)
+        var Iauto = 0.0
+        if(clampCurrentEnabled) {
+            Iauto = clampCurrent
         }
 
-        var voltageChange = 1.0 / cm * (- (V - Em) / Rm) - Is - Ia
+        var voltageChange = 1.0 / cm * (- (V - Em) / Rm) - Is - Iadapt + Iauto
         var dV = voltageChange * dt
         voltage += dV
 
-        for(var i in stimulations) {
-            stimulations[i] += dt
-        }
-
         synapticConductance = gs + dgs
-        timeSinceFire += dt
+//        synapticConductance = Math.max(-0.5, synapticConductance)
+        adaptationConductance = gadapt + dgadapt
+    }
+
+    function removeConnection(connection) {
+        var index = connections.indexOf(connection)
+        if(index > -1) {
+            connections.splice(index, 1)
+        }
+        index = passiveConnections.indexOf(connection)
+        if(index > -1) {
+            passiveConnections.splice(index, 1)
+        }
     }
 
     function finalizeStep(dt) {
 
     }
 
-    function stimulate() {
-        synapticConductance += 3.0
+    function stimulate(stimulation) {
+        synapticConductance += stimulation
     }
 
     function fire() {
-        for(var i in outputNeurons) {
-            var neuron = outputNeurons[i]
-            neuron.stimulate()
+        for(var i in connections) {
+            var neuron = connections[i].itemB
+            neuron.stimulate(outputStimulation)
         }
 
-
-        stimulations.length = 0
+        adaptationConductance += adaptationIncreaseOnFire
 
         voltage += 100.0
         timeSinceFire = 0.0
         firedLastTime = true
-        synapticConductance = 0.0
+//        synapticConductance = 0.0
     }
 
     function checkFire(dt) {
@@ -107,10 +132,10 @@ Rectangle {
         opacity: (voltage + 100) / (150)
     }
 
-    Text {
-        anchors.centerIn: parent
-        text: voltage.toFixed(1)
-    }
+//    Text {
+//        anchors.centerIn: parent
+//        text: voltage.toFixed(1)
+//    }
 
 
     MouseArea {
@@ -127,6 +152,53 @@ Rectangle {
 
         onReleased: {
             neuronRoot.dragging = false
+        }
+    }
+
+    SCurve {
+        id: connectorCurve
+        z: -1
+        color: "#4292c6"
+        startPoint: Qt.point(neuronRoot.width / 2, neuronRoot.height / 2)
+        endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
+    }
+
+    Item {
+        id: connector
+
+        visible: neuronRoot.selected
+
+        Component.onCompleted: {
+            resetPosition()
+        }
+
+        function resetPosition() {
+            connector.x = 1.5*neuronRoot.radius - connectorCircle.width / 2
+            connector.y = 1.5*neuronRoot.radius - connectorCircle.height / 2
+        }
+
+        width: neuronRoot.width * 0.37
+        height: width
+
+        Rectangle {
+            id: connectorCircle
+            anchors.centerIn: parent
+            width: parent.width / 2.0
+            height: width
+            color: "#4292c6"
+            border.color: "#f7fbff"
+            border.width: 1.0
+            radius: width
+        }
+
+        MouseArea {
+            id: connectorMouseArea
+            anchors.fill: parent
+            drag.target: parent
+            onReleased: {
+                neuronRoot.droppedConnector(neuronRoot, connector)
+                connector.resetPosition()
+            }
         }
     }
 }

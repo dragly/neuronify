@@ -17,6 +17,5 @@ ApplicationWindow {
 
     HodgkinHuxley {
         anchors.fill: parent
-
     }
 }

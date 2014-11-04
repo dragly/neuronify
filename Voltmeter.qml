@@ -17,7 +17,9 @@ Rectangle {
     property real minimumValue: -100.0
     property real maximumValue: 100.0
 
-    property real lastUpdateTime: Date.now()
+    property real timeSinceLastUpdate: 0
+    property real lastUpdateTime: 0
+
 
     width: 180
     height: 120
@@ -59,9 +61,10 @@ Rectangle {
     }
 
     function stepForward(dt) {
+        timeSinceLastUpdate += dt
         var currentUpdateTime = Date.now()
-        var timeDiff = currentUpdateTime - lastUpdateTime
-        if(timeDiff < 36) {
+        var timeDiff = (currentUpdateTime - lastUpdateTime) / 1000
+        if(timeDiff < 0.036) {
             return
         }
 
@@ -70,7 +73,11 @@ Rectangle {
             var plot = connectionPlot.plot
             var compartment = connectionPlot.connection.itemA
             if(mode === "voltage") {
-                plot.addPoint(compartment.voltage)
+                if(compartment.timeSinceFire < timeSinceLastUpdate) {
+                    plot.addPoint(maximumValue)
+                } else {
+                    plot.addPoint(compartment.voltage)
+                }
             } else if(mode === "sodiumCurrent") {
                 plot.addPoint(compartment.sodiumCurrent)
             } else if(mode === "potassiumCurrent") {
@@ -80,6 +87,7 @@ Rectangle {
             }
         }
         lastUpdateTime = currentUpdateTime
+        timeSinceLastUpdate = 0
     }
 
     onModeChanged: {

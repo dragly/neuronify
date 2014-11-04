@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Layouts 1.1
+import QtQuick.Controls 1.1
 
 Rectangle {
     id: creationControlsRoot
@@ -9,6 +10,7 @@ Rectangle {
     signal createVoltmeter(var position)
 
     property bool revealed: true
+    property alias autoLayout: autoLayoutCheckbox.checked
 
     anchors {
         left: parent.left
@@ -29,28 +31,16 @@ Rectangle {
         }
     }
 
-//    Rectangle {
-//        anchors.left: parent.right
-//        width: 40
-//        height: 40
-//        color: "#deebf7"
-//        border.width: 1.0
-//        border.color: "#6baed6"
-//        MouseArea {
-//            anchors.fill: parent
-//            onClicked: {
-//                creationControlsRoot.revealed = !creationControlsRoot.revealed
-//            }
-//        }
-//    }
-
-    ColumnLayout {
+    Column {
         id: layout
 
         function reset() {
-            var oldSpacing = spacing
-            spacing = 0
-            spacing = oldSpacing
+            neuronCreator.x = 0
+            neuronCreator.y = 0
+            compartmentCreator.x = 0
+            compartmentCreator.y = neuronCreator.y + neuronCreator.height + layout.spacing
+            voltmeterCreator.x = 0
+            voltmeterCreator.y = compartmentCreator.y + compartmentCreator.height + layout.spacing
         }
 
         anchors {
@@ -62,8 +52,8 @@ Rectangle {
         Rectangle {
             id: neuronCreator
             radius: width
-            Layout.fillWidth: true
-            Layout.minimumHeight: width
+            width: parent.width
+            height: width
             color: "#c6dbef"
             border.color: "#6baed6"
             border.width: 2.0
@@ -99,12 +89,11 @@ Rectangle {
         Rectangle {
             id: compartmentCreator
             radius: width * 0.1
-            Layout.fillWidth: true
-            Layout.minimumHeight: width * 0.67
+            width: parent.width
+            height: width * 0.67
             color: "#c6dbef"
             border.color: "#6baed6"
             border.width: 2.0
-
 
             function resetPosition() {
                 layout.reset()
@@ -136,8 +125,8 @@ Rectangle {
         Rectangle {
             id: voltmeterCreator
 
-            Layout.fillWidth: true
-            Layout.minimumHeight: width * 0.67
+            width: parent.width
+            height: width * 0.67
             color: "#deebf7"
             border.color: "#9ecae1"
             border.width: 1.0
@@ -172,6 +161,11 @@ Rectangle {
                     voltmeterCreator.resetPosition()
                 }
             }
+        }
+        CheckBox {
+            id: autoLayoutCheckbox
+            text: "Auto"
+            checked: true
         }
         Item {
             Layout.fillHeight: true

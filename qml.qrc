@@ -16,5 +16,8 @@
         <file>Synapse.qml</file>
         <file>GraphItem.qml</file>
         <file>Neuron.qml</file>
+        <file>hud/NeuronControls.qml</file>
+        <file>paths/Line.qml</file>
+        <file>MetaBalls.qml</file>
     </qresource>
 </RCC>
