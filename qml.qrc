@@ -1,7 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>HodgkinHuxley.qml</file>
         <file>Compartment.qml</file>
         <file>Plot.qml</file>
         <file>Connection.qml</file>
@@ -18,6 +17,6 @@
         <file>Neuron.qml</file>
         <file>hud/NeuronControls.qml</file>
         <file>paths/Line.qml</file>
-        <file>MetaBalls.qml</file>
+        <file>Nestify.qml</file>
     </qresource>
 </RCC>

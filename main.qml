@@ -13,9 +13,9 @@ ApplicationWindow {
     visible: true
     width: 1280
     height: 800
-    title: qsTr("Hodgkin-Huxley")
+    title: qsTr("Nestify")
 
-    HodgkinHuxley {
+    Nestify {
         anchors.fill: parent
     }
 }
