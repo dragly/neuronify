@@ -263,7 +263,6 @@ Rectangle {
     }
 
     function clickedNeuron(neuron, mouse) {
-
         deselectAll()
         neuronControls.neuron = neuron
         neuron.selected = true
@@ -620,6 +619,7 @@ Rectangle {
                 //                workspaceScale.origin.x = mouse.x
                 //                workspaceScale.origin.y = mouse.y
                 deselectAll()
+                selectedNeurons = []
             }
         }
 
