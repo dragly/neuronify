@@ -14,6 +14,7 @@ Rectangle {
     property var compartments: []
     property var neurons: []
     property var selectedNeurons: []
+    property var copiedNeurons: []
     property var synapses: []
     property var voltmeters: []
     property real currentTimeStep: 0.0
@@ -166,31 +167,36 @@ Rectangle {
     }
 
     function selectAllNeurons() {
+        selectedNeurons = []
         connectionControls.connection = null
         voltmeterControls.voltmeter = null
         neuronControls.neuron = null
         selectAllInList(neurons)
-
         for(var i in neurons) {
             var neuron = neurons[i]
-            var alreadySelected = false
-            for(var j in selectedNeurons) {
-                var alreadySelectedNeuron = selectedNeurons[j]
-                if(alreadySelectedNeuron === neuron) {
-                    alreadySelected = true
-                }
-            }
-            if(!alreadySelected) {
-                selectedNeurons.push(neuron)
-            }
+            selectedNeurons.push(neuron)
         }
+    }
+
+    function selectNeurons() {
+        connectionControls.connection = null
+        voltmeterControls.voltmeter = null
+        neuronControls.neuron = null
+    }
+
+    function copyNeurons() {
+        copiedNeurons = []
+        for(var i in selectedNeurons) {
+            var neuron = selectedNeurons[i]
+            copiedNeurons.push(neuron)
+        }
+        selectedNeurons = []
     }
 
     function pasteNeurons() {
         var newNeurons = []
-        for(var i in selectedNeurons) {
-            var neuronToCopy = selectedNeurons[i]
-            console.log(neuronToCopy.x)
+        for(var i in copiedNeurons) {
+            var neuronToCopy = copiedNeurons[i]
             var neuron = createNeuron({
                                           x: neuronToCopy.x + 10,
                                           y: neuronToCopy.y + 10,
@@ -199,8 +205,8 @@ Rectangle {
 
             newNeurons.push(neuron)
         }
-        for(var i in selectedNeurons) {
-            var oldNeuron = selectedNeurons[i]
+        for(var i in copiedNeurons) {
+            var oldNeuron = copiedNeurons[i]
             for(var j in newNeurons) {
                 var newNeuron = newNeurons[j]
                 if(newNeuron.copiedFrom === oldNeuron) {
@@ -208,8 +214,8 @@ Rectangle {
                     for(var k in oldNeuron.connections) {
                         var connectedToNeuron = oldNeuron.connections[k].itemB
                         // Check if connected to copied neuron
-                        for(var l in selectedNeurons) {
-                            var otherNeuron = selectedNeurons[l]
+                        for(var l in copiedNeurons) {
+                            var otherNeuron = copiedNeurons[l]
                             if(otherNeuron === connectedToNeuron) {
                                 // Find copied twin
                                 for(var m in newNeurons) {
@@ -256,11 +262,36 @@ Rectangle {
         compartment.selected = true
     }
 
-    function clickedNeuron(neuron) {
+    function clickedNeuron(neuron, mouse) {
+
         deselectAll()
         neuronControls.neuron = neuron
         neuron.selected = true
+
+        if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
+            selectNeurons()
+            var alreadySelected = false
+                for(var j in selectedNeurons) {
+                    var alreadySelectedNeuron = selectedNeurons[j]
+                    if(alreadySelectedNeuron ===  neuron) {
+                        alreadySelected = true
+                    }
+                }
+                if(!alreadySelected) {
+                    selectedNeurons.push(neuron)
+                    console.log(selectedNeurons.length)
+                }
+
+        }else{
+            selectedNeurons = []
+            selectedNeurons.push(neuron)
+            neuron.selected = true
+        }
+
+        selectAllInList(selectedNeurons)
+
     }
+
 
     function clickedSynapse(synapse) {
         deselectAll()
@@ -802,14 +833,15 @@ Rectangle {
 
     Keys.onPressed: {
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
-                selectAllNeurons()
+            selectAllNeurons()
+            console.log("select all")
         }
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
-                selectAllNeurons()
+            copyNeurons()
             console.log("copy")
         }
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
-                pasteNeurons()
+            pasteNeurons()
             console.log("paste")
         }
 

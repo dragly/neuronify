@@ -5,7 +5,7 @@ Rectangle {
     id: neuronRoot
 
     property bool selected: false
-    signal clicked(var neuron)
+    signal clicked(var neuron, var mouse)
     signal dragStarted
     property vector2d velocity
     property bool dragging: false
@@ -148,7 +148,7 @@ Rectangle {
         }
 
         onClicked: {
-            neuronRoot.clicked(neuronRoot)
+            neuronRoot.clicked(neuronRoot, mouse)
         }
 
         onReleased: {
