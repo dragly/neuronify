@@ -13,6 +13,7 @@ Rectangle {
     property var organizedConnections: []
     property var compartments: []
     property var neurons: []
+    property var selectedNeurons: []
     property var synapses: []
     property var voltmeters: []
     property real currentTimeStep: 0.0
@@ -162,6 +163,69 @@ Rectangle {
             var listObject = listName[i]
             listObject.selected = true
         }
+    }
+
+    function selectAllNeurons() {
+        connectionControls.connection = null
+        voltmeterControls.voltmeter = null
+        neuronControls.neuron = null
+        selectAllInList(neurons)
+
+        for(var i in neurons) {
+            var neuron = neurons[i]
+            var alreadySelected = false
+            for(var j in selectedNeurons) {
+                var alreadySelectedNeuron = selectedNeurons[j]
+                if(alreadySelectedNeuron === neuron) {
+                    alreadySelected = true
+                }
+            }
+            if(!alreadySelected) {
+                selectedNeurons.push(neuron)
+            }
+        }
+    }
+
+    function pasteNeurons() {
+        var newNeurons = []
+        for(var i in selectedNeurons) {
+            var neuronToCopy = selectedNeurons[i]
+            console.log(neuronToCopy.x)
+            var neuron = createNeuron({
+                                          x: neuronToCopy.x + 10,
+                                          y: neuronToCopy.y + 10,
+                                          copiedFrom: neuronToCopy
+                                      })
+
+            newNeurons.push(neuron)
+        }
+        for(var i in selectedNeurons) {
+            var oldNeuron = selectedNeurons[i]
+            for(var j in newNeurons) {
+                var newNeuron = newNeurons[j]
+                if(newNeuron.copiedFrom === oldNeuron) {
+                    // Find connections
+                    for(var k in oldNeuron.connections) {
+                        var connectedToNeuron = oldNeuron.connections[k].itemB
+                        // Check if connected to copied neuron
+                        for(var l in selectedNeurons) {
+                            var otherNeuron = selectedNeurons[l]
+                            if(otherNeuron === connectedToNeuron) {
+                                // Find copied twin
+                                for(var m in newNeurons) {
+                                    var otherNewNeuron = newNeurons[m]
+                                    if(otherNewNeuron.copiedFrom === otherNeuron) {
+                                        connectNeurons(newNeuron, otherNewNeuron)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        resetOrganize()
     }
 
     function selectAll() {
@@ -524,6 +588,7 @@ Rectangle {
             onClicked: {
                 //                workspaceScale.origin.x = mouse.x
                 //                workspaceScale.origin.y = mouse.y
+                deselectAll()
             }
         }
 
@@ -737,7 +802,15 @@ Rectangle {
 
     Keys.onPressed: {
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
-                selectAll()
+                selectAllNeurons()
+        }
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
+                selectAllNeurons()
+            console.log("copy")
+        }
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
+                pasteNeurons()
+            console.log("paste")
         }
 
         if(event.key === Qt.Key_Delete) {

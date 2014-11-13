@@ -5,11 +5,12 @@ Rectangle {
     id: neuronRoot
 
     property bool selected: false
-    signal clicked(var compartment)
+    signal clicked(var neuron)
     signal dragStarted
     property vector2d velocity
     property bool dragging: false
     signal droppedConnector(var neuron, var connector)
+    property var copiedFrom
 
     property real adaptationIncreaseOnFire: 1.0
     property real voltage: -100.0
