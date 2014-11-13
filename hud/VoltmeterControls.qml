@@ -16,15 +16,6 @@ PropertiesPanel {
         case "voltage":
             voltageRadioButton.checked = true
             break
-        case "sodiumCurrent":
-            sodiumCurrentRadioButton.checked = true
-            break
-        case "potassiumCurrent":
-            potassiumCurrentRadioButton.checked = true
-            break
-        case "leakCurrent":
-            leakCurrentRadioButton.checked = true
-            break
         }
     }
 
@@ -54,38 +45,6 @@ PropertiesPanel {
             }
         }
 
-        RadioButton {
-            id: sodiumCurrentRadioButton
-            text: "Sodium current"
-            exclusiveGroup: modeGroup
-            onCheckedChanged: {
-                if(checked) {
-                    voltmeterControlsRoot.voltmeter.mode = "sodiumCurrent"
-                }
-            }
-        }
-
-        RadioButton {
-            id: potassiumCurrentRadioButton
-            text: "Potassium current"
-            exclusiveGroup: modeGroup
-            onCheckedChanged: {
-                if(checked) {
-                    voltmeterControlsRoot.voltmeter.mode = "potassiumCurrent"
-                }
-            }
-        }
-
-        RadioButton {
-            id: leakCurrentRadioButton
-            text: "Leak current"
-            exclusiveGroup: modeGroup
-            onCheckedChanged: {
-                if(checked) {
-                    voltmeterControlsRoot.voltmeter.mode = "leakCurrent"
-                }
-            }
-        }
 
         Button {
             text: "Delete"
