@@ -78,12 +78,6 @@ Rectangle {
                 } else {
                     plot.addPoint(compartment.voltage)
                 }
-            } else if(mode === "sodiumCurrent") {
-                plot.addPoint(compartment.sodiumCurrent)
-            } else if(mode === "potassiumCurrent") {
-                plot.addPoint(compartment.potassiumCurrent)
-            } else if(mode === "leakCurrent") {
-                plot.addPoint(compartment.leakCurrent)
             }
         }
         lastUpdateTime = currentUpdateTime
@@ -96,21 +90,6 @@ Rectangle {
             minimumValue = -100
             maximumValue = 100
             title = "V"
-            break
-        case "sodiumCurrent":
-            minimumValue = -2e3
-            maximumValue = 2e3
-            title = "I (Na)"
-            break
-        case "potassiumCurrent":
-            minimumValue = -3e3
-            maximumValue = 3e3
-            title = "I (K)"
-            break
-        case "leakCurrent":
-            minimumValue = -1e2
-            maximumValue = 1e2
-            title = "I (L)"
             break
         }
         for(var i in connectionPlots) {
