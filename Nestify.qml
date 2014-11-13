@@ -157,6 +157,24 @@ Rectangle {
         }
     }
 
+    function selectAllInList(listName) {
+        for(var i in listName) {
+            var listObject = listName[i]
+            listObject.selected = true
+        }
+    }
+
+    function selectAll() {
+        connectionControls.connection = null
+        compartmentControls.compartment = null
+        voltmeterControls.voltmeter = null
+        neuronControls.neuron = null
+        selectAllInList(connections)
+        selectAllInList(compartments)
+        selectAllInList(voltmeters)
+        selectAllInList(neurons)
+    }
+
     function deselectAll() {
         connectionControls.connection = null
         compartmentControls.compartment = null
@@ -506,7 +524,6 @@ Rectangle {
             onClicked: {
                 //                workspaceScale.origin.x = mouse.x
                 //                workspaceScale.origin.y = mouse.y
-                deselectAll()
             }
         }
 
@@ -719,6 +736,10 @@ Rectangle {
     }
 
     Keys.onPressed: {
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
+                selectAll()
+        }
+
         if(event.key === Qt.Key_Delete) {
             if(voltmeterControls.voltmeter) {
                 deleteVoltmeter(voltmeterControls.voltmeter)
