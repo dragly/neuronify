@@ -1,4 +1,4 @@
-hodgkin-huxley
+Nestify
 ==============
 
-Visual neuron simulator using the Hodgkin-Huxley method.
+Visual neuron system simulator using the integrate-and-fire method.
