@@ -22,7 +22,7 @@ Rectangle {
     color: "#deebf7"
     border.color: "#9ecae1"
     border.width: 1.0
-    width: parent.width * 0.07
+    width: parent.width * 0.1
 
     Behavior on anchors.leftMargin {
         NumberAnimation {
@@ -167,6 +167,23 @@ Rectangle {
             text: "Auto"
             checked: true
         }
+        Button {
+            id: saveButton
+
+            text: "Save State"
+            onClicked: {
+                saveState()
+            }
+        }
+        Button {
+            id: loadButton
+
+            text: "Load State"
+            onClicked: {
+                loadState()
+            }
+        }
+
         Item {
             Layout.fillHeight: true
             Layout.fillWidth: true

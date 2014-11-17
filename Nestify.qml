@@ -53,6 +53,14 @@ Rectangle {
         }
     }
 
+    function saveState(){
+
+    }
+
+    function loadState(){
+
+    }
+
     function deleteCompartment(compartment) {
         deselectAll()
         disconnectCompartment(compartment)
