@@ -603,7 +603,7 @@ Rectangle {
             drag.target: workspace
 
             property vector2d last
-            property vector2d image
+            property vector2d imagekk
 
             onWheel: {
                 var relativeMouse = mapToItem(workspace, wheel.x, wheel.y)
