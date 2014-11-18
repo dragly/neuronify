@@ -1,34 +1,36 @@
 import QtQuick 2.0
 import "paths"
+import Nestify 1.0
 
 Rectangle {
     id: neuronRoot
 
     property bool selected: false
-    signal clicked(var compartment)
+    signal clicked(var neuron, var mouse)
     signal dragStarted
     property vector2d velocity
     property bool dragging: false
     signal droppedConnector(var neuron, var connector)
+    property var copiedFrom
 
     property real adaptationIncreaseOnFire: 1.0
-    property real voltage: -100.0
+    property alias voltage: engine.voltage
     property real acceleration: 0.0
     property real speed: 0.0
-    property real cm: 1.0
+    property alias cm: engine.cm
     property real timeSinceFire: 0.0
     property var connections: []
     property var passiveConnections: []
 //    property var outputNeurons: []
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property bool firedLastTime: false
-    property real synapticConductance: 0.0
-    property real adaptationConductance: 0.0
-    property real membraneRestingPotential: -65.0
-    property real synapsePotential: 50.0
+    property alias synapticConductance: engine.synapticConductance
+    property alias adaptationConductance: engine.adaptationConductance
+    property alias membraneRestingPotential: engine.membraneRestingPotential
+    property alias synapsePotential: engine.synapsePotential
     property real outputStimulation: 4.0
-    property real clampCurrent: 0.0
-    property bool clampCurrentEnabled: false
+    property alias clampCurrent: engine.clampCurrent
+    property alias clampCurrentEnabled: engine.clampCurrentEnabled
 
     width: parent.width * 0.015
     height: width
@@ -48,30 +50,7 @@ Rectangle {
     function stepForward(dt) {
         timeSinceFire += dt
         checkFire(dt)
-
-        var gs = synapticConductance
-        var dgs = -gs / 1.0 * dt
-        var gadapt = adaptationConductance
-        var dgadapt = -gadapt / 1.0 * dt
-
-        var V = voltage
-        var Rm = 1.0
-        var Em = membraneRestingPotential
-        var Es = synapsePotential
-        var Is = gs * (V - Es)
-        var Iadapt = gadapt * (V - Em)
-        var Iauto = 0.0
-        if(clampCurrentEnabled) {
-            Iauto = clampCurrent
-        }
-
-        var voltageChange = 1.0 / cm * (- (V - Em) / Rm) - Is - Iadapt + Iauto
-        var dV = voltageChange * dt
-        voltage += dV
-
-        synapticConductance = gs + dgs
-//        synapticConductance = Math.max(-0.5, synapticConductance)
-        adaptationConductance = gadapt + dgadapt
+        engine.stepForward(dt)
     }
 
     function removeConnection(connection) {
@@ -124,6 +103,10 @@ Rectangle {
 
     }
 
+    NeuronEngine{
+        id: engine
+    }
+
     Rectangle {
         anchors.fill: parent
         anchors.margins: 2.0
@@ -147,7 +130,7 @@ Rectangle {
         }
 
         onClicked: {
-            neuronRoot.clicked(neuronRoot)
+            neuronRoot.clicked(neuronRoot, mouse)
         }
 
         onReleased: {

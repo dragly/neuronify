@@ -1,8 +1,10 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
+#include "neuronengine.h"
 
 int main(int argc, char *argv[])
 {
+    qmlRegisterType<NeuronEngine>("Nestify", 1, 0, "NeuronEngine");
     QApplication app(argc, argv);
 
     QQmlApplicationEngine engine;

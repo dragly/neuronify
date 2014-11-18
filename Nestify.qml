@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
+import QtQuick.Dialogs 1.0
 import "hud"
 
 Rectangle {
@@ -13,6 +14,8 @@ Rectangle {
     property var organizedConnections: []
     property var compartments: []
     property var neurons: []
+    property var selectedNeurons: []
+    property var copiedNeurons: []
     property var synapses: []
     property var voltmeters: []
     property real currentTimeStep: 0.0
@@ -51,6 +54,36 @@ Rectangle {
         }
     }
 
+    //////////////////////// save/load ////////////////
+
+
+
+    function saveState(){
+        for(var i in neurons) {
+            console.log("balle")
+        }
+    }
+
+    function loadState(){
+
+    }
+
+
+    FileDialog {
+        id: loadFileDialog
+        title: "Please choose a file"
+        onAccepted: {
+            console.log("You chose: " + loadFileDialog.fileUrls)
+        }
+        onRejected: {
+            console.log("Canceled")
+        }
+        Component.onCompleted: visible = false
+    }
+
+
+    //////////////////////// end of save/load ////////////////
+
     function deleteCompartment(compartment) {
         deselectAll()
         disconnectCompartment(compartment)
@@ -58,6 +91,23 @@ Rectangle {
         deleteFromList(organizedItems, compartment)
         compartment.destroy()
         resetOrganize()
+    }
+
+    function deleteEverything() {
+        deleteAllNeurons()
+        deleteAllVoltmeters()
+    }
+
+    function deleteAllNeurons() {
+        while(neurons.length > 0){
+            deleteNeuron(neurons[0])
+        }
+    }
+
+    function deleteAllVoltmeters() {
+        while(voltmeters.length > 0){
+            deleteVoltmeter(voltmeters[0])
+        }
     }
 
     function deleteNeuron(neuron) {
@@ -157,6 +207,92 @@ Rectangle {
         }
     }
 
+    function selectAllInList(listName) {
+        for(var i in listName) {
+            var listObject = listName[i]
+            listObject.selected = true
+        }
+    }
+
+    function selectAllNeurons() {
+        selectedNeurons = []
+        connectionControls.connection = null
+        voltmeterControls.voltmeter = null
+        neuronControls.neuron = null
+        selectAllInList(neurons)
+        for(var i in neurons) {
+            var neuron = neurons[i]
+            selectedNeurons.push(neuron)
+        }
+    }
+
+    function selectNeurons() {
+        connectionControls.connection = null
+        voltmeterControls.voltmeter = null
+        neuronControls.neuron = null
+    }
+
+    function copyNeurons() {
+        copiedNeurons = []
+        for(var i in selectedNeurons) {
+            var neuron = selectedNeurons[i]
+            copiedNeurons.push(neuron)
+        }
+        selectedNeurons = []
+    }
+
+    function pasteNeurons() {
+        var newNeurons = []
+        for(var i in copiedNeurons) {
+            var neuronToCopy = copiedNeurons[i]
+            var neuron = createNeuron({
+                                          x: neuronToCopy.x + 10,
+                                          y: neuronToCopy.y + 10,
+                                          copiedFrom: neuronToCopy
+                                      })
+
+            newNeurons.push(neuron)
+        }
+        for(var i in copiedNeurons) {
+            var oldNeuron = copiedNeurons[i]
+            for(var j in newNeurons) {
+                var newNeuron = newNeurons[j]
+                if(newNeuron.copiedFrom === oldNeuron) {
+                    // Find connections
+                    for(var k in oldNeuron.connections) {
+                        var connectedToNeuron = oldNeuron.connections[k].itemB
+                        // Check if connected to copied neuron
+                        for(var l in copiedNeurons) {
+                            var otherNeuron = copiedNeurons[l]
+                            if(otherNeuron === connectedToNeuron) {
+                                // Find copied twin
+                                for(var m in newNeurons) {
+                                    var otherNewNeuron = newNeurons[m]
+                                    if(otherNewNeuron.copiedFrom === otherNeuron) {
+                                        connectNeurons(newNeuron, otherNewNeuron)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        resetOrganize()
+    }
+
+    function selectAll() {
+        connectionControls.connection = null
+        compartmentControls.compartment = null
+        voltmeterControls.voltmeter = null
+        neuronControls.neuron = null
+        selectAllInList(connections)
+        selectAllInList(compartments)
+        selectAllInList(voltmeters)
+        selectAllInList(neurons)
+    }
+
     function deselectAll() {
         connectionControls.connection = null
         compartmentControls.compartment = null
@@ -174,11 +310,35 @@ Rectangle {
         compartment.selected = true
     }
 
-    function clickedNeuron(neuron) {
+    function clickedNeuron(neuron, mouse) {
         deselectAll()
         neuronControls.neuron = neuron
         neuron.selected = true
+
+        if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
+            selectNeurons()
+            var alreadySelected = false
+                for(var j in selectedNeurons) {
+                    var alreadySelectedNeuron = selectedNeurons[j]
+                    if(alreadySelectedNeuron ===  neuron) {
+                        alreadySelected = true
+                    }
+                }
+                if(!alreadySelected) {
+                    selectedNeurons.push(neuron)
+                    console.log(selectedNeurons.length)
+                }
+
+        }else{
+            selectedNeurons = []
+            selectedNeurons.push(neuron)
+            neuron.selected = true
+        }
+
+        selectAllInList(selectedNeurons)
+
     }
+
 
     function clickedSynapse(synapse) {
         deselectAll()
@@ -491,7 +651,7 @@ Rectangle {
             drag.target: workspace
 
             property vector2d last
-            property vector2d image
+            property vector2d imagekk
 
             onWheel: {
                 var relativeMouse = mapToItem(workspace, wheel.x, wheel.y)
@@ -507,6 +667,7 @@ Rectangle {
                 //                workspaceScale.origin.x = mouse.x
                 //                workspaceScale.origin.y = mouse.y
                 deselectAll()
+                selectedNeurons = []
             }
         }
 
@@ -719,6 +880,19 @@ Rectangle {
     }
 
     Keys.onPressed: {
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
+            selectAllNeurons()
+            console.log("select all")
+        }
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
+            copyNeurons()
+            console.log("copy")
+        }
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
+            pasteNeurons()
+            console.log("paste")
+        }
+
         if(event.key === Qt.Key_Delete) {
             if(voltmeterControls.voltmeter) {
                 deleteVoltmeter(voltmeterControls.voltmeter)
