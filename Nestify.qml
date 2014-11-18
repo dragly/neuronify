@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
+import QtQuick.Dialogs 1.0
 import "hud"
 
 Rectangle {
@@ -53,13 +54,35 @@ Rectangle {
         }
     }
 
-    function saveState(){
+    //////////////////////// save/load ////////////////
 
+
+
+    function saveState(){
+        for(var i in neurons) {
+            console.log("balle")
+        }
     }
 
     function loadState(){
 
     }
+
+
+    FileDialog {
+        id: loadFileDialog
+        title: "Please choose a file"
+        onAccepted: {
+            console.log("You chose: " + loadFileDialog.fileUrls)
+        }
+        onRejected: {
+            console.log("Canceled")
+        }
+        Component.onCompleted: visible = false
+    }
+
+
+    //////////////////////// end of save/load ////////////////
 
     function deleteCompartment(compartment) {
         deselectAll()
@@ -68,6 +91,23 @@ Rectangle {
         deleteFromList(organizedItems, compartment)
         compartment.destroy()
         resetOrganize()
+    }
+
+    function deleteEverything() {
+        deleteAllNeurons()
+        deleteAllVoltmeters()
+    }
+
+    function deleteAllNeurons() {
+        while(neurons.length > 0){
+            deleteNeuron(neurons[0])
+        }
+    }
+
+    function deleteAllVoltmeters() {
+        while(voltmeters.length > 0){
+            deleteVoltmeter(voltmeters[0])
+        }
     }
 
     function deleteNeuron(neuron) {

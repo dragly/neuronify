@@ -167,11 +167,23 @@ Rectangle {
             text: "Auto"
             checked: true
         }
+
+        Button {
+            id: deleteAllButton
+
+            text: "Delete All"
+            onClicked: {
+
+                deleteEverything()
+            }
+        }
+
         Button {
             id: saveButton
 
             text: "Save State"
             onClicked: {
+
                 saveState()
             }
         }
@@ -179,9 +191,7 @@ Rectangle {
             id: loadButton
 
             text: "Load State"
-            onClicked: {
-                loadState()
-            }
+            onClicked: loadFileDialog.visible = true
         }
 
         Item {
