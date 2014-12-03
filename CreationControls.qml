@@ -8,10 +8,11 @@ Rectangle {
     signal createNeuron(var position)
     signal createCompartment(var position)
     signal createVoltmeter(var position)
+    signal deleteEverything()
 
     property bool revealed: true
     property alias autoLayout: autoLayoutCheckbox.checked
-
+    property alias deletaAllButton1: deleteAllButton
     anchors {
         left: parent.left
         top: parent.top
@@ -173,7 +174,6 @@ Rectangle {
 
             text: "Delete All"
             onClicked: {
-
                 deleteEverything()
             }
         }
