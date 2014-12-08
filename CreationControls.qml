@@ -37,10 +37,8 @@ Rectangle {
         function reset() {
             neuronCreator.x = 0
             neuronCreator.y = 0
-            compartmentCreator.x = 0
-            compartmentCreator.y = neuronCreator.y + neuronCreator.height + layout.spacing
             voltmeterCreator.x = 0
-            voltmeterCreator.y = compartmentCreator.y + compartmentCreator.height + layout.spacing
+            voltmeterCreator.y = neuronCreator.y + neuronCreator.height + layout.spacing
         }
 
         anchors {
@@ -52,28 +50,14 @@ Rectangle {
         Rectangle {
             id: neuronCreator
             radius: width
-            width: parent.width
+            width: parent.width * 0.7
             height: width
             color: "#c6dbef"
             border.color: "#6baed6"
             border.width: 2.0
 
-
             function resetPosition() {
                 layout.reset()
-            }
-
-            Rectangle {
-                anchors {
-                    horizontalCenter: parent.right
-                    verticalCenter: parent.bottom
-                }
-                width: parent.width * 0.2
-                height: width
-                color: "#4292c6"
-                border.color: "#f7fbff"
-                border.width: 1.0
-                radius: width
             }
 
             MouseArea {
@@ -81,43 +65,7 @@ Rectangle {
                 drag.target: parent
                 onReleased: {
                     createNeuron({x: neuronCreator.x, y: neuronCreator.y})
-                    compartmentCreator.resetPosition()
-                }
-            }
-        }
-
-        Rectangle {
-            id: compartmentCreator
-            radius: width * 0.1
-            width: parent.width
-            height: width * 0.67
-            color: "#c6dbef"
-            border.color: "#6baed6"
-            border.width: 2.0
-
-            function resetPosition() {
-                layout.reset()
-            }
-
-            Rectangle {
-                anchors {
-                    horizontalCenter: parent.right
-                    verticalCenter: parent.bottom
-                }
-                width: parent.width * 0.2
-                height: width
-                color: "#4292c6"
-                border.color: "#f7fbff"
-                border.width: 1.0
-                radius: width
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                drag.target: parent
-                onReleased: {
-                    createCompartment({x: compartmentCreator.x, y: compartmentCreator.y})
-                    compartmentCreator.resetPosition()
+                    neuronCreator.resetPosition()
                 }
             }
         }
@@ -125,7 +73,7 @@ Rectangle {
         Rectangle {
             id: voltmeterCreator
 
-            width: parent.width
+            width: parent.width * 0.7
             height: width * 0.67
             color: "#deebf7"
             border.color: "#9ecae1"
@@ -137,9 +85,11 @@ Rectangle {
 
             function resetPosition() {
                 layout.reset()
+                canvas.requestPaint()
             }
 
             Canvas {
+                id: canvas
                 anchors.fill: parent
                 onPaint: {
                     var ctx = getContext("2d")
@@ -147,8 +97,12 @@ Rectangle {
                     ctx.beginPath()
                     var w = width
                     var h = height
-                    ctx.moveTo(h * 0.2, h * 0.2)
-                    ctx.bezierCurveTo(w*0.5, h*0.2, w*0.5, h*0.8, w - h*0.2, h*0.8)
+                    console.log(w + " " + h)
+//                    ctx.moveTo(h * 0.2, h * 0.2)
+//                    ctx.bezierCurveTo(w*0.5, h*0.2, w*0.5, h*0.8, w - h*0.2, h*0.8)
+
+                    ctx.moveTo(w*0.1, h*0.2)
+                    ctx.bezierCurveTo(w*0.5, h*0.2, w*0.5, h*0.8, w*0.9, h*0.8)
                     ctx.stroke()
                 }
             }

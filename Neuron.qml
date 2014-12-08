@@ -39,6 +39,10 @@ Rectangle {
     border.color: selected ? "#08306b" : "#2171b5"
     border.width: selected ? 3.0 : 1.0
 
+    function reset() {
+        engine.reset()
+    }
+
     function addConnection(connection) {
         connections.push(connection)
     }
