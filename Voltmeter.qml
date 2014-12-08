@@ -49,7 +49,7 @@ Rectangle {
             var connectionOther = connectionPlot.connection
             if(connectionOther === connection) {
                 connectionPlots.splice(i, 1)
-                connectionPlot.plot.destroy()
+                connectionPlot.plot.destroy(1)
                 break
             }
         }

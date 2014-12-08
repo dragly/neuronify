@@ -63,28 +63,35 @@ Rectangle {
     }
 
     function loadState(){
-
     }
-
 
     FileDialog {
         id: loadFileDialog
         title: "Please choose a file"
+        visible : false
+        Component.onCompleted: {
+
+        }
         onAccepted: {
-            console.log("You chose: " + loadFileDialog.fileUrls)
+            console.log("Accepted")
+            deleteEverything()
+
+
         }
         onRejected: {
             console.log("Canceled")
         }
-        Component.onCompleted: visible = false
+
+
     }
 
 
     //////////////////////// end of save/load ////////////////
 
+        compartment.destroy(1)
     function deleteEverything() {
-        deleteAllNeurons()
         deleteAllVoltmeters()
+        deleteAllNeurons()
     }
 
     function deleteAllNeurons() {
@@ -99,12 +106,17 @@ Rectangle {
         }
     }
 
+
+
+
+
+
     function deleteNeuron(neuron) {
         deselectAll()
         disconnectNeuron(neuron)
         deleteFromList(neurons, neuron)
         deleteFromList(organizedItems, neuron)
-        neuron.destroy()
+        neuron.destroy(1)
         resetOrganize()
     }
 
@@ -125,7 +137,7 @@ Rectangle {
         if(voltmeterIndex > -1) {
             simulatorRoot.voltmeters.splice(voltmeterIndex, 1)
         }
-        voltmeter.destroy()
+        voltmeter.destroy(1)
         resetOrganize()
     }
 
@@ -143,7 +155,7 @@ Rectangle {
         deleteFromList(connections, connection)
         connection.itemA.removeConnection(connection)
         connection.itemB.removeConnection(connection)
-        connection.destroy()
+        connection.destroy(1)
         resetOrganize()
     }
 
@@ -601,6 +613,9 @@ Rectangle {
         onCreateVoltmeter: {
             var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
             simulatorRoot.createVoltmeter(workspacePosition)
+        }
+        onDeleteEverything: {
+            simulatorRoot.deleteEverything()
         }
     }
 

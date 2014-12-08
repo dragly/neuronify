@@ -1,0 +1,32 @@
+neurons{
+	{
+	id:A
+	x:100
+	y:100
+	currentClamp:[1, 30]
+	synapticStrength: 40
+	}
+	{
+	id:B
+	x:200
+	y:100
+	currentClamp:[0, 0]
+	synapticStrength: 40
+	}
+}
+
+synapses{
+	{
+	from:A
+	to:B
+	}
+}
+
+voltmeters{
+	{
+	neurons:[A,B]
+	}
+	{
+	neurons:[A]
+	}
+}
