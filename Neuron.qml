@@ -160,11 +160,11 @@ Rectangle {
         }
 
         function resetPosition() {
-            connector.x = 1.5*neuronRoot.radius - connectorCircle.width / 2
-            connector.y = 1.5*neuronRoot.radius - connectorCircle.height / 2
+            connector.x = neuronRoot.width / 2 + 0.707*neuronRoot.radius - connector.width / 2
+            connector.y = neuronRoot.height / 2 + 0.707*neuronRoot.radius - connector.height / 2
         }
 
-        width: neuronRoot.width * 0.37
+        width: neuronRoot.width * 0.4
         height: width
 
         Rectangle {
