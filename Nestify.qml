@@ -4,6 +4,21 @@ import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
 import "hud"
 
+/*
+  TODO:
+  Post-inhibitory rebound
+  Langvarig depolarisering ved høy frekvens, via kalsiumkanaler. Deaktiveres ved hemming.
+  Bistable
+  Gaffel for eksitatoriskce
+  Gain-synapser med andre symboler, elektriske synapser tegnet som motstand
+  Mulighet til å lagre krets
+  Mulighet til å lagre time-trace
+  Kjøre ting i skyen
+  Aksonene er litt tynne, bør være mer synlige
+  Linjen rundt cellene bør være tykkere
+
+*/
+
 Rectangle {
     id: simulatorRoot
 
