@@ -167,7 +167,7 @@ Rectangle {
 
     //////////////////////// end of save/load ////////////////
 
-        compartment.destroy(1)
+    //    compartment.destroy(1)
     function deleteEverything() {
         deleteAllVoltmeters()
         deleteAllNeurons()
