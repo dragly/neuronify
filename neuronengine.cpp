@@ -1,16 +1,17 @@
 #include "neuronengine.h"
 #include <QDebug>
-NeuronEngine::NeuronEngine():
-    m_cm(1.0),
-    m_voltage(-100.),
-    m_membraneRestingPotential(-65.0),
-    m_synapsePotential(50.0),
-    m_synapticConductance(0.0),
-    m_adaptationConductance(0.0),
+NeuronEngine::NeuronEngine() :
+    m_cm(0),
+    m_voltage(0),
+    m_membraneRestingPotential(0),
+    m_synapsePotential(0),
+    m_synapticConductance(0),
+    m_adaptationConductance(0),
     m_clampCurrentEnabled(false),
-    m_clampCurrent(0.0)
-
+    m_clampCurrent(0)
 {
+    initialize();
+    reset();
 }
 
 double NeuronEngine::voltage() const
@@ -149,6 +150,22 @@ void NeuronEngine::setAdaptationConductance(double arg)
         m_adaptationConductance = arg;
         emit adaptionConductanceChanged(arg);
     }
+}
+
+void NeuronEngine::reset()
+{
+    m_voltage = -100.;
+    m_synapticConductance = 0.0;
+    m_adaptationConductance = 0.0;
+}
+
+void NeuronEngine::initialize()
+{
+    m_cm = 1.0;
+    m_membraneRestingPotential = -65.0;
+    m_synapsePotential = 50.0;
+    m_clampCurrentEnabled = false;
+    m_clampCurrent = 0.0;
 }
 
 

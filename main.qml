@@ -4,8 +4,11 @@ import QtQuick.Layouts 1.0
 
 /*
   TODO:
-    * Create synapses
-    * Remove connection parameters and add area and length parameters to compartments
+  * Select multiple items
+  * Copy+paste
+  * Save state
+  * Motifs
+  * Change background color
 */
 
 ApplicationWindow {

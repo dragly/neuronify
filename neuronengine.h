@@ -37,6 +37,8 @@ public slots:
     void setClampCurrent(double arg);
     void setCm(double arg);
     void setAdaptationConductance(double arg);
+    void reset();
+    void initialize();
 
 signals:
     void voltageChanged(double arg);
