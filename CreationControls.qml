@@ -183,8 +183,7 @@ Rectangle {
 
             text: "Save State"
             onClicked: {
-
-                saveState()
+                saveFileDialog.visible = true
             }
         }
         Button {

@@ -1,32 +1,8 @@
-neurons{
-	{
-	id:A
-	x:100
-	y:100
-	currentClamp:[1, 30]
-	synapticStrength: 40
-	}
-	{
-	id:B
-	x:200
-	y:100
-	currentClamp:[0, 0]
-	synapticStrength: 40
-	}
-}
+var neuron1 = createNeuron({x: 300, y:200})
+var neuron2 = createNeuron({x: 500, y:100})
 
-synapses{
-	{
-	from:A
-	to:B
-	}
-}
+connectNeurons(neuron1, neuron2)
 
-voltmeters{
-	{
-	neurons:[A,B]
-	}
-	{
-	neurons:[A]
-	}
-}
+var voltmeter1 = createVoltmeter({x:300, y:400})
+connectVoltmeterToNeuron(neuron1, voltmeter1)
+connectVoltmeterToNeuron(neuron2,voltmeter1)

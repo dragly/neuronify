@@ -3,6 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
 import "hud"
+import Nestify 1.0
 
 Rectangle {
     id: simulatorRoot
@@ -56,35 +57,113 @@ Rectangle {
 
     //////////////////////// save/load ////////////////
 
+     FileIO {
+         id: loadFileIO
+         source: "none"
+         onError: console.log(msg)
+     }
+
+     FileIO {
+         id: saveFileIO
+         source: "none"
+         onError: console.log(msg)
+     }
+
 
 
     function saveState(){
-        for(var i in neurons) {
-            console.log("balle")
+        if (!String.format) {
+          String.format = function(format) {
+            var args = Array.prototype.slice.call(arguments, 1);
+            return format.replace(/{(\d+)}/g, function(match, number) {
+              return typeof args[number] != 'undefined'
+                ? args[number]
+                : match
+              ;
+            });
+          };
         }
+
+        var fileString = ""
+
+        console.log("You chose: " + saveFileDialog.fileUrl)
+
+        var counter = 0
+        for(var i in neurons) {
+            var neuron = neurons[i]
+            console.log(neuron.x)
+            var ss = "var neuron{0} = createNeuron({x: {1}, y: {2}, clampCurrent: {3}, clampCurrentEnabled: {4}, adaptationIncreaseOnFire: {5}, outputStimulation: {6}})"
+            ss = String.format(ss,i.toString(),neuron.x, neuron.y, neuron.clampCurrent,
+              neuron.clampCurrentEnabled, neuron.adaptationIncreaseOnFire, neuron.outputStimulation)
+            console.log(ss)
+            fileString += ss + "\n"
+        }
+
+        for(var i in neurons) {
+            var neuron = neurons[i]
+            for(var j in neuron.connections){
+                var toNeuron = neuron.connections[j].itemB
+                var indexOfToNeuron = neurons.indexOf(toNeuron)
+                fileString += String.format("connectNeurons(neuron{0}, neuron{1}) \n",i,indexOfToNeuron)
+            }
+        }
+
+        for(var i in voltmeters){
+            var voltmeter = voltmeters[i]
+            fileString += String.format("var voltmeter{0} = createVoltmeter({x: {1}, y:{2}}) \n", i, voltmeter.x, voltmeter.y)
+            var neuronIndex = neurons.indexOf(voltmeter.connectionPlots[0].connection.itemA)
+            fileString += String.format("connectVoltmeterToNeuron(neuron{0}, voltmeter{1}) \n",neuronIndex, i)
+        }
+
+
+
+        saveFileIO.source = saveFileDialog.fileUrl
+        saveFileIO.write(fileString)
     }
 
     function loadState(){
+        deleteEverything()
+        console.log("You chose: " + loadFileDialog.fileUrl)
+        loadFileIO.source = loadFileDialog.fileUrl
+        var stateFile = loadFileIO.read()
+        console.log(stateFile)
+        eval(stateFile)
+    }
+
+
+    FileDialog {
+        id: saveFileDialog
+        title: "Please eneter a filename"
+        visible : false
+        selectExisting: false
+        nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+        Component.onCompleted: {
+        }
+
+        onAccepted: {
+            saveState()
+        }
+
+        onRejected: {
+            console.log("Cancelled")
+        }
     }
 
     FileDialog {
         id: loadFileDialog
         title: "Please choose a file"
         visible : false
+        nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
         Component.onCompleted: {
-
         }
+
         onAccepted: {
-            console.log("Accepted")
-            deleteEverything()
-
-
+            loadState()
         }
+
         onRejected: {
-            console.log("Canceled")
+            console.log("Cancelled")
         }
-
-
     }
 
 
