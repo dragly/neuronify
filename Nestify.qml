@@ -16,7 +16,11 @@ import "hud"
   Kjøre ting i skyen
   Aksonene er litt tynne, bør være mer synlige
   Linjen rundt cellene bør være tykkere
-
+  Lyd når cellene fyrer av
+  Pinch to zoom
+  To plott over hverandre
+  Koble to kretser sammen etter å ha zoomet ut
+  Mulighet til å lagre moduler
 */
 
 Rectangle {
