@@ -3,6 +3,26 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
 import "hud"
+import Nestify 1.0
+
+/*
+  TODO:
+  Post-inhibitory rebound
+  Langvarig depolarisering ved høy frekvens, via kalsiumkanaler. Deaktiveres ved hemming.
+  Bistable
+  Gaffel for eksitatoriskce
+  Gain-synapser med andre symboler, elektriske synapser tegnet som motstand
+  Mulighet til å lagre krets
+  Mulighet til å lagre time-trace
+  Kjøre ting i skyen
+  Aksonene er litt tynne, bør være mer synlige
+  Linjen rundt cellene bør være tykkere
+  Lyd når cellene fyrer av
+  Pinch to zoom
+  To plott over hverandre
+  Koble to kretser sammen etter å ha zoomet ut
+  Mulighet til å lagre moduler
+*/
 
 Rectangle {
     id: simulatorRoot
@@ -12,11 +32,9 @@ Rectangle {
     property var connections: [] // List used to deselect all connections
     property var organizedItems: []
     property var organizedConnections: []
-    property var compartments: []
     property var neurons: []
     property var selectedNeurons: []
     property var copiedNeurons: []
-    property var synapses: []
     property var voltmeters: []
     property real currentTimeStep: 0.0
     property real time: 0.0
@@ -30,12 +48,12 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        var previousCompartment = undefined
-        var previousCompartment2 = undefined
+        var previousNeuron = undefined
+        var previousNeuron2 = undefined
         for(var i = 0; i < 2; i++) {
             var neuron = createNeuron({x: 300 + i * 100, y: 200 + (Math.random()) * 10})
-            if(previousCompartment) {
-                connectNeurons(previousCompartment, neuron)
+            if(previousNeuron) {
+                connectNeurons(previousNeuron, neuron)
             }
             if(i === 0) {
                 neuron.clampCurrent = 75.0
@@ -43,7 +61,7 @@ Rectangle {
             }
             var voltmeter = createVoltmeter({x: 300 + i * 200, y: 400})
             connectVoltmeterToNeuron(neuron, voltmeter)
-            previousCompartment = neuron
+            previousNeuron = neuron
         }
     }
 
@@ -56,46 +74,122 @@ Rectangle {
 
     //////////////////////// save/load ////////////////
 
+     FileIO {
+         id: loadFileIO
+         source: "none"
+         onError: console.log(msg)
+     }
+
+     FileIO {
+         id: saveFileIO
+         source: "none"
+         onError: console.log(msg)
+     }
+
 
 
     function saveState(){
-        for(var i in neurons) {
-            console.log("balle")
+        if (!String.format) {
+          String.format = function(format) {
+            var args = Array.prototype.slice.call(arguments, 1);
+            return format.replace(/{(\d+)}/g, function(match, number) {
+              return typeof args[number] != 'undefined'
+                ? args[number]
+                : match
+              ;
+            });
+          };
         }
+
+        var fileString = ""
+
+        console.log("You chose: " + saveFileDialog.fileUrl)
+
+        var counter = 0
+        for(var i in neurons) {
+            var neuron = neurons[i]
+            console.log(neuron.x)
+            var ss = "var neuron{0} = createNeuron({x: {1}, y: {2}, clampCurrent: {3}, clampCurrentEnabled: {4}, adaptationIncreaseOnFire: {5}, outputStimulation: {6}})"
+            ss = String.format(ss,i.toString(),neuron.x, neuron.y, neuron.clampCurrent,
+              neuron.clampCurrentEnabled, neuron.adaptationIncreaseOnFire, neuron.outputStimulation)
+            console.log(ss)
+            fileString += ss + "\n"
+        }
+
+        for(var i in neurons) {
+            var neuron = neurons[i]
+            for(var j in neuron.connections){
+                var toNeuron = neuron.connections[j].itemB
+                var indexOfToNeuron = neurons.indexOf(toNeuron)
+                fileString += String.format("connectNeurons(neuron{0}, neuron{1}) \n",i,indexOfToNeuron)
+            }
+        }
+
+        for(var i in voltmeters){
+            var voltmeter = voltmeters[i]
+            fileString += String.format("var voltmeter{0} = createVoltmeter({x: {1}, y:{2}}) \n", i, voltmeter.x, voltmeter.y)
+            var neuronIndex = neurons.indexOf(voltmeter.connectionPlots[0].connection.itemA)
+            fileString += String.format("connectVoltmeterToNeuron(neuron{0}, voltmeter{1}) \n",neuronIndex, i)
+        }
+
+
+
+        saveFileIO.source = saveFileDialog.fileUrl
+        saveFileIO.write(fileString)
     }
 
     function loadState(){
-
+        deleteEverything()
+        console.log("You chose: " + loadFileDialog.fileUrl)
+        loadFileIO.source = loadFileDialog.fileUrl
+        var stateFile = loadFileIO.read()
+        console.log(stateFile)
+        eval(stateFile)
     }
 
 
     FileDialog {
+        id: saveFileDialog
+        title: "Please eneter a filename"
+        visible : false
+        selectExisting: false
+        nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+        Component.onCompleted: {
+        }
+
+        onAccepted: {
+            saveState()
+        }
+
+        onRejected: {
+            console.log("Cancelled")
+        }
+    }
+
+    FileDialog {
         id: loadFileDialog
         title: "Please choose a file"
+        visible : false
+        nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+        Component.onCompleted: {
+        }
+
         onAccepted: {
-            console.log("You chose: " + loadFileDialog.fileUrls)
+            loadState()
         }
+
         onRejected: {
-            console.log("Canceled")
+            console.log("Cancelled")
         }
-        Component.onCompleted: visible = false
     }
 
 
     //////////////////////// end of save/load ////////////////
 
-    function deleteCompartment(compartment) {
-        deselectAll()
-        disconnectCompartment(compartment)
-        deleteFromList(compartments, compartment)
-        deleteFromList(organizedItems, compartment)
-        compartment.destroy()
-        resetOrganize()
-    }
-
+    //    compartment.destroy(1)
     function deleteEverything() {
-        deleteAllNeurons()
         deleteAllVoltmeters()
+        deleteAllNeurons()
     }
 
     function deleteAllNeurons() {
@@ -110,12 +204,17 @@ Rectangle {
         }
     }
 
+
+
+
+
+
     function deleteNeuron(neuron) {
         deselectAll()
         disconnectNeuron(neuron)
         deleteFromList(neurons, neuron)
         deleteFromList(organizedItems, neuron)
-        neuron.destroy()
+        neuron.destroy(1)
         resetOrganize()
     }
 
@@ -136,7 +235,7 @@ Rectangle {
         if(voltmeterIndex > -1) {
             simulatorRoot.voltmeters.splice(voltmeterIndex, 1)
         }
-        voltmeter.destroy()
+        voltmeter.destroy(1)
         resetOrganize()
     }
 
@@ -154,16 +253,7 @@ Rectangle {
         deleteFromList(connections, connection)
         connection.itemA.removeConnection(connection)
         connection.itemB.removeConnection(connection)
-        connection.destroy()
-        resetOrganize()
-    }
-
-    function disconnectCompartment(compartment) {
-        var connectionsToDelete = compartment.connections.concat(compartment.passiveConnections)
-        for(var i in connectionsToDelete) {
-            var connection = connectionsToDelete[i]
-            deleteConnection(connection)
-        }
+        connection.destroy(1)
         resetOrganize()
     }
 
@@ -286,30 +376,20 @@ Rectangle {
 
     function selectAll() {
         connectionControls.connection = null
-        compartmentControls.compartment = null
         voltmeterControls.voltmeter = null
         neuronControls.neuron = null
         selectAllInList(connections)
-        selectAllInList(compartments)
         selectAllInList(voltmeters)
         selectAllInList(neurons)
     }
 
     function deselectAll() {
         connectionControls.connection = null
-        compartmentControls.compartment = null
         voltmeterControls.voltmeter = null
         neuronControls.neuron = null
         deselectAllInList(connections)
-        deselectAllInList(compartments)
         deselectAllInList(voltmeters)
         deselectAllInList(neurons)
-    }
-
-    function clickedCompartment(compartment) {
-        deselectAll()
-        compartmentControls.compartment = compartment
-        compartment.selected = true
     }
 
     function clickedNeuron(neuron, mouse) {
@@ -341,13 +421,6 @@ Rectangle {
 
     }
 
-
-    function clickedSynapse(synapse) {
-        deselectAll()
-        //        compartmentControls.compartment = compartment
-        synapse.selected = true
-    }
-
     function clickedConnection(connection) {
         deselectAll()
         connectionControls.connection = connection
@@ -375,36 +448,6 @@ Rectangle {
         return neuron
     }
 
-    function createCompartment(properties) {
-        var component = Qt.createComponent("Compartment.qml")
-        var compartment = component.createObject(neuronLayer, properties)
-        compartment.x = Math.max(compartment.x, creationControls.width)
-        compartment.dragStarted.connect(resetOrganize)
-        compartment.widthChanged.connect(resetOrganize)
-        compartment.heightChanged.connect(resetOrganize)
-        compartment.clicked.connect(clickedCompartment)
-        compartment.droppedConnector.connect(createConnectionToPoint)
-        compartments.push(compartment)
-        organizedItems.push(compartment)
-        resetOrganize()
-        return compartment
-    }
-
-    function createSynapse(properties) {
-        var component = Qt.createComponent("Synapse.qml")
-        var synapse = component.createObject(neuronLayer, properties)
-        synapse.x = Math.max(synapse.x, creationControls.width)
-        synapse.dragStarted.connect(resetOrganize)
-        synapse.widthChanged.connect(resetOrganize)
-        synapse.heightChanged.connect(resetOrganize)
-        synapse.clicked.connect(clickedSynapse)
-        //        synapse.droppedConnector.connect(createConnectionToPoint)
-        synapses.push(synapse)
-        organizedItems.push(synapse)
-        resetOrganize()
-        return synapse
-    }
-
     function createVoltmeter(properties) {
         var component = Qt.createComponent("Voltmeter.qml")
         var voltmeter = component.createObject(neuronLayer, properties)
@@ -425,16 +468,6 @@ Rectangle {
         return connection
     }
 
-    function connectCompartments(itemA, itemB) {
-        var connection = createConnection(itemA, itemB)
-        itemA.addConnection(connection)
-        itemB.addConnection(connection)
-        organizedConnections.push(connection)
-        connections.push(connection)
-        resetOrganize()
-        return connection
-    }
-
     function connectNeurons(itemA, itemB) {
         var connection = createConnection(itemA, itemB)
         itemA.addConnection(connection)
@@ -445,27 +478,12 @@ Rectangle {
         return connection
     }
 
-    function connectVoltmeter(compartment, voltmeter) {
-        var connection = createConnection(compartment, voltmeter)
-        voltmeter.addConnection(connection)
-        compartment.addPassiveConnection(connection)
-        connections.push(connection)
-    }
-
     function connectVoltmeterToNeuron(neuron, voltmeter) {
         var connection = createConnection(neuron, voltmeter)
         voltmeter.addConnection(connection)
         neuron.addPassiveConnection(connection)
         connections.push(connection)
         return connection
-    }
-
-    function connectSynapse(compartment, synapse, connector) {
-        var compartmentUnderConnector = synapse.compartmentUnderConnector(compartment.mapToItem(synapse, connector.x, connector.y))
-        var connection = createConnection(compartment, compartmentUnderConnector)
-        compartment.addConnection(connection)
-        compartmentUnderConnector.addConnection(connection)
-        connections.push(connection)
     }
 
     function connectionExists(itemA, itemB) {
@@ -482,14 +500,6 @@ Rectangle {
     }
 
     function createConnectionToPoint(itemA, connector) {
-        var targetSynapse = itemUnderConnector(synapses, itemA, connector)
-        if(targetSynapse) {
-            if(!connectionExists(itemA, targetSynapse)) {
-                connectSynapse(itemA, targetSynapse, connector)
-                return
-            }
-        }
-
         var targetVoltmeter = itemUnderConnector(voltmeters, itemA, connector)
         if(targetVoltmeter) {
             if(!connectionExists(itemA, targetVoltmeter)) {
@@ -510,18 +520,6 @@ Rectangle {
             connectNeurons(itemA, targetNeuron)
             return
         }
-
-        var itemB = itemUnderConnector(compartments, itemA, connector)
-        if(!itemB) {
-            return
-        }
-        if(itemB === itemA) {
-            return
-        }
-        if(connectionExists(itemA, itemB)) {
-            return
-        }
-        connectCompartments(itemA, itemB)
     }
 
     function resetOrganize() {
@@ -642,6 +640,7 @@ Rectangle {
 
     Item {
         id: workspaceFlickable
+
         anchors.fill: parent
         //        contentWidth: 3840 // * workspace.scale
         //        contentHeight: 2160 // * workspace.scale
@@ -675,6 +674,7 @@ Rectangle {
 
         Item {
             id: workspace
+            property alias color: workspaceRectangle.color
 
             width: 3840
             height: 2160
@@ -685,6 +685,7 @@ Rectangle {
             }
 
             Rectangle {
+                id: workspaceRectangle
                 anchors.fill: parent
                 color: "#f7fbff"
             }
@@ -709,24 +710,12 @@ Rectangle {
             simulatorRoot.createNeuron(workspacePosition)
         }
 
-        onCreateCompartment: {
-            var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
-            simulatorRoot.createCompartment(workspacePosition)
-        }
-
         onCreateVoltmeter: {
             var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
             simulatorRoot.createVoltmeter(workspacePosition)
         }
-    }
-
-    CompartmentControls {
-        id: compartmentControls
-        onDisconnectClicked: {
-            simulatorRoot.disconnectCompartment(compartment)
-        }
-        onDeleteClicked: {
-            simulatorRoot.deleteCompartment(compartment)
+        onDeleteEverything: {
+            simulatorRoot.deleteEverything()
         }
     }
 
@@ -798,9 +787,9 @@ Rectangle {
 
                 text: "Reset!"
                 onClicked: {
-                    for(var i in compartments) {
-                        var compartment = compartments[i]
-                        compartment.reset()
+                    for(var i in neurons) {
+                        var neuron = neurons[i]
+                        neuron.reset()
                     }
                 }
             }
@@ -849,29 +838,13 @@ Rectangle {
             dt = Math.min(0.050, dt)
             currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
             time += dt
-            for(var i in compartments) {
-                var compartment = compartments[i]
-                compartment.stepForward(dt)
-            }
             for(var i in neurons) {
                 var neuron = neurons[i]
                 neuron.stepForward(dt)
             }
-            for(var i in synapses) {
-                var synapse = synapses[i]
-                synapse.stepForward(dt)
-            }
-            for(var i in compartments) {
-                var compartment = compartments[i]
-                compartment.finalizeStep()
-            }
             for(var i in neurons) {
                 var neuron = neurons[i]
                 neuron.finalizeStep(dt)
-            }
-            for(var i in synapses) {
-                var synapse = synapses[i]
-                synapse.finalizeStep()
             }
             for(var i in voltmeters) {
                 var voltmeter = voltmeters[i]
@@ -898,8 +871,6 @@ Rectangle {
         if(event.key === Qt.Key_Delete) {
             if(voltmeterControls.voltmeter) {
                 deleteVoltmeter(voltmeterControls.voltmeter)
-            } else if(compartmentControls.compartment) {
-                deleteCompartment(compartmentControls.compartment)
             } else if(neuronControls.neuron) {
                 deleteNeuron(neuronControls.neuron)
             }

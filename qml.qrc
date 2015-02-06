@@ -1,22 +1,20 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>Compartment.qml</file>
         <file>Plot.qml</file>
         <file>Connection.qml</file>
         <file>paths/BezierCurve.qml</file>
         <file>paths/SCurve.qml</file>
         <file>Voltmeter.qml</file>
         <file>hud/PropertiesPanel.qml</file>
-        <file>hud/CompartmentControls.qml</file>
         <file>hud/VoltmeterControls.qml</file>
         <file>hud/ConnectionControls.qml</file>
         <file>CreationControls.qml</file>
-        <file>Synapse.qml</file>
         <file>GraphItem.qml</file>
         <file>Neuron.qml</file>
         <file>hud/NeuronControls.qml</file>
         <file>paths/Line.qml</file>
         <file>Nestify.qml</file>
+        <file>CreationItem.qml</file>
     </qresource>
 </RCC>

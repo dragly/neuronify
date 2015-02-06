@@ -45,7 +45,6 @@ PropertiesPanel {
             }
         }
 
-
         Button {
             text: "Delete"
             onClicked: {

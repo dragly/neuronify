@@ -1,16 +1,17 @@
 #include "neuronengine.h"
 #include <QDebug>
-NeuronEngine::NeuronEngine():
-    m_cm(1.0),
-    m_voltage(-100.),
-    m_membraneRestingPotential(-65.0),
-    m_synapsePotential(50.0),
-    m_synapticConductance(0.0),
-    m_adaptationConductance(0.0),
+NeuronEngine::NeuronEngine() :
+    m_cm(0),
+    m_voltage(0),
+    m_membraneRestingPotential(0),
+    m_synapsePotential(0),
+    m_synapticConductance(0),
+    m_adaptationConductance(0),
     m_clampCurrentEnabled(false),
-    m_clampCurrent(0.0)
-
+    m_clampCurrent(0)
 {
+    initialize();
+    reset();
 }
 
 double NeuronEngine::voltage() const
@@ -62,6 +63,37 @@ void NeuronEngine::setVoltage(double arg)
     }
 }
 
+void NeuronEngine::stepForward(double dt)
+{
+
+    double gs = m_synapticConductance;
+    double dgs = -gs / 1.0 * dt;
+    double gadapt = m_adaptationConductance;
+    double dgadapt = -gadapt / 1.0 * dt;
+
+    double V = m_voltage;
+    double Rm = 1.0;
+    double Em = m_membraneRestingPotential;
+    double Es = m_synapsePotential;
+    double Is = gs * (V - Es);
+    double Iadapt = gadapt * (V - Em);
+    double Iauto = 0.0;
+    if(m_clampCurrentEnabled) {
+        Iauto = m_clampCurrent;
+    }
+
+    double voltageChange = 1.0 / m_cm * (- (V - Em) / Rm) - Is - Iadapt + Iauto;
+    double dV = voltageChange * dt;
+    m_voltage += dV;
+
+    m_synapticConductance = gs + dgs;
+//        m_synapticConductance = Math.max(-0.5, m_synapticConductance);
+    m_adaptationConductance = gadapt + dgadapt;
+
+    emit voltageChanged(m_voltage);
+    emit synapticConductanceChanged(m_synapticConductance);
+    emit adaptionConductanceChanged(m_adaptationConductance);
+}
 
 void NeuronEngine::setSynapticConductance(double arg)
 {
@@ -120,34 +152,19 @@ void NeuronEngine::setAdaptationConductance(double arg)
     }
 }
 
-void NeuronEngine::stepForward(double dt)
+void NeuronEngine::reset()
 {
+    m_voltage = -100.;
+    m_synapticConductance = 0.0;
+    m_adaptationConductance = 0.0;
+}
 
-    double gs = m_synapticConductance;
-    double dgs = -gs / 1.0 * dt;
-    double gadapt = m_adaptationConductance;
-    double dgadapt = -gadapt / 1.0 * dt;
-
-    double V = m_voltage;
-    double Rm = 1.0;
-    double Em = m_membraneRestingPotential;
-    double Es = m_synapsePotential;
-    double Is = gs * (V - Es);
-    double Iadapt = gadapt * (V - Em);
-    double Iauto = 0.0;
-    if(m_clampCurrentEnabled) {
-        Iauto = m_clampCurrent;
-    }
-
-    double voltageChange = 1.0 / m_cm * (- (V - Em) / Rm) - Is - Iadapt + Iauto;
-    double dV = voltageChange * dt;
-    m_voltage += dV;
-
-    m_synapticConductance = gs + dgs;
-    m_adaptationConductance = gadapt + dgadapt;
-
-    emit voltageChanged(m_voltage);
-    emit synapticConductanceChanged(m_synapticConductance);
-    emit adaptionConductanceChanged(m_adaptationConductance);
+void NeuronEngine::initialize()
+{
+    m_cm = 1.0;
+    m_membraneRestingPotential = -65.0;
+    m_synapsePotential = 50.0;
+    m_clampCurrentEnabled = false;
+    m_clampCurrent = 0.0;
 }
 
