@@ -62,37 +62,6 @@ void NeuronEngine::setVoltage(double arg)
     }
 }
 
-void NeuronEngine::stepForward(double dt)
-{
-
-    double gs = m_synapticConductance;
-    double dgs = -gs / 1.0 * dt;
-    double gadapt = m_adaptationConductance;
-    double dgadapt = -gadapt / 1.0 * dt;
-
-    double V = m_voltage;
-    double Rm = 1.0;
-    double Em = m_membraneRestingPotential;
-    double Es = m_synapsePotential;
-    double Is = gs * (V - Es);
-    double Iadapt = gadapt * (V - Em);
-    double Iauto = 0.0;
-    if(m_clampCurrentEnabled) {
-        Iauto = m_clampCurrent;
-    }
-
-    double voltageChange = 1.0 / m_cm * (- (V - Em) / Rm) - Is - Iadapt + Iauto;
-    double dV = voltageChange * dt;
-    m_voltage += dV;
-
-    m_synapticConductance = gs + dgs;
-//        m_synapticConductance = Math.max(-0.5, m_synapticConductance);
-    m_adaptationConductance = gadapt + dgadapt;
-
-    emit voltageChanged(m_voltage);
-    emit synapticConductanceChanged(m_synapticConductance);
-    emit adaptionConductanceChanged(m_adaptationConductance);
-}
 
 void NeuronEngine::setSynapticConductance(double arg)
 {
@@ -151,4 +120,34 @@ void NeuronEngine::setAdaptationConductance(double arg)
     }
 }
 
+void NeuronEngine::stepForward(double dt)
+{
+
+    double gs = m_synapticConductance;
+    double dgs = -gs / 1.0 * dt;
+    double gadapt = m_adaptationConductance;
+    double dgadapt = -gadapt / 1.0 * dt;
+
+    double V = m_voltage;
+    double Rm = 1.0;
+    double Em = m_membraneRestingPotential;
+    double Es = m_synapsePotential;
+    double Is = gs * (V - Es);
+    double Iadapt = gadapt * (V - Em);
+    double Iauto = 0.0;
+    if(m_clampCurrentEnabled) {
+        Iauto = m_clampCurrent;
+    }
+
+    double voltageChange = 1.0 / m_cm * (- (V - Em) / Rm) - Is - Iadapt + Iauto;
+    double dV = voltageChange * dt;
+    m_voltage += dV;
+
+    m_synapticConductance = gs + dgs;
+    m_adaptationConductance = gadapt + dgadapt;
+
+    emit voltageChanged(m_voltage);
+    emit synapticConductanceChanged(m_synapticConductance);
+    emit adaptionConductanceChanged(m_adaptationConductance);
+}
 

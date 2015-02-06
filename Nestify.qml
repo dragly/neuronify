@@ -234,9 +234,11 @@ Rectangle {
 
     function copyNeurons() {
         copiedNeurons = []
+        var copiedNeuron = []
         for(var i in selectedNeurons) {
             var neuron = selectedNeurons[i]
-            copiedNeurons.push(neuron)
+            copiedNeuron = neuron
+            copiedNeurons.push(copiedNeuron)
         }
         selectedNeurons = []
     }
