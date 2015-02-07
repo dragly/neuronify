@@ -168,4 +168,3 @@ void NeuronEngine::initialize()
     m_clampCurrent = 0.0;
 }
 
-
