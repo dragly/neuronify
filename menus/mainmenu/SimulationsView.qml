@@ -10,7 +10,8 @@ Item {
 
     property var simulations: [
         "empty",
-        "dummy"
+        "dummy",
+        "lateralInhibition"
     ]
 
     Component.onCompleted: {

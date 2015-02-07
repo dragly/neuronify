@@ -1,0 +1,8 @@
+import QtQuick 2.0
+import "../.."
+
+Simulation {
+    name: "Lateral Inhibition"
+    description: "The output neuron responds selectively to a signal that moves from right to left but not a signal that moves from left to right"
+}
+
