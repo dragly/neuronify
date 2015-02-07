@@ -6,5 +6,8 @@
         <file>simulations/dummy/dummy.nfy</file>
         <file>simulations/dummy/dummy.png</file>
         <file>simulations/dummy/dummy.qml</file>
+        <file>simulations/lateralInhibition/lateralInhibition.qml</file>
+        <file>simulations/lateralInhibition/lateralInhibition.png</file>
+        <file>simulations/lateralInhibition/lateralInhibition.nfy</file>
     </qresource>
 </RCC>
