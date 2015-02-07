@@ -14,8 +14,8 @@ import QtQuick.Layouts 1.0
 ApplicationWindow {
     id: applicationWindow1
     visible: true
-    width: 1280
-    height: 800
+    width: 1136
+    height: 640
     title: qsTr("Neuronify")
 
     Nestify {

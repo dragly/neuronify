@@ -390,7 +390,6 @@ Rectangle {
     function createNeuron(properties) {
         var component = Qt.createComponent("Neuron.qml")
         var neuron = component.createObject(neuronLayer, properties)
-        neuron.x = Math.max(neuron.x, creationControls.width)
         neuron.dragStarted.connect(resetOrganize)
         neuron.widthChanged.connect(resetOrganize)
         neuron.heightChanged.connect(resetOrganize)
@@ -405,7 +404,6 @@ Rectangle {
     function createVoltmeter(properties) {
         var component = Qt.createComponent("Voltmeter.qml")
         var voltmeter = component.createObject(neuronLayer, properties)
-        voltmeter.x = Math.max(voltmeter.x, creationControls.width)
         voltmeters.push(voltmeter)
         voltmeter.clicked.connect(clickedVoltmeter)
         resetOrganize()
@@ -579,10 +577,10 @@ Rectangle {
             item.x += item.velocity.x * dt
             item.y += item.velocity.y * dt
 
-            item.x = Math.max(item.x, creationControls.width - item.width * 0.5)
-            item.y = Math.max(item.y,  - item.height * 0.5)
+            item.x = Math.max(item.x, - item.width * 0.5)
+            item.y = Math.max(item.y, - item.height * 0.5)
             item.x = Math.min(item.x, neuronLayer.width - item.width * 0.5)
-            item.y = Math.min(item.y, neuronLayer.height - playbackControls.height - item.height  * 0.5)
+            item.y = Math.min(item.y, neuronLayer.height - item.height  * 0.5)
         }
 
         if(maxAppliedSpeed < minSpeed && !anyDragging) {
@@ -669,15 +667,19 @@ Rectangle {
 
     }
 
+    MainMenuButton {
+        revealed: !mainMenu.revealed
+    }
+
     CreationControls {
         id: creationControls
         onCreateNeuron: {
-            var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
+            var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
             simulatorRoot.createNeuron(workspacePosition)
         }
 
         onCreateVoltmeter: {
-            var workspacePosition = simulatorRoot.mapToItem(neuronLayer, position.x, position.y)
+            var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
             simulatorRoot.createVoltmeter(workspacePosition)
         }
         onDeleteEverything: {
@@ -706,132 +708,6 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        id: playbackControls
-
-        property real speed: Math.pow(10, playbackSpeedSlider.value)
-
-        anchors {
-            bottom: parent.bottom
-            left: parent.left
-            right: parent.right
-        }
-        height: parent.height * 0.08
-
-        color: "#deebf7"
-        border.color: "#9ecae1"
-        border.width: 1.0
-
-        RowLayout {
-            spacing: 10
-            anchors.fill: parent
-            anchors.margins: 10
-
-            CheckBox {
-                id: playingCheckbox
-                text: "Simulate"
-                checked: true
-            }
-
-            Text {
-                text: "Speed: "
-            }
-
-            Slider {
-                id: playbackSpeedSlider
-                minimumValue: -1
-                maximumValue: 1.2
-                Layout.fillWidth: true
-            }
-
-            Text {
-                text: playbackControls.speed.toFixed(1) + " x"
-            }
-
-            Button {
-                id: resetButton
-
-                text: "Reset!"
-                onClicked: {
-                    for(var i in neurons) {
-                        var neuron = neurons[i]
-                        neuron.reset()
-                    }
-                }
-            }
-
-            Text {
-                text: "dt: " + currentTimeStep.toFixed(3)
-            }
-
-            Text {
-                text: "Time: " + time.toFixed(3) + " ms"
-            }
-
-            Item {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-            }
-        }
-    }
-
-    Item {
-        id: mainMenuButton
-        property bool revealed: !mainMenu.revealed
-
-        anchors {
-            top: parent.top
-            right: parent.right
-        }
-        width: Style.touchableSize * 2.5
-        height: width
-
-        enabled: revealed
-        state: revealed ? "revealed" : "hidden"
-
-        states: [
-            State {
-                name: "hidden"
-                PropertyChanges {
-                    target: mainMenuButton
-                    opacity: 0.0
-                }
-            },
-            State {
-                name: "revealed"
-                PropertyChanges {
-                    target: mainMenuButton
-                    opacity: 1.0
-                }
-            }
-        ]
-
-        transitions: [
-            Transition {
-                NumberAnimation {
-                    properties: "opacity"
-                    duration: 200
-                    easing.type: Easing.InOutQuad
-                }
-            }
-        ]
-
-        Image {
-            anchors {
-                fill: parent
-                margins: parent.width * 0.2
-            }
-            source: "images/systems.png"
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onPressed: {
-                mainMenu.revealed = true
-            }
-        }
-    }
-
     MainMenu {
         id: mainMenu
         anchors.fill: parent
@@ -854,8 +730,8 @@ Rectangle {
     }
 
     Timer {
-        interval: 1
-        running: playingCheckbox.checked
+        interval: 16
+        running: !mainMenu.revealed
         repeat: true
         onRunningChanged: {
             if(running) {
@@ -868,7 +744,6 @@ Rectangle {
             var dt = (currentTime - lastStepTime) / 1000
             var trueDt = dt
             dt *= 3.0
-            dt *= playbackControls.speed
             dt = Math.min(0.050, dt)
             currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
             time += dt
@@ -885,29 +760,6 @@ Rectangle {
                 voltmeter.stepForward(dt)
             }
             lastStepTime = currentTime
-        }
-    }
-
-    Keys.onPressed: {
-        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
-            selectAllNeurons()
-            console.log("select all")
-        }
-        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
-            copyNeurons()
-            console.log("copy")
-        }
-        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
-            pasteNeurons()
-            console.log("paste")
-        }
-
-        if(event.key === Qt.Key_Delete) {
-            if(voltmeterControls.voltmeter) {
-                deleteVoltmeter(voltmeterControls.voltmeter)
-            } else if(neuronControls.neuron) {
-                deleteNeuron(neuronControls.neuron)
-            }
         }
     }
 
@@ -951,6 +803,29 @@ Rectangle {
 
          onAccepted: {
              loadState(fileUrl)
+         }
+     }
+
+     Keys.onPressed: {
+         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
+             selectAllNeurons()
+             console.log("select all")
+         }
+         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
+             copyNeurons()
+             console.log("copy")
+         }
+         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
+             pasteNeurons()
+             console.log("paste")
+         }
+
+         if(event.key === Qt.Key_Delete) {
+             if(voltmeterControls.voltmeter) {
+                 deleteVoltmeter(voltmeterControls.voltmeter)
+             } else if(neuronControls.neuron) {
+                 deleteNeuron(neuronControls.neuron)
+             }
          }
      }
 }

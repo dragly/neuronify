@@ -21,7 +21,7 @@ Item {
         width: mainMenuView.width * 0.4
         spacing: mainMenuView.width * 0.02
 //                height: mainMenuRoot.width * 0.4
-        MainMenuButton {
+        MenuButton {
             height: mainMenuView.width * 0.07
             width: parent.width
             text: "Continue simulation"
@@ -29,7 +29,7 @@ Item {
                 continueClicked()
             }
         }
-        MainMenuButton {
+        MenuButton {
             height: mainMenuView.width * 0.07
             width: parent.width
             text: "Select simulation"
@@ -37,7 +37,7 @@ Item {
                 simulationsClicked()
             }
         }
-        MainMenuButton {
+        MenuButton {
             height: mainMenuView.width * 0.07
             width: parent.width
             text: "About"

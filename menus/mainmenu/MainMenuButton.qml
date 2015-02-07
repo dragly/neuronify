@@ -2,50 +2,59 @@ import QtQuick 2.0
 import "../../style"
 
 Item {
-    id: buttonRoot
-    signal clicked
-    property alias text: buttonText.text
-    property real maximumRotation: Math.random() * 5 + 5
+    id: mainMenuButton
+    property bool revealed: true
 
-    smooth: true
+    anchors {
+        top: parent.top
+        left: parent.left
+    }
+    width: Style.touchableSize * 2.5
+    height: width
 
-    transform: Rotation { id: rotationTransform
-        origin.x: 30
-        origin.y: 30
-        axis {
-            x: 0
-            y: 1
-            z: 0
+    enabled: revealed
+    state: revealed ? "revealed" : "hidden"
+
+    states: [
+        State {
+            name: "hidden"
+            PropertyChanges {
+                target: mainMenuButton
+                opacity: 0.0
+            }
+        },
+        State {
+            name: "revealed"
+            PropertyChanges {
+                target: mainMenuButton
+                opacity: 1.0
+            }
         }
-        angle: 0
-    }
+    ]
 
-    Rectangle {
-        anchors.fill: parent
-        color: Style.button.color
-        antialiasing: true
-    }
+    transitions: [
+        Transition {
+            NumberAnimation {
+                properties: "opacity"
+                duration: 200
+                easing.type: Easing.InOutQuad
+            }
+        }
+    ]
 
-    Text {
-        id: buttonText
+    Image {
         anchors {
-            left: parent.left
-            leftMargin: Style.touchableSize
-            verticalCenter: parent.verticalCenter
+            fill: parent
+            margins: parent.width * 0.2
         }
-
-        text: "Begin"
-        font.pixelSize: Style.button.fontSize
-        font.weight: Font.Light
-        font.family: "Roboto"
-        renderType: Text.QtRendering
-        color: Style.button.fontColor
+        source: "../../images/menus/mainmenu.png"
     }
 
     MouseArea {
         anchors.fill: parent
         onClicked: {
-            buttonRoot.clicked()
+            mainMenu.revealed = true
         }
     }
 }
+

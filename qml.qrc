@@ -18,7 +18,7 @@
         <file>CreationItem.qml</file>
         <file>menus/mainmenu/MainMenu.qml</file>
         <file>style/Style.qml</file>
-        <file>menus/mainmenu/MainMenuButton.qml</file>
+        <file>menus/mainmenu/MenuButton.qml</file>
         <file>style/qmldir</file>
         <file>menus/mainmenu/MainMenuView.qml</file>
         <file>menus/mainmenu/SimulationsView.qml</file>
@@ -27,5 +27,7 @@
         <file>tools/SimulationLoader.qml</file>
         <file>menus/Heading.qml</file>
         <file>Simulation.qml</file>
+        <file>hud/PlaybackControls.qml</file>
+        <file>menus/mainmenu/MainMenuButton.qml</file>
     </qresource>
 </RCC>

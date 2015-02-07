@@ -12,9 +12,9 @@ Rectangle {
 
     property bool revealed: true
     property alias autoLayout: autoLayoutCheckbox.checked
-    property alias deletaAllButton1: deleteAllButton
+
     anchors {
-        left: parent.left
+        right: parent.right
         top: parent.top
         leftMargin: revealed ? 0.0 : -width
         bottom: parent.bottom
@@ -105,30 +105,6 @@ Rectangle {
             id: autoLayoutCheckbox
             text: "Auto"
             checked: true
-        }
-
-        Button {
-            id: deleteAllButton
-
-            text: "Delete All"
-            onClicked: {
-                deleteEverything()
-            }
-        }
-
-        Button {
-            id: saveButton
-
-            text: "Save State"
-            onClicked: {
-                saveFileDialog.visible = true
-            }
-        }
-        Button {
-            id: loadButton
-
-            text: "Load State"
-            onClicked: loadFileDialog.visible = true
         }
 
         Item {
