@@ -19,9 +19,6 @@ Item {
     MouseArea {
         enabled: mainMenuRoot.revealed
         anchors.fill: parent
-        onPressed: {
-            mainMenuRoot.revealed = false
-        }
     }
 
     Item {

@@ -164,7 +164,7 @@ Rectangle {
             connector.y = neuronRoot.height / 2 + 0.707*neuronRoot.radius - connector.height / 2
         }
 
-        width: neuronRoot.width * 0.4
+        width: neuronRoot.width * 0.5
         height: width
 
         Rectangle {

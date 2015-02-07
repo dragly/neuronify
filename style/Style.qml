@@ -11,6 +11,7 @@ Item {
     property real touchableSize: 6 * baseSize
     property real baseSize: 72
     property real baseMargin: 4 * baseSize
+    property real scale: 1.0
 
     property alias font: fontObject
     property alias button: buttonObject
@@ -46,11 +47,15 @@ Item {
 
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
             if(pixelDensity === 0) {
-                console.warn("Style.reset(): Pixel density is zero. Assuming 72 dpi.")
-                pixelDensity = 72
+                console.warn("Style.reset(): Pixel density is zero. Assuming 4 ppmm.")
+                pixelDensity = 4
             }
 
             baseSize = pixelDensity
+
+            console.log("Pixel density is " + pixelDensity)
+            scale = pixelDensity / 4
+            console.log("Scale set to " + scale)
         } else {
             baseSize = styleRoot.windowWidth * 0.01
         }

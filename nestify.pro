@@ -33,6 +33,7 @@ DISTFILES += \
     android/res/values/libs.xml \
     android/build.gradle \
     android/gradle/wrapper/gradle-wrapper.properties \
-    android/gradlew
+    android/gradlew \
+    android/src/org/cinpla/neuronify/AlwaysOnActivity.java
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
