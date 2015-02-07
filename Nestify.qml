@@ -759,6 +759,16 @@ Rectangle {
             loadState(simulation.stateSource)
             mainMenu.revealed = false
         }
+
+        onSaveSimulationRequested: {
+            saveFileDialog.visible = true
+            mainMenu.revealed = false
+        }
+
+        onLoadSimulationRequested: {
+            loadFileDialog.visible = true
+            mainMenu.revealed = false
+        }
     }
 
     Timer {

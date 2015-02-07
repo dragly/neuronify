@@ -8,6 +8,7 @@ Item {
     signal continueClicked
     signal simulationsClicked
     signal aboutClicked
+    signal advancedClicked
 
     width: 200
     height: 100
@@ -43,6 +44,14 @@ Item {
             text: "About"
             onClicked: {
                 aboutClicked()
+            }
+        }
+        MenuButton {
+            height: mainMenuView.width * 0.07
+            width: parent.width
+            text: "Advanced options"
+            onClicked: {
+                advancedClicked()
             }
         }
     }

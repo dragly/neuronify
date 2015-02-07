@@ -29,5 +29,6 @@
         <file>Simulation.qml</file>
         <file>hud/PlaybackControls.qml</file>
         <file>menus/mainmenu/MainMenuButton.qml</file>
+        <file>menus/mainmenu/AdvancedView.qml</file>
     </qresource>
 </RCC>

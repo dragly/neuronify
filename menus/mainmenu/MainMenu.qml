@@ -9,6 +9,9 @@ Item {
     property bool revealed: true
     property var blurSource: null
     signal loadSimulation(var simulation)
+    signal saveSimulationRequested
+    signal loadSimulationRequested
+
     width: 100
     height: 62
 
@@ -142,6 +145,10 @@ Item {
         onAboutClicked: {
             stackView.push(aboutView)
         }
+
+        onAdvancedClicked: {
+            stackView.push(advancedView)
+        }
     }
 
     SimulationsView {
@@ -153,6 +160,21 @@ Item {
         onLoadSimulation: {
             mainMenuRoot.loadSimulation(simulation)
             stackView.pop(0)
+        }
+    }
+
+    AdvancedView {
+        id: advancedView
+        visible: false
+        width: parent.width
+        height: parent.height
+
+        onSaveSimulationClicked: {
+            saveSimulationRequested()
+        }
+
+        onLoadSimulationClicked: {
+            loadSimulationRequested()
         }
     }
 
