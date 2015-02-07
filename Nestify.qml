@@ -503,7 +503,7 @@ Rectangle {
         var targetVoltmeter = itemUnderConnector(voltmeters, itemA, connector)
         if(targetVoltmeter) {
             if(!connectionExists(itemA, targetVoltmeter)) {
-                connectVoltmeter(itemA, targetVoltmeter)
+                connectVoltmeterToNeuron(itemA, targetVoltmeter)
                 return
             }
         }
