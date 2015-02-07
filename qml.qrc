@@ -23,5 +23,9 @@
         <file>menus/mainmenu/MainMenuView.qml</file>
         <file>menus/mainmenu/SimulationsView.qml</file>
         <file>menus/mainmenu/AboutView.qml</file>
+        <file>menus/mainmenu/SimulationButton.qml</file>
+        <file>tools/SimulationLoader.qml</file>
+        <file>menus/Heading.qml</file>
+        <file>Simulation.qml</file>
     </qresource>
 </RCC>

@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
+#include <QQmlFile>
 
 FileIO::FileIO(QObject *parent) :
     QObject(parent)
@@ -17,7 +18,9 @@ QString FileIO::read()
         return QString();
     }
 
-    QFile file(mSource.path());
+    QString path = QQmlFile::urlToLocalFileOrQrc(mSource);
+
+    QFile file(path);
     QString fileContent;
     if ( file.open(QIODevice::ReadOnly) ) {
         QString line;

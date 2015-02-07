@@ -775,10 +775,72 @@ Rectangle {
         }
     }
 
+    Item {
+        id: mainMenuButton
+        property bool revealed: !mainMenu.revealed
+
+        anchors {
+            top: parent.top
+            right: parent.right
+        }
+        width: Style.touchableSize * 2.5
+        height: width
+
+        enabled: revealed
+        state: revealed ? "revealed" : "hidden"
+
+        states: [
+            State {
+                name: "hidden"
+                PropertyChanges {
+                    target: mainMenuButton
+                    opacity: 0.0
+                }
+            },
+            State {
+                name: "revealed"
+                PropertyChanges {
+                    target: mainMenuButton
+                    opacity: 1.0
+                }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                NumberAnimation {
+                    properties: "opacity"
+                    duration: 200
+                    easing.type: Easing.InOutQuad
+                }
+            }
+        ]
+
+        Image {
+            anchors {
+                fill: parent
+                margins: parent.width * 0.2
+            }
+            source: "images/systems.png"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onPressed: {
+                mainMenu.revealed = true
+            }
+        }
+    }
+
     MainMenu {
         id: mainMenu
         anchors.fill: parent
         blurSource: workspaceFlickable
+
+        onLoadSimulation: {
+            loadState(simulation.stateSource)
+            mainMenu.revealed = false
+        }
     }
 
     Timer {
@@ -869,15 +931,15 @@ Rectangle {
          visible : false
          selectExisting: false
          nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
-         Component.onCompleted: {
-         }
 
          onAccepted: {
-             saveState(fileUrl)
-         }
-
-         onRejected: {
-             console.log("Cancelled")
+             var fileUrlNew = fileUrl
+             var extensionSplit = fileUrlNew.toString().split(".")
+             var fileExtension = extensionSplit[extensionSplit.length - 1]
+             if(fileExtension !== "nfy") {
+                 fileUrlNew = Qt.resolvedUrl(fileUrlNew.toString() + ".nfy")
+             }
+             saveState(fileUrlNew)
          }
      }
 
@@ -886,15 +948,9 @@ Rectangle {
          title: "Please choose a file"
          visible : false
          nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
-         Component.onCompleted: {
-         }
 
          onAccepted: {
              loadState(fileUrl)
-         }
-
-         onRejected: {
-             console.log("Cancelled")
          }
      }
 }

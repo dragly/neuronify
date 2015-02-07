@@ -8,6 +8,7 @@ Item {
     id: mainMenuRoot
     property bool revealed: true
     property var blurSource: null
+    signal loadSimulation(var simulation)
     width: 100
     height: 62
 
@@ -151,6 +152,11 @@ Item {
         visible: false
         width: parent.width
         height: parent.height
+
+        onLoadSimulation: {
+            mainMenuRoot.loadSimulation(simulation)
+            stackView.pop(0)
+        }
     }
 
     AboutView {
