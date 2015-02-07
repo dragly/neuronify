@@ -139,6 +139,7 @@ Rectangle {
     }
 
     function loadState(){
+        creationControls.autoLayout = false
         deleteEverything()
         console.log("You chose: " + loadFileDialog.fileUrl)
         loadFileIO.source = loadFileDialog.fileUrl
@@ -501,7 +502,7 @@ Rectangle {
         var targetVoltmeter = itemUnderConnector(voltmeters, itemA, connector)
         if(targetVoltmeter) {
             if(!connectionExists(itemA, targetVoltmeter)) {
-                connectVoltmeter(itemA, targetVoltmeter)
+                connectVoltmeterToNeuron(itemA, targetVoltmeter)
                 return
             }
         }
