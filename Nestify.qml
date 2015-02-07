@@ -43,6 +43,17 @@ Rectangle {
     property var voltmeters: []
     property real currentTimeStep: 0.0
     property real time: 0.0
+    property bool applicationActive: {
+        if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
+            if(Qt.application.state === Qt.ApplicationActive) {
+                return true
+            } else {
+                return false
+            }
+        } else {
+            return true
+        }
+    }
     //    property var connections: []
 
     width: 400
@@ -68,6 +79,8 @@ Rectangle {
             connectVoltmeterToNeuron(neuron, voltmeter)
             previousNeuron = neuron
         }
+
+        resetStyle()
     }
 
     function deleteFromList(list, item) {
@@ -606,33 +619,61 @@ Rectangle {
         id: workspaceFlickable
 
         anchors.fill: parent
-        //        contentWidth: 3840 // * workspace.scale
-        //        contentHeight: 2160 // * workspace.scale
 
-        MouseArea {
-            id: workspaceMouseArea
+        PinchArea {
             anchors.fill: parent
+//            pinch.target: workspace
+//            pinch.minimumScale: 0.1
+//            pinch.maximumScale: 10.0
 
-            drag.target: workspace
+            property point workspaceStart
+            property double previousScale: 1.0
 
-            property vector2d last
-            property vector2d imagekk
-
-            onWheel: {
-                var relativeMouse = mapToItem(workspace, wheel.x, wheel.y)
-                workspaceScale.origin.x = relativeMouse.x
-                workspaceScale.origin.y = relativeMouse.y
-                workspaceScale.xScale = Math.min(2.0, Math.max(0.1, workspaceScale.xScale + wheel.angleDelta.y * 0.001))
-                var newPosition = mapFromItem(workspace, relativeMouse.x, relativeMouse.y)
-                workspace.x += wheel.x - newPosition.x
-                workspace.y += wheel.y - newPosition.y
+            onPinchStarted: {
+                workspaceStart = Qt.point(workspace.x, workspace.y)
+                previousScale = (pinch.scale - 1.0)
             }
 
-            onClicked: {
-                //                workspaceScale.origin.x = mouse.x
-                //                workspaceScale.origin.y = mouse.y
-                deselectAll()
-                selectedNeurons = []
+            onPinchUpdated: {
+                workspace.x = workspaceStart.x + pinch.center.x - pinch.startCenter.x
+                workspace.y = workspaceStart.y + pinch.center.y - pinch.startCenter.y
+
+                var relativeMouse = mapToItem(workspace, pinch.center.x, pinch.center.y)
+                workspaceScale.origin.x = relativeMouse.x
+                workspaceScale.origin.y = relativeMouse.y
+
+                var correctScale = pinch.scale >= 1.0 ? (pinch.scale - 1.0) : (-1.0 / pinch.scale + 1.0)
+                var deltaScale = correctScale - previousScale
+                workspaceScale.xScale += deltaScale
+                previousScale = correctScale
+
+//                var newPosition = mapFromItem(workspace, pinch.center.x, pinch.center.y)
+//                workspace.x += pinch.center.x - newPosition.x
+//                workspace.y += pinch.center.y - newPosition.y
+            }
+
+            MouseArea {
+                id: workspaceMouseArea
+                anchors.fill: parent
+
+                drag.target: workspace
+
+                onWheel: {
+                    var relativeMouse = mapToItem(workspace, wheel.x, wheel.y)
+                    workspaceScale.origin.x = relativeMouse.x
+                    workspaceScale.origin.y = relativeMouse.y
+                    workspaceScale.xScale = Math.min(2.0, Math.max(0.1, workspaceScale.xScale + wheel.angleDelta.y * 0.001))
+                    var newPosition = mapFromItem(workspace, relativeMouse.x, relativeMouse.y)
+                    workspace.x += wheel.x - newPosition.x
+                    workspace.y += wheel.y - newPosition.y
+                }
+
+                onClicked: {
+                    //                workspaceScale.origin.x = mouse.x
+                    //                workspaceScale.origin.y = mouse.y
+                    deselectAll()
+                    selectedNeurons = []
+                }
             }
         }
 
@@ -646,6 +687,7 @@ Rectangle {
             transform: Scale {
                 id: workspaceScale
                 yScale: xScale
+                xScale: Style.scale
             }
 
             Rectangle {
@@ -731,7 +773,7 @@ Rectangle {
 
     Timer {
         interval: 16
-        running: !mainMenu.revealed
+        running: applicationActive && !mainMenu.revealed
         repeat: true
         onRunningChanged: {
             if(running) {
