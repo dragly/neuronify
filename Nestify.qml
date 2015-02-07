@@ -2,8 +2,13 @@ import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
-import "hud"
+import QtQuick.Window 2.2
+
 import Nestify 1.0
+
+import "hud"
+import "menus/mainmenu"
+import "style"
 
 /*
   TODO:
@@ -72,23 +77,7 @@ Rectangle {
         }
     }
 
-    //////////////////////// save/load ////////////////
-
-     FileIO {
-         id: loadFileIO
-         source: "none"
-         onError: console.log(msg)
-     }
-
-     FileIO {
-         id: saveFileIO
-         source: "none"
-         onError: console.log(msg)
-     }
-
-
-
-    function saveState(){
+    function saveState(fileUrl){
         if (!String.format) {
           String.format = function(format) {
             var args = Array.prototype.slice.call(arguments, 1);
@@ -103,7 +92,7 @@ Rectangle {
 
         var fileString = ""
 
-        console.log("You chose: " + saveFileDialog.fileUrl)
+        console.log("Saving to " + fileUrl)
 
         var counter = 0
         for(var i in neurons) {
@@ -134,54 +123,18 @@ Rectangle {
 
 
 
-        saveFileIO.source = saveFileDialog.fileUrl
+        saveFileIO.source = fileUrl
         saveFileIO.write(fileString)
     }
 
-    function loadState(){
+    function loadState(fileUrl){
         creationControls.autoLayout = false
         deleteEverything()
-        console.log("You chose: " + loadFileDialog.fileUrl)
-        loadFileIO.source = loadFileDialog.fileUrl
+        console.log("Loading file " + fileUrl)
+        loadFileIO.source = fileUrl
         var stateFile = loadFileIO.read()
         console.log(stateFile)
         eval(stateFile)
-    }
-
-
-    FileDialog {
-        id: saveFileDialog
-        title: "Please eneter a filename"
-        visible : false
-        selectExisting: false
-        nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
-        Component.onCompleted: {
-        }
-
-        onAccepted: {
-            saveState()
-        }
-
-        onRejected: {
-            console.log("Cancelled")
-        }
-    }
-
-    FileDialog {
-        id: loadFileDialog
-        title: "Please choose a file"
-        visible : false
-        nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
-        Component.onCompleted: {
-        }
-
-        onAccepted: {
-            loadState()
-        }
-
-        onRejected: {
-            console.log("Cancelled")
-        }
     }
 
 
@@ -639,6 +592,18 @@ Rectangle {
         lastOrganizeTime = currentOrganizeTime
     }
 
+    function resetStyle() {
+        Style.reset(width, height, Screen.pixelDensity)
+    }
+
+    onWidthChanged: {
+        resetStyle()
+    }
+
+    onHeightChanged: {
+        resetStyle()
+    }
+
     Item {
         id: workspaceFlickable
 
@@ -810,6 +775,12 @@ Rectangle {
         }
     }
 
+    MainMenu {
+        id: mainMenu
+        anchors.fill: parent
+        blurSource: workspaceFlickable
+    }
+
     Timer {
         id: layoutTimer
         interval: 24
@@ -877,4 +848,53 @@ Rectangle {
             }
         }
     }
+
+    //////////////////////// save/load ////////////////
+
+     FileIO {
+         id: loadFileIO
+         source: "none"
+         onError: console.log(msg)
+     }
+
+     FileIO {
+         id: saveFileIO
+         source: "none"
+         onError: console.log(msg)
+     }
+
+     FileDialog {
+         id: saveFileDialog
+         title: "Please eneter a filename"
+         visible : false
+         selectExisting: false
+         nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+         Component.onCompleted: {
+         }
+
+         onAccepted: {
+             saveState(fileUrl)
+         }
+
+         onRejected: {
+             console.log("Cancelled")
+         }
+     }
+
+     FileDialog {
+         id: loadFileDialog
+         title: "Please choose a file"
+         visible : false
+         nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+         Component.onCompleted: {
+         }
+
+         onAccepted: {
+             loadState(fileUrl)
+         }
+
+         onRejected: {
+             console.log("Cancelled")
+         }
+     }
 }

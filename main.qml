@@ -16,7 +16,7 @@ ApplicationWindow {
     visible: true
     width: 1280
     height: 800
-    title: qsTr("Nestify")
+    title: qsTr("Neuronify")
 
     Nestify {
         anchors.fill: parent
