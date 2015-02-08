@@ -30,5 +30,8 @@
         <file>hud/PlaybackControls.qml</file>
         <file>menus/mainmenu/MainMenuButton.qml</file>
         <file>menus/mainmenu/AdvancedView.qml</file>
+        <file>TouchSensor.qml</file>
+        <file>Entity.qml</file>
+        <file>hud/SensorControls.qml</file>
     </qresource>
 </RCC>

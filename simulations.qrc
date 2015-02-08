@@ -12,5 +12,8 @@
         <file>simulations/recurrentInhibition/recurrentInhibition.qml</file>
         <file>simulations/recurrentInhibition/recurrentInhibition.png</file>
         <file>simulations/recurrentInhibition/recurrentInhibition.nfy</file>
+        <file>simulations/light/light.nfy</file>
+        <file>simulations/light/light.png</file>
+        <file>simulations/light/light.qml</file>
     </qresource>
 </RCC>

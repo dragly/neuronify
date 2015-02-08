@@ -8,6 +8,7 @@ Rectangle {
     signal createNeuron(var position)
     signal createCompartment(var position)
     signal createVoltmeter(var position)
+    signal createTouchSensor(var position)
     signal deleteEverything()
 
     property bool revealed: true
@@ -98,6 +99,23 @@ Rectangle {
 
             onDropped: {
                 createVoltmeter({x: drop.x, y: drop.y})
+            }
+        }
+
+        CreationItem {
+            id: touchSensorCreator
+            width: parent.width * 0.7
+            height: width
+            Rectangle {
+                anchors.fill: parent
+
+                color: "#4292c6"
+                border.width: width * 0.02
+                border.color: "#f7fbff"
+            }
+
+            onDropped: {
+                createTouchSensor({x: drop.x, y: drop.y})
             }
         }
 

@@ -10,9 +10,10 @@ Item {
 
     property var simulations: [
         "empty",
-        "dummy",
+        "light",
         "lateralInhibition",
-        "recurrentInhibition"
+        "recurrentInhibition",
+        "dummy"
     ]
 
     Component.onCompleted: {

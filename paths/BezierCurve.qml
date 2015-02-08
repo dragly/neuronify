@@ -21,6 +21,11 @@ Canvas {
     onControlPoint1Changed: requestPaint()
     onControlPoint2Changed: requestPaint()
     onColorChanged: requestPaint()
+    onVisibleChanged: {
+        if(visible) {
+            requestPaint()
+        }
+    }
 
     function relativeX(x) {
         return x - canvas.x;

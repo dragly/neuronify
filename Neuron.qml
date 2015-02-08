@@ -5,6 +5,8 @@ import Nestify 1.0
 Rectangle {
     id: neuronRoot
 
+    property string objectName: "neuron"
+
     property bool selected: false
     signal clicked(var neuron, var mouse)
     signal dragStarted

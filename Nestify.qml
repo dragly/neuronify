@@ -38,6 +38,7 @@ Rectangle {
     property var organizedItems: []
     property var organizedConnections: []
     property var neurons: []
+    property var sensors: []
     property var selectedNeurons: []
     property var copiedNeurons: []
     property var voltmeters: []
@@ -64,22 +65,7 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        var previousNeuron = undefined
-        var previousNeuron2 = undefined
-        for(var i = 0; i < 2; i++) {
-            var neuron = createNeuron({x: 300 + i * 100, y: 200 + (Math.random()) * 10})
-            if(previousNeuron) {
-                connectNeurons(previousNeuron, neuron)
-            }
-            if(i === 0) {
-                neuron.clampCurrent = 75.0
-                neuron.clampCurrentEnabled = true
-            }
-            var voltmeter = createVoltmeter({x: 300 + i * 200, y: 400})
-            connectVoltmeterToNeuron(neuron, voltmeter)
-            previousNeuron = neuron
-        }
-
+        loadState("simulations/dummy/dummy.nfy")
         resetStyle()
     }
 
@@ -134,6 +120,9 @@ Rectangle {
             fileString += String.format("connectVoltmeterToNeuron(neuron{0}, voltmeter{1}) \n",neuronIndex, i)
         }
 
+        for(var i in sensors) {
+            fileString += sensors[i].dump(i, neurons)
+        }
 
 
         saveFileIO.source = fileUrl
@@ -155,8 +144,10 @@ Rectangle {
 
     //    compartment.destroy(1)
     function deleteEverything() {
+        deleteAllConnections()
         deleteAllVoltmeters()
         deleteAllNeurons()
+        deleteAllSensors()
     }
 
     function deleteAllNeurons() {
@@ -171,9 +162,34 @@ Rectangle {
         }
     }
 
+    function deleteAllSensors() {
+        while(sensors.length > 0){
+            deleteSensor(sensors[0])
+        }
+    }
 
+    function deleteAllConnections() {
+        while(connections.length > 0){
+            deleteConnection(connections[0])
+        }
+    }
 
+    function deleteSensor(sensor) {
+        deselectAll()
+        disconnectSensor(sensor)
+        deleteFromList(sensors, sensor)
+        sensor.destroy(1)
+        resetOrganize()
+    }
 
+    function disconnectSensor(sensor) {
+        var connectionsToDelete = sensor.connections
+        for(var i in connectionsToDelete) {
+            var connection = connectionsToDelete[i]
+            deleteConnection(connection)
+        }
+        resetOrganize()
+    }
 
 
     function deleteNeuron(neuron) {
@@ -220,7 +236,8 @@ Rectangle {
         deleteFromList(connections, connection)
         connection.itemA.removeConnection(connection)
         connection.itemB.removeConnection(connection)
-        connection.destroy(1)
+        console.log("Destroying connection!")
+        connection.destroy()
         resetOrganize()
     }
 
@@ -271,11 +288,16 @@ Rectangle {
         }
     }
 
-    function selectAllNeurons() {
-        selectedNeurons = []
+    function deselectPanels() {
         connectionControls.connection = null
         voltmeterControls.voltmeter = null
         neuronControls.neuron = null
+        sensorControls.sensor = null
+    }
+
+    function selectAllNeurons() {
+        selectedNeurons = []
+        deselectPanels()
         selectAllInList(neurons)
         for(var i in neurons) {
             var neuron = neurons[i]
@@ -284,9 +306,7 @@ Rectangle {
     }
 
     function selectNeurons() {
-        connectionControls.connection = null
-        voltmeterControls.voltmeter = null
-        neuronControls.neuron = null
+        deselectPanels()
     }
 
     function copyNeurons() {
@@ -342,21 +362,19 @@ Rectangle {
     }
 
     function selectAll() {
-        connectionControls.connection = null
-        voltmeterControls.voltmeter = null
-        neuronControls.neuron = null
+        deselectPanels()
         selectAllInList(connections)
         selectAllInList(voltmeters)
         selectAllInList(neurons)
+        selectAllInList(sensors)
     }
 
     function deselectAll() {
-        connectionControls.connection = null
-        voltmeterControls.voltmeter = null
-        neuronControls.neuron = null
+        deselectPanels()
         deselectAllInList(connections)
         deselectAllInList(voltmeters)
         deselectAllInList(neurons)
+        deselectAllInList(sensors)
     }
 
     function clickedNeuron(neuron, mouse) {
@@ -414,6 +432,25 @@ Rectangle {
         return neuron
     }
 
+    function createTouchSensor(properties) {
+        var component = Qt.createComponent("TouchSensor.qml")
+        properties.dropFunction = createConnectionToPoint
+        var sensor = component.createObject(neuronLayer, properties)
+        sensor.dragStarted.connect(resetOrganize)
+        sensor.widthChanged.connect(resetOrganize)
+        sensor.heightChanged.connect(resetOrganize)
+        sensor.clicked.connect(clickedSensor)
+        sensors.push(sensor)
+        resetOrganize()
+        return sensor
+    }
+
+    function clickedSensor(sensor, mouse) {
+        deselectAll()
+        sensorControls.sensor = sensor
+        sensor.selected = true
+    }
+
     function createVoltmeter(properties) {
         var component = Qt.createComponent("Voltmeter.qml")
         var voltmeter = component.createObject(neuronLayer, properties)
@@ -443,6 +480,15 @@ Rectangle {
         return connection
     }
 
+    function connectSensorToNeuron(sensor, neuron) {
+        console.log("Connecting sensor to neuron")
+        var connection = createConnection(sensor, neuron)
+        sensor.addConnection(connection)
+        neuron.addPassiveConnection(connection)
+        connections.push(connection)
+        return connection
+    }
+
     function connectVoltmeterToNeuron(neuron, voltmeter) {
         var connection = createConnection(neuron, voltmeter)
         voltmeter.addConnection(connection)
@@ -465,6 +511,7 @@ Rectangle {
     }
 
     function createConnectionToPoint(itemA, connector) {
+        console.log("Creating connection to point")
         var targetVoltmeter = itemUnderConnector(voltmeters, itemA, connector)
         if(targetVoltmeter) {
             if(!connectionExists(itemA, targetVoltmeter)) {
@@ -474,15 +521,26 @@ Rectangle {
         }
 
         var targetNeuron = itemUnderConnector(neurons, itemA, connector)
+        console.log(targetNeuron)
         if(targetNeuron) {
+            console.log("Target neuron found")
             if(connectionExists(itemA, targetNeuron)) {
+                console.log("Connection already exists")
                 return
             }
             if(itemA === targetNeuron) {
+                console.log("Cannot connect neuron to itself")
                 return
             }
+            if(itemA.objectName === "neuron") {
+                console.log("Connecting neurons")
+                connectNeurons(itemA, targetNeuron)
+            }
+            if(itemA.objectName === "touchSensorCell") {
+                console.log("Connecting sensor to neuron")
+                connectSensorToNeuron(itemA, targetNeuron)
+            }
 
-            connectNeurons(itemA, targetNeuron)
             return
         }
     }
@@ -715,6 +773,12 @@ Rectangle {
             var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
             simulatorRoot.createVoltmeter(workspacePosition)
         }
+
+        onCreateTouchSensor: {
+            var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
+            simulatorRoot.createTouchSensor(workspacePosition)
+        }
+
         onDeleteEverything: {
             simulatorRoot.deleteEverything()
         }
@@ -738,6 +802,13 @@ Rectangle {
         id: connectionControls
         onDeleteClicked: {
             simulatorRoot.deleteConnection(connection)
+        }
+    }
+
+    SensorControls {
+        id: sensorControls
+        onDeleteClicked: {
+            simulatorRoot.deleteSensor(sensor)
         }
     }
 
@@ -801,6 +872,10 @@ Rectangle {
             for(var i in voltmeters) {
                 var voltmeter = voltmeters[i]
                 voltmeter.stepForward(dt)
+            }
+            for(var i in sensors) {
+                var sensor = sensors[i]
+                sensor.stepForward(dt)
             }
             lastStepTime = currentTime
         }
