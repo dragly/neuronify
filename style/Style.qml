@@ -20,7 +20,7 @@ Item {
         id: buttonObject
         property color color: "#dedede"
         property color fontColor: Qt.rgba(0.15, 0.15, 0.15, 0.9)
-        property real fontSize: 1.6 * font.size
+        property real fontSize: 3 * baseSize
     }
 
     Item {
@@ -28,8 +28,10 @@ Item {
         property alias heading: headingObject
         property alias button: buttonObject
 
-        property real size: 3 * baseSize
+        property real size: 2.5 * baseSize
         property color color: Qt.rgba(0.15, 0.15, 0.15, 0.9)
+        property int weight: Font.Light
+        property string family: "Roboto"
 
         Item {
             id: headingObject

@@ -7,18 +7,9 @@ Item {
     property alias text: buttonText.text
     property real maximumRotation: Math.random() * 5 + 5
 
-    smooth: true
+    height: Style.touchableSize
 
-    transform: Rotation { id: rotationTransform
-        origin.x: 30
-        origin.y: 30
-        axis {
-            x: 0
-            y: 1
-            z: 0
-        }
-        angle: 0
-    }
+    smooth: true
 
     Rectangle {
         anchors.fill: parent
