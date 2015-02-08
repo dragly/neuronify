@@ -15,5 +15,8 @@
         <file>simulations/light/light.nfy</file>
         <file>simulations/light/light.png</file>
         <file>simulations/light/light.qml</file>
+        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.nfy</file>
+        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.png</file>
+        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.qml</file>
     </qresource>
 </RCC>

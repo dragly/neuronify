@@ -1,0 +1,18 @@
+var neuron0 = createNeuron({x: 328.5454545454545, y: 168.1818181818182, clampCurrent: 0, clampCurrentEnabled: false, adaptationIncreaseOnFire: 1, outputStimulation: -5})
+var neuron1 = createNeuron({x: 489.45454545454544, y: 183.63636363636363, clampCurrent: 0, clampCurrentEnabled: false, adaptationIncreaseOnFire: 1, outputStimulation: -5})
+var neuron2 = createNeuron({x: 355.8181818181818, y: 280.9090909090909, clampCurrent: 0, clampCurrentEnabled: false, adaptationIncreaseOnFire: 1, outputStimulation: -5})
+var neuron3 = createNeuron({x: 111.27272727272725, y: 203.63636363636365, clampCurrent: 80, clampCurrentEnabled: true, adaptationIncreaseOnFire: 1, outputStimulation: 4})
+var neuron4 = createNeuron({x: 163.99999999999997, y: 359.09090909090907, clampCurrent: 80, clampCurrentEnabled: true, adaptationIncreaseOnFire: 1, outputStimulation: 4})
+var neuron5 = createNeuron({x: 623.0909090909091, y: 92.72727272727278, clampCurrent: 80, clampCurrentEnabled: true, adaptationIncreaseOnFire: 1, outputStimulation: 4})
+connectNeurons(neuron0, neuron1) 
+connectNeurons(neuron1, neuron2) 
+connectNeurons(neuron2, neuron0)
+connectNeurons(neuron3, neuron0) 
+connectNeurons(neuron4, neuron2)
+connectNeurons(neuron5, neuron1) 
+var voltmeter0 = createVoltmeter({x: 536.7272727272729, y:337.2727272727273}) 
+connectVoltmeterToNeuron(neuron1, voltmeter0) 
+connectVoltmeterToNeuron(neuron0, voltmeter0)
+connectVoltmeterToNeuron(neuron2, voltmeter0)
+
+
