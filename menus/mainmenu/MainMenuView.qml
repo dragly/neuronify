@@ -20,7 +20,7 @@ Item {
         }
         width: mainMenuView.width * 0.4
         spacing: mainMenuView.width * 0.02
-//                height: mainMenuRoot.width * 0.4
+        //                height: mainMenuRoot.width * 0.4
         MenuButton {
             height: mainMenuView.width * 0.07
             width: parent.width
@@ -38,6 +38,26 @@ Item {
             }
         }
         MenuButton {
+            id: saveButton
+            height: mainMenuView.width * 0.07
+            width: parent.width
+            text: "Save State"
+            onClicked: {
+                saveFileDialog.visible = true
+            }
+        }
+        MenuButton {
+            id: loadButton
+            height: mainMenuView.width * 0.07
+            width: parent.width
+            text: "Load State"
+            onClicked: {
+                loadFileDialog.visible = true
+                continueClicked()
+            }
+        }
+
+        MenuButton {
             height: mainMenuView.width * 0.07
             width: parent.width
             text: "About"
@@ -47,3 +67,4 @@ Item {
         }
     }
 }
+
