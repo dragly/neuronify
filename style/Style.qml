@@ -28,7 +28,7 @@ Item {
         property alias heading: headingObject
         property alias button: buttonObject
 
-        property real size: 2 * baseSize
+        property real size: 3 * baseSize
         property color color: Qt.rgba(0.15, 0.15, 0.15, 0.9)
 
         Item {
