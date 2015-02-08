@@ -2,7 +2,7 @@ import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
-import QtQuick.Window 2.2
+import QtQuick.Window 2.1
 
 import Nestify 1.0
 
@@ -621,35 +621,23 @@ Rectangle {
         anchors.fill: parent
 
         PinchArea {
+            id: pinchArea
             anchors.fill: parent
-//            pinch.target: workspace
-//            pinch.minimumScale: 0.1
-//            pinch.maximumScale: 10.0
 
             property point workspaceStart
-            property double previousScale: 1.0
+            property var localStartCenter
+            property double startScale: 1.0
 
             onPinchStarted: {
-                workspaceStart = Qt.point(workspace.x, workspace.y)
-                previousScale = (pinch.scale - 1.0)
+                localStartCenter = mapToItem(workspace, pinch.center.x, pinch.center.y)
+                startScale = workspace.scale
             }
 
             onPinchUpdated: {
-                workspace.x = workspaceStart.x + pinch.center.x - pinch.startCenter.x
-                workspace.y = workspaceStart.y + pinch.center.y - pinch.startCenter.y
-
-                var relativeMouse = mapToItem(workspace, pinch.center.x, pinch.center.y)
-                workspaceScale.origin.x = relativeMouse.x
-                workspaceScale.origin.y = relativeMouse.y
-
-                var correctScale = pinch.scale >= 1.0 ? (pinch.scale - 1.0) : (-1.0 / pinch.scale + 1.0)
-                var deltaScale = correctScale - previousScale
-                workspaceScale.xScale += deltaScale
-                previousScale = correctScale
-
-//                var newPosition = mapFromItem(workspace, pinch.center.x, pinch.center.y)
-//                workspace.x += pinch.center.x - newPosition.x
-//                workspace.y += pinch.center.y - newPosition.y
+                var newScale = pinch.scale * startScale
+                workspace.scale = Math.min(3.0, Math.max(0.1, newScale))
+                workspace.x = pinch.center.x - localStartCenter.x * workspace.scale
+                workspace.y = pinch.center.y - localStartCenter.y * workspace.scale
             }
 
             MouseArea {
@@ -659,18 +647,14 @@ Rectangle {
                 drag.target: workspace
 
                 onWheel: {
-                    var relativeMouse = mapToItem(workspace, wheel.x, wheel.y)
-                    workspaceScale.origin.x = relativeMouse.x
-                    workspaceScale.origin.y = relativeMouse.y
-                    workspaceScale.xScale = Math.min(2.0, Math.max(0.1, workspaceScale.xScale + wheel.angleDelta.y * 0.001))
-                    var newPosition = mapFromItem(workspace, relativeMouse.x, relativeMouse.y)
-                    workspace.x += wheel.x - newPosition.x
-                    workspace.y += wheel.y - newPosition.y
+                    var localStartCenter = mapToItem(workspace, wheel.x, wheel.y)
+                    var newScale = workspace.scale + wheel.angleDelta.y * 0.001
+                    workspace.scale = Math.min(3.0, Math.max(0.1, newScale))
+                    workspace.x = wheel.x - localStartCenter.x * workspace.scale
+                    workspace.y = wheel.y - localStartCenter.y * workspace.scale
                 }
 
                 onClicked: {
-                    //                workspaceScale.origin.x = mouse.x
-                    //                workspaceScale.origin.y = mouse.y
                     deselectAll()
                     selectedNeurons = []
                 }
@@ -684,11 +668,14 @@ Rectangle {
             width: 3840
             height: 2160
 
-            transform: Scale {
-                id: workspaceScale
-                yScale: xScale
-                xScale: Style.scale
-            }
+            scale: 1.1
+            transformOrigin: Item.TopLeft
+
+//            transform: Scale {
+//                id: workspaceScale
+//                yScale: xScale
+//                xScale: Style.scale
+//            }
 
             Rectangle {
                 id: workspaceRectangle
