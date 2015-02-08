@@ -29,12 +29,24 @@ Item {
         color: connectionRoot._internalColor
         startPoint: Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y)
         endPoint: Qt.point(cx, cy)
+    }
+
+    Item {
+        x: sCurve.startPoint.x + height / 2 * Math.sin(rotation * Math.PI / 180)
+        y: sCurve.startPoint.y - height / 2 * Math.cos(rotation * Math.PI / 180)
+
+        transformOrigin: Item.TopLeft
+
+        width: Qt.vector2d(sCurve.endPoint.x - sCurve.startPoint.x,
+                           sCurve.endPoint.y - sCurve.startPoint.y).length()
+        height: 40
+
+        rotation: Math.atan2(sCurve.endPoint.y - sCurve.startPoint.y,
+                             sCurve.endPoint.x - sCurve.startPoint.x) / Math.PI * 180
 
         MouseArea {
-            anchors.centerIn: parent
+            anchors.fill: parent
             propagateComposedEvents: true
-            width: Math.max(40, Math.min(parent.width, parent.height))
-            height: Math.max(40, Math.min(parent.width, parent.height))
 
             onClicked: {
                 if(connectionRoot.selected) {
