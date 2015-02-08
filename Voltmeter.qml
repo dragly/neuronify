@@ -12,7 +12,7 @@ Rectangle {
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentColor: 0
     property string mode: "voltage"
-    property string title: "V"
+    property string title: "mV"
 
     property real minimumValue: -100.0
     property real maximumValue: 100.0
