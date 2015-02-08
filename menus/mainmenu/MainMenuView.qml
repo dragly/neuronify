@@ -38,25 +38,6 @@ Item {
                 simulationsClicked()
             }
         }
-        MenuButton {
-            id: saveButton
-            height: mainMenuView.width * 0.07
-            width: parent.width
-            text: "Save State"
-            onClicked: {
-                saveFileDialog.visible = true
-            }
-        }
-        MenuButton {
-            id: loadButton
-            height: mainMenuView.width * 0.07
-            width: parent.width
-            text: "Load State"
-            onClicked: {
-                loadFileDialog.visible = true
-                continueClicked()
-            }
-        }
 
         MenuButton {
             height: mainMenuView.width * 0.07
