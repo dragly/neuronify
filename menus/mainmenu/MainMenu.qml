@@ -28,15 +28,15 @@ Item {
         id: background
         anchors.fill: parent
 
-        FastBlur {
-            anchors.fill: parent
-            source: blurSource
-            radius: 64
-        }
+//        FastBlur {
+//            anchors.fill: parent
+//            source: blurSource
+//            radius: 64
+//        }
 
         Rectangle {
             anchors.fill: parent
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.7)
+            color: Qt.rgba(1.0, 1.0, 1.0, 0.9)
         }
     }
 
