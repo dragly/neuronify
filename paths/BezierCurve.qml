@@ -10,8 +10,8 @@ Canvas {
     property point endPoint: Qt.point(100,100)
     antialiasing: true
 
-    x: Math.min(startPoint.x, endPoint.x, controlPoint1.x, controlPoint2.x)
-    y: Math.min(startPoint.y, endPoint.y, controlPoint1.y, controlPoint2.y)
+    x: Math.min(startPoint.x - lineWidth / 2, endPoint.x - lineWidth / 2, controlPoint1.x - lineWidth / 2, controlPoint2.x - lineWidth / 2)
+    y: Math.min(startPoint.y - lineWidth / 2, endPoint.y - lineWidth / 2, controlPoint1.y - lineWidth / 2, controlPoint2.y - lineWidth / 2)
     width: Math.max(startPoint.x, endPoint.x, controlPoint1.x, controlPoint2.x) - x + 1
     height: Math.max(startPoint.y, endPoint.y, controlPoint1.y, controlPoint2.y) - y + 1
 
