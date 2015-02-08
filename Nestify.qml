@@ -628,6 +628,10 @@ Rectangle {
             property var localStartCenter
             property double startScale: 1.0
 
+            function clampScale(scale) {
+                return Math.min(3.0, Math.max(0.1, scale))
+            }
+
             onPinchStarted: {
                 localStartCenter = mapToItem(workspace, pinch.center.x, pinch.center.y)
                 startScale = workspace.scale
@@ -635,7 +639,7 @@ Rectangle {
 
             onPinchUpdated: {
                 var newScale = pinch.scale * startScale
-                workspace.scale = Math.min(3.0, Math.max(0.1, newScale))
+                workspace.scale = clampScale(newScale)
                 workspace.x = pinch.center.x - localStartCenter.x * workspace.scale
                 workspace.y = pinch.center.y - localStartCenter.y * workspace.scale
             }
@@ -649,7 +653,7 @@ Rectangle {
                 onWheel: {
                     var localStartCenter = mapToItem(workspace, wheel.x, wheel.y)
                     var newScale = workspace.scale + wheel.angleDelta.y * 0.001
-                    workspace.scale = Math.min(3.0, Math.max(0.1, newScale))
+                    workspace.scale = pinchArea.clampScale(newScale)
                     workspace.x = wheel.x - localStartCenter.x * workspace.scale
                     workspace.y = wheel.y - localStartCenter.y * workspace.scale
                 }
