@@ -11,7 +11,8 @@ Item {
     property var simulations: [
         "empty",
         "dummy",
-        "lateralInhibition"
+        "lateralInhibition",
+        "recurrentInhibition"
     ]
 
     Component.onCompleted: {
