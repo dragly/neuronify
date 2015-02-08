@@ -3,5 +3,6 @@
         <file>images/back.png</file>
         <file>images/systems.png</file>
         <file>images/menus/mainmenu.png</file>
+        <file>images/logo.png</file>
     </qresource>
 </RCC>
