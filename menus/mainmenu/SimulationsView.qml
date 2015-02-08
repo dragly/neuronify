@@ -8,6 +8,8 @@ Item {
     signal loadSimulation(var simulation)
     signal readMore(var text)
 
+    clip: true
+
     property var simulations: [
         "empty",
         "light",

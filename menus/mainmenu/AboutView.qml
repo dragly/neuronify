@@ -6,6 +6,8 @@ import "../"
 Item {
     id: aboutView
 
+    clip: true
+
     width: 200
     height: 100
 

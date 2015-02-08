@@ -31,12 +31,12 @@ Item {
         FastBlur {
             anchors.fill: parent
             source: blurSource
-            radius: 32
+            radius: 64
         }
 
         Rectangle {
             anchors.fill: parent
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.6)
+            color: Qt.rgba(1.0, 1.0, 1.0, 0.7)
         }
     }
 
@@ -220,7 +220,6 @@ Item {
             to: "hidden"
             ParallelAnimation {
                 NumberAnimation {
-                    target: menuRectangle
                     properties: "opacity"
                     duration: 350
                     easing.type: Easing.InOutQuad
@@ -238,7 +237,6 @@ Item {
             to: "revealed"
             ParallelAnimation {
                 NumberAnimation {
-                    target: menuRectangle
                     properties: "opacity"
                     duration: 350
                     easing.type: Easing.InOutQuad

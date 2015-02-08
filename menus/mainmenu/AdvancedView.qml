@@ -7,6 +7,8 @@ Item {
     signal saveSimulationClicked
     signal loadSimulationClicked
 
+    clip: true
+
     width: 200
     height: 100
 
