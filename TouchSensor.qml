@@ -119,6 +119,10 @@ Entity {
                 property string objectName: "touchSensorCell"
                 signal droppedConnector(var neuron, var connector)
                 property bool sensing: false
+                property real voltage: 0.0
+                property real timeSinceFire: 0.0
+                property bool firedLastTime: false
+                property real gs: 0.0
 
                 color: cell.sensing ? "#9ecae1" : "#4292c6"
                 connectionPoint: Qt.point(sensorRoot.x + cell.x + cell.width / 2,
@@ -128,8 +132,32 @@ Entity {
                     for(var i in connections) {
                         var connection = connections[i]
                         var neuron = connection.itemB
+                        timeSinceFire += dt
+                        var V = voltage
+                        var Is = 0
                         if(sensing) {
-                            neuron.stimulate(0.5)
+                            gs += 20.0 * dt
+                        }
+                        Is = gs * (V - 60)
+                        var voltageChange = - (V + 50) - Is
+                        var dV = voltageChange * dt
+                        voltage += dV;
+                        if(firedLastTime) {
+                            voltage = -100
+                            gs = 0
+                            firedLastTime = false
+                            return
+                        }
+
+                        var shouldFire = false
+                        if(voltage > 0.0) {
+                            shouldFire = true
+                        }
+                        if(shouldFire) {
+                            voltage += 100.0
+                            timeSinceFire = 0.0
+                            firedLastTime = true
+                            neuron.stimulate(3.0)
                         }
                     }
                 }
