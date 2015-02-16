@@ -157,6 +157,7 @@ Item {
             text: "Delete"
             Layout.fillWidth: true
             onClicked: {
+                console.log("Calling deleteClicked signal!")
                 deleteClicked()
             }
         }

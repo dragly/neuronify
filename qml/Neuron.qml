@@ -14,7 +14,6 @@ Entity {
     property real speed: 0.0
     property alias cm: engine.cm
     property real timeSinceFire: 0.0
-    property var connections: []
     property var passiveConnections: []
     //    property var outputNeurons: []
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
@@ -34,7 +33,7 @@ Entity {
                 simulatorRoot.disconnectNeuron(neuron)
             }
             onDeleteClicked: {
-                simulatorRoot.deleteNeuron(neuron)
+                neuronRoot.destroy()
             }
         }
     }
@@ -97,6 +96,15 @@ Entity {
             fire()
         }
 
+    }
+
+    Component.onDestruction: {
+        aboutToDie(neuronRoot)
+        var connectionsToDelete = connections.concat(passiveConnections)
+        for(var i in connectionsToDelete) {
+            var connection = connectionsToDelete[i]
+            connection.destroy()
+        }
     }
 
     onConnectionRemoved: {

@@ -6,15 +6,16 @@ Item {
     id: connectionRoot
     signal clicked(var connection)
     property bool selected: false
+    property bool valid: (itemA && itemB)
     property var itemA
     property var itemB
     property real conductance: 1.0
-    property color color: itemA.color
-    property real diffx: itemA.connectionPoint.x - itemB.connectionPoint.x
-    property real diffy: itemA.connectionPoint.y - itemB.connectionPoint.y
+    property color color: valid ? itemA.color : "white"
+    property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x : 0
+    property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y : 0
     property real length: Math.sqrt(diffx*diffx + diffy*diffy)
-    property real cx: itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length
-    property real cy: itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length
+    property real cx: valid ? itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length : 0
+    property real cy: valid ? itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length : 0
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
     property Component controls: Component {
         ConnectionControls {
@@ -30,10 +31,19 @@ Item {
         }
     }
 
+    Component.onDestruction: {
+        if(itemA) {
+            itemA.removeConnection(connectionRoot)
+        }
+        if(itemB) {
+            itemB.removeConnection(connectionRoot)
+        }
+    }
+
     Line {
         id: sCurve
         color: connectionRoot._internalColor
-        startPoint: Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y)
+        startPoint: valid ? Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y) : Qt.point(0,0)
         endPoint: Qt.point(cx, cy)
     }
 

@@ -123,7 +123,6 @@ Rectangle {
 
     //////////////////////// end of save/load ////////////////
 
-    //    compartment.destroy(1)
     function deleteEverything() {
         deleteAllConnections()
         deleteAllVoltmeters()
@@ -172,13 +171,11 @@ Rectangle {
         resetOrganize()
     }
 
-
     function deleteNeuron(neuron) {
+        console.log("Deleting neuron " + neuron)
         deselectAll()
-        disconnectNeuron(neuron)
         deleteFromList(neurons, neuron)
         deleteFromList(organizedItems, neuron)
-        neuron.destroy(1)
         resetOrganize()
     }
 
@@ -213,12 +210,9 @@ Rectangle {
     }
 
     function deleteConnection(connection) {
+        connection.remove()
         deleteFromList(organizedConnections, connection)
         deleteFromList(connections, connection)
-        connection.itemA.removeConnection(connection)
-        connection.itemB.removeConnection(connection)
-        console.log("Destroying connection!")
-        connection.destroy()
         resetOrganize()
     }
 
@@ -391,6 +385,7 @@ Rectangle {
         neuron.widthChanged.connect(resetOrganize)
         neuron.heightChanged.connect(resetOrganize)
         neuron.clicked.connect(clickedEntity)
+        neuron.aboutToDie.connect(deleteNeuron)
         neuron.droppedConnector.connect(createConnectionToPoint)
         neurons.push(neuron)
         organizedItems.push(neuron)

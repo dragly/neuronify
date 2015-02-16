@@ -6,6 +6,7 @@ Item {
     signal dragStarted
     signal connectionAdded(var connection)
     signal connectionRemoved(var connection)
+    signal aboutToDie(var entity)
 
     property real radius: 1.0
     property string objectName: "entity"
