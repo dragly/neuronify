@@ -1,8 +1,0 @@
-var neuron1 = createNeuron({x: 300, y:200})
-var neuron2 = createNeuron({x: 500, y:100})
-
-connectNeurons(neuron1, neuron2)
-
-var voltmeter1 = createVoltmeter({x:300, y:400})
-connectVoltmeterToNeuron(neuron1, voltmeter1)
-connectVoltmeterToNeuron(neuron2,voltmeter1)
