@@ -14,7 +14,7 @@
         <file>Neuron.qml</file>
         <file>hud/NeuronControls.qml</file>
         <file>paths/Line.qml</file>
-        <file>Nestify.qml</file>
+        <file>Neuronify.qml</file>
         <file>CreationItem.qml</file>
         <file>menus/mainmenu/MainMenu.qml</file>
         <file>style/Style.qml</file>
