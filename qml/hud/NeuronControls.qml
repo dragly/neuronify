@@ -4,14 +4,16 @@ import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.1
 import ".."
 
-PropertiesPanel {
+Item {
     id: neuronControlsRoot
 
     signal disconnectClicked
     signal deleteClicked
 
-    property Neuron neuron: null
-    revealed: neuronControlsRoot.neuron ? true : false
+    property Item neuron: null
+
+    anchors.fill: parent
+
     onNeuronChanged: {
         if(!neuronControlsRoot.neuron) {
             return
@@ -23,6 +25,7 @@ PropertiesPanel {
         clampCurrentSlider.value = neuron.clampCurrent
         clampCurrentCheckbox.checked = neuron.clampCurrentEnabled
     }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10

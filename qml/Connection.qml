@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import "paths"
+import "hud"
 
 Item {
     id: connectionRoot
@@ -15,6 +16,11 @@ Item {
     property real cx: itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length
     property real cy: itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
+    property Component controls: Component {
+        ConnectionControls {
+            connection: connectionRoot
+        }
+    }
 
     function otherCompartment(currentCompartment) {
         if(currentCompartment === itemA) {

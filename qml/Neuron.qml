@@ -1,19 +1,12 @@
 import QtQuick 2.0
 import "paths"
+import "hud"
 import Neuronify 1.0
 
-Rectangle {
+Entity {
     id: neuronRoot
 
-    property string objectName: "neuron"
-
-    property bool selected: false
-    signal clicked(var neuron, var mouse)
-    signal dragStarted
-    property vector2d velocity
-    property bool dragging: false
     signal droppedConnector(var neuron, var connector)
-    property var copiedFrom
 
     property real adaptationIncreaseOnFire: 1.0
     property alias voltage: engine.voltage
@@ -23,7 +16,7 @@ Rectangle {
     property real timeSinceFire: 0.0
     property var connections: []
     property var passiveConnections: []
-//    property var outputNeurons: []
+    //    property var outputNeurons: []
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property bool firedLastTime: false
     property alias synapticConductance: engine.synapticConductance
@@ -34,19 +27,27 @@ Rectangle {
     property alias clampCurrent: engine.clampCurrent
     property alias clampCurrentEnabled: engine.clampCurrentEnabled
 
+    controls: Component {
+        NeuronControls {
+            neuron: neuronRoot
+            onDisconnectClicked: {
+                simulatorRoot.disconnectNeuron(neuron)
+            }
+            onDeleteClicked: {
+                simulatorRoot.deleteNeuron(neuron)
+            }
+        }
+    }
+
+    objectName: "neuron"
+    selected: false
+    radius: width / 2
     width: parent.width * 0.015
     height: width
-    radius: width / 2
     color: outputStimulation > 0.0 ? "#6baed6" : "#e41a1c"
-    border.color: selected ? "#08306b" : "#2171b5"
-    border.width: selected ? 3.0 : 1.0
 
     function reset() {
         engine.reset()
-    }
-
-    function addConnection(connection) {
-        connections.push(connection)
     }
 
     function addPassiveConnection(connection) {
@@ -57,17 +58,6 @@ Rectangle {
         timeSinceFire += dt
         checkFire(dt)
         engine.stepForward(dt)
-    }
-
-    function removeConnection(connection) {
-        var index = connections.indexOf(connection)
-        if(index > -1) {
-            connections.splice(index, 1)
-        }
-        index = passiveConnections.indexOf(connection)
-        if(index > -1) {
-            passiveConnections.splice(index, 1)
-        }
     }
 
     function finalizeStep(dt) {
@@ -89,7 +79,7 @@ Rectangle {
         voltage += 100.0
         timeSinceFire = 0.0
         firedLastTime = true
-//        synapticConductance = 0.0
+        //        synapticConductance = 0.0
     }
 
     function checkFire(dt) {
@@ -109,23 +99,33 @@ Rectangle {
 
     }
 
+    onConnectionRemoved: {
+        var index = passiveConnections.indexOf(connection)
+        if(index > -1) {
+            passiveConnections.splice(index, 1)
+        }
+    }
+
     NeuronEngine{
         id: engine
     }
 
     Rectangle {
+        id: background
+        anchors.fill: parent
+        radius: width / 2
+        color: neuronRoot.color
+        border.color: selected ? "#08306b" : "#2171b5"
+        border.width: selected ? 3.0 : 1.0
+    }
+
+    Rectangle {
         anchors.fill: parent
         anchors.margins: 2.0
-        radius: parent.radius
+        radius: background.radius
         color: "#f7fbff"
         opacity: (voltage + 100) / (150)
     }
-
-//    Text {
-//        anchors.centerIn: parent
-//        text: voltage.toFixed(1)
-//    }
-
 
     MouseArea {
         anchors.fill: parent
@@ -162,8 +162,8 @@ Rectangle {
         }
 
         function resetPosition() {
-            connector.x = neuronRoot.width / 2 + 0.707*neuronRoot.radius - connector.width / 2
-            connector.y = neuronRoot.height / 2 + 0.707*neuronRoot.radius - connector.height / 2
+            connector.x = neuronRoot.width / 2 + 0.707*background.radius - connector.width / 2
+            connector.y = neuronRoot.height / 2 + 0.707*background.radius - connector.height / 2
         }
 
         width: neuronRoot.width * 0.5

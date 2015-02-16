@@ -3,11 +3,13 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import ".."
 
-PropertiesPanel {
+Item {
     id: connectionControlsRoot
-    property Connection connection: null
+    property Item connection: null
 
     signal deleteClicked
+
+    anchors.fill: parent
 
     onConnectionChanged: {
         if(!connectionControlsRoot.connection) {
@@ -15,7 +17,6 @@ PropertiesPanel {
         }
     }
 
-    revealed: connectionControlsRoot.connection ? true : false
     ColumnLayout {
 
         anchors.fill: parent

@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import "paths"
+import "hud"
 
 Entity {
     id: sensorRoot
@@ -10,22 +11,28 @@ Entity {
     width: cells * 100
     height: 100
 
+    controls: Component {
+        SensorControls {
+            id: sensorControls
+            sensor: sensorRoot
+            onDeleteClicked: {
+                simulatorRoot.deleteSensor(sensor)
+            }
+        }
+    }
+
     Component.onCompleted: {
         resetCells()
     }
 
     function resetCells() {
-        console.log("Resetting cells!")
         for(var i = 0; i < repeater.count; i++) {
-            console.log("Found cell!")
             var cell = repeater.itemAt(i)
             for(var j in cell.connections) {
                 var connection = cell.connections[j]
-                console.log("Deleting connection!")
                 deleteConnection(connection)
             }
         }
-        console.log("Changing number of cells!")
         repeater.model = cells
     }
 

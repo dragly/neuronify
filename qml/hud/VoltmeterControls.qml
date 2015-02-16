@@ -3,9 +3,9 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import ".."
 
-PropertiesPanel {
+Item {
     id: voltmeterControlsRoot
-    property Voltmeter voltmeter: null
+    property Item voltmeter: null
 
     onVoltmeterChanged: {
         if(!voltmeterControlsRoot.voltmeter) {
@@ -19,7 +19,8 @@ PropertiesPanel {
         }
     }
 
-    revealed: voltmeterControlsRoot.voltmeter ? true : false
+    anchors.fill: parent
+
     ColumnLayout {
 
         anchors.fill: parent

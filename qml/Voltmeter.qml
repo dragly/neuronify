@@ -1,13 +1,10 @@
 import QtQuick 2.0
 import "paths"
+import "hud"
 
-Rectangle {
+Entity {
     id: voltmeterRoot
 
-    signal clicked(var voltmeter)
-
-    property bool selected: false
-    property vector2d connectionPoint: Qt.vector2d(x + width / 2.0, y + width / 2.0)
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentColor: 0
@@ -20,14 +17,18 @@ Rectangle {
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
 
+    controls: Component {
+        VoltmeterControls {
+            voltmeter: voltmeterRoot
+        }
+    }
+
 
     width: 180
     height: 120
     color: "#deebf7"
-    border.color: selected ? "#08306b" : "#9ecae1"
-    border.width: selected ? 3.0 : 1.0
 
-    function addConnection(connection) {
+    onConnectionAdded: {
         if(currentColor > colors.length - 1) {
             currentColor = 0
         }
@@ -43,7 +44,7 @@ Rectangle {
         currentColor += 1
     }
 
-    function removeConnection(connection) {
+    onConnectionRemoved: {
         for(var i in connectionPlots) {
             var connectionPlot = connectionPlots[i]
             var connectionOther = connectionPlot.connection
@@ -99,6 +100,13 @@ Rectangle {
         }
     }
 
+    Rectangle {
+        anchors.fill: parent
+        color: parent.color
+        border.color: selected ? "#08306b" : "#9ecae1"
+        border.width: selected ? 3.0 : 1.0
+    }
+
     Item {
         id: plotLayer
         anchors.fill: parent
@@ -149,7 +157,7 @@ Rectangle {
         drag.target: parent
         propagateComposedEvents: true
         onClicked: {
-            voltmeterRoot.clicked(voltmeterRoot)
+            voltmeterRoot.clicked(voltmeterRoot, mouse)
         }
     }
 

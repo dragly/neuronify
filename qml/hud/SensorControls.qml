@@ -3,11 +3,13 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import ".."
 
-PropertiesPanel {
+Item {
     id: sensorControlsRoot
-    property TouchSensor sensor: null
+    property Item sensor: null
 
     signal deleteClicked
+
+    anchors.fill: parent
 
     onSensorChanged: {
         if(!sensorControlsRoot.sensor) {
@@ -16,7 +18,6 @@ PropertiesPanel {
         cellsSlider.value = sensorControlsRoot.sensor.cells
     }
 
-    revealed: sensorControlsRoot.sensor ? true : false
     ColumnLayout {
 
         anchors.fill: parent

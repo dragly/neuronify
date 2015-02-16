@@ -36,6 +36,7 @@ Rectangle {
             return true
         }
     }
+    property var activeObject: null
 
     width: 400
     height: 300
@@ -269,10 +270,7 @@ Rectangle {
     }
 
     function deselectPanels() {
-        connectionControls.connection = null
-        voltmeterControls.voltmeter = null
-        neuronControls.neuron = null
-        sensorControls.sensor = null
+        activeObject = null
     }
 
     function selectAllNeurons() {
@@ -357,9 +355,13 @@ Rectangle {
         deselectAllInList(sensors)
     }
 
+    function clickedEntity(entity) {
+        console.log("Clicked entity " + entity)
+        activeObject = entity
+    }
+
     function clickedNeuron(neuron, mouse) {
         deselectAll()
-        neuronControls.neuron = neuron
         neuron.selected = true
 
         if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
@@ -383,18 +385,16 @@ Rectangle {
         }
 
         selectAllInList(selectedNeurons)
-
     }
 
     function clickedConnection(connection) {
         deselectAll()
-        connectionControls.connection = connection
+        activeObject = connection
         connection.selected = true
     }
 
     function clickedVoltmeter(voltmeter) {
         deselectAll()
-        voltmeterControls.voltmeter = voltmeter
         voltmeter.selected = true
     }
 
@@ -405,6 +405,7 @@ Rectangle {
         neuron.widthChanged.connect(resetOrganize)
         neuron.heightChanged.connect(resetOrganize)
         neuron.clicked.connect(clickedNeuron)
+        neuron.clicked.connect(clickedEntity)
         neuron.droppedConnector.connect(createConnectionToPoint)
         neurons.push(neuron)
         organizedItems.push(neuron)
@@ -420,6 +421,7 @@ Rectangle {
         sensor.widthChanged.connect(resetOrganize)
         sensor.heightChanged.connect(resetOrganize)
         sensor.clicked.connect(clickedSensor)
+        sensor.clicked.connect(clickedEntity)
         sensors.push(sensor)
         resetOrganize()
         return sensor
@@ -427,7 +429,6 @@ Rectangle {
 
     function clickedSensor(sensor, mouse) {
         deselectAll()
-        sensorControls.sensor = sensor
         sensor.selected = true
     }
 
@@ -436,6 +437,7 @@ Rectangle {
         var voltmeter = component.createObject(neuronLayer, properties)
         voltmeters.push(voltmeter)
         voltmeter.clicked.connect(clickedVoltmeter)
+        voltmeter.clicked.connect(clickedEntity)
         resetOrganize()
         return voltmeter
     }
@@ -764,31 +766,14 @@ Rectangle {
         }
     }
 
-    NeuronControls {
-        id: neuronControls
-        onDisconnectClicked: {
-            simulatorRoot.disconnectNeuron(neuron)
-        }
-        onDeleteClicked: {
-            simulatorRoot.deleteNeuron(neuron)
-        }
-    }
-
-    VoltmeterControls {
-        id: voltmeterControls
-    }
-
-    ConnectionControls {
-        id: connectionControls
-        onDeleteClicked: {
-            simulatorRoot.deleteConnection(connection)
-        }
-    }
-
-    SensorControls {
-        id: sensorControls
-        onDeleteClicked: {
-            simulatorRoot.deleteSensor(sensor)
+    PropertiesPanel {
+        id: activeObjectControls
+        revealed: activeObject ? true : false
+        Loader {
+            id: activeObjectControlsLoader
+            width: parent.width / 2
+            height: parent.height / 2
+            sourceComponent: activeObject ? (activeObject.controls ? activeObject.controls : null) : null
         }
     }
 
@@ -919,11 +904,7 @@ Rectangle {
          }
 
          if(event.key === Qt.Key_Delete) {
-             if(voltmeterControls.voltmeter) {
-                 deleteVoltmeter(voltmeterControls.voltmeter)
-             } else if(neuronControls.neuron) {
-                 deleteNeuron(neuronControls.neuron)
-             }
+             console.warn("Warning: Delete is no longer implemented!")
          }
      }
 }
