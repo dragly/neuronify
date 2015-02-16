@@ -18,8 +18,8 @@ SOURCES += \
     src/main.cpp
 
 RESOURCES += qml/qml.qrc \
-    images.qrc \
-    simulations.qrc
+    images/images.qrc \
+    simulations/simulations.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =

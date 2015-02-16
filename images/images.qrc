@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>back.png</file>
+        <file>systems.png</file>
+        <file>menus/mainmenu.png</file>
+        <file>logo.png</file>
+        <file>transform-move.png</file>
+    </qresource>
+</RCC>
