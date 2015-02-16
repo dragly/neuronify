@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
 import QtQuick.Window 2.1
 
-import Nestify 1.0
+import Neuronify 1.0
 
 import "hud"
 import "menus/mainmenu"
@@ -36,7 +36,6 @@ Rectangle {
             return true
         }
     }
-    //    property var connections: []
 
     width: 400
     height: 300
@@ -881,7 +880,7 @@ Rectangle {
          title: "Please eneter a filename"
          visible : false
          selectExisting: false
-         nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+         nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
 
          onAccepted: {
              var fileUrlNew = fileUrl
@@ -898,7 +897,7 @@ Rectangle {
          id: loadFileDialog
          title: "Please choose a file"
          visible : false
-         nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+         nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
 
          onAccepted: {
              loadState(fileUrl)

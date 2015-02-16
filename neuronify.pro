@@ -8,11 +8,16 @@ android {
 
 QT += qml quick widgets
 
-SOURCES += main.cpp \
-    neuronengine.cpp \
-    fileio.cpp
+HEADERS += \
+    src/engine/neuronengine.h \
+    src/io/fileio.h
 
-RESOURCES += qml.qrc \
+SOURCES += \
+    src/engine/neuronengine.cpp \
+    src/io/fileio.cpp \
+    src/main.cpp
+
+RESOURCES += qml/qml.qrc \
     images.qrc \
     simulations.qrc
 
@@ -21,10 +26,6 @@ QML_IMPORT_PATH =
 
 # Default rules for deployment.
 include(deployment.pri)
-
-HEADERS += \
-    neuronengine.h \
-    fileio.h
 
 DISTFILES += \
     android/gradle/wrapper/gradle-wrapper.jar \

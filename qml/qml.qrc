@@ -33,5 +33,6 @@
         <file>TouchSensor.qml</file>
         <file>Entity.qml</file>
         <file>hud/SensorControls.qml</file>
+        <file>io/FileManager.qml</file>
     </qresource>
 </RCC>

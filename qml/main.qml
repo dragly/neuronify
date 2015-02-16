@@ -18,7 +18,7 @@ ApplicationWindow {
     height: 640
     title: qsTr("Neuronify")
 
-    Nestify {
+    Neuronify {
         anchors.fill: parent
     }
 }

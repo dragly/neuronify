@@ -1,6 +1,6 @@
 import QtQuick 2.0
 import "paths"
-import Nestify 1.0
+import Neuronify 1.0
 
 Rectangle {
     id: neuronRoot
