@@ -23,7 +23,6 @@ Entity {
         }
     }
 
-
     width: 180
     height: 120
     color: "#deebf7"
@@ -142,28 +141,8 @@ Entity {
         text: minimumValue.toFixed(0)
     }
 
-//    Timer {
-//        id: plotTimer
-//        interval: 24
-//        running: true
-//        repeat: true
-//        onTriggered: {
-
-//        }
-//    }
-
-    MouseArea {
-        anchors.fill: parent
-        drag.target: parent
-        propagateComposedEvents: true
-        onClicked: {
-            voltmeterRoot.clicked(voltmeterRoot, mouse)
-        }
-    }
-
     Item {
         id: resizeRectangle
-//        color: "#9ecae1"
 
         Component.onCompleted: {
             resetPosition()

@@ -1,6 +1,7 @@
 import QtQuick 2.0
 
 Item {
+    id: entityRoot
     signal clicked(var entity, var mouse)
     signal dragStarted
     signal connectionAdded(var connection)
@@ -16,6 +17,7 @@ Item {
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property var connections: []
     property Component controls
+    property bool useDefaultMouseHandling: true
 
     function addConnection(connection) {
         connections.push(connection)
@@ -28,6 +30,24 @@ Item {
             connections.splice(index, 1)
         }
         connectionRemoved(connection)
+    }
+
+    MouseArea {
+        enabled: useDefaultMouseHandling
+        anchors.fill: parent
+        drag.target: parent
+        onPressed: {
+            entityRoot.dragging = true
+            dragStarted()
+        }
+
+        onClicked: {
+            entityRoot.clicked(entityRoot, mouse)
+        }
+
+        onReleased: {
+            entityRoot.dragging = false
+        }
     }
 }
 

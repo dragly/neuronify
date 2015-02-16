@@ -127,23 +127,6 @@ Entity {
         opacity: (voltage + 100) / (150)
     }
 
-    MouseArea {
-        anchors.fill: parent
-        drag.target: parent
-        onPressed: {
-            neuronRoot.dragging = true
-            dragStarted()
-        }
-
-        onClicked: {
-            neuronRoot.clicked(neuronRoot, mouse)
-        }
-
-        onReleased: {
-            neuronRoot.dragging = false
-        }
-    }
-
     SCurve {
         id: connectorCurve
         z: -1

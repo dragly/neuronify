@@ -20,7 +20,7 @@ Rectangle {
     property var organizedConnections: []
     property var neurons: []
     property var sensors: []
-    property var selectedNeurons: []
+    property var selectedEntities: []
     property var copiedNeurons: []
     property var voltmeters: []
     property real currentTimeStep: 0.0
@@ -274,28 +274,24 @@ Rectangle {
     }
 
     function selectAllNeurons() {
-        selectedNeurons = []
+        selectedEntities = []
         deselectPanels()
         selectAllInList(neurons)
         for(var i in neurons) {
             var neuron = neurons[i]
-            selectedNeurons.push(neuron)
+            selectedEntities.push(neuron)
         }
-    }
-
-    function selectNeurons() {
-        deselectPanels()
     }
 
     function copyNeurons() {
         copiedNeurons = []
         var copiedNeuron = []
-        for(var i in selectedNeurons) {
-            var neuron = selectedNeurons[i]
+        for(var i in selectedEntities) {
+            var neuron = selectedEntities[i]
             copiedNeuron = neuron
             copiedNeurons.push(copiedNeuron)
         }
-        selectedNeurons = []
+        selectedEntities = []
     }
 
     function pasteNeurons() {
@@ -355,36 +351,31 @@ Rectangle {
         deselectAllInList(sensors)
     }
 
-    function clickedEntity(entity) {
-        console.log("Clicked entity " + entity)
-        activeObject = entity
-    }
-
-    function clickedNeuron(neuron, mouse) {
+    function clickedEntity(entity, mouse) {
         deselectAll()
-        neuron.selected = true
+        entity.selected = true
+        activeObject = entity
 
         if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
-            selectNeurons()
             var alreadySelected = false
-                for(var j in selectedNeurons) {
-                    var alreadySelectedNeuron = selectedNeurons[j]
-                    if(alreadySelectedNeuron ===  neuron) {
+                for(var j in selectedEntities) {
+                    var alreadySelectedEntity = selectedEntities[j]
+                    if(alreadySelectedEntity ===  entity) {
                         alreadySelected = true
                     }
                 }
                 if(!alreadySelected) {
-                    selectedNeurons.push(neuron)
-                    console.log(selectedNeurons.length)
+                    selectedEntities.push(entity)
+                    console.log(selectedEntities.length)
                 }
 
-        }else{
-            selectedNeurons = []
-            selectedNeurons.push(neuron)
-            neuron.selected = true
+        } else {
+            selectedEntities = []
+            selectedEntities.push(entity)
+            entity.selected = true
         }
 
-        selectAllInList(selectedNeurons)
+        selectAllInList(selectedEntities)
     }
 
     function clickedConnection(connection) {
@@ -393,18 +384,12 @@ Rectangle {
         connection.selected = true
     }
 
-    function clickedVoltmeter(voltmeter) {
-        deselectAll()
-        voltmeter.selected = true
-    }
-
     function createNeuron(properties) {
         var component = Qt.createComponent("Neuron.qml")
         var neuron = component.createObject(neuronLayer, properties)
         neuron.dragStarted.connect(resetOrganize)
         neuron.widthChanged.connect(resetOrganize)
         neuron.heightChanged.connect(resetOrganize)
-        neuron.clicked.connect(clickedNeuron)
         neuron.clicked.connect(clickedEntity)
         neuron.droppedConnector.connect(createConnectionToPoint)
         neurons.push(neuron)
@@ -420,23 +405,16 @@ Rectangle {
         sensor.dragStarted.connect(resetOrganize)
         sensor.widthChanged.connect(resetOrganize)
         sensor.heightChanged.connect(resetOrganize)
-        sensor.clicked.connect(clickedSensor)
         sensor.clicked.connect(clickedEntity)
         sensors.push(sensor)
         resetOrganize()
         return sensor
     }
 
-    function clickedSensor(sensor, mouse) {
-        deselectAll()
-        sensor.selected = true
-    }
-
     function createVoltmeter(properties) {
         var component = Qt.createComponent("Voltmeter.qml")
         var voltmeter = component.createObject(neuronLayer, properties)
         voltmeters.push(voltmeter)
-        voltmeter.clicked.connect(clickedVoltmeter)
         voltmeter.clicked.connect(clickedEntity)
         resetOrganize()
         return voltmeter
@@ -700,7 +678,7 @@ Rectangle {
 
                 onClicked: {
                     deselectAll()
-                    selectedNeurons = []
+                    selectedEntities = []
                 }
             }
         }
