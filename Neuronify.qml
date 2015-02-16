@@ -10,25 +10,6 @@ import "hud"
 import "menus/mainmenu"
 import "style"
 
-/*
-  TODO:
-  Post-inhibitory rebound
-  Langvarig depolarisering ved høy frekvens, via kalsiumkanaler. Deaktiveres ved hemming.
-  Bistable
-  Gaffel for eksitatoriskce
-  Gain-synapser med andre symboler, elektriske synapser tegnet som motstand
-  Mulighet til å lagre krets
-  Mulighet til å lagre time-trace
-  Kjøre ting i skyen
-  Aksonene er litt tynne, bør være mer synlige
-  Linjen rundt cellene bør være tykkere
-  Lyd når cellene fyrer av
-  Pinch to zoom
-  To plott over hverandre
-  Koble to kretser sammen etter å ha zoomet ut
-  Mulighet til å lagre moduler
-*/
-
 Rectangle {
     id: simulatorRoot
 
