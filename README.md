@@ -4,10 +4,6 @@ Neuronify
 Visual neuron simulator using integrate-and-fire neurons.
 
 
-Clone the repo:
-git@github.com:CINPLA/neuronify.git
-
-
 ==============
 
 Installation of Qt and building Neuronify:
