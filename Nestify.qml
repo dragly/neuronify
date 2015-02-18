@@ -900,7 +900,7 @@ Rectangle {
          title: "Please eneter a filename"
          visible : false
          selectExisting: false
-         nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+         nameFilters: Qt.platform.os === "osx" ? [] : ["Nestify files (*.nfy)", "All files (*)"]
 
          onAccepted: {
              var fileUrlNew = fileUrl
@@ -917,7 +917,7 @@ Rectangle {
          id: loadFileDialog
          title: "Please choose a file"
          visible : false
-         nameFilters: ["Nestify files (*.nfy)", "All files (*)"]
+         nameFilters: Qt.platform.os === "osx" ? [] : ["Nestify files (*.nfy)", "All files (*)"]
 
          onAccepted: {
              loadState(fileUrl)
