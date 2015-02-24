@@ -212,18 +212,21 @@ Rectangle {
     }
 
     function createNeuron(properties) {
+        console.warn("Using deprecated createNeuron function! Please update your scripts or savefiles.")
         var neuron = createEntity("Neuron.qml", properties, true)
         neuron.droppedConnector.connect(createConnectionToPoint)
         return neuron
     }
 
     function createTouchSensor(properties) {
+        console.warn("Using deprecated createTouchSensor function! Please update your scripts or savefiles.")
         properties.dropFunction = createConnectionToPoint
         var sensor = createEntity("TouchSensor.qml", properties)
         return sensor
     }
 
     function createVoltmeter(properties) {
+        console.warn("Using deprecated createVoltmeter function! Please update your scripts or savefiles.")
         var voltmeter = createEntity("Voltmeter.qml", properties)
         return voltmeter
     }
