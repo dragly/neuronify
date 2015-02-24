@@ -8,7 +8,9 @@ Entity {
     fileName: "TouchSensor.qml"
 
     property int cells: 5
+    property int _oldCells: 0
     property var dropFunction
+    property var actualCells: []
 
     width: cells * 100
     height: 100
@@ -29,40 +31,31 @@ Entity {
     }
 
     function resetCells() {
-        for(var i = 0; i < repeater.count; i++) {
-            var cell = repeater.itemAt(i)
+        for(var i = 0; i < actualCells.length; i++) {
+            var cell = actualCells[i]
             for(var j in cell.connections) {
                 var connection = cell.connections[j]
-                deleteConnection(connection)
+                connection.destroy()
             }
+            cell.destroy()
         }
-        repeater.model = cells
+        actualCells.length = 0
+        for(var i = 0; i < cells; i++) {
+            var cell = simulator.createEntity("TouchSensorCell.qml", {cellIndex: i, sensor: sensorRoot})
+            cell.parent = cellRow
+            actualCells.push(cell)
+        }
     }
 
     onStep: {
-        for(var i = 0; i < repeater.count; i++) {
-            var cell = repeater.itemAt(i)
+        for(var i in actualCells) {
+            var cell = actualCells[i]
             cell.step(dt)
         }
     }
 
-    function dump(index, entities) {
-        var outputString = ""
-        outputString += _basicSelfDump(index)
-        for(var j = 0; j < repeater.count; j++) {
-            var cell = repeater.itemAt(j)
-
-            for(var k in cell.connections){
-                var toNeuron = cell.connections[k].itemB
-                var indexOfToNeuron = entities.indexOf(toNeuron)
-                outputString += "connectEntities(" + sensorName + ".cellAt(" + j + "), entity" + indexOfToNeuron + ")\n"
-            }
-        }
-        return outputString
-    }
-
     function cellAt(index) {
-        var cell = repeater.itemAt(index)
+        var cell = actualCells[index]
         if(!cell) {
             console.warn("WARNING: No cell at index " + index)
         }
@@ -77,16 +70,16 @@ Entity {
         anchors.fill: cellRow
 
         function desenseAll() {
-            for(var i = 0; i < repeater.count; i++) {
-                var item = repeater.itemAt(i)
+            for(var i in actualCells) {
+                var item = actualCells[i]
                 item.sensing = false
             }
         }
 
         function senseObject(mouse) {
             desenseAll()
-            var index = mouse.x / 100
-            var item = repeater.itemAt(index)
+            var index = parseInt(mouse.x / 100)
+            var item = actualCells[index]
             if(item) {
                 item.sensing = true
             }
@@ -111,127 +104,8 @@ Entity {
 
     Row {
         id: cellRow
-        Repeater {
-            id: repeater
-            model: 0
 
-            Entity {
-                id: cell
-                property string objectName: "touchSensorCell"
-                signal droppedConnector(var neuron, var connector)
-                property bool sensing: false
-                property real voltage: 0.0
-                property real timeSinceFire: 0.0
-                property bool firedLastTime: false
-                property real gs: 0.0
-                property real dt: 0
-
-                useDefaultMouseHandling: false
-
-                color: cell.sensing ? "#9ecae1" : "#4292c6"
-                connectionPoint: Qt.point(sensorRoot.x + cell.x + cell.width / 2,
-                                          sensorRoot.y + cell.y + cell.height)
-
-                onStep: {
-                    cell.dt = dt
-                }
-
-                onOutputConnectionStep: {
-                    var neuron = target
-                    timeSinceFire += dt
-                    var V = voltage
-                    var Is = 0
-                    if(sensing) {
-                        gs += 20.0 * dt
-                    }
-                    Is = gs * (V - 60)
-                    var voltageChange = - (V + 50) - Is
-                    var dV = voltageChange * dt
-                    voltage += dV;
-                    if(firedLastTime) {
-                        voltage = -100
-                        gs = 0
-                        firedLastTime = false
-                        return
-                    }
-
-                    var shouldFire = false
-                    if(voltage > 0.0) {
-                        shouldFire = true
-                    }
-                    if(shouldFire) {
-                        voltage += 100.0
-                        timeSinceFire = 0.0
-                        firedLastTime = true
-                        neuron.stimulate(3.0)
-                    }
-                }
-
-                width: 100
-                height: 100
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: parent.color
-                    border.width: cell.sensing ? width * 0.03 : width * 0.02
-                    border.color: "#f7fbff"
-                }
-
-                Component.onCompleted: {
-                    droppedConnector.connect(sensorRoot.dropFunction)
-                }
-
-                SCurve {
-                    id: connectorCurve
-                    visible: sensorRoot.selected
-                    z: -1
-                    color: "#4292c6"
-                    startPoint: Qt.point(parent.width / 2, parent.height / 2)
-                    endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
-                }
-
-                Item {
-                    id: connector
-
-                    visible: sensorRoot.selected
-
-                    Component.onCompleted: {
-                        resetPosition()
-                    }
-
-                    function resetPosition() {
-                        connector.x = parent.width / 2 - width / 2
-                        connector.y = parent.height - height / 2
-                    }
-
-                    width: parent.width * 0.3
-                    height: width
-
-                    Rectangle {
-                        id: connectorCircle
-                        anchors.centerIn: parent
-                        width: parent.width / 2.0
-                        height: width
-                        color: "#4292c6"
-                        border.color: "#f7fbff"
-                        border.width: 1.0
-                        radius: width
-                    }
-
-                    MouseArea {
-                        id: connectorMouseArea
-                        anchors.fill: parent
-                        drag.target: parent
-                        onReleased: {
-                            cell.droppedConnector(cell, connector)
-                            connector.resetPosition()
-                        }
-                    }
-                }
-            }
-        }
     }
-
 
     Rectangle {
         anchors {

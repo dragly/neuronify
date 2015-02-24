@@ -21,6 +21,7 @@ Item {
     property real cx: valid ? itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length : 0
     property real cy: valid ? itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length : 0
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
+    property var customDump
     property Component controls: Component {
         ConnectionControls {
             connection: connectionRoot
@@ -46,6 +47,10 @@ Item {
     }
 
     function dump(index, entities) {
+        if(customDump) {
+            return customDump(index, entities)
+        }
+
         var outputString = ""
         var itemAEntityIndex = entities.indexOf(itemA)
         var itemBEntityIndex = entities.indexOf(itemB)

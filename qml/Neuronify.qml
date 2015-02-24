@@ -198,25 +198,6 @@ Rectangle {
         return entity
     }
 
-    function createNeuron(properties) {
-        console.warn("Using deprecated createNeuron function! Please update your scripts or savefiles.")
-        var neuron = createEntity("Neuron.qml", properties, true)
-        return neuron
-    }
-
-    function createTouchSensor(properties) {
-        console.warn("Using deprecated createTouchSensor function! Please update your scripts or savefiles.")
-//        properties.dropFunction = createConnectionToPoint
-        var sensor = createEntity("TouchSensor.qml", properties)
-        return sensor
-    }
-
-    function createVoltmeter(properties) {
-        console.warn("Using deprecated createVoltmeter function! Please update your scripts or savefiles.")
-        var voltmeter = createEntity("Voltmeter.qml", properties)
-        return voltmeter
-    }
-
     function createConnection(sourceObject, targetObject) {
         var connectionComponent = Qt.createComponent("Connection.qml")
         var connection = connectionComponent.createObject(connectionLayer, {
@@ -234,24 +215,6 @@ Rectangle {
         connection.aboutToDie.connect(cleanupDeletedConnection)
         resetOrganize()
         return connection
-    }
-
-    function connectNeurons(itemA, itemB) {
-        console.warn("Using deprecated connectNeurons function! Please update your scripts or savefiles.")
-        return connectEntities(itemA, itemB)
-    }
-
-    function connectSensorToNeuron(sensor, neuron) {
-        console.warn("Using deprecated connectSensorToNeuron function! Please update your scripts or savefiles.")
-        var connection = createConnection(sensor, neuron)
-        sensor.addConnection(connection)
-        connections.push(connection)
-        return connection
-    }
-
-    function connectVoltmeterToNeuron(neuron, voltmeter) {
-        console.warn("Using deprecated connectVoltmeterToNeuron function! Please update your scripts or savefiles.")
-        return connectEntities(neuron, voltmeter)
     }
 
     function connectionExists(itemA, itemB) {

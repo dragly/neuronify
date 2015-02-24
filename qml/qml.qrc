@@ -36,5 +36,6 @@
         <file>io/FileManager.qml</file>
         <file>tools/AutoLayout.qml</file>
         <file>tools/Clipboard.qml</file>
+        <file>TouchSensorCell.qml</file>
     </qresource>
 </RCC>
