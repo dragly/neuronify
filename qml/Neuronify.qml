@@ -60,7 +60,7 @@ Rectangle {
     }
 
     function saveState(fileUrl) {
-        fileManager.saveState(fileUrl, neurons, voltmeters, sensors)
+        fileManager.saveState(fileUrl)
     }
 
     function loadState(fileUrl) {
@@ -71,33 +71,10 @@ Rectangle {
     //////////////////////// end of save/load ////////////////
 
     function deleteEverything() {
-        deleteAllConnections()
-        deleteAllVoltmeters()
-        deleteAllNeurons()
-        deleteAllSensors()
-    }
-
-    function deleteAllNeurons() {
-        while(neurons.length > 0){
-            deleteNeuron(neurons[0])
-        }
-    }
-
-    function deleteAllVoltmeters() {
-        while(voltmeters.length > 0){
-            deleteVoltmeter(voltmeters[0])
-        }
-    }
-
-    function deleteAllSensors() {
-        while(sensors.length > 0){
-            deleteSensor(sensors[0])
-        }
-    }
-
-    function deleteAllConnections() {
-        while(connections.length > 0){
-            deleteConnection(connections[0])
+        console.log("Deleting everything")
+        var entitiesToDelete = entities.slice()
+        for(var i in entitiesToDelete) {
+            entitiesToDelete[i].destroy()
         }
     }
 

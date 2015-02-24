@@ -41,7 +41,6 @@ Item {
     }
 
     Component.onDestruction: {
-        console.log("Destroying entity " + entityRoot)
         aboutToDie(entityRoot)
         _deleteAllConnectionsInList(connections)
     }
