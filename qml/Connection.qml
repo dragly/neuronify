@@ -6,7 +6,7 @@ Item {
     id: connectionRoot
     signal clicked(var connection)
     property bool selected: false
-    property bool valid: (itemA && itemB)
+    property bool valid: (itemA && itemB) ? true : false
     property var itemA
     property var itemB
     property real conductance: 1.0

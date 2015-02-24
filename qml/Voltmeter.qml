@@ -4,6 +4,8 @@ import "hud"
 
 Entity {
     id: voltmeterRoot
+    objectName: "voltmeter"
+    fileName: "Voltmeter.qml"
 
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#999999"]
@@ -27,6 +29,11 @@ Entity {
     height: 120
     color: "#deebf7"
 
+    dumpableProperties: [
+        "x",
+        "y"
+    ]
+
     Component.onDestruction: {
         aboutToDie(voltmeterRoot)
         var connectionsToRemove = []
@@ -37,34 +44,6 @@ Entity {
         }
         for(var i in connectionsToRemove) {
             deleteConnection(connectionsToRemove[i])
-        }
-    }
-
-    onConnectionAdded: {
-        if(currentColor > colors.length - 1) {
-            currentColor = 0
-        }
-        var color = colors[currentColor]
-
-        var newList = voltmeterRoot.connectionPlots
-        var plotComponent = Qt.createComponent("Plot.qml")
-        var plot = plotComponent.createObject(plotLayer, {strokeStyle: color})
-        connection.color = color
-        resetMinMax(plot)
-        newList.push({connection: connection, plot: plot})
-        voltmeterRoot.connectionPlots = newList
-        currentColor += 1
-    }
-
-    onConnectionRemoved: {
-        for(var i in connectionPlots) {
-            var connectionPlot = connectionPlots[i]
-            var connectionOther = connectionPlot.connection
-            if(connectionOther === connection) {
-                connectionPlots.splice(i, 1)
-                connectionPlot.plot.destroy(1)
-                break
-            }
         }
     }
 
@@ -95,6 +74,34 @@ Entity {
         }
         lastUpdateTime = currentUpdateTime
         timeSinceLastUpdate = 0
+    }
+
+    onConnectionAdded: {
+        if(currentColor > colors.length - 1) {
+            currentColor = 0
+        }
+        var color = colors[currentColor]
+
+        var newList = voltmeterRoot.connectionPlots
+        var plotComponent = Qt.createComponent("Plot.qml")
+        var plot = plotComponent.createObject(plotLayer, {strokeStyle: color})
+        connection.color = color
+        resetMinMax(plot)
+        newList.push({connection: connection, plot: plot})
+        voltmeterRoot.connectionPlots = newList
+        currentColor += 1
+    }
+
+    onConnectionRemoved: {
+        for(var i in connectionPlots) {
+            var connectionPlot = connectionPlots[i]
+            var connectionOther = connectionPlot.connection
+            if(connectionOther === connection) {
+                connectionPlots.splice(i, 1)
+                connectionPlot.plot.destroy(1)
+                break
+            }
+        }
     }
 
     onModeChanged: {

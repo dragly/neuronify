@@ -5,6 +5,8 @@ import "hud"
 Entity {
     id: sensorRoot
     objectName: "touchSensor"
+    fileName: "TouchSensor.qml"
+
     property int cells: 5
     property var dropFunction
 
@@ -43,27 +45,18 @@ Entity {
         }
     }
 
-    function dump(index, neurons) {
+    function dump(index, entities) {
         var outputString = ""
-        var sensorData = {
-            x: x,
-            y: y,
-            cells: cells
-        }
-        var sensorName = "sensor" + index
-        var ss = "var " + sensorName + " = createTouchSensor(" + JSON.stringify(sensorData) + ")"
-        outputString += ss + "\n"
-
+        outputString += _basicSelfDump(index)
         for(var j = 0; j < repeater.count; j++) {
             var cell = repeater.itemAt(j)
 
             for(var k in cell.connections){
                 var toNeuron = cell.connections[k].itemB
-                var indexOfToNeuron = neurons.indexOf(toNeuron)
-                outputString += "connectSensorToNeuron(" + sensorName + ".cellAt(" + j + "), neuron" + indexOfToNeuron + ") \n"
+                var indexOfToNeuron = entities.indexOf(toNeuron)
+                outputString += "connectEntities(" + sensorName + ".cellAt(" + j + "), entity" + indexOfToNeuron + ")\n"
             }
         }
-        console.log(outputString)
         return outputString
     }
 

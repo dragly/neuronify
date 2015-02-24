@@ -5,6 +5,8 @@ import Neuronify 1.0
 
 Entity {
     id: neuronRoot
+    objectName: "neuron"
+    fileName: "Neuron.qml"
 
     signal droppedConnector(var neuron, var connector)
 
@@ -14,7 +16,6 @@ Entity {
     property real speed: 0.0
     property alias cm: engine.cm
     property real timeSinceFire: 0.0
-    property var passiveConnections: []
     //    property var outputNeurons: []
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property bool firedLastTime: false
@@ -38,23 +39,23 @@ Entity {
         }
     }
 
-    objectName: "neuron"
     selected: false
     radius: width / 2
     width: parent.width * 0.015
     height: width
     color: outputStimulation > 0.0 ? "#6baed6" : "#e41a1c"
 
-    Component.onDestruction: {
-        _deleteAllConnectionsInList(passiveConnections)
-    }
+    dumpableProperties: [
+        "x",
+        "y",
+        "clampCurrent",
+        "clampCurrentEnabled",
+        "adaptationIncreaseOnFire",
+        "outputStimulation"
+    ]
 
     function reset() {
         engine.reset()
-    }
-
-    function addPassiveConnection(connection) {
-        passiveConnections.push(connection)
     }
 
     function stepForward(dt) {
@@ -65,10 +66,6 @@ Entity {
 
     function finalizeStep(dt) {
 
-    }
-
-    function stimulate(stimulation) {
-        synapticConductance += stimulation
     }
 
     function fire() {
@@ -99,19 +96,15 @@ Entity {
         if(shouldFire) {
             fire()
         }
+    }
 
+    onStimulated: {
+        synapticConductance += stimulation
     }
 
     onSimulatorChanged: {
         if(simulator) {
             droppedConnector.connect(simulator.createConnectionToPoint)
-        }
-    }
-
-    onConnectionRemoved: {
-        var index = passiveConnections.indexOf(connection)
-        if(index > -1) {
-            passiveConnections.splice(index, 1)
         }
     }
 

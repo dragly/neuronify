@@ -7,9 +7,11 @@ Item {
     signal connectionAdded(var connection)
     signal connectionRemoved(var connection)
     signal aboutToDie(var entity)
+    signal stimulated(var stimulation)
 
-    property real radius: 1.0
     property string objectName: "entity"
+    property string fileName: "Entity.qml"
+    property real radius: 1.0
     property bool selected: false
     property vector2d velocity
     property bool dragging: false
@@ -20,6 +22,14 @@ Item {
     property Component controls
     property Item simulator
     property bool useDefaultMouseHandling: true
+    property var dumpableProperties: [
+        "x",
+        "y"
+    ]
+
+    function stimulate(stimulation) {
+        stimulated(stimulation)
+    }
 
     function addConnection(connection) {
         connections.push(connection)
@@ -39,6 +49,38 @@ Item {
             var connection = connectionsToDelete[i]
             connection.destroy()
         }
+    }
+
+    function _basicSelfDump(index) {
+        var outputString = ""
+        var entityData = {}
+
+        for(var i in dumpableProperties) {
+            var propertyName = dumpableProperties[i]
+            entityData[propertyName] = entityRoot[propertyName]
+        }
+
+        var entityName = "entity" + index
+        var ss = "var " + entityName + " = createEntity(\"" + fileName + "\", " + JSON.stringify(entityData) + ")"
+        outputString += ss + "\n"
+        return outputString
+    }
+
+    function _basicConnectionDump(index, entities) {
+        var outputString = ""
+        for(var j in connections) {
+            var targetEntity = connections[j].itemB
+            var targetEntityIndex = entities.indexOf(targetEntity)
+            outputString += "connectEntities(entity" + index + ", entity" + targetEntityIndex + ")\n"
+        }
+        return outputString
+    }
+
+    function dump(index, entities) {
+        var outputString = ""
+        outputString += _basicSelfDump(index)
+        outputString += _basicConnectionDump(index, entities)
+        return outputString
     }
 
     Component.onDestruction: {

@@ -5,10 +5,22 @@ import Neuronify 1.0
 
 Item {
     property Item neuronify
+
+    function showSaveDialog() {
+        saveFileDialog.visible = true
+    }
+
+    function showLoadDialog() {
+        loadFileDialog.visible = true
+    }
+
     function saveState(fileUrl) {
-        var neurons = neuronify.neurons
-        var sensors = neuronify.sensors
-        var voltmeters = neuronify.voltmeters
+//        var neurons = neuronify.neurons
+//        var sensors = neuronify.sensors
+//        var voltmeters = neuronify.voltmeters
+
+        var entities = neuronify.entities
+
         if (!String.format) {
           String.format = function(format) {
             var args = Array.prototype.slice.call(arguments, 1);
@@ -26,36 +38,14 @@ Item {
         console.log("Saving to " + fileUrl)
 
         var counter = 0
-        for(var i in neurons) {
-            var neuron = neurons[i]
-            console.log(neuron.x)
-            var ss = "var neuron{0} = createNeuron({x: {1}, y: {2}, clampCurrent: {3}, clampCurrentEnabled: {4}, adaptationIncreaseOnFire: {5}, outputStimulation: {6}})"
-            ss = String.format(ss,i.toString(),neuron.x, neuron.y, neuron.clampCurrent,
-              neuron.clampCurrentEnabled, neuron.adaptationIncreaseOnFire, neuron.outputStimulation)
-            console.log(ss)
-            fileString += ss + "\n"
+        for(var i in entities) {
+            var entity = entities[i]
+
+            var ss = entity.dump(i, entities)
+            fileString += ss
         }
 
-        for(var i in neurons) {
-            var neuron = neurons[i]
-            for(var j in neuron.connections){
-                var toNeuron = neuron.connections[j].itemB
-                var indexOfToNeuron = neurons.indexOf(toNeuron)
-                fileString += String.format("connectNeurons(neuron{0}, neuron{1}) \n",i,indexOfToNeuron)
-            }
-        }
-
-        for(var i in voltmeters){
-            var voltmeter = voltmeters[i]
-            fileString += String.format("var voltmeter{0} = createVoltmeter({x: {1}, y:{2}}) \n", i, voltmeter.x, voltmeter.y)
-            var neuronIndex = neurons.indexOf(voltmeter.connectionPlots[0].connection.itemA)
-            fileString += String.format("connectVoltmeterToNeuron(neuron{0}, voltmeter{1}) \n",neuronIndex, i)
-        }
-
-        for(var i in sensors) {
-            fileString += sensors[i].dump(i, neurons)
-        }
-
+        console.log(fileString)
 
         saveFileIO.source = fileUrl
         saveFileIO.write(fileString)

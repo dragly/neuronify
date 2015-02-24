@@ -243,21 +243,24 @@ Rectangle {
         return connection
     }
 
-    function connectNeurons(itemA, itemB) {
+    function connectEntities(itemA, itemB) {
         var connection = createConnection(itemA, itemB)
         itemA.addConnection(connection)
-        itemB.addPassiveConnection(connection)
         autoLayout.connections.push(connection)
         connections.push(connection)
         resetOrganize()
         return connection
     }
 
+    function connectNeurons(itemA, itemB) {
+        console.warn("Using deprecated connectNeurons function! Please update your scripts or savefiles.")
+        return connectEntities(itemA, itemB)
+    }
+
     function connectSensorToNeuron(sensor, neuron) {
         console.log("Connecting sensor to neuron")
         var connection = createConnection(sensor, neuron)
         sensor.addConnection(connection)
-        neuron.addPassiveConnection(connection)
         connections.push(connection)
         return connection
     }
@@ -265,7 +268,6 @@ Rectangle {
     function connectVoltmeterToNeuron(neuron, voltmeter) {
         var connection = createConnection(neuron, voltmeter)
         voltmeter.addConnection(connection)
-        neuron.addPassiveConnection(connection)
         connections.push(connection)
         return connection
     }
@@ -462,12 +464,12 @@ Rectangle {
         }
 
         onSaveSimulationRequested: {
-            saveFileDialog.visible = true
+            fileManager.showSaveDialog()
             mainMenu.revealed = false
         }
 
         onLoadSimulationRequested: {
-            loadFileDialog.visible = true
+            fileManager.showLoadDialog()
             mainMenu.revealed = false
         }
     }
