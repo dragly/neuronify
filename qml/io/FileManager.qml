@@ -107,7 +107,7 @@ Item {
         nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
 
         onAccepted: {
-            loadState(fileUrl)
+            neuronify.loadState(fileUrl)
         }
     }
 }

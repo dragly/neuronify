@@ -68,7 +68,6 @@ Rectangle {
         eval(code)
     }
 
-
     //////////////////////// end of save/load ////////////////
 
     function deleteEverything() {
