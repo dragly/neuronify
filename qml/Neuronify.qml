@@ -162,20 +162,6 @@ Rectangle {
         }
     }
 
-    function deselectPanels() {
-        activeObject = null
-    }
-
-    function selectAllNeurons() {
-        selectedEntities = []
-        deselectPanels()
-        selectAllInList(neurons)
-        for(var i in neurons) {
-            var neuron = neurons[i]
-            selectedEntities.push(neuron)
-        }
-    }
-
     function copyNeurons() {
         copiedNeurons = []
         var copiedNeuron = []
@@ -229,19 +215,19 @@ Rectangle {
     }
 
     function selectAll() {
-        deselectPanels()
-        selectAllInList(connections)
-        selectAllInList(voltmeters)
-        selectAllInList(neurons)
-        selectAllInList(sensors)
+        for(var i in entities) {
+            var listObject = entities[i]
+            listObject.selected = true
+            selectedEntities.push(listObject)
+        }
     }
 
     function deselectAll() {
-        deselectPanels()
-        deselectAllInList(connections)
-        deselectAllInList(voltmeters)
-        deselectAllInList(neurons)
-        deselectAllInList(sensors)
+        activeObject = null
+        for(var i in entities) {
+            var listObject = entities[i]
+            listObject.selected = false
+        }
     }
 
     function clickedEntity(entity, mouse) {
@@ -370,7 +356,6 @@ Rectangle {
     }
 
     function createConnectionToPoint(itemA, connector) {
-        console.log("Creating connection to point")
         var targetVoltmeter = itemUnderConnector(voltmeters, itemA, connector)
         if(targetVoltmeter) {
             if(!connectionExists(itemA, targetVoltmeter)) {
@@ -379,24 +364,18 @@ Rectangle {
             }
         }
 
-        var targetNeuron = itemUnderConnector(neurons, itemA, connector)
-        console.log(targetNeuron)
+        var targetNeuron = itemUnderConnector(entities, itemA, connector)
         if(targetNeuron) {
-            console.log("Target neuron found")
             if(connectionExists(itemA, targetNeuron)) {
-                console.log("Connection already exists")
                 return
             }
             if(itemA === targetNeuron) {
-                console.log("Cannot connect neuron to itself")
                 return
             }
             if(itemA.objectName === "neuron") {
-                console.log("Connecting neurons")
                 connectNeurons(itemA, targetNeuron)
             }
             if(itemA.objectName === "touchSensorCell") {
-                console.log("Connecting sensor to neuron")
                 connectSensorToNeuron(itemA, targetNeuron)
             }
 
@@ -721,18 +700,14 @@ Rectangle {
 
      Keys.onPressed: {
          if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
-             selectAllNeurons()
-             console.log("select all")
+             selectAll()
          }
          if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
              copyNeurons()
-             console.log("copy")
          }
          if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
              pasteNeurons()
-             console.log("paste")
          }
-
          if(event.key === Qt.Key_Delete) {
              for(var i in selectedEntities) {
                  var entity = selectedEntities[i]
