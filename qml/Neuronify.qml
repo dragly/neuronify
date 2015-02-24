@@ -9,9 +9,10 @@ import Neuronify 1.0
 import "hud"
 import "menus/mainmenu"
 import "style"
+import "io"
 
 Rectangle {
-    id: simulatorRoot
+    id: neuronifyRoot
 
     property real lastOrganizeTime: Date.now()
     property real lastStepTime: Date.now()
@@ -25,6 +26,7 @@ Rectangle {
     property var voltmeters: []
     property real currentTimeStep: 0.0
     property real time: 0.0
+    property var activeObject: null
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
             if(Qt.application.state === Qt.ApplicationActive) {
@@ -36,7 +38,6 @@ Rectangle {
             return true
         }
     }
-    property var activeObject: null
 
     width: 400
     height: 300
@@ -46,7 +47,7 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        loadState("simulations/dummy/dummy.nfy")
+        loadState("/simulations/dummy/dummy.nfy")
         resetStyle()
     }
 
@@ -57,67 +58,13 @@ Rectangle {
         }
     }
 
-    function saveState(fileUrl){
-        if (!String.format) {
-          String.format = function(format) {
-            var args = Array.prototype.slice.call(arguments, 1);
-            return format.replace(/{(\d+)}/g, function(match, number) {
-              return typeof args[number] != 'undefined'
-                ? args[number]
-                : match
-              ;
-            });
-          };
-        }
-
-        var fileString = ""
-
-        console.log("Saving to " + fileUrl)
-
-        var counter = 0
-        for(var i in neurons) {
-            var neuron = neurons[i]
-            console.log(neuron.x)
-            var ss = "var neuron{0} = createNeuron({x: {1}, y: {2}, clampCurrent: {3}, clampCurrentEnabled: {4}, adaptationIncreaseOnFire: {5}, outputStimulation: {6}})"
-            ss = String.format(ss,i.toString(),neuron.x, neuron.y, neuron.clampCurrent,
-              neuron.clampCurrentEnabled, neuron.adaptationIncreaseOnFire, neuron.outputStimulation)
-            console.log(ss)
-            fileString += ss + "\n"
-        }
-
-        for(var i in neurons) {
-            var neuron = neurons[i]
-            for(var j in neuron.connections){
-                var toNeuron = neuron.connections[j].itemB
-                var indexOfToNeuron = neurons.indexOf(toNeuron)
-                fileString += String.format("connectNeurons(neuron{0}, neuron{1}) \n",i,indexOfToNeuron)
-            }
-        }
-
-        for(var i in voltmeters){
-            var voltmeter = voltmeters[i]
-            fileString += String.format("var voltmeter{0} = createVoltmeter({x: {1}, y:{2}}) \n", i, voltmeter.x, voltmeter.y)
-            var neuronIndex = neurons.indexOf(voltmeter.connectionPlots[0].connection.itemA)
-            fileString += String.format("connectVoltmeterToNeuron(neuron{0}, voltmeter{1}) \n",neuronIndex, i)
-        }
-
-        for(var i in sensors) {
-            fileString += sensors[i].dump(i, neurons)
-        }
-
-
-        saveFileIO.source = fileUrl
-        saveFileIO.write(fileString)
+    function saveState(fileUrl) {
+        fileManager.saveState(fileUrl, neurons, voltmeters, sensors)
     }
 
-    function loadState(fileUrl){
-        creationControls.autoLayout = false
-        deleteEverything()
-        console.log("Loading file " + fileUrl)
-        loadFileIO.source = fileUrl
-        var stateFile = loadFileIO.read()
-        console.log(stateFile)
-        eval(stateFile)
+    function loadState(fileUrl) {
+        var code = fileManager.read(fileUrl)
+        eval(code)
     }
 
 
@@ -180,23 +127,8 @@ Rectangle {
     }
 
     function deleteVoltmeter(voltmeter) {
-        if(voltmeterControls.voltmeter === voltmeter) {
-            voltmeterControls.voltmeter = null
-        }
-        var connectionsToRemove = []
-        var connectionPlots = voltmeter.connectionPlots
-        for(var i in connectionPlots) {
-            var connectionPlot = connectionPlots[i]
-            connectionsToRemove.push(connectionPlot.connection)
-        }
-        for(var i in connectionsToRemove) {
-            deleteConnection(connectionsToRemove[i])
-        }
-        var voltmeterIndex = simulatorRoot.voltmeters.indexOf(voltmeter)
-        if(voltmeterIndex > -1) {
-            simulatorRoot.voltmeters.splice(voltmeterIndex, 1)
-        }
-        voltmeter.destroy(1)
+        deleteFromList(voltmeters, voltmeter)
+        voltmeter.destroy()
         resetOrganize()
     }
 
@@ -210,7 +142,7 @@ Rectangle {
     }
 
     function deleteConnection(connection) {
-        connection.remove()
+        connection.destroy()
         deleteFromList(organizedConnections, connection)
         deleteFromList(connections, connection)
         resetOrganize()
@@ -516,7 +448,7 @@ Rectangle {
 
         var currentOrganizeTime = Date.now()
         var dt = Math.min(0.032, (currentOrganizeTime - lastOrganizeTime) / 1000.0)
-        var springLength = simulatorRoot.width * 0.06
+        var springLength = neuronifyRoot.width * 0.06
         var anyDragging = false
 
         for(var i in organizedItems) {
@@ -541,7 +473,7 @@ Rectangle {
             var xDelta = lengthDiff * xDiff / length
             var yDelta = lengthDiff * yDiff / length
             var kFactor = lengthDiff > 0 ? 0.015 : 0.005
-            var k = kFactor * simulatorRoot.width
+            var k = kFactor * neuronifyRoot.width
             if(!source.dragging) {
                 source.velocity.x -= 0.5 * k * xDelta
                 source.velocity.y -= 0.5 * k * yDelta
@@ -576,7 +508,7 @@ Rectangle {
 
                 var xDelta = lengthDiff * xDiff / length
                 var yDelta = lengthDiff * yDiff / length
-                var k = simulatorRoot.width * 0.007
+                var k = neuronifyRoot.width * 0.007
                 if(!itemA.dragging) {
                     itemA.velocity.x -= 0.5 * k * xDelta
                     itemA.velocity.y -= 0.5 * k * yDelta
@@ -589,8 +521,8 @@ Rectangle {
         }
 
         var maxAppliedSpeed = 0.0
-        var maxSpeed = simulatorRoot.width * 1.0
-        var minSpeed = simulatorRoot.width * 0.5
+        var maxSpeed = neuronifyRoot.width * 1.0
+        var minSpeed = neuronifyRoot.width * 0.5
         for(var i in organizedItems) {
             var item = organizedItems[i]
             var speed = Math.sqrt(item.velocity.x*item.velocity.x + item.velocity.y*item.velocity.y)
@@ -721,21 +653,21 @@ Rectangle {
         id: creationControls
         onCreateNeuron: {
             var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
-            simulatorRoot.createNeuron(workspacePosition)
+            neuronifyRoot.createNeuron(workspacePosition)
         }
 
         onCreateVoltmeter: {
             var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
-            simulatorRoot.createVoltmeter(workspacePosition)
+            neuronifyRoot.createVoltmeter(workspacePosition)
         }
 
         onCreateTouchSensor: {
             var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
-            simulatorRoot.createTouchSensor(workspacePosition)
+            neuronifyRoot.createTouchSensor(workspacePosition)
         }
 
         onDeleteEverything: {
-            simulatorRoot.deleteEverything()
+            neuronifyRoot.deleteEverything()
         }
     }
 
@@ -819,48 +751,12 @@ Rectangle {
         }
     }
 
+    FileManager {
+        id: fileManager
+        neuronify: neuronifyRoot
+    }
+
     //////////////////////// save/load ////////////////
-
-     FileIO {
-         id: loadFileIO
-         source: "none"
-         onError: console.log(msg)
-     }
-
-     FileIO {
-         id: saveFileIO
-         source: "none"
-         onError: console.log(msg)
-     }
-
-     FileDialog {
-         id: saveFileDialog
-         title: "Please eneter a filename"
-         visible : false
-         selectExisting: false
-         nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
-
-         onAccepted: {
-             var fileUrlNew = fileUrl
-             var extensionSplit = fileUrlNew.toString().split(".")
-             var fileExtension = extensionSplit[extensionSplit.length - 1]
-             if(fileExtension !== "nfy") {
-                 fileUrlNew = Qt.resolvedUrl(fileUrlNew.toString() + ".nfy")
-             }
-             saveState(fileUrlNew)
-         }
-     }
-
-     FileDialog {
-         id: loadFileDialog
-         title: "Please choose a file"
-         visible : false
-         nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
-
-         onAccepted: {
-             loadState(fileUrl)
-         }
-     }
 
      Keys.onPressed: {
          if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
@@ -877,7 +773,11 @@ Rectangle {
          }
 
          if(event.key === Qt.Key_Delete) {
-             console.warn("Warning: Delete is no longer implemented!")
+             for(var i in selectedEntities) {
+                 var entity = selectedEntities[i]
+                 entity.destroy()
+             }
+             deselectAll()
          }
      }
 }

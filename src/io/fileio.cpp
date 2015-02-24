@@ -31,7 +31,7 @@ QString FileIO::read()
          } while (!line.isNull());
         file.close();
     } else {
-        emit error("Unable to open the file");
+        emit error("Unable to open the file " + path);
         return QString();
     }
 

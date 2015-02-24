@@ -33,6 +33,20 @@ Item {
         connectionRemoved(connection)
     }
 
+    function _deleteAllConnectionsInList(connections) {
+        var connectionsToDelete = connections.concat(passiveConnections)
+        for(var i in connectionsToDelete) {
+            var connection = connectionsToDelete[i]
+            connection.destroy()
+        }
+    }
+
+    Component.onDestruction: {
+        console.log("Destroying entity " + entityRoot)
+        aboutToDie(neuronRoot)
+        _deleteAllConnectionsInList(connections)
+    }
+
     MouseArea {
         enabled: useDefaultMouseHandling
         anchors.fill: parent

@@ -99,12 +99,9 @@ Entity {
     }
 
     Component.onDestruction: {
+        console.log("Destroying neuron " + neuronRoot)
         aboutToDie(neuronRoot)
-        var connectionsToDelete = connections.concat(passiveConnections)
-        for(var i in connectionsToDelete) {
-            var connection = connectionsToDelete[i]
-            connection.destroy()
-        }
+        _deleteAllConnectionsInList(passiveConnections)
     }
 
     onConnectionRemoved: {

@@ -27,6 +27,19 @@ Entity {
     height: 120
     color: "#deebf7"
 
+    Component.onDestruction: {
+        aboutToDie(voltmeterRoot)
+        var connectionsToRemove = []
+        var connectionPlots = voltmeter.connectionPlots
+        for(var i in connectionPlots) {
+            var connectionPlot = connectionPlots[i]
+            connectionsToRemove.push(connectionPlot.connection)
+        }
+        for(var i in connectionsToRemove) {
+            deleteConnection(connectionsToRemove[i])
+        }
+    }
+
     onConnectionAdded: {
         if(currentColor > colors.length - 1) {
             currentColor = 0
