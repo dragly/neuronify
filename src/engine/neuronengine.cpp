@@ -63,7 +63,7 @@ void NeuronEngine::setVoltage(double arg)
     }
 }
 
-void NeuronEngine::stepForward(double dt)
+void NeuronEngine::step(double dt)
 {
 
     double gs = m_synapticConductance;

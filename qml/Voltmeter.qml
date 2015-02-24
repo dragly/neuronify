@@ -39,7 +39,7 @@ Entity {
         plot.maximumValue = maximumValue
     }
 
-    function stepForward(dt) {
+    onStep: {
         timeSinceLastUpdate += dt
         var currentUpdateTime = Date.now()
         var timeDiff = (currentUpdateTime - lastUpdateTime) / 1000

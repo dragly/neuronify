@@ -59,22 +59,17 @@ Entity {
         engine.reset()
     }
 
-    function stepForward(dt) {
+    onStep: {
         timeSinceFire += dt
         checkFire(dt)
-        engine.stepForward(dt)
+        engine.step(dt)
     }
 
-    function finalizeStep(dt) {
+    onFinalizeStep: {
         shouldFireOnOutput = false
     }
 
     function fire() {
-//        for(var i in connections) {
-//            var neuron = connections[i].itemB
-//            neuron.stimulate(outputStimulation)
-//        }
-
         shouldFireOnOutput = true
 
         adaptationConductance += adaptationIncreaseOnFire
@@ -82,7 +77,6 @@ Entity {
         voltage += 100.0
         timeSinceFire = 0.0
         firedLastTime = true
-        //        synapticConductance = 0.0
     }
 
     function checkFire(dt) {

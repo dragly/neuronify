@@ -9,6 +9,8 @@ Item {
 
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
+    property var _previousItemA
+    property var _previousItemB
     property var itemA
     property var itemB
     property real conductance: 1.0
@@ -22,6 +24,16 @@ Item {
     property Component controls: Component {
         ConnectionControls {
             connection: connectionRoot
+        }
+    }
+
+    Component.onDestruction: {
+        aboutToDie(connectionRoot)
+        if(itemA) {
+            itemA = undefined
+        }
+        if(itemB) {
+            itemB = undefined
         }
     }
 
@@ -41,14 +53,24 @@ Item {
         return outputString
     }
 
-    Component.onDestruction: {
-        aboutToDie(connectionRoot)
+    onItemAChanged: {
+        if(_previousItemA) {
+            _previousItemA.connectionRemoved(connectionRoot)
+        }
         if(itemA) {
-            itemA.removeConnection(connectionRoot)
+            itemA.connectionAdded(connectionRoot, true)
+        }
+        _previousItemA = itemA
+    }
+
+    onItemBChanged: {
+        if(_previousItemB) {
+            _previousItemB.connectionRemoved(connectionRoot)
         }
         if(itemB) {
-            itemB.removeConnection(connectionRoot)
+            itemB.connectionAdded(connectionRoot, false)
         }
+        _previousItemB = itemB
     }
 
     Line {

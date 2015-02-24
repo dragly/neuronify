@@ -29,7 +29,7 @@ public:
 
 public slots:
     void setVoltage(double arg);
-    void stepForward(double dt);
+    void step(double dt);
     void setSynapticConductance(double arg);
     void setMembraneRestingPotential(double arg);
     void setSynapsePotential(double arg);

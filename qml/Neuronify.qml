@@ -70,6 +70,11 @@ Rectangle {
 
     function deleteEverything() {
         console.log("Deleting everything")
+        var connectionsToDelete = connections.slice()
+        for(var i in connectionsToDelete) {
+            connectionsToDelete[i].destroy()
+        }
+
         var entitiesToDelete = entities.slice()
         for(var i in entitiesToDelete) {
             entitiesToDelete[i].destroy()
@@ -95,7 +100,6 @@ Rectangle {
     }
 
     function cleanupDeletedConnection(connection) {
-        console.log("Cleaning up deleted connection");
         deleteFromList(autoLayout.connections, connection)
         deleteFromList(connections, connection)
         resetOrganize()
@@ -114,10 +118,10 @@ Rectangle {
         }
     }
 
-    function itemUnderConnector(itemList, source, connector) {
+    function itemUnderConnector(source, connector, callback) {
         var item = undefined
-        for(var i in itemList) {
-            var itemB = itemList[i]
+        for(var i in entities) {
+            var itemB = entities[i]
             if(isItemUnderConnector(itemB, source, connector)) {
                 item = itemB
             }
@@ -197,13 +201,12 @@ Rectangle {
     function createNeuron(properties) {
         console.warn("Using deprecated createNeuron function! Please update your scripts or savefiles.")
         var neuron = createEntity("Neuron.qml", properties, true)
-        neuron.droppedConnector.connect(createConnectionToPoint)
         return neuron
     }
 
     function createTouchSensor(properties) {
         console.warn("Using deprecated createTouchSensor function! Please update your scripts or savefiles.")
-        properties.dropFunction = createConnectionToPoint
+//        properties.dropFunction = createConnectionToPoint
         var sensor = createEntity("TouchSensor.qml", properties)
         return sensor
     }
@@ -226,8 +229,6 @@ Rectangle {
 
     function connectEntities(itemA, itemB) {
         var connection = createConnection(itemA, itemB)
-        itemA.addConnection(connection)
-        itemB.addConnection(connection)
         autoLayout.connections.push(connection)
         connections.push(connection)
         connection.aboutToDie.connect(cleanupDeletedConnection)
@@ -241,7 +242,7 @@ Rectangle {
     }
 
     function connectSensorToNeuron(sensor, neuron) {
-        console.log("Connecting sensor to neuron")
+        console.warn("Using deprecated connectSensorToNeuron function! Please update your scripts or savefiles.")
         var connection = createConnection(sensor, neuron)
         sensor.addConnection(connection)
         connections.push(connection)
@@ -267,29 +268,15 @@ Rectangle {
     }
 
     function createConnectionToPoint(itemA, connector) {
-        var targetVoltmeter = itemUnderConnector(voltmeters, itemA, connector)
-        if(targetVoltmeter) {
-            if(!connectionExists(itemA, targetVoltmeter)) {
-                connectVoltmeterToNeuron(itemA, targetVoltmeter)
+        var targetEntity = itemUnderConnector(itemA, connector)
+        if(targetEntity) {
+            if(connectionExists(itemA, targetEntity)) {
                 return
             }
-        }
-
-        var targetNeuron = itemUnderConnector(entities, itemA, connector)
-        if(targetNeuron) {
-            if(connectionExists(itemA, targetNeuron)) {
+            if(itemA === targetEntity) {
                 return
             }
-            if(itemA === targetNeuron) {
-                return
-            }
-            if(itemA.objectName === "neuron") {
-                connectNeurons(itemA, targetNeuron)
-            }
-            if(itemA.objectName === "touchSensorCell") {
-                connectSensorToNeuron(itemA, targetNeuron)
-            }
-
+            connectEntities(itemA, targetEntity)
             return
         }
     }
@@ -476,7 +463,7 @@ Rectangle {
 
             for(var i in entities) {
                 var entity = entities[i]
-                entity.stepForward(dt)
+                entity.step(dt)
             }
 
             for(var i in connections) {

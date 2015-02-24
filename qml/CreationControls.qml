@@ -95,7 +95,7 @@ Rectangle {
             }
 
             onDropped: {
-                droppedEntity(Qt.resolvedUrl("/Voltmeter.qml"), {x: drop.x, y: drop.y})
+                droppedEntity(Qt.resolvedUrl("/Voltmeter.qml"), {x: drop.x, y: drop.y}, false)
             }
         }
 
@@ -112,7 +112,7 @@ Rectangle {
             }
 
             onDropped: {
-                droppedEntity(Qt.resolvedUrl("/TouchSensor.qml"), {x: drop.x, y: drop.y})
+                droppedEntity(Qt.resolvedUrl("/TouchSensor.qml"), {x: drop.x, y: drop.y}, false)
             }
         }
 

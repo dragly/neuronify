@@ -24,6 +24,7 @@ Entity {
     }
 
     Component.onCompleted: {
+        dropFunction = simulator.createConnectionToPoint
         resetCells()
     }
 
@@ -38,10 +39,10 @@ Entity {
         repeater.model = cells
     }
 
-    function stepForward(dt) {
+    onStep: {
         for(var i = 0; i < repeater.count; i++) {
             var cell = repeater.itemAt(i)
-            cell.stepForward(dt)
+            cell.step(dt)
         }
     }
 
@@ -123,42 +124,46 @@ Entity {
                 property real timeSinceFire: 0.0
                 property bool firedLastTime: false
                 property real gs: 0.0
+                property real dt: 0
+
+                useDefaultMouseHandling: false
 
                 color: cell.sensing ? "#9ecae1" : "#4292c6"
                 connectionPoint: Qt.point(sensorRoot.x + cell.x + cell.width / 2,
                                           sensorRoot.y + cell.y + cell.height)
 
-                function stepForward(dt) {
-                    for(var i in connections) {
-                        var connection = connections[i]
-                        var neuron = connection.itemB
-                        timeSinceFire += dt
-                        var V = voltage
-                        var Is = 0
-                        if(sensing) {
-                            gs += 20.0 * dt
-                        }
-                        Is = gs * (V - 60)
-                        var voltageChange = - (V + 50) - Is
-                        var dV = voltageChange * dt
-                        voltage += dV;
-                        if(firedLastTime) {
-                            voltage = -100
-                            gs = 0
-                            firedLastTime = false
-                            return
-                        }
+                onStep: {
+                    cell.dt = dt
+                }
 
-                        var shouldFire = false
-                        if(voltage > 0.0) {
-                            shouldFire = true
-                        }
-                        if(shouldFire) {
-                            voltage += 100.0
-                            timeSinceFire = 0.0
-                            firedLastTime = true
-                            neuron.stimulate(3.0)
-                        }
+                onOutputConnectionStep: {
+                    var neuron = target
+                    timeSinceFire += dt
+                    var V = voltage
+                    var Is = 0
+                    if(sensing) {
+                        gs += 20.0 * dt
+                    }
+                    Is = gs * (V - 60)
+                    var voltageChange = - (V + 50) - Is
+                    var dV = voltageChange * dt
+                    voltage += dV;
+                    if(firedLastTime) {
+                        voltage = -100
+                        gs = 0
+                        firedLastTime = false
+                        return
+                    }
+
+                    var shouldFire = false
+                    if(voltage > 0.0) {
+                        shouldFire = true
+                    }
+                    if(shouldFire) {
+                        voltage += 100.0
+                        timeSinceFire = 0.0
+                        firedLastTime = true
+                        neuron.stimulate(3.0)
                     }
                 }
 
