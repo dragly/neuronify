@@ -33,8 +33,7 @@ Item {
         connectionRemoved(connection)
     }
 
-    function _deleteAllConnectionsInList(connections) {
-        var connectionsToDelete = connections.concat(passiveConnections)
+    function _deleteAllConnectionsInList(connectionsToDelete) {
         for(var i in connectionsToDelete) {
             var connection = connectionsToDelete[i]
             connection.destroy()

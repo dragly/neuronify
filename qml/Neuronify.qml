@@ -101,14 +101,6 @@ Rectangle {
         }
     }
 
-    function deleteSensor(sensor) {
-        deselectAll()
-        disconnectSensor(sensor)
-        deleteFromList(sensors, sensor)
-        sensor.destroy(1)
-        resetOrganize()
-    }
-
     function disconnectSensor(sensor) {
         var connectionsToDelete = sensor.connections
         for(var i in connectionsToDelete) {
@@ -118,17 +110,15 @@ Rectangle {
         resetOrganize()
     }
 
-    function deleteNeuron(neuron) {
-        console.log("Deleting neuron " + neuron)
-        deselectAll()
-        deleteFromList(neurons, neuron)
-        deleteFromList(organizedItems, neuron)
-        resetOrganize()
-    }
-
-    function deleteVoltmeter(voltmeter) {
-        deleteFromList(voltmeters, voltmeter)
-        voltmeter.destroy()
+    function cleanupDeleted(entity) {
+        if(selectedEntities.indexOf(entity) !== -1) {
+            deselectAll()
+        }
+        deleteFromList(neurons, entity)
+        deleteFromList(organizedItems, entity)
+        deleteFromList(voltmeters, entity)
+        deleteFromList(sensors, entity)
+        deleteFromList(entities, entity)
         resetOrganize()
     }
 
@@ -317,7 +307,7 @@ Rectangle {
         neuron.widthChanged.connect(resetOrganize)
         neuron.heightChanged.connect(resetOrganize)
         neuron.clicked.connect(clickedEntity)
-        neuron.aboutToDie.connect(deleteNeuron)
+        neuron.aboutToDie.connect(cleanupDeleted)
         neuron.droppedConnector.connect(createConnectionToPoint)
         neurons.push(neuron)
         organizedItems.push(neuron)
@@ -334,6 +324,7 @@ Rectangle {
         sensor.widthChanged.connect(resetOrganize)
         sensor.heightChanged.connect(resetOrganize)
         sensor.clicked.connect(clickedEntity)
+        sensor.aboutToDie.connect(cleanupDeleted)
         sensors.push(sensor)
         entities.push(sensor)
         resetOrganize()
@@ -346,6 +337,7 @@ Rectangle {
         voltmeters.push(voltmeter)
         entities.push(voltmeter)
         voltmeter.clicked.connect(clickedEntity)
+        voltmeter.aboutToDie.connect(cleanupDeleted)
         resetOrganize()
         return voltmeter
     }

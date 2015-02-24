@@ -30,7 +30,7 @@ Entity {
     Component.onDestruction: {
         aboutToDie(voltmeterRoot)
         var connectionsToRemove = []
-        var connectionPlots = voltmeter.connectionPlots
+        var connectionPlots = voltmeterRoot.connectionPlots
         for(var i in connectionPlots) {
             var connectionPlot = connectionPlots[i]
             connectionsToRemove.push(connectionPlot.connection)
