@@ -63,8 +63,6 @@ Item {
 
     function read(fileUrl) {
         console.log("Reading file " + fileUrl)
-        creationControls.autoLayout = false
-        deleteEverything()
         loadFileIO.source = fileUrl
         var stateFile = loadFileIO.read()
         return stateFile

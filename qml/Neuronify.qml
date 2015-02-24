@@ -62,6 +62,8 @@ Rectangle {
     }
 
     function loadState(fileUrl) {
+        deleteEverything()
+        creationControls.autoLayout = false
         var code = fileManager.read(fileUrl)
         eval(code)
     }
