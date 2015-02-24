@@ -43,7 +43,7 @@ Item {
 
     Component.onDestruction: {
         console.log("Destroying entity " + entityRoot)
-        aboutToDie(neuronRoot)
+        aboutToDie(entityRoot)
         _deleteAllConnectionsInList(connections)
     }
 

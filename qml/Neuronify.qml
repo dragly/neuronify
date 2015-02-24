@@ -19,6 +19,7 @@ Rectangle {
     property var connections: [] // List used to deselect all connections
     property var organizedItems: []
     property var organizedConnections: []
+    property var entities: []
     property var neurons: []
     property var sensors: []
     property var selectedEntities: []
@@ -321,6 +322,7 @@ Rectangle {
         neuron.droppedConnector.connect(createConnectionToPoint)
         neurons.push(neuron)
         organizedItems.push(neuron)
+        entities.push(neuron)
         resetOrganize()
         return neuron
     }
@@ -334,6 +336,7 @@ Rectangle {
         sensor.heightChanged.connect(resetOrganize)
         sensor.clicked.connect(clickedEntity)
         sensors.push(sensor)
+        entities.push(sensor)
         resetOrganize()
         return sensor
     }
@@ -342,6 +345,7 @@ Rectangle {
         var component = Qt.createComponent("Voltmeter.qml")
         var voltmeter = component.createObject(neuronLayer, properties)
         voltmeters.push(voltmeter)
+        entities.push(voltmeter)
         voltmeter.clicked.connect(clickedEntity)
         resetOrganize()
         return voltmeter
@@ -731,21 +735,10 @@ Rectangle {
             dt = Math.min(0.050, dt)
             currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
             time += dt
-            for(var i in neurons) {
-                var neuron = neurons[i]
-                neuron.stepForward(dt)
-            }
-            for(var i in neurons) {
-                var neuron = neurons[i]
-                neuron.finalizeStep(dt)
-            }
-            for(var i in voltmeters) {
-                var voltmeter = voltmeters[i]
-                voltmeter.stepForward(dt)
-            }
-            for(var i in sensors) {
-                var sensor = sensors[i]
-                sensor.stepForward(dt)
+
+            for(var i in entities) {
+                var entity = entities[i]
+                entity.stepForward(dt)
             }
             lastStepTime = currentTime
         }

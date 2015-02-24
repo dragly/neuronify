@@ -100,7 +100,6 @@ Entity {
 
     Component.onDestruction: {
         console.log("Destroying neuron " + neuronRoot)
-        aboutToDie(neuronRoot)
         _deleteAllConnectionsInList(passiveConnections)
     }
 
