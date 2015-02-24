@@ -76,16 +76,7 @@ Rectangle {
         }
     }
 
-    function disconnectSensor(sensor) {
-        var connectionsToDelete = sensor.connections
-        for(var i in connectionsToDelete) {
-            var connection = connectionsToDelete[i]
-            deleteConnection(connection)
-        }
-        resetOrganize()
-    }
-
-    function cleanupDeleted(entity) {
+    function cleanupDeletedEntity(entity) {
         if(selectedEntities.indexOf(entity) !== -1) {
             deselectAll()
         }
@@ -95,28 +86,9 @@ Rectangle {
         resetOrganize()
     }
 
-    function disconnectVoltmeter(voltmeter) {
-        var connectionsToDelete = voltmeter.connectionPlots
-        for(var i in connectionsToDelete) {
-            var connection = connectionsToDelete[i]
-            deleteConnection(connection.connection)
-        }
-        resetOrganize()
-    }
-
-    function deleteConnection(connection) {
-        connection.destroy()
+    function cleanupDeletedConnection(connection) {
         deleteFromList(autoLayout.connections, connection)
         deleteFromList(connections, connection)
-        resetOrganize()
-    }
-
-    function disconnectNeuron(neuron) {
-        var connectionsToDelete = neuron.connections.concat(neuron.passiveConnections)
-        for(var i in connectionsToDelete) {
-            var connection = connectionsToDelete[i]
-            deleteConnection(connection)
-        }
         resetOrganize()
     }
 
@@ -204,7 +176,7 @@ Rectangle {
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
-        entity.aboutToDie.connect(cleanupDeleted)
+        entity.aboutToDie.connect(cleanupDeletedEntity)
         entities.push(entity)
         if(useAutoLayout) {
             autoLayout.entities.push(entity)
@@ -248,6 +220,7 @@ Rectangle {
         itemA.addConnection(connection)
         autoLayout.connections.push(connection)
         connections.push(connection)
+        connection.aboutToDie.connect(cleanupDeletedConnection)
         resetOrganize()
         return connection
     }
@@ -267,6 +240,7 @@ Rectangle {
 
     function connectVoltmeterToNeuron(neuron, voltmeter) {
         var connection = createConnection(neuron, voltmeter)
+        neuron.addConnection(connection)
         voltmeter.addConnection(connection)
         connections.push(connection)
         return connection
@@ -497,6 +471,23 @@ Rectangle {
                 var entity = entities[i]
                 entity.stepForward(dt)
             }
+
+            for(var i in connections) {
+                var connection = connections[i]
+                var itemA = connection.itemA
+                var itemB = connection.itemB
+
+                if(itemA && itemB) {
+                    itemA.outputConnectionStep(itemB)
+                    itemB.inputConnectionStep(itemA)
+                }
+            }
+
+            for(var i in entities) {
+                var entity = entities[i]
+                entity.finalizeStep(dt)
+            }
+
             lastStepTime = currentTime
         }
     }

@@ -26,6 +26,7 @@ Entity {
     property real outputStimulation: 4.0
     property alias clampCurrent: engine.clampCurrent
     property alias clampCurrentEnabled: engine.clampCurrentEnabled
+    property bool shouldFireOnOutput: false
 
     controls: Component {
         NeuronControls {
@@ -65,14 +66,16 @@ Entity {
     }
 
     function finalizeStep(dt) {
-
+        shouldFireOnOutput = false
     }
 
     function fire() {
-        for(var i in connections) {
-            var neuron = connections[i].itemB
-            neuron.stimulate(outputStimulation)
-        }
+//        for(var i in connections) {
+//            var neuron = connections[i].itemB
+//            neuron.stimulate(outputStimulation)
+//        }
+
+        shouldFireOnOutput = true
 
         adaptationConductance += adaptationIncreaseOnFire
 
@@ -95,6 +98,12 @@ Entity {
         }
         if(shouldFire) {
             fire()
+        }
+    }
+
+    onOutputConnectionStep: {
+        if(shouldFireOnOutput) {
+            target.stimulate(outputStimulation)
         }
     }
 

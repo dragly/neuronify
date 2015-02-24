@@ -8,6 +8,8 @@ Item {
     signal connectionRemoved(var connection)
     signal aboutToDie(var entity)
     signal stimulated(var stimulation)
+    signal inputConnectionStep(var source)
+    signal outputConnectionStep(var target)
 
     property string objectName: "entity"
     property string fileName: "Entity.qml"
@@ -81,6 +83,14 @@ Item {
         outputString += _basicSelfDump(index)
         outputString += _basicConnectionDump(index, entities)
         return outputString
+    }
+
+    function stepForward(dt) {
+
+    }
+
+    function finalizeStep(dt) {
+
     }
 
     Component.onDestruction: {

@@ -5,6 +5,8 @@ import "hud"
 Item {
     id: connectionRoot
     signal clicked(var connection)
+    signal aboutToDie(var connection)
+
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
     property var itemA
@@ -32,6 +34,7 @@ Item {
     }
 
     Component.onDestruction: {
+        aboutToDie(connectionRoot)
         if(itemA) {
             itemA.removeConnection(connectionRoot)
         }
