@@ -5,10 +5,7 @@ import QtQuick.Controls 1.1
 Rectangle {
     id: creationControlsRoot
 
-    signal createNeuron(var position)
-    signal createCompartment(var position)
-    signal createVoltmeter(var position)
-    signal createTouchSensor(var position)
+    signal droppedEntity(var fileUrl, var position, var useAutoLayout)
     signal deleteEverything()
 
     property bool revealed: true
@@ -63,7 +60,7 @@ Rectangle {
             }
 
             onDropped: {
-                createNeuron({x: drop.x, y: drop.y})
+                droppedEntity(Qt.resolvedUrl("/Neuron.qml"), {x: drop.x, y: drop.y}, true)
             }
         }
 
@@ -98,7 +95,7 @@ Rectangle {
             }
 
             onDropped: {
-                createVoltmeter({x: drop.x, y: drop.y})
+                droppedEntity(Qt.resolvedUrl("/Voltmeter.qml"), {x: drop.x, y: drop.y})
             }
         }
 
@@ -115,7 +112,7 @@ Rectangle {
             }
 
             onDropped: {
-                createTouchSensor({x: drop.x, y: drop.y})
+                droppedEntity(Qt.resolvedUrl("/TouchSensor.qml"), {x: drop.x, y: drop.y})
             }
         }
 

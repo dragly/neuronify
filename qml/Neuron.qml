@@ -45,6 +45,10 @@ Entity {
     height: width
     color: outputStimulation > 0.0 ? "#6baed6" : "#e41a1c"
 
+    Component.onDestruction: {
+        _deleteAllConnectionsInList(passiveConnections)
+    }
+
     function reset() {
         engine.reset()
     }
@@ -98,8 +102,10 @@ Entity {
 
     }
 
-    Component.onDestruction: {
-        _deleteAllConnectionsInList(passiveConnections)
+    onSimulatorChanged: {
+        if(simulator) {
+            droppedConnector.connect(simulator.createConnectionToPoint)
+        }
     }
 
     onConnectionRemoved: {

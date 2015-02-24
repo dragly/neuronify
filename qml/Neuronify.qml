@@ -196,6 +196,7 @@ Rectangle {
 
     function createEntity(fileUrl, properties, useAutoLayout) {
         var component = Qt.createComponent(fileUrl)
+        properties.simulator = neuronifyRoot
         var entity = component.createObject(neuronLayer, properties)
         entity.dragStarted.connect(resetOrganize)
         entity.widthChanged.connect(resetOrganize)
@@ -423,19 +424,10 @@ Rectangle {
 
     CreationControls {
         id: creationControls
-        onCreateNeuron: {
-            var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
-            neuronifyRoot.createNeuron(workspacePosition)
-        }
 
-        onCreateVoltmeter: {
+        onDroppedEntity: {
             var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
-            neuronifyRoot.createVoltmeter(workspacePosition)
-        }
-
-        onCreateTouchSensor: {
-            var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
-            neuronifyRoot.createTouchSensor(workspacePosition)
+            neuronifyRoot.createEntity(fileUrl, workspacePosition, useAutoLayout)
         }
 
         onDeleteEverything: {
