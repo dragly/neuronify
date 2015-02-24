@@ -34,5 +34,6 @@
         <file>Entity.qml</file>
         <file>hud/SensorControls.qml</file>
         <file>io/FileManager.qml</file>
+        <file>AutoLayout.qml</file>
     </qresource>
 </RCC>

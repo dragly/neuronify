@@ -14,7 +14,6 @@ import "io"
 Rectangle {
     id: neuronifyRoot
 
-    property real lastOrganizeTime: Date.now()
     property real lastStepTime: Date.now()
     property var connections: [] // List used to deselect all connections
     property var organizedItems: []
@@ -92,7 +91,7 @@ Rectangle {
             deselectAll()
         }
         deleteFromList(neurons, entity)
-        deleteFromList(organizedItems, entity)
+        deleteFromList(autoLayout.entities, entity)
         deleteFromList(voltmeters, entity)
         deleteFromList(sensors, entity)
         deleteFromList(entities, entity)
@@ -110,7 +109,7 @@ Rectangle {
 
     function deleteConnection(connection) {
         connection.destroy()
-        deleteFromList(organizedConnections, connection)
+        deleteFromList(autoLayout.connections, connection)
         deleteFromList(connections, connection)
         resetOrganize()
     }
@@ -273,7 +272,7 @@ Rectangle {
         neuron.aboutToDie.connect(cleanupDeleted)
         neuron.droppedConnector.connect(createConnectionToPoint)
         neurons.push(neuron)
-        organizedItems.push(neuron)
+        autoLayout.entities.push(neuron)
         entities.push(neuron)
         resetOrganize()
         return neuron
@@ -319,7 +318,7 @@ Rectangle {
         var connection = createConnection(itemA, itemB)
         itemA.addConnection(connection)
         itemB.addPassiveConnection(connection)
-        organizedConnections.push(connection)
+        autoLayout.connections.push(connection)
         connections.push(connection)
         resetOrganize()
         return connection
@@ -384,119 +383,11 @@ Rectangle {
     }
 
     function resetOrganize() {
-        lastOrganizeTime = Date.now()
-        layoutTimer.start()
+        autoLayout.resetOrganize()
     }
 
     function itemCenter(item) {
         return Qt.vector2d(item.x + item.width / 2, item.y + item.height / 2)
-    }
-
-    function organize() {
-        if(!creationControls.autoLayout) {
-            return
-        }
-
-        var currentOrganizeTime = Date.now()
-        var dt = Math.min(0.032, (currentOrganizeTime - lastOrganizeTime) / 1000.0)
-        var springLength = neuronifyRoot.width * 0.06
-        var anyDragging = false
-
-        for(var i in organizedItems) {
-            var item = organizedItems[i]
-            item.velocity = Qt.vector2d(0,0)
-            if(item.dragging) {
-                anyDragging = true
-            }
-        }
-
-        for(var i in organizedConnections) {
-            var connection = organizedConnections[i]
-            var source = connection.itemA
-            var target = connection.itemB
-            var totalSpringLength = source.width / 2.0 + target.width / 2.0 + springLength
-            var sourceCenter = itemCenter(source)
-            var targetCenter = itemCenter(target)
-            var xDiff = sourceCenter.x - targetCenter.x
-            var yDiff = sourceCenter.y - targetCenter.y
-            var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
-            var lengthDiff = length - totalSpringLength
-            var xDelta = lengthDiff * xDiff / length
-            var yDelta = lengthDiff * yDiff / length
-            var kFactor = lengthDiff > 0 ? 0.015 : 0.005
-            var k = kFactor * neuronifyRoot.width
-            if(!source.dragging) {
-                source.velocity.x -= 0.5 * k * xDelta
-                source.velocity.y -= 0.5 * k * yDelta
-            }
-            if(!target.dragging) {
-                target.velocity.x += 0.5 * k * xDelta
-                target.velocity.y += 0.5 * k * yDelta
-            }
-        }
-
-        for(var i = 0; i < organizedItems.length; i++) {
-            var minDistance = 50
-            var guard = 1.0
-            var itemA = organizedItems[i]
-            for(var j = i + 1; j < organizedItems.length; j++) {
-                var itemB = organizedItems[j]
-                var totalMinDistance = Math.max(itemA.height, itemA.width) / 2.0
-                        + Math.max(itemB.height, itemB.width) / 2.0
-                        + minDistance
-                var centerA = itemCenter(itemA)
-                var centerB = itemCenter(itemB)
-                var xDiff = centerA.x - centerB.x
-                var yDiff = centerA.y - centerB.y
-                var length = Math.sqrt(xDiff*xDiff + yDiff*yDiff)
-                if(length < guard) {
-                    continue
-                }
-                var lengthDiff = length - totalMinDistance
-                if(lengthDiff > 0.0) {
-                    continue
-                }
-
-                var xDelta = lengthDiff * xDiff / length
-                var yDelta = lengthDiff * yDiff / length
-                var k = neuronifyRoot.width * 0.007
-                if(!itemA.dragging) {
-                    itemA.velocity.x -= 0.5 * k * xDelta
-                    itemA.velocity.y -= 0.5 * k * yDelta
-                }
-                if(!itemB.dragging) {
-                    itemB.velocity.x += 0.5 * k * xDelta
-                    itemB.velocity.y += 0.5 * k * yDelta
-                }
-            }
-        }
-
-        var maxAppliedSpeed = 0.0
-        var maxSpeed = neuronifyRoot.width * 1.0
-        var minSpeed = neuronifyRoot.width * 0.5
-        for(var i in organizedItems) {
-            var item = organizedItems[i]
-            var speed = Math.sqrt(item.velocity.x*item.velocity.x + item.velocity.y*item.velocity.y)
-            if(speed > maxSpeed && speed > 0) {
-                item.velocity.x *= (maxSpeed / speed)
-                item.velocity.y *= (maxSpeed / speed)
-            }
-
-            maxAppliedSpeed = Math.max(maxAppliedSpeed, item.velocity.x*item.velocity.x + item.velocity.y*item.velocity.y)
-            item.x += item.velocity.x * dt
-            item.y += item.velocity.y * dt
-
-            item.x = Math.max(item.x, - item.width * 0.5)
-            item.y = Math.max(item.y, - item.height * 0.5)
-            item.x = Math.min(item.x, neuronLayer.width - item.width * 0.5)
-            item.y = Math.min(item.y, neuronLayer.height - item.height  * 0.5)
-        }
-
-        if(maxAppliedSpeed < minSpeed && !anyDragging) {
-            layoutTimer.stop()
-        }
-
-        lastOrganizeTime = currentOrganizeTime
     }
 
     function resetStyle() {
@@ -509,6 +400,12 @@ Rectangle {
 
     onHeightChanged: {
         resetStyle()
+    }
+
+    AutoLayout {
+        id: autoLayout
+        enabled: creationControls.autoLayout
+        springLength: neuronifyRoot.width * 0.06
     }
 
     Item {
@@ -651,16 +548,6 @@ Rectangle {
         onLoadSimulationRequested: {
             loadFileDialog.visible = true
             mainMenu.revealed = false
-        }
-    }
-
-    Timer {
-        id: layoutTimer
-        interval: 24
-        running: true
-        repeat: true
-        onTriggered: {
-            organize()
         }
     }
 
