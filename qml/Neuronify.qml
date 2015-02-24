@@ -10,6 +10,7 @@ import "hud"
 import "menus/mainmenu"
 import "style"
 import "io"
+import "tools"
 
 Rectangle {
     id: neuronifyRoot
@@ -90,7 +91,6 @@ Rectangle {
         if(selectedEntities.indexOf(entity) !== -1) {
             deselectAll()
         }
-        deleteFromList(neurons, entity)
         deleteFromList(autoLayout.entities, entity)
         deleteFromList(voltmeters, entity)
         deleteFromList(sensors, entity)
@@ -262,6 +262,22 @@ Rectangle {
         connection.selected = true
     }
 
+    function createEntity(fileUrl, properties) {
+        var component = Qt.createComponent(fileUrl)
+        var entity = component.createObject(neuronLayer, properties)
+        entity.dragStarted.connect(resetOrganize)
+        entity.widthChanged.connect(resetOrganize)
+        entity.heightChanged.connect(resetOrganize)
+        entity.clicked.connect(clickedEntity)
+        entity.aboutToDie.connect(cleanupDeleted)
+        entity.droppedConnector.connect(createConnectionToPoint)
+        neurons.push(entity)
+        autoLayout.entities.push(entity)
+        entities.push(entity)
+        resetOrganize()
+        return entity
+    }
+
     function createNeuron(properties) {
         var component = Qt.createComponent("Neuron.qml")
         var neuron = component.createObject(neuronLayer, properties)
@@ -386,10 +402,6 @@ Rectangle {
         autoLayout.resetOrganize()
     }
 
-    function itemCenter(item) {
-        return Qt.vector2d(item.x + item.width / 2, item.y + item.height / 2)
-    }
-
     function resetStyle() {
         Style.reset(width, height, Screen.pixelDensity)
     }
@@ -405,7 +417,8 @@ Rectangle {
     AutoLayout {
         id: autoLayout
         enabled: creationControls.autoLayout
-        springLength: neuronifyRoot.width * 0.06
+        maximumWidth: neuronLayer.width
+        maximumHeight: neuronLayer.height
     }
 
     Item {

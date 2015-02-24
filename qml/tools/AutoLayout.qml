@@ -6,6 +6,13 @@ Item {
     property var entities: []
     property real lastOrganizeTime: Date.now()
     property real springLength: 100
+    property real kFactorScale: 800
+    property real maximumWidth: 10000
+    property real maximumHeight: 10000
+
+    function itemCenter(item) {
+        return Qt.vector2d(item.x + item.width / 2, item.y + item.height / 2)
+    }
 
     function organize() {
         if(!enabled) {
@@ -38,7 +45,7 @@ Item {
             var xDelta = lengthDiff * xDiff / length
             var yDelta = lengthDiff * yDiff / length
             var kFactor = lengthDiff > 0 ? 0.015 : 0.005
-            var k = kFactor * neuronifyRoot.width
+            var k = kFactor * kFactorScale
             if(!source.dragging) {
                 source.velocity.x -= 0.5 * k * xDelta
                 source.velocity.y -= 0.5 * k * yDelta
@@ -73,7 +80,7 @@ Item {
 
                 var xDelta = lengthDiff * xDiff / length
                 var yDelta = lengthDiff * yDiff / length
-                var k = neuronifyRoot.width * 0.007
+                var k = kFactorScale * 0.007
                 if(!itemA.dragging) {
                     itemA.velocity.x -= 0.5 * k * xDelta
                     itemA.velocity.y -= 0.5 * k * yDelta
@@ -86,8 +93,8 @@ Item {
         }
 
         var maxAppliedSpeed = 0.0
-        var maxSpeed = neuronifyRoot.width * 1.0
-        var minSpeed = neuronifyRoot.width * 0.5
+        var maxSpeed = kFactorScale * 1.0
+        var minSpeed = kFactorScale * 0.5
         for(var i in entities) {
             var item = entities[i]
             var speed = Math.sqrt(item.velocity.x*item.velocity.x + item.velocity.y*item.velocity.y)
@@ -102,8 +109,8 @@ Item {
 
             item.x = Math.max(item.x, - item.width * 0.5)
             item.y = Math.max(item.y, - item.height * 0.5)
-            item.x = Math.min(item.x, neuronLayer.width - item.width * 0.5)
-            item.y = Math.min(item.y, neuronLayer.height - item.height  * 0.5)
+            item.x = Math.min(item.x, maximumWidth - item.width * 0.5)
+            item.y = Math.min(item.y, maximumHeight - item.height  * 0.5)
         }
 
         if(maxAppliedSpeed < minSpeed && !anyDragging) {
