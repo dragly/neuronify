@@ -34,19 +34,6 @@ Entity {
         "y"
     ]
 
-    Component.onDestruction: {
-        aboutToDie(voltmeterRoot)
-        var connectionsToRemove = []
-        var connectionPlots = voltmeterRoot.connectionPlots
-        for(var i in connectionPlots) {
-            var connectionPlot = connectionPlots[i]
-            connectionsToRemove.push(connectionPlot.connection)
-        }
-        for(var i in connectionsToRemove) {
-            deleteConnection(connectionsToRemove[i])
-        }
-    }
-
     function resetMinMax(plot) {
         plot.minimumValue = minimumValue
         plot.maximumValue = maximumValue

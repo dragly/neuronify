@@ -33,6 +33,14 @@ Item {
         }
     }
 
+    function dump(index, entities) {
+        var outputString = ""
+        var itemAEntityIndex = entities.indexOf(itemA)
+        var itemBEntityIndex = entities.indexOf(itemB)
+        outputString += "var connection" + index + " = connectEntities(entity" + itemAEntityIndex + ", entity" + itemBEntityIndex + ")\n"
+        return outputString
+    }
+
     Component.onDestruction: {
         aboutToDie(connectionRoot)
         if(itemA) {

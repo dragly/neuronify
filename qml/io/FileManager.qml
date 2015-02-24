@@ -4,7 +4,10 @@ import QtQuick.Window 2.0
 import Neuronify 1.0
 
 Item {
-    property Item neuronify
+    signal loadState(var fileUrl)
+
+    property var entities: []
+    property var connections: []
 
     function showSaveDialog() {
         saveFileDialog.visible = true
@@ -18,8 +21,6 @@ Item {
 //        var neurons = neuronify.neurons
 //        var sensors = neuronify.sensors
 //        var voltmeters = neuronify.voltmeters
-
-        var entities = neuronify.entities
 
         if (!String.format) {
           String.format = function(format) {
@@ -40,9 +41,12 @@ Item {
         var counter = 0
         for(var i in entities) {
             var entity = entities[i]
+            fileString += entity.dump(i)
+        }
 
-            var ss = entity.dump(i, entities)
-            fileString += ss
+        for(var i in connections) {
+            var connection = connections[i]
+            fileString += connection.dump(i, entities)
         }
 
         console.log(fileString)
@@ -95,7 +99,7 @@ Item {
         nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
 
         onAccepted: {
-            neuronify.loadState(fileUrl)
+            loadState(fileUrl)
         }
     }
 }

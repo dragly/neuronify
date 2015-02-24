@@ -83,6 +83,14 @@ Rectangle {
         deleteFromList(autoLayout.entities, entity)
         deleteFromList(voltmeters, entity)
         deleteFromList(entities, entity)
+
+        for(var i in connections) {
+            var connection = connections[i]
+            if(connection.itemA === entity || connection.itemB === entity) {
+                connection.destroy()
+            }
+        }
+
         resetOrganize()
     }
 
@@ -494,7 +502,13 @@ Rectangle {
 
     FileManager {
         id: fileManager
-        neuronify: neuronifyRoot
+
+        entities: neuronifyRoot.entities
+        connections: neuronifyRoot.connections
+
+        onLoadState: {
+            neuronifyRoot.loadState(fileUrl)
+        }
     }
 
     //////////////////////// save/load ////////////////

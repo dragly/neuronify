@@ -68,20 +68,9 @@ Item {
         return outputString
     }
 
-    function _basicConnectionDump(index, entities) {
-        var outputString = ""
-        for(var j in connections) {
-            var targetEntity = connections[j].itemB
-            var targetEntityIndex = entities.indexOf(targetEntity)
-            outputString += "connectEntities(entity" + index + ", entity" + targetEntityIndex + ")\n"
-        }
-        return outputString
-    }
-
     function dump(index, entities) {
         var outputString = ""
         outputString += _basicSelfDump(index)
-        outputString += _basicConnectionDump(index, entities)
         return outputString
     }
 
@@ -95,7 +84,6 @@ Item {
 
     Component.onDestruction: {
         aboutToDie(entityRoot)
-        _deleteAllConnectionsInList(connections)
     }
 
     MouseArea {
