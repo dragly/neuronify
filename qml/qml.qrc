@@ -35,5 +35,6 @@
         <file>hud/SensorControls.qml</file>
         <file>io/FileManager.qml</file>
         <file>tools/AutoLayout.qml</file>
+        <file>tools/Clipboard.qml</file>
     </qresource>
 </RCC>

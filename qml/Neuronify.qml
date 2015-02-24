@@ -20,8 +20,6 @@ Rectangle {
     property var organizedItems: []
     property var organizedConnections: []
     property var entities: []
-    property var neurons: []
-    property var sensors: []
     property var selectedEntities: []
     property var copiedNeurons: []
     property var voltmeters: []
@@ -68,8 +66,6 @@ Rectangle {
         eval(code)
     }
 
-    //////////////////////// end of save/load ////////////////
-
     function deleteEverything() {
         console.log("Deleting everything")
         var entitiesToDelete = entities.slice()
@@ -93,7 +89,6 @@ Rectangle {
         }
         deleteFromList(autoLayout.entities, entity)
         deleteFromList(voltmeters, entity)
-        deleteFromList(sensors, entity)
         deleteFromList(entities, entity)
         resetOrganize()
     }
@@ -147,72 +142,6 @@ Rectangle {
         return item
     }
 
-    function deselectAllInList(listName) {
-        for(var i in listName) {
-            var listObject = listName[i]
-            listObject.selected = false
-        }
-    }
-
-    function selectAllInList(listName) {
-        for(var i in listName) {
-            var listObject = listName[i]
-            listObject.selected = true
-        }
-    }
-
-    function copyNeurons() {
-        copiedNeurons = []
-        var copiedNeuron = []
-        for(var i in selectedEntities) {
-            var neuron = selectedEntities[i]
-            copiedNeuron = neuron
-            copiedNeurons.push(copiedNeuron)
-        }
-        selectedEntities = []
-    }
-
-    function pasteNeurons() {
-        var newNeurons = []
-        for(var i in copiedNeurons) {
-            var neuronToCopy = copiedNeurons[i]
-            var neuron = createNeuron({
-                                          x: neuronToCopy.x + 10,
-                                          y: neuronToCopy.y + 10,
-                                          copiedFrom: neuronToCopy
-                                      })
-
-            newNeurons.push(neuron)
-        }
-        for(var i in copiedNeurons) {
-            var oldNeuron = copiedNeurons[i]
-            for(var j in newNeurons) {
-                var newNeuron = newNeurons[j]
-                if(newNeuron.copiedFrom === oldNeuron) {
-                    // Find connections
-                    for(var k in oldNeuron.connections) {
-                        var connectedToNeuron = oldNeuron.connections[k].itemB
-                        // Check if connected to copied neuron
-                        for(var l in copiedNeurons) {
-                            var otherNeuron = copiedNeurons[l]
-                            if(otherNeuron === connectedToNeuron) {
-                                // Find copied twin
-                                for(var m in newNeurons) {
-                                    var otherNewNeuron = newNeurons[m]
-                                    if(otherNewNeuron.copiedFrom === otherNeuron) {
-                                        connectNeurons(newNeuron, otherNewNeuron)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        resetOrganize()
-    }
-
     function selectAll() {
         for(var i in entities) {
             var listObject = entities[i]
@@ -253,7 +182,10 @@ Rectangle {
             entity.selected = true
         }
 
-        selectAllInList(selectedEntities)
+        for(var i in selectedEntities) {
+            var selectedEntity = selectedEntities[i]
+            selectedEntity.selected = true
+        }
     }
 
     function clickedConnection(connection) {
@@ -262,7 +194,7 @@ Rectangle {
         connection.selected = true
     }
 
-    function createEntity(fileUrl, properties) {
+    function createEntity(fileUrl, properties, useAutoLayout) {
         var component = Qt.createComponent(fileUrl)
         var entity = component.createObject(neuronLayer, properties)
         entity.dragStarted.connect(resetOrganize)
@@ -270,53 +202,28 @@ Rectangle {
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeleted)
-        entity.droppedConnector.connect(createConnectionToPoint)
-        neurons.push(entity)
-        autoLayout.entities.push(entity)
         entities.push(entity)
-        resetOrganize()
+        if(useAutoLayout) {
+            autoLayout.entities.push(entity)
+            resetOrganize()
+        }
         return entity
     }
 
     function createNeuron(properties) {
-        var component = Qt.createComponent("Neuron.qml")
-        var neuron = component.createObject(neuronLayer, properties)
-        neuron.dragStarted.connect(resetOrganize)
-        neuron.widthChanged.connect(resetOrganize)
-        neuron.heightChanged.connect(resetOrganize)
-        neuron.clicked.connect(clickedEntity)
-        neuron.aboutToDie.connect(cleanupDeleted)
+        var neuron = createEntity("Neuron.qml", properties, true)
         neuron.droppedConnector.connect(createConnectionToPoint)
-        neurons.push(neuron)
-        autoLayout.entities.push(neuron)
-        entities.push(neuron)
-        resetOrganize()
         return neuron
     }
 
     function createTouchSensor(properties) {
-        var component = Qt.createComponent("TouchSensor.qml")
         properties.dropFunction = createConnectionToPoint
-        var sensor = component.createObject(neuronLayer, properties)
-        sensor.dragStarted.connect(resetOrganize)
-        sensor.widthChanged.connect(resetOrganize)
-        sensor.heightChanged.connect(resetOrganize)
-        sensor.clicked.connect(clickedEntity)
-        sensor.aboutToDie.connect(cleanupDeleted)
-        sensors.push(sensor)
-        entities.push(sensor)
-        resetOrganize()
+        var sensor = createEntity("TouchSensor.qml", properties)
         return sensor
     }
 
     function createVoltmeter(properties) {
-        var component = Qt.createComponent("Voltmeter.qml")
-        var voltmeter = component.createObject(neuronLayer, properties)
-        voltmeters.push(voltmeter)
-        entities.push(voltmeter)
-        voltmeter.clicked.connect(clickedEntity)
-        voltmeter.aboutToDie.connect(cleanupDeleted)
-        resetOrganize()
+        var voltmeter = createEntity("Voltmeter.qml", properties)
         return voltmeter
     }
 
@@ -419,6 +326,10 @@ Rectangle {
         enabled: creationControls.autoLayout
         maximumWidth: neuronLayer.width
         maximumHeight: neuronLayer.height
+    }
+
+    Clipboard {
+        id: clipboard
     }
 
     Item {
@@ -603,10 +514,10 @@ Rectangle {
              selectAll()
          }
          if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
-             copyNeurons()
+             clipboard.copyNeurons()
          }
          if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
-             pasteNeurons()
+             clipboard.pasteNeurons()
          }
          if(event.key === Qt.Key_Delete) {
              for(var i in selectedEntities) {
