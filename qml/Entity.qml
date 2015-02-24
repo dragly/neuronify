@@ -7,7 +7,7 @@ Item {
     signal connectionAdded(var connection, var isSource)
     signal connectionRemoved(var connection)
     signal aboutToDie(var entity)
-    signal stimulated(var stimulation)
+    signal stimulate(var stimulation)
     signal inputConnectionStep(var source)
     signal outputConnectionStep(var target)
     signal step(var dt)
@@ -29,10 +29,6 @@ Item {
         "x",
         "y"
     ]
-
-    function stimulate(stimulation) {
-        stimulated(stimulation)
-    }
 
     function _deleteAllConnectionsInList(connectionsToDelete) {
         for(var i in connectionsToDelete) {

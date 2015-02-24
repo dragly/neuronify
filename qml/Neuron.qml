@@ -101,7 +101,7 @@ Entity {
         }
     }
 
-    onStimulated: {
+    onStimulate: {
         synapticConductance += stimulation
     }
 
