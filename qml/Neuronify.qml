@@ -95,6 +95,7 @@ Rectangle {
     }
 
     function cleanupDeletedConnection(connection) {
+        console.log("Cleaning up deleted connection");
         deleteFromList(autoLayout.connections, connection)
         deleteFromList(connections, connection)
         resetOrganize()
@@ -147,16 +148,16 @@ Rectangle {
 
         if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
             var alreadySelected = false
-                for(var j in selectedEntities) {
-                    var alreadySelectedEntity = selectedEntities[j]
-                    if(alreadySelectedEntity ===  entity) {
-                        alreadySelected = true
-                    }
+            for(var j in selectedEntities) {
+                var alreadySelectedEntity = selectedEntities[j]
+                if(alreadySelectedEntity ===  entity) {
+                    alreadySelected = true
                 }
-                if(!alreadySelected) {
-                    selectedEntities.push(entity)
-                    console.log(selectedEntities.length)
-                }
+            }
+            if(!alreadySelected) {
+                selectedEntities.push(entity)
+                console.log(selectedEntities.length)
+            }
 
         } else {
             selectedEntities = []
@@ -226,6 +227,7 @@ Rectangle {
     function connectEntities(itemA, itemB) {
         var connection = createConnection(itemA, itemB)
         itemA.addConnection(connection)
+        itemB.addConnection(connection)
         autoLayout.connections.push(connection)
         connections.push(connection)
         connection.aboutToDie.connect(cleanupDeletedConnection)
@@ -247,11 +249,8 @@ Rectangle {
     }
 
     function connectVoltmeterToNeuron(neuron, voltmeter) {
-        var connection = createConnection(neuron, voltmeter)
-        neuron.addConnection(connection)
-        voltmeter.addConnection(connection)
-        connections.push(connection)
-        return connection
+        console.warn("Using deprecated connectVoltmeterToNeuron function! Please update your scripts or savefiles.")
+        return connectEntities(neuron, voltmeter)
     }
 
     function connectionExists(itemA, itemB) {
@@ -382,11 +381,11 @@ Rectangle {
             scale: 1.1
             transformOrigin: Item.TopLeft
 
-//            transform: Scale {
-//                id: workspaceScale
-//                yScale: xScale
-//                xScale: Style.scale
-//            }
+            //            transform: Scale {
+            //                id: workspaceScale
+            //                yScale: xScale
+            //                xScale: Style.scale
+            //            }
 
             Rectangle {
                 id: workspaceRectangle
@@ -485,7 +484,7 @@ Rectangle {
                 var itemA = connection.itemA
                 var itemB = connection.itemB
 
-                if(itemA && itemB) {
+                if(connection.valid) {
                     itemA.outputConnectionStep(itemB)
                     itemB.inputConnectionStep(itemA)
                 }
@@ -513,22 +512,22 @@ Rectangle {
 
     //////////////////////// save/load ////////////////
 
-     Keys.onPressed: {
-         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
-             selectAll()
-         }
-         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
-             clipboard.copyNeurons()
-         }
-         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
-             clipboard.pasteNeurons()
-         }
-         if(event.key === Qt.Key_Delete) {
-             for(var i in selectedEntities) {
-                 var entity = selectedEntities[i]
-                 entity.destroy()
-             }
-             deselectAll()
-         }
-     }
+    Keys.onPressed: {
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
+            selectAll()
+        }
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
+            clipboard.copyNeurons()
+        }
+        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
+            clipboard.pasteNeurons()
+        }
+        if(event.key === Qt.Key_Delete) {
+            for(var i in selectedEntities) {
+                var entity = selectedEntities[i]
+                entity.destroy()
+            }
+            deselectAll()
+        }
+    }
 }
