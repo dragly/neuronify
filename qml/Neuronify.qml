@@ -26,6 +26,12 @@ Rectangle {
     property real currentTimeStep: 0.0
     property real time: 0.0
     property var activeObject: null
+    property var undoList: [""]
+    property int undoIdx: 0
+    property int undoIdxCopy: 0
+    property bool isRunningUndo: false
+
+
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
             if(Qt.application.state === Qt.ApplicationActive) {
@@ -68,6 +74,49 @@ Rectangle {
         var code = fileManager.read(fileUrl)
         console.log("Evaluating code")
         eval(code)
+    }
+
+    function addToUndoList() {
+        if (!isRunningUndo){
+            var fileString = ""
+            console.log("Making new undolist item ")
+
+            var counter = 0
+            for(var i in entities) {
+                var entity = entities[i]
+                fileString += entity.dump(i)
+            }
+
+            for(var i in connections) {
+                var connection = connections[i]
+                fileString += connection.dump(i, entities)
+            }
+
+    //        for(var i in otherItems) {
+    //            var item = otherItems[i]
+    //            fileString += item.dump()
+    //        }
+
+    //        console.log(fileString)
+            undoIdx += 1
+            undoList.push(fileString)
+            console.log(undoIdx)
+            console.log(undoList.length)
+        }
+    }
+
+    function undo(){
+        if (undoIdx > 0){
+            undoIdx -= 1
+            deleteEverything()
+            console.log("Undoing...", undoIdx)
+            isRunningUndo = true
+            eval(undoList[undoIdx])
+            isRunningUndo = false
+            undoList = undoList.slice(0, undoIdx+1)
+        } else {
+            console.log("Nothing to undo!")
+        }
     }
 
     function deleteEverything() {
@@ -196,6 +245,7 @@ Rectangle {
             autoLayout.entities.push(entity)
             resetOrganize()
         }
+        addToUndoList()
         return entity
     }
 
@@ -206,6 +256,7 @@ Rectangle {
                                                               itemB: targetObject
                                                           })
         connection.clicked.connect(clickedConnection)
+        addToUndoList()
         return connection
     }
 

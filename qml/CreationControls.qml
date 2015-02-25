@@ -116,6 +116,12 @@ Rectangle {
             }
         }
 
+        Button{
+            id: undoButton
+            text: "Undo"
+            onClicked: undo()
+        }
+
         CheckBox {
             id: autoLayoutCheckbox
             text: "Auto"
