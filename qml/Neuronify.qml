@@ -92,12 +92,6 @@ Rectangle {
                 fileString += connection.dump(i, entities)
             }
 
-    //        for(var i in otherItems) {
-    //            var item = otherItems[i]
-    //            fileString += item.dump()
-    //        }
-
-    //        console.log(fileString)
             undoIdx += 1
             undoList.push(fileString)
             console.log(undoIdx)
