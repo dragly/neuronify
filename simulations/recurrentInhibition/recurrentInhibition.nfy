@@ -13,3 +13,6 @@ var connection4 = connectEntities(entity3, entity0)
 var connection5 = connectEntities(entity4, entity0)
 var connection6 = connectEntities(entity2, entity5)
 var connection7 = connectEntities(entity1, entity6)
+workspace.x = -140.562703620428
+workspace.y = -44.87754964182352
+workspace.scale = 1.1
