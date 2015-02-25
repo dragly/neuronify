@@ -35,7 +35,7 @@ Entity {
                 simulatorRoot.disconnectNeuron(neuron)
             }
             onDeleteClicked: {
-                neuronRoot.destroy()
+                neuronRoot.destroy(1)
             }
         }
     }

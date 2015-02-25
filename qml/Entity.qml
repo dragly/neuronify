@@ -33,7 +33,7 @@ Item {
     function _deleteAllConnectionsInList(connectionsToDelete) {
         for(var i in connectionsToDelete) {
             var connection = connectionsToDelete[i]
-            connection.destroy()
+            connection.destroy(1)
         }
     }
 

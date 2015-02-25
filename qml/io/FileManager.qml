@@ -8,6 +8,7 @@ Item {
 
     property var entities: []
     property var connections: []
+    property var otherItems: []
 
     function showSaveDialog() {
         saveFileDialog.visible = true
@@ -30,6 +31,11 @@ Item {
         for(var i in connections) {
             var connection = connections[i]
             fileString += connection.dump(i, entities)
+        }
+
+        for(var i in otherItems) {
+            var item = otherItems[i]
+            fileString += item.dump()
         }
 
         console.log(fileString)
@@ -82,6 +88,7 @@ Item {
         nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
 
         onAccepted: {
+            console.log("Load dialog accepted")
             loadState(fileUrl)
         }
     }

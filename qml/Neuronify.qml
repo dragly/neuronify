@@ -62,22 +62,23 @@ Rectangle {
     }
 
     function loadState(fileUrl) {
+        console.log("Load state called")
         deleteEverything()
         creationControls.autoLayout = false
         var code = fileManager.read(fileUrl)
+        console.log("Evaluating code")
         eval(code)
     }
 
     function deleteEverything() {
-        console.log("Deleting everything")
+        console.log("Asked to delete everything")
         var connectionsToDelete = connections.slice()
         for(var i in connectionsToDelete) {
-            connectionsToDelete[i].destroy()
+            connectionsToDelete[i].destroy(1)
         }
-
         var entitiesToDelete = entities.slice()
         for(var i in entitiesToDelete) {
-            entitiesToDelete[i].destroy()
+            entitiesToDelete[i].destroy(1)
         }
     }
 
@@ -92,7 +93,7 @@ Rectangle {
         for(var i in connections) {
             var connection = connections[i]
             if(connection.itemA === entity || connection.itemB === entity) {
-                connection.destroy()
+                connection.destroy(1)
             }
         }
 
@@ -331,11 +332,14 @@ Rectangle {
             scale: 1.1
             transformOrigin: Item.TopLeft
 
-            //            transform: Scale {
-            //                id: workspaceScale
-            //                yScale: xScale
-            //                xScale: Style.scale
-            //            }
+            function dump() {
+                var properties = ["x", "y", "scale"]
+                var output = ""
+                for(var i in properties) {
+                    output += "workspace." + properties[i] + " = " + workspace[properties[i]] + "\n"
+                }
+                return output
+            }
 
             Rectangle {
                 id: workspaceRectangle
@@ -454,8 +458,10 @@ Rectangle {
 
         entities: neuronifyRoot.entities
         connections: neuronifyRoot.connections
+        otherItems: [workspace]
 
         onLoadState: {
+            console.log("Load state signal caught")
             neuronifyRoot.loadState(fileUrl)
         }
     }
@@ -475,7 +481,7 @@ Rectangle {
         if(event.key === Qt.Key_Delete) {
             for(var i in selectedEntities) {
                 var entity = selectedEntities[i]
-                entity.destroy()
+                entity.destroy(1)
             }
             deselectAll()
         }
