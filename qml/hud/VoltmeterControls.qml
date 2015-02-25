@@ -49,7 +49,7 @@ Item {
         Button {
             text: "Delete"
             onClicked: {
-                simulatorRoot.deleteVoltmeter(voltmeterControlsRoot.voltmeter)
+                voltmeterControlsRoot.voltmeter.destroy()
             }
         }
 
