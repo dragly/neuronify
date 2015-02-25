@@ -68,7 +68,7 @@ Item {
         title: "Please enter a filename"
         visible : false
         selectExisting: false
-        nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
+        nameFilters: Qt.platform.os === "osx" ? [] : ["Nestify files (*.nfy)", "All files (*)"]
 
         onAccepted: {
             var fileUrlNew = fileUrl
@@ -85,7 +85,7 @@ Item {
         id: loadFileDialog
         title: "Please choose a file"
         visible : false
-        nameFilters: ["Neuronify files (*.nfy)", "All files (*)"]
+        nameFilters: Qt.platform.os === "osx" ? [] : ["Nestify files (*.nfy)", "All files (*)"]
 
         onAccepted: {
             console.log("Load dialog accepted")
