@@ -31,24 +31,13 @@ Item {
         anchors.margins: 10
         spacing: 10
 
-        Text {
-            text: "Polarization jump: " + polarizationSlider.value.toFixed(1) + " mV"
-        }
-
-        Slider {
-            id: polarizationSlider
-            minimumValue: -100
-            maximumValue: 100
-            Layout.fillWidth: true
-        }
-
         Button {
             id: polarizeButton
             Layout.fillWidth: true
 
-            text: "Depolarize!"
+            text: "Fire!"
             onClicked: {
-                neuronControlsRoot.neuron.voltage += polarizationSlider.value
+                neuronControlsRoot.neuron.voltage += 100
             }
         }
 
