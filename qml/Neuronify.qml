@@ -72,12 +72,14 @@ Rectangle {
         console.log("Load state called")
         deleteEverything()
         undoList.length = 0
-        undoIdx = 0
+
+        undoIdx = 1
         undoRecordingEnabled = false
         creationControls.autoLayout = false
         var code = fileManager.read(fileUrl)
         console.log("Evaluating code")
         eval(code)
+        undoList.push(code)
         undoRecordingEnabled = true
     }
 
@@ -86,7 +88,6 @@ Rectangle {
             return
         }
         var fileString = ""
-        //console.log("Making new undolist item ", undoIdx, undoList.length)
 
         var counter = 0
         for(var i in entities) {
@@ -107,14 +108,13 @@ Rectangle {
     }
 
     function undo(){
-        if (undoIdx > 0){
+        if (undoIdx > 1){
             undoIdx -= 1
             deleteEverything()
             console.log("Undoing...", undoIdx, undoList.length)
             undoRecordingEnabled = false
             eval(undoList[undoIdx-1])
             undoRecordingEnabled = true
-            //undoList = undoList.slice(0, undoIdx)
             canRedo = true
         } else {
             console.log("Nothing to undo! ")
@@ -125,16 +125,16 @@ Rectangle {
         if (undoIdx < undoList.length){
             undoIdx += 1
             deleteEverything()
-            console.log("Redoing...", undoIdx, undoList.length)
+
             undoRecordingEnabled = false
             eval(undoList[undoIdx-1])
             undoRecordingEnabled = true
-            if (undoIdx === undoList.lenght){
+            console.log("Redoing...", undoIdx, undoList.length, undoIdx===undoList.length)
+            if (undoIdx === undoList.length){
                 canRedo = false
             }
-            //undoList = undoList.slice(0, undoIdx)
         } else {
-            console.log("Something went wrong! ")
+            console.log("Something went wrong! ", undoIdx, undoList.length)
         }
     }
 
