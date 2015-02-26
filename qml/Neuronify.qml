@@ -100,8 +100,6 @@ Rectangle {
 
         undoIdx += 1
         undoList.push(fileString)
-        console.log(undoIdx)
-        console.log(undoList.length)
     }
 
     function undo(){
@@ -112,9 +110,9 @@ Rectangle {
             undoRecordingEnabled = false
             eval(undoList[undoIdx])
             undoRecordingEnabled = true
-            undoList = undoList.slice(0, undoIdx+1)
+            undoList = undoList.slice(0, undoIdx)
         } else {
-            console.log("Nothing to undo!")
+            console.log("Nothing to undo! ")
         }
     }
 
