@@ -30,6 +30,7 @@ Rectangle {
     property int undoIdx: 0
     property int undoIdxCopy: 0
     property bool undoRecordingEnabled: true
+    property bool canRedo: false
 
 
     property bool applicationActive: {
@@ -85,7 +86,7 @@ Rectangle {
             return
         }
         var fileString = ""
-        console.log("Making new undolist item ")
+        //console.log("Making new undolist item ", undoIdx, undoList.length)
 
         var counter = 0
         for(var i in entities) {
@@ -98,21 +99,42 @@ Rectangle {
             fileString += connection.dump(i, entities)
         }
 
+        undoList = undoList.slice(0,undoIdx)
         undoIdx += 1
         undoList.push(fileString)
+        console.log("Making new undolist item ", undoIdx, undoList.length)
+        canRedo = false
     }
 
     function undo(){
         if (undoIdx > 0){
             undoIdx -= 1
             deleteEverything()
-            console.log("Undoing...", undoIdx)
+            console.log("Undoing...", undoIdx, undoList.length)
             undoRecordingEnabled = false
-            eval(undoList[undoIdx])
+            eval(undoList[undoIdx-1])
             undoRecordingEnabled = true
-            undoList = undoList.slice(0, undoIdx)
+            //undoList = undoList.slice(0, undoIdx)
+            canRedo = true
         } else {
             console.log("Nothing to undo! ")
+        }
+    }
+
+    function redo(){
+        if (undoIdx < undoList.length){
+            undoIdx += 1
+            deleteEverything()
+            console.log("Redoing...", undoIdx, undoList.length)
+            undoRecordingEnabled = false
+            eval(undoList[undoIdx-1])
+            undoRecordingEnabled = true
+            if (undoIdx === undoList.lenght){
+                canRedo = false
+            }
+            //undoList = undoList.slice(0, undoIdx)
+        } else {
+            console.log("Something went wrong! ")
         }
     }
 
@@ -231,7 +253,6 @@ Rectangle {
     }
 
     function createEntity(fileUrl, properties, useAutoLayout) {
-        addToUndoList()
         var component = Qt.createComponent(fileUrl)
         properties.simulator = neuronifyRoot
         var entity = component.createObject(neuronLayer, properties)
@@ -245,17 +266,18 @@ Rectangle {
             autoLayout.entities.push(entity)
             resetOrganize()
         }
+        addToUndoList()
         return entity
     }
 
     function createConnection(sourceObject, targetObject) {
-        addToUndoList()
         var connectionComponent = Qt.createComponent("Connection.qml")
         var connection = connectionComponent.createObject(connectionLayer, {
                                                               itemA: sourceObject,
                                                               itemB: targetObject
                                                           })
         connection.clicked.connect(clickedConnection)
+        addToUndoList()
         return connection
     }
 

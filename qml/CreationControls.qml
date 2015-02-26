@@ -122,6 +122,12 @@ Rectangle {
             onClicked: undo()
         }
 
+        Button{
+            id: redoButton
+            text: "Redo"
+            onClicked: if (canRedo) {redo()} else {console.log("Cant redo now!")}
+        }
+
         CheckBox {
             id: autoLayoutCheckbox
             text: "Auto"
