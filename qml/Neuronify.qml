@@ -209,16 +209,23 @@ Rectangle {
     }
 
     function deselectAll() {
+        selectedEntities.length = 0
         activeObject = null
         for(var i in entities) {
             var listObject = entities[i]
             listObject.selected = false
         }
+        for(var i in connections) {
+            var connection = connections[i]
+            connection.selected = false
+        }
     }
 
     function clickedEntity(entity, mouse) {
-        deselectAll()
-        entity.selected = true
+        if(activeObject) {
+            activeObject.selected = false
+        }
+
         activeObject = entity
 
         if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
@@ -231,11 +238,9 @@ Rectangle {
             }
             if(!alreadySelected) {
                 selectedEntities.push(entity)
-                console.log(selectedEntities.length)
             }
-
         } else {
-            selectedEntities = []
+            deselectAll()
             selectedEntities.push(entity)
             entity.selected = true
         }
@@ -555,6 +560,10 @@ Rectangle {
                 var entity = selectedEntities[i]
                 entity.destroy(1)
             }
+            if(activeObject) {
+                activeObject.destroy(1)
+            }
+
             deselectAll()
         }
     }

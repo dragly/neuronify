@@ -25,6 +25,9 @@ Item {
     property Component controls: Component {
         ConnectionControls {
             connection: connectionRoot
+            onDeleteClicked: {
+                connectionRoot.destroy(1)
+            }
         }
     }
 
