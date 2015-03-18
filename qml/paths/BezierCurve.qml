@@ -33,18 +33,6 @@ Canvas {
     function relativeY(y) {
         return y - canvas.y;
     }
-    function curve(ctx) {
-        if (0) {
-        ctx.bezierCurveTo(relativeX(canvas.controlPoint1.x), relativeY(canvas.controlPoint1.y),
-                          relativeX(canvas.controlPoint2.x), relativeY(canvas.controlPoint2.y),
-                          relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y));
-        } else {
-            ctx.bezierCurveTo(relativeX(canvas.controlPoint1.x), relativeY(canvas.controlPoint1.y),
-                              relativeX(canvas.controlPoint2.x), relativeY(canvas.controlPoint2.y),
-                              relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y));
-
-        }
-    }
 
 
     onPaint: {
@@ -53,10 +41,11 @@ Canvas {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = canvas.color;
         ctx.lineWidth = canvas.lineWidth;
-
         ctx.beginPath();
         ctx.moveTo(relativeX(startPoint.x), relativeY(startPoint.y));
-        curve(ctx);
+        ctx.bezierCurveTo(relativeX(canvas.controlPoint1.x), relativeY(canvas.controlPoint1.y),
+                          relativeX(canvas.controlPoint2.x), relativeY(canvas.controlPoint2.y),
+                          relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y));
         ctx.stroke();
         ctx.restore();
     }

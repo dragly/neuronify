@@ -121,7 +121,7 @@ Entity {
         radius: width / 2
         color: neuronRoot.color
         border.color: selected ? "#08306b" : "#2171b5"
-        border.width: selected ? 3.0 : 1.0
+        border.width: selected ? 4.0 : 2.0
     }
 
     Rectangle {
