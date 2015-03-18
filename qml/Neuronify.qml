@@ -30,6 +30,7 @@ Rectangle {
     property int undoIdx: 0
     property int undoIdxCopy: 0
     property bool undoRecordingEnabled: true
+    property bool canRedo: false
 
 
     property bool applicationActive: {
@@ -71,12 +72,14 @@ Rectangle {
         console.log("Load state called")
         deleteEverything()
         undoList.length = 0
-        undoIdx = 0
+
+        undoIdx = 1
         undoRecordingEnabled = false
         creationControls.autoLayout = false
         var code = fileManager.read(fileUrl)
         console.log("Evaluating code")
         eval(code)
+        undoList.push(code)
         undoRecordingEnabled = true
     }
 
@@ -85,7 +88,6 @@ Rectangle {
             return
         }
         var fileString = ""
-        console.log("Making new undolist item ")
 
         var counter = 0
         for(var i in entities) {
@@ -98,23 +100,41 @@ Rectangle {
             fileString += connection.dump(i, entities)
         }
 
+        undoList = undoList.slice(0,undoIdx)
         undoIdx += 1
         undoList.push(fileString)
-        console.log(undoIdx)
-        console.log(undoList.length)
+        console.log("Making new undolist item ", undoIdx, undoList.length)
+        canRedo = false
     }
 
     function undo(){
-        if (undoIdx > 0){
+        if (undoIdx > 1){
             undoIdx -= 1
             deleteEverything()
-            console.log("Undoing...", undoIdx)
+            console.log("Undoing...", undoIdx, undoList.length)
             undoRecordingEnabled = false
-            eval(undoList[undoIdx])
+            eval(undoList[undoIdx-1])
             undoRecordingEnabled = true
-            undoList = undoList.slice(0, undoIdx+1)
+            canRedo = true
         } else {
-            console.log("Nothing to undo!")
+            console.log("Nothing to undo! ")
+        }
+    }
+
+    function redo(){
+        if (undoIdx < undoList.length){
+            undoIdx += 1
+            deleteEverything()
+
+            undoRecordingEnabled = false
+            eval(undoList[undoIdx-1])
+            undoRecordingEnabled = true
+            console.log("Redoing...", undoIdx, undoList.length, undoIdx===undoList.length)
+            if (undoIdx === undoList.length){
+                canRedo = false
+            }
+        } else {
+            console.log("Something went wrong! ", undoIdx, undoList.length)
         }
     }
 
@@ -233,7 +253,6 @@ Rectangle {
     }
 
     function createEntity(fileUrl, properties, useAutoLayout) {
-        addToUndoList()
         var component = Qt.createComponent(fileUrl)
         properties.simulator = neuronifyRoot
         var entity = component.createObject(neuronLayer, properties)
@@ -247,17 +266,18 @@ Rectangle {
             autoLayout.entities.push(entity)
             resetOrganize()
         }
+        addToUndoList()
         return entity
     }
 
     function createConnection(sourceObject, targetObject) {
-        addToUndoList()
         var connectionComponent = Qt.createComponent("Connection.qml")
         var connection = connectionComponent.createObject(connectionLayer, {
                                                               itemA: sourceObject,
                                                               itemB: targetObject
                                                           })
         connection.clicked.connect(clickedConnection)
+        addToUndoList()
         return connection
     }
 
