@@ -3,7 +3,7 @@ import QtQuick 2.0
 Canvas {
     id:canvas
     property color color: "cyan"
-    property real lineWidth: 1.5
+    property real lineWidth: 2.5
     property point startPoint: Qt.point(0,0)
     property point controlPoint1: Qt.point(0,40)
     property point controlPoint2: Qt.point(200,100)
@@ -33,6 +33,19 @@ Canvas {
     function relativeY(y) {
         return y - canvas.y;
     }
+    function curve(ctx) {
+        if (0) {
+        ctx.bezierCurveTo(relativeX(canvas.controlPoint1.x), relativeY(canvas.controlPoint1.y),
+                          relativeX(canvas.controlPoint2.x), relativeY(canvas.controlPoint2.y),
+                          relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y));
+        } else {
+            ctx.bezierCurveTo(relativeX(canvas.controlPoint1.x), relativeY(canvas.controlPoint1.y),
+                              relativeX(canvas.controlPoint2.x), relativeY(canvas.controlPoint2.y),
+                              relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y));
+
+        }
+    }
+
 
     onPaint: {
         var ctx = canvas.getContext('2d');
@@ -43,9 +56,7 @@ Canvas {
 
         ctx.beginPath();
         ctx.moveTo(relativeX(startPoint.x), relativeY(startPoint.y));
-        ctx.bezierCurveTo(relativeX(canvas.controlPoint1.x), relativeY(canvas.controlPoint1.y),
-                          relativeX(canvas.controlPoint2.x), relativeY(canvas.controlPoint2.y),
-                          relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y));
+        curve(ctx);
         ctx.stroke();
         ctx.restore();
     }

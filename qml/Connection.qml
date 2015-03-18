@@ -2,6 +2,7 @@ import QtQuick 2.0
 import "paths"
 import "hud"
 
+
 Item {
     id: connectionRoot
     signal clicked(var connection)
@@ -18,6 +19,7 @@ Item {
     property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x : 0
     property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y : 0
     property real length: Math.sqrt(diffx*diffx + diffy*diffy)
+    property real angle: Math.atan(diffy/diffx)*180/Math.PI
     property real cx: valid ? itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length : 0
     property real cy: valid ? itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length : 0
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
@@ -116,9 +118,12 @@ Item {
         id: connectionSpot
         x: cx - width / 2
         y: cy - height / 2
-        width: 6
+        width: 10
         height: width
-        radius: width / 2.0
+        radius: itemA.outputStimulation?(itemA.outputStimulation > 0 ?  0 : width / 2.0) : width / 2.0;
+        rotation: angle + 45
         color: connectionRoot._internalColor
+
+
     }
 }
