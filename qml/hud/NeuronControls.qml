@@ -24,6 +24,7 @@ Item {
         //        targetVoltageCheckbox.checked = neuron.forceTargetVoltage
         clampCurrentSlider.value = neuron.clampCurrent
         clampCurrentCheckbox.checked = neuron.clampCurrentEnabled
+        inhibitoryCheckbox.checked = neuron.outputStimulation < 0
     }
 
     ColumnLayout {
@@ -41,25 +42,55 @@ Item {
             }
         }
 
-        Text {
-            text: "Synaptic output: " + synapticOutputSlider.value.toFixed(1) + " mS "
-                  + (synapticOutputSlider.value > 0.0 ? "(excitatory)" : "(inhibitory)")
+
+        CheckBox {
+            id: inhibitoryCheckbox
+            text: "Inhibitory"
+            checked: false
+
+            onCheckedChanged: {
+                if(!neuronControlsRoot.neuron) {
+                                    return
+
+                }
+
+                synapticOutputSlider.value = Math.abs(neuronControlsRoot.neuron.outputStimulation)
+
+                if (inhibitoryCheckbox.checked) {
+                    neuronControlsRoot.neuron.outputStimulation = -synapticOutputSlider.value
+                } else{
+                    neuronControlsRoot.neuron.outputStimulation = synapticOutputSlider.value
+                }
+            }
         }
+
+
+        Text {
+            text: "Synaptic output: " + (inhibitoryCheckbox.checked ? " -" : "  ") + synapticOutputSlider.value.toFixed(1) + " mS "
+        }
+
 
         Slider {
             id: synapticOutputSlider
-            minimumValue: -5.0
-            maximumValue: 10.0
+            minimumValue: 0.
+            maximumValue: 10.
             stepSize: 0.1
             tickmarksEnabled: true
             Layout.fillWidth: true
+
             onValueChanged: {
                 if(!neuronControlsRoot.neuron) {
                     return
                 }
-                neuronControlsRoot.neuron.outputStimulation = value
+                if (inhibitoryCheckbox.checked) {
+                    neuronControlsRoot.neuron.outputStimulation = -value
+                } else{
+                    neuronControlsRoot.neuron.outputStimulation = value
+                }
             }
         }
+
+
 
         //        CheckBox {
         //            id: targetVoltageCheckbox
@@ -99,6 +130,7 @@ Item {
                 neuronControlsRoot.neuron.clampCurrent = clampCurrentSlider.value
             }
         }
+
         Slider {
             id: clampCurrentSlider
             minimumValue: -100.0
