@@ -1,12 +1,12 @@
-#ifndef NEURONIFY_NEURONNODE_H
-#define NEURONIFY_NEURONNODE_H
+#ifndef NEURONIFY_NEURONENGINE_H
+#define NEURONIFY_NEURONENGINE_H
 
 #include <QQuickItem>
 #include <QQmlListProperty>
 
-#include "node.h"
+#include "nodeengine.h"
 
-class NeuronNode : public Node
+class NeuronEngine : public NodeEngine
 {
     Q_OBJECT
 
@@ -19,7 +19,7 @@ class NeuronNode : public Node
     Q_PROPERTY(double cm READ cm WRITE setCm NOTIFY cmChanged)
 
 public:
-    NeuronNode(QQuickItem *parent = 0);
+    NeuronEngine(QQuickItem *parent = 0);
     double voltage() const;
     double synapticConductance() const;
     double adaptionConductance() const;
@@ -68,4 +68,4 @@ private:
     bool m_firedLastTime = false;
 };
 
-#endif // NEURONIFY_NEURONNODE_H
+#endif // NEURONIFY_NEURONENGINE_H

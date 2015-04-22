@@ -1,6 +1,6 @@
 #include "edge.h"
 
-#include "node.h"
+#include "nodebase.h"
 
 Edge::Edge(QQuickItem *parent)
     : QQuickItem(parent)
@@ -13,22 +13,22 @@ Edge::~Edge()
 
 }
 
-Node *Edge::itemA() const
+NodeBase *Edge::itemA() const
 {
     return m_itemA;
 }
 
-Node *Edge::itemB() const
+NodeBase *Edge::itemB() const
 {
     return m_itemB;
 }
 
-void Edge::setItemA(Node *arg)
+void Edge::setItemA(NodeBase *arg)
 {
     if (m_itemA == arg)
         return;
 
-    Node* previousItemA = m_itemA;
+    NodeBase* previousItemA = m_itemA;
     if(previousItemA) {
         previousItemA->edgeRemoved(this);
     }
@@ -40,12 +40,12 @@ void Edge::setItemA(Node *arg)
     emit itemAChanged(arg);
 }
 
-void Edge::setItemB(Node *arg)
+void Edge::setItemB(NodeBase *arg)
 {
     if (m_itemB == arg)
         return;
 
-    Node* previousItemA = m_itemB;
+    NodeBase* previousItemA = m_itemB;
     if(previousItemA) {
         previousItemA->edgeRemoved(this);
     }

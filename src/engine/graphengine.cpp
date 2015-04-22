@@ -1,7 +1,8 @@
 #include "graphengine.h"
 
-#include "node.h"
+#include "nodebase.h"
 #include "edge.h"
+#include "nodeengine.h"
 
 GraphEngine::GraphEngine(QQuickItem *parent)
     : QQuickItem(parent)
@@ -14,9 +15,9 @@ GraphEngine::~GraphEngine()
 
 }
 
-QQmlListProperty<Node> GraphEngine::nodes()
+QQmlListProperty<NodeBase> GraphEngine::nodes()
 {
-    return QQmlListProperty<Node>(this, m_nodes);
+    return QQmlListProperty<NodeBase>(this, m_nodes);
 }
 
 QQmlListProperty<Edge> GraphEngine::edges()
@@ -24,7 +25,7 @@ QQmlListProperty<Edge> GraphEngine::edges()
     return QQmlListProperty<Edge>(this, m_edges);
 }
 
-void GraphEngine::addNode(Node *node)
+void GraphEngine::addNode(NodeBase *node)
 {
     m_nodes.append(node);
 }
@@ -36,21 +37,24 @@ void GraphEngine::addEdge(Edge *edge)
 
 void GraphEngine::step(double dt)
 {
-    int counter = 0;
-    for(Node* node : m_nodes) {
-        node->step(dt);
-        counter++;
+    for(NodeBase* node : m_nodes) {
+        if(node->engine()) {
+            node->engine()->step(dt);
+        }
     }
 
     for(Edge* edge : m_edges) {
         if(edge->itemA() && edge->itemB()) {
-            edge->itemA()->outputConnectionStep(edge->itemB());
-            edge->itemB()->inputConnectionStep(edge->itemA());
+            NodeEngine* engineA = edge->itemA()->engine();
+            NodeEngine* engineB = edge->itemB()->engine();
+            if(engineA->hasFired()) {
+                engineB->stimulate(engineA->stimulation());
+            }
         }
     }
 
-    for(Node* node : m_nodes) {
-        node->finalizeStep(dt);
+    for(NodeBase* node : m_nodes) {
+        node->engine()->finalizeStep(dt);
     }
 }
 

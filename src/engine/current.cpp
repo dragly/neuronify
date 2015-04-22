@@ -1,6 +1,6 @@
 #include "current.h"
 
-#include "neuronnode.h"
+#include "neuronengine.h"
 
 Current::Current(QQuickItem *parent)
     : Entity(parent)

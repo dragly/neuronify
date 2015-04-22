@@ -3,7 +3,7 @@ import "paths"
 import "hud"
 import Neuronify 1.0
 
-VisualNode {
+Node {
     id: root
     objectName: "neuron"
     fileName: "Neuron.qml"
@@ -26,13 +26,16 @@ VisualNode {
         "y"
     ]
 
-    onStep: {
-        var shouldFire = (Math.random() < dt)
-        if(shouldFire) {
-            fire()
+    engine: NodeEngine {
+        onStep: {
+            var shouldFire = (Math.random() < dt)
+            if(shouldFire) {
+                fire()
+            }
         }
     }
 
+    // TODO: Isn't this connected in the simulator automatically? If not, why?
     onSimulatorChanged: {
         if(simulator) {
             droppedConnector.connect(simulator.createConnectionToPoint)

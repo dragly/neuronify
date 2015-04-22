@@ -3,27 +3,27 @@
 
 #include <QQuickItem>
 
-class Node;
+class NodeBase;
 class Edge;
 class GraphEngine : public QQuickItem
 {
     Q_OBJECT
-    Q_PROPERTY(QQmlListProperty<Node> nodes READ nodes)
+    Q_PROPERTY(QQmlListProperty<NodeBase> nodes READ nodes)
     Q_PROPERTY(QQmlListProperty<Edge> edges READ edges)
 public:
     explicit GraphEngine(QQuickItem* parent = 0);
     ~GraphEngine();
 
-    QQmlListProperty<Node> nodes();
+    QQmlListProperty<NodeBase> nodes();
     QQmlListProperty<Edge> edges();
 
 public slots:
     void step(double dt);
-    void addNode(Node* node);
+    void addNode(NodeBase* node);
     void addEdge(Edge* edge);
 
 private:
-    QList<Node*> m_nodes;
+    QList<NodeBase*> m_nodes;
     QList<Edge*> m_edges;
 };
 

@@ -31,7 +31,7 @@
         <file>menus/mainmenu/MainMenuButton.qml</file>
         <file>menus/mainmenu/AdvancedView.qml</file>
         <file>TouchSensor.qml</file>
-        <file>VisualNode.qml</file>
+        <file>Node.qml</file>
         <file>hud/SensorControls.qml</file>
         <file>io/FileManager.qml</file>
         <file>tools/AutoLayout.qml</file>

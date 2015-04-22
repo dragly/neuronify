@@ -3,13 +3,14 @@ import "paths"
 import "hud"
 import Neuronify 1.0
 
-VisualNode {
+Node {
     id: root
     objectName: "neuron"
     fileName: "Neuron.qml"
 
     signal droppedConnector(var neuron, var connector)
 
+    property alias stimulation: engine.stimulation
     property alias voltage: engine.voltage
     property real acceleration: 0.0
     property real speed: 0.0
@@ -56,15 +57,8 @@ VisualNode {
         }
     }
 
-    onStepped: engine.step(dt)
-    onFinalizedStep: engine.finalizeStep(dt)
-
-    NeuronNode {
+    engine: NeuronEngine {
         id: engine
-
-        onFired: {
-            root.fire()
-        }
 
         PassiveCurrent {
             id: passiveCurrent

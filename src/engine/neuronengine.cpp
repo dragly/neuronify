@@ -1,10 +1,10 @@
-#include "neuronnode.h"
+#include "neuronengine.h"
 #include <QDebug>
 
 #include "current.h"
 
-NeuronNode::NeuronNode(QQuickItem *parent)
-    : Node(parent)
+NeuronEngine::NeuronEngine(QQuickItem *parent)
+    : NodeEngine(parent)
     , m_cm(0)
     , m_voltage(0)
     , m_membraneRestingPotential(0)
@@ -17,42 +17,42 @@ NeuronNode::NeuronNode(QQuickItem *parent)
     reset();
 }
 
-double NeuronNode::voltage() const
+double NeuronEngine::voltage() const
 {
     return m_voltage;
 }
 
-double NeuronNode::synapticConductance() const
+double NeuronEngine::synapticConductance() const
 {
     return m_synapticConductance;
 }
 
-double NeuronNode::restingPotential() const
+double NeuronEngine::restingPotential() const
 {
     return m_membraneRestingPotential;
 }
 
-double NeuronNode::synapsePotential() const
+double NeuronEngine::synapsePotential() const
 {
     return m_synapsePotential;
 }
 
-bool NeuronNode::clampCurrentEnabled() const
+bool NeuronEngine::clampCurrentEnabled() const
 {
     return m_clampCurrentEnabled;
 }
 
-double NeuronNode::cm() const
+double NeuronEngine::cm() const
 {
     return m_cm;
 }
 
-double NeuronNode::clampCurrent() const
+double NeuronEngine::clampCurrent() const
 {
     return m_clampCurrent;
 }
 
-void NeuronNode::setVoltage(double arg)
+void NeuronEngine::setVoltage(double arg)
 {
     if (m_voltage != arg) {
         m_voltage = arg;
@@ -60,7 +60,7 @@ void NeuronNode::setVoltage(double arg)
     }
 }
 
-void NeuronNode::stepEvent(double dt)
+void NeuronEngine::stepEvent(double dt)
 {
     checkFire();
 
@@ -88,18 +88,18 @@ void NeuronNode::stepEvent(double dt)
     emit synapticConductanceChanged(m_synapticConductance);
 }
 
-void NeuronNode::fireEvent()
+void NeuronEngine::fireEvent()
 {
     setVoltage(voltage() + 100.0);
     m_firedLastTime = true;
 }
 
-void NeuronNode::stimulateEvent(double stimulation)
+void NeuronEngine::stimulateEvent(double stimulation)
 {
     m_synapticConductance += stimulation;
 }
 
-void NeuronNode::setSynapticConductance(double arg)
+void NeuronEngine::setSynapticConductance(double arg)
 {
     if (m_synapticConductance != arg) {
         m_synapticConductance = arg;
@@ -107,7 +107,7 @@ void NeuronNode::setSynapticConductance(double arg)
     }
 }
 
-void NeuronNode::setRestingPotential(double arg)
+void NeuronEngine::setRestingPotential(double arg)
 {
     if (m_membraneRestingPotential != arg) {
         m_membraneRestingPotential = arg;
@@ -115,7 +115,7 @@ void NeuronNode::setRestingPotential(double arg)
     }
 }
 
-void NeuronNode::setSynapsePotential(double arg)
+void NeuronEngine::setSynapsePotential(double arg)
 {
     if (m_synapsePotential != arg) {
         m_synapsePotential = arg;
@@ -123,7 +123,7 @@ void NeuronNode::setSynapsePotential(double arg)
     }
 }
 
-void NeuronNode::setClampCurrentEnabled(bool arg)
+void NeuronEngine::setClampCurrentEnabled(bool arg)
 {
     if (m_clampCurrentEnabled != arg) {
         m_clampCurrentEnabled = arg;
@@ -131,7 +131,7 @@ void NeuronNode::setClampCurrentEnabled(bool arg)
     }
 }
 
-void NeuronNode::setClampCurrent(double arg)
+void NeuronEngine::setClampCurrent(double arg)
 {
     if (m_clampCurrent != arg) {
         m_clampCurrent = arg;
@@ -139,7 +139,7 @@ void NeuronNode::setClampCurrent(double arg)
     }
 }
 
-void NeuronNode::setCm(double arg)
+void NeuronEngine::setCm(double arg)
 {
     if (m_cm != arg) {
         m_cm = arg;
@@ -147,13 +147,13 @@ void NeuronNode::setCm(double arg)
     }
 }
 
-void NeuronNode::reset()
+void NeuronEngine::reset()
 {
     m_voltage = -100.;
     m_synapticConductance = 0.0;
 }
 
-void NeuronNode::initialize()
+void NeuronEngine::initialize()
 {
     m_cm = 1.0;
     m_membraneRestingPotential = -65.0;
@@ -162,7 +162,7 @@ void NeuronNode::initialize()
     m_clampCurrent = 0.0;
 }
 
-void NeuronNode::checkFire()
+void NeuronEngine::checkFire()
 {
     if(m_firedLastTime) {
         setVoltage(m_membraneRestingPotential);

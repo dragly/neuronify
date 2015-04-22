@@ -2,7 +2,9 @@ import QtQuick 2.0
 import "paths"
 import "hud"
 
-VisualNode {
+import Neuronify 1.0
+
+Node {
     id: voltmeterRoot
     objectName: "voltmeter"
     fileName: "Voltmeter.qml"
@@ -39,24 +41,26 @@ VisualNode {
         plot.maximumValue = maximumValue
     }
 
-    onStepped: {
-        timeSinceLastUpdate += dt
-        var currentUpdateTime = Date.now()
-        var timeDiff = (currentUpdateTime - lastUpdateTime) / 1000
-        if(timeDiff < 0.010) {
-            return
-        }
-
-        for(var i in voltmeterRoot.connectionPlots) {
-            var connectionPlot = voltmeterRoot.connectionPlots[i]
-            var plot = connectionPlot.plot
-            var compartment = connectionPlot.connection.itemA
-            if(mode === "voltage") {
-                plot.addPoint(compartment.voltage)
+    engine: NodeEngine {
+        onStepped: {
+            timeSinceLastUpdate += dt
+            var currentUpdateTime = Date.now()
+            var timeDiff = (currentUpdateTime - lastUpdateTime) / 1000
+            if(timeDiff < 0.010) {
+                return
             }
+
+            for(var i in voltmeterRoot.connectionPlots) {
+                var connectionPlot = voltmeterRoot.connectionPlots[i]
+                var plot = connectionPlot.plot
+                var compartment = connectionPlot.connection.itemA
+                if(mode === "voltage") {
+                    plot.addPoint(compartment.voltage)
+                }
+            }
+            lastUpdateTime = currentUpdateTime
+            timeSinceLastUpdate = 0
         }
-        lastUpdateTime = currentUpdateTime
-        timeSinceLastUpdate = 0
     }
 
     onEdgeAdded: {

@@ -5,7 +5,7 @@
 
 #include "entity.h"
 
-class NeuronNode;
+class NeuronEngine;
 class Current : public Entity
 {
     Q_OBJECT

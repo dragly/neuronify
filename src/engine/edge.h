@@ -3,31 +3,31 @@
 
 #include <QQuickItem>
 
-class Node;
+class NodeBase;
 class Edge : public QQuickItem
 {
     Q_OBJECT
-    Q_PROPERTY(Node* itemA READ itemA WRITE setItemA NOTIFY itemAChanged)
-    Q_PROPERTY(Node* itemB READ itemB WRITE setItemB NOTIFY itemBChanged)
+    Q_PROPERTY(NodeBase* itemA READ itemA WRITE setItemA NOTIFY itemAChanged)
+    Q_PROPERTY(NodeBase* itemB READ itemB WRITE setItemB NOTIFY itemBChanged)
 
 public:
     explicit Edge(QQuickItem *parent = 0);
     ~Edge();
 
-    Node* itemA() const;
-    Node* itemB() const;
+    NodeBase* itemA() const;
+    NodeBase* itemB() const;
 
 signals:
-    void itemAChanged(Node* arg);
-    void itemBChanged(Node* arg);
+    void itemAChanged(NodeBase* arg);
+    void itemBChanged(NodeBase* arg);
 
 public slots:
-    void setItemA(Node* arg);
-    void setItemB(Node* arg);
+    void setItemA(NodeBase* arg);
+    void setItemB(NodeBase* arg);
 
 private:
-    Node* m_itemA = nullptr;
-    Node* m_itemB = nullptr;
+    NodeBase* m_itemA = nullptr;
+    NodeBase* m_itemB = nullptr;
 };
 
 #endif // EDGE_H

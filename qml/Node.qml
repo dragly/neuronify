@@ -1,7 +1,7 @@
 import QtQuick 2.0
 import Neuronify 1.0
 
-Node {
+NodeBase {
     id: entityRoot
     signal clicked(var entity, var mouse)
     signal dragStarted

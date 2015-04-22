@@ -1,6 +1,6 @@
 #include "entity.h"
 
-#include "node.h"
+#include "nodebase.h"
 
 Entity::Entity(QQuickItem *parent)
     : QQuickItem(parent)
@@ -26,7 +26,7 @@ void Entity::setHasFired(bool fired)
 void Entity::step(double dt)
 {
     for(Entity* child : findChildren<Entity*>()) {
-        Node* node = qobject_cast<Node*>(child);
+        NodeBase* node = qobject_cast<NodeBase*>(child);
         if(node) {
             continue;
         }
@@ -40,7 +40,7 @@ void Entity::fire()
 {
     m_hasFired = true;
     for(Entity* child : findChildren<Entity*>()) {
-        Node* node = qobject_cast<Node*>(child);
+        NodeBase* node = qobject_cast<NodeBase*>(child);
         if(node) {
             continue;
         }
@@ -53,7 +53,7 @@ void Entity::fire()
 void Entity::stimulate(double stimulation)
 {
     for(Entity* child : findChildren<Entity*>()) {
-        Node* node = qobject_cast<Node*>(child);
+        NodeBase* node = qobject_cast<NodeBase*>(child);
         if(node) {
             continue;
         }
