@@ -142,7 +142,7 @@ Item {
 //            asynchronous: false
 //        }
 
-        radius: itemA.outputStimulation?(itemA.outputStimulation > 0 ?  0 : width / 2.0) : width / 2.0;
+        radius: itemA ? (itemA.outputStimulation > 0 ?  0 : width / 2.0) : width / 2.0;
         rotation: angle + 45
         color: connectionRoot._internalColor
 
