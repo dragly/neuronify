@@ -126,22 +126,6 @@ Item {
         width: 10
         height: width
 
-//        Image {
-//            id: image
-
-//            anchors {
-//                top: connectionSpot.top
-//                horizontalCenter: parent.horizontalCenter
-//            }
-
-//            width: 10
-//            height: width
-
-//            fillMode: Image.PreserveAspectFit
-//            source: "../../images/endpoint_exitatory.png"
-//            asynchronous: false
-//        }
-
         radius: itemA ? (itemA.outputStimulation > 0 ?  0 : width / 2.0) : width / 2.0;
         rotation: angle + 45
         color: connectionRoot._internalColor
