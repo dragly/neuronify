@@ -99,7 +99,7 @@ Entity {
     }
 
     onStimulate: {
-        synapticConductance += stimulation
+        engine.stimulate(stimulation)
     }
 
     onSimulatorChanged: {

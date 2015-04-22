@@ -51,6 +51,7 @@ signals:
 
 protected:
     virtual void stepEvent(double dt);
+    virtual void stimulateEvent(double stimulation);
 
 private:
     double m_cm = 0.0;

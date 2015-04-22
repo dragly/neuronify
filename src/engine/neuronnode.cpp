@@ -88,6 +88,11 @@ void NeuronNode::stepEvent(double dt)
     emit synapticConductanceChanged(m_synapticConductance);
 }
 
+void NeuronNode::stimulateEvent(double stimulation)
+{
+    m_synapticConductance += stimulation;
+}
+
 void NeuronNode::setSynapticConductance(double arg)
 {
     if (m_synapticConductance != arg) {
