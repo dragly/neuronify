@@ -19,7 +19,7 @@ Item {
             return
         }
         synapticOutputSlider.value = neuron.outputStimulation
-        adaptationIncreaseOnFireSlider.value = neuron.adaptationIncreaseOnFire
+//        adaptationIncreaseOnFireSlider.value = neuron.adaptationIncreaseOnFire
         //        targetVoltageSlider.value = neuron.targetVoltage
         //        targetVoltageCheckbox.checked = neuron.forceTargetVoltage
         clampCurrentSlider.value = neuron.clampCurrent
@@ -144,24 +144,6 @@ Item {
                 }
 
                 neuronControlsRoot.neuron.clampCurrent = value
-            }
-        }
-        Text {
-            text: "Adaptation increase on fire: " + adaptationIncreaseOnFireSlider.value.toFixed(1) + " mS"
-        }
-        Slider {
-            id: adaptationIncreaseOnFireSlider
-            minimumValue: -10.0
-            maximumValue: 100.0
-            stepSize: 1.0
-            tickmarksEnabled: true
-            Layout.fillWidth: true
-            onValueChanged: {
-                if(!neuronControlsRoot.neuron) {
-                    return
-                }
-
-                neuronControlsRoot.neuron.adaptationIncreaseOnFire = value
             }
         }
 

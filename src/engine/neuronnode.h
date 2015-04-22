@@ -1,13 +1,17 @@
-#ifndef NEURONENGINE_H
-#define NEURONENGINE_H
-#include <QQuickFramebufferObject>
+#ifndef NEURONIFY_NEURONNODE_H
+#define NEURONIFY_NEURONNODE_H
 
-class NeuronEngine : public QObject
+#include <QQuickItem>
+#include <QQmlListProperty>
+
+#include "node.h"
+
+class NeuronNode : public Node
 {
     Q_OBJECT
+
     Q_PROPERTY(double voltage READ voltage WRITE setVoltage NOTIFY voltageChanged)
     Q_PROPERTY(double synapticConductance READ synapticConductance WRITE setSynapticConductance NOTIFY synapticConductanceChanged)
-    Q_PROPERTY(double adaptationConductance READ adaptationConductance WRITE setAdaptationConductance NOTIFY adaptionConductanceChanged)
     Q_PROPERTY(double membraneRestingPotential READ membraneRestingPotential WRITE setMembraneRestingPotential NOTIFY membraneRestingPotentialChanged)
     Q_PROPERTY(double synapsePotential READ synapsePotential WRITE setSynapsePotential NOTIFY synapsePotentialChanged)
     Q_PROPERTY(bool clampCurrentEnabled READ clampCurrentEnabled WRITE setClampCurrentEnabled NOTIFY clampCurrentEnabledChanged)
@@ -15,7 +19,7 @@ class NeuronEngine : public QObject
     Q_PROPERTY(double cm READ cm WRITE setCm NOTIFY cmChanged)
 
 public:
-    NeuronEngine();
+    NeuronNode(QQuickItem *parent = 0);
     double voltage() const;
     double synapticConductance() const;
     double adaptionConductance() const;
@@ -25,18 +29,14 @@ public:
     double cm() const;
     bool clampCurrentEnabled() const;
 
-    double adaptationConductance() const;
-
 public slots:
     void setVoltage(double arg);
-    void step(double dt);
     void setSynapticConductance(double arg);
     void setMembraneRestingPotential(double arg);
     void setSynapsePotential(double arg);
     void setClampCurrentEnabled(bool arg);
     void setClampCurrent(double arg);
     void setCm(double arg);
-    void setAdaptationConductance(double arg);
     void reset();
     void initialize();
 
@@ -48,17 +48,18 @@ signals:
     void clampCurrentEnabledChanged(bool arg);
     void clampCurrentChanged(double arg);
     void cmChanged(double arg);
-    void adaptionConductanceChanged(double arg);
+
+protected:
+    virtual void stepEvent(double dt);
 
 private:
-    double m_cm;
-    double m_voltage;
-    double m_membraneRestingPotential;
-    double m_synapsePotential;
-    double m_synapticConductance;
-    double m_adaptationConductance;
-    bool m_clampCurrentEnabled;
-    double m_clampCurrent;
+    double m_cm = 0.0;
+    double m_voltage = 0.0;
+    double m_membraneRestingPotential = 0.0;
+    double m_synapsePotential = 0.0;
+    double m_synapticConductance = 0.0;
+    bool m_clampCurrentEnabled = false;
+    double m_clampCurrent = 0.0;
 };
 
-#endif // NEURONENGINE_H
+#endif // NEURONIFY_NEURONNODE_H

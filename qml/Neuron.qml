@@ -10,7 +10,6 @@ Entity {
 
     signal droppedConnector(var neuron, var connector)
 
-    property real adaptationIncreaseOnFire: 1.0
     property alias voltage: engine.voltage
     property real acceleration: 0.0
     property real speed: 0.0
@@ -20,7 +19,6 @@ Entity {
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property bool firedLastTime: false
     property alias synapticConductance: engine.synapticConductance
-    property alias adaptationConductance: engine.adaptationConductance
     property alias membraneRestingPotential: engine.membraneRestingPotential
     property alias synapsePotential: engine.synapsePotential
     property real outputStimulation: 4.0
@@ -70,9 +68,8 @@ Entity {
     }
 
     function fire() {
+        engine.fire()
         shouldFireOnOutput = true
-
-        adaptationConductance += adaptationIncreaseOnFire
 
         voltage += 100.0
         timeSinceFire = 0.0
@@ -81,7 +78,7 @@ Entity {
 
     function checkFire(dt) {
         if(firedLastTime) {
-            voltage = -100
+            voltage = membraneRestingPotential
             firedLastTime = false
             return
         }
@@ -111,8 +108,19 @@ Entity {
         }
     }
 
-    NeuronEngine{
+    BaseNeuronModel {
         id: engine
+
+        Conductance {
+            id: adaptationConductance
+            conductance: 0.0
+            onStepped: {
+                conductance -= conductance * dt
+            }
+            onFire: {
+                conductance -= 1.0
+            }
+        }
     }
 
     Rectangle {
@@ -177,5 +185,10 @@ Entity {
                 connector.resetPosition()
             }
         }
+    }
+
+    Text {
+        text: adaptationConductance.conductance.toFixed(2)
+        horizontalAlignment: Text.Right
     }
 }

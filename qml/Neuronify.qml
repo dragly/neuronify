@@ -226,8 +226,6 @@ Rectangle {
             activeObject.selected = false
         }
 
-        activeObject = entity
-
         if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
             var alreadySelected = false
             for(var j in selectedEntities) {
@@ -249,6 +247,8 @@ Rectangle {
             var selectedEntity = selectedEntities[i]
             selectedEntity.selected = true
         }
+
+        activeObject = entity
     }
 
     function clickedConnection(connection) {
@@ -259,6 +259,12 @@ Rectangle {
 
     function createEntity(fileUrl, properties, useAutoLayout) {
         var component = Qt.createComponent(fileUrl)
+        if(component.status !== Component.Ready) {
+            console.error("Could not create component of type " + fileUrl)
+            console.error(component.errorString())
+            return
+        }
+
         properties.simulator = neuronifyRoot
         var entity = component.createObject(neuronLayer, properties)
         entity.dragStarted.connect(resetOrganize)
@@ -457,6 +463,10 @@ Rectangle {
     PropertiesPanel {
         id: activeObjectControls
         revealed: activeObject ? true : false
+        onRevealedChanged: {
+            console.log("Reveal " + revealed)
+        }
+
         Loader {
             id: activeObjectControlsLoader
             width: parent.width / 2

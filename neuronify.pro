@@ -8,14 +8,22 @@ android {
 
 QT += qml quick widgets
 
+CONFIG += c++11
+
 HEADERS += \
-    src/engine/neuronengine.h \
-    src/io/fileio.h
+    src/io/fileio.h \
+    src/engine/conductance.h \
+    src/engine/node.h \
+    src/engine/neuronnode.h \
+    src/engine/entity.h
 
 SOURCES += \
-    src/engine/neuronengine.cpp \
     src/io/fileio.cpp \
-    src/main.cpp
+    src/main.cpp \
+    src/engine/conductance.cpp \
+    src/engine/node.cpp \
+    src/engine/neuronnode.cpp \
+    src/engine/entity.cpp
 
 RESOURCES += qml/qml.qrc \
     images/images.qrc \
