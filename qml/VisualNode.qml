@@ -1,17 +1,11 @@
 import QtQuick 2.0
+import Neuronify 1.0
 
-Item {
+Node {
     id: entityRoot
     signal clicked(var entity, var mouse)
     signal dragStarted
-    signal connectionAdded(var connection, var isSource)
-    signal connectionRemoved(var connection)
     signal aboutToDie(var entity)
-    signal stimulate(var stimulation)
-    signal inputConnectionStep(var source)
-    signal outputConnectionStep(var target)
-    signal step(var dt)
-    signal finalizeStep(var dt)
 
     property string objectName: "entity"
     property string fileName: "Entity.qml"

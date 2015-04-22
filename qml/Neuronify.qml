@@ -16,10 +16,12 @@ Rectangle {
     id: neuronifyRoot
 
     property real lastStepTime: Date.now()
-    property var connections: [] // List used to deselect all connections
     property var organizedItems: []
     property var organizedConnections: []
-    property var entities: []
+    GraphEngine {
+        id: graphEngine
+    }
+
     property var selectedEntities: []
     property var copiedNeurons: []
     property var voltmeters: []
@@ -31,7 +33,6 @@ Rectangle {
     property int undoIdxCopy: 0
     property bool undoRecordingEnabled: true
     property bool canRedo: false
-
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -90,14 +91,14 @@ Rectangle {
         var fileString = ""
 
         var counter = 0
-        for(var i in entities) {
-            var entity = entities[i]
+        for(var i in graphEngine.nodes) {
+            var entity = graphEngine.nodes[i]
             fileString += entity.dump(i)
         }
 
-        for(var i in connections) {
-            var connection = connections[i]
-            fileString += connection.dump(i, entities)
+        for(var i in graphEngine.edges) {
+            var connection = graphEngine.edges[i]
+            fileString += connection.dump(i, graphEngine.nodes)
         }
 
         undoList = undoList.slice(0,undoIdx)
@@ -140,16 +141,16 @@ Rectangle {
 
     function deleteEverything() {
         console.log("Asked to delete everything")
-        var connectionsToDelete = connections.slice()
+        var connectionsToDelete = graphEngine.edges
         for(var i in connectionsToDelete) {
             connectionsToDelete[i].destroy(1)
         }
-        connections = []
-        var entitiesToDelete = entities.slice()
+        graphEngine.edges = []
+        var entitiesToDelete = graphEngine.nodes; //.slice()
         for(var i in entitiesToDelete) {
             entitiesToDelete[i].destroy(1)
         }
-        entities = []
+        graphEngine.nodes = []
     }
 
     function cleanupDeletedEntity(entity) {
@@ -158,10 +159,10 @@ Rectangle {
         }
         deleteFromList(autoLayout.entities, entity)
         deleteFromList(voltmeters, entity)
-        deleteFromList(entities, entity)
+        deleteFromList(graphEngine.nodes, entity)
 
-        for(var i in connections) {
-            var connection = connections[i]
+        for(var i in graphEngine.edges) {
+            var connection = graphEngine.edges[i]
             if(connection.itemA === entity || connection.itemB === entity) {
                 connection.destroy(1)
             }
@@ -172,7 +173,7 @@ Rectangle {
 
     function cleanupDeletedConnection(connection) {
         deleteFromList(autoLayout.connections, connection)
-        deleteFromList(connections, connection)
+        deleteFromList(graphEngine.edges, connection)
         resetOrganize()
     }
 
@@ -191,8 +192,8 @@ Rectangle {
 
     function itemUnderConnector(source, connector, callback) {
         var item = undefined
-        for(var i in entities) {
-            var itemB = entities[i]
+        for(var i in graphEngine.nodes) {
+            var itemB = graphEngine.nodes[i]
             if(isItemUnderConnector(itemB, source, connector)) {
                 item = itemB
             }
@@ -201,8 +202,8 @@ Rectangle {
     }
 
     function selectAll() {
-        for(var i in entities) {
-            var listObject = entities[i]
+        for(var i in graphEngine.nodes) {
+            var listObject = graphEngine.nodes[i]
             listObject.selected = true
             selectedEntities.push(listObject)
         }
@@ -211,12 +212,12 @@ Rectangle {
     function deselectAll() {
         selectedEntities.length = 0
         activeObject = null
-        for(var i in entities) {
-            var listObject = entities[i]
+        for(var i in graphEngine.nodes) {
+            var listObject = graphEngine.nodes[i]
             listObject.selected = false
         }
-        for(var i in connections) {
-            var connection = connections[i]
+        for(var i in graphEngine.edges) {
+            var connection = graphEngine.edges[i]
             connection.selected = false
         }
     }
@@ -272,7 +273,7 @@ Rectangle {
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeletedEntity)
-        entities.push(entity)
+        graphEngine.addNode(entity)
         if(useAutoLayout) {
             autoLayout.entities.push(entity)
             resetOrganize()
@@ -295,7 +296,7 @@ Rectangle {
     function connectEntities(itemA, itemB) {
         var connection = createConnection(itemA, itemB)
         autoLayout.connections.push(connection)
-        connections.push(connection)
+        graphEngine.addEdge(connection)
         connection.aboutToDie.connect(cleanupDeletedConnection)
         resetOrganize()
         return connection
@@ -303,8 +304,8 @@ Rectangle {
 
     function connectionExists(itemA, itemB) {
         var connectionAlreadyExists = false
-        for(var j in connections) {
-            var existingConnection = connections[j]
+        for(var j in graphEngine.edges) {
+            var existingConnection = graphEngine.edges[j]
             if((existingConnection.itemA === itemA && existingConnection.itemB === itemB)
                     || (existingConnection.itemB === itemB && existingConnection.itemA === itemA)) {
                 connectionAlreadyExists = true
@@ -515,26 +516,28 @@ Rectangle {
             currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
             time += dt
 
-            for(var i in entities) {
-                var entity = entities[i]
-                entity.step(dt)
-            }
+            graphEngine.step(dt)
 
-            for(var i in connections) {
-                var connection = connections[i]
-                var itemA = connection.itemA
-                var itemB = connection.itemB
+//            for(var i in engine.nodes) {
+//                var entity = engine.nodes[i]
+//                entity.step(dt)
+//            }
 
-                if(connection.valid) {
-                    itemA.outputConnectionStep(itemB)
-                    itemB.inputConnectionStep(itemA)
-                }
-            }
+//            for(var i in connections) {
+//                var connection = connections[i]
+//                var itemA = connection.itemA
+//                var itemB = connection.itemB
 
-            for(var i in entities) {
-                var entity = entities[i]
-                entity.finalizeStep(dt)
-            }
+//                if(connection.valid) {
+//                    itemA.outputConnectionStep(itemB)
+//                    itemB.inputConnectionStep(itemA)
+//                }
+//            }
+
+//            for(var i in engine.nodes) {
+//                var entity = engine.nodes[i]
+//                entity.finalizeStep(dt)
+//            }
 
             lastStepTime = currentTime
         }

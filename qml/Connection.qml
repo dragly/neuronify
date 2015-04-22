@@ -1,19 +1,15 @@
 import QtQuick 2.0
 import "paths"
 import "hud"
+import Neuronify 1.0
 
-
-Item {
+Edge {
     id: connectionRoot
     signal clicked(var connection)
     signal aboutToDie(var connection)
 
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
-    property var _previousItemA
-    property var _previousItemB
-    property var itemA
-    property var itemB
     property real conductance: 1.0
     property color color: valid ? itemA.color : "white"
     property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x : 0
@@ -36,18 +32,10 @@ Item {
     Component.onDestruction: {
         aboutToDie(connectionRoot)
         if(itemA) {
-            itemA = undefined
+            itemA = null
         }
         if(itemB) {
-            itemB = undefined
-        }
-    }
-
-    function otherCompartment(currentCompartment) {
-        if(currentCompartment === itemA) {
-            return itemB
-        } else {
-            return itemA
+            itemB = null
         }
     }
 
@@ -61,26 +49,6 @@ Item {
         var itemBEntityIndex = entities.indexOf(itemB)
         outputString += "var connection" + index + " = connectEntities(entity" + itemAEntityIndex + ", entity" + itemBEntityIndex + ")\n"
         return outputString
-    }
-
-    onItemAChanged: {
-        if(_previousItemA) {
-            _previousItemA.connectionRemoved(connectionRoot)
-        }
-        if(itemA) {
-            itemA.connectionAdded(connectionRoot, true)
-        }
-        _previousItemA = itemA
-    }
-
-    onItemBChanged: {
-        if(_previousItemB) {
-            _previousItemB.connectionRemoved(connectionRoot)
-        }
-        if(itemB) {
-            itemB.connectionAdded(connectionRoot, false)
-        }
-        _previousItemB = itemB
     }
 
     Line {
@@ -117,8 +85,6 @@ Item {
         }
     }
 
-
-
     Rectangle {
         id: connectionSpot
         x: cx - width / 2
@@ -126,7 +92,7 @@ Item {
         width: 10
         height: width
 
-        radius: itemA ? (itemA.outputStimulation > 0 ?  0 : width / 2.0) : width / 2.0;
+        radius: itemA ? (itemA.stimulation > 0 ?  0 : width / 2.0) : width / 2.0;
         rotation: angle + 45
         color: connectionRoot._internalColor
 

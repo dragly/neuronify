@@ -3,7 +3,7 @@ import "paths"
 import "hud"
 import Neuronify 1.0
 
-Entity {
+VisualNode {
     id: root
     objectName: "neuron"
     fileName: "Neuron.qml"
@@ -19,7 +19,6 @@ Entity {
     property alias synapticConductance: engine.synapticConductance
     property alias restingPotential: engine.restingPotential
     property alias synapsePotential: engine.synapsePotential
-    property real outputStimulation: 4.0
     property alias clampCurrent: engine.clampCurrent
     property alias clampCurrentEnabled: engine.clampCurrentEnabled
     property bool shouldFireOnOutput: false
@@ -40,7 +39,7 @@ Entity {
     radius: width / 2
     width: parent.width * 0.015
     height: width
-    color: outputStimulation > 0.0 ? "#6baed6" : "#e41a1c"
+    color: stimulation > 0.0 ? "#6baed6" : "#e41a1c"
 
     dumpableProperties: [
         "x",
@@ -48,30 +47,8 @@ Entity {
         "clampCurrent",
         "clampCurrentEnabled",
         "adaptationIncreaseOnFire",
-        "outputStimulation"
+        "stimulation"
     ]
-
-    function reset() {
-        engine.reset()
-    }
-
-    onStep: {
-        engine.step(dt)
-    }
-
-    onFinalizeStep: {
-        shouldFireOnOutput = false
-    }
-
-    onOutputConnectionStep: {
-        if(shouldFireOnOutput) {
-            target.stimulate(outputStimulation)
-        }
-    }
-
-    onStimulate: {
-        engine.stimulate(stimulation)
-    }
 
     onSimulatorChanged: {
         if(simulator) {
@@ -79,11 +56,14 @@ Entity {
         }
     }
 
+    onStepped: engine.step(dt)
+    onFinalizedStep: engine.finalizeStep(dt)
+
     NeuronNode {
         id: engine
 
         onFired: {
-            shouldFireOnOutput = true
+            root.fire()
         }
 
         PassiveCurrent {

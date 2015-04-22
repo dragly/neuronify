@@ -18,13 +18,13 @@ Item {
         if(!neuronControlsRoot.neuron) {
             return
         }
-        synapticOutputSlider.value = neuron.outputStimulation
+        synapticOutputSlider.value = neuron.stimulation
 //        adaptationIncreaseOnFireSlider.value = neuron.adaptationIncreaseOnFire
         //        targetVoltageSlider.value = neuron.targetVoltage
         //        targetVoltageCheckbox.checked = neuron.forceTargetVoltage
         clampCurrentSlider.value = neuron.clampCurrent
         clampCurrentCheckbox.checked = neuron.clampCurrentEnabled
-        inhibitoryCheckbox.checked = neuron.outputStimulation < 0
+        inhibitoryCheckbox.checked = neuron.stimulation < 0
     }
 
     ColumnLayout {
@@ -54,12 +54,12 @@ Item {
 
                 }
 
-                synapticOutputSlider.value = Math.abs(neuronControlsRoot.neuron.outputStimulation)
+                synapticOutputSlider.value = Math.abs(neuronControlsRoot.neuron.stimulation)
 
                 if (inhibitoryCheckbox.checked) {
-                    neuronControlsRoot.neuron.outputStimulation = -synapticOutputSlider.value
+                    neuronControlsRoot.neuron.stimulation = -synapticOutputSlider.value
                 } else{
-                    neuronControlsRoot.neuron.outputStimulation = synapticOutputSlider.value
+                    neuronControlsRoot.neuron.stimulation = synapticOutputSlider.value
                 }
             }
         }
@@ -83,9 +83,9 @@ Item {
                     return
                 }
                 if (inhibitoryCheckbox.checked) {
-                    neuronControlsRoot.neuron.outputStimulation = -value
+                    neuronControlsRoot.neuron.stimulation = -value
                 } else{
-                    neuronControlsRoot.neuron.outputStimulation = value
+                    neuronControlsRoot.neuron.stimulation = value
                 }
             }
         }

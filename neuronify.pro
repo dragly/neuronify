@@ -17,7 +17,9 @@ HEADERS += \
     src/engine/entity.h \
     src/engine/current.h \
     src/currents/passivecurrent.h \
-    src/currents/adaptationcurrent.h
+    src/currents/adaptationcurrent.h \
+    src/engine/edge.h \
+    src/engine/graphengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -27,7 +29,9 @@ SOURCES += \
     src/engine/entity.cpp \
     src/engine/current.cpp \
     src/currents/passivecurrent.cpp \
-    src/currents/adaptationcurrent.cpp
+    src/currents/adaptationcurrent.cpp \
+    src/engine/edge.cpp \
+    src/engine/graphengine.cpp
 
 RESOURCES += qml/qml.qrc \
     images/images.qrc \

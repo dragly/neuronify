@@ -2,7 +2,7 @@ import QtQuick 2.0
 import "paths"
 import "hud"
 
-Entity {
+VisualNode {
     id: voltmeterRoot
     objectName: "voltmeter"
     fileName: "Voltmeter.qml"
@@ -39,7 +39,7 @@ Entity {
         plot.maximumValue = maximumValue
     }
 
-    onStep: {
+    onStepped: {
         timeSinceLastUpdate += dt
         var currentUpdateTime = Date.now()
         var timeDiff = (currentUpdateTime - lastUpdateTime) / 1000
@@ -59,7 +59,7 @@ Entity {
         timeSinceLastUpdate = 0
     }
 
-    onConnectionAdded: {
+    onEdgeAdded: {
         if(currentColor > colors.length - 1) {
             currentColor = 0
         }
@@ -68,14 +68,14 @@ Entity {
         var newList = voltmeterRoot.connectionPlots
         var plotComponent = Qt.createComponent("Plot.qml")
         var plot = plotComponent.createObject(plotLayer, {strokeStyle: color})
-        connection.color = color
+//        connection.color = color
         resetMinMax(plot)
-        newList.push({connection: connection, plot: plot})
+        newList.push({connection: edge, plot: plot})
         voltmeterRoot.connectionPlots = newList
         currentColor += 1
     }
 
-    onConnectionRemoved: {
+    onEdgeRemoved: {
         for(var i in connectionPlots) {
             var connectionPlot = connectionPlots[i]
             var connectionOther = connectionPlot.connection

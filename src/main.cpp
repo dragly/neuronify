@@ -1,5 +1,8 @@
+#include "engine/node.h"
+#include "engine/edge.h"
 #include "engine/neuronnode.h"
 #include "engine/current.h"
+#include "engine/graphengine.h"
 #include "currents/passivecurrent.h"
 #include "currents/adaptationcurrent.h"
 #include "io/fileio.h"
@@ -12,6 +15,10 @@
 int main(int argc, char *argv[])
 {
     qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
+
+    qmlRegisterType<Node>("Neuronify", 1, 0, "Node");
+    qmlRegisterType<Edge>("Neuronify", 1, 0, "Edge");
+    qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
 
     qmlRegisterType<NeuronNode>("Neuronify", 1, 0, "NeuronNode");
 
