@@ -56,11 +56,28 @@ Rectangle {
                 color: "#c6dbef"
                 border.color: "#6baed6"
                 border.width: 2.0
-                radius: width
+                radius: width / 2.0
             }
 
             onDropped: {
                 droppedEntity(Qt.resolvedUrl("/Neuron.qml"), {x: drop.x, y: drop.y}, true)
+            }
+        }
+
+        CreationItem {
+            id: poissonCreator
+            width: parent.width * 0.7
+            height: width
+
+            Rectangle {
+                anchors.fill: parent
+                color: "#c6dbef"
+                border.color: "#6baed6"
+                border.width: 2.0
+            }
+
+            onDropped: {
+                droppedEntity(Qt.resolvedUrl("PoissonGenerator.qml"), {x: drop.x, y: drop.y}, true)
             }
         }
 

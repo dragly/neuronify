@@ -43,7 +43,7 @@ Entity {
         timeSinceLastUpdate += dt
         var currentUpdateTime = Date.now()
         var timeDiff = (currentUpdateTime - lastUpdateTime) / 1000
-        if(timeDiff < 0.036) {
+        if(timeDiff < 0.010) {
             return
         }
 
@@ -52,11 +52,7 @@ Entity {
             var plot = connectionPlot.plot
             var compartment = connectionPlot.connection.itemA
             if(mode === "voltage") {
-                if(compartment.timeSinceFire < timeSinceLastUpdate) {
-                    plot.addPoint(maximumValue)
-                } else {
-                    plot.addPoint(compartment.voltage)
-                }
+                plot.addPoint(compartment.voltage)
             }
         }
         lastUpdateTime = currentUpdateTime

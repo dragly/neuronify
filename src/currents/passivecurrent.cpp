@@ -1,5 +1,7 @@
 #include "passivecurrent.h"
 
+#include "../engine/neuronnode.h"
+
 PassiveCurrent::PassiveCurrent(QQuickItem *parent)
     : Current(parent)
 {
@@ -21,11 +23,6 @@ double PassiveCurrent::capacitance() const
     return m_capacitance;
 }
 
-double PassiveCurrent::restingPotential() const
-{
-    return m_restingPotential;
-}
-
 void PassiveCurrent::setResistance(double arg)
 {
     if (m_resistance == arg)
@@ -44,22 +41,20 @@ void PassiveCurrent::setCapacitance(double arg)
     emit capacitanceChanged(arg);
 }
 
-void PassiveCurrent::setRestingPotential(double arg)
-{
-    if (m_restingPotential == arg)
-        return;
-
-    m_restingPotential = arg;
-    emit restingPotentialChanged(arg);
-}
-
 void PassiveCurrent::stepEvent(double dt)
 {
     Q_UNUSED(dt);
+
+    NeuronNode* parentNode = qobject_cast<NeuronNode*>(parent());
+    if(!parentNode) {
+        qWarning() << "Warning: Parent of Current is not NeuronNode. Cannot find voltage.";
+        return;
+    }
+
     double Rm = m_resistance;
     double Cm = m_capacitance;
-    double Em = m_restingPotential;
-    double V = voltage();
+    double Em = parentNode->restingPotential();
+    double V = parentNode->voltage();
     double I = -1.0 / (Rm * Cm) * (V - Em);
     setCurrent(I);
 }

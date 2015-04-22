@@ -1,5 +1,7 @@
 #include "adaptationcurrent.h"
 
+#include "../engine/neuronnode.h"
+
 AdaptationCurrent::AdaptationCurrent(QQuickItem *parent)
     : Current(parent)
 {
@@ -56,8 +58,15 @@ void AdaptationCurrent::setConductance(double arg)
 void AdaptationCurrent::stepEvent(double dt)
 {
     Q_UNUSED(dt);
-    double Em = m_restingPotential;
-    double V = voltage();
+
+    NeuronNode* parentNode = qobject_cast<NeuronNode*>(parent());
+    if(!parentNode) {
+        qWarning() << "Warning: Parent of Current is not NeuronNode. Cannot find voltage.";
+        return;
+    }
+
+    double Em = parentNode->restingPotential();
+    double V = parentNode->voltage();
     double g = m_conductance;
 
     g = g - g * dt;

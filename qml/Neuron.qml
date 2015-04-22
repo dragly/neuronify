@@ -4,7 +4,7 @@ import "hud"
 import Neuronify 1.0
 
 Entity {
-    id: neuronRoot
+    id: root
     objectName: "neuron"
     fileName: "Neuron.qml"
 
@@ -14,12 +14,10 @@ Entity {
     property real acceleration: 0.0
     property real speed: 0.0
     property alias cm: engine.cm
-    property real timeSinceFire: 0.0
     //    property var outputNeurons: []
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
-    property bool firedLastTime: false
     property alias synapticConductance: engine.synapticConductance
-    property alias membraneRestingPotential: engine.membraneRestingPotential
+    property alias restingPotential: engine.restingPotential
     property alias synapsePotential: engine.synapsePotential
     property real outputStimulation: 4.0
     property alias clampCurrent: engine.clampCurrent
@@ -28,12 +26,12 @@ Entity {
 
     controls: Component {
         NeuronControls {
-            neuron: neuronRoot
+            neuron: root
             onDisconnectClicked: {
                 simulatorRoot.disconnectNeuron(neuron)
             }
             onDeleteClicked: {
-                neuronRoot.destroy(1)
+                root.destroy(1)
             }
         }
     }
@@ -58,38 +56,11 @@ Entity {
     }
 
     onStep: {
-        timeSinceFire += dt
-        checkFire(dt)
         engine.step(dt)
     }
 
     onFinalizeStep: {
         shouldFireOnOutput = false
-    }
-
-    function fire() {
-        engine.fire()
-        shouldFireOnOutput = true
-
-        voltage += 100.0
-        timeSinceFire = 0.0
-        firedLastTime = true
-    }
-
-    function checkFire(dt) {
-        if(firedLastTime) {
-            voltage = membraneRestingPotential
-            firedLastTime = false
-            return
-        }
-
-        var shouldFire = false
-        if(voltage > 0.0) {
-            shouldFire = true
-        }
-        if(shouldFire) {
-            fire()
-        }
     }
 
     onOutputConnectionStep: {
@@ -111,6 +82,14 @@ Entity {
     NeuronNode {
         id: engine
 
+        onFired: {
+            shouldFireOnOutput = true
+        }
+
+        PassiveCurrent {
+            id: passiveCurrent
+        }
+
         AdaptationCurrent {
             id: adaptationCurrent
         }
@@ -120,17 +99,13 @@ Entity {
             enabled: clampCurrentEnabled
             current: clampCurrent
         }
-
-        PassiveCurrent {
-            id: passiveCurrent
-        }
     }
 
     Rectangle {
         id: background
         anchors.fill: parent
         radius: width / 2
-        color: neuronRoot.color
+        color: root.color
         border.color: selected ? "#08306b" : "#2171b5"
         border.width: selected ? 4.0 : 2.0
     }
@@ -143,50 +118,14 @@ Entity {
         opacity: (voltage + 100) / (150)
     }
 
-    SCurve {
-        id: connectorCurve
-        z: -1
-        color: "#4292c6"
-        startPoint: Qt.point(neuronRoot.width / 2, neuronRoot.height / 2)
-        endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
-    }
+    Connector {
+        visible: root.selected
 
-    Item {
-        id: connector
+        initialPoint: Qt.point(root.width / 2 + 0.707*root.radius - connectorWidth / 2,
+                               root.height / 2 + 0.707*root.radius - connectorHeight / 2)
 
-        visible: neuronRoot.selected
-
-        Component.onCompleted: {
-            resetPosition()
-        }
-
-        function resetPosition() {
-            connector.x = neuronRoot.width / 2 + 0.707*background.radius - connector.width / 2
-            connector.y = neuronRoot.height / 2 + 0.707*background.radius - connector.height / 2
-        }
-
-        width: neuronRoot.width * 0.5
-        height: width
-
-        Rectangle {
-            id: connectorCircle
-            anchors.centerIn: parent
-            width: parent.width / 2.0
-            height: width
-            color: "#4292c6"
-            border.color: "#f7fbff"
-            border.width: 1.0
-            radius: width
-        }
-
-        MouseArea {
-            id: connectorMouseArea
-            anchors.fill: parent
-            drag.target: parent
-            onReleased: {
-                neuronRoot.droppedConnector(neuronRoot, connector)
-                connector.resetPosition()
-            }
+        onDropped: {
+            root.droppedConnector(root, connector)
         }
     }
 }

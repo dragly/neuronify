@@ -12,7 +12,7 @@ class NeuronNode : public Node
 
     Q_PROPERTY(double voltage READ voltage WRITE setVoltage NOTIFY voltageChanged)
     Q_PROPERTY(double synapticConductance READ synapticConductance WRITE setSynapticConductance NOTIFY synapticConductanceChanged)
-    Q_PROPERTY(double membraneRestingPotential READ membraneRestingPotential WRITE setMembraneRestingPotential NOTIFY membraneRestingPotentialChanged)
+    Q_PROPERTY(double restingPotential READ restingPotential WRITE setRestingPotential NOTIFY restingPotentialChanged)
     Q_PROPERTY(double synapsePotential READ synapsePotential WRITE setSynapsePotential NOTIFY synapsePotentialChanged)
     Q_PROPERTY(bool clampCurrentEnabled READ clampCurrentEnabled WRITE setClampCurrentEnabled NOTIFY clampCurrentEnabledChanged)
     Q_PROPERTY(double clampCurrent READ clampCurrent WRITE setClampCurrent NOTIFY clampCurrentChanged)
@@ -23,7 +23,7 @@ public:
     double voltage() const;
     double synapticConductance() const;
     double adaptionConductance() const;
-    double membraneRestingPotential() const;
+    double restingPotential() const;
     double synapsePotential() const;
     double clampCurrent() const;
     double cm() const;
@@ -32,7 +32,7 @@ public:
 public slots:
     void setVoltage(double arg);
     void setSynapticConductance(double arg);
-    void setMembraneRestingPotential(double arg);
+    void setRestingPotential(double arg);
     void setSynapsePotential(double arg);
     void setClampCurrentEnabled(bool arg);
     void setClampCurrent(double arg);
@@ -43,7 +43,7 @@ public slots:
 signals:
     void voltageChanged(double arg);
     void synapticConductanceChanged(double arg);
-    void membraneRestingPotentialChanged(double arg);
+    void restingPotentialChanged(double arg);
     void synapsePotentialChanged(double arg);
     void clampCurrentEnabledChanged(bool arg);
     void clampCurrentChanged(double arg);
@@ -51,9 +51,12 @@ signals:
 
 protected:
     virtual void stepEvent(double dt);
+    virtual void fireEvent();
     virtual void stimulateEvent(double stimulation);
 
 private:
+    void checkFire();
+
     double m_cm = 0.0;
     double m_voltage = 0.0;
     double m_membraneRestingPotential = 0.0;
@@ -61,6 +64,8 @@ private:
     double m_synapticConductance = 0.0;
     bool m_clampCurrentEnabled = false;
     double m_clampCurrent = 0.0;
+
+    bool m_firedLastTime = false;
 };
 
 #endif // NEURONIFY_NEURONNODE_H

@@ -27,7 +27,7 @@ double NeuronNode::synapticConductance() const
     return m_synapticConductance;
 }
 
-double NeuronNode::membraneRestingPotential() const
+double NeuronNode::restingPotential() const
 {
     return m_membraneRestingPotential;
 }
@@ -62,6 +62,8 @@ void NeuronNode::setVoltage(double arg)
 
 void NeuronNode::stepEvent(double dt)
 {
+    checkFire();
+
     double otherCurrents = 0.0;
     for(Current* current : findChildren<Current*>()) {
         if(current->isEnabled()) {
@@ -73,8 +75,6 @@ void NeuronNode::stepEvent(double dt)
     double dgs = -gs / 1.0 * dt;
 
     double V = m_voltage;
-    double Rm = 1.0;
-    double Em = m_membraneRestingPotential;
     double Es = m_synapsePotential;
     double synapticCurrents = -gs * (V - Es);
 
@@ -86,6 +86,12 @@ void NeuronNode::stepEvent(double dt)
 
     emit voltageChanged(m_voltage);
     emit synapticConductanceChanged(m_synapticConductance);
+}
+
+void NeuronNode::fireEvent()
+{
+    setVoltage(voltage() + 100.0);
+    m_firedLastTime = true;
 }
 
 void NeuronNode::stimulateEvent(double stimulation)
@@ -101,11 +107,11 @@ void NeuronNode::setSynapticConductance(double arg)
     }
 }
 
-void NeuronNode::setMembraneRestingPotential(double arg)
+void NeuronNode::setRestingPotential(double arg)
 {
     if (m_membraneRestingPotential != arg) {
         m_membraneRestingPotential = arg;
-        emit membraneRestingPotentialChanged(arg);
+        emit restingPotentialChanged(arg);
     }
 }
 
@@ -156,3 +162,15 @@ void NeuronNode::initialize()
     m_clampCurrent = 0.0;
 }
 
+void NeuronNode::checkFire()
+{
+    if(m_firedLastTime) {
+        setVoltage(m_membraneRestingPotential);
+        m_firedLastTime = false;
+        return;
+    }
+
+    if(m_voltage > 0.0) {
+        fire();
+    }
+}

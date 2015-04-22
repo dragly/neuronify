@@ -38,5 +38,7 @@
         <file>tools/Clipboard.qml</file>
         <file>TouchSensorCell.qml</file>
         <file>AdaptationNeuron.qml</file>
+        <file>PoissonGenerator.qml</file>
+        <file>Connector.qml</file>
     </qresource>
 </RCC>
