@@ -1,7 +1,6 @@
 #include "neuronnode.h"
 #include <QDebug>
 
-#include "conductance.h"
 #include "current.h"
 
 NeuronNode::NeuronNode(QQuickItem *parent)
@@ -63,12 +62,6 @@ void NeuronNode::setVoltage(double arg)
 
 void NeuronNode::stepEvent(double dt)
 {
-    double conductances = 0.0;
-    for(Conductance* conductance : findChildren<Conductance*>()) {
-        if(conductance->isEnabled()) {
-            conductances += conductance->conductance();
-        }
-    }
     double otherCurrents = 0.0;
     for(Current* current : findChildren<Current*>()) {
         if(current->isEnabled()) {
@@ -84,9 +77,8 @@ void NeuronNode::stepEvent(double dt)
     double Em = m_membraneRestingPotential;
     double Es = m_synapsePotential;
     double synapticCurrents = -gs * (V - Es);
-    double conductanceCurrents = conductances * (V - Em);
 
-    double voltageChange = synapticCurrents + conductanceCurrents + otherCurrents;
+    double voltageChange = synapticCurrents + otherCurrents;
     double dV = voltageChange * dt;
     m_voltage += dV;
 

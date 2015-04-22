@@ -60,7 +60,6 @@ void PassiveCurrent::stepEvent(double dt)
     double Cm = m_capacitance;
     double Em = m_restingPotential;
     double V = voltage();
-    double newCurrent = -1.0 / (Rm * Cm) * (V - Em);
-    setCurrent(newCurrent);
+    double I = -1.0 / (Rm * Cm) * (V - Em);
+    setCurrent(I);
 }
-

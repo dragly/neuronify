@@ -12,22 +12,22 @@ CONFIG += c++11
 
 HEADERS += \
     src/io/fileio.h \
-    src/engine/conductance.h \
     src/engine/node.h \
     src/engine/neuronnode.h \
     src/engine/entity.h \
     src/engine/current.h \
-    src/currents/passivecurrent.h
+    src/currents/passivecurrent.h \
+    src/currents/adaptationcurrent.h
 
 SOURCES += \
     src/io/fileio.cpp \
     src/main.cpp \
-    src/engine/conductance.cpp \
     src/engine/node.cpp \
     src/engine/neuronnode.cpp \
     src/engine/entity.cpp \
     src/engine/current.cpp \
-    src/currents/passivecurrent.cpp
+    src/currents/passivecurrent.cpp \
+    src/currents/adaptationcurrent.cpp
 
 RESOURCES += qml/qml.qrc \
     images/images.qrc \

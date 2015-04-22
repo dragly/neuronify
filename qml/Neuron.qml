@@ -111,15 +111,8 @@ Entity {
     NeuronNode {
         id: engine
 
-        Conductance {
-            id: adaptationConductance
-            conductance: 0.0
-            onStepped: {
-                conductance -= conductance * dt
-            }
-            onFired: {
-                conductance -= 1.0
-            }
+        AdaptationCurrent {
+            id: adaptationCurrent
         }
 
         Current {
@@ -195,5 +188,9 @@ Entity {
                 connector.resetPosition()
             }
         }
+    }
+
+    Text {
+        text: adaptationCurrent.conductance
     }
 }
