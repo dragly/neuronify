@@ -1,7 +1,7 @@
 #include "conductance.h"
 
-Conductance::Conductance(QObject *parent)
-    : QObject(parent)
+Conductance::Conductance(QQuickItem *parent)
+    : Entity(parent)
 {
 
 }
@@ -23,14 +23,4 @@ void Conductance::setConductance(double arg)
 
     m_conductance = arg;
     emit conductanceChanged(arg);
-}
-
-void Conductance::step(double dt)
-{
-    stepEvent(dt);
-    emit stepped(dt);
-}
-
-void Conductance::stepEvent(double dt) {
-    Q_UNUSED(dt);
 }

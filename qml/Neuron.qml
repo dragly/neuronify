@@ -108,7 +108,7 @@ Entity {
         }
     }
 
-    BaseNeuronModel {
+    NeuronNode {
         id: engine
 
         Conductance {
@@ -117,9 +117,19 @@ Entity {
             onStepped: {
                 conductance -= conductance * dt
             }
-            onFire: {
+            onFired: {
                 conductance -= 1.0
             }
+        }
+
+        Current {
+            id: currentClampCurrent
+            enabled: clampCurrentEnabled
+            current: clampCurrent
+        }
+
+        PassiveCurrent {
+            id: passiveCurrent
         }
     }
 
@@ -185,10 +195,5 @@ Entity {
                 connector.resetPosition()
             }
         }
-    }
-
-    Text {
-        text: adaptationConductance.conductance.toFixed(2)
-        horizontalAlignment: Text.Right
     }
 }

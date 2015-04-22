@@ -15,7 +15,9 @@ HEADERS += \
     src/engine/conductance.h \
     src/engine/node.h \
     src/engine/neuronnode.h \
-    src/engine/entity.h
+    src/engine/entity.h \
+    src/engine/current.h \
+    src/currents/passivecurrent.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -23,7 +25,9 @@ SOURCES += \
     src/engine/conductance.cpp \
     src/engine/node.cpp \
     src/engine/neuronnode.cpp \
-    src/engine/entity.cpp
+    src/engine/entity.cpp \
+    src/engine/current.cpp \
+    src/currents/passivecurrent.cpp
 
 RESOURCES += qml/qml.qrc \
     images/images.qrc \
