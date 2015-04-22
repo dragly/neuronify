@@ -189,8 +189,4 @@ Entity {
             }
         }
     }
-
-    Text {
-        text: adaptationCurrent.conductance
-    }
 }
