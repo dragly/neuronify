@@ -84,7 +84,7 @@ Node {
         for(var i in connectionPlots) {
             var connectionPlot = connectionPlots[i]
             var connectionOther = connectionPlot.connection
-            if(connectionOther === connection) {
+            if(connectionOther === edge) {
                 connectionPlots.splice(i, 1)
                 connectionPlot.plot.destroy(1)
                 break
