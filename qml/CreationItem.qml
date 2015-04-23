@@ -27,7 +27,8 @@ Item {
             drag.target: parent
             drag.onActiveChanged: {
                 if (!dragArea.drag.active) {
-                    dropped(Qt.point(creationControl.x, creationControl.y))
+                    dropped(Qt.point(creationControl.x + creationControlBackground.x,
+                                     creationControl.y + creationControlBackground.y))
                 }
             }
         }

@@ -47,23 +47,6 @@ Rectangle {
         spacing: 10
 
         CreationItem {
-            width: parent.width * 0.7
-            height: width
-
-            Rectangle {
-                anchors.fill: parent
-                color: "green"
-                border.color: "#6baed6"
-                border.width: 2.0
-                radius: width / 2.0
-            }
-
-            onDropped: {
-                droppedEntity(Qt.resolvedUrl("/neurons/AdaptationNeuron.qml"), {x: drop.x, y: drop.y}, true)
-            }
-        }
-
-        CreationItem {
             id: neuronCreator
             width: parent.width * 0.7
             height: width
@@ -78,6 +61,23 @@ Rectangle {
 
             onDropped: {
                 droppedEntity(Qt.resolvedUrl("/neurons/OldNeuron.qml"), {x: drop.x, y: drop.y}, true)
+            }
+        }
+
+        CreationItem {
+            width: parent.width * 0.7
+            height: width
+
+            Rectangle {
+                anchors.fill: parent
+                color: "green"
+                border.color: "#6baed6"
+                border.width: 2.0
+                radius: width / 2.0
+            }
+
+            onDropped: {
+                droppedEntity(Qt.resolvedUrl("/neurons/AdaptationNeuron.qml"), {x: drop.x, y: drop.y}, true)
             }
         }
 
