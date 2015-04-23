@@ -1,11 +1,22 @@
 import QtQuick 2.0
+import "../style"
 
 Item {
     id: creationControlBackground
-    signal dropped(var position)
+    property string objectName: "CreationItem"
+
+    signal dropped(var source, var properties, var autoLayout)
+
     default property alias subChildren: creationControl.children
 
+    property string name: ""
+    property string description: ""
     property url source: ""
+    property url imageSource: ""
+    property bool autoLayout: false
+
+    width: Style.touchableSize
+    height: width
 
     Item {
         id: creationControl
@@ -23,14 +34,21 @@ Item {
 
         Drag.dragType: Drag.Automatic
 
+        Image {
+            anchors.fill: parent
+            source: imageSource
+            fillMode: Image.PreserveAspectFit
+        }
+
         MouseArea {
             id: dragArea
             anchors.fill: parent
             drag.target: parent
             drag.onActiveChanged: {
                 if (!dragArea.drag.active) {
-                    dropped({x: creationControl.x + creationControlBackground.x,
-                                y: creationControl.y + creationControlBackground.y})
+                    var properties = {x: creationControl.x + creationControlBackground.x,
+                        y: creationControl.y + creationControlBackground.y}
+                    dropped(source, properties, autoLayout)
                 }
             }
         }

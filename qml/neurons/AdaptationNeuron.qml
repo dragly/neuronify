@@ -6,11 +6,16 @@ import ".."
 Neuron {
     objectName: "adaptationNeuron"
     fileName: "neurons/AdaptationNeuron.qml"
+    imageSource: "qrc:/images/creators/neurons/adaptive.png"
+    inhibitoryImageSource: "qrc:/images/creators/neurons/adaptive_inhibitory.png"
 
-    color: fireOutput > 0.0 ? "green" : "yellow"
     engine: NeuronEngine {
         fireOutput: 2.0
         PassiveCurrent {
+
+        }
+        AdaptationCurrent {
+            adaptation: 10.0
         }
     }
 }

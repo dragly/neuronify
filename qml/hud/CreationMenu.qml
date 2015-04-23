@@ -93,6 +93,16 @@ Item {
         }
 
         Row {
+            id: itemRow
+
+            Component.onCompleted: {
+                for(var i in children) {
+                    var child = children[i]
+                    if(child.objectName === "CreationItem") {
+                        child.dropped.connect(droppedEntity)
+                    }
+                }
+            }
 
             anchors {
                 fill: parent
@@ -101,10 +111,25 @@ Item {
 
             spacing: Style.touchableSize * 0.5
 
-            AdaptationNeuronCreator {
-                onDropped: {
-                    droppedEntity(source, position, true)
-                }
+            CreationItem {
+                name: "Passive neuron"
+                description: "Neuron with only passive currents."
+                source: "qrc:/qml/neurons/PassiveNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/passive.png"
+            }
+
+            CreationItem {
+                name: "Bursting neuron"
+                description: "Neuron that bursts on stimulation."
+                source: "qrc:/qml/neurons/BurstNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/burst.png"
+            }
+
+            CreationItem {
+                name: "Adaptation neuron"
+                description: "Neuron passive currents and adaptation on firing."
+                source: "qrc:/qml/neurons/AdaptationNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/adaptive.png"
             }
 
             CreationItem {
@@ -120,10 +145,6 @@ Item {
                     border.color: "#6baed6"
                     border.width: 2.0
                 }
-
-                onDropped: {
-                    droppedEntity(source, position, true)
-                }
             }
 
             CreationItem {
@@ -135,10 +156,6 @@ Item {
                     color: "orange"
                     border.color: "#6baed6"
                     border.width: 2.0
-                }
-
-                onDropped: {
-                    droppedEntity("generators/CurrentClamp.qml", {x: drop.x, y: drop.y}, true)
                 }
             }
 
@@ -168,10 +185,6 @@ Item {
                         }
                     }
                 }
-
-                onDropped: {
-                    droppedEntity("Voltmeter.qml", {x: drop.x, y: drop.y}, false)
-                }
             }
 
             CreationItem {
@@ -184,10 +197,6 @@ Item {
                     color: "#4292c6"
                     border.width: width * 0.02
                     border.color: "#f7fbff"
-                }
-
-                onDropped: {
-                    droppedEntity(Qt.resolvedUrl("/TouchSensor.qml"), {x: drop.x, y: drop.y}, false)
                 }
             }
 

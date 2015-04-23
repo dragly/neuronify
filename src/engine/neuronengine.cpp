@@ -42,6 +42,16 @@ bool NeuronEngine::clampCurrentEnabled() const
     return m_clampCurrentEnabled;
 }
 
+bool NeuronEngine::inhibitory() const
+{
+    return m_inhibitory;
+}
+
+double NeuronEngine::fireOutputMagnitude() const
+{
+    return m_fireOutputMagnitude;
+}
+
 double NeuronEngine::cm() const
 {
     return m_cm;
@@ -167,6 +177,28 @@ void NeuronEngine::initialize()
     m_synapsePotential = 50.0;
     m_clampCurrentEnabled = false;
     m_clampCurrent = 0.0;
+}
+
+void NeuronEngine::setInhibitory(bool arg)
+{
+    if (m_inhibitory == arg)
+        return;
+
+    m_inhibitory = arg;
+    double sign = (m_inhibitory ? -1.0 : 1.0);
+    setFireOutput(sign * m_fireOutputMagnitude);
+    emit inhibitoryChanged(arg);
+}
+
+void NeuronEngine::setFireOutputMagnitude(double arg)
+{
+    if (m_fireOutputMagnitude == arg)
+        return;
+
+    m_fireOutputMagnitude = arg;
+    double sign = (m_inhibitory ? -1.0 : 1.0);
+    setFireOutput(sign * m_fireOutputMagnitude);
+    emit fireOutputMagnitudeChanged(arg);
 }
 
 void NeuronEngine::checkFire()

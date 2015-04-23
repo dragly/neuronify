@@ -22,13 +22,25 @@ Item {
         value: fireOutputSlider.value
     }
 
+    Binding {
+        target: engine
+        property: "inhibitory"
+        value: inhibitoryCheckbox.checked
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 10
 
+        CheckBox {
+            id: inhibitoryCheckbox
+            text: "Inhibitory"
+            checked: engine.inhibitory
+        }
+
         Text {
-            text: "Synaptic output: " + engine.fireOutput.toFixed(1) + " mS "
+            text: "Synaptic output: "+ engine.fireOutput.toFixed(1) + " mS "
         }
 
         Slider {
@@ -38,7 +50,7 @@ Item {
             stepSize: 0.1
             tickmarksEnabled: true
             Layout.fillWidth: true
-            value: engine.fireOutput
+            value: engine.fireOutputMagnitude
         }
 
         Button {

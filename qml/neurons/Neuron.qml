@@ -11,20 +11,13 @@ Node {
 
     readonly property real fireOutput: root.engine.fireOutput
     readonly property real voltage: root.engine.voltage
-
-    controls: Component {
-        NeuronControls {
-            engine: root.engine
-            onDeleteClicked: {
-                root.destroy(1)
-            }
-        }
-    }
+    property url imageSource
+    property url inhibitoryImageSource
 
     radius: width / 2
     width: 60
     height: width
-    color: fireOutput > 0.0 ? "#6baed6" : "#e41a1c"
+    color: engine.inhibitory ? "#e41a1c" : "#6baed6"
 
     dumpableProperties: [
         "x",
@@ -35,17 +28,32 @@ Node {
         "stimulation"
     ]
 
+    controls: Component {
+        NeuronControls {
+            engine: root.engine
+            onDeleteClicked: {
+                root.destroy(1)
+            }
+        }
+    }
+
     engine: NeuronEngine {
         PassiveCurrent {
             id: passiveCurrent
         }
     }
 
+    Image {
+        anchors.fill: parent
+        source: engine.inhibitory ? inhibitoryImageSource : imageSource
+        fillMode: Image.PreserveAspectFit
+    }
+
     Rectangle {
         id: background
         anchors.fill: parent
         radius: width / 2
-        color: root.color
+        color: "transparent"
         border.color: selected ? "#08306b" : "#2171b5"
         border.width: selected ? 4.0 : 2.0
     }
@@ -53,7 +61,7 @@ Node {
     Rectangle {
         anchors.fill: parent
         anchors.margins: 2.0
-        radius: background.radius
+        radius: width * 0.5
         color: "#f7fbff"
         opacity: (voltage + 100) / (150)
     }

@@ -4,6 +4,7 @@ import "../hud"
 import "../style"
 
 CreationItem {
+
     width: Style.touchableSize
     height: width
 

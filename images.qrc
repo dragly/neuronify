@@ -8,5 +8,13 @@
         <file>images/endpoint_exitatory.png</file>
         <file>images/delete.png</file>
         <file>images/menus/properties.png</file>
+        <file>images/creators/neurons/adaptive.png</file>
+        <file>images/creators/neurons/blank.png</file>
+        <file>images/creators/neurons/burst.png</file>
+        <file>images/creators/neurons/passive.png</file>
+        <file>images/creators/neurons/adaptive_inhibitory.png</file>
+        <file>images/creators/neurons/blank_inhibitory.png</file>
+        <file>images/creators/neurons/burst_inhibitory.png</file>
+        <file>images/creators/neurons/passive_inhibitory.png</file>
     </qresource>
 </RCC>

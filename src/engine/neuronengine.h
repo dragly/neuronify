@@ -17,6 +17,8 @@ class NeuronEngine : public NodeEngine
     Q_PROPERTY(bool clampCurrentEnabled READ clampCurrentEnabled WRITE setClampCurrentEnabled NOTIFY clampCurrentEnabledChanged)
     Q_PROPERTY(double clampCurrent READ clampCurrent WRITE setClampCurrent NOTIFY clampCurrentChanged)
     Q_PROPERTY(double cm READ cm WRITE setCm NOTIFY cmChanged)
+    Q_PROPERTY(bool inhibitory READ inhibitory WRITE setInhibitory NOTIFY inhibitoryChanged)
+    Q_PROPERTY(double fireOutputMagnitude READ fireOutputMagnitude WRITE setFireOutputMagnitude NOTIFY fireOutputMagnitudeChanged)
 
 public:
     NeuronEngine(QQuickItem *parent = 0);
@@ -27,7 +29,9 @@ public:
     double synapsePotential() const;
     double clampCurrent() const;
     double cm() const;
-    bool clampCurrentEnabled() const;
+    bool clampCurrentEnabled() const;    
+    bool inhibitory() const;
+    double fireOutputMagnitude() const;
 
 public slots:
     void setVoltage(double arg);
@@ -39,6 +43,8 @@ public slots:
     void setCm(double arg);
     void reset();
     void initialize();
+    void setInhibitory(bool arg);
+    void setFireOutputMagnitude(double arg);
 
 signals:
     void voltageChanged(double arg);
@@ -48,6 +54,8 @@ signals:
     void clampCurrentEnabledChanged(bool arg);
     void clampCurrentChanged(double arg);
     void cmChanged(double arg);
+    void inhibitoryChanged(bool arg);
+    void fireOutputMagnitudeChanged(double arg);
 
 protected:
     virtual void stepEvent(double dt);
@@ -66,8 +74,9 @@ private:
     bool m_clampCurrentEnabled = false;
     double m_clampCurrent = 0.0;
     double m_receivedCurrents = 0.0;
-
+    bool m_inhibitory = false;
     bool m_firedLastTime = false;
+    double m_fireOutputMagnitude = 0.0;
 };
 
 #endif // NEURONIFY_NEURONENGINE_H
