@@ -7,7 +7,7 @@ Neuron {
     objectName: "adaptationNeuron"
     fileName: "neurons/AdaptationNeuron.qml"
 
-    color: stimulation > 0.0 ? "green" : "yellow"
+    color: fireOutput > 0.0 ? "green" : "yellow"
     engine: NeuronEngine {
         fireOutput: 2.0
         PassiveCurrent {

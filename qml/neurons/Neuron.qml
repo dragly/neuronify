@@ -9,15 +9,12 @@ Node {
     objectName: "neuron"
     fileName: "neurons/Neuron.qml"
 
-    readonly property real stimulation: root.engine.stimulation
+    readonly property real fireOutput: root.engine.fireOutput
     readonly property real voltage: root.engine.voltage
 
     controls: Component {
         NeuronControls {
             engine: root.engine
-            onDisconnectClicked: {
-                simulatorRoot.disconnectNeuron(engine)
-            }
             onDeleteClicked: {
                 root.destroy(1)
             }
@@ -27,7 +24,7 @@ Node {
     radius: width / 2
     width: 60
     height: width
-    color: stimulation > 0.0 ? "#6baed6" : "#e41a1c"
+    color: fireOutput > 0.0 ? "#6baed6" : "#e41a1c"
 
     dumpableProperties: [
         "x",
