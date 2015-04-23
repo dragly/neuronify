@@ -14,23 +14,25 @@ Node {
     width: parent.width * 0.015
     height: width
 
-    Rectangle {
-        anchors.fill: parent
-        color: "pink"
-    }
-
     dumpableProperties: [
         "x",
         "y"
     ]
 
     engine: NodeEngine {
-        onStep: {
+        stimulation: 4.0
+        onStepped: {
             var shouldFire = (Math.random() < dt)
             if(shouldFire) {
+                console.log("Fired poisson")
                 fire()
             }
         }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: "pink"
     }
 
     Connector {

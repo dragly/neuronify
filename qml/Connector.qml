@@ -5,11 +5,15 @@ Item {
     id: root
     signal dropped(var connector)
 
+    property Node _parent: parent
+
     property point attachmentPoint: Qt.point(parent.width / 2, parent.height / 2)
     property point initialPoint: Qt.point(parent.width - draggable.width / 2, parent.height - draggable.height / 2)
 
     property alias connectorWidth: draggable.width
     property alias connectorHeight: draggable.height
+
+    visible: _parent.selected
 
     onDropped: {
         root.parent.droppedConnector(root.parent, draggable)

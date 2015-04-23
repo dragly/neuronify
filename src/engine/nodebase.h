@@ -3,8 +3,6 @@
 
 #include <QQuickItem>
 
-#include "enginebase.h"
-
 class NodeEngine;
 class Edge;
 class NodeBase : public QQuickItem

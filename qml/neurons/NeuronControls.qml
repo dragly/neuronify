@@ -2,6 +2,9 @@ import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.1
+
+import Neuronify 1.0
+
 import ".."
 
 Item {
@@ -10,16 +13,16 @@ Item {
     signal disconnectClicked
     signal deleteClicked
 
-    property Item neuron: null
+    property NeuronEngine engine: null
 
     anchors.fill: parent
 
-    onNeuronChanged: {
-        if(!neuronControlsRoot.neuron) {
+    onEngineChanged: {
+        if(!neuronControlsRoot.engine) {
             return
         }
-        synapticOutputSlider.value = neuron.stimulation
-        inhibitoryCheckbox.checked = neuron.stimulation < 0
+        synapticOutputSlider.value = engine.stimulation
+        inhibitoryCheckbox.checked = engine.stimulation < 0
     }
 
     ColumnLayout {
@@ -33,7 +36,7 @@ Item {
 
             text: "Fire!"
             onClicked: {
-                neuronControlsRoot.neuron.voltage += 100
+                neuronControlsRoot.engine.voltage += 100
             }
         }
 
@@ -44,16 +47,16 @@ Item {
             checked: false
 
             onCheckedChanged: {
-                if(!neuronControlsRoot.neuron) {
+                if(!neuronControlsRoot.engine) {
                     return
                 }
 
-                synapticOutputSlider.value = Math.abs(neuronControlsRoot.neuron.stimulation)
+                synapticOutputSlider.value = Math.abs(neuronControlsRoot.engine.stimulation)
 
                 if (inhibitoryCheckbox.checked) {
-                    neuronControlsRoot.neuron.stimulation = -synapticOutputSlider.value
+                    neuronControlsRoot.engine.stimulation = -synapticOutputSlider.value
                 } else{
-                    neuronControlsRoot.neuron.stimulation = synapticOutputSlider.value
+                    neuronControlsRoot.engine.stimulation = synapticOutputSlider.value
                 }
             }
         }
@@ -73,13 +76,13 @@ Item {
             Layout.fillWidth: true
 
             onValueChanged: {
-                if(!neuronControlsRoot.neuron) {
+                if(!neuronControlsRoot.engine) {
                     return
                 }
                 if (inhibitoryCheckbox.checked) {
-                    neuronControlsRoot.neuron.stimulation = -value
+                    neuronControlsRoot.engine.stimulation = -value
                 } else{
-                    neuronControlsRoot.neuron.stimulation = value
+                    neuronControlsRoot.engine.stimulation = value
                 }
             }
         }

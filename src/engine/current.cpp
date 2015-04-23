@@ -3,7 +3,7 @@
 #include "neuronengine.h"
 
 Current::Current(QQuickItem *parent)
-    : EngineBase(parent)
+    : NodeEngine(parent)
 {
 }
 

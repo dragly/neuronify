@@ -35,7 +35,6 @@ Node {
         }
     }
 
-    selected: false
     radius: width / 2
     width: parent.width * 0.015
     height: width

@@ -19,8 +19,7 @@ HEADERS += \
     src/engine/graphengine.h \
     src/engine/nodeengine.h \
     src/engine/nodebase.h \
-    src/engine/neuronengine.h \
-    src/engine/enginebase.h
+    src/engine/neuronengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -32,8 +31,7 @@ SOURCES += \
     src/engine/graphengine.cpp \
     src/engine/nodeengine.cpp \
     src/engine/nodebase.cpp \
-    src/engine/neuronengine.cpp \
-    src/engine/enginebase.cpp
+    src/engine/neuronengine.cpp
 
 RESOURCES += qml/qml.qrc \
     images/images.qrc \

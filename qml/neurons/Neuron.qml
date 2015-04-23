@@ -9,17 +9,14 @@ Node {
     objectName: "neuron"
     fileName: "neurons/Neuron.qml"
 
-    property alias stimulation: engineObject.stimulation
-    property alias voltage: engineObject.voltage
-    property alias synapticConductance: engineObject.synapticConductance
-    property alias restingPotential: engineObject.restingPotential
-    property alias synapsePotential: engineObject.synapsePotential
+    readonly property real stimulation: root.engine.stimulation
+    readonly property real voltage: root.engine.voltage
 
     controls: Component {
         NeuronControls {
-            neuron: root
+            engine: root.engine
             onDisconnectClicked: {
-                simulatorRoot.disconnectNeuron(neuron)
+                simulatorRoot.disconnectNeuron(engine)
             }
             onDeleteClicked: {
                 root.destroy(1)
@@ -27,9 +24,8 @@ Node {
         }
     }
 
-    selected: false
     radius: width / 2
-    width: parent.width * 0.015
+    width: 60
     height: width
     color: stimulation > 0.0 ? "#6baed6" : "#e41a1c"
 
@@ -43,7 +39,6 @@ Node {
     ]
 
     engine: NeuronEngine {
-        id: engineObject
         PassiveCurrent {
             id: passiveCurrent
         }
@@ -63,7 +58,7 @@ Node {
         anchors.margins: 2.0
         radius: background.radius
         color: "#f7fbff"
-        opacity: (engine.voltage + 100) / (150)
+        opacity: (voltage + 100) / (150)
     }
 
     Connector {

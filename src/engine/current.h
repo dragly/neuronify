@@ -3,10 +3,10 @@
 
 #include <QQuickItem>
 
-#include "enginebase.h"
+#include "nodeengine.h"
 
 class NeuronEngine;
-class Current : public EngineBase
+class Current : public NodeEngine
 {
     Q_OBJECT
     Q_PROPERTY(double current READ current WRITE setCurrent NOTIFY currentChanged)
