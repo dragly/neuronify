@@ -80,6 +80,7 @@ Node {
     }
 
     onEdgeRemoved: {
+        console.log("Edge getting removed from voltmeter")
         for(var i in connectionPlots) {
             var connectionPlot = connectionPlots[i]
             var connectionOther = connectionPlot.connection
@@ -89,6 +90,7 @@ Node {
                 break
             }
         }
+        console.log("Edge removed from voltmeter")
     }
 
     onModeChanged: {

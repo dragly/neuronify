@@ -35,6 +35,26 @@ void GraphEngine::addEdge(Edge *edge)
     m_edges.append(edge);
 }
 
+void GraphEngine::removeNode(NodeBase *node)
+{
+    m_nodes.removeAll(node);
+    QList<Edge*> toDelete;
+    for(Edge *edge : m_edges) {
+        if(edge->itemA() == node || edge->itemB() == node) {
+            edge->clear();
+            toDelete.append(edge);
+        }
+    }
+    for(Edge *edge : toDelete) {
+        edge->deleteLater();
+    }
+}
+
+void GraphEngine::removeEdge(Edge *edge)
+{
+    m_edges.removeAll(edge);
+}
+
 void GraphEngine::step(double dt)
 {
     for(NodeBase* node : m_nodes) {

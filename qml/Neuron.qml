@@ -8,8 +8,6 @@ Node {
     objectName: "neuron"
     fileName: "Neuron.qml"
 
-    signal droppedConnector(var neuron, var connector)
-
     property alias stimulation: engine.stimulation
     property alias voltage: engine.voltage
     property real acceleration: 0.0
@@ -51,11 +49,11 @@ Node {
         "stimulation"
     ]
 
-    onSimulatorChanged: {
-        if(simulator) {
-            droppedConnector.connect(simulator.createConnectionToPoint)
-        }
-    }
+//    onSimulatorChanged: {
+//        if(simulator) {
+//            droppedConnector.connect(simulator.createConnectionToPoint)
+//        }
+//    }
 
     engine: NeuronEngine {
         id: engine

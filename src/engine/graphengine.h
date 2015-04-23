@@ -19,8 +19,12 @@ public:
 
 public slots:
     void step(double dt);
-    void addNode(NodeBase* node);
-    void addEdge(Edge* edge);
+
+    void addNode(NodeBase *node);
+    void addEdge(Edge *edge);
+
+    void removeNode(NodeBase *node);
+    void removeEdge(Edge *edge);
 
 private:
     QList<NodeBase*> m_nodes;

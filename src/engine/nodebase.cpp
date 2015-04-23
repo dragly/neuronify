@@ -24,3 +24,13 @@ void NodeBase::setEngine(NodeEngine *arg)
     m_engine = arg;
     emit engineChanged(arg);
 }
+
+void NodeBase::addEdge(Edge *edge)
+{
+    emit edgeAdded(edge);
+}
+
+void NodeBase::removeEdge(Edge *edge)
+{
+    emit edgeRemoved(edge);
+}

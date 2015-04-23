@@ -159,21 +159,14 @@ Rectangle {
         }
         deleteFromList(autoLayout.entities, entity)
         deleteFromList(voltmeters, entity)
-        deleteFromList(graphEngine.nodes, entity)
-
-        for(var i in graphEngine.edges) {
-            var connection = graphEngine.edges[i]
-            if(connection.itemA === entity || connection.itemB === entity) {
-                connection.destroy(1)
-            }
-        }
+        graphEngine.removeNode(entity)
 
         resetOrganize()
     }
 
     function cleanupDeletedConnection(connection) {
         deleteFromList(autoLayout.connections, connection)
-        deleteFromList(graphEngine.edges, connection)
+        graphEngine.removeEdge(connection)
         resetOrganize()
     }
 
@@ -273,6 +266,7 @@ Rectangle {
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeletedEntity)
+        entity.droppedConnector.connect(createConnectionToPoint)
         graphEngine.addNode(entity)
         if(useAutoLayout) {
             autoLayout.entities.push(entity)
@@ -517,27 +511,6 @@ Rectangle {
             time += dt
 
             graphEngine.step(dt)
-
-//            for(var i in engine.nodes) {
-//                var entity = engine.nodes[i]
-//                entity.step(dt)
-//            }
-
-//            for(var i in connections) {
-//                var connection = connections[i]
-//                var itemA = connection.itemA
-//                var itemB = connection.itemB
-
-//                if(connection.valid) {
-//                    itemA.outputConnectionStep(itemB)
-//                    itemB.inputConnectionStep(itemA)
-//                }
-//            }
-
-//            for(var i in engine.nodes) {
-//                var entity = engine.nodes[i]
-//                entity.finalizeStep(dt)
-//            }
 
             lastStepTime = currentTime
         }

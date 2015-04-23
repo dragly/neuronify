@@ -24,6 +24,7 @@ signals:
 public slots:
     void setItemA(NodeBase* arg);
     void setItemB(NodeBase* arg);
+    void clear();
 
 private:
     NodeBase* m_itemA = nullptr;

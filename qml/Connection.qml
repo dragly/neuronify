@@ -31,12 +31,6 @@ Edge {
 
     Component.onDestruction: {
         aboutToDie(connectionRoot)
-        if(itemA) {
-            itemA = null
-        }
-        if(itemB) {
-            itemB = null
-        }
     }
 
     function dump(index, entities) {
@@ -45,9 +39,9 @@ Edge {
         }
 
         var outputString = ""
-        var itemAEntityIndex = entities.indexOf(itemA)
-        var itemBEntityIndex = entities.indexOf(itemB)
-        outputString += "var connection" + index + " = connectEntities(entity" + itemAEntityIndex + ", entity" + itemBEntityIndex + ")\n"
+//        var itemAEntityIndex = entities.indexOf(itemA)
+//        var itemBEntityIndex = entities.indexOf(itemB)
+//        outputString += "var connection" + index + " = connectEntities(entity" + itemAEntityIndex + ", entity" + itemBEntityIndex + ")\n"
         return outputString
     }
 
@@ -96,6 +90,7 @@ Edge {
         rotation: angle + 45
         color: connectionRoot._internalColor
 
-
+        antialiasing: true
+        smooth: true
     }
 }

@@ -5,12 +5,18 @@
 Edge::Edge(QQuickItem *parent)
     : QQuickItem(parent)
 {
-
 }
 
 Edge::~Edge()
 {
-
+    if(m_itemA) {
+        m_itemA->removeEdge(this);
+    }
+    if(m_itemB) {
+        m_itemB->removeEdge(this);
+    }
+    m_itemA = nullptr;
+    m_itemB = nullptr;
 }
 
 NodeBase *Edge::itemA() const
@@ -30,12 +36,14 @@ void Edge::setItemA(NodeBase *arg)
 
     NodeBase* previousItemA = m_itemA;
     if(previousItemA) {
-        previousItemA->edgeRemoved(this);
+        previousItemA->removeEdge(this);
     }
 
     m_itemA = arg;
 
-    m_itemA->edgeAdded(this);
+    if(m_itemA) {
+        m_itemA->addEdge(this);
+    }
 
     emit itemAChanged(arg);
 }
@@ -45,15 +53,23 @@ void Edge::setItemB(NodeBase *arg)
     if (m_itemB == arg)
         return;
 
-    NodeBase* previousItemA = m_itemB;
-    if(previousItemA) {
-        previousItemA->edgeRemoved(this);
+    NodeBase* previousItemB = m_itemB;
+    if(previousItemB) {
+        previousItemB->removeEdge(this);
     }
 
     m_itemB = arg;
 
-    m_itemB->edgeAdded(this);
+    if(m_itemB) {
+        m_itemB->addEdge(this);
+    }
 
     emit itemBChanged(arg);
+}
+
+void Edge::clear()
+{
+    setItemA(nullptr);
+    setItemB(nullptr);
 }
 

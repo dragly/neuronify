@@ -8,8 +8,6 @@ Node {
     objectName: "neuron"
     fileName: "Neuron.qml"
 
-    signal droppedConnector(var poissonGenerator, var connector)
-
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property real stimulation: 4.0
 
@@ -32,13 +30,6 @@ Node {
             if(shouldFire) {
                 fire()
             }
-        }
-    }
-
-    // TODO: Isn't this connected in the simulator automatically? If not, why?
-    onSimulatorChanged: {
-        if(simulator) {
-            droppedConnector.connect(simulator.createConnectionToPoint)
         }
     }
 

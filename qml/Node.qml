@@ -6,6 +6,7 @@ NodeBase {
     signal clicked(var entity, var mouse)
     signal dragStarted
     signal aboutToDie(var entity)
+    signal droppedConnector(var poissonGenerator, var connector)
 
     property string objectName: "entity"
     property string fileName: "Entity.qml"

@@ -25,6 +25,8 @@ signals:
 
 public slots:
     void setEngine(NodeEngine* arg);
+    void addEdge(Edge* edge);
+    void removeEdge(Edge* edge);
 
 private:
     NodeEngine* m_engine;
