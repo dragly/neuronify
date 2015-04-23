@@ -100,9 +100,6 @@ Rectangle {
                         ctx.beginPath()
                         var w = width
                         var h = height
-                        console.log(w + " " + h)
-                        //                    ctx.moveTo(h * 0.2, h * 0.2)
-                        //                    ctx.bezierCurveTo(w*0.5, h*0.2, w*0.5, h*0.8, w - h*0.2, h*0.8)
 
                         ctx.moveTo(w*0.1, h*0.2)
                         ctx.bezierCurveTo(w*0.5, h*0.2, w*0.5, h*0.8, w*0.9, h*0.8)
@@ -143,7 +140,13 @@ Rectangle {
             id: redoButton
             text: "Redo"
             enabled: canRedo
-            onClicked: if (canRedo) {redo()} else {console.log("Cant redo now!")}
+            onClicked: {
+                if (canRedo) {
+                    redo()
+                } else {
+                    console.log("Can't redo now!")
+                }
+            }
         }
 
         CheckBox {
