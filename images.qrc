@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/back.png</file>
+        <file>images/systems.png</file>
+        <file>images/menus/mainmenu.png</file>
+        <file>images/logo.png</file>
+        <file>images/transform-move.png</file>
+        <file>images/endpoint_exitatory.png</file>
+        <file>images/delete.png</file>
+        <file>images/menus/properties.png</file>
+    </qresource>
+</RCC>

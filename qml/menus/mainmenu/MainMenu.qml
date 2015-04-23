@@ -2,15 +2,18 @@ import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
+
 import "../../style"
 
 Item {
-    id: mainMenuRoot
-    property bool revealed: true
-    property var blurSource: null
+    id: root
+
     signal loadSimulation(var simulation)
     signal saveSimulationRequested
     signal loadSimulationRequested
+
+    property bool revealed: true
+    property var blurSource: null
 
     width: 100
     height: 62
@@ -20,7 +23,7 @@ Item {
     }
 
     MouseArea {
-        enabled: mainMenuRoot.revealed
+        enabled: root.revealed
         anchors.fill: parent
     }
 
@@ -28,21 +31,21 @@ Item {
         id: background
         anchors.fill: parent
 
-//        FastBlur {
-//            anchors.fill: parent
-//            source: blurSource
-//            radius: 64
-//        }
+        FastBlur {
+            anchors.fill: parent
+            source: blurSource
+            radius: Style.size * 6
+        }
 
         Rectangle {
             anchors.fill: parent
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.9)
+            color: Qt.rgba(1.0, 1.0, 1.0, 0.6)
         }
     }
 
     Item {
         id: menuRectangle
-        enabled: mainMenuRoot.revealed
+        enabled: root.revealed
         anchors.fill: parent
 
         StackView {
@@ -99,12 +102,12 @@ Item {
             anchors {
                 top: parent.top
                 left: parent.left
-                margins: Style.baseMargin
+                margins: Style.margin
             }
 
             width: Style.touchableSize
             height: width
-            source: "../../images/back.png"
+            source: "qrc:/images/back.png"
             enabled: stackView.depth > 1
             opacity: stackView.depth > 1
 
@@ -158,7 +161,7 @@ Item {
         height: parent.height
 
         onLoadSimulation: {
-            mainMenuRoot.loadSimulation(simulation)
+            root.loadSimulation(simulation)
             stackView.pop(0)
         }
     }
@@ -187,21 +190,7 @@ Item {
 
     states: [
         State {
-            when: revealed
-            name: "revealed"
-            PropertyChanges {
-                target: menuRectangle
-                opacity: 1.0
-                scale: 1.0
-            }
-            PropertyChanges {
-                target: background
-                opacity: 1.0
-            }
-        },
-        State {
-            when: !revealed
-            name: "hidden"
+            when: !root.revealed
             PropertyChanges {
                 target: menuRectangle
                 opacity: 0.0
@@ -216,8 +205,6 @@ Item {
 
     transitions: [
         Transition {
-            from: "revealed"
-            to: "hidden"
             ParallelAnimation {
                 NumberAnimation {
                     properties: "opacity"
@@ -228,23 +215,6 @@ Item {
                     target: menuRectangle
                     properties: "scale"
                     duration: 350
-                    easing.type: Easing.InOutQuad
-                }
-            }
-        },
-        Transition {
-            from: "hidden"
-            to: "revealed"
-            ParallelAnimation {
-                NumberAnimation {
-                    properties: "opacity"
-                    duration: 350
-                    easing.type: Easing.InOutQuad
-                }
-                NumberAnimation {
-                    target: menuRectangle
-                    properties: "scale"
-                    duration: 200
                     easing.type: Easing.InOutQuad
                 }
             }

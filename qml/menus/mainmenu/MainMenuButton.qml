@@ -1,32 +1,37 @@
 import QtQuick 2.0
 import "../../style"
 
-Item {
-    id: mainMenuButton
+Image {
+    id: root
     property bool revealed: true
+
+    signal clicked
 
     anchors {
         top: parent.top
         left: parent.left
+        margins: Style.margin
     }
-    width: Style.touchableSize * 2.5
+    width: Style.touchableSize
     height: width
 
     enabled: revealed
     state: revealed ? "revealed" : "hidden"
 
+    source: "qrc:/images/menus/mainmenu.png"
+
     states: [
         State {
             name: "hidden"
             PropertyChanges {
-                target: mainMenuButton
+                target: root
                 opacity: 0.0
             }
         },
         State {
             name: "revealed"
             PropertyChanges {
-                target: mainMenuButton
+                target: root
                 opacity: 1.0
             }
         }
@@ -42,18 +47,10 @@ Item {
         }
     ]
 
-    Image {
-        anchors {
-            fill: parent
-            margins: parent.width * 0.2
-        }
-        source: "../../images/menus/mainmenu.png"
-    }
-
     MouseArea {
         anchors.fill: parent
         onClicked: {
-            mainMenu.revealed = true
+            root.clicked()
         }
     }
 }

@@ -19,9 +19,6 @@ Item {
             return
         }
         synapticOutputSlider.value = neuron.stimulation
-//        adaptationIncreaseOnFireSlider.value = neuron.adaptationIncreaseOnFire
-        //        targetVoltageSlider.value = neuron.targetVoltage
-        //        targetVoltageCheckbox.checked = neuron.forceTargetVoltage
         clampCurrentSlider.value = neuron.clampCurrent
         clampCurrentCheckbox.checked = neuron.clampCurrentEnabled
         inhibitoryCheckbox.checked = neuron.stimulation < 0
@@ -89,35 +86,6 @@ Item {
                 }
             }
         }
-
-
-
-        //        CheckBox {
-        //            id: targetVoltageCheckbox
-        //            text: "Clamp voltage:" + targetVoltageSlider.value.toFixed(1) + " mV"
-        //            onCheckedChanged: {
-        //                if(!neuronControlsRoot.neuron) {
-        //                    return
-        //                }
-        //                neuronControlsRoot.neuron.forceTargetVoltage = checked
-        //                neuronControlsRoot.neuron.targetVoltage = targetVoltageSlider.value
-        //            }
-        //        }
-
-        //        Slider {
-        //            id: targetVoltageSlider
-        //            minimumValue: -100.0
-        //            maximumValue: 100.0
-        //            stepSize: 1.0
-        //            tickmarksEnabled: true
-        //            Layout.fillWidth: true
-        //            onValueChanged: {
-        //                if(!neuronControlsRoot.neuron) {
-        //                    return
-        //                }
-        //                neuronControlsRoot.neuron.targetVoltage = value
-        //            }
-        //        }
 
         CheckBox {
             id: clampCurrentCheckbox

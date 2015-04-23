@@ -53,9 +53,11 @@ Node {
             for(var i in voltmeterRoot.connectionPlots) {
                 var connectionPlot = voltmeterRoot.connectionPlots[i]
                 var plot = connectionPlot.plot
-                var compartment = connectionPlot.connection.itemA
-                if(mode === "voltage") {
-                    plot.addPoint(compartment.voltage)
+                var neuron = connectionPlot.connection.itemA
+                if(neuron) {
+                    if(mode === "voltage" && neuron.voltage) {
+                        plot.addPoint(neuron.voltage)
+                    }
                 }
             }
             lastUpdateTime = currentUpdateTime

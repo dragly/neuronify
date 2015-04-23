@@ -1,7 +1,10 @@
 import QtQuick 2.0
-import "paths"
-import "hud"
+
 import Neuronify 1.0
+
+import "../paths"
+import "../hud"
+import ".."
 
 Node {
     id: root

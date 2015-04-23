@@ -16,7 +16,7 @@ Item {
         anchors {
             top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin: Style.baseMargin
+            topMargin: Style.margin
         }
         text: "About"
     }
@@ -28,9 +28,9 @@ Item {
             right: parent.right
             top: aboutHeading.bottom
             bottom: parent.bottom
-            leftMargin: Style.baseMargin
-            rightMargin: Style.baseMargin
-            topMargin: Style.baseMargin
+            leftMargin: Style.margin
+            rightMargin: Style.margin
+            topMargin: Style.margin
         }
 
         clip: true
@@ -63,11 +63,11 @@ Item {
                 horizontalCenter: parent.horizontalCenter
             }
 
-            width: Style.baseSize * 48
-            height: Style.baseSize * 24
+            width: Style.size * 48
+            height: Style.size * 24
             fillMode: Image.PreserveAspectFit
             smooth: true
-            source: "../../images/logo.png"
+            source: "qrc:/images/logo.png"
         }
 
     }

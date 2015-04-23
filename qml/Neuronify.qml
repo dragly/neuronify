@@ -76,7 +76,6 @@ Rectangle {
 
         undoIdx = 1
         undoRecordingEnabled = false
-        creationControls.autoLayout = false
         var code = fileManager.read(fileUrl)
         console.log("Evaluating code")
         eval(code)
@@ -215,6 +214,21 @@ Rectangle {
         }
     }
 
+    function deleteSelected() {
+        var toDelete = []
+        for(var i in selectedEntities) {
+            toDelete.push(selectedEntities[i])
+        }
+        for(var i in toDelete) {
+            toDelete[i].destroy(1)
+        }
+        if(activeObject) {
+            activeObject.destroy(1)
+        }
+
+        deselectAll()
+    }
+
     function clickedEntity(entity, mouse) {
         if(activeObject) {
             activeObject.selected = false
@@ -341,7 +355,8 @@ Rectangle {
 
     AutoLayout {
         id: autoLayout
-        enabled: creationControls.autoLayout
+        enabled: false
+//        enabled: creationControls.autoLayout
         maximumWidth: neuronLayer.width
         maximumHeight: neuronLayer.height
     }
@@ -435,19 +450,45 @@ Rectangle {
                 anchors.fill: parent
             }
         }
-
     }
 
     MainMenuButton {
         revealed: !mainMenu.revealed
+        onClicked: {
+            mainMenu.revealed = true
+        }
     }
 
-    CreationControls {
-        id: creationControls
+    CreationMenuButton {
+        onClicked: {
+            creationMenu.revealed = true
+        }
+    }
+
+    DeleteButton {
+        revealed: activeObject ? true : false
+        onClicked: {
+            deleteSelected()
+        }
+    }
+
+    PropertiesButton {
+        revealed: activeObject ? true : false
+        onClicked: {
+            propertiesPanel.revealed = true
+        }
+    }
+
+    CreationMenu {
+        id: creationMenu
+
+        blurSource: workspaceFlickable
 
         onDroppedEntity: {
-            var workspacePosition = creationControls.mapToItem(neuronLayer, position.x, position.y)
-            neuronifyRoot.createEntity(fileUrl, workspacePosition, useAutoLayout)
+            var workspacePosition = creationMenu.mapToItem(neuronLayer, properties.x, properties.y)
+            properties.x = workspacePosition.x
+            properties.y = workspacePosition.y
+            neuronifyRoot.createEntity(fileUrl, properties, useAutoLayout)
         }
 
         onDeleteEverything: {
@@ -456,17 +497,12 @@ Rectangle {
     }
 
     PropertiesPanel {
-        id: activeObjectControls
-        revealed: activeObject ? true : false
-        onRevealedChanged: {
-            console.log("Reveal " + revealed)
-        }
+        id: propertiesPanel
 
         Loader {
             id: activeObjectControlsLoader
-            width: parent.width / 2
-            height: parent.height / 2
-            sourceComponent: activeObject ? (activeObject.controls ? activeObject.controls : null) : null
+            anchors.fill: parent
+            sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : null
         }
     }
 
@@ -507,6 +543,7 @@ Rectangle {
             var trueDt = dt
             dt *= 3.0
             dt = Math.min(0.050, dt)
+
             currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
             time += dt
 
@@ -542,15 +579,7 @@ Rectangle {
             clipboard.pasteNeurons()
         }
         if(event.key === Qt.Key_Delete) {
-            for(var i in selectedEntities) {
-                var entity = selectedEntities[i]
-                entity.destroy(1)
-            }
-            if(activeObject) {
-                activeObject.destroy(1)
-            }
-
-            deselectAll()
+            deleteSelected()
         }
     }
 }

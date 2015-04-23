@@ -1,0 +1,23 @@
+<RCC>
+    <qresource prefix="/">
+        <file>simulations/empty/empty.nfy</file>
+        <file>simulations/empty/empty.png</file>
+        <file>simulations/empty/empty.qml</file>
+        <file>simulations/dummy/dummy.nfy</file>
+        <file>simulations/dummy/dummy.png</file>
+        <file>simulations/dummy/dummy.qml</file>
+        <file>simulations/lateralInhibition/lateralInhibition.qml</file>
+        <file>simulations/lateralInhibition/lateralInhibition.png</file>
+        <file>simulations/lateralInhibition/lateralInhibition.nfy</file>
+        <file>simulations/recurrentInhibition/recurrentInhibition.qml</file>
+        <file>simulations/recurrentInhibition/recurrentInhibition.png</file>
+        <file>simulations/recurrentInhibition/recurrentInhibition.nfy</file>
+        <file>simulations/light/light.nfy</file>
+        <file>simulations/light/light.png</file>
+        <file>simulations/light/light.qml</file>
+        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.nfy</file>
+        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.png</file>
+        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.qml</file>
+        <file>qml/neurons/AdaptationNeuronCreator.qml</file>
+    </qresource>
+</RCC>

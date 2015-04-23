@@ -2,15 +2,17 @@ pragma Singleton
 import QtQuick 2.0
 
 Item {
-    id: styleRoot
+    id: root
+    property string device: "desktop"
+
     property real windowWidth
     property real windowHeight
     property real minimumTouchableSize: windowWidth / 25
     property real maximumTouchableSize: windowWidth / 10
     property real pixelDensity: 72
-    property real touchableSize: 6 * baseSize
-    property real baseSize: 72
-    property real baseMargin: 4 * baseSize
+    property real touchableSize: 6 * size
+    property real size: 72
+    property real margin: 4 * size
     property real scale: 1.0
 
     property alias font: fontObject
@@ -20,7 +22,7 @@ Item {
         id: buttonObject
         property color color: "#dedede"
         property color fontColor: Qt.rgba(0.15, 0.15, 0.15, 0.9)
-        property real fontSize: 3 * baseSize
+        property real fontSize: 3 * size
     }
 
     Item {
@@ -28,7 +30,7 @@ Item {
         property alias heading: headingObject
         property alias button: buttonObject
 
-        property real size: 2.5 * baseSize
+        property real size: 2.5 * root.size
         property color color: Qt.rgba(0.15, 0.15, 0.15, 0.9)
         property int weight: Font.Light
         property string family: "Roboto"
@@ -43,9 +45,9 @@ Item {
     function reset(width, height, pixelDensity) {
         console.log("Resetting style")
 
-        styleRoot.windowWidth = width
-        styleRoot.windowHeight = height
-        styleRoot.pixelDensity = pixelDensity
+        root.windowWidth = width
+        root.windowHeight = height
+        root.pixelDensity = pixelDensity
 
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
             if(pixelDensity === 0) {
@@ -53,13 +55,24 @@ Item {
                 pixelDensity = 4
             }
 
-            baseSize = pixelDensity
+            var deviceWidth = width / pixelDensity
+            var deviceHeight = height / pixelDensity
 
-            console.log("Pixel density is " + pixelDensity)
+            size = pixelDensity
+
             scale = pixelDensity / 4
-            console.log("Scale set to " + scale)
+
+            if(deviceWidth > 160 && deviceHeight > 100) {
+                console.log("Style detected tablet")
+                device = "tablet"
+            } else {
+                console.log("Style detected phone")
+                device = "phone"
+            }
         } else {
-            baseSize = styleRoot.windowWidth * 0.01
+            console.log("Style detected desktop")
+            device = "dekstop"
+            size = root.windowWidth * 0.01
         }
     }
 }

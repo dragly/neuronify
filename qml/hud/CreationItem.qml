@@ -2,8 +2,10 @@ import QtQuick 2.0
 
 Item {
     id: creationControlBackground
-    signal dropped(point drop)
+    signal dropped(var position)
     default property alias subChildren: creationControl.children
+
+    property url source: ""
 
     Item {
         id: creationControl
@@ -27,8 +29,8 @@ Item {
             drag.target: parent
             drag.onActiveChanged: {
                 if (!dragArea.drag.active) {
-                    dropped(Qt.point(creationControl.x + creationControlBackground.x,
-                                     creationControl.y + creationControlBackground.y))
+                    dropped({x: creationControl.x + creationControlBackground.x,
+                                y: creationControl.y + creationControlBackground.y})
                 }
             }
         }

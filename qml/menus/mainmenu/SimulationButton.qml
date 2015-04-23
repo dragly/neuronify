@@ -22,7 +22,7 @@ Item {
         anchors {
             top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin: Style.baseMargin
+            topMargin: Style.margin
         }
         text: simulation ? simulation.name : ""
 
