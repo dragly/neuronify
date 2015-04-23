@@ -68,7 +68,10 @@ void GraphEngine::step(double dt)
             NodeEngine* engineA = edge->itemA()->engine();
             NodeEngine* engineB = edge->itemB()->engine();
             if(engineA->hasFired()) {
-                engineB->stimulate(engineA->stimulation());
+                engineB->receiveFire(engineA->fireOutput());
+            }
+            if(engineA->currentOutput() != 0.0) {
+                engineB->receiveCurrent(engineA->currentOutput());
             }
         }
     }

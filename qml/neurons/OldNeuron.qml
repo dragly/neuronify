@@ -9,7 +9,7 @@ Node {
     objectName: "neuron"
     fileName: "Neuron.qml"
 
-    property alias stimulation: engine.stimulation
+    property alias stimulation: engine.fireOutput
     property alias voltage: engine.voltage
     property real acceleration: 0.0
     property real speed: 0.0

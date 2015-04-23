@@ -52,7 +52,8 @@ signals:
 protected:
     virtual void stepEvent(double dt);
     virtual void fireEvent();
-    virtual void stimulateEvent(double stimulation);
+    virtual void receiveFireEvent(double fireOutput);
+    virtual void receiveCurrentEvent(double currentOutput);
 
 private:
     void checkFire();
@@ -64,6 +65,7 @@ private:
     double m_synapticConductance = 0.0;
     bool m_clampCurrentEnabled = false;
     double m_clampCurrent = 0.0;
+    double m_receivedCurrents = 0.0;
 
     bool m_firedLastTime = false;
 };

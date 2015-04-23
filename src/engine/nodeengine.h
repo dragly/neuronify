@@ -6,13 +6,15 @@
 class NodeEngine : public QQuickItem
 {
     Q_OBJECT
-    Q_PROPERTY(double stimulation READ stimulation WRITE setStimulation NOTIFY stimulationChanged)
+    Q_PROPERTY(double fireOutput READ fireOutput WRITE setFireOutput NOTIFY fireOutputChanged)
+    Q_PROPERTY(double currentOutput READ currentOutput WRITE setCurrentOutput NOTIFY currentOutputChanged)
 
 public:
     explicit NodeEngine(QQuickItem *parent = 0);
     ~NodeEngine();
 
-    double stimulation() const;
+    double fireOutput() const;
+    double currentOutput() const;
 
     bool hasFired();
     void setHasFired(bool arg);
@@ -20,26 +22,32 @@ public:
 signals:
     void stepped(double dt);
     void fired();
-    void stimulated(double stimulation);
+    void receivedFire(double stimulation);
+    void receivedCurrent(double current);
     void finalizedStep(double dt);
-    void stimulationChanged(double arg);
+    void fireOutputChanged(double arg);
+    void currentOutputChanged(double arg);
 
 public slots:
     void step(double dt);
     void fire();
-    void stimulate(double stimulation);
+    void receiveFire(double fireOutput);
+    void receiveCurrent(double currentOutput);
     void finalizeStep(double dt);
-    void setStimulation(double arg);
+    void setFireOutput(double arg);
+    void setCurrentOutput(double arg);
 
 protected:
     virtual void stepEvent(double dt);
     virtual void fireEvent();
-    virtual void stimulateEvent(double stimulation);
+    virtual void receiveFireEvent(double fireOutput);
+    virtual void receiveCurrentEvent(double currentOutput);
     virtual void finalizeStepEvent(double dt);
 
 private:
     bool m_hasFired = false;
     double m_stimulation = 0.0;
+    double m_currentStimulation;
 };
 
 #endif // NODEENGINE_H

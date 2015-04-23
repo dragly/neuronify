@@ -13,18 +13,27 @@ NodeEngine::~NodeEngine()
 
 }
 
-double NodeEngine::stimulation() const
+double NodeEngine::fireOutput() const
 {
     return m_stimulation;
 }
 
-void NodeEngine::setStimulation(double arg)
+void NodeEngine::setFireOutput(double arg)
 {
     if (m_stimulation == arg)
         return;
 
     m_stimulation = arg;
-    emit stimulationChanged(arg);
+    emit fireOutputChanged(arg);
+}
+
+void NodeEngine::setCurrentOutput(double arg)
+{
+    if (m_currentStimulation == arg)
+        return;
+
+    m_currentStimulation = arg;
+    emit currentOutputChanged(arg);
 }
 
 bool NodeEngine::hasFired()
@@ -35,6 +44,11 @@ bool NodeEngine::hasFired()
 void NodeEngine::setHasFired(bool fired)
 {
     m_hasFired = fired;
+}
+
+double NodeEngine::currentOutput() const
+{
+    return m_currentStimulation;
 }
 
 void NodeEngine::step(double dt)
@@ -56,17 +70,22 @@ void NodeEngine::fire()
     emit fired();
 }
 
-void NodeEngine::stimulate(double stimulation)
+void NodeEngine::receiveFire(double stimulation)
 {
     for(NodeEngine* child : findChildren<NodeEngine*>()) {
-        NodeBase* node = qobject_cast<NodeBase*>(child);
-        if(node) {
-            continue;
-        }
-        child->stimulate(stimulation);
+        child->receiveFire(stimulation);
     }
-    stimulateEvent(stimulation);
-    emit stimulated(stimulation);
+    receiveFireEvent(stimulation);
+    emit receivedFire(stimulation);
+}
+
+void NodeEngine::receiveCurrent(double current)
+{
+    for(NodeEngine* child : findChildren<NodeEngine*>()) {
+        child->receiveCurrent(current);
+    }
+    receiveCurrentEvent(current);
+    emit receivedFire(current);
 }
 
 void NodeEngine::finalizeStep(double dt)
@@ -89,9 +108,14 @@ void NodeEngine::fireEvent()
 
 }
 
-void NodeEngine::stimulateEvent(double stimulation)
+void NodeEngine::receiveFireEvent(double fireOutput)
 {
-    Q_UNUSED(stimulation);
+    Q_UNUSED(fireOutput);
+}
+
+void NodeEngine::receiveCurrentEvent(double currentOutput)
+{
+    Q_UNUSED(currentOutput);
 }
 
 void NodeEngine::finalizeStepEvent(double dt)

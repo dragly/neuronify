@@ -78,7 +78,7 @@ void NeuronEngine::stepEvent(double dt)
     double Es = m_synapsePotential;
     double synapticCurrents = -gs * (V - Es);
 
-    double voltageChange = synapticCurrents + otherCurrents;
+    double voltageChange = synapticCurrents + otherCurrents + m_receivedCurrents;
     double dV = voltageChange * dt;
     m_voltage += dV;
 
@@ -86,6 +86,8 @@ void NeuronEngine::stepEvent(double dt)
 
     emit voltageChanged(m_voltage);
     emit synapticConductanceChanged(m_synapticConductance);
+
+    m_receivedCurrents = 0.0;
 }
 
 void NeuronEngine::fireEvent()
@@ -94,7 +96,12 @@ void NeuronEngine::fireEvent()
     m_firedLastTime = true;
 }
 
-void NeuronEngine::stimulateEvent(double stimulation)
+void NeuronEngine::receiveCurrentEvent(double currentOutput)
+{
+    m_receivedCurrents += currentOutput;
+}
+
+void NeuronEngine::receiveFireEvent(double stimulation)
 {
     m_synapticConductance += stimulation;
 }

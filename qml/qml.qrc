@@ -42,5 +42,6 @@
         <file>Connector.qml</file>
         <file>neurons/OldNeuron.qml</file>
         <file>neurons/NeuronControls.qml</file>
+        <file>generators/CurrentClamp.qml</file>
     </qresource>
 </RCC>
