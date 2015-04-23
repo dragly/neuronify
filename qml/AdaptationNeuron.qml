@@ -1,18 +1,26 @@
 import QtQuick 2.0
 import Neuronify 1.0
 
-BaseNeuronModel {
-    Conductance {
-        id: adaptationConductance
-        conductance: 0.0
-        onStep: {
-            console.log("On step!")
-            conductance = -conductance * dt
+Node {
+    width: 100
+    height: 100
+    radius: width * 0.5
+
+    engine: NeuronEngine {
+        PassiveCurrent {
         }
-        onFire: {
-            console.log("On fire!")
-            conductance += 1.0
+        AdaptationCurrent {
         }
+    }
+
+    Rectangle {
+        color: "green"
+        anchors.fill: parent
+        radius: parent.radius
+    }
+
+    Connector {
+
     }
 }
 
