@@ -1,12 +1,13 @@
 import QtQuick 2.0
-import "paths"
-import "hud"
+import "../paths"
+import "../hud"
+import ".."
 import Neuronify 1.0
 
 Node {
     id: root
     objectName: "neuron"
-    fileName: "neurons/OldNeuron.qml"
+    fileName: "Neuron.qml"
 
     property alias stimulation: engine.stimulation
     property alias voltage: engine.voltage

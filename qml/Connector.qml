@@ -6,29 +6,33 @@ Item {
     signal dropped(var connector)
 
     property point attachmentPoint: Qt.point(parent.width / 2, parent.height / 2)
-    property point initialPoint: Qt.point(parent.width - connector.width / 2, parent.height - connector.height / 2)
+    property point initialPoint: Qt.point(parent.width - draggable.width / 2, parent.height - draggable.height / 2)
 
-    property alias connectorWidth: connector.width
-    property alias connectorHeight: connector.height
+    property alias connectorWidth: draggable.width
+    property alias connectorHeight: draggable.height
+
+    onDropped: {
+        root.parent.droppedConnector(root.parent, draggable)
+    }
 
     SCurve {
-        id: connectorCurve
+        id: curve
         z: -10
         color: "#4292c6"
         startPoint: root.attachmentPoint
-        endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
+        endPoint: Qt.point(draggable.x + draggable.width / 2, draggable.y + draggable.width / 2)
     }
 
     Item {
-        id: connector
+        id: draggable
 
         Component.onCompleted: {
             resetPosition()
         }
 
         function resetPosition() {
-            connector.x = root.initialPoint.x
-            connector.y = root.initialPoint.y
+            draggable.x = root.initialPoint.x
+            draggable.y = root.initialPoint.y
         }
 
         width: 32
@@ -50,8 +54,8 @@ Item {
             anchors.fill: parent
             drag.target: parent
             onReleased: {
-                root.dropped(connector)
-                connector.resetPosition()
+                root.dropped(draggable)
+                draggable.resetPosition()
             }
         }
     }

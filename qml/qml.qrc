@@ -40,5 +40,6 @@
         <file>AdaptationNeuron.qml</file>
         <file>PoissonGenerator.qml</file>
         <file>Connector.qml</file>
+        <file>neurons/OldNeuron.qml</file>
     </qresource>
 </RCC>
