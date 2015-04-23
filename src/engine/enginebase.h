@@ -1,14 +1,14 @@
-#ifndef ENTITY_H
-#define ENTITY_H
+#ifndef NEURONIFY_ENGINEBASE_H
+#define NEURONIFY_ENGINEBASE_H
 
 #include <QQuickItem>
 
-class Entity : public QQuickItem
+class EngineBase : public QQuickItem
 {
     Q_OBJECT
 public:
-    explicit Entity(QQuickItem* parent = 0);
-    ~Entity();
+    explicit EngineBase(QQuickItem* parent = 0);
+    ~EngineBase();
 
     bool hasFired();
     void setHasFired(bool arg);
@@ -35,4 +35,4 @@ private:
     bool m_hasFired = false;
 };
 
-#endif // ENTITY_H
+#endif // NEURONIFY_ENGINEBASE_H

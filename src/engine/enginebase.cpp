@@ -1,31 +1,31 @@
-#include "entity.h"
+#include "enginebase.h"
 
 #include "nodebase.h"
 
-Entity::Entity(QQuickItem *parent)
+EngineBase::EngineBase(QQuickItem *parent)
     : QQuickItem(parent)
 {
 
 }
 
-Entity::~Entity()
+EngineBase::~EngineBase()
 {
 
 }
 
-bool Entity::hasFired()
+bool EngineBase::hasFired()
 {
     return m_hasFired;
 }
 
-void Entity::setHasFired(bool fired)
+void EngineBase::setHasFired(bool fired)
 {
     m_hasFired = fired;
 }
 
-void Entity::step(double dt)
+void EngineBase::step(double dt)
 {
-    for(Entity* child : findChildren<Entity*>()) {
+    for(EngineBase* child : findChildren<EngineBase*>()) {
         NodeBase* node = qobject_cast<NodeBase*>(child);
         if(node) {
             continue;
@@ -36,10 +36,10 @@ void Entity::step(double dt)
     emit stepped(dt);
 }
 
-void Entity::fire()
+void EngineBase::fire()
 {
     m_hasFired = true;
-    for(Entity* child : findChildren<Entity*>()) {
+    for(EngineBase* child : findChildren<EngineBase*>()) {
         NodeBase* node = qobject_cast<NodeBase*>(child);
         if(node) {
             continue;
@@ -50,9 +50,9 @@ void Entity::fire()
     emit fired();
 }
 
-void Entity::stimulate(double stimulation)
+void EngineBase::stimulate(double stimulation)
 {
-    for(Entity* child : findChildren<Entity*>()) {
+    for(EngineBase* child : findChildren<EngineBase*>()) {
         NodeBase* node = qobject_cast<NodeBase*>(child);
         if(node) {
             continue;
@@ -63,32 +63,32 @@ void Entity::stimulate(double stimulation)
     emit stimulated(stimulation);
 }
 
-void Entity::finalizeStep(double dt)
+void EngineBase::finalizeStep(double dt)
 {
     m_hasFired = false;
-    for(Entity* child : findChildren<Entity*>()) {
+    for(EngineBase* child : findChildren<EngineBase*>()) {
         child->finalizeStep(dt);
     }
     finalizeStepEvent(dt);
     emit finalizedStep(dt);
 }
 
-void Entity::stepEvent(double dt)
+void EngineBase::stepEvent(double dt)
 {
     Q_UNUSED(dt);
 }
 
-void Entity::fireEvent()
+void EngineBase::fireEvent()
 {
 
 }
 
-void Entity::stimulateEvent(double stimulation)
+void EngineBase::stimulateEvent(double stimulation)
 {
     Q_UNUSED(stimulation);
 }
 
-void Entity::finalizeStepEvent(double dt)
+void EngineBase::finalizeStepEvent(double dt)
 {
     Q_UNUSED(dt);
 }

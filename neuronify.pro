@@ -12,7 +12,6 @@ CONFIG += c++11
 
 HEADERS += \
     src/io/fileio.h \
-    src/engine/entity.h \
     src/engine/current.h \
     src/currents/passivecurrent.h \
     src/currents/adaptationcurrent.h \
@@ -20,12 +19,12 @@ HEADERS += \
     src/engine/graphengine.h \
     src/engine/nodeengine.h \
     src/engine/nodebase.h \
-    src/engine/neuronengine.h
+    src/engine/neuronengine.h \
+    src/engine/enginebase.h
 
 SOURCES += \
     src/io/fileio.cpp \
     src/main.cpp \
-    src/engine/entity.cpp \
     src/engine/current.cpp \
     src/currents/passivecurrent.cpp \
     src/currents/adaptationcurrent.cpp \
@@ -33,7 +32,8 @@ SOURCES += \
     src/engine/graphengine.cpp \
     src/engine/nodeengine.cpp \
     src/engine/nodebase.cpp \
-    src/engine/neuronengine.cpp
+    src/engine/neuronengine.cpp \
+    src/engine/enginebase.cpp
 
 RESOURCES += qml/qml.qrc \
     images/images.qrc \

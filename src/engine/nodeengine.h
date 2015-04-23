@@ -3,9 +3,9 @@
 
 #include <QQuickItem>
 
-#include "entity.h"
+#include "enginebase.h"
 
-class NodeEngine : public Entity
+class NodeEngine : public EngineBase
 {
     Q_OBJECT
     Q_PROPERTY(double stimulation READ stimulation WRITE setStimulation NOTIFY stimulationChanged)

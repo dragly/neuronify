@@ -11,8 +11,8 @@
         <file>hud/ConnectionControls.qml</file>
         <file>CreationControls.qml</file>
         <file>GraphItem.qml</file>
-        <file>Neuron.qml</file>
-        <file>hud/NeuronControls.qml</file>
+        <file>neurons/Neuron.qml</file>
+        <file>neurons/OldNeuronControls.qml</file>
         <file>paths/Line.qml</file>
         <file>Neuronify.qml</file>
         <file>CreationItem.qml</file>
@@ -37,9 +37,10 @@
         <file>tools/AutoLayout.qml</file>
         <file>tools/Clipboard.qml</file>
         <file>TouchSensorCell.qml</file>
-        <file>AdaptationNeuron.qml</file>
+        <file>neurons/AdaptationNeuron.qml</file>
         <file>PoissonGenerator.qml</file>
         <file>Connector.qml</file>
         <file>neurons/OldNeuron.qml</file>
+        <file>neurons/NeuronControls.qml</file>
     </qresource>
 </RCC>

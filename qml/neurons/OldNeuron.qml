@@ -24,7 +24,7 @@ Node {
     property bool shouldFireOnOutput: false
 
     controls: Component {
-        NeuronControls {
+        OldNeuronControls {
             neuron: root
             onDisconnectClicked: {
                 simulatorRoot.disconnectNeuron(neuron)

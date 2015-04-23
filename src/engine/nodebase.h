@@ -3,7 +3,7 @@
 
 #include <QQuickItem>
 
-#include "entity.h"
+#include "enginebase.h"
 
 class NodeEngine;
 class Edge;

@@ -1,7 +1,7 @@
 #include "nodeengine.h"
 
 NodeEngine::NodeEngine(QQuickItem *parent)
-    : Entity(parent)
+    : EngineBase(parent)
 {
 
 }

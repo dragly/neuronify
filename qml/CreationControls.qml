@@ -77,7 +77,7 @@ Rectangle {
             }
 
             onDropped: {
-                droppedEntity(Qt.resolvedUrl("/Adaptationneurons/OldNeuron.qml"), {x: drop.x, y: drop.y}, true)
+                droppedEntity(Qt.resolvedUrl("/neurons/AdaptationNeuron.qml"), {x: drop.x, y: drop.y}, true)
             }
         }
 
