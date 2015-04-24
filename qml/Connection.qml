@@ -48,7 +48,7 @@ Edge {
     Line {
         id: sCurve
         color: connectionRoot._internalColor
-        startPoint: valid ? Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y) : Qt.point(0,0)
+        startPoint: itemA ? Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y) : Qt.point(0,0)
         endPoint: Qt.point(cx, cy)
     }
 

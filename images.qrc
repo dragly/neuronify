@@ -16,5 +16,8 @@
         <file>images/creators/neurons/blank_inhibitory.png</file>
         <file>images/creators/neurons/burst_inhibitory.png</file>
         <file>images/creators/neurons/passive_inhibitory.png</file>
+        <file>images/creators/categories/neuron.png</file>
+        <file>images/creators/categories/marker.png</file>
+        <file>images/creators/categories/inhibitory_neuron.png</file>
     </qresource>
 </RCC>

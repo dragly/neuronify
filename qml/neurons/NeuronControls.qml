@@ -19,13 +19,7 @@ Item {
     Binding {
         target: engine
         property: "fireOutput"
-        value: fireOutputSlider.value
-    }
-
-    Binding {
-        target: engine
-        property: "inhibitory"
-        value: inhibitoryCheckbox.checked
+        value: (inhibitoryCheckbox.checked ? -1.0 : 1.0) * fireOutputSlider.value
     }
 
     ColumnLayout {
@@ -36,7 +30,7 @@ Item {
         CheckBox {
             id: inhibitoryCheckbox
             text: "Inhibitory"
-            checked: engine.inhibitory
+            checked: (engine.fireOutput < 0.0)
         }
 
         Text {
@@ -50,7 +44,7 @@ Item {
             stepSize: 0.1
             tickmarksEnabled: true
             Layout.fillWidth: true
-            value: engine.fireOutputMagnitude
+            value: Math.abs(engine.fireOutput)
         }
 
         Button {

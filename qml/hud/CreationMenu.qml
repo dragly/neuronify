@@ -9,7 +9,7 @@ import "../style"
 Item {
     id: root
 
-    signal droppedEntity(var fileUrl, var properties, var useAutoLayout)
+    signal droppedEntity(var fileUrl, var properties, var controlParent, var useAutoLayout)
     signal deleteEverything()
 
     property var blurSource: null
@@ -18,6 +18,68 @@ Item {
     width: parent.width * 0.1
 
     anchors.fill: parent
+
+    onRevealedChanged: {
+        var tmpItem = marker.item
+        marker.item = null
+        marker.item = tmpItem
+    }
+
+    Component {
+        id: neuronCreators
+        CreationList {
+            id: itemRow
+
+            CreationItem {
+                name: "Passive neuron"
+                description: "Neuron with only passive currents."
+                source: "qrc:/qml/neurons/PassiveNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/passive.png"
+            }
+
+            CreationItem {
+                name: "Bursting neuron"
+                description: "Neuron that bursts on stimulation."
+                source: "qrc:/qml/neurons/BurstNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/burst.png"
+            }
+
+            CreationItem {
+                name: "Adaptation neuron"
+                description: "Neuron passive currents and adaptation on firing."
+                source: "qrc:/qml/neurons/AdaptationNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/adaptive.png"
+            }
+        }
+    }
+
+    Component {
+        id: inhibitoryNeuronCreators
+        CreationList {
+            id: itemRow
+
+            CreationItem {
+                name: "Passive inhibitory neuron"
+                description: "Inhibitory neuron with only passive currents."
+                source: "qrc:/qml/neurons/PassiveInhibitoryNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/passive_inhibitory.png"
+            }
+
+            CreationItem {
+                name: "Bursting inhibitory neuron"
+                description: "Neuron that bursts on stimulation."
+                source: "qrc:/qml/neurons/BurstNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/burst_inhibitory.png"
+            }
+
+            CreationItem {
+                name: "Inhibitory adaptation neuron"
+                description: "Inhibitory neuron with passive currents and adaptation on firing."
+                source: "qrc:/qml/neurons/AdaptationNeuron.qml"
+                imageSource: "qrc:/images/creators/neurons/adaptive_inhibitory.png"
+            }
+        }
+    }
 
     MouseArea {
         anchors.fill: parent
@@ -92,117 +154,78 @@ Item {
             }
         }
 
-        Row {
-            id: itemRow
 
-            Component.onCompleted: {
-                for(var i in children) {
-                    var child = children[i]
-                    if(child.objectName === "CreationItem") {
-                        child.dropped.connect(droppedEntity)
-                    }
+        Component.onCompleted: {
+            marker.item = neuronCategory
+        }
+
+        Image {
+            id: marker
+            property Item item
+            source: "qrc:/images/creators/categories/marker.png"
+
+            x: item ? item.mapToItem(parent).x : 0
+            y: item ? item.mapToItem(parent).y : 0
+
+            width: item ? item.width : 50
+            height: width
+
+            Behavior on x {
+                NumberAnimation {
+                    duration: 300
+                    easing.type: Easing.InOutQuad
                 }
             }
+        }
 
+        Column {
             anchors {
                 fill: parent
                 margins: Style.touchableSize * 0.5
             }
 
-            spacing: Style.touchableSize * 0.5
+            Row {
+                height: parent.height / 2
+                anchors.horizontalCenter: parent.horizontalCenter
 
-            CreationItem {
-                name: "Passive neuron"
-                description: "Neuron with only passive currents."
-                source: "qrc:/qml/neurons/PassiveNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/passive.png"
-            }
+                spacing: Style.touchableSize * 0.5
 
-            CreationItem {
-                name: "Bursting neuron"
-                description: "Neuron that bursts on stimulation."
-                source: "qrc:/qml/neurons/BurstNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/burst.png"
-            }
+                Image {
+                    id: neuronCategory
+                    width: Style.touchableSize
+                    height: width
+                    source: "qrc:/images/creators/categories/neuron.png"
 
-            CreationItem {
-                name: "Adaptation neuron"
-                description: "Neuron passive currents and adaptation on firing."
-                source: "qrc:/qml/neurons/AdaptationNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/adaptive.png"
-            }
-
-            CreationItem {
-                id: poissonCreator
-                width: Style.touchableSize
-                height: width
-
-                source: "qrc:/qml/generators/PoissonGenerator.qml"
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: "#c6dbef"
-                    border.color: "#6baed6"
-                    border.width: 2.0
-                }
-            }
-
-            CreationItem {
-                width: Style.touchableSize
-                height: width
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: "orange"
-                    border.color: "#6baed6"
-                    border.width: 2.0
-                }
-            }
-
-            CreationItem {
-                id: voltmeterCreator
-                width: Style.touchableSize
-                height: width * 0.67
-                Rectangle {
-                    anchors.fill: parent
-                    color: "#deebf7"
-                    border.color: "#9ecae1"
-                    border.width: 1.0
-
-                    Canvas {
-                        id: canvas
+                    MouseArea {
                         anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.strokeStyle = "#e41a1c"
-                            ctx.beginPath()
-                            var w = width
-                            var h = height
+                        onClicked: {
+                            marker.item = neuronCategory
+                            loader.sourceComponent = neuronCreators
+                        }
+                    }
+                }
 
-                            ctx.moveTo(w*0.1, h*0.2)
-                            ctx.bezierCurveTo(w*0.5, h*0.2, w*0.5, h*0.8, w*0.9, h*0.8)
-                            ctx.stroke()
+                Image {
+                    id: inhibitoryNeuronCategory
+                    source: "qrc:/images/creators/categories/inhibitory_neuron.png"
+                    width: Style.touchableSize
+                    height: width
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            marker.item = inhibitoryNeuronCategory
+                            loader.sourceComponent = inhibitoryNeuronCreators
                         }
                     }
                 }
             }
 
-            CreationItem {
-                id: touchSensorCreator
-                width: Style.touchableSize
-                height: width
-                Rectangle {
-                    anchors.fill: parent
-
-                    color: "#4292c6"
-                    border.width: width * 0.02
-                    border.color: "#f7fbff"
-                }
-            }
-
-            Item {
-                Layout.fillHeight: true
-                Layout.fillWidth: true
+            Loader {
+                id: loader
+                anchors.horizontalCenter: parent.horizontalCenter
+                height: parent.height / 2
+                sourceComponent: neuronCreators
             }
         }
 

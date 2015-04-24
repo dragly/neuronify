@@ -485,7 +485,7 @@ Rectangle {
         blurSource: workspaceFlickable
 
         onDroppedEntity: {
-            var workspacePosition = creationMenu.mapToItem(neuronLayer, properties.x, properties.y)
+            var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
             properties.x = workspacePosition.x
             properties.y = workspacePosition.y
             neuronifyRoot.createEntity(fileUrl, properties, useAutoLayout)

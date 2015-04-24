@@ -10,6 +10,7 @@ Node {
     fileName: "neurons/Neuron.qml"
 
     readonly property real fireOutput: root.engine.fireOutput
+    readonly property bool inhibitory: root.engine.fireOutput < 0.0
     readonly property real voltage: root.engine.voltage
     property url imageSource
     property url inhibitoryImageSource
@@ -17,7 +18,7 @@ Node {
     radius: width / 2
     width: 60
     height: width
-    color: engine.inhibitory ? "#e41a1c" : "#6baed6"
+    color: inhibitory ? "#e41a1c" : "#6baed6"
 
     dumpableProperties: [
         "x",
@@ -45,7 +46,7 @@ Node {
 
     Image {
         anchors.fill: parent
-        source: engine.inhibitory ? inhibitoryImageSource : imageSource
+        source: inhibitory ? inhibitoryImageSource : imageSource
         fillMode: Image.PreserveAspectFit
     }
 

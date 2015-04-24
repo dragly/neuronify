@@ -5,7 +5,7 @@ Item {
     id: creationControlBackground
     property string objectName: "CreationItem"
 
-    signal dropped(var source, var properties, var autoLayout)
+    signal dropped(var source, var properties, var controlParent, var autoLayout)
 
     default property alias subChildren: creationControl.children
 
@@ -46,9 +46,8 @@ Item {
             drag.target: parent
             drag.onActiveChanged: {
                 if (!dragArea.drag.active) {
-                    var properties = {x: creationControl.x + creationControlBackground.x,
-                        y: creationControl.y + creationControlBackground.y}
-                    dropped(source, properties, autoLayout)
+                    var properties = {x: creationControl.x, y: creationControl.y}
+                    dropped(source, properties, creationControlBackground, autoLayout)
                 }
             }
         }
