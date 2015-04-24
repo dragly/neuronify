@@ -199,7 +199,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            marker.item = neuronCategory
+                            marker.item = parent
                             loader.sourceComponent = neuronCreators
                         }
                     }
@@ -214,7 +214,22 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            marker.item = inhibitoryNeuronCategory
+                            marker.item = parent
+                            loader.sourceComponent = inhibitoryNeuronCreators
+                        }
+                    }
+                }
+
+                Image {
+                    id: metersCategory
+                    source: "qrc:/images/creators/categories/meters.png"
+                    width: Style.touchableSize
+                    height: width
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            marker.item = parent
                             loader.sourceComponent = inhibitoryNeuronCreators
                         }
                     }
