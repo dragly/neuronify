@@ -19,68 +19,6 @@ Item {
 
     anchors.fill: parent
 
-    onRevealedChanged: {
-        var tmpItem = marker.item
-        marker.item = null
-        marker.item = tmpItem
-    }
-
-    Component {
-        id: neuronCreators
-        CreationList {
-            id: itemRow
-
-            CreationItem {
-                name: "Passive neuron"
-                description: "Neuron with only passive currents."
-                source: "qrc:/qml/neurons/PassiveNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/passive.png"
-            }
-
-            CreationItem {
-                name: "Bursting neuron"
-                description: "Neuron that bursts on stimulation."
-                source: "qrc:/qml/neurons/BurstNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/burst.png"
-            }
-
-            CreationItem {
-                name: "Adaptation neuron"
-                description: "Neuron passive currents and adaptation on firing."
-                source: "qrc:/qml/neurons/AdaptationNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/adaptive.png"
-            }
-        }
-    }
-
-    Component {
-        id: inhibitoryNeuronCreators
-        CreationList {
-            id: itemRow
-
-            CreationItem {
-                name: "Passive inhibitory neuron"
-                description: "Inhibitory neuron with only passive currents."
-                source: "qrc:/qml/neurons/PassiveInhibitoryNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/passive_inhibitory.png"
-            }
-
-            CreationItem {
-                name: "Bursting inhibitory neuron"
-                description: "Neuron that bursts on stimulation."
-                source: "qrc:/qml/neurons/BurstNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/burst_inhibitory.png"
-            }
-
-            CreationItem {
-                name: "Inhibitory adaptation neuron"
-                description: "Inhibitory neuron with passive currents and adaptation on firing."
-                source: "qrc:/qml/neurons/AdaptationNeuron.qml"
-                imageSource: "qrc:/images/creators/neurons/adaptive_inhibitory.png"
-            }
-        }
-    }
-
     MouseArea {
         anchors.fill: parent
         enabled: root.revealed
@@ -154,27 +92,21 @@ Item {
             }
         }
 
+        ListModel {
+            id: categories
+            ListElement {
+                listSource: "qrc:/qml/hud/NeuronList.qml"
+                imageSource: "qrc:/images/creators/categories/neuron.png"
+            }
 
-        Component.onCompleted: {
-            marker.item = neuronCategory
-        }
+            ListElement  {
+                listSource: "qrc:/qml/hud/InhibitoryNeuronList.qml"
+                imageSource: "qrc:/images/creators/categories/inhibitory_neuron.png"
+            }
 
-        Image {
-            id: marker
-            property Item item
-            source: "qrc:/images/creators/categories/marker.png"
-
-            x: item ? item.mapToItem(parent).x : 0
-            y: item ? item.mapToItem(parent).y : 0
-
-            width: item ? item.width : 50
-            height: width
-
-            Behavior on x {
-                NumberAnimation {
-                    duration: 300
-                    easing.type: Easing.InOutQuad
-                }
+            ListElement  {
+                listSource: "qrc:/qml/hud/MetersList.qml"
+                imageSource: "qrc:/images/creators/categories/meters.png"
             }
         }
 
@@ -184,55 +116,37 @@ Item {
                 margins: Style.touchableSize * 0.5
             }
 
-            Row {
+            ListView {
+                id: categoriesListView
                 height: parent.height / 2
+                width: count * (Style.touchableSize + spacing) - spacing
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 spacing: Style.touchableSize * 0.5
 
-                Image {
-                    id: neuronCategory
+                orientation: ListView.Horizontal
+
+                model: categories
+
+                delegate: Image {
                     width: Style.touchableSize
                     height: width
-                    source: "qrc:/images/creators/categories/neuron.png"
+                    source: model.imageSource
 
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            marker.item = parent
-                            loader.sourceComponent = neuronCreators
+                            categoriesListView.currentIndex = index
+                            loader.source = model.listSource
                         }
                     }
                 }
 
-                Image {
-                    id: inhibitoryNeuronCategory
-                    source: "qrc:/images/creators/categories/inhibitory_neuron.png"
+                highlight: Image {
+                    source: "qrc:/images/creators/categories/marker.png"
+
                     width: Style.touchableSize
                     height: width
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            marker.item = parent
-                            loader.sourceComponent = inhibitoryNeuronCreators
-                        }
-                    }
-                }
-
-                Image {
-                    id: metersCategory
-                    source: "qrc:/images/creators/categories/meters.png"
-                    width: Style.touchableSize
-                    height: width
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            marker.item = parent
-                            loader.sourceComponent = inhibitoryNeuronCreators
-                        }
-                    }
                 }
             }
 
@@ -240,7 +154,7 @@ Item {
                 id: loader
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: parent.height / 2
-                sourceComponent: neuronCreators
+                source: "qrc:/qml/hud/NeuronList.qml"
             }
         }
 

@@ -5,7 +5,7 @@
         <file>qml/Connection.qml</file>
         <file>qml/paths/BezierCurve.qml</file>
         <file>qml/paths/SCurve.qml</file>
-        <file>qml/Voltmeter.qml</file>
+        <file>qml/meters/Voltmeter.qml</file>
         <file>qml/hud/PropertiesPanel.qml</file>
         <file>qml/hud/VoltmeterControls.qml</file>
         <file>qml/hud/ConnectionControls.qml</file>
@@ -48,7 +48,11 @@
         <file>qml/hud/PropertiesButton.qml</file>
         <file>qml/neurons/PassiveNeuron.qml</file>
         <file>qml/neurons/BurstNeuron.qml</file>
-        <file>qml/neurons/CreationList.qml</file>
+        <file>qml/hud/CreationList.qml</file>
         <file>qml/neurons/PassiveInhibitoryNeuron.qml</file>
+        <file>qml/hud/NeuronList.qml</file>
+        <file>qml/hud/InhibitoryNeuronList.qml</file>
+        <file>qml/hud/MetersList.qml</file>
+        <file>qml/neurons/AdaptationNeuronCreator.qml</file>
     </qresource>
 </RCC>

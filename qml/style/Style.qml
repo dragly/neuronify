@@ -43,8 +43,6 @@ Item {
     }
 
     function reset(width, height, pixelDensity) {
-        console.log("Resetting style")
-
         root.windowWidth = width
         root.windowHeight = height
         root.pixelDensity = pixelDensity
@@ -63,14 +61,11 @@ Item {
             scale = pixelDensity / 4
 
             if(deviceWidth > 160 && deviceHeight > 100) {
-                console.log("Style detected tablet")
                 device = "tablet"
             } else {
-                console.log("Style detected phone")
                 device = "phone"
             }
         } else {
-            console.log("Style detected desktop")
             device = "dekstop"
             size = root.windowWidth * 0.01
         }

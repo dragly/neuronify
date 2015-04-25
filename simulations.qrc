@@ -18,6 +18,5 @@
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.nfy</file>
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.png</file>
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.qml</file>
-        <file>qml/neurons/AdaptationNeuronCreator.qml</file>
     </qresource>
 </RCC>
