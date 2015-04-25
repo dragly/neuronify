@@ -356,7 +356,7 @@ Rectangle {
     AutoLayout {
         id: autoLayout
         enabled: false
-//        enabled: creationControls.autoLayout
+        //        enabled: creationControls.autoLayout
         maximumWidth: neuronLayer.width
         maximumHeight: neuronLayer.height
     }
@@ -398,14 +398,20 @@ Rectangle {
                 id: workspaceMouseArea
                 anchors.fill: parent
 
+                propagateComposedEvents: true
                 drag.target: workspace
 
                 onWheel: {
-                    var localStartCenter = mapToItem(workspace, wheel.x, wheel.y)
-                    var newScale = workspace.scale + wheel.angleDelta.y * 0.001
-                    workspace.scale = pinchArea.clampScale(newScale)
-                    workspace.x = wheel.x - localStartCenter.x * workspace.scale
-                    workspace.y = wheel.y - localStartCenter.y * workspace.scale
+                    if(wheel.modifiers & Qt.ControlModifier) {
+                        var localStartCenter = mapToItem(workspace, wheel.x, wheel.y)
+                        var newScale = workspace.scale + wheel.angleDelta.y * 0.001
+                        workspace.scale = pinchArea.clampScale(newScale)
+                        workspace.x = wheel.x - localStartCenter.x * workspace.scale
+                        workspace.y = wheel.y - localStartCenter.y * workspace.scale
+                    } else {
+                        workspace.x += wheel.angleDelta.x * 0.4
+                        workspace.y += wheel.angleDelta.y * 0.4
+                    }
                 }
 
                 onClicked: {
