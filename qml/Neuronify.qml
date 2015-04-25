@@ -97,7 +97,7 @@ Rectangle {
 
         for(var i in graphEngine.edges) {
             var connection = graphEngine.edges[i]
-            fileString += connection.dump(i, graphEngine.nodes)
+            fileString += connection.dump(i, graphEngine)
         }
 
         undoList = undoList.slice(0,undoIdx)
@@ -562,8 +562,7 @@ Rectangle {
     FileManager {
         id: fileManager
 
-        entities: neuronifyRoot.entities
-        connections: neuronifyRoot.connections
+        graphEngine: graphEngine
         otherItems: [workspace]
 
         onLoadState: {

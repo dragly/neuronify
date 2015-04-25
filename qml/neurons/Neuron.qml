@@ -23,10 +23,7 @@ Node {
     dumpableProperties: [
         "x",
         "y",
-        "clampCurrent",
-        "clampCurrentEnabled",
-        "adaptationIncreaseOnFire",
-        "stimulation"
+        "fireOutput"
     ]
 
     controls: Component {

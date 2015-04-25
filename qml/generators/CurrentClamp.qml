@@ -7,25 +7,23 @@ import ".."
 
 
 Node {
+    property alias currentOutput: engine.currentOutput
+
+    fileName: "generators/CurrentClamp.qml"
+
     width: 62
     height: 62
 
-    Image {
-        anchors.fill: parent
-        fillMode: Image.PreserveAspectFit
-        source: "qrc:/images/creators/generators/current_clamp.png"
-    }
-
     engine: NodeEngine {
-        id: currentEngine
-        currentOutput: 500.0
+        id: engine
+        currentOutput: 75.0
     }
 
     controls: Component {
         Item {
             anchors.fill: parent
             Binding {
-                target: currentEngine
+                target: engine
                 property: "currentOutput"
                 value: currentOutputSlider.value
             }
@@ -38,12 +36,24 @@ Node {
 
                 Slider {
                     id: currentOutputSlider
-                    value: currentEngine.currentOutput
+                    value: engine.currentOutput
                     minimumValue: 0.0
-                    maximumValue: 2000.0
+                    maximumValue: 200.0
                 }
             }
         }
+    }
+
+    dumpableProperties: [
+        "x",
+        "y",
+        "currentOutput"
+    ]
+
+    Image {
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectFit
+        source: "qrc:/images/creators/generators/current_clamp.png"
     }
 
     Connector {

@@ -33,15 +33,15 @@ Edge {
         aboutToDie(connectionRoot)
     }
 
-    function dump(index, entities) {
+    function dump(index, graphEngine) {
         if(customDump) {
             return customDump(index, entities)
         }
 
         var outputString = ""
-//        var itemAEntityIndex = entities.indexOf(itemA)
-//        var itemBEntityIndex = entities.indexOf(itemB)
-//        outputString += "var connection" + index + " = connectEntities(entity" + itemAEntityIndex + ", entity" + itemBEntityIndex + ")\n"
+        var itemAEntityIndex = graphEngine.nodeIndex(itemA)
+        var itemBEntityIndex = graphEngine.nodeIndex(itemB)
+        outputString += "var connection" + index + " = connectEntities(entity" + itemAEntityIndex + ", entity" + itemBEntityIndex + ")\n"
         return outputString
     }
 

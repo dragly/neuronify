@@ -17,6 +17,8 @@ public:
     QQmlListProperty<NodeBase> nodes();
     QQmlListProperty<Edge> edges();
 
+    Q_INVOKABLE int nodeIndex(NodeBase* node) const;
+
 public slots:
     void step(double dt);
 

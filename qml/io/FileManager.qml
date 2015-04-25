@@ -6,8 +6,7 @@ import Neuronify 1.0
 Item {
     signal loadState(var fileUrl)
 
-    property var entities: []
-    property var connections: []
+    property GraphEngine graphEngine: null
     property var otherItems: []
 
     function showSaveDialog() {
@@ -19,6 +18,8 @@ Item {
     }
 
     function saveState(fileUrl) {
+        var entities = graphEngine.nodes
+        var connections = graphEngine.edges
         var fileString = ""
         console.log("Saving to " + fileUrl)
 
@@ -30,7 +31,7 @@ Item {
 
         for(var i in connections) {
             var connection = connections[i]
-            fileString += connection.dump(i, entities)
+            fileString += connection.dump(i, graphEngine)
         }
 
         for(var i in otherItems) {

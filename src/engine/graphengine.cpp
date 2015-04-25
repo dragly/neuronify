@@ -25,6 +25,11 @@ QQmlListProperty<Edge> GraphEngine::edges()
     return QQmlListProperty<Edge>(this, m_edges);
 }
 
+int GraphEngine::nodeIndex(NodeBase *node) const
+{
+    return m_nodes.indexOf(node);
+}
+
 void GraphEngine::addNode(NodeBase *node)
 {
     m_nodes.append(node);
