@@ -27,6 +27,10 @@ Item {
         anchors.margins: 10
         spacing: 10
 
+        Text {
+            text: "Voltage: " + engine.voltage.toFixed(0) + " mV"
+        }
+
         CheckBox {
             id: inhibitoryCheckbox
             text: "Inhibitory"
@@ -34,7 +38,7 @@ Item {
         }
 
         Text {
-            text: "Synaptic output: "+ engine.fireOutput.toFixed(1) + " mS "
+            text: "Synaptic output: "+ engine.fireOutput.toFixed(1) + " mS"
         }
 
         Slider {

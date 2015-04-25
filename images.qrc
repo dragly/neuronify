@@ -21,5 +21,7 @@
         <file>images/creators/categories/inhibitory_neuron.png</file>
         <file>images/creators/categories/meters.png</file>
         <file>images/creators/meters/voltmeter.png</file>
+        <file>images/creators/generators/current_clamp.png</file>
+        <file>images/creators/categories/generators.png</file>
     </qresource>
 </RCC>

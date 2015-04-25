@@ -35,6 +35,11 @@ Item {
             listSource: "qrc:/qml/hud/MetersList.qml"
             imageSource: "qrc:/images/creators/categories/meters.png"
         }
+
+        ListElement  {
+            listSource: "qrc:/qml/hud/GeneratorsList.qml"
+            imageSource: "qrc:/images/creators/categories/generators.png"
+        }
     }
 
     MouseArea {

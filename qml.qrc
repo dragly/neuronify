@@ -54,5 +54,6 @@
         <file>qml/hud/InhibitoryNeuronList.qml</file>
         <file>qml/hud/MetersList.qml</file>
         <file>qml/neurons/AdaptationNeuronCreator.qml</file>
+        <file>qml/hud/GeneratorsList.qml</file>
     </qresource>
 </RCC>
