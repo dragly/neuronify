@@ -19,6 +19,24 @@ Item {
 
     anchors.fill: parent
 
+    ListModel {
+        id: categories
+        ListElement {
+            listSource: "qrc:/qml/hud/NeuronList.qml"
+            imageSource: "qrc:/images/creators/categories/neuron.png"
+        }
+
+        ListElement  {
+            listSource: "qrc:/qml/hud/InhibitoryNeuronList.qml"
+            imageSource: "qrc:/images/creators/categories/inhibitory_neuron.png"
+        }
+
+        ListElement  {
+            listSource: "qrc:/qml/hud/MetersList.qml"
+            imageSource: "qrc:/images/creators/categories/meters.png"
+        }
+    }
+
     MouseArea {
         anchors.fill: parent
         enabled: root.revealed
@@ -29,96 +47,83 @@ Item {
         }
     }
 
-    Item {
-        id: layoutRect
+    MouseArea {
+        anchors.fill: creationColumn
+        enabled: root.revealed
+    }
 
-        anchors {
-            left: parent.right
-            top: parent.top
+    Item {
+        id: background
+        anchors.fill: creationColumn
+
+        ShaderEffectSource {
+            id: effectSource
+            sourceItem: blurSource
+            sourceRect: Qt.rect(creationColumn.x, creationColumn.y, background.width, background.height)
+            anchors.fill: parent
         }
 
-        width: parent.width
-        height: parent.height * 0.5
+        FastBlur {
+            anchors.fill: parent
+            source: effectSource
+
+            radius: Style.size * 6
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(1.0, 1.0, 1.0, 0.6)
+            border.color: Qt.rgba(0.8, 0.8, 0.8)
+            border.width: 2.0
+        }
+    }
+
+    Image {
+        anchors {
+            right: creationColumn.right
+            top: creationColumn.top
+            margins: Style.margin
+        }
+        width: Style.touchableSize
+        height: width
+
+        source: "qrc:/images/back.png"
+
+        rotation: 180
 
         MouseArea {
             anchors.fill: parent
-            enabled: root.revealed
-        }
-
-        Item {
-            id: background
-            anchors.fill: parent
-
-            ShaderEffectSource {
-                id: effectSource
-                sourceItem: blurSource
-                sourceRect: Qt.rect(layoutRect.x, layoutRect.y, background.width, background.height)
-                anchors.fill: parent
-            }
-
-            FastBlur {
-                anchors.fill: parent
-                source: effectSource
-
-                radius: Style.size * 6
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                color: Qt.rgba(1.0, 1.0, 1.0, 0.6)
-                border.color: Qt.rgba(0.8, 0.8, 0.8)
-                border.width: 2.0
+            onClicked: {
+                root.revealed = false
             }
         }
+    }
 
-        Image {
-            anchors {
-                right: parent.right
-                top: parent.top
-                margins: Style.margin
-            }
-            width: Style.touchableSize
-            height: width
+    Item {
+        id: creationColumn
 
-            source: "qrc:/images/back.png"
-
-            rotation: 180
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    root.revealed = false
-                }
-            }
+        anchors {
+            left: parent.right
         }
 
-        ListModel {
-            id: categories
-            ListElement {
-                listSource: "qrc:/qml/hud/NeuronList.qml"
-                imageSource: "qrc:/images/creators/categories/neuron.png"
-            }
-
-            ListElement  {
-                listSource: "qrc:/qml/hud/InhibitoryNeuronList.qml"
-                imageSource: "qrc:/images/creators/categories/inhibitory_neuron.png"
-            }
-
-            ListElement  {
-                listSource: "qrc:/qml/hud/MetersList.qml"
-                imageSource: "qrc:/images/creators/categories/meters.png"
-            }
-        }
+        width: parent.width
+        height: column.height + column.anchors.margins * 2
 
         Column {
+            id: column
+
             anchors {
-                fill: parent
+                top: parent.top
+                left: parent.left
+                right: parent.right
                 margins: Style.touchableSize * 0.5
             }
 
+            spacing: Style.touchableSize * 0.5
+
             ListView {
                 id: categoriesListView
-                height: parent.height / 2
+                height: Style.touchableSize
                 width: count * (Style.touchableSize + spacing) - spacing
                 anchors.horizontalCenter: parent.horizontalCenter
 
@@ -153,23 +158,25 @@ Item {
             Loader {
                 id: loader
                 anchors.horizontalCenter: parent.horizontalCenter
-                height: parent.height / 2
+
+                height: Style.touchableSize
                 source: "qrc:/qml/hud/NeuronList.qml"
             }
-        }
 
-        states: State {
-            when: root.revealed
-            AnchorChanges {
-                target: layoutRect
-                anchors.left: root.left
+
+            states: State {
+                when: root.revealed
+                AnchorChanges {
+                    target: creationColumn
+                    anchors.left: root.left
+                }
             }
-        }
 
-        transitions: Transition {
-            AnchorAnimation {
-                duration: 400
-                easing.type: Easing.InOutQuad
+            transitions: Transition {
+                AnchorAnimation {
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
             }
         }
     }
