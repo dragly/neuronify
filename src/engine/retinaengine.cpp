@@ -56,6 +56,7 @@ void RetinaEngine::setCamera(QObject* camera)
         qDebug() << "Setting renderer control";
         m_rendererControl = cameraObject->service()->requestControl<QVideoRendererControl *>();
         if(m_rendererControl) {
+            qDebug() << "Setting renderer surface";
             m_rendererControl->setSurface(&m_videoSurface);
         }
 #endif

@@ -35,17 +35,23 @@ Node {
         width: 100
         height: 100
         retinaEngine: retinaEngine
+
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+        }
     }
 
     Camera {
         id: camera
-        viewfinder.resolution: Qt.size(640, 480)
     }
 
     VideoOutput {
         width: 100
         height: 100
-        source: camera
+        source: !retinaPainter.enabled ? camera : null
+        visible: !retinaPainter.visible
+        enabled: !retinaPainter.enabled
 
         MouseArea {
             anchors.fill: parent

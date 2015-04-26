@@ -16,7 +16,6 @@ VideoSurface::~VideoSurface()
 
 QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVideoBuffer::HandleType handleType) const
 {
-    qDebug() << "Supported formats!";
     QList<QVideoFrame::PixelFormat> pixelFormat;
     pixelFormat.append(QVideoFrame::Format_RGB24);
 
@@ -25,7 +24,9 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
 
 bool VideoSurface::present(const QVideoFrame &frame)
 {
+#ifdef Q_OS_ANDROID
     qDebug() << "Present got frame" << frame;
+#endif
     QVideoFrame myFrame = frame;
     myFrame.map(QAbstractVideoBuffer::ReadOnly);
 
