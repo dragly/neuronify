@@ -64,14 +64,14 @@ void RetinaEngine::makeReceptiveField()
         }
     }
 
-//    for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
-//    {
-//        for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
-//        {
-//            cout << m_recField[i][j]  << "  ";
-//        }
-//        cout << endl;
-//    }
+    //    for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
+    //    {
+    //        for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
+    //        {
+    //            cout << m_recField[i][j]  << "  ";
+    //        }
+    //        cout << endl;
+    //    }
 
 }
 
@@ -82,7 +82,7 @@ void RetinaEngine::calculateFiringRate()
 
     for(int i = 0; i < m_nPixelsX; i++){
         for(int j = 0; j < m_nPixelsY; j++){
-//            qDebug() << m_stim.at(i).at(j)  << "    " << m_recField.at(i).at(j);
+            //            qDebug() << m_stim.at(i).at(j)  << "    " << m_recField.at(i).at(j);
             m_firingRate += m_stim.at(i).at(j) *  m_recField.at(i).at(j) * 1./m_nPixelsX/m_nPixelsY;
         }
     }
@@ -99,14 +99,15 @@ void RetinaEngine::stepEvent(double dt)
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(1, 2);
+    std::uniform_real_distribution<> dis(0,1);
 
-    double shouldFire = (0.5 < m_firingRate*dt);
-    qDebug() << m_firingRate<< shouldFire;
+    double shouldFire = (dis(gen) < m_firingRate*dt);
+    qDebug() << m_firingRate << shouldFire;
     if(shouldFire){
         fire();
+        m_firingRate = 0;
     }
-//    qDebug() << m_firingRate;
+
 
 }
 

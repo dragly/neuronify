@@ -38,11 +38,8 @@
         <file>images/neurons/burst_inhibitory.png</file>
         <file>images/neurons/passive.png</file>
         <file>images/neurons/passive_inhibitory.png</file>
-<<<<<<< HEAD
         <file>images/sensors/eye.png</file>
-=======
         <file>images/sensors/touch_sensor.png</file>
->>>>>>> eef8e69dbfbba9e42ca99003be49cdfb858c12b0
         <file>images/categories/sensors.png</file>
     </qresource>
 </RCC>

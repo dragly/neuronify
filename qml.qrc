@@ -53,12 +53,9 @@
         <file>qml/hud/MetersList.qml</file>
         <file>qml/neurons/AdaptationNeuronCreator.qml</file>
         <file>qml/hud/GeneratorsList.qml</file>
-<<<<<<< HEAD
         <file>qml/sensors/Retina.qml</file>
-=======
         <file>qml/sensors/TouchSensor.qml</file>
         <file>qml/sensors/TouchSensorCell.qml</file>
->>>>>>> eef8e69dbfbba9e42ca99003be49cdfb858c12b0
         <file>qml/hud/SensorsList.qml</file>
     </qresource>
 </RCC>
