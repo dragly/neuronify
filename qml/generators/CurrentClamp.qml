@@ -44,11 +44,9 @@ Node {
         }
     }
 
-    dumpableProperties: [
-        "x",
-        "y",
-        "currentOutput"
-    ]
+    Component.onCompleted: {
+        dumpableProperties.concat("currentOutput")
+    }
 
     Image {
         anchors.fill: parent

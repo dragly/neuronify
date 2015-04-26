@@ -1,11 +1,14 @@
 import QtQuick 2.0
-import "paths"
-import "hud"
 
-Entity {
+import Neuronify 1.0
+
+import "../paths"
+import "../hud"
+import ".."
+
+Node {
     id: cell
     property string objectName: "touchSensorCell"
-    signal droppedConnector(var neuron, var connector)
 
     property var sensor
     property int cellIndex: 0
@@ -19,61 +22,37 @@ Entity {
 
     useDefaultMouseHandling: false
 
+    width: 100
+    height: 100
+
     color: cell.sensing ? "#9ecae1" : "#4292c6"
     connectionPoint: Qt.point(sensor.x + cell.x + cell.width / 2,
                               sensor.y + cell.y + cell.height)
 
-    onConnectionAdded: {
-        connections.push(connection)
-        connection.customDump = function(index, entities) {
-            var toNeuron = connection.itemB
-            var indexOfToNeuron = entities.indexOf(toNeuron)
-            var sensorName = "entity" + entities.indexOf(sensor)
+    onEdgeAdded: {
+        connections.push(edge)
+        edge.customDump = function(index, graphEngine) {
+            var toNeuron = edge.itemB
+            var indexOfToNeuron = graphEngine.nodeIndex(toNeuron)
+            var sensorName = "entity" + graphEngine.nodeIndex(sensor)
             return "connectEntities(" + sensorName + ".cellAt(" + cellIndex + "), entity" + indexOfToNeuron + ")\n"
         }
     }
 
-    onConnectionRemoved: {
+    onEdgeRemoved: {
         connections.splice(connections.indexOf(connection), 1)
     }
 
-    onStep: {
-        cell.dt = dt
-    }
-
-    onOutputConnectionStep: {
-        var neuron = target
-        timeSinceFire += dt
-        var V = voltage
-        var Is = 0
-        if(sensing) {
-            gs += 20.0 * dt
-        }
-        Is = gs * (V - 60)
-        var voltageChange = - (V + 50) - Is
-        var dV = voltageChange * dt
-        voltage += dV;
-        if(firedLastTime) {
-            voltage = -100
-            gs = 0
-            firedLastTime = false
-            return
-        }
-
-        var shouldFire = false
-        if(voltage > 0.0) {
-            shouldFire = true
-        }
-        if(shouldFire) {
-            voltage += 100.0
-            timeSinceFire = 0.0
-            firedLastTime = true
-            neuron.stimulate(3.0)
+    engine: NodeEngine {
+        fireOutput: 2.0
+        onStepped: {
+            if(sensing) {
+                currentOutput = sensor.sensingCurrentOutput
+            } else {
+                currentOutput = 0.0
+            }
         }
     }
-
-    width: 100
-    height: 100
 
     Rectangle {
         anchors.fill: parent

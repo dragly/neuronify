@@ -1,16 +1,21 @@
 import QtQuick 2.0
-import "paths"
-import "hud"
 
-Entity {
+import Neuronify 1.0
+
+import "../paths"
+import "../hud"
+import ".."
+
+Node {
     id: sensorRoot
     objectName: "touchSensor"
     fileName: "TouchSensor.qml"
 
     property int cells: 5
     property int _oldCells: 0
-    property var dropFunction
     property var actualCells: []
+    property real sensingCurrentOutput: 500.0
+    property var dropFunction
 
     width: cells * 100
     height: 100
@@ -27,6 +32,8 @@ Entity {
 
     Component.onCompleted: {
         dropFunction = simulator.createConnectionToPoint
+        dumpableProperties.concat(["cells",
+                                   "sensingCurrentOutput"])
         resetCells()
     }
 
@@ -41,16 +48,18 @@ Entity {
         }
         actualCells.length = 0
         for(var i = 0; i < cells; i++) {
-            var cell = simulator.createEntity("TouchSensorCell.qml", {cellIndex: i, sensor: sensorRoot})
+            var cell = simulator.createEntity("sensors/TouchSensorCell.qml", {cellIndex: i, sensor: sensorRoot})
             cell.parent = cellRow
             actualCells.push(cell)
         }
     }
 
-    onStep: {
-        for(var i in actualCells) {
-            var cell = actualCells[i]
-            cell.step(dt)
+    engine: NodeEngine {
+        onStepped: {
+            for(var i in actualCells) {
+                var cell = actualCells[i]
+                cell.engine.step(dt)
+            }
         }
     }
 
@@ -122,7 +131,7 @@ Entity {
         Image {
             anchors.fill: parent
             anchors.margins: parent.width * 0.1
-            source: "images/transform-move.png"
+            source: "qrc:/images/transform-move.png"
             smooth: true
             antialiasing: true
         }

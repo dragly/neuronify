@@ -6,21 +6,21 @@ CreationList {
     CreationItem {
         name: "Passive neuron"
         description: "Neuron with only passive currents."
-        source: "neurons/PassiveNeuron.qml"
+        source: "../neurons/PassiveNeuron.qml"
         imageSource: "qrc:/images/neurons/passive.png"
     }
 
     CreationItem {
         name: "Bursting neuron"
         description: "Neuron that bursts on stimulation."
-        source: "neurons/BurstNeuron.qml"
+        source: "../neurons/BurstNeuron.qml"
         imageSource: "qrc:/images/neurons/burst.png"
     }
 
     CreationItem {
         name: "Adaptation neuron"
         description: "Neuron passive currents and adaptation on firing."
-        source: "neurons/AdaptationNeuron.qml"
+        source: "../neurons/AdaptationNeuron.qml"
         imageSource: "qrc:/images/neurons/adaptive.png"
     }
 }

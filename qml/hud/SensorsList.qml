@@ -10,4 +10,10 @@ CreationList {
         imageSource: "qrc:/images/sensors/eye.png"
     }
 
+    CreationItem {
+        name: "Touch sensor"
+        description: "Gives a current output based on touch."
+        source: "../sensors/TouchSensor.qml"
+        imageSource: "qrc:/images/sensors/touch_sensor.png"
+    }
 }

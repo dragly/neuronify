@@ -17,11 +17,6 @@ Node {
     width: parent.width * 0.015
     height: width
 
-    dumpableProperties: [
-        "x",
-        "y"
-    ]
-
     engine: NodeEngine {
         id: engine
         property real rate: 1.0
