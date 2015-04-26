@@ -37,9 +37,12 @@ Node {
         }
     }
 
-    Rectangle {
+    Image {
+        source: "qrc:/images/creators/generators/poisson_generator.png"
+        smooth: true
+        antialiasing: true
         anchors.fill: parent
-        color: "pink"
+        fillMode: Image.PreserveAspectFit
     }
 
     Connector {

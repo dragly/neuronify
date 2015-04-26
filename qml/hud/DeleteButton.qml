@@ -23,6 +23,8 @@ Image {
     fillMode: Image.PreserveAspectFit
 
     source: "../../images/delete.png"
+    antialiasing: true
+    smooth: true
 
     MouseArea {
         anchors.fill: parent
