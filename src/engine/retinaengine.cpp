@@ -1,28 +1,20 @@
 #include "retinaengine.h"
+
 #include <QPainter>
+#include <QVideoRendererControl>
 
 RetinaEngine::RetinaEngine():
     m_nPixelsX(300),
     m_nPixelsY(300)
 {
     makeReceptiveField();
-    startCamera();
     connect(&m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
 }
-
 
 RetinaEngine::~RetinaEngine()
 {
 
 }
-
-void RetinaEngine::startCamera()
-{
-    m_camera = new QCamera;
-    m_camera->setViewfinder(&m_videoSurface);
-    m_camera->start();
-}
-
 
 void RetinaEngine::receivedImage()
 {
@@ -42,9 +34,34 @@ void RetinaEngine::receivedImage()
     calculateFiringRate();
     update();
 }
+
+void RetinaEngine::setCamera(QObject* camera)
+{
+    if (m_camera == camera)
+        return;
+
+    m_camera = camera;
+
+    QCamera *cameraObject = qvariant_cast<QCamera *>(camera->property("mediaObject"));
+
+    if(cameraObject) {
+        m_rendererControl = cameraObject->service()->requestControl<QVideoRendererControl *>();
+        if(m_rendererControl) {
+            m_rendererControl->setSurface(&m_videoSurface);
+        }
+    }
+
+    emit cameraChanged(camera);
+}
+
 QImage RetinaEngine::image() const
 {
     return m_image;
+}
+
+QObject* RetinaEngine::camera() const
+{
+    return m_camera;
 }
 
 
@@ -74,8 +91,6 @@ void RetinaEngine::makeReceptiveField()
     //    }
 
 }
-
-
 
 void RetinaEngine::calculateFiringRate()
 {

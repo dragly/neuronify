@@ -15,6 +15,7 @@ public:
     // QAbstractVideoSurface interface
     virtual QList<QVideoFrame::PixelFormat> supportedPixelFormats(QAbstractVideoBuffer::HandleType handleType) const;
     virtual bool present(const QVideoFrame &frame);
+    virtual bool isFormatSupported(const QVideoSurfaceFormat &format) const;
 
     QImage image() const;
 

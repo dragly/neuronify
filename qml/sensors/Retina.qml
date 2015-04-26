@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
+import QtMultimedia 5.0
 
 import Neuronify 1.0
 
@@ -24,13 +25,7 @@ Node {
 
     engine: RetinaEngine {
         id: retinaEngine
-
-//        onStepped: {
-//            var shouldFire = (Math.random() < rate*dt)
-//            if(shouldFire) {
-//                fire()
-//            }
-//        }
+        camera: camera
     }
 
     RetinaPainter {
@@ -38,14 +33,23 @@ Node {
         width: 100
         height: 100
         retinaEngine: retinaEngine
-
     }
 
-    MouseArea {
-        id: dragArea
-        anchors.fill: retinaPainter
-        drag.target: retinaPainter
+    Camera {
+        id: camera
     }
+
+//    VideoOutput {
+//        id: retinaPainter
+//        width: 100
+//        height: 100
+//        source: cameraA
+
+//        MouseArea {
+//            anchors.fill: parent
+//            drag.target: parent
+//        }
+//    }
 
     Image {
         source: "qrc:/images/sensors/eye.png"

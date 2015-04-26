@@ -1,5 +1,8 @@
 #include "videosurface.h"
 
+#include <QDebug>
+#include <QVideoSurfaceFormat>
+
 VideoSurface::VideoSurface()
 {
 
@@ -17,12 +20,10 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
     pixelFormat.append(QVideoFrame::Format_RGB24);
 
     return pixelFormat;
-
 }
 
 bool VideoSurface::present(const QVideoFrame &frame)
 {
-
     QVideoFrame myFrame = frame;
     myFrame.map(QAbstractVideoBuffer::ReadOnly);
 
@@ -30,8 +31,13 @@ bool VideoSurface::present(const QVideoFrame &frame)
     m_image = QImage(myFrame.bits(), myFrame.width(), myFrame.height(),
                      myFrame.bytesPerLine(), imageFormat);
     emit gotImage(QRect());
+    return true;
 }
 
+bool VideoSurface::isFormatSupported(const QVideoSurfaceFormat &format) const
+{
+    return true;
+}
 
 QImage VideoSurface::image() const
 {
