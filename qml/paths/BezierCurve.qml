@@ -2,6 +2,7 @@ import QtQuick 2.0
 
 Canvas {
     id:canvas
+
     property color color: "cyan"
     property real lineWidth: 2.5
     property point startPoint: Qt.point(0,0)
@@ -9,13 +10,18 @@ Canvas {
     property point controlPoint2: Qt.point(200,100)
     property point endPoint: Qt.point(100,100)
 
-    antialiasing: true
-    smooth: true
+    Component.onCompleted: {
+        canvas.requestPaint()
+        canvas.update()
+    }
 
-    x: Math.min(startPoint.x - lineWidth / 2, endPoint.x - lineWidth / 2, controlPoint1.x - lineWidth / 2, controlPoint2.x - lineWidth / 2)
-    y: Math.min(startPoint.y - lineWidth / 2, endPoint.y - lineWidth / 2, controlPoint1.y - lineWidth / 2, controlPoint2.y - lineWidth / 2)
-    width: Math.max(startPoint.x, endPoint.x, controlPoint1.x, controlPoint2.x) - x + 1
-    height: Math.max(startPoint.y, endPoint.y, controlPoint1.y, controlPoint2.y) - y + 1
+    function relativeX(x) {
+        return x - canvas.x;
+    }
+
+    function relativeY(y) {
+        return y - canvas.y;
+    }
 
     onLineWidthChanged: requestPaint()
     onStartPointChanged: requestPaint()
@@ -23,32 +29,36 @@ Canvas {
     onControlPoint1Changed: requestPaint()
     onControlPoint2Changed: requestPaint()
     onColorChanged: requestPaint()
-    onVisibleChanged: {
-        if(visible) {
-            requestPaint()
-        }
-    }
-
-    function relativeX(x) {
-        return x - canvas.x;
-    }
-    function relativeY(y) {
-        return y - canvas.y;
-    }
-
+    onVisibleChanged: requestPaint()
+    onWidthChanged: requestPaint()
+    onHeightChanged: requestPaint()
 
     onPaint: {
-        var ctx = canvas.getContext('2d');
-        ctx.save();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = canvas.color;
-        ctx.lineWidth = canvas.lineWidth;
-        ctx.beginPath();
-        ctx.moveTo(relativeX(startPoint.x), relativeY(startPoint.y));
+        var ctx = canvas.getContext('2d')
+        ctx.save()
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.strokeStyle = canvas.color
+        ctx.lineWidth = canvas.lineWidth
+        ctx.beginPath()
+        ctx.moveTo(relativeX(startPoint.x), relativeY(startPoint.y))
         ctx.bezierCurveTo(relativeX(canvas.controlPoint1.x), relativeY(canvas.controlPoint1.y),
                           relativeX(canvas.controlPoint2.x), relativeY(canvas.controlPoint2.y),
-                          relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y));
-        ctx.stroke();
-        ctx.restore();
+                          relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y))
+        ctx.stroke()
+        ctx.restore()
+
+        console.log("x: " + x + " width: " + width + " height: " + height)
+        console.log(canvasWindow)
+        console.log(canvasSize)
+        console.log(parent.width)
     }
+
+    antialiasing: true
+    smooth: true
+
+    x: Math.min(startPoint.x - lineWidth / 2, endPoint.x - lineWidth / 2, controlPoint1.x - lineWidth / 2, controlPoint2.x - lineWidth / 2)
+    y: Math.min(startPoint.y - lineWidth / 2, endPoint.y - lineWidth / 2, controlPoint1.y - lineWidth / 2, controlPoint2.y - lineWidth / 2)
+    width: Math.max(startPoint.x, endPoint.x, controlPoint1.x, controlPoint2.x) - x + lineWidth * 2
+    height: Math.max(startPoint.y, endPoint.y, controlPoint1.y, controlPoint2.y) - y + lineWidth * 2
+    canvasWindow: Qt.rect(0, 0, width, height)
 }

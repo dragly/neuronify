@@ -13,6 +13,7 @@ Node {
 
     width: 62
     height: 62
+    color: "#dd5900"
 
     engine: NodeEngine {
         id: engine

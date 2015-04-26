@@ -27,7 +27,8 @@ Item {
         spacing: 10
 
         Text {
-            text: "Voltage: " + engine.voltage.toFixed(0) + " mV"
+            text: engine.voltage.toFixed(0) + " mV"
+            anchors.right: parent.right
         }
 
         CheckBox {
