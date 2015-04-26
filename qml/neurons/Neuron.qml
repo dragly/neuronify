@@ -20,12 +20,6 @@ Node {
     height: width
     color: inhibitory ? "#e41a1c" : "#6baed6"
 
-    dumpableProperties: [
-        "x",
-        "y",
-        "fireOutput"
-    ]
-
     controls: Component {
         NeuronControls {
             engine: root.engine
@@ -39,6 +33,10 @@ Node {
         PassiveCurrent {
             id: passiveCurrent
         }
+    }
+
+    Component.onCompleted: {
+        dumpableProperties.concat("fireOutput")
     }
 
     Image {

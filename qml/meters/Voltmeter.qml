@@ -32,16 +32,6 @@ Node {
     height: 120
     color: "#deebf7"
 
-    dumpableProperties: [
-        "x",
-        "y"
-    ]
-
-    function resetMinMax(plot) {
-        plot.minimumValue = minimumValue
-        plot.maximumValue = maximumValue
-    }
-
     engine: NodeEngine {
         onStepped: {
             timeSinceLastUpdate += dt
@@ -64,6 +54,11 @@ Node {
             lastUpdateTime = currentUpdateTime
             timeSinceLastUpdate = 0
         }
+    }
+
+    function resetMinMax(plot) {
+        plot.minimumValue = minimumValue
+        plot.maximumValue = maximumValue
     }
 
     onEdgeAdded: {
