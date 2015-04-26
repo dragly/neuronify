@@ -9,13 +9,15 @@ import ".."
 
 Node {
     id: root
-    objectName: "neuron"
-    fileName: "generators/PoissonGenerator.qml"
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
 
+    objectName: "neuron"
+    fileName: "generators/PoissonGenerator.qml"
+
     width: parent.width * 0.015
     height: width
+    color: "#55d400"
 
     engine: NodeEngine {
         id: engine
@@ -26,6 +28,7 @@ Node {
             var shouldFire = (Math.random() < rate*dt)
             if(shouldFire) {
                 fire()
+                overlayAnimation.restart()
             }
         }
     }
@@ -67,11 +70,33 @@ Node {
     }
 
     Image {
+        anchors.fill: parent
+
         source: "qrc:/images/generators/poisson_generator.png"
         smooth: true
         antialiasing: true
-        anchors.fill: parent
         fillMode: Image.PreserveAspectFit
+    }
+
+    Image {
+        id: overlay
+        anchors.fill: parent
+
+        source: "qrc:/images/generators/generator_overlay.png"
+        smooth: true
+        antialiasing: true
+        fillMode: Image.PreserveAspectFit
+        opacity: 0
+    }
+
+    NumberAnimation {
+        id: overlayAnimation
+        target: overlay
+        property: "opacity"
+        from: 0.5
+        to: 0
+        duration: 200
+        easing.type: Easing.OutQuad
     }
 
     Connector {

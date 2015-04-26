@@ -95,7 +95,7 @@ Edge {
         width: 10
         height: width
 
-        radius: itemA ? (itemA.stimulation > 0 ?  0 : width / 2.0) : width / 2.0;
+        radius: (itemA && itemA.engine) ? (itemA.engine.fireOutput > 0 ?  0 : width / 2.0) : width / 2.0;
         rotation: angle + 45
         color: connectionRoot._internalColor
 

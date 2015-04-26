@@ -8,7 +8,9 @@ Canvas {
     property point controlPoint1: Qt.point(0,40)
     property point controlPoint2: Qt.point(200,100)
     property point endPoint: Qt.point(100,100)
+
     antialiasing: true
+    smooth: true
 
     x: Math.min(startPoint.x - lineWidth / 2, endPoint.x - lineWidth / 2, controlPoint1.x - lineWidth / 2, controlPoint2.x - lineWidth / 2)
     y: Math.min(startPoint.y - lineWidth / 2, endPoint.y - lineWidth / 2, controlPoint1.y - lineWidth / 2, controlPoint2.y - lineWidth / 2)
