@@ -53,7 +53,7 @@ Node {
     Image {
         anchors.fill: parent
         fillMode: Image.PreserveAspectFit
-        source: "qrc:/images/creators/generators/current_clamp.png"
+        source: "qrc:/images/generators/current_clamp.png"
     }
 
     Connector {

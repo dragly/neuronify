@@ -38,7 +38,7 @@ Node {
     }
 
     Image {
-        source: "qrc:/images/creators/generators/poisson_generator.png"
+        source: "qrc:/images/generators/poisson_generator.png"
         smooth: true
         antialiasing: true
         anchors.fill: parent

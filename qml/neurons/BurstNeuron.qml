@@ -6,8 +6,8 @@ import ".."
 Neuron {
     objectName: "BurstNeuron"
     fileName: "neurons/BurstNeuron.qml"
-    imageSource: "qrc:/images/creators/neurons/burst.png"
-    inhibitoryImageSource: "qrc:/images/creators/neurons/burst_inhibitory.png"
+    imageSource: "qrc:/images/neurons/burst.png"
+    inhibitoryImageSource: "qrc:/images/neurons/burst_inhibitory.png"
 
     engine: NeuronEngine {
         fireOutput: 2.0

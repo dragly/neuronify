@@ -7,6 +7,6 @@ CreationList {
         name: "Voltmeter"
         description: "Measures the voltage of neurons."
         source: "qrc:/qml/meters/Voltmeter.qml"
-        imageSource: "qrc:/images/creators/meters/voltmeter.png"
+        imageSource: "qrc:/images/meters/voltmeter.png"
     }
 }

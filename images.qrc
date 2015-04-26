@@ -8,21 +8,35 @@
         <file>images/endpoint_exitatory.png</file>
         <file>images/delete.png</file>
         <file>images/menus/properties.png</file>
-        <file>images/creators/neurons/adaptive.png</file>
-        <file>images/creators/neurons/blank.png</file>
-        <file>images/creators/neurons/burst.png</file>
-        <file>images/creators/neurons/passive.png</file>
-        <file>images/creators/neurons/adaptive_inhibitory.png</file>
-        <file>images/creators/neurons/blank_inhibitory.png</file>
-        <file>images/creators/neurons/burst_inhibitory.png</file>
-        <file>images/creators/neurons/passive_inhibitory.png</file>
-        <file>images/creators/categories/neuron.png</file>
-        <file>images/creators/categories/marker.png</file>
-        <file>images/creators/categories/inhibitory_neuron.png</file>
-        <file>images/creators/categories/meters.png</file>
-        <file>images/creators/meters/voltmeter.png</file>
-        <file>images/creators/generators/current_clamp.png</file>
-        <file>images/creators/categories/generators.png</file>
-        <file>images/creators/generators/poisson_generator.png</file>
+        <file>images/categories/generators.png</file>
+        <file>images/categories/inhibitory_neuron.png</file>
+        <file>images/categories/marker.png</file>
+        <file>images/categories/meters.png</file>
+        <file>images/categories/neuron.png</file>
+        <file>images/generators/current_clamp.png</file>
+        <file>images/generators/poisson_generator.png</file>
+        <file>images/logo/android/neuronify_logo_1024.png</file>
+        <file>images/logo/android/neuronify_logo_120.png</file>
+        <file>images/logo/android/neuronify_logo_144.png</file>
+        <file>images/logo/android/neuronify_logo_152.png</file>
+        <file>images/logo/android/neuronify_logo_180.png</file>
+        <file>images/logo/android/neuronify_logo_192.png</file>
+        <file>images/logo/android/neuronify_logo_36.png</file>
+        <file>images/logo/android/neuronify_logo_40.png</file>
+        <file>images/logo/android/neuronify_logo_48.png</file>
+        <file>images/logo/android/neuronify_logo_512.png</file>
+        <file>images/logo/android/neuronify_logo_72.png</file>
+        <file>images/logo/android/neuronify_logo_76.png</file>
+        <file>images/logo/android/neuronify_logo_80.png</file>
+        <file>images/logo/android/neuronify_logo_96.png</file>
+        <file>images/meters/voltmeter.png</file>
+        <file>images/neurons/adaptive.png</file>
+        <file>images/neurons/adaptive_inhibitory.png</file>
+        <file>images/neurons/blank.png</file>
+        <file>images/neurons/blank_inhibitory.png</file>
+        <file>images/neurons/burst.png</file>
+        <file>images/neurons/burst_inhibitory.png</file>
+        <file>images/neurons/passive.png</file>
+        <file>images/neurons/passive_inhibitory.png</file>
     </qresource>
 </RCC>

@@ -23,22 +23,22 @@ Item {
         id: categories
         ListElement {
             listSource: "NeuronList.qml"
-            imageSource: "qrc:/images/creators/categories/neuron.png"
+            imageSource: "qrc:/images/categories/neuron.png"
         }
 
         ListElement  {
             listSource: "InhibitoryNeuronList.qml"
-            imageSource: "qrc:/images/creators/categories/inhibitory_neuron.png"
+            imageSource: "qrc:/images/categories/inhibitory_neuron.png"
         }
 
         ListElement  {
             listSource: "MetersList.qml"
-            imageSource: "qrc:/images/creators/categories/meters.png"
+            imageSource: "qrc:/images/categories/meters.png"
         }
 
         ListElement  {
             listSource: "GeneratorsList.qml"
-            imageSource: "qrc:/images/creators/categories/generators.png"
+            imageSource: "qrc:/images/categories/generators.png"
         }
     }
 
@@ -153,7 +153,7 @@ Item {
                 }
 
                 highlight: Image {
-                    source: "qrc:/images/creators/categories/marker.png"
+                    source: "qrc:/images/categories/marker.png"
 
                     width: Style.touchableSize
                     height: width

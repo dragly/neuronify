@@ -15,24 +15,24 @@ NodeEngine::~NodeEngine()
 
 double NodeEngine::fireOutput() const
 {
-    return m_stimulation;
+    return m_fireOutput;
 }
 
 void NodeEngine::setFireOutput(double arg)
 {
-    if (m_stimulation == arg)
+    if (m_fireOutput == arg)
         return;
 
-    m_stimulation = arg;
+    m_fireOutput = arg;
     emit fireOutputChanged(arg);
 }
 
 void NodeEngine::setCurrentOutput(double arg)
 {
-    if (m_currentStimulation == arg)
+    if (m_currentOutput == arg)
         return;
 
-    m_currentStimulation = arg;
+    m_currentOutput = arg;
     emit currentOutputChanged(arg);
 }
 
@@ -48,7 +48,7 @@ void NodeEngine::setHasFired(bool fired)
 
 double NodeEngine::currentOutput() const
 {
-    return m_currentStimulation;
+    return m_currentOutput;
 }
 
 void NodeEngine::step(double dt)

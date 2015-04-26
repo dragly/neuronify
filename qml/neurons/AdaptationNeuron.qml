@@ -6,8 +6,8 @@ import ".."
 Neuron {
     objectName: "adaptationNeuron"
     fileName: "neurons/AdaptationNeuron.qml"
-    imageSource: "qrc:/images/creators/neurons/adaptive.png"
-    inhibitoryImageSource: "qrc:/images/creators/neurons/adaptive_inhibitory.png"
+    imageSource: "qrc:/images/neurons/adaptive.png"
+    inhibitoryImageSource: "qrc:/images/neurons/adaptive_inhibitory.png"
 
     engine: NeuronEngine {
         fireOutput: 2.0
