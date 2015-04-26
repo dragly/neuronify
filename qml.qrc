@@ -30,13 +30,11 @@
         <file>qml/hud/PlaybackControls.qml</file>
         <file>qml/menus/mainmenu/MainMenuButton.qml</file>
         <file>qml/menus/mainmenu/AdvancedView.qml</file>
-        <file>qml/TouchSensor.qml</file>
         <file>qml/Node.qml</file>
         <file>qml/hud/SensorControls.qml</file>
         <file>qml/io/FileManager.qml</file>
         <file>qml/tools/AutoLayout.qml</file>
         <file>qml/tools/Clipboard.qml</file>
-        <file>qml/TouchSensorCell.qml</file>
         <file>qml/neurons/AdaptationNeuron.qml</file>
         <file>qml/generators/PoissonGenerator.qml</file>
         <file>qml/Connector.qml</file>
@@ -55,5 +53,8 @@
         <file>qml/hud/MetersList.qml</file>
         <file>qml/neurons/AdaptationNeuronCreator.qml</file>
         <file>qml/hud/GeneratorsList.qml</file>
+        <file>qml/sensors/TouchSensor.qml</file>
+        <file>qml/sensors/TouchSensorCell.qml</file>
+        <file>qml/hud/SensorsList.qml</file>
     </qresource>
 </RCC>

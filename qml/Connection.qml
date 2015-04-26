@@ -35,7 +35,7 @@ Edge {
 
     function dump(index, graphEngine) {
         if(customDump) {
-            return customDump(index, entities)
+            return customDump(index, graphEngine)
         }
 
         var outputString = ""
