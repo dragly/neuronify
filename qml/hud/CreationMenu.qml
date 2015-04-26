@@ -22,22 +22,22 @@ Item {
     ListModel {
         id: categories
         ListElement {
-            listSource: "qrc:/qml/hud/NeuronList.qml"
+            listSource: "NeuronList.qml"
             imageSource: "qrc:/images/creators/categories/neuron.png"
         }
 
         ListElement  {
-            listSource: "qrc:/qml/hud/InhibitoryNeuronList.qml"
+            listSource: "InhibitoryNeuronList.qml"
             imageSource: "qrc:/images/creators/categories/inhibitory_neuron.png"
         }
 
         ListElement  {
-            listSource: "qrc:/qml/hud/MetersList.qml"
+            listSource: "MetersList.qml"
             imageSource: "qrc:/images/creators/categories/meters.png"
         }
 
         ListElement  {
-            listSource: "qrc:/qml/hud/GeneratorsList.qml"
+            listSource: "GeneratorsList.qml"
             imageSource: "qrc:/images/creators/categories/generators.png"
         }
     }
