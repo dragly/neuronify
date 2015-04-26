@@ -27,8 +27,7 @@ public slots:
     void removeEdge(Edge* edge);
 
 private:
-    NodeEngine* m_engine;
-    double m_stimulation;
+    NodeEngine* m_engine = nullptr;
 };
 
 #endif // NODEBASE_H
