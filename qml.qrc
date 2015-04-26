@@ -55,5 +55,7 @@
         <file>qml/hud/MetersList.qml</file>
         <file>qml/neurons/AdaptationNeuronCreator.qml</file>
         <file>qml/hud/GeneratorsList.qml</file>
+        <file>qml/sensors/Retina.qml</file>
+        <file>qml/hud/SensorsList.qml</file>
     </qresource>
 </RCC>

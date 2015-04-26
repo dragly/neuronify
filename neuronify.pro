@@ -6,7 +6,7 @@ android {
     TARGET = Neuronify
 }
 
-QT += qml quick widgets
+QT += qml quick widgets multimedia multimediawidgets
 
 CONFIG += c++11
 
@@ -19,7 +19,10 @@ HEADERS += \
     src/engine/graphengine.h \
     src/engine/nodeengine.h \
     src/engine/nodebase.h \
-    src/engine/neuronengine.h
+    src/engine/neuronengine.h \
+    src/engine/retinaengine.h \
+    src/engine/videosurface.h \
+    src/engine/retinapainter.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -31,7 +34,10 @@ SOURCES += \
     src/engine/graphengine.cpp \
     src/engine/nodeengine.cpp \
     src/engine/nodebase.cpp \
-    src/engine/neuronengine.cpp
+    src/engine/neuronengine.cpp \
+    src/engine/retinaengine.cpp \
+    src/engine/videosurface.cpp \
+    src/engine/retinapainter.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

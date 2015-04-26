@@ -12,4 +12,6 @@ ApplicationWindow {
     Neuronify {
         anchors.fill: parent
     }
+
+
 }
