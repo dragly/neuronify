@@ -2,8 +2,8 @@
 #include <QPainter>
 
 RetinaEngine::RetinaEngine():
-    m_nPixelsX(10),
-    m_nPixelsY(10)
+    m_nPixelsX(300),
+    m_nPixelsY(300)
 {
     makeReceptiveField();
     startCamera();
@@ -102,7 +102,6 @@ void RetinaEngine::stepEvent(double dt)
     std::uniform_real_distribution<> dis(0,1);
 
     double shouldFire = (dis(gen) < m_firingRate*dt);
-    qDebug() << m_firingRate << shouldFire;
     if(shouldFire){
         fire();
         m_firingRate = 0;
