@@ -46,11 +46,6 @@ Canvas {
                           relativeX(canvas.endPoint.x), relativeY(canvas.endPoint.y))
         ctx.stroke()
         ctx.restore()
-
-        console.log("x: " + x + " width: " + width + " height: " + height)
-        console.log(canvasWindow)
-        console.log(canvasSize)
-        console.log(parent.width)
     }
 
     antialiasing: true
