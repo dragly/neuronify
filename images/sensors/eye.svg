@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="125.0183"
+   height="126.39438"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="eye.svg"
+   inkscape:export-filename="/home/milad/Dropbox/software/apps/neuronify/neuronify/images/sensory/eye.png"
+   inkscape:export-xdpi="120"
+   inkscape:export-ydpi="120">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="3.959798"
+     inkscape:cx="8.4081806"
+     inkscape:cy="65.19733"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="3119"
+     inkscape:window-height="1770"
+     inkscape:window-x="81"
+     inkscape:window-y="30"
+     inkscape:window-maximized="1">
+    <inkscape:grid
+       type="xygrid"
+       id="grid3787"
+       empspacing="5"
+       visible="true"
+       enabled="true"
+       snapvisiblegridlinesonly="true"
+       originx="-17.746685px"
+       originy="-745.48821px" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-17.746685,-180.47959)">
+    <rect
+       style="fill:#756bb1;fill-opacity:1;stroke:#bcbddc;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       id="rect3793"
+       width="121.7515"
+       height="123.12757"
+       x="19.380087"
+       y="182.11299"
+       ry="27.179756" />
+    <path
+       style="fill:#efedf5;fill-opacity:1;stroke:#bcbddc;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       d="m 22.649585,243.44577 c 0,0 37.738746,-25.84233 58.119512,-25.69722 20.380763,0.14511 57.092993,26.15924 57.092993,26.15924 0,0 -37.73876,25.84233 -58.119512,25.69722 C 59.361812,269.4599 22.649585,243.44577 22.649585,243.44577 z"
+       id="rect3785"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="czczc" />
+    <path
+       sodipodi:type="arc"
+       style="fill:#bcbddc;fill-opacity:1;stroke:none"
+       id="path3000"
+       sodipodi:cx="205.56604"
+       sodipodi:cy="112.92032"
+       sodipodi:rx="76.771591"
+       sodipodi:ry="76.771591"
+       d="m 207.35895,189.67097 a 76.771591,76.771591 0 1 1 0.0628,-0.001"
+       sodipodi:start="1.5474404"
+       sodipodi:end="7.8298073"
+       sodipodi:open="true"
+       transform="matrix(0.32484993,0,0,0.32852148,13.477724,206.58003)" />
+    <path
+       sodipodi:type="arc"
+       style="fill:#efedf5;fill-opacity:1;stroke:none"
+       id="path2998"
+       sodipodi:cx="207.08127"
+       sodipodi:cy="97.768028"
+       sodipodi:rx="27.779196"
+       sodipodi:ry="27.779196"
+       d="m 207.73002,125.53965 a 27.779196,27.779196 0 1 1 0.0227,-5.4e-4"
+       sodipodi:start="1.5474404"
+       sodipodi:end="7.8298073"
+       sodipodi:open="true"
+       transform="matrix(0.32484993,0,0,0.32852148,3.4692104,207.24374)" />
+  </g>
+</svg>

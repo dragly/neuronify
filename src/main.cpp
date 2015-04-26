@@ -4,6 +4,8 @@
 #include "engine/neuronengine.h"
 #include "engine/current.h"
 #include "engine/graphengine.h"
+#include "engine/retinaengine.h"
+#include "engine/retinapainter.h"
 #include "currents/passivecurrent.h"
 #include "currents/adaptationcurrent.h"
 #include "io/fileio.h"
@@ -23,6 +25,8 @@ int main(int argc, char *argv[])
     qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngine");
+    qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");
+    qmlRegisterType<RetinaPainter>("Neuronify", 1, 0, "RetinaPainter");
 
     qmlRegisterType<Current>("Neuronify", 1, 0, "Current");
     qmlRegisterType<PassiveCurrent>("Neuronify", 1, 0, "PassiveCurrent");
