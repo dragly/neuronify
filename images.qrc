@@ -23,5 +23,6 @@
         <file>images/creators/meters/voltmeter.png</file>
         <file>images/creators/generators/current_clamp.png</file>
         <file>images/creators/categories/generators.png</file>
+        <file>images/creators/generators/poisson_generator.png</file>
     </qresource>
 </RCC>
