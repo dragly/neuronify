@@ -1,6 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
-import QtMultimedia 5.0
+import QtMultimedia 5.4
 
 import Neuronify 1.0
 
@@ -30,6 +30,8 @@ Node {
 
     RetinaPainter {
         id: retinaPainter
+        visible: Qt.platform.os !== "android"
+        enabled: Qt.platform.os !== "android"
         width: 100
         height: 100
         retinaEngine: retinaEngine
@@ -37,19 +39,19 @@ Node {
 
     Camera {
         id: camera
+        viewfinder.resolution: Qt.size(640, 480)
     }
 
-//    VideoOutput {
-//        id: retinaPainter
-//        width: 100
-//        height: 100
-//        source: cameraA
+    VideoOutput {
+        width: 100
+        height: 100
+        source: camera
 
-//        MouseArea {
-//            anchors.fill: parent
-//            drag.target: parent
-//        }
-//    }
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+        }
+    }
 
     Image {
         source: "qrc:/images/sensors/eye.png"

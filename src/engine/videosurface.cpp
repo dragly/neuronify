@@ -16,6 +16,7 @@ VideoSurface::~VideoSurface()
 
 QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVideoBuffer::HandleType handleType) const
 {
+    qDebug() << "Supported formats!";
     QList<QVideoFrame::PixelFormat> pixelFormat;
     pixelFormat.append(QVideoFrame::Format_RGB24);
 
@@ -24,6 +25,7 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
 
 bool VideoSurface::present(const QVideoFrame &frame)
 {
+    qDebug() << "Present got frame" << frame;
     QVideoFrame myFrame = frame;
     myFrame.map(QAbstractVideoBuffer::ReadOnly);
 
@@ -31,11 +33,6 @@ bool VideoSurface::present(const QVideoFrame &frame)
     m_image = QImage(myFrame.bits(), myFrame.width(), myFrame.height(),
                      myFrame.bytesPerLine(), imageFormat);
     emit gotImage(QRect());
-    return true;
-}
-
-bool VideoSurface::isFormatSupported(const QVideoSurfaceFormat &format) const
-{
     return true;
 }
 

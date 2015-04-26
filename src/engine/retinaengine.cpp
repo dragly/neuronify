@@ -9,6 +9,7 @@ RetinaEngine::RetinaEngine():
 {
     makeReceptiveField();
     connect(&m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
+    connect(&m_probe, &QVideoProbe::videoFrameProbed, &m_videoSurface, &VideoSurface::present);
 }
 
 RetinaEngine::~RetinaEngine()
@@ -45,10 +46,19 @@ void RetinaEngine::setCamera(QObject* camera)
     QCamera *cameraObject = qvariant_cast<QCamera *>(camera->property("mediaObject"));
 
     if(cameraObject) {
+#ifdef Q_OS_ANDROID
+        qDebug() << "Setting probe source";
+        bool sourceSuccess = m_probe.setSource(cameraObject);
+        if(!sourceSuccess) {
+            qWarning() << "Could not set probe source!";
+        }
+#else
+        qDebug() << "Setting renderer control";
         m_rendererControl = cameraObject->service()->requestControl<QVideoRendererControl *>();
         if(m_rendererControl) {
             m_rendererControl->setSurface(&m_videoSurface);
         }
+#endif
     }
 
     emit cameraChanged(camera);

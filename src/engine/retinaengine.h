@@ -6,6 +6,7 @@
 #include <vector>
 #include <math.h>
 #include <QVideoRendererControl>
+#include <QVideoProbe>
 
 #include "videosurface.h"
 #include "nodeengine.h"
@@ -43,6 +44,7 @@ private:
     QCamera* m_cameraObject = nullptr;
     VideoSurface m_videoSurface;
     QImage m_image;
+    QVideoProbe m_probe;
 
     vector< vector <double>> m_stim;
     vector< vector <double>> m_recField;
