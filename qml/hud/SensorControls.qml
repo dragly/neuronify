@@ -2,6 +2,7 @@ import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import ".."
+import "../controls"
 
 Item {
     id: sensorControlsRoot
@@ -18,34 +19,24 @@ Item {
         Text {
             text: "Cells: " + sensor.cells
         }
-        Slider {
-            id: cellsSlider
+        BoundSlider {
             Layout.fillWidth: true
             minimumValue: 1
             maximumValue: 10
             stepSize: 1
-            value: sensor.cells
-        }
-        Binding {
             target: sensor
             property: "cells"
-            value: cellsSlider.value
         }
 
         Text {
             text: "Current output: " + sensor.sensingCurrentOutput.toFixed(1) + " mA"
         }
-        Slider {
-            id: sensingCurrentOutputSlider
+        BoundSlider {
             Layout.fillWidth: true
             minimumValue: 0.0
             maximumValue: 1000
-            value: sensor.sensingCurrentOutput
-        }
-        Binding {
             target: sensor
             property: "sensingCurrentOutput"
-            value: sensingCurrentOutputSlider.value
         }
 
         Item {

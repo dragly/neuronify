@@ -14,7 +14,7 @@ Node {
     property int cells: 5
     property int _oldCells: 0
     property var actualCells: []
-    property real sensingCurrentOutput: 500.0
+    property real sensingCurrentOutput: 150.0
     property var dropFunction
 
     width: cells * 100

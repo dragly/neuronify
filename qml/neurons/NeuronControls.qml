@@ -16,12 +16,6 @@ Item {
 
     anchors.fill: parent
 
-    Binding {
-        target: engine
-        property: "fireOutput"
-        value: (inhibitoryCheckbox.checked ? -1.0 : 1.0) * fireOutputSlider.value
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: 10
@@ -30,17 +24,14 @@ Item {
             text: engine.voltage.toFixed(0) + " mV"
             anchors.right: parent.right
         }
-
+        Text {
+            text: "Synaptic output: "+ engine.fireOutput.toFixed(1) + " mS"
+        }
         CheckBox {
             id: inhibitoryCheckbox
             text: "Inhibitory"
             checked: (engine.fireOutput < 0.0)
         }
-
-        Text {
-            text: "Synaptic output: "+ engine.fireOutput.toFixed(1) + " mS"
-        }
-
         Slider {
             id: fireOutputSlider
             minimumValue: 0.
@@ -50,14 +41,10 @@ Item {
             Layout.fillWidth: true
             value: Math.abs(engine.fireOutput)
         }
-
-        Button {
-            text: "Delete"
-            Layout.fillWidth: true
-            onClicked: {
-                console.log("Calling deleteClicked signal!")
-                deleteClicked()
-            }
+        Binding {
+            target: engine
+            property: "fireOutput"
+            value: (inhibitoryCheckbox.checked ? -1.0 : 1.0) * fireOutputSlider.value
         }
 
         Item {
