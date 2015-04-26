@@ -45,15 +45,8 @@ Node {
         anchors.fill: parent
         source: inhibitory ? inhibitoryImageSource : imageSource
         fillMode: Image.PreserveAspectFit
-    }
-
-    Rectangle {
-        id: background
-        anchors.fill: parent
-        radius: width / 2
-        color: "transparent"
-        border.color: selected ? "#08306b" : "#2171b5"
-        border.width: selected ? 4.0 : 2.0
+        smooth: true
+        antialiasing: true
     }
 
     Rectangle {

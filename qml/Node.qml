@@ -2,7 +2,7 @@ import QtQuick 2.0
 import Neuronify 1.0
 
 NodeBase {
-    id: entityRoot
+    id: root
     signal clicked(var entity, var mouse)
     signal dragStarted
     signal aboutToDie(var entity)
@@ -38,7 +38,7 @@ NodeBase {
 
         for(var i in dumpableProperties) {
             var propertyName = dumpableProperties[i]
-            entityData[propertyName] = entityRoot[propertyName]
+            entityData[propertyName] = root[propertyName]
         }
 
         var entityName = "entity" + index
@@ -54,7 +54,33 @@ NodeBase {
     }
 
     Component.onDestruction: {
-        aboutToDie(entityRoot)
+        aboutToDie(root)
+    }
+
+    Rectangle {
+        id: selectionIndicator
+
+        property color faintColor: Qt.rgba(0, 0.2, 0.4, 0.5)
+        property color strongColor: Qt.rgba(0.4, 0.6, 0.8, 0.5)
+
+        anchors.centerIn: root
+        visible: root.selected
+
+        color: "transparent"
+
+        border.width: 2.0
+        width: root.width + 12.0
+        height: root.height + 12.0
+
+        antialiasing: true
+        smooth: true
+
+        SequentialAnimation {
+            running: selectionIndicator.visible
+            loops: Animation.Infinite
+            ColorAnimation { target: selectionIndicator; property: "border.color"; from: selectionIndicator.faintColor; to: selectionIndicator.strongColor; duration: 1000; easing.type: Easing.InOutQuad }
+            ColorAnimation { target: selectionIndicator; property: "border.color"; from: selectionIndicator.strongColor; to: selectionIndicator.faintColor; duration: 1000; easing.type: Easing.InOutQuad }
+        }
     }
 
     MouseArea {
@@ -62,16 +88,16 @@ NodeBase {
         anchors.fill: parent
         drag.target: parent
         onPressed: {
-            entityRoot.dragging = true
+            root.dragging = true
             dragStarted()
         }
 
         onClicked: {
-            entityRoot.clicked(entityRoot, mouse)
+            root.clicked(root, mouse)
         }
 
         onReleased: {
-            entityRoot.dragging = false
+            root.dragging = false
         }
     }
 }

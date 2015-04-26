@@ -117,8 +117,10 @@ Node {
     Rectangle {
         anchors.fill: parent
         color: parent.color
-        border.color: selected ? "#08306b" : "#9ecae1"
-        border.width: selected ? 3.0 : 1.0
+        border.color: "#9ecae1"
+        border.width: 1.0
+        smooth: true
+        antialiasing: true
     }
 
     Item {
