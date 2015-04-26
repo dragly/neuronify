@@ -4,6 +4,7 @@ import QtQuick.Controls 1.0
 import Neuronify 1.0
 
 import ".."
+import "../controls"
 
 Neuron {
     property alias adaptation: adaptationCurrent.adaptation
@@ -29,17 +30,12 @@ Neuron {
             Text {
                 text: "Adaptation: " + adaptation.toFixed(1)
             }
-            Slider {
-                id: adaptationSlider
+            BoundSlider {
                 width: parent.width
                 minimumValue: 0.0
                 maximumValue: 20.0
-                value: adaptation
-            }
-            Binding {
                 target: adaptationCurrent
                 property: "adaptation"
-                value: adaptationSlider.value
             }
         }
     }

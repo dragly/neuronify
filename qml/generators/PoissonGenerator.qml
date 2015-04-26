@@ -5,6 +5,7 @@ import Neuronify 1.0
 
 import "../paths"
 import "../hud"
+import "../controls"
 import ".."
 
 Node {
@@ -40,31 +41,21 @@ Node {
             Text {
                 text: "Firing rate: " + engine.rate.toFixed(1) + " s⁻¹"
             }
-            Slider {
-                id: rateSlider
-                value: engine.rate
+            BoundSlider {
                 minimumValue: 0.0
-                maximumValue: 2.0
-            }
-            Binding {
+                maximumValue: 5.0
                 target: engine
                 property: "rate"
-                value: rateSlider.value
             }
 
             Text {
                 text: "Stimulation output: " + engine.fireOutput.toFixed(1)
             }
-            Slider {
-                id: fireOutputSlider
-                value: engine.fireOutput
-                minimumValue: 0.0
-                maximumValue: 4.0
-            }
-            Binding {
+            BoundSlider {
                 target: engine
                 property: "fireOutput"
-                value: fireOutputSlider.value
+                minimumValue: 0.0
+                maximumValue: 4.0
             }
         }
     }

@@ -4,6 +4,7 @@ import QtQuick.Controls 1.0
 import Neuronify 1.0
 
 import ".."
+import "../controls"
 
 
 Node {
@@ -23,11 +24,6 @@ Node {
     controls: Component {
         Item {
             anchors.fill: parent
-            Binding {
-                target: engine
-                property: "currentOutput"
-                value: currentOutputSlider.value
-            }
 
             Column {
                 anchors.fill: parent
@@ -35,9 +31,9 @@ Node {
                     text: "Current output: " + currentOutputSlider.value.toFixed(0) + " mA"
                 }
 
-                Slider {
-                    id: currentOutputSlider
-                    value: engine.currentOutput
+                BoundSlider {
+                    target: engine
+                    property: "currentOutput"
                     minimumValue: 0.0
                     maximumValue: 200.0
                 }
