@@ -25,12 +25,6 @@ Node {
     engine: RetinaEngine {
         id: retinaEngine
 
-//        onStepped: {
-//            var shouldFire = (Math.random() < rate*dt)
-//            if(shouldFire) {
-//                fire()
-//            }
-//        }
     }
 
     RetinaPainter {
