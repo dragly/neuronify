@@ -5,23 +5,13 @@ import "../style"
 Item {
     id: root
 
-    default property alias rectChildren: rect.children
+    default property alias rectChildren: container.children
     property bool revealed: false
 
     anchors.fill: parent
 
-    MouseArea {
-        anchors.fill: parent
-        enabled: revealed
-        propagateComposedEvents: true
-        onPressed: {
-            root.revealed = false
-            mouse.accepted = false
-        }
-    }
-
     Rectangle {
-        id: rect
+        id: background
         anchors {
             right: parent.right
             top: parent.top
@@ -35,26 +25,33 @@ Item {
         border.color: "#9ecae1"
         border.width: 1.0
 
+        MouseArea {
+            anchors.fill: parent
+        }
+
+        Item {
+            id: container
+            anchors {
+                fill: parent
+                margins: 10
+            }
+        }
+
         states: State {
             when: root.revealed
             PropertyChanges {
-                target: rect
+                target: background
                 anchors.rightMargin: 0.0
             }
         }
 
         transitions: Transition {
             NumberAnimation {
-                target: rect
+                target: background
                 property: "anchors.rightMargin"
                 duration: 400
                 easing.type: Easing.InOutCubic
             }
         }
-
-        MouseArea {
-            anchors.fill: parent
-        }
     }
-
 }

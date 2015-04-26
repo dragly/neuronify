@@ -415,6 +415,7 @@ Rectangle {
                 }
 
                 onClicked: {
+                    propertiesPanel.revealed = false
                     deselectAll()
                     selectedEntities = []
                 }
