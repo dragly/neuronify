@@ -41,5 +41,6 @@
         <file>images/sensors/eye.png</file>
         <file>images/sensors/touch_sensor.png</file>
         <file>images/categories/sensors.png</file>
+        <file>images/generators/generator_overlay.png</file>
     </qresource>
 </RCC>
