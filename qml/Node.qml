@@ -15,7 +15,7 @@ NodeBase {
     property vector2d velocity
     property bool dragging: false
     property var copiedFrom
-    property color color: "black"
+    property color color: "cyan"
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property Component controls
     property Item simulator
