@@ -21,10 +21,12 @@ Item {
 
     SCurve {
         id: curve
-        z: -10
         color: "#4292c6"
+        parent: root.parent
+        z: -1
         startPoint: root.attachmentPoint
         endPoint: Qt.point(draggable.x + draggable.width / 2, draggable.y + draggable.width / 2)
+        visible: root.visible
     }
 
     Item {

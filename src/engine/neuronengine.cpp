@@ -1,7 +1,11 @@
 #include "neuronengine.h"
+
 #include <QDebug>
+#include <cmath>
 
 #include "current.h"
+
+using namespace std;
 
 NeuronEngine::NeuronEngine(QQuickItem *parent)
     : NodeEngine(parent)
@@ -82,6 +86,8 @@ void NeuronEngine::stepEvent(double dt)
     double dV = voltageChange * dt;
     m_voltage += dV;
 
+    m_voltage = min(max(m_voltage, -200.0), 200.0);
+
     m_synapticConductance = gs + dgs;
 
     emit voltageChanged(m_voltage);
@@ -92,7 +98,7 @@ void NeuronEngine::stepEvent(double dt)
 
 void NeuronEngine::fireEvent()
 {
-    setVoltage(voltage() + 100.0);
+    setVoltage(100.0);
     m_firedLastTime = true;
 }
 
