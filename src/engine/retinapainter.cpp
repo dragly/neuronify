@@ -8,6 +8,9 @@ RetinaPainter::RetinaPainter()
 
 void RetinaPainter::paint(QPainter *painter)
 {
+    if(!m_retinaEngine) {
+        return;
+    }
     painter->drawImage(boundingRect(), m_retinaEngine->image());
     update();
 }

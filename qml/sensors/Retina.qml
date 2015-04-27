@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
+import QtMultimedia 5.4
 
 import Neuronify 1.0
 
@@ -25,20 +26,38 @@ Node {
     engine: RetinaEngine {
         id: retinaEngine
 
+        camera: camera
     }
 
     RetinaPainter {
         id: retinaPainter
+        visible: Qt.platform.os !== "android"
+        enabled: Qt.platform.os !== "android"
         width: 100
         height: 100
         retinaEngine: retinaEngine
 
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+        }
     }
 
-    MouseArea {
-        id: dragArea
-        anchors.fill: retinaPainter
-        drag.target: retinaPainter
+    Camera {
+        id: camera
+    }
+
+    VideoOutput {
+        width: 100
+        height: 100
+        source: !retinaPainter.enabled ? camera : null
+        visible: !retinaPainter.visible
+        enabled: !retinaPainter.enabled
+
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+        }
     }
 
     Image {

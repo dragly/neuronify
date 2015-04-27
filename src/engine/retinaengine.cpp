@@ -1,28 +1,21 @@
 #include "retinaengine.h"
+
 #include <QPainter>
+#include <QVideoRendererControl>
 
 RetinaEngine::RetinaEngine():
     m_nPixelsX(300),
     m_nPixelsY(300)
 {
     makeReceptiveField();
-    startCamera();
     connect(&m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
+    connect(&m_probe, &QVideoProbe::videoFrameProbed, &m_videoSurface, &VideoSurface::present);
 }
-
 
 RetinaEngine::~RetinaEngine()
 {
 
 }
-
-void RetinaEngine::startCamera()
-{
-    m_camera = new QCamera;
-    m_camera->setViewfinder(&m_videoSurface);
-    m_camera->start();
-}
-
 
 void RetinaEngine::receivedImage()
 {
@@ -42,9 +35,44 @@ void RetinaEngine::receivedImage()
     calculateFiringRate();
     update();
 }
+
+void RetinaEngine::setCamera(QObject* camera)
+{
+    if (m_camera == camera)
+        return;
+
+    m_camera = camera;
+
+    QCamera *cameraObject = qvariant_cast<QCamera *>(camera->property("mediaObject"));
+
+    if(cameraObject) {
+#ifdef Q_OS_ANDROID
+        qDebug() << "Setting probe source";
+        bool sourceSuccess = m_probe.setSource(cameraObject);
+        if(!sourceSuccess) {
+            qWarning() << "Could not set probe source!";
+        }
+#else
+        qDebug() << "Setting renderer control";
+        m_rendererControl = cameraObject->service()->requestControl<QVideoRendererControl *>();
+        if(m_rendererControl) {
+            qDebug() << "Setting renderer surface";
+            m_rendererControl->setSurface(&m_videoSurface);
+        }
+#endif
+    }
+
+    emit cameraChanged(camera);
+}
+
 QImage RetinaEngine::image() const
 {
     return m_image;
+}
+
+QObject* RetinaEngine::camera() const
+{
+    return m_camera;
 }
 
 
@@ -74,8 +102,6 @@ void RetinaEngine::makeReceptiveField()
     //    }
 
 }
-
-
 
 void RetinaEngine::calculateFiringRate()
 {
