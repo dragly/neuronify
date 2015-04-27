@@ -15,6 +15,7 @@ Node {
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property VideoSurface videoSurface: null;
+    property int fieldIndex: 0
 
     width:20
     height: 20
@@ -70,11 +71,20 @@ Node {
                 width: 200
                 model: fieldTypes
 
+                onChildrenChanged: {
+                    console.log("index changed:" + currentIndex)
+                    if(!currentIndex+1){
+                        currentIndex = fieldIndex
+                    }
+                }
+
                 onCurrentIndexChanged: {
                     recField.receptiveFieldType = model.get(currentIndex).name
+                    fieldIndex = currentIndex
                 }
 
             }
+
         }
 
     }
@@ -117,4 +127,5 @@ Node {
         }
     }
 }
+
 
