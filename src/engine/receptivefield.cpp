@@ -132,8 +132,11 @@ int ReceptiveField::nPixelsY() const
     return m_nPixelsY;
 }
 
-vector<vector<double> > ReceptiveField::rf() const
+vector<vector<double> > ReceptiveField::rf()
 {
+    if(m_receptiveField.empty()){
+        recreateRF();
+    }
     return m_receptiveField;
 }
 

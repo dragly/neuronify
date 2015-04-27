@@ -72,7 +72,6 @@ Node {
                 model: fieldTypes
 
                 onChildrenChanged: {
-                    console.log("index changed:" + currentIndex)
                     if(!currentIndex+1){
                         currentIndex = fieldIndex
                     }
