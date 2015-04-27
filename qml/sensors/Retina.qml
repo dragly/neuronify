@@ -15,8 +15,8 @@ Node {
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property VideoSurface videoSurface: null;
 
-    width: parent.width * 0.015
-    height: width
+    width:20
+    height: 20
 
     dumpableProperties: [
         "x",
@@ -39,7 +39,7 @@ Node {
 
         MouseArea {
             anchors.fill: parent
-            drag.target: parent
+            drag.target: root
         }
     }
 
