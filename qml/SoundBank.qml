@@ -34,13 +34,19 @@ Item {
     }
     
     function play() {
+        var played = false
         for(var i in slots) {
             var slot = slots[i]
             if(!slot.playing) {
                 slot.source = "qrc:/sounds/" + root.source
                 slot.play()
+                played = true
                 break
             }
+        }
+        if(!played) {
+            var randomSlot = parseInt(Math.random() * slots.length)
+            slots[randomSlot].play()
         }
     }
     
