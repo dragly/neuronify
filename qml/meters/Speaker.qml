@@ -7,6 +7,8 @@ import ".."
 import "../controls"
 
 Node {
+    property alias source: soundBank.source
+
     objectName: "Speaker"
     fileName: "meters/Speaker.qml"
 
@@ -15,33 +17,65 @@ Node {
 
     engine: NodeEngine {
         onReceivedFire: {
-            sound.play()
+            soundBank.play()
         }
     }
 
     controls: Component {
         Column {
+            Component.onCompleted: {
+                for(var i = 0; i < repeater.count; i++) {
+                    var item = repeater.itemAt(i)
+                    if(Qt.resolvedUrl(item.source) === Qt.resolvedUrl(soundBank.source)) {
+                        item.checked = true
+                    }
+                }
+            }
+
             CheckBox {
                 id: mutedCheckBox
                 text: "Muted"
-                checked: sound.muted
+                checked: soundBank.muted
             }
             Binding {
-                target: sound
+                target: soundBank
                 property: "muted"
                 value: mutedCheckBox.checked
             }
 
             Text {
-                text: "Volume: " + sound.volume.toFixed(1)
+                text: "Volume: " + soundBank.volume.toFixed(1)
             }
             BoundSlider {
-                target: sound
+                target: soundBank
                 property: "volume"
                 minimumValue: 0.0
                 maximumValue: 1.0
             }
+
+            ExclusiveGroup { id: soundGroup }
+            Repeater {
+                id: repeater
+                model: soundsModel
+                RadioButton {
+                    property url source: model.source
+                    exclusiveGroup: soundGroup
+
+                    text: model.name
+
+                    onCheckedChanged: {
+                        if(checked) {
+                            console.log("Setting source: " + model.source)
+                            soundBank.source = model.source
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    Component.onCompleted: {
+        dumpableProperties = dumpableProperties.concat("source")
     }
 
     Image {
@@ -52,8 +86,29 @@ Node {
         source: "qrc:/images/meters/speaker.png"
     }
 
+    ListModel {
+        id: soundsModel
+        ListElement {
+            name: "Drip"
+            source: "drip.wav"
+        }
+        ListElement {
+            name: "Sonar"
+            source: "sonar.wav"
+        }
+        ListElement {
+            name: "Thump"
+            source: "thump.wav"
+        }
+        ListElement {
+            name: "Glass"
+            source: "glass.wav"
+        }
+    }
+
     SoundBank {
-        id: sound
+        id: soundBank
+        source: "glass.wav"
     }
 }
 
