@@ -57,6 +57,7 @@ DISTFILES += \
     android/build.gradle \
     android/gradle/wrapper/gradle-wrapper.properties \
     android/gradlew \
-    android/src/org/cinpla/neuronify/AlwaysOnActivity.java
+    android/src/org/cinpla/neuronify/AlwaysOnActivity.java \
+    qml/sensors/singletons/qmldir
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android

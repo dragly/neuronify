@@ -1,7 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
 import QtMultimedia 5.4
-
 import Neuronify 1.0
 
 import "../paths"
@@ -14,6 +13,7 @@ Node {
     fileName: "sensors/Retina.qml"
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
+    property VideoSurface videoSurface: null;
 
     width: parent.width * 0.015
     height: width
@@ -25,9 +25,9 @@ Node {
 
     engine: RetinaEngine {
         id: retinaEngine
-
-        camera: camera
+        videoSurface: root.videoSurface
     }
+
 
     RetinaPainter {
         id: retinaPainter
@@ -43,9 +43,6 @@ Node {
         }
     }
 
-    Camera {
-        id: camera
-    }
 
     VideoOutput {
         width: 100
