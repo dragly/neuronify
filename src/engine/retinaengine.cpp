@@ -14,24 +14,26 @@ RetinaEngine::~RetinaEngine()
 void RetinaEngine::receivedImage()
 {
 
-    if(!m_recField){
+    if(!m_receptiveField){
         return;
     }
-    int nPixelsX= m_recField->nPixelsX();
-    int nPixelsY = m_recField->nPixelsY();
+    int nPixelsX = m_receptiveField->nPixelsX();
+    int nPixelsY = m_receptiveField->nPixelsY();
+
     m_stim.resize(nPixelsX);
     for(int i = 0; i < nPixelsX; i++){
         m_stim.at(i).resize(nPixelsY,0.0);
     }
 
     m_image = m_videoSurface->image();
-    m_image =  m_image.scaled(nPixelsX,nPixelsY);
+    m_image =  m_image.scaled(nPixelsY,nPixelsX);
+
 
     for(int i = 0; i < m_image.width(); i++){
         for(int j = 0; j < m_image.height(); j++){
 
             int gray = qGray(m_image.pixel(i,j));
-            m_stim.at(i).at(j) = gray-126.;
+            m_stim.at(j).at(i) = gray-126.;
             QRgb color = qRgb(gray, gray, gray);
             m_image.setPixel(i,j,color);
         }
@@ -43,17 +45,17 @@ void RetinaEngine::receivedImage()
 
 void RetinaEngine::calculateFiringRate()
 {
-    if(!m_recField){
+    if(!m_receptiveField){
         return;
     }
-    m_rf = m_recField->rf();
-    int nPixelsX= m_recField->nPixelsX();
-    int nPixelsY = m_recField->nPixelsY();
+    m_receptiveFieldShape = m_receptiveField->rf();
+    int nPixelsX= m_receptiveField->nPixelsX();
+    int nPixelsY = m_receptiveField->nPixelsY();
 
     for(int i = 0; i < nPixelsX; i++){
         for(int j = 0; j < nPixelsY; j++){
             //            qDebug() << m_stim.at(i).at(j)  << "    " << m_rf.at(i).at(j);
-            m_firingRate += m_stim.at(i).at(j) *  m_rf.at(i).at(j) * 1./nPixelsX/nPixelsY;
+            m_firingRate += m_stim.at(i).at(j) *  m_receptiveFieldShape.at(i).at(j) * 1./nPixelsX/nPixelsY;
         }
     }
 }
@@ -98,25 +100,14 @@ void RetinaEngine::setVideoSurface(VideoSurface *videoSurface)
 
 
 
-void RetinaEngine::setRecField(ReceptiveField *recField)
+void RetinaEngine::setReceptiveField(ReceptiveField *recField)
 {
-    if (m_recField == recField)
+    if (m_receptiveField == recField)
         return;
 
-//    if(m_recField){
-//        disconnect(m_recField, &ReceptiveField::nPixelsXChanged, this, &RetinaEngine::setNPixelsX);
-//        disconnect(m_recField, &ReceptiveField::nPixelsYChanged, this, &RetinaEngine::setNPixelsY);
-//    }
+    m_receptiveField = recField;
 
-    m_recField = recField;
-
-//    if(m_recField){
-//        connect(m_recField, &ReceptiveField::nPixelsXChanged, this, &RetinaEngine::setNPixelsX);
-//        connect(m_recField, &ReceptiveField::nPixelsYChanged, this, &RetinaEngine::setNPixelsY);
-//    }
-
-
-    emit recFieldChanged(recField);
+    emit receptiveFieldChanged(recField);
 }
 
 
@@ -125,9 +116,9 @@ QImage RetinaEngine::image() const
     return m_image;
 }
 
-ReceptiveField *RetinaEngine::recField() const
+ReceptiveField *RetinaEngine::receptiveField() const
 {
-    return m_recField;
+    return m_receptiveField;
 }
 
 VideoSurface *RetinaEngine::videoSurface() const

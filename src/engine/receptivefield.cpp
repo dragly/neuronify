@@ -2,76 +2,69 @@
 
 ReceptiveField::ReceptiveField()
 {
-    //    setReceptiveField();
 }
-
-//void ReceptiveField::setReceptiveField()
-//{
-//    m_rf.resize(m_nPixelsX);
-//    for(int i = 0; i < m_nPixelsX; i++){
-//        m_rf.at(i).resize(m_nPixelsY,1);
-//    }
-
-//    for(int i = 0; i < m_nPixelsX; i++){
-//        for(int j = 0; j < m_nPixelsY/2; j++){
-//            m_rf.at(i).at(j) = -1;
-//        }
-//    }
-
-//    //    for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
-//    //    {
-//    //        for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
-//    //        {
-//    //            cout << m_rf[i][j]  << "  ";
-//    //        }
-//    //        cout << endl;
-//    //    }
-
-
-//}
-
 
 void ReceptiveField::createOffLeftRF()
 {
+    qDebug() << "qml: Recptive field: Off-left" << m_nPixelsX << "X" << m_nPixelsY;
     for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j <m_nPixelsY; j++){
-            m_rf.at(i).at(j)= 1;
+        for(int j = 0; j < m_nPixelsY; j++){
+            m_receptiveField.at(i).at(j)= 1;
         }
     }
 
     for(int i = 0; i < m_nPixelsX; i++){
         for(int j = 0; j < m_nPixelsY/2; j++){
-            m_rf.at(i).at(j) = -1;
+            m_receptiveField.at(i).at(j) = -1;
         }
     }
+//        for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
+//        {
+//            for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
+//            {
+//                cout << m_receptiveField[i][j]  << "  ";
+//            }
+//            cout << endl;
+//        }
 
 }
 
 void ReceptiveField::createOffRightRF()
 {
+    qDebug() << "qml: Recptive field: Off-right";
     for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j <m_nPixelsY; j++){
-            m_rf.at(i).at(j)= -1;
+        for(int j = 0; j < m_nPixelsY; j++){
+            m_receptiveField.at(i).at(j)= -1;
         }
     }
 
     for(int i = 0; i < m_nPixelsX; i++){
         for(int j = 0; j < m_nPixelsY/2; j++){
-            m_rf.at(i).at(j) = 1;
+            m_receptiveField.at(i).at(j) = 1;
         }
     }
+
+            for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
+            {
+                for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
+                {
+                    cout << m_receptiveField[i][j]  << "  ";
+                }
+                cout << endl;
+            }
+
 
 }
 
 void ReceptiveField::recreateRF()
 {
 
-    m_rf.resize(m_nPixelsX);
+    m_receptiveField.resize(m_nPixelsX);
     for(int i = 0; i < m_nPixelsX; i++){
-        m_rf.at(i).resize(m_nPixelsY,0);
+        m_receptiveField.at(i).resize(m_nPixelsY,0);
     }
 
-    switch (m_rfType) {
+    switch (m_receptiveFieldType) {
     case OffLeftRF:
         createOffLeftRF();
         break;
@@ -82,6 +75,7 @@ void ReceptiveField::recreateRF()
         createOffLeftRF();
         break;
     }
+
 }
 
 
@@ -124,23 +118,23 @@ int ReceptiveField::nPixelsY() const
 
 vector<vector<double> > ReceptiveField::rf() const
 {
-    return m_rf;
+    return m_receptiveField;
 }
 
-ReceptiveField::ReceptiveFieldTypes ReceptiveField::rfType() const
+ReceptiveField::ReceptiveFieldTypes ReceptiveField::receptiveFieldType() const
 {
-    return m_rfType;
+    return m_receptiveFieldType;
 }
 
-void ReceptiveField::setRfType(ReceptiveField::ReceptiveFieldTypes rfType)
+void ReceptiveField::setRreceptiveFieldType(ReceptiveField::ReceptiveFieldTypes rfType)
 {
-    if (m_rfType == rfType)
+    if (m_receptiveFieldType == rfType)
         return;
 
-    m_rfType = rfType;
+    m_receptiveFieldType = rfType;
     recreateRF();
 
-    emit rfTypeChanged(rfType);
+    emit receptiveFieldTypeChanged(rfType);
 }
 
 void ReceptiveField::setNPixelsX(int nPixelsX)
@@ -149,8 +143,8 @@ void ReceptiveField::setNPixelsX(int nPixelsX)
         return;
 
     m_nPixelsX = nPixelsX;
-    emit nPixelsXChanged(nPixelsX);
     recreateRF();
+    emit nPixelsXChanged(nPixelsX);
 }
 
 void ReceptiveField::setNPixelsY(int nPixelsY)
@@ -159,8 +153,8 @@ void ReceptiveField::setNPixelsY(int nPixelsY)
         return;
 
     m_nPixelsY = nPixelsY;
-    emit nPixelsYChanged(nPixelsY);
     recreateRF();
+    emit nPixelsYChanged(nPixelsY);
 }
 
 

@@ -26,14 +26,14 @@ Node {
 
     ReceptiveField{
         id:recField
-        nPixelsX : 300
-        nPixelsY : 300
-        rfType: ReceptiveField.OffRightRF
+        nPixelsX : 10
+        nPixelsY : 10
+        receptiveFieldType: ReceptiveField.OffRightRF
     }
 
     engine: RetinaEngine {
         id: retinaEngine
-        recField: recField
+        receptiveField: recField
         videoSurface: root.videoSurface
     }
 
@@ -42,7 +42,7 @@ Node {
             anchors.fill: parent
 
             Text {
-                text: "Pixels x:" + recField.nPixelsX.toFixed(1)
+                text: "X resolution: " + recField.nPixelsX.toFixed(1)
             }
             BoundSlider {
                 minimumValue: 10
@@ -52,7 +52,7 @@ Node {
             }
 
             Text {
-                text: "Pixels y:" + recField.nPixelsY.toFixed(1)
+                text: "Y resolution: " + recField.nPixelsY.toFixed(1)
             }
             BoundSlider {
                 minimumValue: 10
