@@ -138,10 +138,11 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 spacing: Style.touchableSize * 0.5
-
                 orientation: ListView.Horizontal
+                boundsBehavior: Flickable.StopAtBounds
 
                 model: categories
+
 
                 delegate: Image {
                     width: Style.touchableSize
@@ -150,7 +151,7 @@ Item {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onPressed: {
                             categoriesListView.currentIndex = index
                             loader.source = model.listSource
                         }
