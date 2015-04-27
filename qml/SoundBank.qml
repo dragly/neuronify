@@ -17,10 +17,15 @@ Item {
     id: root
     
     property bool muted: false
+    property real volume: 1.0
     property var slots: []
+    property string source
+    onSourceChanged: {
+        console.log(source)
+    }
 
     Component.onCompleted: {
-        for(var i = 0; i < 20; i++) {
+        for(var i = 0; i < 5; i++) {
             var soundSlot = soundSlotComponent.createObject()
             if(soundSlot) {
                 slots.push(soundSlot)
@@ -29,24 +34,27 @@ Item {
     }
     
     function play() {
-        if(muted) {
-            return
-        }
-        
+        var played = false
         for(var i in slots) {
             var slot = slots[i]
             if(!slot.playing) {
+                slot.source = "qrc:/sounds/" + root.source
                 slot.play()
+                played = true
                 break
             }
+        }
+        if(!played) {
+            var randomSlot = parseInt(Math.random() * slots.length)
+            slots[randomSlot].play()
         }
     }
     
     Component {
         id: soundSlotComponent
         SoundEffect {
-            source: "qrc:/sounds/thump.wav"
-            volume: 0.5
+            muted: root.muted
+            volume: root.volume
         }
     }
 }

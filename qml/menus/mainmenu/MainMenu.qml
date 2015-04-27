@@ -14,7 +14,6 @@ Item {
 
     property bool revealed: true
     property var blurSource: null
-    property Item soundBank: null
 
     width: 100
     height: 62
@@ -144,10 +143,6 @@ Item {
 
         onSimulationsClicked: {
             stackView.push(simulationsView)
-        }
-
-        onToggleSoundClicked: {
-            soundBank.muted = !soundBank.muted
         }
 
         onAboutClicked: {

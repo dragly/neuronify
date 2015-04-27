@@ -61,5 +61,6 @@
         <file>qml/generators/ACClamp.qml</file>
         <file>qml/controls/FireOutputControl.qml</file>
         <file>qml/SoundBank.qml</file>
+        <file>qml/meters/Speaker.qml</file>
     </qresource>
 </RCC>

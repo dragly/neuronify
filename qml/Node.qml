@@ -13,7 +13,7 @@ NodeBase {
 
     property string objectName: "entity"
     property string fileName: "Entity.qml"
-    property real radius: 1.0
+    property real radius: width * 0.5
     property bool selected: false
     property vector2d velocity
     property bool dragging: false
@@ -52,6 +52,8 @@ NodeBase {
         for(var i in dumpableProperties) {
             var propertyName = dumpableProperties[i]
             entityData[propertyName] = root[propertyName]
+            console.log(propertyName)
+            console.log(typeof(root[propertyName]))
         }
 
         var entityName = "entity" + index

@@ -7,7 +7,7 @@ import Neuronify 1.0
 Node {
     id: root
     objectName: "neuron"
-    fileName: "Neuron.qml"
+    fileName: "neurons/OldNeuron.qml"
 
     property alias stimulation: engine.fireOutput
     property alias voltage: engine.voltage
