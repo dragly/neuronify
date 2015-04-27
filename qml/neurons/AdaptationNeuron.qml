@@ -41,7 +41,7 @@ Neuron {
     }
 
     Component.onCompleted: {
-        dumpableProperties.concat("adaptation")
+        dumpableProperties = dumpableProperties.concat("adaptation")
     }
 }
 
