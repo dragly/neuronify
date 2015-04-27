@@ -1,5 +1,7 @@
 #include "receptivefield.h"
 
+#include <cmath>
+
 ReceptiveField::ReceptiveField()
 {
 }

@@ -2,6 +2,7 @@
 
 #include <QPainter>
 #include <QVideoRendererControl>
+#include <random>
 
 RetinaEngine::RetinaEngine()
 {
