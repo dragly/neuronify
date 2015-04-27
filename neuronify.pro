@@ -23,6 +23,7 @@ HEADERS += \
     src/engine/retinaengine.h \
     src/engine/videosurface.h \
     src/engine/retinapainter.h \
+    src/engine/receptivefield.h \
     src/engine/receptivefield.h
 
 SOURCES += \
@@ -39,6 +40,7 @@ SOURCES += \
     src/engine/retinaengine.cpp \
     src/engine/videosurface.cpp \
     src/engine/retinapainter.cpp \
+    src/engine/receptivefield.cpp \
     src/engine/receptivefield.cpp
 
 RESOURCES += qml.qrc \

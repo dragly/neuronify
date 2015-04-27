@@ -47,6 +47,7 @@ Node {
             BoundSlider {
                 minimumValue: 10
                 maximumValue: 300
+                stepSize: 1
                 target: recField
                 property: "nPixelsX"
             }
@@ -57,6 +58,7 @@ Node {
             BoundSlider {
                 minimumValue: 10
                 maximumValue: 300
+                stepSize: 1
                 target: recField
                 property: "nPixelsY"
             }
@@ -77,8 +79,6 @@ Node {
 
                 onCurrentIndexChanged: {
                     recField.receptiveFieldType = model.get(currentIndex).name
-                    console.log(textAt(model.get(currentIndex).name))
-
                 }
 
             }
