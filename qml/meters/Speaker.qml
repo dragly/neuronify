@@ -23,6 +23,8 @@ Node {
 
     controls: Component {
         Column {
+            width: parent.width
+
             Component.onCompleted: {
                 for(var i = 0; i < repeater.count; i++) {
                     var item = repeater.itemAt(i)

@@ -7,6 +7,7 @@ Slider {
     property QtObject target: null
     property string property: ""
 
+    width: parent.width
     minimumValue: 0.0
     maximumValue: 5.0
     Binding {

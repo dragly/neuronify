@@ -8,6 +8,9 @@ Column {
     property alias minimumValue: fireOutputSlider.minimumValue
     property alias maximumValue: fireOutputSlider.maximumValue
     property real _fireOutput
+
+    width: parent.width
+
     Text {
         text: "Stimulation output: " + _fireOutput.toFixed(1)
     }
@@ -17,6 +20,7 @@ Column {
     }
     Slider {
         id: fireOutputSlider
+        width: parent.width
         minimumValue: 0.0
         maximumValue: 4.0
     }
