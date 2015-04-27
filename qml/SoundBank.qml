@@ -19,6 +19,7 @@ Item {
     property bool muted: false
     property real volume: 1.0
     property var slots: []
+    property url source
 
     Component.onCompleted: {
         for(var i = 0; i < 5; i++) {
@@ -30,14 +31,9 @@ Item {
     }
     
     function play() {
-        if(muted) {
-            return
-        }
-        
         for(var i in slots) {
             var slot = slots[i]
             if(!slot.playing) {
-                slot.volume = volume
                 slot.play()
                 break
             }
@@ -47,7 +43,9 @@ Item {
     Component {
         id: soundSlotComponent
         SoundEffect {
-            source: "qrc:/sounds/thump.wav"
+            muted: root.muted
+            source: root.source
+            volume: root.volume
         }
     }
 }

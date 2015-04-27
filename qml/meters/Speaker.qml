@@ -54,6 +54,7 @@ Node {
 
     SoundBank {
         id: sound
+        source: "qrc:/sounds/thump.wav"
     }
 }
 
