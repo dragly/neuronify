@@ -4,6 +4,7 @@
 #include "engine/neuronengine.h"
 #include "engine/current.h"
 #include "engine/graphengine.h"
+#include "engine/receptivefield.h"
 #include "engine/retinaengine.h"
 #include "engine/retinapainter.h"
 #include "engine/videosurface.h"
@@ -27,6 +28,8 @@ int main(int argc, char *argv[])
     qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngine");
+
+    qmlRegisterType<ReceptiveField>("Neuronify", 1, 0, "ReceptiveField");
     qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");
     qmlRegisterType<RetinaPainter>("Neuronify", 1, 0, "RetinaPainter");
     qmlRegisterType<VideoSurface>("Neuronify", 1, 0, "VideoSurface");

@@ -3,30 +3,37 @@
 #include <QPainter>
 #include <QVideoRendererControl>
 
-RetinaEngine::RetinaEngine():
-    m_nPixelsX(300),
-    m_nPixelsY(300)
+RetinaEngine::RetinaEngine()
 {
-    makeReceptiveField();
-
 }
 
 RetinaEngine::~RetinaEngine()
 {
-
 }
 
 void RetinaEngine::receivedImage()
 {
+
+    if(!m_recField){
+        return;
+    }
+    int nPixelsX= m_recField->nPixelsX();
+    int nPixelsY = m_recField->nPixelsY();
+    m_stim.resize(nPixelsX);
+    for(int i = 0; i < nPixelsX; i++){
+        m_stim.at(i).resize(nPixelsY,0.0);
+    }
+
     m_image = m_videoSurface->image();
-    m_image =  m_image.scaled(m_nPixelsX,m_nPixelsY);
+    m_image =  m_image.scaled(nPixelsX,nPixelsY);
+
     for(int i = 0; i < m_image.width(); i++){
         for(int j = 0; j < m_image.height(); j++){
 
-            int gray = qGray(m_image.pixel(j,i));
+            int gray = qGray(m_image.pixel(i,j));
             m_stim.at(i).at(j) = gray-126.;
             QRgb color = qRgb(gray, gray, gray);
-            m_image.setPixel(j,i,color);
+            m_image.setPixel(i,j,color);
         }
     }
 
@@ -34,67 +41,19 @@ void RetinaEngine::receivedImage()
     update();
 }
 
-void RetinaEngine::setVideoSurface(VideoSurface *videoSurface)
-{
-
-    if (m_videoSurface == videoSurface)
-        return;
-    if(m_videoSurface){
-        disconnect(m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
-    }
-    m_videoSurface = videoSurface;
-    if(m_videoSurface){
-        connect(m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
-    }
-    emit videoSurfaceChanged(videoSurface);
-}
-
-
-QImage RetinaEngine::image() const
-{
-    return m_image;
-}
-
-VideoSurface *RetinaEngine::videoSurface() const
-{
-    return m_videoSurface;
-}
-
-
-void RetinaEngine::makeReceptiveField()
-{
-    m_recField.resize(m_nPixelsX);
-    m_stim.resize(m_nPixelsX);
-    for(int i = 0; i < m_nPixelsX; i++){
-        m_recField.at(i).resize(m_nPixelsY,1);
-        m_stim.at(i).resize(m_nPixelsY,0.0);
-    }
-
-
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY/2; j++){
-            m_recField.at(i).at(j) = -1;
-        }
-    }
-
-    //    for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
-    //    {
-    //        for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
-    //        {
-    //            cout << m_recField[i][j]  << "  ";
-    //        }
-    //        cout << endl;
-    //    }
-
-}
-
 void RetinaEngine::calculateFiringRate()
 {
+    if(!m_recField){
+        return;
+    }
+    m_rf = m_recField->rf();
+    int nPixelsX= m_recField->nPixelsX();
+    int nPixelsY = m_recField->nPixelsY();
 
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            //            qDebug() << m_stim.at(i).at(j)  << "    " << m_recField.at(i).at(j);
-            m_firingRate += m_stim.at(i).at(j) *  m_recField.at(i).at(j) * 1./m_nPixelsX/m_nPixelsY;
+    for(int i = 0; i < nPixelsX; i++){
+        for(int j = 0; j < nPixelsY; j++){
+            //            qDebug() << m_stim.at(i).at(j)  << "    " << m_rf.at(i).at(j);
+            m_firingRate += m_stim.at(i).at(j) *  m_rf.at(i).at(j) * 1./nPixelsX/nPixelsY;
         }
     }
 }
@@ -122,29 +81,61 @@ void RetinaEngine::stepEvent(double dt)
 }
 
 
-double RetinaEngine::temporalRF(const double tau)
+void RetinaEngine::setVideoSurface(VideoSurface *videoSurface)
 {
-    double alpha = 1.;
-    return alpha*exp(-alpha*tau)*(pow(alpha*tau, 5)/120. - pow(alpha*tau, 7)/5040.);
+
+    if (m_videoSurface == videoSurface)
+        return;
+    if(m_videoSurface){
+        disconnect(m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
+    }
+    m_videoSurface = videoSurface;
+    if(m_videoSurface){
+        connect(m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
+    }
+    emit videoSurfaceChanged(videoSurface);
 }
 
 
-double RetinaEngine::gaborField(int idx, int idy)
+
+void RetinaEngine::setRecField(ReceptiveField *recField)
 {
-    double sigmaX = 400.;
-    double sigmaY = 400.;
-    double k = 1;
-    double phi = 0.0;
-    double theta = 0.0;
+    if (m_recField == recField)
+        return;
 
-    double x =  idx * cos(theta) + idy * sin(theta);
-    double y = -idx * sin(theta) + idy * cos(theta);
+//    if(m_recField){
+//        disconnect(m_recField, &ReceptiveField::nPixelsXChanged, this, &RetinaEngine::setNPixelsX);
+//        disconnect(m_recField, &ReceptiveField::nPixelsYChanged, this, &RetinaEngine::setNPixelsY);
+//    }
 
-    double prefactor = 1.0/(2.* M_PI * sigmaX * sigmaY);
-    double expFactor = exp(-x*x/(2.* sigmaX * sigmaX) - y*y/(2. * sigmaY * sigmaY));
-    double cosFactor = cos(k * x - phi);
-    return prefactor * expFactor * cosFactor;
+    m_recField = recField;
+
+//    if(m_recField){
+//        connect(m_recField, &ReceptiveField::nPixelsXChanged, this, &RetinaEngine::setNPixelsX);
+//        connect(m_recField, &ReceptiveField::nPixelsYChanged, this, &RetinaEngine::setNPixelsY);
+//    }
+
+
+    emit recFieldChanged(recField);
 }
+
+
+QImage RetinaEngine::image() const
+{
+    return m_image;
+}
+
+ReceptiveField *RetinaEngine::recField() const
+{
+    return m_recField;
+}
+
+VideoSurface *RetinaEngine::videoSurface() const
+{
+    return m_videoSurface;
+}
+
+
 
 
 

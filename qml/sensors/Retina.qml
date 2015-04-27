@@ -5,6 +5,7 @@ import Neuronify 1.0
 
 import "../paths"
 import "../hud"
+import "../controls"
 import ".."
 
 Node {
@@ -23,11 +24,44 @@ Node {
         "y"
     ]
 
+    ReceptiveField{
+        id:recField
+        nPixelsX : 300
+        nPixelsY : 300
+        rfType: ReceptiveField.OffRightRF
+    }
+
     engine: RetinaEngine {
         id: retinaEngine
+        recField: recField
         videoSurface: root.videoSurface
     }
 
+    controls: Component {
+        Column {
+            anchors.fill: parent
+
+            Text {
+                text: "Pixels x:" + recField.nPixelsX.toFixed(1)
+            }
+            BoundSlider {
+                minimumValue: 10
+                maximumValue: 300
+                target: recField
+                property: "nPixelsX"
+            }
+
+            Text {
+                text: "Pixels y:" + recField.nPixelsY.toFixed(1)
+            }
+            BoundSlider {
+                minimumValue: 10
+                maximumValue: 300
+                target: recField
+                property: "nPixelsY"
+            }
+        }
+    }
 
     RetinaPainter {
         id: retinaPainter
@@ -37,24 +71,10 @@ Node {
         height: 100
         retinaEngine: retinaEngine
 
-        MouseArea {
-            anchors.fill: parent
-            drag.target: root
-        }
-    }
-
-
-    VideoOutput {
-        width: 100
-        height: 100
-        source: !retinaPainter.enabled ? camera : null
-        visible: !retinaPainter.visible
-        enabled: !retinaPainter.enabled
-
-        MouseArea {
-            anchors.fill: parent
-            drag.target: parent
-        }
+//        MouseArea {
+//            anchors.fill: parent
+//            drag.target: root
+//        }
     }
 
     Image {
