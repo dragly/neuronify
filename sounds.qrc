@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>sounds/thump.wav</file>
+        <file>sounds/drip.ogg</file>
+        <file>sounds/glass.ogg</file>
+        <file>sounds/sonar.ogg</file>
+        <file>sounds/drip.wav</file>
+        <file>sounds/glass.wav</file>
+        <file>sounds/sonar.wav</file>
+    </qresource>
+</RCC>

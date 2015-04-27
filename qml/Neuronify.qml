@@ -22,7 +22,7 @@ Rectangle {
     GraphEngine {
         id: graphEngine
     }
-
+    property alias graphEngine: graphEngine
     property var selectedEntities: []
     property var copiedNeurons: []
     property var voltmeters: []
@@ -282,12 +282,18 @@ Rectangle {
 
         properties.simulator = root
         var entity = component.createObject(neuronLayer, properties)
+        if(!entity) {
+            console.error("Could not create entity from component " + fileUrl)
+            return
+        }
+
         entity.dragStarted.connect(resetOrganize)
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.droppedConnector.connect(createConnectionToPoint)
+
         graphEngine.addNode(entity)
         if(useAutoLayout) {
             autoLayout.entities.push(entity)

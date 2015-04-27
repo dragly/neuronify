@@ -10,7 +10,7 @@ import ".."
 
 Node {
     id: root
-    objectName: "neuron"
+    objectName: "retina"
     fileName: "sensors/Retina.qml"
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
