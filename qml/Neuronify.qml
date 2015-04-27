@@ -293,7 +293,6 @@ Rectangle {
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.droppedConnector.connect(createConnectionToPoint)
-        entity.fired.connect(sound.play)
 
         graphEngine.addNode(entity)
         if(useAutoLayout) {
@@ -531,7 +530,6 @@ Rectangle {
         id: mainMenu
         anchors.fill: parent
         blurSource: workspaceFlickable
-        soundBank: sound
 
         onLoadSimulation: {
             loadState(simulation.stateSource)
@@ -592,10 +590,6 @@ Rectangle {
         camera: Camera{
 
         }
-    }
-
-    SoundBank {
-        id: sound
     }
 
     //////////////////////// save/load ////////////////

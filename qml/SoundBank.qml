@@ -17,10 +17,11 @@ Item {
     id: root
     
     property bool muted: false
+    property real volume: 1.0
     property var slots: []
 
     Component.onCompleted: {
-        for(var i = 0; i < 20; i++) {
+        for(var i = 0; i < 5; i++) {
             var soundSlot = soundSlotComponent.createObject()
             if(soundSlot) {
                 slots.push(soundSlot)
@@ -36,6 +37,7 @@ Item {
         for(var i in slots) {
             var slot = slots[i]
             if(!slot.playing) {
+                slot.volume = volume
                 slot.play()
                 break
             }
@@ -46,7 +48,6 @@ Item {
         id: soundSlotComponent
         SoundEffect {
             source: "qrc:/sounds/thump.wav"
-            volume: 0.5
         }
     }
 }
