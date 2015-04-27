@@ -28,7 +28,6 @@ Node {
         videoSurface: root.videoSurface
     }
 
-
     RetinaPainter {
         id: retinaPainter
         visible: Qt.platform.os !== "android"

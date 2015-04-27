@@ -67,7 +67,6 @@ Node {
 
                     onCheckedChanged: {
                         if(checked) {
-                            console.log("Setting source: " + model.source)
                             soundBank.source = model.source
                         }
                     }
