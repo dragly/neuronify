@@ -68,14 +68,7 @@ Node {
             ComboBox {
                 id: comboBox
                 width: 200
-                model: ListModel {
-                    id: types
-                    ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
-                    ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
-                    ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
-                    ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
-
-                }
+                model: fieldTypes
 
                 onCurrentIndexChanged: {
                     recField.receptiveFieldType = model.get(currentIndex).name
@@ -83,6 +76,15 @@ Node {
 
             }
         }
+
+    }
+
+    ListModel {
+        id: fieldTypes
+        ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
+        ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
+        ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
+        ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
 
     }
 
