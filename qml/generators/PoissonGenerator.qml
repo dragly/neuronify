@@ -47,27 +47,8 @@ Node {
                 target: engine
                 property: "rate"
             }
-
-            Text {
-                text: "Stimulation output: " + engine.fireOutput.toFixed(1)
-            }
-            CheckBox {
-                id: inhibitoryCheckbox
-                text: "Inhibitory"
-                checked: (engine.fireOutput < 0.0)
-            }
-            Slider {
-                id: fireOutputSlider
-                minimumValue: 0.0
-                maximumValue: 4.0
-                stepSize: 0.1
-                tickmarksEnabled: false
-                value: Math.abs(engine.fireOutput)
-            }
-            Binding {
+            FireOutputControl {
                 target: engine
-                property: "fireOutput"
-                value: (inhibitoryCheckbox.checked ? -1.0 : 1.0) * fireOutputSlider.value
             }
         }
     }

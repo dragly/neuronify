@@ -58,5 +58,6 @@
         <file>qml/sensors/TouchSensorCell.qml</file>
         <file>qml/hud/SensorsList.qml</file>
         <file>qml/controls/BoundSlider.qml</file>
+        <file>qml/controls/FireOutputControl.qml</file>
     </qresource>
 </RCC>
