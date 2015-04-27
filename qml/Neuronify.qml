@@ -22,7 +22,7 @@ Rectangle {
     GraphEngine {
         id: graphEngine
     }
-
+    property alias graphEngine: graphEngine
     property var selectedEntities: []
     property var copiedNeurons: []
     property var voltmeters: []

@@ -3,9 +3,11 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import ".."
 
+
 Item {
     id: voltmeterControlsRoot
     property Item voltmeter: null
+
 
     onVoltmeterChanged: {
         if(!voltmeterControlsRoot.voltmeter) {
@@ -18,6 +20,7 @@ Item {
             break
         }
     }
+
 
     anchors.fill: parent
 
@@ -42,6 +45,21 @@ Item {
             onCheckedChanged: {
                 if(checked) {
                     voltmeterControlsRoot.voltmeter.mode = "voltage"
+                }
+            }
+        }
+
+        Button {
+            text: "Connect to all neurons"
+            onClicked: {
+                var itemA = voltmeter
+                for (var i in voltmeter.simulator.graphEngine.nodes){
+                    var itemB = graphEngine.nodes[i]
+                    if (itemB.objectName.indexOf("neuron") + itemB.objectName.indexOf("Neuron") != -2){
+                        if (!voltmeter.simulator.connectionExists(itemB, itemA)){
+                            voltmeter.simulator.connectEntities(itemB, itemA)
+                        }
+                    }
                 }
             }
         }
