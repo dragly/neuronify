@@ -21,17 +21,23 @@ public:
 public:
     enum ReceptiveFieldTypes{
         OffLeftRF,
-        OffRightRF
+        OffRightRF,
+        OffTopRF,
+        OffBottomRF
     };
-
-    double temporalRF(const double tau);
-    double gaborField(int x, int y);
-    void createOffLeftRF();
-    void createOffRightRF();
-    void recreateRF();
 
     int nPixelsX() const;
     int nPixelsY() const;
+    void recreateRF();
+
+    //Receptive Field types:
+    void createOffLeftRF();
+    void createOffRightRF();
+    void createOffTopRF();
+    void createOffBottomRF();
+    double temporalRF(const double tau);
+    double gaborField(int x, int y);
+
 
     vector<vector<double> > rf() const;
     ReceptiveFieldTypes receptiveFieldType() const;

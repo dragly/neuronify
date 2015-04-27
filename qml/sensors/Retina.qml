@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.0
+import QtQuick.Controls 1.3
 import QtMultimedia 5.4
 import Neuronify 1.0
 
@@ -28,7 +28,7 @@ Node {
         id:recField
         nPixelsX : 10
         nPixelsY : 10
-        receptiveFieldType: ReceptiveField.OffRightRF
+        receptiveFieldType: ReceptiveField.OffLeftRF
     }
 
     engine: RetinaEngine {
@@ -60,7 +60,30 @@ Node {
                 target: recField
                 property: "nPixelsY"
             }
+            Text {
+                text: "Receptive Field: "
+            }
+            ComboBox {
+                id: comboBox
+                width: 200
+                model: ListModel {
+                    id: types
+                    ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
+                    ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
+                    ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
+                    ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
+
+                }
+
+                onCurrentIndexChanged: {
+                    recField.receptiveFieldType = model.get(currentIndex).name
+                    console.log(textAt(model.get(currentIndex).name))
+
+                }
+
+            }
         }
+
     }
 
     RetinaPainter {
@@ -71,10 +94,10 @@ Node {
         height: 100
         retinaEngine: retinaEngine
 
-//        MouseArea {
-//            anchors.fill: parent
-//            drag.target: root
-//        }
+        //        MouseArea {
+        //            anchors.fill: parent
+        //            drag.target: root
+        //        }
     }
 
     Image {
@@ -83,6 +106,7 @@ Node {
         antialiasing: true
         anchors.fill: parent
         fillMode: Image.PreserveAspectFit
+
     }
 
     Connector {

@@ -31,7 +31,7 @@ void ReceptiveField::createOffLeftRF()
 
 void ReceptiveField::createOffRightRF()
 {
-    qDebug() << "qml: Recptive field: Off-right";
+    qDebug() << "qml: Recptive field: Off-right"<< m_nPixelsX << "X" << m_nPixelsY;
     for(int i = 0; i < m_nPixelsX; i++){
         for(int j = 0; j < m_nPixelsY; j++){
             m_receptiveField.at(i).at(j)= -1;
@@ -43,17 +43,39 @@ void ReceptiveField::createOffRightRF()
             m_receptiveField.at(i).at(j) = 1;
         }
     }
+}
 
-            for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
-            {
-                for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
-                {
-                    cout << m_receptiveField[i][j]  << "  ";
-                }
-                cout << endl;
-            }
+void ReceptiveField::createOffTopRF()
+{
+    qDebug() << "qml: Recptive field: Off-top"<< m_nPixelsX << "X" << m_nPixelsY;
+    for(int i = 0; i < m_nPixelsX; i++){
+        for(int j = 0; j < m_nPixelsY; j++){
+            m_receptiveField.at(i).at(j)= 1;
+        }
+    }
 
+    for(int i = 0; i < m_nPixelsX/2; i++){
+        for(int j = 0; j < m_nPixelsY; j++){
+            m_receptiveField.at(i).at(j) = -1;
+        }
+    }
 
+}
+
+void ReceptiveField::createOffBottomRF()
+{
+    qDebug() << "qml: Recptive field: Off-bottom"<< m_nPixelsX << "X" << m_nPixelsY;
+    for(int i = 0; i < m_nPixelsX; i++){
+        for(int j = 0; j < m_nPixelsY; j++){
+            m_receptiveField.at(i).at(j)= -1;
+        }
+    }
+
+    for(int i = 0; i < m_nPixelsX/2; i++){
+        for(int j = 0; j < m_nPixelsY; j++){
+            m_receptiveField.at(i).at(j) = 1;
+        }
+    }
 }
 
 void ReceptiveField::recreateRF()
@@ -70,6 +92,12 @@ void ReceptiveField::recreateRF()
         break;
     case OffRightRF:
         createOffRightRF();
+        break;
+    case OffTopRF:
+        createOffTopRF();
+        break;
+    case OffBottomRF:
+        createOffBottomRF();
         break;
     default:
         createOffLeftRF();
