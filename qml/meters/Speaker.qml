@@ -23,7 +23,7 @@ Node {
 
     controls: Component {
         Column {
-            width: parent.width
+            width: parent ? parent.width : 100
 
             Component.onCompleted: {
                 for(var i = 0; i < repeater.count; i++) {
