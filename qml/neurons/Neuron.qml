@@ -36,7 +36,7 @@ Node {
     }
 
     Component.onCompleted: {
-        dumpableProperties.concat("fireOutput")
+        dumpableProperties = dumpableProperties.concat("fireOutput")
     }
 
     Image {

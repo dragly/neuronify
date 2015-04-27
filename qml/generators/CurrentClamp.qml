@@ -42,7 +42,7 @@ Node {
     }
 
     Component.onCompleted: {
-        dumpableProperties.concat("currentOutput")
+        dumpableProperties = dumpableProperties.concat("currentOutput")
     }
 
     Image {
