@@ -1,25 +1,21 @@
 import QtQuick 2.0
 
-CreationList {
-    id: itemRow
-
-    CreationItem {
+ListModel {
+    ListElement {
         name: "Passive neuron"
         description: "Neuron with only passive currents."
         source: "../neurons/PassiveNeuron.qml"
         imageSource: "qrc:/images/neurons/passive.png"
     }
-
-    CreationItem {
+    ListElement {
         name: "Bursting neuron"
         description: "Neuron that bursts on stimulation."
         source: "../neurons/BurstNeuron.qml"
         imageSource: "qrc:/images/neurons/burst.png"
     }
-
-    CreationItem {
+    ListElement {
         name: "Adaptation neuron"
-        description: "Neuron passive currents and adaptation on firing."
+        description: "Passive currents and adaptation on firing."
         source: "../neurons/AdaptationNeuron.qml"
         imageSource: "qrc:/images/neurons/adaptive.png"
     }

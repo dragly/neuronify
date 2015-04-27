@@ -16,8 +16,11 @@ Item {
     property bool revealed: false
 
     width: parent.width * 0.1
-
     anchors.fill: parent
+
+    onRevealedChanged: {
+        itemListView.currentIndex = -1
+    }
 
     ListModel {
         id: categories
@@ -47,6 +50,11 @@ Item {
         }
     }
 
+    Loader {
+        id: itemModelLoader
+        source: "NeuronList.qml"
+    }
+
     MouseArea {
         anchors.fill: parent
         enabled: root.revealed
@@ -60,6 +68,9 @@ Item {
     MouseArea {
         anchors.fill: creationColumn
         enabled: root.revealed
+        onClicked: {
+            itemListView.currentIndex = -1
+        }
     }
 
     Item {
@@ -143,7 +154,6 @@ Item {
 
                 model: categories
 
-
                 delegate: Image {
                     width: Style.touchableSize
                     height: width
@@ -153,7 +163,7 @@ Item {
                         anchors.fill: parent
                         onPressed: {
                             categoriesListView.currentIndex = index
-                            loader.source = model.listSource
+                            itemModelLoader.source = model.listSource
                         }
                     }
                 }
@@ -166,14 +176,76 @@ Item {
                 }
             }
 
-            Loader {
-                id: loader
+            ListView {
+                id: itemListView
+                height: Style.touchableSize
+                width: count * (Style.touchableSize + spacing) - spacing
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                height: Style.touchableSize
-                source: "qrc:/qml/hud/NeuronList.qml"
+                spacing: Style.touchableSize * 0.5
+                orientation: ListView.Horizontal
+                boundsBehavior: Flickable.StopAtBounds
+
+                model: itemModelLoader.item
+
+                delegate: CreationItem {
+                    name: model.name
+                    description: model.description
+                    source: model.source
+                    imageSource: model.imageSource
+
+                    onClicked: {
+                        itemListView.currentIndex = index
+                    }
+
+                    onDropped: {
+                        droppedEntity(fileUrl, properties, controlParent, useAutoLayout)
+                    }
+                }
+
+                highlight: Image {
+                    z: 99
+                    source: "qrc:/images/categories/marker.png"
+
+                    opacity: 0.6
+
+                    width: Style.touchableSize
+                    height: width
+                }
+
+                onModelChanged: {
+                    currentIndex = -1
+                }
             }
 
+            Item {
+                id: itemDescription
+
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                width: parent.width
+                height: 0
+
+                Text {
+                    property var item: itemListView.currentItem
+                    anchors.fill: parent
+
+                    color: Style.font.color
+                    font.pixelSize: Style.font.size
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                    text: item ? "<b>" + item.name + "</b> - " + item.description : ""
+                }
+
+                states: State {
+                    when: itemListView.currentItem !== null
+                    PropertyChanges {
+                        target: itemDescription
+                        height: Style.font.size * 1.1
+                    }
+                }
+            }
 
             states: State {
                 when: root.revealed

@@ -1,5 +1,7 @@
 #include "receptivefield.h"
 
+#include <cmath>
+
 ReceptiveField::ReceptiveField()
 {
 }
@@ -47,7 +49,6 @@ void ReceptiveField::createOffTopRF()
             m_receptiveField.at(i).at(j) = -1;
         }
     }
-
 }
 
 void ReceptiveField::createOffBottomRF()

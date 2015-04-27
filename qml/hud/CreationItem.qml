@@ -2,10 +2,11 @@ import QtQuick 2.0
 import "../style"
 
 Item {
-    id: creationControlBackground
+    id: root
     property string objectName: "CreationItem"
 
-    signal dropped(var source, var properties, var controlParent, var autoLayout)
+    signal dropped(var fileUrl, var properties, var controlParent, var useAutoLayout)
+    signal clicked(var entity)
 
     default property alias subChildren: creationControl.children
 
@@ -49,8 +50,11 @@ Item {
             drag.onActiveChanged: {
                 if (!dragArea.drag.active) {
                     var properties = {x: creationControl.x, y: creationControl.y}
-                    dropped(source, properties, creationControlBackground, autoLayout)
+                    dropped(source, properties, root, autoLayout)
                 }
+            }
+            onClicked: {
+                root.clicked(root)
             }
         }
     }
