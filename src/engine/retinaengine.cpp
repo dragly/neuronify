@@ -8,8 +8,7 @@ RetinaEngine::RetinaEngine():
     m_nPixelsY(300)
 {
     makeReceptiveField();
-    connect(&m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
-    connect(&m_probe, &QVideoProbe::videoFrameProbed, &m_videoSurface, &VideoSurface::present);
+
 }
 
 RetinaEngine::~RetinaEngine()
@@ -19,9 +18,8 @@ RetinaEngine::~RetinaEngine()
 
 void RetinaEngine::receivedImage()
 {
-    m_image = m_videoSurface.image();
+    m_image = m_videoSurface->image();
     m_image =  m_image.scaled(m_nPixelsX,m_nPixelsY);
-
     for(int i = 0; i < m_image.width(); i++){
         for(int j = 0; j < m_image.height(); j++){
 
@@ -36,43 +34,30 @@ void RetinaEngine::receivedImage()
     update();
 }
 
-void RetinaEngine::setCamera(QObject* camera)
+void RetinaEngine::setVideoSurface(VideoSurface *videoSurface)
 {
-    if (m_camera == camera)
+
+    if (m_videoSurface == videoSurface)
         return;
-
-    m_camera = camera;
-
-    QCamera *cameraObject = qvariant_cast<QCamera *>(camera->property("mediaObject"));
-
-    if(cameraObject) {
-#ifdef Q_OS_ANDROID
-        qDebug() << "Setting probe source";
-        bool sourceSuccess = m_probe.setSource(cameraObject);
-        if(!sourceSuccess) {
-            qWarning() << "Could not set probe source!";
-        }
-#else
-        qDebug() << "Setting renderer control";
-        m_rendererControl = cameraObject->service()->requestControl<QVideoRendererControl *>();
-        if(m_rendererControl) {
-            qDebug() << "Setting renderer surface";
-            m_rendererControl->setSurface(&m_videoSurface);
-        }
-#endif
+    if(m_videoSurface){
+        disconnect(m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
     }
-
-    emit cameraChanged(camera);
+    m_videoSurface = videoSurface;
+    if(m_videoSurface){
+        connect(m_videoSurface, &VideoSurface::gotImage, this, &RetinaEngine::receivedImage);
+    }
+    emit videoSurfaceChanged(videoSurface);
 }
+
 
 QImage RetinaEngine::image() const
 {
     return m_image;
 }
 
-QObject* RetinaEngine::camera() const
+VideoSurface *RetinaEngine::videoSurface() const
 {
-    return m_camera;
+    return m_videoSurface;
 }
 
 

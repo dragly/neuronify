@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>sounds/thump.wav</file>
+    </qresource>
+</RCC>

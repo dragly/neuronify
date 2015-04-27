@@ -15,5 +15,6 @@ Neuron {
         fireOutput: 2.0
         PassiveCurrent {}
     }
+
 }
 

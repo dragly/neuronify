@@ -6,6 +6,7 @@ import QtQuick.Controls.Styles 1.1
 import Neuronify 1.0
 
 import ".."
+import "../controls"
 
 Item {
     id: neuronControlsRoot
@@ -24,27 +25,9 @@ Item {
             text: engine.voltage.toFixed(0) + " mV"
             anchors.right: parent.right
         }
-        Text {
-            text: "Synaptic output: "+ engine.fireOutput.toFixed(1) + " mS"
-        }
-        CheckBox {
-            id: inhibitoryCheckbox
-            text: "Inhibitory"
-            checked: (engine.fireOutput < 0.0)
-        }
-        Slider {
-            id: fireOutputSlider
-            minimumValue: 0.
-            maximumValue: 10.
-            stepSize: 0.1
-            tickmarksEnabled: true
-            Layout.fillWidth: true
-            value: Math.abs(engine.fireOutput)
-        }
-        Binding {
+
+        FireOutputControl {
             target: engine
-            property: "fireOutput"
-            value: (inhibitoryCheckbox.checked ? -1.0 : 1.0) * fireOutputSlider.value
         }
 
         Item {

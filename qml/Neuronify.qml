@@ -3,6 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
 import QtQuick.Window 2.1
+import QtMultimedia 5.0
 
 import Neuronify 1.0
 
@@ -13,7 +14,7 @@ import "io"
 import "tools"
 
 Rectangle {
-    id: neuronifyRoot
+    id: root
 
     property real lastStepTime: Date.now()
     property var organizedItems: []
@@ -273,14 +274,27 @@ Rectangle {
             return
         }
 
-        properties.simulator = neuronifyRoot
+        if(fileUrl.toString().indexOf("Retina.qml")> -1){
+            console.log(videoSurface)
+            properties.videoSurface = videoSurface
+        }
+
+
+        properties.simulator = root
         var entity = component.createObject(neuronLayer, properties)
+        if(!entity) {
+            console.error("Could not create entity from component " + fileUrl)
+            return
+        }
+
         entity.dragStarted.connect(resetOrganize)
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.droppedConnector.connect(createConnectionToPoint)
+        entity.fired.connect(sound.play)
+
         graphEngine.addNode(entity)
         if(useAutoLayout) {
             autoLayout.entities.push(entity)
@@ -495,11 +509,11 @@ Rectangle {
             var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
             properties.x = workspacePosition.x
             properties.y = workspacePosition.y
-            neuronifyRoot.createEntity(fileUrl, properties, useAutoLayout)
+            root.createEntity(fileUrl, properties, useAutoLayout)
         }
 
         onDeleteEverything: {
-            neuronifyRoot.deleteEverything()
+            root.deleteEverything()
         }
     }
 
@@ -517,6 +531,7 @@ Rectangle {
         id: mainMenu
         anchors.fill: parent
         blurSource: workspaceFlickable
+        soundBank: sound
 
         onLoadSimulation: {
             loadState(simulation.stateSource)
@@ -568,8 +583,19 @@ Rectangle {
 
         onLoadState: {
             console.log("Load state signal caught")
-            neuronifyRoot.loadState(fileUrl)
+            root.loadState(fileUrl)
         }
+    }
+
+    VideoSurface{
+        id: videoSurface
+        camera: Camera{
+
+        }
+    }
+
+    SoundBank {
+        id: sound
     }
 
     //////////////////////// save/load ////////////////
@@ -588,4 +614,5 @@ Rectangle {
             deleteSelected()
         }
     }
+
 }
