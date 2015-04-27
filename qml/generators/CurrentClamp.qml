@@ -28,7 +28,7 @@ Node {
             Column {
                 anchors.fill: parent
                 Text {
-                    text: "Current output: " + currentOutputSlider.value.toFixed(0) + " mA"
+                    text: "Current output: " + currentOutput.toFixed(0) + " mA"
                 }
 
                 BoundSlider {
