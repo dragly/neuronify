@@ -282,12 +282,19 @@ Rectangle {
 
         properties.simulator = root
         var entity = component.createObject(neuronLayer, properties)
+        if(!entity) {
+            console.error("Could not create entity from component " + fileUrl)
+            return
+        }
+
         entity.dragStarted.connect(resetOrganize)
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.droppedConnector.connect(createConnectionToPoint)
+        entity.fired.connect(sound.play)
+
         graphEngine.addNode(entity)
         if(useAutoLayout) {
             autoLayout.entities.push(entity)
@@ -524,6 +531,7 @@ Rectangle {
         id: mainMenu
         anchors.fill: parent
         blurSource: workspaceFlickable
+        soundBank: sound
 
         onLoadSimulation: {
             loadState(simulation.stateSource)
@@ -584,6 +592,10 @@ Rectangle {
         camera: Camera{
 
         }
+    }
+
+    SoundBank {
+        id: sound
     }
 
     //////////////////////// save/load ////////////////

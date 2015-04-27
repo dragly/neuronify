@@ -1,4 +1,6 @@
 import QtQuick 2.0
+import QtMultimedia 5.0
+
 import Neuronify 1.0
 
 NodeBase {
@@ -7,6 +9,7 @@ NodeBase {
     signal dragStarted
     signal aboutToDie(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
+    signal fired
 
     property string objectName: "entity"
     property string fileName: "Entity.qml"
@@ -24,6 +27,16 @@ NodeBase {
         "x",
         "y"
     ]
+
+    Component.onDestruction: {
+        aboutToDie(root)
+    }
+
+    onEngineChanged: {
+        if(engine) {
+            engine.fired.connect(root.fired)
+        }
+    }
 
     function _deleteAllConnectionsInList(connectionsToDelete) {
         for(var i in connectionsToDelete) {
@@ -51,10 +64,6 @@ NodeBase {
         var outputString = ""
         outputString += _basicSelfDump(index)
         return outputString
-    }
-
-    Component.onDestruction: {
-        aboutToDie(root)
     }
 
     Rectangle {

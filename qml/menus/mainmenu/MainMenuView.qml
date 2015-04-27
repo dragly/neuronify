@@ -7,6 +7,7 @@ Item {
 
     signal continueClicked
     signal simulationsClicked
+    signal toggleSoundClicked
     signal aboutClicked
     signal advancedClicked
 
@@ -34,6 +35,14 @@ Item {
             text: "Select simulation"
             onClicked: {
                 simulationsClicked()
+            }
+        }
+
+        MenuButton {
+            width: parent.width
+            text: "Toggle sound"
+            onClicked: {
+                toggleSoundClicked()
             }
         }
 

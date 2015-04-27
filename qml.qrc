@@ -59,5 +59,6 @@
         <file>qml/hud/SensorsList.qml</file>
         <file>qml/controls/BoundSlider.qml</file>
         <file>qml/controls/FireOutputControl.qml</file>
+        <file>qml/SoundBank.qml</file>
     </qresource>
 </RCC>

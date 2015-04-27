@@ -41,7 +41,8 @@ SOURCES += \
 
 RESOURCES += qml.qrc \
     images.qrc \
-    simulations.qrc
+    simulations.qrc \
+    sounds.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
@@ -58,6 +59,7 @@ DISTFILES += \
     android/gradle/wrapper/gradle-wrapper.properties \
     android/gradlew \
     android/src/org/cinpla/neuronify/AlwaysOnActivity.java \
-    qml/sensors/singletons/qmldir
+    qml/sensors/singletons/qmldir \
+    COPYING.md
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
