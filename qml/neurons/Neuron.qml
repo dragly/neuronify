@@ -23,6 +23,7 @@ Node {
 
     controls: Component {
         NeuronControls {
+            neuron: root
             engine: root.engine
             onDeleteClicked: {
                 root.destroy(1)

@@ -11,6 +11,7 @@ import "../controls"
 Column {
     signal deleteClicked
 
+    property var neuron: null
     property NeuronEngine engine: null
 
     width: parent ? parent.width : 100
@@ -20,16 +21,20 @@ Column {
         text: engine.voltage.toFixed(0) + " mV"
         anchors.right: parent.right
     }
-    
-        Text {
-            text: "Label:"
-        }
-        TextField {
-            text: ""
-            onAccepted: {
-                label = text
-            }
-        }
+
+    Text {
+        text: "Label:"
+    }
+
+    TextField {
+        id: labelField
+        text: neuron.label
+    }
+    Binding {
+        target: neuron
+        property: "label"
+        value: labelField.text
+    }
 
 
     BoundSlider {
