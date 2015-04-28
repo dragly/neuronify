@@ -8,31 +8,38 @@ import Neuronify 1.0
 import ".."
 import "../controls"
 
-Item {
-    id: neuronControlsRoot
-
+Column {
     signal deleteClicked
 
     property NeuronEngine engine: null
 
-    anchors.fill: parent
+    width: parent.width
+    spacing: 10
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 10
+    Text {
+        text: engine.voltage.toFixed(0) + " mV"
+        anchors.right: parent.right
+    }
 
-        Text {
-            text: engine.voltage.toFixed(0) + " mV"
-            anchors.right: parent.right
-        }
+    BoundSlider {
+        target: engine
+        property: "restingPotential"
+        text: "Resting potential"
+        unit: "mV"
+        minimumValue: -100
+        maximumValue: 50
+    }
 
-        FireOutputControl {
-            target: engine
-        }
+    BoundSlider {
+        target: engine
+        property: "threshold"
+        text: "Firing threshold"
+        minimumValue: -50
+        maximumValue: 50
+        unit: "mV"
+    }
 
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-        }
+    FireOutputControl {
+        target: engine
     }
 }

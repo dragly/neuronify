@@ -16,7 +16,7 @@ class NeuronEngine : public NodeEngine
     Q_PROPERTY(double synapsePotential READ synapsePotential WRITE setSynapsePotential NOTIFY synapsePotentialChanged)
     Q_PROPERTY(bool clampCurrentEnabled READ clampCurrentEnabled WRITE setClampCurrentEnabled NOTIFY clampCurrentEnabledChanged)
     Q_PROPERTY(double clampCurrent READ clampCurrent WRITE setClampCurrent NOTIFY clampCurrentChanged)
-    Q_PROPERTY(double cm READ cm WRITE setCm NOTIFY cmChanged)
+    Q_PROPERTY(double threshold READ threshold WRITE setThreshold NOTIFY thresholdChanged)
 
 public:
     NeuronEngine(QQuickItem *parent = 0);
@@ -26,8 +26,8 @@ public:
     double restingPotential() const;
     double synapsePotential() const;
     double clampCurrent() const;
-    double cm() const;
     bool clampCurrentEnabled() const;
+    double threshold() const;
 
 public slots:
     void setVoltage(double arg);
@@ -36,9 +36,9 @@ public slots:
     void setSynapsePotential(double arg);
     void setClampCurrentEnabled(bool arg);
     void setClampCurrent(double arg);
-    void setCm(double arg);
     void reset();
     void initialize();
+    void setThreshold(double threshold);
 
 signals:
     void voltageChanged(double arg);
@@ -47,7 +47,7 @@ signals:
     void synapsePotentialChanged(double arg);
     void clampCurrentEnabledChanged(bool arg);
     void clampCurrentChanged(double arg);
-    void cmChanged(double arg);
+    void thresholdChanged(double threshold);
 
 protected:
     virtual void stepEvent(double dt);
@@ -58,7 +58,6 @@ protected:
 private:
     void checkFire();
 
-    double m_cm = 0.0;
     double m_voltage = 0.0;
     double m_membraneRestingPotential = 0.0;
     double m_synapsePotential = 0.0;
@@ -67,6 +66,7 @@ private:
     double m_clampCurrent = 0.0;
     double m_receivedCurrents = 0.0;
     bool m_firedLastTime = false;
+    double m_threshold = 0.0;
 };
 
 #endif // NEURONIFY_NEURONENGINE_H

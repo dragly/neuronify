@@ -9,7 +9,6 @@ using namespace std;
 
 NeuronEngine::NeuronEngine(QQuickItem *parent)
     : NodeEngine(parent)
-    , m_cm(0)
     , m_voltage(0)
     , m_membraneRestingPotential(0)
     , m_synapsePotential(0)
@@ -46,9 +45,9 @@ bool NeuronEngine::clampCurrentEnabled() const
     return m_clampCurrentEnabled;
 }
 
-double NeuronEngine::cm() const
+double NeuronEngine::threshold() const
 {
-    return m_cm;
+    return m_threshold;
 }
 
 double NeuronEngine::clampCurrent() const
@@ -153,14 +152,6 @@ void NeuronEngine::setClampCurrent(double arg)
     }
 }
 
-void NeuronEngine::setCm(double arg)
-{
-    if (m_cm != arg) {
-        m_cm = arg;
-        emit cmChanged(arg);
-    }
-}
-
 void NeuronEngine::reset()
 {
     m_voltage = -100.;
@@ -169,11 +160,19 @@ void NeuronEngine::reset()
 
 void NeuronEngine::initialize()
 {
-    m_cm = 1.0;
     m_membraneRestingPotential = -65.0;
     m_synapsePotential = 50.0;
     m_clampCurrentEnabled = false;
     m_clampCurrent = 0.0;
+}
+
+void NeuronEngine::setThreshold(double threshold)
+{
+    if (m_threshold == threshold)
+        return;
+
+    m_threshold = threshold;
+    emit thresholdChanged(threshold);
 }
 
 void NeuronEngine::checkFire()
@@ -184,7 +183,7 @@ void NeuronEngine::checkFire()
         return;
     }
 
-    if(m_voltage > 0.0) {
+    if(m_voltage > m_threshold) {
         fire();
     }
 }
