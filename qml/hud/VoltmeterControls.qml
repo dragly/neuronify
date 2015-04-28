@@ -1,13 +1,13 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
-import ".."
 
+import ".."
+import "../controls"
 
 Item {
     id: voltmeterControlsRoot
     property Item voltmeter: null
-
 
     onVoltmeterChanged: {
         if(!voltmeterControlsRoot.voltmeter) {
@@ -20,7 +20,6 @@ Item {
             break
         }
     }
-
 
     anchors.fill: parent
 
@@ -64,11 +63,22 @@ Item {
             }
         }
 
-        Button {
-            text: "Delete"
-            onClicked: {
-                voltmeterControlsRoot.voltmeter.destroy()
-            }
+        BoundSlider {
+            target: voltmeter
+            property: "minimumValue"
+            text: "Minimum voltage"
+            unit: "mV"
+            minimumValue: -250
+            maximumValue: 250
+        }
+
+        BoundSlider {
+            target: voltmeter
+            property: "maximumValue"
+            text: "Maximum voltage"
+            unit: "mV"
+            minimumValue: -250
+            maximumValue: 250
         }
 
         Item {

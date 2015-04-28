@@ -13,7 +13,7 @@ Column {
 
     property NeuronEngine engine: null
 
-    width: parent.width
+    width: parent ? parent.width : 100
     spacing: 10
 
     Text {

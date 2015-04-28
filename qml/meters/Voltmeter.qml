@@ -59,6 +59,20 @@ Node {
         plot.maximumValue = maximumValue
     }
 
+    function resetAllMinMax() {
+        for(var i in connectionPlots) {
+            var connectionPlot = connectionPlots[i]
+            resetMinMax(connectionPlot.plot)
+        }
+    }
+
+    onMinimumValueChanged: {
+        resetAllMinMax()
+    }
+
+    onMaximumValueChanged: {
+        resetAllMinMax()
+    }
 
     onEdgeAdded: {
         if(currentColor > colors.length - 1) {
@@ -107,8 +121,6 @@ Node {
             connectionPlot.plot.clearData()
         }
     }
-
-
 
     Rectangle {
         anchors.fill: parent
