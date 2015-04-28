@@ -3,6 +3,7 @@ import ".."
 import "../paths"
 import "../hud"
 import Neuronify 1.0
+import QtQuick.Controls 1.3
 
 Node {
     id: root

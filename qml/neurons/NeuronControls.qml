@@ -20,6 +20,17 @@ Column {
         text: engine.voltage.toFixed(0) + " mV"
         anchors.right: parent.right
     }
+    
+        Text {
+            text: "Label:"
+        }
+        TextField {
+            text: ""
+            onAccepted: {
+                label = text
+            }
+        }
+
 
     BoundSlider {
         target: engine
@@ -42,4 +53,8 @@ Column {
     FireOutputControl {
         target: engine
     }
+    
+
+   
+
 }

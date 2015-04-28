@@ -15,6 +15,7 @@ Node {
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property VideoSurface videoSurface: null;
+    property int fieldIndex: 0
 
     width:20
     height: 20
@@ -68,21 +69,31 @@ Node {
             ComboBox {
                 id: comboBox
                 width: 200
-                model: ListModel {
-                    id: types
-                    ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
-                    ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
-                    ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
-                    ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
+                model: fieldTypes
 
+                onChildrenChanged: {
+                    if(!currentIndex+1){
+                        currentIndex = fieldIndex
+                    }
                 }
 
                 onCurrentIndexChanged: {
                     recField.receptiveFieldType = model.get(currentIndex).name
+                    fieldIndex = currentIndex
                 }
 
             }
+
         }
+
+    }
+
+    ListModel {
+        id: fieldTypes
+        ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
+        ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
+        ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
+        ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
 
     }
 
@@ -115,4 +126,5 @@ Node {
         }
     }
 }
+
 

@@ -39,7 +39,7 @@ public:
     double gaborField(int x, int y);
 
 
-    vector<vector<double> > rf() const;
+    vector<vector<double> > rf();
     ReceptiveFieldTypes receptiveFieldType() const;
 
 

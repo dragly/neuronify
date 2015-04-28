@@ -7,6 +7,7 @@ import ".."
 import "../controls"
 
 Node {
+    id: speaker
     property alias source: soundBank.source
 
     objectName: "Speaker"
@@ -53,6 +54,20 @@ Node {
                 property: "volume"
                 minimumValue: 0.0
                 maximumValue: 1.0
+            }
+            Button {
+                text: "Connect to all neurons"
+                onClicked: {
+                    var itemA = speaker
+                    for (var i in speaker.simulator.graphEngine.nodes){
+                        var itemB = graphEngine.nodes[i]
+                        if (itemB.objectName.indexOf("neuron") + itemB.objectName.indexOf("Neuron") != -2){
+                            if (!speaker.simulator.connectionExists(itemB, itemA)){
+                                speaker.simulator.connectEntities(itemB, itemA)
+                            }
+                        }
+                    }
+                }
             }
 
             ExclusiveGroup { id: soundGroup }
@@ -111,5 +126,7 @@ Node {
         id: soundBank
         source: "glass.wav"
     }
+
+
 }
 
