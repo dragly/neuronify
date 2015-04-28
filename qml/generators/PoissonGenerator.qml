@@ -42,7 +42,7 @@ Node {
             anchors.fill: parent
 
             Text {
-                text: "Firing rate: " + engine.rate.toFixed(1) + " s⁻¹"
+                text: "Firing rate: " + engine.rate.toFixed(1) + " ms⁻¹"
             }
             BoundSlider {
                 minimumValue: 0.0
