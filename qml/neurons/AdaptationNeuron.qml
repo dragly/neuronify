@@ -8,6 +8,7 @@ import "../controls"
 
 Neuron {
     property alias adaptation: adaptationCurrent.adaptation
+    property alias fireOutput: engine.fireOutput
 
     objectName: "adaptationNeuron"
     fileName: "neurons/AdaptationNeuron.qml"
