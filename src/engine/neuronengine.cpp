@@ -99,6 +99,7 @@ void NeuronEngine::stepEvent(double dt)
 void NeuronEngine::fireEvent()
 {
     setVoltage(100.0);
+    setSynapticConductance(0.0);
     m_firedLastTime = true;
 }
 

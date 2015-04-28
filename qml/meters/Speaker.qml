@@ -24,6 +24,8 @@ Node {
 
     controls: Component {
         Column {
+            width: parent ? parent.width : 100
+
             Component.onCompleted: {
                 for(var i = 0; i < repeater.count; i++) {
                     var item = repeater.itemAt(i)
@@ -80,7 +82,6 @@ Node {
 
                     onCheckedChanged: {
                         if(checked) {
-                            console.log("Setting source: " + model.source)
                             soundBank.source = model.source
                         }
                     }

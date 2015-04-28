@@ -20,9 +20,6 @@ Item {
     property real volume: 1.0
     property var slots: []
     property string source
-    onSourceChanged: {
-        console.log(source)
-    }
 
     Component.onCompleted: {
         for(var i = 0; i < 5; i++) {

@@ -52,8 +52,6 @@ NodeBase {
         for(var i in dumpableProperties) {
             var propertyName = dumpableProperties[i]
             entityData[propertyName] = root[propertyName]
-            console.log(propertyName)
-            console.log(typeof(root[propertyName]))
         }
 
         var entityName = "entity" + index

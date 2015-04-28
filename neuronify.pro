@@ -22,7 +22,8 @@ HEADERS += \
     src/engine/neuronengine.h \
     src/engine/retinaengine.h \
     src/engine/videosurface.h \
-    src/engine/retinapainter.h
+    src/engine/retinapainter.h \
+    src/engine/receptivefield.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -37,7 +38,8 @@ SOURCES += \
     src/engine/neuronengine.cpp \
     src/engine/retinaengine.cpp \
     src/engine/videosurface.cpp \
-    src/engine/retinapainter.cpp
+    src/engine/retinapainter.cpp \
+    src/engine/receptivefield.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

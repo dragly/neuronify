@@ -8,6 +8,7 @@
 
 #include "videosurface.h"
 #include "nodeengine.h"
+#include "receptivefield.h"
 
 using namespace std;
 
@@ -15,6 +16,7 @@ class RetinaEngine : public NodeEngine
 {
     Q_OBJECT
     Q_PROPERTY(VideoSurface *  videoSurface READ videoSurface WRITE setVideoSurface NOTIFY videoSurfaceChanged)
+    Q_PROPERTY(ReceptiveField * receptiveField READ receptiveField WRITE setReceptiveField NOTIFY receptiveFieldChanged)
 
 
 public:
@@ -22,34 +24,33 @@ public:
     ~RetinaEngine();
 
     void calculateFiringRate();
-    double temporalRF(const double tau);
-    double gaborField(int x, int y);
 
     VideoSurface * videoSurface() const;
     QImage image() const;
+    ReceptiveField * receptiveField() const;
 
 public slots:
     void receivedImage();
     void setVideoSurface(VideoSurface * videoSurface);
+    void setReceptiveField(ReceptiveField * receptiveField);
 
 signals:
     void videoSurfaceChanged(VideoSurface * videoSurface);
+    void receptiveFieldChanged(ReceptiveField * receptiveField);
 
 protected:
     virtual void stepEvent(double dt);
 
 private:
     VideoSurface * m_videoSurface = nullptr;
+    ReceptiveField * m_receptiveField = nullptr;
     QImage m_image;
 
-    vector< vector <double>> m_stim;
-    vector< vector <double>> m_recField;
-
-    int m_nPixelsX;
-    int m_nPixelsY;
     double m_firingRate = 0.0;
 
-    void makeReceptiveField();
+    vector< vector <double>> m_stim;
+    vector< vector <double>> m_receptiveFieldShape;
+
 };
 
 
