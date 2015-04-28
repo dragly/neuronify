@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+const static long double pi = 3.141592653589793238462643383279502884L;
+
 ReceptiveField::ReceptiveField()
 {
 }
@@ -114,7 +116,7 @@ double ReceptiveField::gaborField(int idx, int idy)
     double x =  idx * cos(theta) + idy * sin(theta);
     double y = -idx * sin(theta) + idy * cos(theta);
 
-    double prefactor = 1.0/(2.* M_PI * sigmaX * sigmaY);
+    double prefactor = 1.0/(2.* pi * sigmaX * sigmaY);
     double expFactor = exp(-x*x/(2.* sigmaX * sigmaX) - y*y/(2. * sigmaY * sigmaY));
     double cosFactor = cos(k * x - phi);
     return prefactor * expFactor * cosFactor;
