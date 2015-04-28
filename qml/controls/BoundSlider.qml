@@ -8,6 +8,7 @@ Column {
     property string property: ""
     property string text: ""
     property string unit: ""
+    property int precision: 1
 
     property alias minimumValue: slider.minimumValue
     property alias maximumValue: slider.maximumValue
@@ -16,7 +17,8 @@ Column {
     width: parent.width
 
     Text {
-        text: root.text ? (root.text + ": " + slider.value.toFixed(1) + " " + root.unit) : ""
+
+        text: root.text ? (root.text + ": " + slider.value.toFixed(precision) + " " + root.unit) : ""
     }
     Slider {
         id: slider

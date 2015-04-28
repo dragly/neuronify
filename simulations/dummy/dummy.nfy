@@ -1,6 +1,6 @@
 var entity0 = createEntity("neurons/PassiveNeuron.qml", {"x":734.709090909091,"y":422.1090909090909,"label":"","fireOutput":2})
 var entity1 = createEntity("neurons/PassiveNeuron.qml", {"x":881.9818181818183,"y":513.0181818181818,"label":"","fireOutput":2})
-var entity2 = createEntity("neurons/PassiveNeuron.qml", {"x":887.4363636363637,"y":332.1090909090909,"label":"asdasd","fireOutput":2})
+var entity2 = createEntity("neurons/PassiveNeuron.qml", {"x":887.4363636363637,"y":332.1090909090909,"label":"","fireOutput":2})
 var entity3 = createEntity("neurons/PassiveNeuron.qml", {"x":1141.9818181818182,"y":513.0181818181818,"label":"","fireOutput":2})
 var entity4 = createEntity("neurons/PassiveNeuron.qml", {"x":1135.6181818181817,"y":323.9272727272727,"label":"","fireOutput":2})
 var entity5 = createEntity("meters/Voltmeter.qml", {"x":658.5636363636365,"y":234.83636363636361,"label":""})

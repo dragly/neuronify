@@ -42,6 +42,7 @@ Column {
         property: "restingPotential"
         text: "Resting potential"
         unit: "mV"
+        precision: 0
         minimumValue: -100
         maximumValue: 50
     }
@@ -52,6 +53,7 @@ Column {
         text: "Firing threshold"
         minimumValue: -50
         maximumValue: 50
+        precision: 0
         unit: "mV"
     }
 
