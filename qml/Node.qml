@@ -10,7 +10,7 @@ NodeBase {
     signal aboutToDie(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
     signal fired
-
+    property string label: ""
     property string objectName: "entity"
     property string fileName: "Entity.qml"
     property real radius: width * 0.5
@@ -25,7 +25,8 @@ NodeBase {
     property bool useDefaultMouseHandling: true
     property var dumpableProperties: [
         "x",
-        "y"
+        "y",
+        "label"
     ]
 
     Component.onDestruction: {
@@ -64,6 +65,20 @@ NodeBase {
         var outputString = ""
         outputString += _basicSelfDump(index)
         return outputString
+    }
+
+    Rectangle{
+        anchors.fill: labelBox
+        color: "white"
+        opacity: 0.5
+        z: 98
+    }
+
+    Text {
+        anchors.bottom: root.top
+        id: labelBox
+        z: 99
+        text: qsTr(label)
     }
 
     Rectangle {

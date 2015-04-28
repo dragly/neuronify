@@ -26,6 +26,16 @@ Item {
             anchors.right: parent.right
         }
 
+        Text {
+            text: "Label:"
+        }
+        TextField {
+            text: ""
+            onAccepted: {
+                label = text
+            }
+        }
+
         FireOutputControl {
             target: engine
         }
