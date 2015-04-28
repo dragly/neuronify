@@ -25,6 +25,12 @@ Node {
         "y"
     ]
 
+    Component.onCompleted: {
+        if(!videoSurface.camera.ActiveState){
+            videoSurface.camera.start()
+        }
+    }
+
     ReceptiveField{
         id:recField
         nPixelsX : 10

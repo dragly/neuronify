@@ -223,9 +223,30 @@ Rectangle {
         for(var i in toDelete) {
             toDelete[i].destroy(1)
         }
+
+
         if(activeObject) {
             activeObject.destroy(1)
         }
+
+
+        /*stop camera if last retina ************************/
+        if(activeObject.toString().indexOf("Retina")> -1){
+            var lastRetinaObject = true
+
+            for(var i in graphEngine.nodes) {
+                var listObject = graphEngine.nodes[i]
+                if(listObject.toString().indexOf("Retina")> -1 && listObject!== activeObject){
+                    lastRetinaObject = false
+                    console.log(i)
+                    continue
+                }
+            }
+            if(lastRetinaObject){
+                videoSurface.camera.stop()
+            }
+        }
+        /*****************************************************/
 
         deselectAll()
     }
@@ -588,7 +609,7 @@ Rectangle {
     VideoSurface{
         id: videoSurface
         camera: Camera{
-
+            id:camera
         }
     }
 
