@@ -44,5 +44,6 @@
         <file>images/generators/generator_overlay.png</file>
         <file>images/meters/speaker.png</file>
         <file>images/generators/ac_clamp.png</file>
+        <file>images/generators/poisson_generator_inhibitory.png</file>
     </qresource>
 </RCC>

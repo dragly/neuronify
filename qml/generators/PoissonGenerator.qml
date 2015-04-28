@@ -18,7 +18,10 @@ Node {
 
     width: parent.width * 0.015
     height: width
-    color: "#55d400"
+    color: inhibitory ? "#d45500" : "#55d400"
+    readonly property bool inhibitory: root.engine.fireOutput < 0.0
+    property url imageSource: "qrc:/images/generators/poisson_generator.png"
+    property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
 
     engine: NodeEngine {
         id: engine
@@ -56,7 +59,7 @@ Node {
     Image {
         anchors.fill: parent
 
-        source: "qrc:/images/generators/poisson_generator.png"
+        source: inhibitory ? inhibitoryImageSource : imageSource
         smooth: true
         antialiasing: true
         fillMode: Image.PreserveAspectFit
