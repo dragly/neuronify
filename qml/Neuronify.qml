@@ -229,25 +229,6 @@ Rectangle {
             activeObject.destroy(1)
         }
 
-
-        /*stop camera if last retina ************************/
-        if(activeObject.toString().indexOf("Retina")> -1){
-            var lastRetinaObject = true
-
-            for(var i in graphEngine.nodes) {
-                var listObject = graphEngine.nodes[i]
-                if(listObject.toString().indexOf("Retina")> -1 && listObject!== activeObject){
-                    lastRetinaObject = false
-                    console.log(i)
-                    continue
-                }
-            }
-            if(lastRetinaObject){
-                videoSurface.camera.stop()
-            }
-        }
-        /*****************************************************/
-
         deselectAll()
     }
 
@@ -295,8 +276,9 @@ Rectangle {
             return
         }
 
-        if(fileUrl.toString().indexOf("Retina.qml")> -1){
-            console.log(videoSurface)
+        var isRetina = fileUrl.toString().indexOf("Retina.qml")> -1
+        if(isRetina){
+            camera.retinaCounter += 1
             properties.videoSurface = videoSurface
         }
 
@@ -306,6 +288,12 @@ Rectangle {
         if(!entity) {
             console.error("Could not create entity from component " + fileUrl)
             return
+        }
+
+        if(isRetina){
+            entity.aboutToDie.connect(function(dead){
+                camera.retinaCounter-=1
+            })
         }
 
         entity.dragStarted.connect(resetOrganize)
@@ -610,6 +598,16 @@ Rectangle {
         id: videoSurface
         camera: Camera{
             id:camera
+            property bool active: retinaCounter > 0
+            property int retinaCounter: 0
+
+            onActiveChanged: {
+                if(active){
+                    camera.start()
+                }else{
+                    camera.stop()
+                }
+            }
         }
     }
 

@@ -17,15 +17,18 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
 
-    width:20
-    height: 20
+    width:50
+    height: 50
 
     dumpableProperties: [
         "x",
         "y"
     ]
 
-    Component.onCompleted: {
+    onVideoSurfaceChanged: {
+        if(!videoSurface){
+            return
+        }
         if(!videoSurface.camera.ActiveState){
             videoSurface.camera.start()
         }
@@ -107,8 +110,8 @@ Node {
         id: retinaPainter
         visible: Qt.platform.os !== "android"
         enabled: Qt.platform.os !== "android"
-        width: 100
-        height: 100
+        width: 200
+        height: 200
         retinaEngine: retinaEngine
 
         //        MouseArea {
