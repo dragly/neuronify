@@ -1,5 +1,7 @@
 #include "videosurface.h"
 
+#include "qandroidmultimediautils.h"
+
 #include <QDebug>
 #include <QVideoSurfaceFormat>
 #include <QVideoRendererControl>
@@ -7,7 +9,6 @@
 VideoSurface::VideoSurface()
 {
     connect(&m_probe, &QVideoProbe::videoFrameProbed, this, &VideoSurface::present);
-
 }
 
 VideoSurface::~VideoSurface()
@@ -45,17 +46,37 @@ void VideoSurface::setCamera(QObject* camera)
 
 QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVideoBuffer::HandleType handleType) const
 {
+    qDebug() << "Pixel formats requested";
     QList<QVideoFrame::PixelFormat> pixelFormat;
     pixelFormat.append(QVideoFrame::Format_RGB24);
+    pixelFormat.append(QVideoFrame::Format_NV21);
 
     return pixelFormat;
 }
 
-bool VideoSurface::present(const QVideoFrame &frame)
+bool VideoSurface::present(const QVideoFrame &constFrame)
 {
+    QVideoFrame frame = constFrame;
 #ifdef Q_OS_ANDROID
-    qDebug() << "Present got frame" << frame;
-#endif
+    if((m_frameCounter % 30) == 0) {
+        qDebug() << "Converting frame";
+        frame.map(QAbstractVideoBuffer::ReadOnly);
+        QSize frameSize = frame.size();
+        QImage result(frameSize, QImage::Format_ARGB32);
+        qt_convert_NV21_to_ARGB32((const uchar *)frame.bits(),
+                                  (quint32 *)result.bits(),
+                                  frameSize.width(),
+                                  frameSize.height());
+        QTransform transform;
+        transform.rotate(180);
+        result = result.transformed(transform);
+        m_image = result;
+        frame.unmap();
+        emit gotImage(QRect());
+    }
+    m_frameCounter += 1;
+    return true;
+#else
 
     QVideoFrame myFrame = frame;
     myFrame.map(QAbstractVideoBuffer::ReadOnly);
@@ -65,6 +86,7 @@ bool VideoSurface::present(const QVideoFrame &frame)
                      myFrame.bytesPerLine(), imageFormat);
     emit gotImage(QRect());
     return true;
+#endif
 }
 
 QImage VideoSurface::image() const

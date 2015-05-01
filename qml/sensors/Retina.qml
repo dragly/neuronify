@@ -120,6 +120,15 @@ Node {
         //        }
     }
 
+    VideoOutput {
+        id: blah
+        visible: !retinaPainter.enabled
+        enabled: !retinaPainter.enabled
+        width: 200
+        height: 200
+        source: videoSurface && videoSurface.camera ? videoSurface.camera : null
+    }
+
     Image {
         source: "qrc:/images/sensors/eye.png"
         smooth: true

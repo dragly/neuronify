@@ -23,7 +23,8 @@ HEADERS += \
     src/engine/retinaengine.h \
     src/engine/videosurface.h \
     src/engine/retinapainter.h \
-    src/engine/receptivefield.h
+    src/engine/receptivefield.h \
+    src/engine/qandroidmultimediautils.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -39,7 +40,8 @@ SOURCES += \
     src/engine/retinaengine.cpp \
     src/engine/videosurface.cpp \
     src/engine/retinapainter.cpp \
-    src/engine/receptivefield.cpp
+    src/engine/receptivefield.cpp \
+    src/engine/qandroidmultimediautils.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

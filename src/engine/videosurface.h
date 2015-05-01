@@ -36,6 +36,7 @@ private:
     QImage m_image;
     QVideoRendererControl* m_rendererControl;
     QVideoProbe m_probe;
+    int m_frameCounter = 0;
 };
 
 
