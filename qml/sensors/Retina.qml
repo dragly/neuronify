@@ -17,8 +17,8 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
 
-    width:50
-    height: 50
+    width: 240
+    height: 180
 
     dumpableProperties: [
         "x",
@@ -108,33 +108,31 @@ Node {
 
     VideoOutput {
         id: blah
-        visible: !retinaPainter.enabled
-        enabled: !retinaPainter.enabled
-        width: 200
-        height: 200
+        anchors.centerIn: parent
+        enabled: Qt.platform.os === "android"
+        visible: Qt.platform.os === "android"
+        width: 10
+        height: 10
         source: videoSurface && videoSurface.camera ? videoSurface.camera : null
+    }
+
+    Rectangle {
+        color: "#756bb1"
+        anchors.fill: parent
+        radius: 5
+        border.width: 2.0
+        border.color: "#BCBDDC"
     }
 
     RetinaPainter {
         id: retinaPainter
-//        visible: Qt.platform.os !== "android"
-//        enabled: Qt.platform.os !== "android"
-        width: 200
-        height: 200
+
+        anchors {
+            fill: parent
+            margins: 5
+        }
+
         retinaEngine: retinaEngine
-
-        //        MouseArea {
-        //            anchors.fill: parent
-        //            drag.target: root
-        //        }
-    }
-
-    Image {
-        source: "qrc:/images/sensors/eye.png"
-        smooth: true
-        antialiasing: true
-        anchors.fill: parent
-        fillMode: Image.PreserveAspectFit
     }
 
     Connector {
