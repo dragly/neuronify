@@ -126,13 +126,45 @@ Node {
 
     RetinaPainter {
         id: retinaPainter
+        retinaEngine: retinaEngine
+    }
 
-        anchors {
-            fill: parent
-            margins: 5
+    Item {
+        id: resizeRectangle
+
+        Component.onCompleted: {
+            resetPosition()
         }
 
-        retinaEngine: retinaEngine
+        function resetPosition() {
+            x = retinaPainter.width - width / 2
+            y = retinaPainter.height - height / 2
+        }
+
+        width: 100
+        height: 100
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+            onPositionChanged: {
+                if(drag.active) {
+                    var relativePosition = resizeRectangle.mapToItem(retinaPainter, 0, 0)
+                    retinaPainter.width = relativePosition.x + resizeRectangle.width / 2
+                    retinaPainter.height = relativePosition.y + resizeRectangle.width / 2
+                    resizeRectangle.resetPosition()
+                }
+            }
+        }
+    }
+
+
+
+    Image {
+        source: "qrc:/images/sensors/eye.png"
+        smooth: true
+        antialiasing: true
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectFit
     }
 
     Connector {
