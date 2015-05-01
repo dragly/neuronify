@@ -59,7 +59,6 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
     QVideoFrame frame = constFrame;
 #ifdef Q_OS_ANDROID
     if((m_frameCounter % 30) == 0) {
-        qDebug() << "Converting frame";
         frame.map(QAbstractVideoBuffer::ReadOnly);
         QSize frameSize = frame.size();
         QImage result(frameSize, QImage::Format_ARGB32);

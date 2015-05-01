@@ -14,7 +14,6 @@ RetinaEngine::~RetinaEngine()
 
 void RetinaEngine::receivedImage()
 {
-    qDebug() << "Received image";
     if(!m_receptiveField){
         return;
     }
