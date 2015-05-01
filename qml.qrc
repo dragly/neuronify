@@ -64,5 +64,6 @@
         <file>qml/meters/Speaker.qml</file>
         <file>qml/neurons/BurstInhibitoryNeuron.qml</file>
         <file>qml/neurons/AdaptationInhibitoryNeuron.qml</file>
+        <file>qml/ResizeRectangle.qml</file>
     </qresource>
 </RCC>
