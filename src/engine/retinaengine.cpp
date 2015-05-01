@@ -14,7 +14,6 @@ RetinaEngine::~RetinaEngine()
 
 void RetinaEngine::receivedImage()
 {
-
     if(!m_receptiveField){
         return;
     }
@@ -32,11 +31,14 @@ void RetinaEngine::receivedImage()
 
     for(int i = 0; i < m_image.width(); i++){
         for(int j = 0; j < m_image.height(); j++){
-
+#ifdef Q_OS_ANDROID
+            int gray = m_image.pixel(i,j);
+#else
             int gray = qGray(m_image.pixel(i,j));
-            m_stim.at(j).at(i) = gray-126.;
             QRgb color = qRgb(gray, gray, gray);
             m_image.setPixel(i,j,color);
+#endif
+            m_stim.at(j).at(i) = gray-126.;
         }
     }
 
@@ -53,11 +55,16 @@ void RetinaEngine::calculateFiringRate()
     int nPixelsX= m_receptiveField->nPixelsX();
     int nPixelsY = m_receptiveField->nPixelsY();
 
+    m_firingRate = 0.0;
     for(int i = 0; i < nPixelsX; i++){
         for(int j = 0; j < nPixelsY; j++){
-            //            qDebug() << m_stim.at(i).at(j)  << "    " << m_rf.at(i).at(j);
-            m_firingRate += m_stim.at(i).at(j) *  m_receptiveFieldShape.at(i).at(j) * 1./nPixelsX/nPixelsY;
+            m_firingRate += m_stim.at(i).at(j) *  m_receptiveFieldShape.at(i).at(j);
         }
+    }
+    int size = nPixelsX*nPixelsY;
+    m_firingRate /= size;
+    if(m_firingRate < 0){
+        m_firingRate = 0;
     }
 }
 
@@ -65,11 +72,6 @@ void RetinaEngine::calculateFiringRate()
 
 void RetinaEngine::stepEvent(double dt)
 {
-
-    if(m_firingRate < 0){
-        m_firingRate = 0;
-    }
-
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0,1);
@@ -77,7 +79,6 @@ void RetinaEngine::stepEvent(double dt)
     double shouldFire = (dis(gen) < m_firingRate*dt);
     if(shouldFire){
         fire();
-        m_firingRate = 0;
     }
 
 
