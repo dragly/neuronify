@@ -628,4 +628,51 @@ void qt_convert_NV21_to_ARGB32(const uchar *yuv, quint32 *rgb, int width, int he
     }
 }
 
+void qt_convert_NV21_to_ARGB32_factor(const uchar *yuv, quint32 *rgb, int width, int height, int factor)
+{
+
+    const uchar *y0 = yuv;
+    const uchar *vu = yuv + width * height;
+
+    quint32 *rgb0 = rgb;
+
+    for (int i = 0; i < height; i += factor) {
+        for (int j = 0; j < width; j += factor) {
+            int v = *vu;
+            vu += 1;
+            int u = *vu;
+            int ruv = coefficientsRV[v] >> 15;
+            int guv = (coefficientsGU[u] + coefficientsGV[v]) >> 15;
+            int buv = coefficientsBU[u] >> 15;
+            int y = coefficientsY[*y0] >> 15;
+            int r = y + ruv;
+            int g = y + guv;
+            int b = y + buv;
+            *rgb0++ = MAKE_RGB(r, g, b);
+
+            y0 += factor;
+            vu += factor / 2;
+        }
+
+        y0 += width * factor / 2;
+    }
+}
+
+void qt_convert_NV21_to_ARGB32_grayscale_factor(const uchar *yuv, quint32 *rgb, int width, int height, int factor)
+{
+    const uchar *y0 = yuv;
+
+    quint32 *rgb0 = rgb;
+
+    for (int i = 0; i < height; i += factor) {
+        for (int j = 0; j < width; j += factor) {
+            int y = coefficientsY[*y0] >> 15;
+            *rgb0++ = MAKE_RGB(y, y, y);
+
+            y0 += factor;
+        }
+        y0 += width * factor / 2;
+    }
+}
+
 QT_END_NAMESPACE

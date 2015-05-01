@@ -32,10 +32,14 @@ void RetinaEngine::receivedImage()
     for(int i = 0; i < m_image.width(); i++){
         for(int j = 0; j < m_image.height(); j++){
 
+#ifdef Q_OS_ANDROID
+            int gray = m_image.pixel(i,j);
+#else
             int gray = qGray(m_image.pixel(i,j));
-            m_stim.at(j).at(i) = gray-126.;
             QRgb color = qRgb(gray, gray, gray);
             m_image.setPixel(i,j,color);
+#endif
+            m_stim.at(j).at(i) = gray-126.;
         }
     }
 

@@ -36,8 +36,8 @@ Node {
 
     ReceptiveField{
         id:recField
-        nPixelsX : 10
-        nPixelsY : 10
+        nPixelsX : 50
+        nPixelsY : 50
         receptiveFieldType: ReceptiveField.OffLeftRF
     }
 
@@ -117,8 +117,8 @@ Node {
 
     RetinaPainter {
         id: retinaPainter
-        visible: Qt.platform.os !== "android"
-        enabled: Qt.platform.os !== "android"
+//        visible: Qt.platform.os !== "android"
+//        enabled: Qt.platform.os !== "android"
         width: 200
         height: 200
         retinaEngine: retinaEngine

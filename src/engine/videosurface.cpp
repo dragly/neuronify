@@ -58,14 +58,17 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
 {
     QVideoFrame frame = constFrame;
 #ifdef Q_OS_ANDROID
-    if((m_frameCounter % 30) == 0) {
+    if((m_frameCounter % 1) == 0) {
         frame.map(QAbstractVideoBuffer::ReadOnly);
         QSize frameSize = frame.size();
-        QImage result(frameSize, QImage::Format_ARGB32);
-        qt_convert_NV21_to_ARGB32((const uchar *)frame.bits(),
+        int factor = 8;
+        QSize newSize = QSize(frame.size().width() / factor, frame.size().height() / factor);
+        QImage result(newSize, QImage::Format_ARGB32);
+        qt_convert_NV21_to_ARGB32_grayscale_factor((const uchar *)frame.bits(),
                                   (quint32 *)result.bits(),
                                   frameSize.width(),
-                                  frameSize.height());
+                                  frameSize.height(),
+                                         factor);
         m_image = result;
         frame.unmap();
         emit gotImage(QRect());

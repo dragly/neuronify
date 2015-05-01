@@ -46,6 +46,8 @@ int qt_findClosestValue(const QList<int> &list, int value);
 bool qt_sizeLessThan(const QSize &s1, const QSize &s2);
 
 void qt_convert_NV21_to_ARGB32(const uchar *yuv, quint32 *rgb, int width, int height);
+void qt_convert_NV21_to_ARGB32_factor(const uchar *yuv, quint32 *rgb, int width, int height, int factor);
+void qt_convert_NV21_to_ARGB32_grayscale_factor(const uchar *yuv, quint32 *rgb, int width, int height, int factor);
 
 QT_END_NAMESPACE
 
