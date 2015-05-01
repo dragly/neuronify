@@ -67,9 +67,6 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
                                   (quint32 *)result.bits(),
                                   frameSize.width(),
                                   frameSize.height());
-        QTransform transform;
-        transform.rotate(180);
-        result = result.transformed(transform);
         m_image = result;
         frame.unmap();
         emit gotImage(QRect());

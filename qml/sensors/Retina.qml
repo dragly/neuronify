@@ -106,6 +106,15 @@ Node {
 
     }
 
+    VideoOutput {
+        id: blah
+        visible: !retinaPainter.enabled
+        enabled: !retinaPainter.enabled
+        width: 200
+        height: 200
+        source: videoSurface && videoSurface.camera ? videoSurface.camera : null
+    }
+
     RetinaPainter {
         id: retinaPainter
         visible: Qt.platform.os !== "android"
@@ -118,15 +127,6 @@ Node {
         //            anchors.fill: parent
         //            drag.target: root
         //        }
-    }
-
-    VideoOutput {
-        id: blah
-        visible: !retinaPainter.enabled
-        enabled: !retinaPainter.enabled
-        width: 200
-        height: 200
-        source: videoSurface && videoSurface.camera ? videoSurface.camera : null
     }
 
     Image {
