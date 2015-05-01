@@ -58,7 +58,7 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
 {
     QVideoFrame frame = constFrame;
 #ifdef Q_OS_ANDROID
-    if((m_frameCounter % 1) == 0) {
+    if((m_frameCounter % 2) == 0) {
         frame.map(QAbstractVideoBuffer::ReadOnly);
         QSize frameSize = frame.size();
         int factor = 8;

@@ -31,7 +31,6 @@ void RetinaEngine::receivedImage()
 
     for(int i = 0; i < m_image.width(); i++){
         for(int j = 0; j < m_image.height(); j++){
-
 #ifdef Q_OS_ANDROID
             int gray = m_image.pixel(i,j);
 #else
@@ -59,14 +58,11 @@ void RetinaEngine::calculateFiringRate()
     m_firingRate = 0.0;
     for(int i = 0; i < nPixelsX; i++){
         for(int j = 0; j < nPixelsY; j++){
-            //            qDebug() << m_stim.at(i).at(j)  << "    " << m_rf.at(i).at(j);
-            double factor = 1.0;
-#ifdef Q_OS_ANDROID
-            factor = 1.0;
-#endif
-            m_firingRate += factor * m_stim.at(i).at(j) *  m_receptiveFieldShape.at(i).at(j) * 1./nPixelsX/nPixelsY;
+            m_firingRate += m_stim.at(i).at(j) *  m_receptiveFieldShape.at(i).at(j);
         }
     }
+    int size = nPixelsX*nPixelsY;
+    m_firingRate /= size;
     if(m_firingRate < 0){
         m_firingRate = 0;
     }
