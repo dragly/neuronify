@@ -106,16 +106,6 @@ Node {
 
     }
 
-    VideoOutput {
-        id: blah
-        anchors.centerIn: parent
-        enabled: Qt.platform.os === "android"
-        visible: Qt.platform.os === "android"
-        width: 10
-        height: 10
-        source: videoSurface && videoSurface.camera ? videoSurface.camera : null
-    }
-
     Rectangle {
         color: "#756bb1"
         anchors.fill: parent

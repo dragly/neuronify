@@ -11,6 +11,7 @@ class VideoSurface :  public QAbstractVideoSurface
 {
     Q_OBJECT
     Q_PROPERTY(QObject *  camera READ camera WRITE setCamera NOTIFY cameraChanged)
+    Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
 
 public:
     VideoSurface();
@@ -24,12 +25,16 @@ public:
     QImage image() const;
     QObject * camera() const;
 
+    bool enabled() const;
+
 public slots:
     void setCamera(QObject *camera);
+    void setEnabled(bool enabled);
 
 signals:
     void gotImage(QRect image);
     void cameraChanged(QObject * camera);
+    void enabledChanged(bool enabled);
 
 private:
     QObject * m_camera;
@@ -37,6 +42,7 @@ private:
     QVideoRendererControl* m_rendererControl;
     QVideoProbe m_probe;
     int m_frameCounter = 0;
+    bool m_enabled = true;
 };
 
 

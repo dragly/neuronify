@@ -43,6 +43,15 @@ void VideoSurface::setCamera(QObject* camera)
     emit cameraChanged(camera);
 }
 
+void VideoSurface::setEnabled(bool enabled)
+{
+    if (m_enabled == enabled)
+        return;
+
+    m_enabled = enabled;
+    emit enabledChanged(enabled);
+}
+
 
 QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVideoBuffer::HandleType handleType) const
 {
@@ -56,6 +65,9 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
 
 bool VideoSurface::present(const QVideoFrame &constFrame)
 {
+    if(!m_enabled) {
+        return true;
+    }
     QVideoFrame frame = constFrame;
 #ifdef Q_OS_ANDROID
     if((m_frameCounter % 2) == 0) {
@@ -96,5 +108,10 @@ QImage VideoSurface::image() const
 QObject *VideoSurface::camera() const
 {
     return m_camera;
+}
+
+bool VideoSurface::enabled() const
+{
+    return m_enabled;
 }
 

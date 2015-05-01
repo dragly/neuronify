@@ -34,6 +34,7 @@ Rectangle {
     property int undoIdxCopy: 0
     property bool undoRecordingEnabled: true
     property bool canRedo: false
+    property bool running: applicationActive && !mainMenu.revealed
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -557,9 +558,10 @@ Rectangle {
     }
 
     Timer {
+        id: timer
         interval: 16
-        running: applicationActive && !mainMenu.revealed
         repeat: true
+        running: root.running
         onRunningChanged: {
             if(running) {
                 lastStepTime = Date.now()
@@ -596,9 +598,10 @@ Rectangle {
 
     VideoSurface{
         id: videoSurface
+        enabled: root.running
         camera: Camera{
             id:camera
-            property bool active: retinaCounter > 0
+            property bool active: retinaCounter > 0 && root.running
             property int retinaCounter: 0
 
             onActiveChanged: {
@@ -609,6 +612,15 @@ Rectangle {
                 }
             }
         }
+    }
+
+    VideoOutput {
+        anchors.centerIn: parent
+        enabled: Qt.platform.os === "android" && videoSurface.enabled
+        visible: Qt.platform.os === "android" && videoSurface.enabled
+        width: 10
+        height: 10
+        source: videoSurface && videoSurface.camera ? videoSurface.camera : null
     }
 
     //////////////////////// save/load ////////////////
