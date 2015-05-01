@@ -120,6 +120,36 @@ Node {
         //        }
     }
 
+    Item {
+        id: resizeRectangle
+
+        Component.onCompleted: {
+            resetPosition()
+        }
+
+        function resetPosition() {
+            x = retinaPainter.width - width / 2
+            y = retinaPainter.height - height / 2
+        }
+
+        width: 100
+        height: 100
+        MouseArea {
+            anchors.fill: parent
+            drag.target: parent
+            onPositionChanged: {
+                if(drag.active) {
+                    var relativePosition = resizeRectangle.mapToItem(retinaPainter, 0, 0)
+                    retinaPainter.width = relativePosition.x + resizeRectangle.width / 2
+                    retinaPainter.height = relativePosition.y + resizeRectangle.width / 2
+                    resizeRectangle.resetPosition()
+                }
+            }
+        }
+    }
+
+
+
     Image {
         source: "qrc:/images/sensors/eye.png"
         smooth: true
