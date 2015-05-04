@@ -5,6 +5,12 @@
 #include <QDebug>
 #include <QQmlFile>
 
+/*!
+ * \class FileIO
+ * \brief FileIO::FileIO is used for reading and writing savefiles.
+ */
+
+
 FileIO::FileIO(QObject *parent) :
     QObject(parent)
 {
