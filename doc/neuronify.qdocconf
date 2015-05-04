@@ -1,7 +1,11 @@
-#include(compat.qdocconf)
+include(/usr/share/qt5/doc/global/qt-module-defaults.qdocconf)
+
 project = Neuronify
 description = documentation
+version = $QT_VERSION
 
+
+outputformats = HTML
 outputdir   = html
 headerdirs  = ..
 sourcedirs  = .. 
