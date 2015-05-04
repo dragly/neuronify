@@ -5,6 +5,15 @@ import ".."
 
 import Neuronify 1.0
 
+/*!
+\qmltype Voltmeter
+\brief A voltmeter that neurons can connect to in order to show their voltage trace
+
+Neurons can connect to the voltmeter. When they do, the voltmeter shows their voltage trace
+as a function of time. Each neuron gets spesific color in the voltmeter plot.
+
+*/
+
 Node {
     id: voltmeterRoot
     objectName: "voltmeter"
