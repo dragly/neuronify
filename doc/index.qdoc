@@ -6,6 +6,8 @@
     Hello, world!
 
     For a comprehensive list, see \l{All Classes}.
+
+    For a list of qmlTypes, see \l{QML Types}
 */
 
 /*!
@@ -18,4 +20,18 @@
     This is a list of all documented classes in Neuonrify.
 
     \generatelist classes
+*/
+
+
+
+/*!
+    \page qmlTypes.html
+    \title QML TYPES
+    \ingroup classlists
+
+    \brief If you know the name of the QML Type, find it here
+
+    This is a list of all documented QML Types in Neuonrify.
+
+    \generatelist qmltypes
 */
