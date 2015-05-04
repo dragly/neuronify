@@ -57,7 +57,7 @@ private:
     int m_nPixelsX = 10;
     int m_nPixelsY = 10;
     vector< vector <double>> m_receptiveField;
-    ReceptiveFieldTypes m_receptiveFieldType;
+    ReceptiveFieldTypes m_receptiveFieldType = OffLeftRF;
 };
 
 
