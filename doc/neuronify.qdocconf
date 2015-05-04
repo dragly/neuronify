@@ -2,9 +2,9 @@
 project = Neuronify
 description = documentation
 
-sourcedirs = ../src/*
-headerdirs = ../src/*
-imagedirs = ../images/*
+sourcedirs = ..
+headerdirs = ..
+imagedirs = ..
 
 sources.fileextensions = "*.cpp *.qdoc *.mm *.qml"
 headers.fileextensions = "*.h *.ch *.h++ *.hh *.hpp *.hxx"
@@ -12,4 +12,3 @@ headers.fileextensions = "*.h *.ch *.h++ *.hh *.hpp *.hxx"
 
 outputformats = HTML
 outputdir  =    ./html
-
