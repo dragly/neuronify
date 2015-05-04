@@ -7,7 +7,7 @@
 
 /*!
  * \class FileIO
- * \brief FileIO::FileIO
+ * \brief FileIO::FileIO is used for reading and writing savefiles.
  *
  * \param parent
  */
