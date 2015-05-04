@@ -5,7 +5,17 @@ import QtQuick.Layouts 1.1
 import ".."
 import "../controls"
 
+/*!
+    \qmltype VoltMeterControls
+    \brief Contains the user controls for the voltmeter
 
+    The voltmeter control panel contains
+\list
+ \li \l A mode selection (Voltage, conductance, etc)
+ \li \l A "connect to all"-button which connects the voltmeter to all existing neurons
+ \li \l Sliders for setting the minimum and maximum voltage
+\endlist
+*/
 
 Item {
     id: voltmeterControlsRoot
@@ -56,7 +66,7 @@ Item {
                 var itemA = voltmeter
                 for (var i in voltmeter.simulator.graphEngine.nodes){
                     var itemB = graphEngine.nodes[i]
-                    if (itemB.objectName.indexOf("neuron") + itemB.objectName.indexOf("Neuron") != -2){
+                    if (itemB.isNeuron){
                         if (!voltmeter.simulator.connectionExists(itemB, itemA)){
                             voltmeter.simulator.connectEntities(itemB, itemA)
                         }
