@@ -12,9 +12,9 @@ Item {
 
     property var simulations: [
         "empty",
-        //"light",
+        "light",
         "drivenCircularInhibition",
-        //"lateralInhibition",
+        "lateralInhibition",
         "recurrentInhibition",
         "dummy"
     ]
