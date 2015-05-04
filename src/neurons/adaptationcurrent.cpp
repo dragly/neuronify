@@ -2,6 +2,10 @@
 
 #include "neuronengine.h"
 
+/*!
+\class AdaptationCurrent
+\brief testDescription
+ */
 AdaptationCurrent::AdaptationCurrent(QQuickItem *parent)
     : Current(parent)
 {

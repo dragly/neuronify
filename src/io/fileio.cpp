@@ -5,6 +5,14 @@
 #include <QDebug>
 #include <QQmlFile>
 
+/*!
+ * \class FileIO
+ * \brief FileIO::FileIO
+ *
+ * \param parent
+ */
+
+
 FileIO::FileIO(QObject *parent) :
     QObject(parent)
 {
