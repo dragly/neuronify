@@ -19,7 +19,7 @@ project = Neuronify
 description = documentation
 
 outputformats = HTML
-outputdir   = html
+outputdir   = ../../neuronify-docs
 headerdirs  = ..
 sourcedirs  = ..
 exampledirs = ..
