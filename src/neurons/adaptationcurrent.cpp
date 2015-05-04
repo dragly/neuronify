@@ -1,6 +1,6 @@
 #include "adaptationcurrent.h"
 
-#include "../engine/neuronengine.h"
+#include "neuronengine.h"
 
 AdaptationCurrent::AdaptationCurrent(QQuickItem *parent)
     : Current(parent)

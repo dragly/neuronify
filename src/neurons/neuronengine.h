@@ -4,7 +4,7 @@
 #include <QQuickItem>
 #include <QQmlListProperty>
 
-#include "nodeengine.h"
+#include "../core/nodeengine.h"
 
 class NeuronEngine : public NodeEngine
 {

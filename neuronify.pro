@@ -12,36 +12,36 @@ CONFIG += c++11
 
 HEADERS += \
     src/io/fileio.h \
-    src/engine/current.h \
-    src/currents/passivecurrent.h \
-    src/currents/adaptationcurrent.h \
-    src/engine/edge.h \
-    src/engine/graphengine.h \
-    src/engine/nodeengine.h \
-    src/engine/nodebase.h \
-    src/engine/neuronengine.h \
-    src/engine/retinaengine.h \
-    src/engine/videosurface.h \
-    src/engine/retinapainter.h \
-    src/engine/receptivefield.h \
-    src/engine/qandroidmultimediautils.h
+    src/core/graphengine.h \
+    src/core/nodebase.h \
+    src/core/nodeengine.h \
+    src/core/edge.h \
+    src/neurons/current.h \
+    src/neurons/neuronengine.h \
+    src/retina/androidmultimediautils.h \
+    src/retina/receptivefield.h \
+    src/retina/retinaengine.h \
+    src/retina/retinapainter.h \
+    src/retina/videosurface.h \
+    src/neurons/passivecurrent.h \
+    src/neurons/adaptationcurrent.h
 
 SOURCES += \
     src/io/fileio.cpp \
     src/main.cpp \
-    src/engine/current.cpp \
-    src/currents/passivecurrent.cpp \
-    src/currents/adaptationcurrent.cpp \
-    src/engine/edge.cpp \
-    src/engine/graphengine.cpp \
-    src/engine/nodeengine.cpp \
-    src/engine/nodebase.cpp \
-    src/engine/neuronengine.cpp \
-    src/engine/retinaengine.cpp \
-    src/engine/videosurface.cpp \
-    src/engine/retinapainter.cpp \
-    src/engine/receptivefield.cpp \
-    src/engine/qandroidmultimediautils.cpp
+    src/core/nodebase.cpp \
+    src/core/nodeengine.cpp \
+    src/core/graphengine.cpp \
+    src/core/edge.cpp \
+    src/neurons/current.cpp \
+    src/neurons/neuronengine.cpp \
+    src/retina/retinaengine.cpp \
+    src/retina/retinapainter.cpp \
+    src/retina/videosurface.cpp \
+    src/retina/receptivefield.cpp \
+    src/retina/androidmultimediautils.cpp \
+    src/neurons/adaptationcurrent.cpp \
+    src/neurons/passivecurrent.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

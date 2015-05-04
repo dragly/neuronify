@@ -1,7 +1,7 @@
 #ifndef PASSIVECURRENT_H
 #define PASSIVECURRENT_H
 
-#include "../engine/current.h"
+#include "current.h"
 
 class PassiveCurrent : public Current
 {

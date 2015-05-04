@@ -1,6 +1,6 @@
 #include "videosurface.h"
 
-#include "qandroidmultimediautils.h"
+#include "androidmultimediautils.h"
 
 #include <QDebug>
 #include <QVideoSurfaceFormat>
