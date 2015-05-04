@@ -4,10 +4,7 @@ import QtQuick.Layouts 1.1
 
 import ".."
 import "../controls"
-/*!
-\class VoltmeterConstrols
 
-*/
 
 
 Item {
