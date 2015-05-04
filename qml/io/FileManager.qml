@@ -5,6 +5,8 @@ import Neuronify 1.0
 
 /*!
 \qmltype FileManager
+\inqmlmodule Neuronify
+\ingroup neuronify-io
 \brief A type to contain the save/load features
 
 Neuronify saves configurations by storing the javascript code needed to create

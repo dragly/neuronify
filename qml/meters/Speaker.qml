@@ -6,6 +6,17 @@ import Neuronify 1.0
 import ".."
 import "../controls"
 
+/*!
+\qmltype Speaker
+\inqmlmodule Neuronify
+\ingroup neuronify-meters
+\brief A speaker that emits a sound whenever a connected neuron fires
+
+Neurons can connect to the speaker. When they do, the speaker will emit a sound
+whenever the neuron fires an action potential. The sound and volume can be set in
+the associated controls Component.
+*/
+
 Node {
     id: speaker
     property alias source: soundBank.source

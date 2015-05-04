@@ -7,6 +7,8 @@ import "../controls"
 
 /*!
     \qmltype VoltMeterControls
+    \inqmlmodule Neuronify
+    \ingroup neuronify-hud
     \brief Contains the user controls for the voltmeter
 
     The voltmeter control panel contains
