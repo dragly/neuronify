@@ -11,8 +11,7 @@ import Neuronify 1.0
 
 Neurons can connect to the voltmeter. When they do, the voltmeter shows their voltage trace
 as a function of time. Each neuron gets spesific color in the voltmeter plot. To each voltmeter
-there is an associated \l{VoltmeterControls} item
-
+there is an associated \l{VoltmeterControls} item.
 */
 
 Node {
