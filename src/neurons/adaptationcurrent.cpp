@@ -4,7 +4,8 @@
 
 /*!
 \class AdaptationCurrent
-\brief testDescription
+\brief Adaptive Current
+calculates the neuron conductance based on an adaptive rule.
  */
 AdaptationCurrent::AdaptationCurrent(QQuickItem *parent)
     : Current(parent)
