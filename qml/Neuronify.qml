@@ -529,12 +529,7 @@ Rectangle {
 
     PropertiesPanel {
         id: propertiesPanel
-
-        Loader {
-            id: activeObjectControlsLoader
-            anchors.fill: parent
-            sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : null
-        }
+        activeObject: root.activeObject
     }
 
     MainMenu {
