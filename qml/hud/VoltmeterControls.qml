@@ -11,9 +11,9 @@ import "../controls"
 
     The voltmeter control panel contains
 \list
- \li \l A mode selection (Voltage, conductance, etc)
- \li \l A "connect to all"-button which connects the voltmeter to all existing neurons
- \li \l Sliders for setting the minimum and maximum voltage
+ \li  A mode selection (Voltage, conductance, etc)
+ \li  A "connect to all"-button which connects the voltmeter to all existing neurons
+ \li  Sliders for setting the minimum and maximum voltage
 \endlist
 */
 
