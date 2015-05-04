@@ -37,9 +37,9 @@ signals:
     void enabledChanged(bool enabled);
 
 private:
-    QObject * m_camera;
+    QObject *m_camera = nullptr;
     QImage m_image;
-    QVideoRendererControl* m_rendererControl;
+    QVideoRendererControl *m_rendererControl = nullptr;
     QVideoProbe m_probe;
     int m_frameCounter = 0;
     bool m_enabled = true;
