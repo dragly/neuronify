@@ -4,7 +4,6 @@ project = Neuronify
 description = documentation
 version = $QT_VERSION
 
-
 outputformats = HTML
 outputdir   = html
 headerdirs  = ..
@@ -12,7 +11,7 @@ sourcedirs  = ..
 exampledirs = ..
 imagedirs   = ..
 
+
 sources.fileextensions = "*.cpp *.qdoc *.mm *.qml"
 headers.fileextensions = "*.h *.ch *.h++ *.hh *.hpp *.hxx"
-examples.fileextensions = "*.cpp *.h *.js *.xq *.svg *.xml *.ui *.qhp *.qhcp *.qml"
-examples.imageextensions = "*.png *.jpeg *.jpg *.gif *.mng"
+
