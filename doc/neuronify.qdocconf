@@ -1,4 +1,20 @@
-#include(compat.qdocconf)
+include(html-config.qdocconf)
+include(html-header-offline.qdocconf)
+include(html-footer.qdocconf)
+
+#uncomment if navigation bar is not wanted
+#HTML.nonavigationbar      = "true"
+
+HTML.stylesheets = template/style/offline.css
+HTML.extraimages += template/images/ico_out.png \
+                    template/images/ico_note.png \
+                    template/images/ico_note_attention.png \
+                    template/images/btn_prev.png \
+                    template/images/btn_next.png \
+                    template/images/bullet_dn.png \
+                    template/images/bullet_sq.png \
+                    template/images/bgrContent.png
+
 project = Neuronify
 description = documentation
 
@@ -9,7 +25,5 @@ imagedirs = ..
 sources.fileextensions = "*.cpp *.qdoc *.mm *.qml"
 headers.fileextensions = "*.h *.ch *.h++ *.hh *.hpp *.hxx"
 
-
 outputformats = HTML
 outputdir  =    html
-
