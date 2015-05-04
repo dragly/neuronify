@@ -5,6 +5,14 @@
 #include <QDebug>
 #include <QQmlFile>
 
+/*!
+ * \class FileIO
+ * \inmodule Neuronify
+ * \brief FileIO is a helper class used for reading and writing files from QML.
+ *
+ * This is mainly used to read and save simulation files.
+ */
+
 FileIO::FileIO(QObject *parent) :
     QObject(parent)
 {

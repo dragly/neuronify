@@ -4,13 +4,6 @@
 #include <QObject>
 #include <QUrl>
 
-/*!
- * \class FileIO
- * \brief FileIO is a helper class used for reading and writing files from QML.
- *
- * This is mainly used to read and save simulation files.
- */
-
 class FileIO : public QObject
 {
     Q_OBJECT

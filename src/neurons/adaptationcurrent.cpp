@@ -2,6 +2,13 @@
 
 #include "neuronengine.h"
 
+/*!
+\class AdaptationCurrent
+\inmodule Neuronify
+\brief Adaptive Current calculates the neuron conductance based on an
+adaptive rule.
+ */
+
 AdaptationCurrent::AdaptationCurrent(QQuickItem *parent)
     : Current(parent)
 {
