@@ -25,15 +25,6 @@ Column {
         width: parent.width
         minimumValue: 0.0
         maximumValue: 5.0
-//        onValueChanged: {
-//                for (var i in selectedEntities){
-//                    if (selectedEntities[i]. == target) {
-//                        selectedEntities[i].property = value
-//                    }
-//                }
-
-//            }
-
     }
     Binding {
         target: root.target

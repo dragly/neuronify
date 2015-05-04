@@ -45,8 +45,6 @@ Column {
         precision: 0
         minimumValue: -100
         maximumValue: 50
-        //onValueChanged: object.value = value
-
     }
 
     BoundSlider {
