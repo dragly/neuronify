@@ -3,7 +3,11 @@
 
     \title Neuronify
 
-    Hello, world!
+    Neuronify is an educational app for studying neural networks.
+    The engine is based on an integrate-and-fire model.
+
+    The distance between \\((x_1,y_1)\\) and \\((x_2,y_2)\\) is
+    \\( \\sqrt{(x_2-x_1)^2+(y_2-y_1)^2} \\).
 
     For a comprehensive list, see \l{All Classes}.
 
@@ -17,12 +21,10 @@
 
     \brief If you know the name of the class you want, find it here.
 
-    This is a list of all documented classes in Neuonrify.
+    This is a list of all documented classes in Neuronify.
 
-    \generatelist classes
+    \generatelist{classesbymodule Neuronify}
 */
-
-
 
 /*!
     \page qmlTypes.html

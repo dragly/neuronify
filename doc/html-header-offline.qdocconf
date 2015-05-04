@@ -7,7 +7,8 @@ HTML.stylesheets = template/style/offline.css
 qhp.extraFiles += style/offline.css
 
 HTML.headerstyles = \
-    "  <link rel=\"stylesheet\" type=\"text/css\" href=\"style/offline.css\" />\n"
+    "  <link rel=\"stylesheet\" type=\"text/css\" href=\"style/offline.css\" />\n" \
+    "  <script type=\"text/javascript\" src=\"https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML\"></script>\n"
 
 HTML.endheader = \
     "</head>\n"
