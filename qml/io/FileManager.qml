@@ -3,6 +3,17 @@ import QtQuick.Dialogs 1.1
 import QtQuick.Window 2.0
 import Neuronify 1.0
 
+/*!
+\qmltype FileManager
+\brief A type to contain the save/load features
+
+Neuronify saves configurations by storing the javascript code needed to create
+the network, and loads files by evaluating the generated and saved js code.
+
+The read/write part is done in \l{FileIO}, while this object just treats the file
+as a js string.
+*/
+
 Item {
     signal loadState(var fileUrl)
 
@@ -41,7 +52,9 @@ Item {
 
         console.log(fileString)
 
-        saveFileIO.source = fileUrl
+        save
+
+        .source = fileUrl
         saveFileIO.write(fileString)
     }
 
