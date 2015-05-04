@@ -1,0 +1,15 @@
+#include(compat.qdocconf)
+project = Neuronify
+description = documentation
+
+sourcedirs = ../src/*
+headerdirs = ../src/*
+imagedirs = ../images/*
+
+sources.fileextensions = "*.cpp *.qdoc *.mm *.qml"
+headers.fileextensions = "*.h *.ch *.h++ *.hh *.hpp *.hxx"
+
+
+outputformats = HTML
+outputdir  =    ./html
+
