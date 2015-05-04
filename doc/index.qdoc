@@ -1,0 +1,21 @@
+/*!
+    \page index.html
+
+    \title Neuronify
+
+    Hello, world!
+
+    For a comprehensive list, see \l{All Classes}.
+*/
+
+/*!
+    \page classes.html
+    \title All Classes
+    \ingroup classlists
+
+    \brief If you know the name of the class you want, find it here.
+
+    This is a list of all documented classes in Neuonrify.
+
+    \generatelist classes
+*/
