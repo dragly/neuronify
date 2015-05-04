@@ -37,6 +37,7 @@ public slots:
     void setClampCurrentEnabled(bool arg);
     void setClampCurrent(double arg);
     void reset();
+    void resetVoltage();
     void initialize();
     void setThreshold(double threshold);
 

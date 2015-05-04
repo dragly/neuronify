@@ -37,7 +37,7 @@ Column {
     }
 
 
-    BoundSlider {
+    BoundSlider {       
         target: engine
         property: "restingPotential"
         text: "Resting potential"
@@ -45,6 +45,8 @@ Column {
         precision: 0
         minimumValue: -100
         maximumValue: 50
+        //onValueChanged: object.value = value
+
     }
 
     BoundSlider {
@@ -61,7 +63,29 @@ Column {
         target: engine
     }
     
+    Text {
+        text: "Reset the potential:"
+    }
 
-   
+    Button {
+        text: "Reset"
+        onClicked: {
+            engine.resetVoltage()
+        }
+    }
 
+    Text {
+        text: "Reset the potential of all neurons:"
+    }
+
+    Button {
+        text: "Reset all"
+        onClicked: {
+            for (var i in selectedEntities){
+                if (selectedEntities[i].objectName.slice(-6) == "Neuron") {
+                    selectedEntities[i].engine.resetVoltage()
+                }
+            }
+        }
+    }
 }
