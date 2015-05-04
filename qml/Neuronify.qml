@@ -19,9 +19,6 @@ Rectangle {
     property real lastStepTime: Date.now()
     property var organizedItems: []
     property var organizedConnections: []
-    GraphEngine {
-        id: graphEngine
-    }
     property alias graphEngine: graphEngine
     property var selectedEntities: []
     property var copiedNeurons: []
@@ -374,6 +371,10 @@ Rectangle {
 
     onHeightChanged: {
         resetStyle()
+    }
+
+    GraphEngine {
+        id: graphEngine
     }
 
     AutoLayout {

@@ -33,7 +33,7 @@
 
     \brief If you know the name of the QML Type, find it here
 
-    This is a list of all documented QML Types in Neuonrify.
+    This is a list of all documented QML Types in Neuronify.
 
-    \generatelist qmltypes
+    \generatelist{qmltypes}
 */
