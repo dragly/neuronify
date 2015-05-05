@@ -1,0 +1,16 @@
+# HTML footer for qt.io
+
+HTML.footer += \
+    "</div>\n" \
+    "</div>\n" \
+    "</div>\n" \
+    "</div>\n" \
+    "</div>\n" \
+    "<div id=\"footer\">\n" \
+        "<footer id=\"footerbar\">\n" \
+    "    <div class=\"footer-main\">\n" \
+    "            <div class=\"container clearfix\">\n" \
+    "</div>\n" \
+    "</div>\n" \
+    "</footer>\n" \
+    "</div>\n"

@@ -8,6 +8,7 @@
 /*!
  * \class FileIO
  * \inmodule Neuronify
+ * \ingroup neuronify-io
  * \brief FileIO is a helper class used for reading and writing files from QML.
  *
  * This is mainly used to read and save simulation files.

@@ -1,11 +1,7 @@
 include(html-config.qdocconf)
-include(html-header-offline.qdocconf)
-include(html-footer.qdocconf)
+include(html-header-neuronify.qdocconf)
+include(html-footer-neuronify.qdocconf)
 
-#uncomment if navigation bar is not wanted
-#HTML.nonavigationbar      = "true"
-
-HTML.stylesheets = template/style/offline.css
 HTML.extraimages += template/images/ico_out.png \
                     template/images/ico_note.png \
                     template/images/ico_note_attention.png \

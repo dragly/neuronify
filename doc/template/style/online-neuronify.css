@@ -799,37 +799,37 @@ body.qt-account #navbar .navbar-oneQt h2 {
   font-family:'Open Sans';
   font-style:normal;
   font-weight:300;
-  src:local("Open Sans Light"),local("OpenSans-Light"),url(//fonts.gstatic.com/s/opensans/v10/DXI1ORHCpsQm3Vp6mXoaTYnF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
+  src:local("Open Sans Light"),local("OpenSans-Light"),url(http://fonts.gstatic.com/s/opensans/v10/DXI1ORHCpsQm3Vp6mXoaTYnF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
 }
 @font-face {
   font-family:'Open Sans';
   font-style:normal;
   font-weight:400;
-  src:local("Open Sans"),local("OpenSans"),url(//fonts.gstatic.com/s/opensans/v10/cJZKeOuBrn4kERxqtaUH3aCWcynf_cDxXwCLxiixG1c.ttf) format("truetype")
+  src:local("Open Sans"),local("OpenSans"),url(http://fonts.gstatic.com/s/opensans/v10/cJZKeOuBrn4kERxqtaUH3aCWcynf_cDxXwCLxiixG1c.ttf) format("truetype")
 }
 @font-face {
   font-family:'Open Sans';
   font-style:normal;
   font-weight:600;
-  src:local("Open Sans Semibold"),local("OpenSans-Semibold"),url(//fonts.gstatic.com/s/opensans/v10/MTP_ySUJH_bn48VBG8sNSonF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
+  src:local("Open Sans Semibold"),local("OpenSans-Semibold"),url(http://fonts.gstatic.com/s/opensans/v10/MTP_ySUJH_bn48VBG8sNSonF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
 }
 @font-face {
   font-family:'Open Sans';
   font-style:normal;
   font-weight:700;
-  src:local("Open Sans Bold"),local("OpenSans-Bold"),url(//fonts.gstatic.com/s/opensans/v10/k3k702ZOKiLJc3WVjuplzInF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
+  src:local("Open Sans Bold"),local("OpenSans-Bold"),url(http://fonts.gstatic.com/s/opensans/v10/k3k702ZOKiLJc3WVjuplzInF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
 }
 @font-face {
   font-family:'Open Sans';
   font-style:normal;
   font-weight:800;
-  src:local("Open Sans Extrabold"),local("OpenSans-Extrabold"),url(//fonts.gstatic.com/s/opensans/v10/EInbV5DfGHOiMmvb1Xr-honF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
+  src:local("Open Sans Extrabold"),local("OpenSans-Extrabold"),url(http://fonts.gstatic.com/s/opensans/v10/EInbV5DfGHOiMmvb1Xr-honF5uFdDttMLvmWuJdhhgs.ttf) format("truetype")
 }
 @font-face {
   font-family:'Droid Sans Mono';
   font-style:normal;
   font-weight:400;
-  src:local("Droid Sans Mono"),local("DroidSansMono"),url(//fonts.gstatic.com/s/droidsansmono/v7/ns-m2xQYezAtqh7ai59hJUYuTAAIFFn5GTWtryCmBQ4.woff) format("woff")
+  src:local("Droid Sans Mono"),local("DroidSansMono"),url(http://fonts.gstatic.com/s/droidsansmono/v7/ns-m2xQYezAtqh7ai59hJUYuTAAIFFn5GTWtryCmBQ4.woff) format("woff")
 }
 @font-face {
   font-family:'Qt Icons';
@@ -1016,7 +1016,7 @@ div.multi-column div {
   margin-right:2em;
   width:16em
 }
-.sidebar {
+.sidebar, .toc {
   display:block;
   float:right;
   -webkit-box-sizing:border-box;
@@ -1611,4 +1611,3 @@ a.qa-mark:target:before {
   content: "***";
   color: #ff0000;
 }
-
