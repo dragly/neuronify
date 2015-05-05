@@ -33,7 +33,7 @@ These connections are known as synapses.
 
 There are about 15-20 billion neurons in the human neocortex, with about
 1000 - 10000 synapses per neuron.
-This results in about 10¹⁴ connections between neurons in total.
+In total, that means there are about \\(10^{14}\\) connections between neurons in total.
 Neuronify is only capable of simulating a tiny fraction of these in about a
 thousand of real time speed.
 Other simulators can give valuable results from millions of neurons on
