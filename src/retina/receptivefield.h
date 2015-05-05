@@ -39,7 +39,7 @@ public:
     void createOffBottomRF();
     void createGaborRF();
     double temporalRF(const double tau);
-    double gaborField(int x, int y);
+    double gaborFunction(int x, int y);
 
 
     vector<vector<double> > rf();

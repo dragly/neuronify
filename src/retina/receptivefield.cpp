@@ -103,7 +103,7 @@ void ReceptiveField::createGaborRF()
 {;
     for(int i = 0; i < m_nPixelsX; i++){
         for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j)= gaborField(i,j)*1000.;
+            m_receptiveField.at(i).at(j)= gaborFunction(i,j)*1000.;
         }
     }
 
@@ -120,7 +120,7 @@ void ReceptiveField::createGaborRF()
 
 
 
-double ReceptiveField::gaborField(int idx, int idy)
+double ReceptiveField::gaborFunction(int idx, int idy)
 {
     double sigmaX = 5.;
     double sigmaY = 5.;
