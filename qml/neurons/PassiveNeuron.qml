@@ -5,7 +5,7 @@ import ".."
 
 Neuron {
     property alias fireOutput: nEngine.fireOutput
-    objectName: "adaptationNeuron"
+    objectName: "passiveNeuron"
     fileName: "neurons/PassiveNeuron.qml"
     imageSource: "qrc:/images/neurons/passive.png"
     inhibitoryImageSource: "qrc:/images/neurons/passive_inhibitory.png"

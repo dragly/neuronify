@@ -77,6 +77,7 @@ Item {
             }
         }
 
+
         BoundSlider {
             target: voltmeter
             property: "minimumValue"

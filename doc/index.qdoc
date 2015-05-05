@@ -24,15 +24,30 @@
 
     \l{Input/Output}
 
+    To read about the theory behind the calculations done in Neuronify, see \l{Theory}.
+
     For a comprehensive list, see \l{All Classes}.
 
     For a list of qmlTypes, see \l{QML Types}
 */
 
 /*!
+    \page theory.html
+    \title Theory
+
+    \brief Here you can read about the theory behind the calculations done in Neuronify.
+
+    This is a list of all topics:
+
+	\list
+    	\li \l{Receptive field}
+	\endlist
+*/
+
+
+/*!
     \page classes.html
     \title All Classes
-    \ingroup classlists
 
     \brief If you know the name of the class you want, find it here.
 
@@ -44,13 +59,12 @@
 /*!
     \page qmlTypes.html
     \title QML TYPES
-    \ingroup classlists
 
     \brief If you know the name of the QML Type, find it here
 
     This is a list of all documented QML Types in Neuronify.
 
-    \generatelist{qmltypes}
+    \qmlmodule Neuronify
 */
 
 /*!
