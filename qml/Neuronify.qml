@@ -15,6 +15,8 @@ import "tools"
 
 /*!
   \qmltype Neuronify
+  \inqmlmodule Neuronify
+  \ingroup neuronify
   \brief This type holds the application.
 
   This item is created in the \l{ApplicationWindow}. It contains all the menues

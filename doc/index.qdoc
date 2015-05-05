@@ -35,5 +35,5 @@
 
     This is a list of all documented QML Types in Neuronify.
 
-    \generatelist{qmltypes}
+    \qmlmodule Neuronify
 */
