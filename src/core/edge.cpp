@@ -9,12 +9,6 @@ Edge::Edge(QQuickItem *parent)
 
 Edge::~Edge()
 {
-    if(m_itemA) {
-        m_itemA->removeEdge(this);
-    }
-    if(m_itemB) {
-        m_itemB->removeEdge(this);
-    }
     m_itemA = nullptr;
     m_itemB = nullptr;
 }
