@@ -19,9 +19,6 @@ Rectangle {
     property real lastStepTime: Date.now()
     property var organizedItems: []
     property var organizedConnections: []
-    GraphEngine {
-        id: graphEngine
-    }
     property alias graphEngine: graphEngine
     property var selectedEntities: []
     property var copiedNeurons: []
@@ -376,6 +373,10 @@ Rectangle {
         resetStyle()
     }
 
+    GraphEngine {
+        id: graphEngine
+    }
+
     AutoLayout {
         id: autoLayout
         enabled: false
@@ -528,12 +529,7 @@ Rectangle {
 
     PropertiesPanel {
         id: propertiesPanel
-
-        Loader {
-            id: activeObjectControlsLoader
-            anchors.fill: parent
-            sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : null
-        }
+        activeObject: root.activeObject
     }
 
     MainMenu {

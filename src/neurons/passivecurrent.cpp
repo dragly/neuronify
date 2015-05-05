@@ -1,6 +1,6 @@
 #include "passivecurrent.h"
 
-#include "../engine/neuronengine.h"
+#include "neuronengine.h"
 
 PassiveCurrent::PassiveCurrent(QQuickItem *parent)
     : Current(parent)

@@ -7,7 +7,7 @@
 #include <QVideoRendererControl>
 
 #include "videosurface.h"
-#include "nodeengine.h"
+#include "../core/nodeengine.h"
 #include "receptivefield.h"
 
 using namespace std;

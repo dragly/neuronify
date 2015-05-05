@@ -3,7 +3,7 @@
 
 #include <QQuickItem>
 
-#include "nodeengine.h"
+#include "../core/nodeengine.h"
 
 class NeuronEngine;
 class Current : public NodeEngine

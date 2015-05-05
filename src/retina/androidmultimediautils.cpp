@@ -31,7 +31,7 @@
 **
 ****************************************************************************/
 
-#include "qandroidmultimediautils.h"
+#include "androidmultimediautils.h"
 
 #include <qlist.h>
 

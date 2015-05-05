@@ -1,7 +1,7 @@
 #ifndef ADAPTATIONCURRENT_H
 #define ADAPTATIONCURRENT_H
 
-#include "../engine/current.h"
+#include "current.h"
 
 class AdaptationCurrent : public Current
 {

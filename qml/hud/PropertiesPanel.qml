@@ -5,7 +5,7 @@ import "../style"
 Item {
     id: root
 
-    default property alias rectChildren: container.children
+    property Item activeObject: null
     property bool revealed: false
 
     anchors.fill: parent
@@ -34,6 +34,11 @@ Item {
             anchors {
                 fill: parent
                 margins: 10
+            }
+
+            Loader {
+                anchors.fill: parent
+                sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : null
             }
         }
 

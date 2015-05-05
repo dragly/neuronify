@@ -15,6 +15,7 @@ Node {
     readonly property real voltage: root.engine.voltage
     property url imageSource
     property url inhibitoryImageSource
+    property bool isNeuron: true
 
     radius: width / 2
     width: 60
