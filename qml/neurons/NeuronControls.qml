@@ -79,10 +79,11 @@ Column {
     Button {
         text: "Reset all"
         onClicked: {
-            for (var i in selectedEntities){
-                if (selectedEntities[i].objectName.slice(-6) == "Neuron") {
-                    selectedEntities[i].engine.resetVoltage()
+            for (var i in graphEngine.nodes){
+                if (graphEngine.nodes[i].objectName.slice(-6) === "Neuron") {
+                    graphEngine.nodes[i].engine.resetVoltage()
                 }
+
             }
         }
     }

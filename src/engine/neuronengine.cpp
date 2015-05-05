@@ -161,9 +161,9 @@ void NeuronEngine::reset()
 void NeuronEngine::resetVoltage()
 {
     m_voltage = m_membraneRestingPotential;
-    //m_synapticConductance = 0.0;
+    m_synapticConductance = 0.0;
     emit voltageChanged(m_voltage);
-    //emit synapticConductanceChanged(m_synapticConductance);
+    emit synapticConductanceChanged(m_synapticConductance);
 }
 
 void NeuronEngine::initialize()
