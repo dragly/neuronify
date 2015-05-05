@@ -13,6 +13,14 @@ import "style"
 import "io"
 import "tools"
 
+/*!
+  \qmltype Neuronify
+  \brief This type holds the application.
+
+  This item is created in the \l{ApplicationWindow}. It contains all the menues
+  as well as the game canvas.
+  */
+
 Rectangle {
     id: root
 
