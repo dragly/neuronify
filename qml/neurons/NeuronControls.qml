@@ -80,7 +80,7 @@ Column {
         text: "Reset all"
         onClicked: {
             for (var i in graphEngine.nodes){
-                if (graphEngine.nodes[i].objectName.slice(-6) === "Neuron") {
+                if (graphEngine.nodes[i].isNeuron) {
                     graphEngine.nodes[i].engine.resetVoltage()
                 }
 
