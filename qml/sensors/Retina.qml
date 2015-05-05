@@ -3,6 +3,15 @@ import QtQuick.Controls 1.3
 import QtMultimedia 5.4
 import Neuronify 1.0
 
+/*!
+\qmltype Retina
+\inqmlmodule Neuronify
+\ingroup neuronify-sensors
+\brief Retina
+
+*/
+
+
 import "../paths"
 import "../hud"
 import "../controls"

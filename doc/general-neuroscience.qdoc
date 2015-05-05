@@ -1,0 +1,85 @@
+/*!
+
+\page general-neuroscience
+\title General neuroscience
+
+The simulations in Neuronify mimic neural networks in our body.
+This page is intended to give you a short introduction to basic concepts
+of neuroscience that you might encounter while using the app.
+In the future, this information may become part of Neuronify itself.
+
+\section1 Brain tissue and cell types
+
+Neocortex is the outer part of our brain.
+It is the big part of the brain that is underlying our skull.
+It is about 1-4 millimeters thick and consists of six layers.
+Each layer has some characteristic properties,
+but there are several connections between the layers.
+
+In regular cortical tissue, there are two types of cells:
+Neurons and glia cells.
+Neuronify focuses solely on the neurons.
+Glia cells are traditionally known as helper cells, but recent research
+shows that they might be playing a bigger role in signal processing than
+previously thought.
+
+The morphology of a neuron, i.e. its shape, is typically divded into three
+main parts:
+Dendrites, soma and axon.
+The dendrites receive input from other cells, which then travels through the
+cell body, known as the soma, before its projected out through the axon
+towards connections to other cells.
+These connections are known as synapses.
+
+There are about 15-20 billion neurons in the human neocortex, with about
+1000 - 10000 synapses per neuron.
+In total, that means there are about \\(10^{14}\\) connections between neurons in total.
+Neuronify is only capable of simulating a tiny fraction of these in about a
+thousand of real time speed.
+Other simulators can give valuable results from millions of neurons on
+a desktop computer.
+These simulators are typically not used for educational purposes alone,
+but rather for research on large-scale networks.
+
+\section1 Neuron signaling
+
+Within a neuron, a propagating signal is known as an action potential.
+The action potential is driven by ion channels that allow different charges
+to flow through.
+Some ion channels are voltage sensitive, meaning that they open or close
+depending on the voltage difference between the inside and outside of the cell.
+Others react with neurotransmitter molecules in the extracellular or
+intracellular fluids.
+Another type of channels are simply passive.
+They are always open, but may be selective to specific types of ions or
+molecules.
+
+A synapse may be chemical or electrical, depending on its function.
+In a chemical synapse, the presynaptic neuron (sender) emits
+neurotransmitters (molecules) that activate reactive sites on the
+postsynaptic (receiver) neuron.
+In an electrical synapse, the two neurons are interconnected with
+shared ion channels.
+This keeps the contents of the intracellular fluid of the two neurons in
+sync.
+Functionally, the biggest difference between electrical and chemical
+synapses is in speed and amplification.
+Chemical synapses can amplify signals, while electrical synapses are much
+faster.
+In Neuronify we deal mainly with chemical synapses.
+However, note that current clamps and similar items inject current directly
+into a receiving neuron, rather than to trigger its synapse.
+
+Neurons may be either excitatory or inhibitory.
+Excitatory neurons have synapses that increase the membrane potential of the
+postsynaptic neuron.
+Inhibitory neurons decrease the membrane potential.
+About 80 % of the cortical neurons are excitatory, while 20 % of the neurons
+are inhibitory.
+These numbers are debated, because they depend on the way neurons are counted
+(by mass, number, etc.) and the techniques used to map the different neurons.
+Therefore, results from some labs differ from the above numbers.
+
+
+
+*/
