@@ -16,6 +16,7 @@ Node {
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
+    property int viewIndex: 0
 
     width: 240
     height: 180
@@ -92,6 +93,23 @@ Node {
                 }
 
             }
+            ComboBox {
+                id: displayComboBox
+                width: 200
+                model: imageView
+
+                onChildrenChanged: {
+                    if(!currentIndex+1){
+                        currentIndex = viewIndex
+                    }
+                }
+
+                onCurrentIndexChanged: {
+                    //recField.receptiveFieldType = model.get(currentIndex).name
+                    viewIndex = currentIndex
+                }
+
+            }
 
         }
 
@@ -104,6 +122,13 @@ Node {
         ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
         ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
 
+    }
+
+
+    ListModel {
+        id: imageView
+        ListElement {text: "Camera";   name: ReceptiveField.OffLeftRF}
+        ListElement {text: "Receptive Field";   name: ReceptiveField.OffLeftRF}
     }
 
     Rectangle {

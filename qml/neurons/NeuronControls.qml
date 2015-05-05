@@ -37,7 +37,7 @@ Column {
     }
 
 
-    BoundSlider {
+    BoundSlider {       
         target: engine
         property: "restingPotential"
         text: "Resting potential"
@@ -61,7 +61,30 @@ Column {
         target: engine
     }
     
+    Text {
+        text: "Reset the potential:"
+    }
 
-   
+    Button {
+        text: "Reset"
+        onClicked: {
+            engine.resetVoltage()
+        }
+    }
 
+    Text {
+        text: "Reset the potential of all neurons:"
+    }
+
+    Button {
+        text: "Reset all"
+        onClicked: {
+            for (var i in graphEngine.nodes){
+                if (graphEngine.nodes[i].objectName.slice(-6) === "Neuron") {
+                    graphEngine.nodes[i].engine.resetVoltage()
+                }
+
+            }
+        }
+    }
 }
