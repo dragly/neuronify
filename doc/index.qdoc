@@ -6,8 +6,23 @@
     Neuronify is an educational app for studying neural networks.
     The engine is based on an integrate-and-fire model.
 
-    The distance between \\((x_1,y_1)\\) and \\((x_2,y_2)\\) is
-    \\( \\sqrt{(x_2-x_1)^2+(y_2-y_1)^2} \\).
+    \section1 Getting started
+
+    Neuronify can be downloaded for multiple platforms.
+    Mobile versions of Neuronify will be available soon in Google Play and
+    Apple App Store.
+
+    For Mac and Windows users, Neuronify may be downloaded here:
+
+    \l{https://github.com/CINPLA/neuronify/releases}
+    {Download Neuronify for Mac and Windows}
+
+    \section1 Development
+
+    To read more about the technical details about the application, have a look
+    at the different categories:
+
+    \l{Input/Output}
 
     To read about the theory behind the calculations done in Neuronify, see \l{Theory}.
 
@@ -54,4 +69,13 @@
     This is a list of all documented QML Types in Neuronify.
 
     \qmlmodule Neuronify
+*/
+
+/*!
+    \group neuronify-io
+
+    \title Input/Output
+    \ingroup classlists
+
+    These classes are used for handling input and output of files.
 */
