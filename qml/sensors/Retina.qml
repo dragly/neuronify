@@ -48,7 +48,7 @@ Node {
         id:recField
         nPixelsX : 50
         nPixelsY : 50
-        receptiveFieldType: ReceptiveField.OffLeftRF
+        receptiveFieldType: ReceptiveField.GaborRF
     }
 
     engine: RetinaEngine {
@@ -126,6 +126,7 @@ Node {
 
     ListModel {
         id: fieldTypes
+        ListElement {text: "Gabor"; name: ReceptiveField.GaborRF}
         ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
         ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
         ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
