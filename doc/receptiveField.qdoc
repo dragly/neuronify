@@ -1,0 +1,16 @@
+/*!
+    \page receptiveField.html
+
+    \title Receptive field
+    \inmodule theory
+
+Neurons in the early visual system, consisting of the retina, lateral geniculate nucleus (LGN), and primary visual cortex (V1), respond to light stimuli in restricted regions of the visual field called their receptive fields (RFs). The spatial and temporal structure of the RFs among the neurons in the visual system varies, but they usually consist of two parts; one part that derpolarize the cell under illumination and one part that hyperpolarize the cell when illuminated.  A typical RF structure is the so-called center-surround RF, consisting of a central disk (center) and a concentric ring (surround), each responding oppositely to light. For example, illumination of the center might increase the firing of a neuron, whereas light in the surround would decrease the firing of that neuron.  
+
+The firing rate of a neuron evoked by a stimulus \\(s(\\mathrm{r},t-\\tau) \\) can be estimated using a linear kernel as
+
+ \\( r(t) = r_0 + \\displaystyle \\int \\int D(\\mathrm{r},\\tau) s(\\mathrm{r},t-\\tau) d\\tau d\\mathrm{r}  \\),
+
+where \\( D(\\mathrm{r},\\tau)  \\) is a weighting factor that determines how strongly, and with what sign, the value of the stimulus at point \\( \\mathrm{r} \\) and at time \\( t-\\tau\\)  affects the firing rate at time \\( t \\). In the visual system, the kernel \\( D(\\mathrm{r},\\tau)  \\) defines the time-space RF of a neuron.
+
+
+*/

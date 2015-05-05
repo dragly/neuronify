@@ -9,15 +9,30 @@
     The distance between \\((x_1,y_1)\\) and \\((x_2,y_2)\\) is
     \\( \\sqrt{(x_2-x_1)^2+(y_2-y_1)^2} \\).
 
+    To read about the theory behind the calculations done in Neuronify, see \l{Theory}.
+
     For a comprehensive list, see \l{All Classes}.
 
     For a list of qmlTypes, see \l{QML Types}
 */
 
 /*!
+    \page theory.html
+    \title Theory
+
+    \brief Here you can read about the theory behind the calculations done in Neuronify.
+
+    This is a list of all topics:
+
+	\list
+    	\li \l{Receptive field}
+	\endlist
+*/
+
+
+/*!
     \page classes.html
     \title All Classes
-    \ingroup classlists
 
     \brief If you know the name of the class you want, find it here.
 
@@ -29,7 +44,6 @@
 /*!
     \page qmlTypes.html
     \title QML TYPES
-    \ingroup classlists
 
     \brief If you know the name of the QML Type, find it here
 
