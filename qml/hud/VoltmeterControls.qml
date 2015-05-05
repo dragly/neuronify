@@ -77,6 +77,15 @@ Item {
             }
         }
 
+//        Button {
+//            text: "Disconnect from all neurons"
+//            onClicked: {
+//                for (var i in voltmeter.connectionPlots){
+//                    connectionPlots[i].connection.destroy(1)
+//                    connectionPlots[i].plot.destroy(1)
+//                }
+//            }
+//        }
 
         BoundSlider {
             target: voltmeter
