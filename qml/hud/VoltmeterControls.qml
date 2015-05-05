@@ -15,6 +15,7 @@ import "../controls"
 \list
  \li  A mode selection (Voltage, conductance, etc)
  \li  A "connect to all"-button which connects the voltmeter to all existing neurons
+ \li  A "disconnect from all"-button which disconnects the voltmeter from all neurons it currently is connected to
  \li  Sliders for setting the minimum and maximum voltage
 \endlist
 */
@@ -77,15 +78,14 @@ Item {
             }
         }
 
-//        Button {
-//            text: "Disconnect from all neurons"
-//            onClicked: {
-//                for (var i in voltmeter.connectionPlots){
-//                    connectionPlots[i].connection.destroy(1)
-//                    connectionPlots[i].plot.destroy(1)
-//                }
-//            }
-//        }
+        Button {
+            text: "Disconnect from all neurons"
+            onClicked: {
+                for (var i in voltmeter.connectionPlots){
+                    connectionPlots[i].connection.destroy(1)
+                }
+            }
+        }
 
         BoundSlider {
             target: voltmeter
