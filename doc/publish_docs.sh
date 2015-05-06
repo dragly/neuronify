@@ -11,15 +11,12 @@ then
 fi
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 ROOTDIR=$DIR/../..
-DOCSDIR=$DIR/../../neuronify-docs
+DOCSDIR=$DIR/../../neuronify-docs/
 
 if [ -d $DOCSDIR/.git ]; then
   echo "All good, found neuronify-docs with git repo."
   cd $DOCSDIR
-  git add *.html
-  git add images
-  git add scripts
-  git add style
+  git add doc
   git commit -am "$MESSAGE"
   git push
 elif [ -d $DOCSDIR ]; then
