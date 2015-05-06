@@ -124,6 +124,7 @@ QImage RetinaEngine::image() const
 
 
 
+
 ReceptiveField *RetinaEngine::receptiveField() const
 {
     return m_receptiveField;
