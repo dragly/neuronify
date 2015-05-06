@@ -1016,7 +1016,7 @@ div.multi-column div {
   margin-right:2em;
   width:16em
 }
-.sidebar, .toc {
+.sidebar {
   display:block;
   float:right;
   -webkit-box-sizing:border-box;

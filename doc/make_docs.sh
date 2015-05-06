@@ -8,14 +8,24 @@ if [ -d $DOCSDIR/.git ]; then
   echo "All good, found neuronify-docs with git repo."
   echo "Pulling changes in neuronify-docs (note: not pulling in the current folder)."
   cd $DOCSDIR
-  git pull
+  if ! git reset --hard; then
+      echo "Could not reset"
+      exit 1
+  fi
+  if ! git pull; then
+      echo "Could not pull"
+      exit 1
+  fi
 elif [ -d $DOCSDIR ]; then
   echo "Directory $DOCSDIR exists, but is not a git repo. Please delete the directory first."
   exit 1
 else
   cd $ROOTDIR
-  git clone -b gh-pages git@github.com:CINPLA/neuronify.git neuronify-docs
+  if ! git clone -b gh-pages git@github.com:CINPLA/neuronify.git neuronify-docs; then
+      echo "Could not clone"
+      exit 1
+  fi
 fi
 
 cd $DIR
-qdoc neuronify.qdocconf
+$DOCSDIR/qdoc neuronify.qdocconf

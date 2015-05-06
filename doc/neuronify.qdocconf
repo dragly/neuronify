@@ -26,7 +26,7 @@ sources.fileextensions = "*.cpp *.qdoc *.mm *.qml"
 headers.fileextensions = "*.h *.ch *.h++ *.hh *.hpp *.hxx"
 examples.imageextensions = "*.png *.jpeg *.jpg *.gif *.mng"
 
-
+spurious = "No documentation for .*"
 
 # Qt index-files:
 # sudo apt-get install qt5-doc qt5-doc-html qt5-default qt5-qmake
