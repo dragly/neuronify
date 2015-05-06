@@ -3,6 +3,15 @@ import QtQuick.Controls 1.3
 import QtMultimedia 5.4
 import Neuronify 1.0
 
+/*!
+\qmltype Retina
+\inqmlmodule Neuronify
+\ingroup neuronify-sensors
+\brief Retina
+
+*/
+
+
 import "../paths"
 import "../hud"
 import "../controls"
@@ -39,7 +48,7 @@ Node {
         id:recField
         nPixelsX : 50
         nPixelsY : 50
-        receptiveFieldType: ReceptiveField.OffLeftRF
+        receptiveFieldType: ReceptiveField.GaborRF
     }
 
     engine: RetinaEngine {
@@ -121,6 +130,7 @@ Node {
 
     ListModel {
         id: fieldTypes
+        ListElement {text: "Gabor"; name: ReceptiveField.GaborRF}
         ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
         ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
         ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}

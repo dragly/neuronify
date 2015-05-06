@@ -4,7 +4,8 @@
 #include <QQuickItem>
 #include <vector>
 #include <iostream>
- #include <QImage>
+#include <QImage>
+#include<iomanip>
 
 using namespace std;
 
@@ -25,7 +26,8 @@ public:
         OffLeftRF,
         OffRightRF,
         OffTopRF,
-        OffBottomRF
+        OffBottomRF,
+        GaborRF
     };
 
     int nPixelsX() const;
@@ -37,8 +39,9 @@ public:
     void createOffRightRF();
     void createOffTopRF();
     void createOffBottomRF();
+    void createGaborRF();
     double temporalRF(const double tau);
-    double gaborField(int x, int y);
+    double gaborFunction(int x, int y);
 
 
     vector<vector<double> > rf();

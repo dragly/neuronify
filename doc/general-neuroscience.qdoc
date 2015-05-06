@@ -1,0 +1,171 @@
+/*!
+
+\page general-neuroscience
+\title General neuroscience
+
+The simulations in Neuronify mimic neural networks in our body.
+This page is intended to give you a short introduction to basic concepts
+of neuroscience that you might encounter while using the app.
+In the future, this information may become part of Neuronify itself.
+
+\section1 Brain tissue and cell types
+
+Neocortex is the outer part of our brain.
+It is the big part of the brain that is underlying our skull.
+It is about 1-4 millimeters thick and consists of six layers.
+Each layer has some characteristic properties,
+but there are several connections between the layers.
+
+In regular cortical tissue, there are two types of cells:
+Neurons and glia cells.
+Neuronify focuses solely on the neurons.
+Glia cells are traditionally known as helper cells, but recent research
+shows that they might be playing a bigger role in signal processing than
+previously thought.
+
+The morphology of a neuron, i.e. its shape, is typically divded into three
+main parts:
+Dendrites, soma and axon.
+The dendrites receive input from other cells, which then travels through the
+cell body, known as the soma, before its projected out through the axon
+towards connections to other cells.
+These connections are known as synapses.
+
+There are about 15-20 billion neurons in the human neocortex, with about
+1000 - 10000 synapses per neuron.
+In total, that means there are about \\(10^{14}\\) connections between neurons in total.
+Neuronify is only capable of simulating a tiny fraction of these in about a
+thousand of real time speed.
+Other simulators can give valuable results from millions of neurons on
+a desktop computer.
+These simulators are typically not used for educational purposes alone,
+but rather for research on large-scale networks.
+
+\section1 Electrical properties of neurons
+
+The neuronal membrane is made of a lipid bilayer.
+This is made of two layers of lipid molecules.
+The molecules are phospholipids with a hydrophilic head and a hydrophobic tail.
+In water, the phospholipids arrange themselves so that the tails of one layer
+is directed towards the tails of the other layer.
+The hydrophilic heads are pointing towards the water.
+This bilayer structure allows almost no water and very few other molecules to
+enter and thus becomes a protective sheet that separates the interior of a cell
+from its environment.
+
+\section2 Ion channels and pumps
+
+Ion channels are proteins that are located in the cell membrane, passing
+through the lipid bilayer.
+Certain molecules are able to enter and leave the cells through these channels.
+
+Some ion channels are voltage sensitive, meaning that they open or close
+depending on the voltage difference between the inside and outside of the cell.
+Others react with neurotransmitter molecules in the extracellular or
+intracellular fluids.
+
+Another type of channels are simply passive.
+They are always open, but may still be selective to specific types of ions and
+molecules.
+
+Ion pumps are energy consuming proteins that actively pump ions in and out
+of the cell.
+Unlike the ion channels, ion pumps are able to move ions against their
+concentration gradient.
+They are, among other things, responsible for maintaining the resting
+membrane potential.
+
+\section2 Resting membrane potential
+
+The potential difference over the membrane of a neuron is determined by the
+charge concentration on each side of the membrane.
+This is in turn depends on the flow of charge through the ion channels.
+
+The resting membrane potential is defined as the membrane potential of a neuron
+at rest.
+The main mechanism behind the resting membrane potential comes from an initial
+concentration difference between the inside and outside of the cell membrane.
+For simplicity, let's assume that the cell exterior has a high sodium (Na+)
+and chloride (Cl-) concentration.
+The inside of the cell, on the other hand, has a high potassium (K+) and general
+anion (An-) concentration.
+
+Let's assume that the cell membrane only has potassium ion channels open.
+This would allow only the potassium to leave the cell.
+Due to the concentration gradient, some potassium would leave the cell due to
+diffusion.
+However, as soon as the potassium starts to leave the cell, an electric
+gradient would start building up.
+When the force from the concentration gradient and the force from the electric
+field are equal, no more potassium would leave the cell.
+This would be an equilibrium, or resting, state.
+
+The above mechanism is only one of the driving forces behind the resting
+membrane potential.
+Ion pumps and other ion channels are also involved in this process.
+Particularly important is the Na+-K+ pump that pumps sodium back out of cells
+and K+ into the cells.
+Considering only the above process of potassium leaving this cell, this may
+seem counter-intuitive, as we already see that potassium will leave the
+cell because of the concentration gradient.
+However, as we will see later, this is necessary to prepare the action
+potential - the main player in neuron signaling.
+
+At any given time, even during activity, the membrane potential is driven
+towards the resting membrane potential by the above mechanism.
+This means that even after a long stretch of activity, the neuron will return
+to the resting membrane potential.
+
+In neurons, the resting membrane potential is typically around -70 mV.
+
+\section1 Neuron signaling
+
+Within a neuron, a propagating signal is known as an action potential.
+The action potential is driven by ion channels that allow different charges
+to flow through.
+
+A synapse may be chemical or electrical, depending on its function.
+In a chemical synapse, the presynaptic neuron (sender) emits
+neurotransmitters (molecules) that activate reactive sites on the
+postsynaptic (receiver) neuron.
+In an electrical synapse, the two neurons are interconnected with
+shared ion channels.
+This keeps the contents of the intracellular fluid of the two neurons in
+sync.
+Functionally, the biggest difference between electrical and chemical
+synapses is in speed and amplification.
+Chemical synapses can amplify signals, while electrical synapses are much
+faster.
+In Neuronify we deal mainly with chemical synapses.
+However, note that current clamps and similar items inject current directly
+into a receiving neuron, rather than to trigger its synapse.
+
+Neurons may be either excitatory or inhibitory.
+Excitatory neurons have synapses that increase the membrane potential of the
+postsynaptic neuron.
+Inhibitory neurons decrease the membrane potential.
+About 80 % of the cortical neurons are excitatory, while 20 % of the neurons
+are inhibitory.
+These numbers are debated, because they depend on the way neurons are counted
+(by mass, number, etc.) and the techniques used to map the different neurons.
+Therefore, results from some labs differ from the above numbers.
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -89,6 +89,9 @@ void ReceptiveField::recreateRF()
     case OffBottomRF:
         createOffBottomRF();
         break;
+    case GaborRF:
+        createGaborRF();
+        break;
     default:
         createOffLeftRF();
         break;
@@ -109,25 +112,37 @@ void ReceptiveField::recreateRF()
 
 }
 
+void ReceptiveField::createGaborRF()
+{;
+    for(int i = 0; i < m_nPixelsX; i++){
+        for(int j = 0; j < m_nPixelsY; j++){
+            m_receptiveField.at(i).at(j)= gaborFunction(i,j)*1000.;
+        }
+    }
 
+//    for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
+//    {
+//        for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
+//        {
+//            cout << setprecision(3)<< fixed << m_receptiveField[i][j]  << "  ";
+//        }
+//        cout << endl;
+//    }
 
-double ReceptiveField::temporalRF(const double tau)
-{
-    double alpha = 1.;
-    return alpha*exp(-alpha*tau)*(pow(alpha*tau, 5)/120. - pow(alpha*tau, 7)/5040.);
 }
 
 
-double ReceptiveField::gaborField(int idx, int idy)
+
+double ReceptiveField::gaborFunction(int idx, int idy)
 {
-    double sigmaX = 400.;
-    double sigmaY = 400.;
-    double k = 1;
+    double sigmaX = 5.;
+    double sigmaY = 5.;
+    double k = 0.5;
     double phi = 0.0;
     double theta = 0.0;
 
-    double x =  idx * cos(theta) + idy * sin(theta);
-    double y = -idx * sin(theta) + idy * cos(theta);
+    double x =  (idx - m_nPixelsX/2) * cos(theta) + (idy-m_nPixelsY/2) * sin(theta);
+    double y = -(idx - m_nPixelsX/2) * sin(theta) + (idy-m_nPixelsY/2) * cos(theta);
 
     double prefactor = 1.0/(2.* pi * sigmaX * sigmaY);
     double expFactor = exp(-x*x/(2.* sigmaX * sigmaX) - y*y/(2. * sigmaY * sigmaY));
@@ -135,6 +150,12 @@ double ReceptiveField::gaborField(int idx, int idy)
     return prefactor * expFactor * cosFactor;
 }
 
+
+double ReceptiveField::temporalRF(const double tau)
+{
+    double alpha = 1.;
+    return alpha*exp(-alpha*tau)*(pow(alpha*tau, 5)/120. - pow(alpha*tau, 7)/5040.);
+}
 
 
 int ReceptiveField::nPixelsX() const

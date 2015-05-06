@@ -57,6 +57,12 @@ void GraphEngine::removeNode(NodeBase *node)
 
 void GraphEngine::removeEdge(Edge *edge)
 {
+    if(edge->itemA()) {
+        edge->itemA()->removeEdge(edge);
+    }
+    if(edge->itemB()) {
+        edge->itemB()->removeEdge(edge);
+    }
     m_edges.removeAll(edge);
 }
 

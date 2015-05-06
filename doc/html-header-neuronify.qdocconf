@@ -76,14 +76,12 @@ HTML.postheader = \
     "    <ul>\n" \
     "       <li class=\"first\"><a href=\"index.html\">Neuronify</a></li>\n"
 
-# "    <ul style=\"visibility: hidden;\">\n"
-
 HTML.postpostheader = \
     "    </ul>\n" \
     "</div>\n" \
     "<div class=\"content\">\n" \
     "    <div class=\"line\">\n" \
-    "        <div class=\"content mainContent\">\n" \
-        "<div class=\"context\">\n"
+    "        <div class=\"content mainContent\">\n"
 
-HTML.prologue = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+HTML.prologue =  \
+    "<div class=\"context\">\n"
