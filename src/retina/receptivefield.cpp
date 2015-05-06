@@ -93,6 +93,19 @@ void ReceptiveField::recreateRF()
         createOffLeftRF();
         break;
     }
+    m_image = QImage(m_nPixelsY, m_nPixelsX, QImage::Format_RGBA8888);
+    for(int i = 0; i < m_image.width(); i++){
+        for(int j = 0; j < m_image.height(); j++){
+
+#ifdef Q_OS_ANDROID
+            int gray = m_image.pixel(i,j);
+#else
+            int gray = rf().at(m_nPixelsX-1-j).at(m_nPixelsY-1-i);
+            QRgb color = qRgb(gray, gray, gray);
+            m_image.setPixel(i,j,color);
+#endif
+        }
+    }
 
 }
 
