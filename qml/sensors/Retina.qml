@@ -55,6 +55,7 @@ Node {
         id: retinaEngine
         receptiveField: recField
         videoSurface: root.videoSurface
+        plotReceptiveField: false
     }
 
     controls: Component {
@@ -109,12 +110,15 @@ Node {
 
                 onChildrenChanged: {
                     if(!currentIndex+1){
+
                         currentIndex = viewIndex
                     }
                 }
 
                 onCurrentIndexChanged: {
                     //recField.receptiveFieldType = model.get(currentIndex).name
+                    if(currentIndex == 0) retinaEngine.plotReceptiveField = false
+                    else retinaEngine.plotReceptiveField = true
                     viewIndex = currentIndex
                 }
 
@@ -137,8 +141,8 @@ Node {
 
     ListModel {
         id: imageView
-        ListElement {text: "Camera";   name: ReceptiveField.OffLeftRF}
-        ListElement {text: "Receptive Field";   name: ReceptiveField.OffLeftRF}
+        ListElement {text: "Camera";   name: 1}
+        ListElement {text: "Receptive Field";   name: 2}
     }
 
     Rectangle {
@@ -156,6 +160,7 @@ Node {
             fill: parent
             margins: 5
         }
+        property bool plotReceptiveField: true
     }
 
     ResizeRectangle {

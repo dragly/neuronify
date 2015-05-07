@@ -102,12 +102,16 @@ void RetinaEngine::setVideoSurface(VideoSurface *videoSurface)
 
 
 
+
+
 void RetinaEngine::setReceptiveField(ReceptiveField *recField)
 {
     if (m_receptiveField == recField)
         return;
 
     m_receptiveField = recField;
+
+
 
     emit receptiveFieldChanged(recField);
 }
@@ -117,6 +121,9 @@ QImage RetinaEngine::image() const
 {
     return m_image;
 }
+
+
+
 
 ReceptiveField *RetinaEngine::receptiveField() const
 {

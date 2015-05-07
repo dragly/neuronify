@@ -28,4 +28,4 @@ else
 fi
 
 cd $DIR
-$DOCSDIR/qdoc neuronify.qdocconf
+LD_LIBRARY_PATH=$DOCSDIR $DOCSDIR/qdoc neuronify.qdocconf

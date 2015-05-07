@@ -3,7 +3,7 @@ import "../../style"
 
 Item {
     id: mainMenuView
-    property string title: "Atomify"
+    property string title: "Neuronify"
 
     signal continueClicked
     signal simulationsClicked
