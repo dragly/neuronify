@@ -13,13 +13,13 @@ void ReceptiveField::createOffLeft()
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_spatial.at(i).at(j)= 125;
+            m_spatial.at(i).at(j) = 127;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth/2; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_spatial.at(i).at(j) = -125;
+            m_spatial.at(i).at(j) = -128;
         }
     }
 
@@ -29,13 +29,13 @@ void ReceptiveField::createOffRight()
 {
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_spatial.at(i).at(j)= -125;
+            m_spatial.at(i).at(j)= -128;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth/2; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_spatial.at(i).at(j) = 125;
+            m_spatial.at(i).at(j) = 127;
         }
     }
 
@@ -45,13 +45,13 @@ void ReceptiveField::createOffTop()
 {
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_spatial.at(i).at(j)= 125;
+            m_spatial.at(i).at(j)= 127;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight/2; j++){
-            m_spatial.at(i).at(j) = -125;
+            m_spatial.at(i).at(j) = -128;
         }
     }
 }
@@ -61,13 +61,13 @@ void ReceptiveField::createOffBottom()
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_spatial.at(i).at(j)= -125;
+            m_spatial.at(i).at(j)= -128;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight/2; j++){
-            m_spatial.at(i).at(j) = 125;
+            m_spatial.at(i).at(j) = 127;
         }
     }
 }
@@ -112,7 +112,7 @@ void ReceptiveField::recreate()
 #ifdef Q_OS_ANDROID
             int gray = m_spatialImage.pixel(i,j);
 #else
-            int gray = spatial().at(i).at(j) + 125;
+            int gray = spatial().at(i).at(j) + 128;
             QRgb color = qRgb(gray, gray, gray);
             m_spatialImage.setPixel(i,j,color);
 #endif
@@ -125,7 +125,7 @@ void ReceptiveField::createGabor()
 {;
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_spatial.at(i).at(j)= gaborFunction(i,j)*10000.;
+            m_spatial.at(i).at(j)= gaborFunction(i,j)*20000.;
 //            qDebug() << m_receptiveField.at(i).at(j);
         }
     }

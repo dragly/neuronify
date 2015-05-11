@@ -38,7 +38,7 @@ void RetinaEngine::receivedImage()
             QRgb color = qRgb(gray, gray, gray);
             m_paintedImage.setPixel(i,j,color);
 #endif
-            m_stim.at(i).at(j) = gray-126.;
+            m_stim.at(i).at(j) = gray-128./256;
         }
     }
 
@@ -52,14 +52,14 @@ void RetinaEngine::calculateFiringRate()
         return;
     }
 
-    m_receptiveFieldShape = m_receptiveField->spatial();
+    vector< vector <double>> spatial = m_receptiveField->spatial();
     int resolutionHeight= m_receptiveField->resolutionHeight();
     int resolutionWidth = m_receptiveField->resolutionWidth();
 
     m_firingRate = 0.0;
     for(int i = 0; i < resolutionWidth; i++){
         for(int j = 0; j < resolutionHeight; j++){
-            m_firingRate += m_stim.at(i).at(j) *  m_receptiveFieldShape.at(i).at(j);
+            m_firingRate += m_stim.at(i).at(j) *  spatial.at(i).at(j)/256;
         }
     }
     int size = resolutionHeight*resolutionWidth;

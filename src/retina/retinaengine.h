@@ -67,7 +67,6 @@ private:
     double m_firingRate = 0.0;
 
     vector< vector <double>> m_stim;
-    vector< vector <double>> m_receptiveFieldShape;
 
     bool m_plotReceptiveField;
 };
