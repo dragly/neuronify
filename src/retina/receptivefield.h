@@ -6,14 +6,15 @@
 #include <iostream>
 #include <QImage>
 #include<iomanip>
+#include <limits>
 
 using namespace std;
 
 class ReceptiveField : public QQuickItem
 {
     Q_OBJECT
-    Q_PROPERTY(int nPixelsX READ nPixelsX WRITE setNPixelsX NOTIFY nPixelsXChanged)
-    Q_PROPERTY(int nPixelsY READ nPixelsY WRITE setNPixelsY NOTIFY nPixelsYChanged)
+    Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
+    Q_PROPERTY(int resolutionWidth READ resolutionWidth WRITE setResolutionWidth NOTIFY resolutionWidthChanged)
     Q_PROPERTY(QImage image READ image WRITE setImage NOTIFY imageChanged)
     Q_PROPERTY(ReceptiveFieldTypes receptiveFieldType READ receptiveFieldType WRITE setRreceptiveFieldType NOTIFY receptiveFieldTypeChanged)
     Q_ENUMS(ReceptiveFieldTypes)
@@ -30,8 +31,8 @@ public:
         GaborRF
     };
 
-    int nPixelsX() const;
-    int nPixelsY() const;
+    int resolutionHeight() const;
+    int resolutionWidth() const;
     void recreateRF();
 
     //Receptive Field types:
@@ -48,35 +49,25 @@ public:
     ReceptiveFieldTypes receptiveFieldType() const;
 
 
-    QImage image() const
-    {
-        return m_image;
-    }
+    QImage image() const;
 
 public slots:
     void setRreceptiveFieldType(ReceptiveFieldTypes receptiveFieldType);
-    void setNPixelsX(int nPixelsX);
-    void setNPixelsY(int nPixelsY);
+    void setResolutionHeight(int resolutionHeight);
+    void setResolutionWidth(int resolutionWidth);
 
-    void setImage(QImage image)
-    {
-        if (m_image == image)
-            return;
-
-        m_image = image;
-        emit imageChanged(image);
-    }
+    void setImage(QImage image);
 
 signals:
-    void nPixelsXChanged(int nPixelsX);
-    void nPixelsYChanged(int nPixelsY);
+    void resolutionHeightChanged(int resolutionHeight);
+    void resolutionWidthChanged(int resolutionWidth);
     void receptiveFieldTypeChanged(ReceptiveFieldTypes receptiveFieldType);
 
     void imageChanged(QImage image);
 
 private:
-    int m_nPixelsX = 10;
-    int m_nPixelsY = 10;
+    int m_resolutionHeight = 10;
+    int m_resolutionWidth = 10;
     vector< vector <double>> m_receptiveField;
     ReceptiveFieldTypes m_receptiveFieldType = OffLeftRF;
     QImage m_image;

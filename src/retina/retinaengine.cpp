@@ -17,16 +17,16 @@ void RetinaEngine::receivedImage()
     if(!m_receptiveField){
         return;
     }
-    int nPixelsX = m_receptiveField->nPixelsX();
-    int nPixelsY = m_receptiveField->nPixelsY();
 
-    m_stim.resize(nPixelsX);
-    for(int i = 0; i < nPixelsX; i++){
-        m_stim.at(i).resize(nPixelsY,0.0);
+    int resolutionHeight = m_receptiveField->resolutionHeight();
+    int resolutionWidth = m_receptiveField->resolutionWidth();
+    m_stim.resize(resolutionWidth);
+    for(int i = 0; i < resolutionWidth; i++){
+        m_stim.at(i).resize(resolutionHeight,0.0);
     }
 
     m_image = m_videoSurface->image();
-    m_image =  m_image.scaled(nPixelsY,nPixelsX);
+    m_image =  m_image.scaled(resolutionWidth,resolutionHeight);
 
 
     for(int i = 0; i < m_image.width(); i++){
@@ -38,7 +38,7 @@ void RetinaEngine::receivedImage()
             QRgb color = qRgb(gray, gray, gray);
             m_image.setPixel(i,j,color);
 #endif
-            m_stim.at(j).at(i) = gray-126.;
+            m_stim.at(i).at(j) = gray-126.;
         }
     }
 
@@ -51,17 +51,18 @@ void RetinaEngine::calculateFiringRate()
     if(!m_receptiveField){
         return;
     }
+
     m_receptiveFieldShape = m_receptiveField->rf();
-    int nPixelsX= m_receptiveField->nPixelsX();
-    int nPixelsY = m_receptiveField->nPixelsY();
+    int resolutionHeight= m_receptiveField->resolutionHeight();
+    int resolutionWidth = m_receptiveField->resolutionWidth();
 
     m_firingRate = 0.0;
-    for(int i = 0; i < nPixelsX; i++){
-        for(int j = 0; j < nPixelsY; j++){
+    for(int i = 0; i < resolutionWidth; i++){
+        for(int j = 0; j < resolutionHeight; j++){
             m_firingRate += m_stim.at(i).at(j) *  m_receptiveFieldShape.at(i).at(j);
         }
     }
-    int size = nPixelsX*nPixelsY;
+    int size = resolutionHeight*resolutionWidth;
     m_firingRate /= size;
     if(m_firingRate < 0){
         m_firingRate = 0;

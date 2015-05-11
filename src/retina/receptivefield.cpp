@@ -10,60 +10,64 @@ ReceptiveField::ReceptiveField()
 
 void ReceptiveField::createOffLeftRF()
 {
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j)= 1;
+
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
+            m_receptiveField.at(i).at(j)= 125;
         }
     }
 
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY/2; j++){
-            m_receptiveField.at(i).at(j) = -1;
+    for(int i = 0; i < m_resolutionWidth/2; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
+            m_receptiveField.at(i).at(j) = -125;
         }
     }
+
 }
 
 void ReceptiveField::createOffRightRF()
 {
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j)= -1;
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
+            m_receptiveField.at(i).at(j)= -125;
         }
     }
 
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY/2; j++){
-            m_receptiveField.at(i).at(j) = 1;
+    for(int i = 0; i < m_resolutionWidth/2; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
+            m_receptiveField.at(i).at(j) = 125;
         }
     }
+
 }
 
 void ReceptiveField::createOffTopRF()
 {
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j)= 1;
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
+            m_receptiveField.at(i).at(j)= 125;
         }
     }
 
-    for(int i = 0; i < m_nPixelsX/2; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j) = -1;
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight/2; j++){
+            m_receptiveField.at(i).at(j) = -125;
         }
     }
 }
 
 void ReceptiveField::createOffBottomRF()
-{;
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j)= -1;
+{
+
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
+            m_receptiveField.at(i).at(j)= -125;
         }
     }
 
-    for(int i = 0; i < m_nPixelsX/2; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j) = 1;
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight/2; j++){
+            m_receptiveField.at(i).at(j) = 125;
         }
     }
 }
@@ -71,10 +75,11 @@ void ReceptiveField::createOffBottomRF()
 void ReceptiveField::recreateRF()
 {
 
-    m_receptiveField.resize(m_nPixelsX);
-    for(int i = 0; i < m_nPixelsX; i++){
-        m_receptiveField.at(i).resize(m_nPixelsY,0);
+    m_receptiveField.resize(m_resolutionWidth);
+    for(int i = 0; i < m_resolutionWidth; i++){
+        m_receptiveField.at(i).resize(m_resolutionHeight,0);
     }
+
 
     switch (m_receptiveFieldType) {
     case OffLeftRF:
@@ -96,14 +101,18 @@ void ReceptiveField::recreateRF()
         createOffLeftRF();
         break;
     }
-    m_image = QImage(m_nPixelsY, m_nPixelsX, QImage::Format_RGBA8888);
-    for(int i = 0; i < m_image.width(); i++){
-        for(int j = 0; j < m_image.height(); j++){
+
+
+
+    m_image = QImage(m_resolutionWidth, m_resolutionHeight, QImage::Format_RGBA8888);
+
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
 
 #ifdef Q_OS_ANDROID
             int gray = m_image.pixel(i,j);
 #else
-            int gray = rf().at(m_nPixelsX-1-j).at(m_nPixelsY-1-i);
+            int gray = rf().at(i).at(j) + 125;
             QRgb color = qRgb(gray, gray, gray);
             m_image.setPixel(i,j,color);
 #endif
@@ -114,15 +123,16 @@ void ReceptiveField::recreateRF()
 
 void ReceptiveField::createGaborRF()
 {;
-    for(int i = 0; i < m_nPixelsX; i++){
-        for(int j = 0; j < m_nPixelsY; j++){
-            m_receptiveField.at(i).at(j)= gaborFunction(i,j)*1000.;
+    for(int i = 0; i < m_resolutionWidth; i++){
+        for(int j = 0; j < m_resolutionHeight; j++){
+            m_receptiveField.at(i).at(j)= gaborFunction(i,j)*10000.;
+//            qDebug() << m_receptiveField.at(i).at(j);
         }
     }
 
-//    for(int i=0; i<m_nPixelsX; i++)    //This loops on the rows.
+//    for(int i=0; i<m_resolutionHeight; i++)    //This loops on the rows.
 //    {
-//        for(int j=0; j<m_nPixelsY; j++) //This loops on the columns
+//        for(int j=0; j<m_resolutionWidth; j++) //This loops on the columns
 //        {
 //            cout << setprecision(3)<< fixed << m_receptiveField[i][j]  << "  ";
 //        }
@@ -141,8 +151,8 @@ double ReceptiveField::gaborFunction(int idx, int idy)
     double phi = 0.0;
     double theta = 0.0;
 
-    double x =  (idx - m_nPixelsX/2) * cos(theta) + (idy-m_nPixelsY/2) * sin(theta);
-    double y = -(idx - m_nPixelsX/2) * sin(theta) + (idy-m_nPixelsY/2) * cos(theta);
+    double x =  (idx - m_resolutionHeight/2) * cos(theta) + (idy-m_resolutionWidth/2) * sin(theta);
+    double y = -(idx - m_resolutionHeight/2) * sin(theta) + (idy-m_resolutionWidth/2) * cos(theta);
 
     double prefactor = 1.0/(2.* pi * sigmaX * sigmaY);
     double expFactor = exp(-x*x/(2.* sigmaX * sigmaX) - y*y/(2. * sigmaY * sigmaY));
@@ -158,14 +168,14 @@ double ReceptiveField::temporalRF(const double tau)
 }
 
 
-int ReceptiveField::nPixelsX() const
+int ReceptiveField::resolutionHeight() const
 {
-    return m_nPixelsX;
+    return m_resolutionHeight;
 }
 
-int ReceptiveField::nPixelsY() const
+int ReceptiveField::resolutionWidth() const
 {
-    return m_nPixelsY;
+    return m_resolutionWidth;
 }
 
 vector<vector<double> > ReceptiveField::rf()
@@ -181,6 +191,11 @@ ReceptiveField::ReceptiveFieldTypes ReceptiveField::receptiveFieldType() const
     return m_receptiveFieldType;
 }
 
+QImage ReceptiveField::image() const
+{
+    return m_image;
+}
+
 void ReceptiveField::setRreceptiveFieldType(ReceptiveField::ReceptiveFieldTypes rfType)
 {
     if (m_receptiveFieldType == rfType)
@@ -192,24 +207,33 @@ void ReceptiveField::setRreceptiveFieldType(ReceptiveField::ReceptiveFieldTypes 
     emit receptiveFieldTypeChanged(rfType);
 }
 
-void ReceptiveField::setNPixelsX(int nPixelsX)
+void ReceptiveField::setResolutionHeight(int resolutionHeight)
 {
-    if (m_nPixelsX == nPixelsX)
+    if (m_resolutionHeight == resolutionHeight)
         return;
 
-    m_nPixelsX = nPixelsX;
+    m_resolutionHeight = resolutionHeight;
     recreateRF();
-    emit nPixelsXChanged(nPixelsX);
+    emit resolutionHeightChanged(resolutionHeight);
 }
 
-void ReceptiveField::setNPixelsY(int nPixelsY)
+void ReceptiveField::setResolutionWidth(int resolutionWidth)
 {
-    if (m_nPixelsY == nPixelsY)
+    if (m_resolutionWidth == resolutionWidth)
         return;
 
-    m_nPixelsY = nPixelsY;
+    m_resolutionWidth = resolutionWidth;
     recreateRF();
-    emit nPixelsYChanged(nPixelsY);
+    emit resolutionWidthChanged(resolutionWidth);
+}
+
+void ReceptiveField::setImage(QImage image)
+{
+    if (m_image == image)
+        return;
+
+    m_image = image;
+    emit imageChanged(image);
 }
 
 
