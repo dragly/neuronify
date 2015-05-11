@@ -195,7 +195,7 @@ This is the electric contribution to the flux.
 The diffusive flux is given by Fick's law:
 
 \raw HTML
-\[ \mathbf j_\mathrm{diffusion} = - D \nabla c. \]
+\[ \mathbf j_\mathrm{diff} = - D \nabla c. \]
 \endraw
 
 For a derivation of this, see for instance the
@@ -211,7 +211,7 @@ constant:
 
 \raw HTML
 \[ \mathbf J_\mathrm{drift} = \frac{Z F D}{R T} [X] \nabla V. \]
-\[ \mathbf J_\mathrm{diffusion} = - D \nabla [X]. \]
+\[ \mathbf J_\mathrm{diff} = - D \nabla [X]. \]
 \endraw
 
 Here \\( [X] \\) is the concentration of species \\( X \\) in moles.
@@ -222,8 +222,9 @@ If we sum the two contributions to the flux, we get the Nernst-Planck equation:
 
 \raw HTML
 \begin{align}
-\mathbf J &= J_\mathrm{diffusion} + \mathbf J_\mathrm{drift} \\
-          &= - D \left ( \nabla [X] - \frac{Z F}{R T} [X] \nabla V \right )
+\mathbf J &= J_\mathrm{diff} + \mathbf J_\mathrm{drift} \\
+          &= - D \left ( \nabla [\mathrm{X}]
+               - \frac{Z F}{R T} [\mathrm{X}] \nabla V \right )
 \end{align}
 \endraw
 
@@ -252,9 +253,104 @@ E_{\mathrm X}
 \endraw
 
 \raw HTML
-The potential difference \( E_{\mathrm X} = V_2 - V_1 \) is known as the Nernst potential for
-the species \( \mathrm X \).
+The potential difference \( E_{\mathrm X} = V_2 - V_1 \) is known as the Nernst
+potential for the species \( \mathrm X \).
 \endraw
+
+\section1 Goldman-Hodgkin-Katz equations
+
+When multiple ion species are involved, we need to expand on the formalism
+outlined above.
+We assume that the ions cross the membrane independently and that the electric
+field within the membrane is constant.
+As above, the movement of the ions is governed by the electric field and
+the concentration gradient across the membrane.
+For each ion, we have the flux as
+
+\raw HTML
+\begin{align}
+\mathbf J_\mathrm{X}
+  &= J_\mathrm{X,diff} + \mathbf J_\mathrm{X,drift} \\
+  &= - D \left ( \frac{d [\mathrm{X}]}{dx}
+         - \frac{Z F}{R T} [X] \frac{dV}{dx} \right )
+\end{align}
+\endraw
+
+From our assumption of a constant electric field inside the membrane, we get
+
+\raw HTML
+\begin{align}
+\mathbf J_\mathrm{X}
+  &= J_\mathrm{X,diff} + \mathbf J_\mathrm{X,drift} \\
+  &= - D \left ( \frac{d [\mathrm{X}]}{dx}
+         - \frac{Z F}{R T} [X] \frac{E_\mathrm{m}}{L} \right )
+\end{align}
+\endraw
+
+\raw HTML
+where \(E_\mathrm{m}\) is the membrane potential and \(L\) is the membrane
+thickness.
+\endraw
+
+By separation of variables, we obtain
+
+\raw HTML
+\begin{align}
+dx &= \frac{d[\mathrm X]}
+        {-\frac{J_\mathrm{X}}{D_X}
+           + \frac{D_\mathrm{X} Z_\mathrm{X} F}{RT} [\mathrm{X}] \frac{E_\mathrm{m}}{L}}.
+\end{align}
+\endraw
+
+Integration on both sides from \\(x\\) inside the membrane to outside the
+membrane gives the solution
+
+\raw HTML
+\begin{align}
+J_\mathrm{X} = P_\mathrm{X} Z_\mathrm{X} \mu
+    \left (
+        \frac{[X]_\mathrm{out} - e^{Z_\mathrm{X}\mu} [X]_{\mathrm{in}} }
+            {1 - e^{\mu Z_\mathrm{X}}}
+    \right),
+\end{align}
+\endraw
+
+where
+
+\raw HTML
+\[ \mu = \frac{FE_\mathrm{m}}{RT}. \]
+\endraw
+
+and
+
+\raw HTML
+\[ P_\mathrm{X} = \frac{D_\mathrm{X}}{L}. \]
+\endraw
+
+is the permeability of the membrane to ion \\(\\mathrm{X}\\).
+
+This equation may now be solved for the membrane potential \\(E_\\mathrm{m}\\).
+How to solve it depends on the valency of the ions involved.
+In the simplest case, where all involved ions are monovalent so that
+\\(Z_\mathrm{X} = \\pm 1 \\), the solution becomes
+
+\raw HTML
+\[
+E_\mathrm{m}
+  = \frac{RT}{F} \ln
+    \frac{\sum_\mathrm{cations C} P_\mathrm{C} [\mathrm{C}^+]_\mathrm{out}
+            + \sum_\mathrm{anions A} P_\mathrm{A}}[\mathrm{A}^-]_\mathrm{in}
+         {\sum_\mathrm{cations C} P_\mathrm{C} [\mathrm{C}^+]_\mathrm{in}
+            + \sum_\mathrm{anions A} P_\mathrm{A}}[\mathrm{A}^-]_\mathrm{out}
+\]
+\endraw
+
+Inserting the concentrations and permabilites into this equation yields
+the equilibrium membrane potential.
+
+Note that the notion of the permeability predates the discovery of ion channels.
+The permeability is therefore dependent on the number of ion channels that are
+open and may vary with time in active membranes.
 
 \section1 Neuron signaling
 
@@ -284,10 +380,6 @@ postsynaptic neuron.
 Inhibitory neurons decrease the membrane potential.
 About 80 % of the cortical neurons are excitatory, while 20 % of the neurons
 are inhibitory.
-These numbers are debated, because they depend on the way neurons are counted
-(by mass, number, etc.) and the techniques used to map the different neurons.
-Therefore, results from some labs differ from the above numbers.
-
 
 */
 
