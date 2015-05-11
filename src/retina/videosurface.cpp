@@ -81,7 +81,7 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
                                   frameSize.width(),
                                   frameSize.height(),
                                          factor);
-        m_image = result;
+        m_paintedImage = result;
         frame.unmap();
         emit gotImage(QRect());
     }
