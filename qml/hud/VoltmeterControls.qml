@@ -9,14 +9,14 @@ import "../controls"
     \qmltype VoltMeterControls
     \inqmlmodule Neuronify
     \ingroup neuronify-hud
-    \brief Contains the user controls for the voltmeter
+    \brief Contains the user controls for the voltmeter.
 
-    The voltmeter control panel contains
+    The voltmeter control panel contains:
 \list
  \li  A mode selection (Voltage, conductance, etc)
- \li  A "connect to all"-button which connects the voltmeter to all existing neurons
- \li  A "disconnect from all"-button which disconnects the voltmeter from all neurons it currently is connected to
- \li  Sliders for setting the minimum and maximum voltage
+ \li  A "connect to all"-button which connects the voltmeter to all existing neurons.
+ \li  A "disconnect from all"-button which disconnects the voltmeter from all neurons it currently is connected to.
+ \li  Sliders for setting the minimum and maximum voltage.
 \endlist
 */
 
