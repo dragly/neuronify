@@ -25,18 +25,18 @@ void RetinaEngine::receivedImage()
         m_stim.at(i).resize(resolutionHeight,0.0);
     }
 
-    m_image = m_videoSurface->image();
-    m_image =  m_image.scaled(resolutionWidth,resolutionHeight);
+    m_paintedImage =  m_videoSurface->paintedImage();
+    m_paintedImage =  m_paintedImage.scaled(resolutionWidth,resolutionHeight);
 
 
-    for(int i = 0; i < m_image.width(); i++){
-        for(int j = 0; j < m_image.height(); j++){
+    for(int i = 0; i < m_paintedImage.width(); i++){
+        for(int j = 0; j < m_paintedImage.height(); j++){
 #ifdef Q_OS_ANDROID
-            int gray = m_image.pixel(i,j);
+            int gray = m_paintedImage.pixel(i,j);
 #else
-            int gray = qGray(m_image.pixel(i,j));
+            int gray = qGray(m_paintedImage.pixel(i,j));
             QRgb color = qRgb(gray, gray, gray);
-            m_image.setPixel(i,j,color);
+            m_paintedImage.setPixel(i,j,color);
 #endif
             m_stim.at(i).at(j) = gray-126.;
         }
@@ -52,7 +52,7 @@ void RetinaEngine::calculateFiringRate()
         return;
     }
 
-    m_receptiveFieldShape = m_receptiveField->rf();
+    m_receptiveFieldShape = m_receptiveField->spatial();
     int resolutionHeight= m_receptiveField->resolutionHeight();
     int resolutionWidth = m_receptiveField->resolutionWidth();
 
@@ -118,9 +118,9 @@ void RetinaEngine::setReceptiveField(ReceptiveField *recField)
 }
 
 
-QImage RetinaEngine::image() const
+QImage RetinaEngine::paintedImage() const
 {
-    return m_image;
+    return m_paintedImage;
 }
 
 

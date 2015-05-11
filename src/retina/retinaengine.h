@@ -27,7 +27,7 @@ public:
 
 
     VideoSurface * videoSurface() const;
-    QImage image() const;
+    QImage paintedImage() const;
     ReceptiveField * receptiveField() const;
 
     bool plotReceptiveField() const
@@ -61,7 +61,7 @@ protected:
 private:
     VideoSurface * m_videoSurface = nullptr;
     ReceptiveField * m_receptiveField = nullptr;
-    QImage m_image;
+    QImage m_paintedImage;
 
 
     double m_firingRate = 0.0;

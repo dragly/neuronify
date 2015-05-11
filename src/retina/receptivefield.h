@@ -15,15 +15,15 @@ class ReceptiveField : public QQuickItem
     Q_OBJECT
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
     Q_PROPERTY(int resolutionWidth READ resolutionWidth WRITE setResolutionWidth NOTIFY resolutionWidthChanged)
-    Q_PROPERTY(QImage image READ image WRITE setImage NOTIFY imageChanged)
-    Q_PROPERTY(ReceptiveFieldTypes receptiveFieldType READ receptiveFieldType WRITE setRreceptiveFieldType NOTIFY receptiveFieldTypeChanged)
-    Q_ENUMS(ReceptiveFieldTypes)
+    Q_PROPERTY(QImage spatialImage READ spatialImage WRITE setSpatialImage NOTIFY imageChanged)
+    Q_PROPERTY(spatialTypes spatialType READ spatialType WRITE setSpatialType NOTIFY spatialTypeChanged)
+    Q_ENUMS(spatialTypes)
 
 public:
     ReceptiveField();
 
 public:
-    enum ReceptiveFieldTypes{
+    enum spatialTypes{
         OffLeftRF,
         OffRightRF,
         OffTopRF,
@@ -33,44 +33,44 @@ public:
 
     int resolutionHeight() const;
     int resolutionWidth() const;
-    void recreateRF();
+    void recreate();
 
     //Receptive Field types:
-    void createOffLeftRF();
-    void createOffRightRF();
-    void createOffTopRF();
-    void createOffBottomRF();
-    void createGaborRF();
-    double temporalRF(const double tau);
+    void createOffLeft();
+    void createOffRight();
+    void createOffTop();
+    void createOffBottom();
+    void createGabor();
+    double temporal(const double tau);
     double gaborFunction(int x, int y);
 
 
-    vector<vector<double> > rf();
-    ReceptiveFieldTypes receptiveFieldType() const;
+    vector<vector<double> > spatial();
+    spatialTypes spatialType() const;
 
 
-    QImage image() const;
+    QImage spatialImage() const;
 
 public slots:
-    void setRreceptiveFieldType(ReceptiveFieldTypes receptiveFieldType);
+    void setSpatialType(spatialTypes spatialType);
     void setResolutionHeight(int resolutionHeight);
     void setResolutionWidth(int resolutionWidth);
 
-    void setImage(QImage image);
+    void setSpatialImage(QImage spatialImage);
 
 signals:
     void resolutionHeightChanged(int resolutionHeight);
     void resolutionWidthChanged(int resolutionWidth);
-    void receptiveFieldTypeChanged(ReceptiveFieldTypes receptiveFieldType);
+    void spatialTypeChanged(spatialTypes spatialType);
 
-    void imageChanged(QImage image);
+    void imageChanged(QImage spatialImage);
 
 private:
     int m_resolutionHeight = 10;
     int m_resolutionWidth = 10;
-    vector< vector <double>> m_receptiveField;
-    ReceptiveFieldTypes m_receptiveFieldType = OffLeftRF;
-    QImage m_image;
+    vector< vector <double>> m_spatial;
+    spatialTypes m_spatialType = OffLeftRF;
+    QImage m_spatialImage;
 };
 
 

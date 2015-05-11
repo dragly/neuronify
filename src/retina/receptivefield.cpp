@@ -8,124 +8,124 @@ ReceptiveField::ReceptiveField()
 {
 }
 
-void ReceptiveField::createOffLeftRF()
+void ReceptiveField::createOffLeft()
 {
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_receptiveField.at(i).at(j)= 125;
+            m_spatial.at(i).at(j)= 125;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth/2; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_receptiveField.at(i).at(j) = -125;
+            m_spatial.at(i).at(j) = -125;
         }
     }
 
 }
 
-void ReceptiveField::createOffRightRF()
+void ReceptiveField::createOffRight()
 {
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_receptiveField.at(i).at(j)= -125;
+            m_spatial.at(i).at(j)= -125;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth/2; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_receptiveField.at(i).at(j) = 125;
+            m_spatial.at(i).at(j) = 125;
         }
     }
 
 }
 
-void ReceptiveField::createOffTopRF()
+void ReceptiveField::createOffTop()
 {
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_receptiveField.at(i).at(j)= 125;
+            m_spatial.at(i).at(j)= 125;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight/2; j++){
-            m_receptiveField.at(i).at(j) = -125;
+            m_spatial.at(i).at(j) = -125;
         }
     }
 }
 
-void ReceptiveField::createOffBottomRF()
+void ReceptiveField::createOffBottom()
 {
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_receptiveField.at(i).at(j)= -125;
+            m_spatial.at(i).at(j)= -125;
         }
     }
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight/2; j++){
-            m_receptiveField.at(i).at(j) = 125;
+            m_spatial.at(i).at(j) = 125;
         }
     }
 }
 
-void ReceptiveField::recreateRF()
+void ReceptiveField::recreate()
 {
 
-    m_receptiveField.resize(m_resolutionWidth);
+    m_spatial.resize(m_resolutionWidth);
     for(int i = 0; i < m_resolutionWidth; i++){
-        m_receptiveField.at(i).resize(m_resolutionHeight,0);
+        m_spatial.at(i).resize(m_resolutionHeight,0);
     }
 
 
-    switch (m_receptiveFieldType) {
+    switch (m_spatialType) {
     case OffLeftRF:
-        createOffLeftRF();
+        createOffLeft();
         break;
     case OffRightRF:
-        createOffRightRF();
+        createOffRight();
         break;
     case OffTopRF:
-        createOffTopRF();
+        createOffTop();
         break;
     case OffBottomRF:
-        createOffBottomRF();
+        createOffBottom();
         break;
     case GaborRF:
-        createGaborRF();
+        createGabor();
         break;
     default:
-        createOffLeftRF();
+        createOffLeft();
         break;
     }
 
 
 
-    m_image = QImage(m_resolutionWidth, m_resolutionHeight, QImage::Format_RGBA8888);
+    m_spatialImage = QImage(m_resolutionWidth, m_resolutionHeight, QImage::Format_RGBA8888);
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
 
 #ifdef Q_OS_ANDROID
-            int gray = m_image.pixel(i,j);
+            int gray = m_spatialImage.pixel(i,j);
 #else
-            int gray = rf().at(i).at(j) + 125;
+            int gray = spatial().at(i).at(j) + 125;
             QRgb color = qRgb(gray, gray, gray);
-            m_image.setPixel(i,j,color);
+            m_spatialImage.setPixel(i,j,color);
 #endif
         }
     }
 
 }
 
-void ReceptiveField::createGaborRF()
+void ReceptiveField::createGabor()
 {;
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            m_receptiveField.at(i).at(j)= gaborFunction(i,j)*10000.;
+            m_spatial.at(i).at(j)= gaborFunction(i,j)*10000.;
 //            qDebug() << m_receptiveField.at(i).at(j);
         }
     }
@@ -161,7 +161,7 @@ double ReceptiveField::gaborFunction(int idx, int idy)
 }
 
 
-double ReceptiveField::temporalRF(const double tau)
+double ReceptiveField::temporal(const double tau)
 {
     double alpha = 1.;
     return alpha*exp(-alpha*tau)*(pow(alpha*tau, 5)/120. - pow(alpha*tau, 7)/5040.);
@@ -178,33 +178,33 @@ int ReceptiveField::resolutionWidth() const
     return m_resolutionWidth;
 }
 
-vector<vector<double> > ReceptiveField::rf()
+vector<vector<double> > ReceptiveField::spatial()
 {
-    if(m_receptiveField.empty()){
-        recreateRF();
+    if(m_spatial.empty()){
+        recreate();
     }
-    return m_receptiveField;
+    return m_spatial;
 }
 
-ReceptiveField::ReceptiveFieldTypes ReceptiveField::receptiveFieldType() const
+ReceptiveField::spatialTypes ReceptiveField::spatialType() const
 {
-    return m_receptiveFieldType;
+    return m_spatialType;
 }
 
-QImage ReceptiveField::image() const
+QImage ReceptiveField::spatialImage() const
 {
-    return m_image;
+    return m_spatialImage;
 }
 
-void ReceptiveField::setRreceptiveFieldType(ReceptiveField::ReceptiveFieldTypes rfType)
+void ReceptiveField::setSpatialType(ReceptiveField::spatialTypes spatialType)
 {
-    if (m_receptiveFieldType == rfType)
+    if (m_spatialType == spatialType)
         return;
 
-    m_receptiveFieldType = rfType;
-    recreateRF();
+    m_spatialType = spatialType;
+    recreate();
 
-    emit receptiveFieldTypeChanged(rfType);
+    emit spatialTypeChanged(spatialType);
 }
 
 void ReceptiveField::setResolutionHeight(int resolutionHeight)
@@ -213,7 +213,7 @@ void ReceptiveField::setResolutionHeight(int resolutionHeight)
         return;
 
     m_resolutionHeight = resolutionHeight;
-    recreateRF();
+    recreate();
     emit resolutionHeightChanged(resolutionHeight);
 }
 
@@ -223,16 +223,16 @@ void ReceptiveField::setResolutionWidth(int resolutionWidth)
         return;
 
     m_resolutionWidth = resolutionWidth;
-    recreateRF();
+    recreate();
     emit resolutionWidthChanged(resolutionWidth);
 }
 
-void ReceptiveField::setImage(QImage image)
+void ReceptiveField::setSpatialImage(QImage image)
 {
-    if (m_image == image)
+    if (m_spatialImage == image)
         return;
 
-    m_image = image;
+    m_spatialImage = image;
     emit imageChanged(image);
 }
 

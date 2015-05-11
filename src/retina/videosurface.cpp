@@ -93,16 +93,16 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
     myFrame.map(QAbstractVideoBuffer::ReadOnly);
 
     QImage::Format imageFormat = QVideoFrame::imageFormatFromPixelFormat(frame.pixelFormat());
-    m_image = QImage(myFrame.bits(), myFrame.width(), myFrame.height(),
+    m_paintedImage = QImage(myFrame.bits(), myFrame.width(), myFrame.height(),
                      myFrame.bytesPerLine(), imageFormat);
     emit gotImage(QRect());
     return true;
 #endif
 }
 
-QImage VideoSurface::image() const
+QImage VideoSurface::paintedImage() const
 {
-    return m_image;
+    return m_paintedImage;
 }
 
 QObject *VideoSurface::camera() const

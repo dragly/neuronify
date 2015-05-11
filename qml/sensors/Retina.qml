@@ -48,7 +48,7 @@ Node {
         id:recField
         resolutionHeight : 50
         resolutionWidth : 50
-        receptiveFieldType: ReceptiveField.OffLeftRF
+        spatialType: ReceptiveField.OffLeftRF
     }
 
     engine: RetinaEngine {
@@ -98,7 +98,7 @@ Node {
                 }
 
                 onCurrentIndexChanged: {
-                    recField.receptiveFieldType = model.get(currentIndex).name
+                    recField.spatialType = model.get(currentIndex).name
                     fieldIndex = currentIndex
                 }
 
