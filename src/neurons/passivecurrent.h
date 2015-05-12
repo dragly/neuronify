@@ -28,8 +28,11 @@ protected:
     virtual void stepEvent(double dt);
 
 private:
+    void recalculateOneOverResistanceTimesCapacitance();
+
     double m_resistance = 1.0;
     double m_capacitance = 1.0;
+    double m_oneOverResistanceTimesCapacitance = 1.0;
 };
 
 #endif // PASSIVECURRENT_H
