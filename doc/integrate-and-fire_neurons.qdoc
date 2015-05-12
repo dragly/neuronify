@@ -1,0 +1,14 @@
+/*!
+
+    \page Integrate-and-fire_neurons
+
+    \title Integrate-and-fire model
+    \inmodule theory
+
+
+
+    
+    Alot of work have gone into creating as precise models of single neurons as possible, but integrate-and-fire neurons are a step in the other direction. They are much simpler.	     
+
+    
+*/

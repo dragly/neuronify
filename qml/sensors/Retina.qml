@@ -46,9 +46,9 @@ Node {
 
     ReceptiveField{
         id:recField
-        nPixelsX : 50
-        nPixelsY : 50
-        receptiveFieldType: ReceptiveField.GaborRF
+        resolutionHeight : 50
+        resolutionWidth : 50
+        spatialType: ReceptiveField.OffLeftRF
     }
 
     engine: RetinaEngine {
@@ -63,25 +63,25 @@ Node {
             anchors.fill: parent
 
             Text {
-                text: "X resolution: " + recField.nPixelsX.toFixed(1)
+                text: "Resolution Height: " + recField.resolutionHeight.toFixed(1)
             }
             BoundSlider {
                 minimumValue: 10
                 maximumValue: 300
                 stepSize: 1
                 target: recField
-                property: "nPixelsX"
+                property: "resolutionHeight"
             }
 
             Text {
-                text: "Y resolution: " + recField.nPixelsY.toFixed(1)
+                text: "Resolution Width: " + recField.resolutionWidth.toFixed(1)
             }
             BoundSlider {
                 minimumValue: 10
                 maximumValue: 300
                 stepSize: 1
                 target: recField
-                property: "nPixelsY"
+                property: "resolutionWidth"
             }
             Text {
                 text: "Receptive Field: "
@@ -98,7 +98,7 @@ Node {
                 }
 
                 onCurrentIndexChanged: {
-                    recField.receptiveFieldType = model.get(currentIndex).name
+                    recField.spatialType = model.get(currentIndex).name
                     fieldIndex = currentIndex
                 }
 

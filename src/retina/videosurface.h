@@ -22,7 +22,7 @@ public:
     virtual QList<QVideoFrame::PixelFormat> supportedPixelFormats(QAbstractVideoBuffer::HandleType handleType) const;
     virtual bool present(const QVideoFrame &frame);
 
-    QImage image() const;
+    QImage paintedImage() const;
     QObject * camera() const;
 
     bool enabled() const;
@@ -32,13 +32,13 @@ public slots:
     void setEnabled(bool enabled);
 
 signals:
-    void gotImage(QRect image);
+    void gotImage(QRect paintedImage);
     void cameraChanged(QObject * camera);
     void enabledChanged(bool enabled);
 
 private:
     QObject *m_camera = nullptr;
-    QImage m_image;
+    QImage m_paintedImage;
     QVideoRendererControl *m_rendererControl = nullptr;
     QVideoProbe m_probe;
     int m_frameCounter = 0;
