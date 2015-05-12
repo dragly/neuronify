@@ -111,12 +111,246 @@ cell because of the concentration gradient.
 However, as we will see later, this is necessary to prepare the action
 potential - the main player in neuron signaling.
 
+Electrogenic pumps are those that create a net movement of charge over the
+cell membrane.
+
 At any given time, even during activity, the membrane potential is driven
-towards the resting membrane potential by the above mechanism.
+towards the resting membrane potential by the above mechanisms.
 This means that even after a long stretch of activity, the neuron will return
 to the resting membrane potential.
 
 In neurons, the resting membrane potential is typically around -70 mV.
+
+\section1 Nernst-Planck equation
+
+To put numbers on the above ion movement through the ion channels, we need to
+take a closer look at the electrical force and the diffusion force.
+These both contribute to the total flux of particles through the cell membrane.
+This flux is given by the Nernst-Planck equation, which we will give a
+simplified derivation of in this section.
+
+\section2 Electrical drift
+
+Charged particles are subject to an electric force when in an electric field:
+
+\raw HTML
+\[ \mathbf F_E = q \mathbf E \]
+\endraw
+
+We will change the notation slightly, because it's customary to write charge
+with a big \\(Z\\) in chemistry:
+
+\raw HTML
+\[ \mathbf F_E = Z \mathbf E \]
+\endraw
+
+The electric field is the gradient of the potential:
+
+\raw HTML
+\[ \mathbf F_E = Z \nabla V \]
+\endraw
+
+With no other external forces, the mean drift of a charged particle is equal
+to this force:
+
+\raw HTML
+\[ \mathbf F_E = \frac{1}{\mu} \mathbf v_\mathrm{drift} \]
+\endraw
+
+Here \\( \\mu \\) is the friction from collision with other particles.
+The two expression for \\( F_E \\) may be joined to one equation:
+
+\raw HTML
+\[ Z \nabla V = \frac{1}{\mu} \mathbf v_\mathrm{drift} \]
+\endraw
+
+The Einstein relation is
+
+\raw HTML
+\[ \mu = \frac{D}{k_B T}, \]
+\endraw
+
+\raw HTML
+where \( k_B \) is Boltzmann's constant, \( T \) is the temperature and
+\( D \) is the diffusion constant for the given species.
+\endraw
+
+We then get the drift velocity as
+
+\raw HTML
+\[ \mathbf v_\mathrm{drift} = \frac{Z \nabla V D}{k_B T}. \]
+\endraw
+
+The flux is the velocity times the number concentration (number of particles
+per volume) \\( c \\):
+
+\raw HTML
+\[ \mathbf j_\mathrm{drift} = \frac{Z c D}{k_B T} \nabla V. \]
+\endraw
+
+This is the electric contribution to the flux.
+
+\section2 Diffusion
+
+The diffusive flux is given by Fick's law:
+
+\raw HTML
+\[ \mathbf j_\mathrm{diff} = - D \nabla c. \]
+\endraw
+
+For a derivation of this, see for instance the
+\l{http://en.wikipedia.org/wiki/Fick%27s_laws_of_diffusion#Derivation_of_Fick.27s_laws}
+{Wikipedia article on Fick's law}.
+
+\section2 Concentrations in moles
+
+It is customary to write the flux in terms of concentrations in moles, rather
+than regular numbers.
+Further, we replace Boltzmann's constant with the gas constant and Faraday's
+constant:
+
+\raw HTML
+\[ \mathbf J_\mathrm{drift} = \frac{Z F D}{R T} [X] \nabla V. \]
+\[ \mathbf J_\mathrm{diff} = - D \nabla [X]. \]
+\endraw
+
+Here \\( [X] \\) is the concentration of species \\( X \\) in moles.
+
+\section2 Total flux
+
+If we sum the two contributions to the flux, we get the Nernst-Planck equation:
+
+\raw HTML
+\begin{align}
+\mathbf J &= J_\mathrm{diff} + \mathbf J_\mathrm{drift} \\
+          &= - D \left ( \nabla [\mathrm{X}]
+               - \frac{Z F}{R T} [\mathrm{X}] \nabla V \right )
+\end{align}
+\endraw
+
+\section2 Nernst potential
+
+We assume that only one species is free to move so that we can treat all
+other as a static background electric field.
+The Nernst potential is then given when there is no net flux of the given
+species.
+This can be found by setting the Nernst-Planck equation to zero, i.e. no net
+flux.
+Further, we focus only on the potential difference in one direction, the
+\\( x \\)-direction.
+
+\raw HTML
+\begin{align}
+\int_{x_1}^{x_2} \frac{1}{[\mathrm X]} \frac{d[\mathrm X]}{dx} \, dx
+&= \frac{Z F}{R T} \int_{x_1}^{x_2} \frac{dV}{dx} \, dx \\
+\int_{[\mathrm X]_1}^{[\mathrm X]_2} \frac{1}{[\mathrm X]} d[\mathrm X]
+&= \frac{Z F}{R T} \int_{V_1}^{V_2} dV \\
+\ln \frac{[\mathrm X]_2}{[\mathrm X]_1}
+&= \frac{Z F}{R T} (V_2 - V_1) \\
+E_{\mathrm X}
+&= \frac{R T}{Z F} \ln \frac{[\mathrm X]_2}{[\mathrm X]_1}.
+\end{align}
+\endraw
+
+\raw HTML
+The potential difference \( E_{\mathrm X} = V_2 - V_1 \) is known as the Nernst
+potential for the species \( \mathrm X \).
+\endraw
+
+\section1 Goldman-Hodgkin-Katz equations
+
+When multiple ion species are involved, we need to expand on the formalism
+outlined above.
+We assume that the ions cross the membrane independently and that the electric
+field within the membrane is constant.
+As above, the movement of the ions is governed by the electric field and
+the concentration gradient across the membrane.
+For each ion, we have the flux as
+
+\raw HTML
+\begin{align}
+\mathbf J_\mathrm{X}
+  &= J_\mathrm{X,diff} + \mathbf J_\mathrm{X,drift} \\
+  &= - D \left ( \frac{d [\mathrm{X}]}{dx}
+         - \frac{Z F}{R T} [X] \frac{dV}{dx} \right )
+\end{align}
+\endraw
+
+From our assumption of a constant electric field inside the membrane, we get
+
+\raw HTML
+\begin{align}
+\mathbf J_\mathrm{X}
+  &= J_\mathrm{X,diff} + \mathbf J_\mathrm{X,drift} \\
+  &= - D \left ( \frac{d [\mathrm{X}]}{dx}
+         - \frac{Z F}{R T} [X] \frac{E_\mathrm{m}}{L} \right )
+\end{align}
+\endraw
+
+\raw HTML
+where \(E_\mathrm{m}\) is the membrane potential and \(L\) is the membrane
+thickness.
+\endraw
+
+By separation of variables, we obtain
+
+\raw HTML
+\begin{align}
+dx &= \frac{d[\mathrm X]}
+        {-\frac{J_\mathrm{X}}{D_X}
+           + \frac{D_\mathrm{X} Z_\mathrm{X} F}{RT} [\mathrm{X}] \frac{E_\mathrm{m}}{L}}.
+\end{align}
+\endraw
+
+Integration on both sides from \\(x\\) inside the membrane to outside the
+membrane gives the solution
+
+\raw HTML
+\begin{align}
+J_\mathrm{X} = P_\mathrm{X} Z_\mathrm{X} \mu
+    \left (
+        \frac{[X]_\mathrm{out} - e^{Z_\mathrm{X}\mu} [X]_{\mathrm{in}} }
+            {1 - e^{\mu Z_\mathrm{X}}}
+    \right),
+\end{align}
+\endraw
+
+where
+
+\raw HTML
+\[ \mu = \frac{FE_\mathrm{m}}{RT}. \]
+\endraw
+
+and
+
+\raw HTML
+\[ P_\mathrm{X} = \frac{D_\mathrm{X}}{L}. \]
+\endraw
+
+is the permeability of the membrane to ion \\(\\mathrm{X}\\).
+
+This equation may now be solved for the membrane potential \\(E_\\mathrm{m}\\).
+How to solve it depends on the valency of the ions involved.
+In the simplest case, where all involved ions are monovalent so that
+\\(Z_\mathrm{X} = \\pm 1 \\), the solution becomes
+
+\raw HTML
+\[
+E_\mathrm{m}
+  = \frac{RT}{F} \ln
+    \frac{\sum_\mathrm{cations C} P_\mathrm{C} [\mathrm{C}^+]_\mathrm{out}
+            + \sum_\mathrm{anions A} P_\mathrm{A}}[\mathrm{A}^-]_\mathrm{in}
+         {\sum_\mathrm{cations C} P_\mathrm{C} [\mathrm{C}^+]_\mathrm{in}
+            + \sum_\mathrm{anions A} P_\mathrm{A}}[\mathrm{A}^-]_\mathrm{out}
+\]
+\endraw
+
+Inserting the concentrations and permabilites into this equation yields
+the equilibrium membrane potential.
+
+Note that the notion of the permeability predates the discovery of ion channels.
+The permeability is therefore dependent on the number of ion channels that are
+open and may vary with time in active membranes.
 
 \section1 Neuron signaling
 
@@ -146,9 +380,6 @@ postsynaptic neuron.
 Inhibitory neurons decrease the membrane potential.
 About 80 % of the cortical neurons are excitatory, while 20 % of the neurons
 are inhibitory.
-These numbers are debated, because they depend on the way neurons are counted
-(by mass, number, etc.) and the techniques used to map the different neurons.
-Therefore, results from some labs differ from the above numbers.
 
 */
 

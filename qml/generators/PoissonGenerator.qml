@@ -8,6 +8,19 @@ import "../hud"
 import "../controls"
 import ".."
 
+/*!
+    \qmltype PoissonGenerator
+    \inqmlmodule Neuronify
+    \ingroup neuronify-generators
+    \brief An spike generator which can suply input spikes to neurons.
+
+    The Poisson generator can be connected to neurons, and will then suply the neurons with spikes
+    generated from a poisson process.
+    The generator has a control panel where you can adjust the firing rate and stimulation output, as
+    well as whether or not the generated spikes are inhibitory or excitatory.
+\endlist
+*/
+
 Node {
     id: root
 

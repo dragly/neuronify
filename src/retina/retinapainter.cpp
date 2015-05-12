@@ -11,8 +11,15 @@ void RetinaPainter::paint(QPainter *painter)
     if(!m_retinaEngine) {
         return;
     }
-    painter->drawImage(boundingRect(), m_retinaEngine->image());
-    update();
+    if (m_retinaEngine->plotReceptiveField()){
+        if(m_retinaEngine->receptiveField()){
+            painter->drawImage(boundingRect(), m_retinaEngine->receptiveField()->spatialImage());
+            update();
+        }
+    } else {
+        painter->drawImage(boundingRect(), m_retinaEngine->paintedImage());
+        update();
+    }
 }
 
 void RetinaPainter::setRetinaEngine(RetinaEngine *retinaEngine)

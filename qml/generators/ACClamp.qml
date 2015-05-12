@@ -6,6 +6,16 @@ import Neuronify 1.0
 import ".."
 import "../controls"
 
+/*!
+    \qmltype ACClap
+    \inqmlmodule Neuronify
+    \ingroup neuronify-generators
+    \brief An alternating current generator which can suply input to neurons
+
+    The AC generator can be connected to neurons, and will then suply the neurons with current.
+    The generator has a control panel where you can adjust the frequency and amplitude
+\endlist
+*/
 
 Node {
     property alias currentAmplitude: engine.currentOutput
