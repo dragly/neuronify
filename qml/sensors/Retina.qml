@@ -3,6 +3,13 @@ import QtQuick.Controls 1.3
 import QtMultimedia 5.4
 import Neuronify 1.0
 
+
+import "../paths"
+import "../hud"
+import "../controls"
+import ".."
+
+
 /*!
 \qmltype Retina
 \inqmlmodule Neuronify
@@ -11,12 +18,6 @@ import Neuronify 1.0
 
 */
 
-
-
-import "../paths"
-import "../hud"
-import "../controls"
-import ".."
 
 Node {
     id: root
