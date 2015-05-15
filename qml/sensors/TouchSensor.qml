@@ -6,6 +6,20 @@ import "../paths"
 import "../hud"
 import ".."
 
+/*!
+\qmltype TouchSensor
+\inqmlmodule Neuronify
+\ingroup neuronify-sensors
+\brief Registers touch (or mouse) events and converts them into a current
+       that may be injected into neurons.
+
+The touch sensor uses the mouse input on a desktop computer or the touch screen
+of a mobile device.
+This allows the user to give input to the neural network.
+The input is used to generate a constant current injected into the attached
+neurons.
+*/
+
 Node {
     id: sensorRoot
     objectName: "touchSensor"

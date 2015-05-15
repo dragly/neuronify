@@ -2,8 +2,10 @@ import QtQuick 2.0
 import QtQuick.Controls 1.3
 import QtMultimedia 5.4
 import Neuronify 1.0
-
-
+import "../paths"
+import "../hud"
+import "../controls"
+import ".."
 import "../paths"
 import "../hud"
 import "../controls"
@@ -14,10 +16,10 @@ import ".."
 \qmltype Retina
 \inqmlmodule Neuronify
 \ingroup neuronify-sensors
-\brief A visual sensor that can be connected to neurons to generate activity based on the receptive field of the sensor and the visual stimuli captured by the camera.
-
+\brief Visual sensor that can be connected to neurons to generate activity
+based on the receptive field of the sensor and the visual stimuli captured by
+the camera.
 */
-
 
 Node {
     id: root

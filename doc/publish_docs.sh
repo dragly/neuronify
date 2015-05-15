@@ -16,7 +16,7 @@ DOCSDIR=$DIR/../../neuronify-docs/
 if [ -d $DOCSDIR/.git ]; then
   echo "All good, found neuronify-docs with git repo."
   cd $DOCSDIR
-  git add doc
+  git add --all doc
   git commit -am "$MESSAGE"
   git push
 elif [ -d $DOCSDIR ]; then

@@ -1,13 +1,13 @@
 /*!
-    \page receptiveField.html
+    \page receptiveFieldTheory.html
 
     \title Receptive field
     \inmodule theory
 
-Neurons in the early visual system, consisting of the retina, lateral geniculate nucleus (LGN), and primary visual cortex (V1), respond to light stimuli in restricted regions of the visual field called their receptive fields (RFs). The spatial and temporal structure of the RFs among the neurons in the visual system varies, but they usually consist of two parts; one part that depolarize the cell under illumination and one part that hyperpolarize the cell when illuminated.  A typical RF structure is the so-called center-surround RF, consisting of a central disk (center) and a concentric ring (surround), each responding oppositely to light. For example, illumination of the center might increase the firing of a neuron, whereas light in the surround would decrease the firing of that neuron.  
+Neurons in the early visual system, consisting of the retina, lateral geniculate nucleus (LGN), and primary visual cortex (V1), respond to light stimuli in restricted regions of the visual field called their receptive fields (RFs). The spatial and temporal structure of the RFs among the neurons in the visual system varies, but they usually consist of two parts; one part that depolarize the cell under illumination and one part that hyperpolarize the cell when illuminated.  A typical RF structure is the so-called center-surround RF, consisting of a central disk (center) and a concentric ring (surround), each responding oppositely to light. For example, illumination of the center might increase the firing of a neuron, whereas light in the surround would decrease the firing of that neuron.
 
 
-	\section1 Estimating firing rates	
+	\section1 Estimating firing rates
 
 The firing rate of a neuron evoked by a stimulus \\(s(\\mathbf{r},t-\\tau) \\) can be estimated using a linear kernel as
 
@@ -29,7 +29,7 @@ In these neurons the spatial structure of the RF does not change over time excep
 
 The parameters  \\( \\sigma_x \\) and \\( \\sigma_y \\) determine the extent in the \\(x \\) and \\( y \\) direction respectively, \\(k\\) is the preferred spatial frequency and \\( \\phi \\) is the preferred spatial phase. In the figure below the Gabor function is shown for some given parameters. The red regions corresponds to the ON-part of the RF and the blue regions are the OFF-part of the RF.
 
- \image images/gabor.png "Gabor function" 
+ \image images/gabor.png "Gabor function"
 
 
 
@@ -44,8 +44,8 @@ When the frame seen by the camera consists of a dark area and a light area that 
 
 Here you see how a cell with left-OFF RF will respond to different stimulus:
 \list
- \inlineimage images/screenShotRetina.png 
- \inlineimage images/screenShotRetina1.png 
+ \inlineimage images/screenShotRetina.png
+ \inlineimage images/screenShotRetina1.png
 \endlist
 
 	\section1 References

@@ -5,6 +5,7 @@
 
 class NodeEngine;
 class Edge;
+class GraphEngine;
 class NodeBase : public QQuickItem
 {
     Q_OBJECT
@@ -23,11 +24,14 @@ signals:
 
 public slots:
     void setEngine(NodeEngine* arg);
+
+private:
     void addEdge(Edge* edge);
     void removeEdge(Edge* edge);
 
-private:
     NodeEngine* m_engine = nullptr;
+
+    friend class Edge;
 };
 
 #endif // NODEBASE_H

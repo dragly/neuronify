@@ -1,10 +1,14 @@
 /*!
     \page index.html
 
-    \title Neuronify
+    \title Neuronify documentation
 
     Neuronify is an educational app for studying neural networks.
     The engine is based on an integrate-and-fire model.
+    This documentation provides information about how you can obtain the
+    program and how it is structured.
+
+    The documentation is written as a report for the course FYS388/PHDIMT10.
 
     \section1 Getting started
 
@@ -12,47 +16,86 @@
     Mobile versions of Neuronify will be available soon in Google Play and
     Apple App Store.
 
-    For Mac and Windows users, Neuronify may be downloaded here:
+    For Linux, Mac and Windows users, Neuronify may be downloaded here:
 
-    \l{https://github.com/CINPLA/neuronify/releases}
-    {Download Neuronify for Mac and Windows}
+    \list
+        \li \l{https://github.com/CINPLA/neuronify/releases}
+              {Download Neuronify}
+    \endlist
 
+    For Linux users, the application must be built from source.
 
-    A short set of exercises that will help you get started can be found
+    A short set of exercises that will help you get started can be found here:
 
     \l{https://github.com/CINPLA/presentations/blob/master/neuronify-exercises/exercises.pdf}
     {Exercises to get started with Neuronify}
 
-    \section1 Development
+    \section1 Neuroscience theory
 
-    To read more about the technical details about the application, have a look
-    at the different categories:
-
-    \l{Input/Output}
-
-    To read about the theory behind the calculations done in Neuronify, see \l{Theory}.
-
-    For a comprehensive list, see \l{All Classes}.
-
-    For a list of qmlTypes, see \l{Neuronify QML Types}
-*/
-
-/*!
-    \page theory.html
-    \title Theory
-
-    \brief Here you can read about the theory behind the calculations done in Neuronify.
-
-    This is a list of all topics:
+    Neuronify is based on an integrate-and-fire model of neurons.
+    To understand this model, we have outlined some basic theory
+    of computational neuroscience in the following documents:
 
 	\list
         \li \l{General neuroscience}
-	\li \l{Integrate-and-fire model}
-	\li \l{Adaptive neurons}
-	\li \l{Poisson Distributed Spike Generator}
+	    \li \l{Integrate-and-fire model}
+	    \li \l{Adaptive neurons}
+	    \li \l{Poisson Distributed Spike Generator}
     	\li \l{Receptive field}
 	\endlist
 
+    \section1 Development and technical details
+
+    Neuronify is written in C++ and QML using the \l{http://qt.io}{Qt Framework}.
+    The GUI is written in QML, while the core parts of the engine that performs
+    the time integration of the neural network is written in C++.
+    However, several of the network elements and neurons used in Neuronify are
+    written as QML objects.
+
+    \section2 Core
+
+    The core of Neuronify consists of a small set of GUI and engine classes.
+    At the heart of the GUI is the \l{Neuronify} QML type that organizes all
+    the visual items and the holds a reference to \l{GraphEngine}.
+    Each item in the network is controlled by the \l{GraphEngine}.
+    This is a C++ class that holds a list of nodes and their connections
+    through edges.
+
+    The nodes of the network are split into three parts: \l{NodeBase},
+    \l{NodeEngine} and \l{Node}.
+    The former two are C++ classes, while the latter is a QML type.
+
+    \section2 Generators
+
+    Generators are used to feed the network with automatic input.
+
+    \annotatedlist neuronify-generators
+
+    \section2 Meters
+
+    Meters can be used to measure the state of the neurons.
+
+    \annotatedlist neuronify-meters
+
+    \section2 Sensors
+
+    Sensors are used to get information from the outside world to the app.
+
+    \annotatedlist neuronify-sensors
+
+    \section2 Complete list of items
+
+    For a comprehensive list, see \l{All Classes} and \l{Neuronify QML Types}
+
+    \section1 Future development
+
+    Neuronify is in active development.
+    Some target features that we wish to include in the future are:
+
+    \list
+        \li Long-term learning schemes such as long-term potentiation.
+        \li User-generated neurons and items (written as QML plugins).
+    \endlist
 */
 
 
@@ -68,7 +111,6 @@
 */
 
 /*!
-    \page neuronify-qmltypes-woot.html
     \title Neuronify QML Types
 
     \brief If you know the name of the QML Type, find it here
