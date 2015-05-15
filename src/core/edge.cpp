@@ -4,6 +4,8 @@
 
 /*!
  * \class Edge
+ * \inmodule Neuronify
+ * \ingroup neuronify-core
  * \brief The Edge class is the basic connection between two nodes.
  *
  * When two objects of the NodeBase type are to be connected in the GraphEngine

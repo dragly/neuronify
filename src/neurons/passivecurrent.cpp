@@ -2,6 +2,14 @@
 
 #include "neuronengine.h"
 
+/*!
+ * \class PassiveCurrent
+ * \inmodule Neuronify
+ * \ingroup neuronify-neurons
+ * \brief The PassiveCurrent class defines a current that drives the
+ * \l NeuronEngine towards the defined resting membrane potential.
+ */
+
 PassiveCurrent::PassiveCurrent(QQuickItem *parent)
     : Current(parent)
 {

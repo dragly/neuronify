@@ -2,6 +2,8 @@
 
 /*!
  * \class NodeBase
+ * \inmodule Neuronify
+ * \ingroup neuronify-core
  * \brief The NodeBase class provides the basic functionality of all nodes.
  *
  * All nodes in Neuronify inherit from NodeBase.

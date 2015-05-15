@@ -16,7 +16,7 @@
     Mobile versions of Neuronify will be available soon in Google Play and
     Apple App Store.
 
-    For Linux, Mac and Windows users, Neuronify may be downloaded here:
+    For Linux, Mac and Windows users, Neuronify can be downloaded here:
 
     \list
         \li \l{https://github.com/CINPLA/neuronify/releases}
@@ -27,8 +27,10 @@
 
     A short set of exercises that will help you get started can be found here:
 
-    \l{https://github.com/CINPLA/presentations/blob/master/neuronify-exercises/exercises.pdf}
-    {Exercises to get started with Neuronify}
+    \list
+        \li \l{https://github.com/CINPLA/presentations/blob/master/neuronify-exercises/exercises.pdf}
+              {Exercises to get started with Neuronify}
+    \endlist
 
     \section1 Neuroscience theory
 
@@ -64,6 +66,28 @@
     The nodes of the network are split into three parts: \l{NodeBase},
     \l{NodeEngine} and \l{Node}.
     The former two are C++ classes, while the latter is a QML type.
+
+    In principle, \l NodeBase and \l Node could have been the one and same
+    C++ class.
+    The reason they are split up is because some features of \l Node are
+    defined in QML, such as a \l MouseArea with dragging.
+    Since \l NodeEngine, \l Edge and \l GraphEngine are C++ classes, they
+    cannot have type-safe pointers to a runtime \l Node QML type object.
+    That is why they instead refer to the C++ type \l NodeBase.
+    In the future, this may change and all features of \l Node may be
+    incorporated in a C++ class.
+
+    \annotatedlist neuronify-core
+
+    \section2 Neurons
+
+    Neurons are defined by subclassing the \l Neuron QML Type and adding
+    a \l NeuronEngine.
+    To change the behavior of a \l NeuronEngine, \l Current objects may be
+    added as children to it.
+    The \l NeuronEngine will iterate all its children and sum their currents.
+
+    \annotatedlist neuronify-neurons
 
     \section2 Generators
 

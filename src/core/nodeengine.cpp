@@ -4,6 +4,8 @@
 
 /*!
  * \class NodeEngine
+ * \inmodule Neuronify
+ * \ingroup neuronify-core
  * \brief The NodeEngine class provides the basic functionality for the logic
  *        in all nodes
  *
