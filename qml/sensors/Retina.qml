@@ -6,6 +6,11 @@ import "../paths"
 import "../hud"
 import "../controls"
 import ".."
+import "../paths"
+import "../hud"
+import "../controls"
+import ".."
+
 
 /*!
 \qmltype Retina
@@ -14,8 +19,6 @@ import ".."
 \brief Visual sensor that can be connected to neurons to generate activity
 based on the receptive field of the sensor and the visual stimuli captured by
 the camera.
-
-Test test
 */
 
 Node {
