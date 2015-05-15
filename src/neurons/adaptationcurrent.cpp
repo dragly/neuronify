@@ -6,8 +6,9 @@
  * \class AdaptationCurrent
  * \inmodule Neuronify
  * \ingroup neuronify-neurons
- * \brief Adaptive Current calculates the neuron conductance based on an
- * adaptive rule.
+ * \brief The AdaptationCurrent class produces a current that drives the
+ * voltage towards the membrane potential and increases each time the neuron
+ * fires.
  */
 
 AdaptationCurrent::AdaptationCurrent(QQuickItem *parent)

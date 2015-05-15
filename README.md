@@ -68,7 +68,7 @@ This should create a .dmg that can be used on machines without Qt installed.
 
 You should first install the index files for Qt:
 
-    sudo apt-get install qt5-doc qt5-doc-html qt5-default qt5-qmake qtquickcontrols5-doc-html
+    sudo apt-get install qt5-doc qt5-doc-html qt5-default qt5-qmake qtquickcontrols5-doc-html qtlocation5-doc
 
 Afterwards, run ./make-docs.sh in the doc folder to generate the documentation.
 This will be generated in a folder named neuronify-docs above the source tree.

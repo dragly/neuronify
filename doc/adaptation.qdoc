@@ -5,14 +5,21 @@
     \inmodule theory
 
 
-Neural adaptation refers to the change over time in the responsiveness of a cell to a sustained current injection. In many neurons, the firing rate decreases throughout the spike train, when a constant stimulus is injected. Such behaviour can be incorporated into the \l{Integrate-and-fire model} by adding an extra conductance
-\\(I_{\\mathrm{adapt}}\\) that depends on the neuronal spiking. This additional term has a quasi-ohmic form:
+Neural adaptation refers to the change over time in the responsiveness of a cell
+to a sustained current injection.
+In many neurons, the firing rate decreases throughout the spike train, when a
+constant stimulus is injected. Such behaviour can be incorporated into the
+\l{Integrate-and-fire model} by adding an extra conductance
+\\(I_{\\mathrm{adapt}}\\) that depends on the neuronal spiking.
+This additional term has a quasi-ohmic form:
 
 \raw HTML
 \[ I_{\mathrm{adapt}} =  g_{\mathrm{adapt}}(V - E_m),\]
 \endraw
 
-where the adaptive conductance \\(g_{\\mathrm{adapt}}\\) is incremented by an amount \\(\\Delta g_{\\mathrm{adapt}}\\) whenever the neuron spikes, and otherwise it decays
+where the adaptive conductance \\(g_{\\mathrm{adapt}}\\) is incremented by an
+amount \\(\\Delta g_{\\mathrm{adapt}}\\) whenever the neuron spikes, and
+otherwise it decays
 with a time constant of \\( \\tau_{\\mathrm{adapt}}\\):
 
 
@@ -20,7 +27,8 @@ with a time constant of \\( \\tau_{\\mathrm{adapt}}\\):
 \[\frac{\mathrm{d}}{\mathrm{d}t} g_{\mathrm{adapt}}= -\frac{g_{\mathrm{adapt}}}{\tau_{\mathrm{adapt}}}.\]
 \endraw
 
-In Neuronify, both excitatory and inhibitory adaptive neurons are implemented. These can be chosen from the catagory menu with the following icons:
+In Neuronify, both excitatory and inhibitory adaptive neurons are implemented.
+These can be chosen from the catagory menu with the following icons:
 
 
  \image images/adaptive.png "Adaptive excitatory"
@@ -28,4 +36,7 @@ In Neuronify, both excitatory and inhibitory adaptive neurons are implemented. T
  \image images/adaptive_inhibitory.png "Adaptive inhibitory"
 
 
-In option menu for these neurons, both the time constant \\(\\tau_{\\mathrm{adapt}}\\) and \\(\\Delta g_{\\mathrm{adapt}}\\) can be varied.
+In option menu for these neurons, both the time constant
+\\(\\tau_{\\mathrm{adapt}}\\) and \\(\\Delta g_{\\mathrm{adapt}}\\)
+can be varied.
+*/

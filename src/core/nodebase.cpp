@@ -4,7 +4,7 @@
  * \class NodeBase
  * \inmodule Neuronify
  * \ingroup neuronify-core
- * \brief The NodeBase class provides the basic functionality of all nodes.
+ * \brief The NodeBase class provides basic functionality of all nodes.
  *
  * All nodes in Neuronify inherit from NodeBase.
  * It holds a pointer to a NodeEngine and a list of all connected edges.

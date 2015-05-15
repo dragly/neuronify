@@ -7,9 +7,10 @@
 #include <QVideoRendererControl>
 
 /*!
-\class VideoSurface
-\inmodule Neuronify
-\brief Converts the camera frame to a gray-scale image.
+ * \class VideoSurface
+ * \inmodule Neuronify
+ * \ingroup neuronify-sensors
+ * \brief Converts the camera frame to a gray-scale image.
  */
 
 VideoSurface::VideoSurface()

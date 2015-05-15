@@ -14,7 +14,6 @@ import "../controls"
 
     The DC generator can be connected to neurons, and will then suply the neurons with current.
     The generator has a control panel where you can adjust the current output.
-\endlist
 */
 
 Node {

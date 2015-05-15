@@ -72,7 +72,8 @@
     The reason they are split up is because some features of \l Node are
     defined in QML, such as a \l MouseArea with dragging.
     Since \l NodeEngine, \l Edge and \l GraphEngine are C++ classes, they
-    cannot have type-safe pointers to a runtime \l Node QML type object.
+    cannot have type-safe pointers to a \l Node object because this will be
+    defined first once the application has started.
     That is why they instead refer to the C++ type \l NodeBase.
     In the future, this may change and all features of \l Node may be
     incorporated in a C++ class.
@@ -106,6 +107,12 @@
     Sensors are used to get information from the outside world to the app.
 
     \annotatedlist neuronify-sensors
+
+    \section2 Tools
+
+    The following classes are used as tools to aid other types.
+
+    \annotatedlist neuronify-utils
 
     \section2 Complete list of items
 

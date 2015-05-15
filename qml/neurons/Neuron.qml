@@ -5,6 +5,15 @@ import "../hud"
 import Neuronify 1.0
 import QtQuick.Controls 1.3
 
+/*!
+\qmltype Neuron
+
+\brief The Neuron type is a base for all neurons.
+
+Any implementation of a neuron should use this class as a base
+and define its own NeuronEngine.
+*/
+
 Node {
     id: root
     objectName: "neuron"

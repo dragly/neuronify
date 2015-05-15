@@ -2,9 +2,10 @@
 #include <QPainter>
 
 /*!
-\class RetinaPainter
-\inmodule Neuronify
-\brief Paints the camera frame and the spatial receptive field function.
+ * \class RetinaPainter
+ * \inmodule Neuronify
+ * \ingroup neuronify-sensors
+ * \brief Paints the camera frame and the spatial receptive field function.
  */
 
 RetinaPainter::RetinaPainter()

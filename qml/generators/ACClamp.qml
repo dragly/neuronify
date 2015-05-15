@@ -14,7 +14,6 @@ import "../controls"
 
     The AC generator can be connected to neurons, and will then suply the neurons with current.
     The generator has a control panel where you can adjust the frequency and amplitude
-\endlist
 */
 
 Node {

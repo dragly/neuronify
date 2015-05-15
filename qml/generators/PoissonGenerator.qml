@@ -18,7 +18,6 @@ import ".."
     generated from a poisson process.
     The generator has a control panel where you can adjust the firing rate and stimulation output, as
     well as whether or not the generated spikes are inhibitory or excitatory.
-\endlist
 */
 
 Node {

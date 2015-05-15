@@ -6,8 +6,7 @@
  * \class NodeEngine
  * \inmodule Neuronify
  * \ingroup neuronify-core
- * \brief The NodeEngine class provides the basic functionality for the logic
- *        in all nodes
+ * \brief The NodeEngine class is used to perform operations in for \l NodeBase.
  *
  * All NodeBase objects can hold a pointer to a NodeEngine.
  * The NodeEngine performs the logic for the given node and should
