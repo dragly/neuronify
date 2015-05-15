@@ -19,10 +19,10 @@
 
 
     A short set of exercises that will help you get started can be found
-    
+
     \l{https://github.com/CINPLA/presentations/blob/master/neuronify-exercises/exercises.pdf}
     {Exercises to get started with Neuronify}
-    
+
     \section1 Development
 
     To read more about the technical details about the application, have a look
@@ -34,7 +34,7 @@
 
     For a comprehensive list, see \l{All Classes}.
 
-    For a list of qmlTypes, see \l{QML Types}
+    For a list of qmlTypes, see \l{Neuronify QML Types}
 */
 
 /*!
@@ -68,8 +68,8 @@
 */
 
 /*!
-    \page qmlTypes.html
-    \title QML TYPES
+    \page neuronify-qmltypes-woot.html
+    \title Neuronify QML Types
 
     \brief If you know the name of the QML Type, find it here
 

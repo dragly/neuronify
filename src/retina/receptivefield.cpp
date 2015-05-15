@@ -2,6 +2,12 @@
 
 #include <cmath>
 
+/*!
+\class ReceptiveField
+\inmodule Neuronify
+\brief Creates different receptive field types, including both the spatial and temporal functions.
+ */
+
 const static long double pi = 3.141592653589793238462643383279502884L;
 
 ReceptiveField::ReceptiveField()

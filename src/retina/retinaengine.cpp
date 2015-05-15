@@ -4,6 +4,13 @@
 #include <QVideoRendererControl>
 #include <random>
 
+/*!
+\class RetinaEngine
+\inmodule Neuronify
+\brief Calculates the firing rate of a neuron based on the stimulus and the receptive field type.
+ */
+
+
 RetinaEngine::RetinaEngine()
 {
 }

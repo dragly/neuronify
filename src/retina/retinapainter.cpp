@@ -1,6 +1,12 @@
 #include "retinapainter.h"
 #include <QPainter>
 
+/*!
+\class RetinaPainter
+\inmodule Neuronify
+\brief Paints the camera frame and the spatial receptive field function.
+ */
+
 RetinaPainter::RetinaPainter()
 {
 
