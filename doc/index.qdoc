@@ -126,6 +126,9 @@
     \list
         \li Long-term learning schemes such as long-term potentiation.
         \li User-generated neurons and items (written as QML plugins).
+        \li Possibility to share saved simulations.
+        \li Exercises built into the app for easier implementation in courses.
+        \li Positioning features to mimic grid cells.
     \endlist
 */
 
