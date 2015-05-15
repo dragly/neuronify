@@ -50,7 +50,7 @@
 	\li \l{Integrate-and-fire model}
 	\li \l{Adaptive neurons}
 	\li \l{Bursting neurons}
-	\li \l{Poisson generator}
+	\li \l{Poisson Distributed Spike Generator}
     	\li \l{Receptive field}
 	\endlist
 
