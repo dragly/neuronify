@@ -6,6 +6,12 @@
 #include <QVideoSurfaceFormat>
 #include <QVideoRendererControl>
 
+/*!
+\class VideoSurface
+\inmodule Neuronify
+\brief Converts the camera frame to a gray-scale image.
+ */
+
 VideoSurface::VideoSurface()
 {
     connect(&m_probe, &QVideoProbe::videoFrameProbed, this, &VideoSurface::present);

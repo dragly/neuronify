@@ -7,9 +7,10 @@ import Neuronify 1.0
 \qmltype Retina
 \inqmlmodule Neuronify
 \ingroup neuronify-sensors
-\brief Retina
+\brief A visual sensor that can be connected to neurons to generate activity based on the receptive field of the sensor and the visual stimuli captured by the camera.
 
 */
+
 
 
 import "../paths"
