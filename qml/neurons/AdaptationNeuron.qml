@@ -8,6 +8,7 @@ import "../controls"
 
 Neuron {
     property alias adaptation: adaptationCurrent.adaptation
+    property alias timeConstant: adaptationCurrent.timeConstant
     property alias fireOutput: engine.fireOutput
 
     objectName: "adaptationNeuron"
@@ -23,6 +24,7 @@ Neuron {
         AdaptationCurrent {
             id: adaptationCurrent
             adaptation: 10.0
+            timeConstant: 1.0
         }
     }
 
@@ -37,6 +39,16 @@ Neuron {
                 maximumValue: 20.0
                 target: adaptationCurrent
                 property: "adaptation"
+            }
+            Text {
+                text: "Time constant: " + timeConstant.toFixed(1)
+            }
+            BoundSlider {
+                width: parent.width
+                minimumValue: 0.0
+                maximumValue: 10.0
+                target: adaptationCurrent
+                property: "timeConstant"
             }
         }
     }

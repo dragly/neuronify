@@ -35,6 +35,11 @@ double AdaptationCurrent::conductance() const
     return m_conductance;
 }
 
+double AdaptationCurrent::timeConstant() const
+{
+    return m_timeConstant;
+}
+
 void AdaptationCurrent::setAdaptation(double arg)
 {
     if (m_adaptation == arg)
@@ -62,6 +67,15 @@ void AdaptationCurrent::setConductance(double arg)
     emit conductanceChanged(arg);
 }
 
+void AdaptationCurrent::setTimeConstant(double arg)
+{
+    if (m_timeConstant == arg)
+        return;
+
+    m_timeConstant = arg;
+    emit timeConstantChanged(arg);
+}
+
 void AdaptationCurrent::stepEvent(double dt)
 {
     Q_UNUSED(dt);
@@ -75,12 +89,14 @@ void AdaptationCurrent::stepEvent(double dt)
     double Em = parentNode->restingPotential();
     double V = parentNode->voltage();
     double g = m_conductance;
+    double tau = m_timeConstant;
 
-    g = g - g * dt;
+    g = g - g/tau * dt;
 
     double I = -g * (V - Em);
 
     setConductance(g);
+    setTimeConstant(tau);
     setCurrent(I);
 }
 
