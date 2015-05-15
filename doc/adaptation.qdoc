@@ -12,7 +12,7 @@ Neural adaptation refers to the change over time in the responsiveness of a cell
 \[ I_{\mathrm{adapt}} =  g_{\mathrm{adapt}}(V - E_m),\]
 \endraw
 
-where the adaptive conductance \\(g_{\\mathrm{adapt}}\\) is incremented by an amount \\(\\Delta g_{\\mathrm{adapt}}\\) Whenever the neuron spikes, and otherwise it decays
+where the adaptive conductance \\(g_{\\mathrm{adapt}}\\) is incremented by an amount \\(\\Delta g_{\\mathrm{adapt}}\\) whenever the neuron spikes, and otherwise it decays
 with a time constant of \\( \\tau_{\\mathrm{adapt}}\\):
 
 

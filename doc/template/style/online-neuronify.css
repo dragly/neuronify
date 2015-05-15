@@ -28,7 +28,7 @@
   margin:10px 0 0 0
 }
 #navbar .navbar-toggle:hover figure {
-  background:#5caa15
+  background:#46a2da
 }
 #navbar .navbar-toggle span {
   color:#bdbebf;
@@ -85,10 +85,10 @@
   top:-6px
 }
 #navbar .navbar-toggle.opened figure {
-  background:#5caa15
+  background:#46a2da
 }
 #navbar .navbar-toggle.opened span {
-  color:#5caa15
+  color:#46a2da
 }
 #navbar .navbar-toggle.opened span.line {
   background:transparent
@@ -177,11 +177,11 @@
   *behavior:url(boxsizing.htc)
 }
 #mainmenu li a:hover {
-  color:#5caa15;
+  color:#46a2da;
   border-bottom:4px solid #80C342
 }
 #mainmenu li.current-menu-item a {
-  color:#5caa15;
+  color:#46a2da;
   border-bottom:4px solid #80C342
 }
 #menuextras, #mainmenu, #menuextraslanguages {
@@ -227,7 +227,7 @@
   -o-transition:all 0.2s ease-in-out
 }
 #menuextras li a:hover:before {
-  color:#5caa15
+  color:#46a2da
 }
 #menuextras .search.open a {
   color:#006325
@@ -269,7 +269,7 @@
     padding:14px 0.7em
   }
   #navbar.fixed #mainmenu li a:hover {
-    border-bottom:4px solid #5caa15
+    border-bottom:4px solid #46a2da
   }
   #navbar.fixed .navbar-toggle {
     padding:13px 14px 9px
@@ -353,13 +353,13 @@
   }
   #mainmenu li.current-menu-item a,#navbar.fixed #mainmenu li.current-menu-item a {
     border-bottom:none;
-    border-left:3px solid #5caa15;
+    border-left:3px solid #46a2da;
     padding:10px
   }
   #mainmenu li a:hover {
     border-bottom:0;
     padding:10px;
-    border-left:3px solid #5caa15
+    border-left:3px solid #46a2da
   }
   #navbar.fixed {
     -moz-box-shadow:0px 0px 0px rgba(0,0,0,0);
@@ -951,12 +951,12 @@ table {
   width:100%
 }
 a {
-  color:#5caa15;
+  color:#46a2da;
   text-decoration:none;
   transition-duration:0.3s
 }
 a:hover {
-  color:#46a2da
+  color:#5caa15
 }
 .main,.navbar-header,#footerbar>div {
   max-width:1280px;
@@ -1256,7 +1256,7 @@ div.table {
   overflow-x:auto
 }
 p.qt_commercial {
-  border:3px solid #5caa15;
+  border:3px solid #46a2da;
   margin:0 auto;
   padding:15px;
   width:28%;
@@ -1265,7 +1265,7 @@ p.qt_commercial {
 }
 h1.qt_commercial {
   padding:20px;
-  background-color:#5caa15;
+  background-color:#46a2da;
   display:inline;
   float:right;
   font-size:1.25em;
@@ -1274,7 +1274,7 @@ h1.qt_commercial {
   color:#fff
 }
 div.qt_commercial {
-  border-top:5px solid #5caa15;
+  border-top:5px solid #46a2da;
   margin-bottom:50px
 }
 pre {
@@ -1290,9 +1290,9 @@ pre {
   margin-top:0.75em
 }
 .copy_text {
-  background-color:#46a2da;
+  background-color:#5caa15;
   color:#fff;
-  border:2px solid #46a2da;
+  border:2px solid #5caa15;
   padding:10px 16px;
   margin-left:-10px;
   margin-top:-50px;
@@ -1303,7 +1303,7 @@ pre {
 }
 .copy_text:hover {
   background-color:#fff;
-  color:#46a2da
+  color:#5caa15
 }
 code,.codelike {
   font-family:"Droid Sans Mono"
@@ -1426,21 +1426,21 @@ pre:hover>.copy_text {
 }
 @-webkit-keyframes highlighter {
   25% {
-    background-color:#46a2da;
+    background-color:#5caa15;
     color:#fff
   }
   75% {
-    background-color:#46a2da;
+    background-color:#5caa15;
     color:#fff
   }
 }
 @keyframes highlighter {
   25% {
-    background-color:#46a2da;
+    background-color:#5caa15;
     color:#fff
   }
   75% {
-    background-color:#46a2da;
+    background-color:#5caa15;
     color:#fff
   }
 }
@@ -1602,8 +1602,8 @@ input {
 }
 
 input:focus {
-  border-color: #46a2da;
-  box-shadow: 0 0 5px #46a2da;
+  border-color: #5caa15;
+  box-shadow: 0 0 5px #5caa15;
   color: #000;
 }
 
