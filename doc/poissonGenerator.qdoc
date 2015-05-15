@@ -2,20 +2,28 @@
 
     \page poissonGenerator
 
-    In models we often 
+    In integrate-and-fire models we are often interested in feeding our model network with spike input representing a large unknown part of the network rather than simple current generators. In Neuronify, we have added the possibility of doing this by a spike generator, which generates spikes which follow a Poisson distribution.
 
     \title Poisson Distributed Spike Generator
     \inmodule theory
 
     \section1 Spike generators
+    When investigating properties of a single neuron, a DC or AC generator is useful for providing input to the neuron. However, in networks in vivo, there are no such generators, and networks are driven by input from other areas of the brain. Such input can be modeled by rate models, where we know the average amount of spikes coming from the unknown network. A successful example of such a network model is given in [1], where they simulate a fairly large network (much larger than the intended scope for Neuronify). 
 
     \section1 Poisson distribution
 
+
+
     \section1 Implementation
 
-    \section2 Drawbacks
+    \section2 Limitations and Drawbacks
 
     \section1 Example: Noise
 
+
+	\section1 References
+
+[1] Nicolas Brunel. Dynamics of Sparsely Connected Networks of Excitatory
+and Inhibitory Spiking Neurons. Journal of Computational Neuroscience 8, 183-208, 2000.
 
 */
