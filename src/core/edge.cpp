@@ -2,6 +2,18 @@
 
 #include "nodebase.h"
 
+/*!
+ * \class Edge
+ * \brief The Edge class is the basic connection between two nodes.
+ *
+ * When two objects of the NodeBase type are to be connected in the GraphEngine
+ * an Edge object is used to hold a reference to the two objects.
+ *
+ * It is the responsibility of the Edge object to notify the two NodeBase
+ * objects about when it has been added or removed.
+ *
+ */
+
 Edge::Edge(QQuickItem *parent)
     : QQuickItem(parent)
 {

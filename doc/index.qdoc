@@ -55,8 +55,8 @@
     \section2 Core
 
     The core of Neuronify consists of a small set of GUI and engine classes.
-    At the heart of the GUI is the \l{Neuronify} QML
-    type that organizes all the visual items and the \l{GraphEngine}.
+    At the heart of the GUI is the \l{Neuronify} QML type that organizes all
+    the visual items and the holds a reference to \l{GraphEngine}.
     Each item in the network is controlled by the \l{GraphEngine}.
     This is a C++ class that holds a list of nodes and their connections
     through edges.
@@ -65,15 +65,21 @@
     \l{NodeEngine} and \l{Node}.
     The former two are C++ classes, while the latter is a QML type.
 
+    \section2 Generators
+
+    Generators are used to feed the network with automatic input.
+
+    \annotatedlist neuronify-generators
+
     \section2 Meters
 
-    Meters can be used to measure the state of the neurons:
+    Meters can be used to measure the state of the neurons.
 
     \annotatedlist neuronify-meters
 
     \section2 Sensors
 
-    Sensors are used to get information from the outside world to the app:
+    Sensors are used to get information from the outside world to the app.
 
     \annotatedlist neuronify-sensors
 

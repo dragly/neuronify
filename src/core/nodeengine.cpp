@@ -2,6 +2,18 @@
 
 #include "nodebase.h"
 
+/*!
+ * \class NodeEngine
+ * \brief The NodeEngine class provides the basic functionality for the logic
+ *        in all nodes
+ *
+ * All NodeBase objects can hold a pointer to a NodeEngine.
+ * The NodeEngine performs the logic for the given node and should
+ * hold all information about the state of the node.
+ *
+ * \sa Node, NodeBase
+ */
+
 NodeEngine::NodeEngine(QQuickItem *parent)
     : QQuickItem(parent)
 {

@@ -63,3 +63,12 @@ Simply run the following command in the build-directory:
     /path/to/Qt/installation/clang_64/bin/macdeployqt neuronify.app -qmldir=../neuronify -dmg
 
 This should create a .dmg that can be used on machines without Qt installed.
+
+### Building the documentation ###
+
+You should first install the index files for Qt:
+
+    sudo apt-get install qt5-doc qt5-doc-html qt5-default qt5-qmake qtquickcontrols5-doc-html
+
+Afterwards, run ./make-docs.sh in the doc folder to generate the documentation.
+This will be generated in a folder named neuronify-docs above the source tree.

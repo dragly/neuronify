@@ -3,6 +3,24 @@ import QtMultimedia 5.0
 
 import Neuronify 1.0
 
+/*!
+\qmltype Node
+\brief The Node type is the base of all items in Neuronify.
+
+Node is a visual QML item that holds all common properties of items in
+Neuronify.
+It inherits NodeBase, which is its C++ counterpart.
+
+In principle, \l Node and NodeBase could be the same class, but because
+\l GraphEngine and \l NodeEngine cannot know about a QML type, we need to split
+them up.
+This is because we wish to use some QML features to define the functionality
+of \l Node (such as \l MouseArea dragging), that does not allow us to put all
+functionality of \l Node in C++.
+
+\sa NodeBase, NodeEngine
+*/
+
 NodeBase {
     id: root
     signal clicked(var entity, var mouse)

@@ -4,6 +4,19 @@
 #include "edge.h"
 #include "nodeengine.h"
 
+/*!
+ * \class GraphEngine
+ * \inmodule Neuronify
+ * \ingroup neuronify-core
+ * \brief The GraphEngine class is the core engine of Neuronify
+ *
+ * GraphEngine holds all the nodes and edges of the network.
+ * It iterates the network forward in time by stepping each node and
+ * organizing the communication along edges.
+ *
+ * \sa NodeBase, NodeEngine, Node
+ */
+
 GraphEngine::GraphEngine(QQuickItem *parent)
     : QQuickItem(parent)
 {
@@ -58,10 +71,10 @@ void GraphEngine::removeNode(NodeBase *node)
 void GraphEngine::removeEdge(Edge *edge)
 {
     if(edge->itemA()) {
-        edge->itemA()->removeEdge(edge);
+        edge->setItemA(nullptr); // This also removes edges from itemA
     }
     if(edge->itemB()) {
-        edge->itemB()->removeEdge(edge);
+        edge->setItemB(nullptr); // This also removes edges from itemB
     }
     m_edges.removeAll(edge);
 }
