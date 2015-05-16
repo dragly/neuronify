@@ -44,7 +44,7 @@ SOURCES += \
     src/neurons/passivecurrent.cpp
 
 RESOURCES += qml.qrc \
-#   images.qrc \
+    images.qrc \
     simulations.qrc \
     sounds.qrc
 

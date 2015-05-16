@@ -17,6 +17,7 @@
 #include <QTextStream>
 #include <QtQml>
 
+test
 
 int main(int argc, char *argv[])
 {
