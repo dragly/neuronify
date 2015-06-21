@@ -45,5 +45,6 @@
         <file>images/meters/speaker.png</file>
         <file>images/generators/ac_clamp.png</file>
         <file>images/generators/poisson_generator_inhibitory.png</file>
+        <file>qml/hud/AnnotationsList.qml</file>
     </qresource>
 </RCC>

@@ -54,9 +54,7 @@ Item {
 
         console.log(fileString)
 
-        save
-
-        .source = fileUrl
+        saveFileIO.source = fileUrl
         saveFileIO.write(fileString)
     }
 
