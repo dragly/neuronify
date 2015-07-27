@@ -2,6 +2,7 @@
 #define EDGE_H
 
 #include <QQuickItem>
+#include <QPointer>
 
 class NodeBase;
 class Edge : public QQuickItem
@@ -12,7 +13,6 @@ class Edge : public QQuickItem
 
 public:
     explicit Edge(QQuickItem *parent = 0);
-    ~Edge();
 
     NodeBase* itemA() const;
     NodeBase* itemB() const;
@@ -24,11 +24,10 @@ signals:
 public slots:
     void setItemA(NodeBase* arg);
     void setItemB(NodeBase* arg);
-    void clear();
 
 private:
-    NodeBase* m_itemA = nullptr;
-    NodeBase* m_itemB = nullptr;
+    QPointer<NodeBase> m_itemA;
+    QPointer<NodeBase> m_itemB;
 };
 
 #endif // EDGE_H

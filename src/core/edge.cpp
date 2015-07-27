@@ -21,12 +21,6 @@ Edge::Edge(QQuickItem *parent)
 {
 }
 
-Edge::~Edge()
-{
-    m_itemA = nullptr;
-    m_itemB = nullptr;
-}
-
 NodeBase *Edge::itemA() const
 {
     return m_itemA;
@@ -73,11 +67,5 @@ void Edge::setItemB(NodeBase *arg)
     }
 
     emit itemBChanged(arg);
-}
-
-void Edge::clear()
-{
-    setItemA(nullptr);
-    setItemB(nullptr);
 }
 

@@ -59,7 +59,6 @@ void GraphEngine::removeNode(NodeBase *node)
     QList<Edge*> toDelete;
     for(Edge *edge : m_edges) {
         if(edge->itemA() == node || edge->itemB() == node) {
-            edge->clear();
             toDelete.append(edge);
         }
     }
