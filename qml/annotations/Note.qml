@@ -12,11 +12,15 @@ Node {
     width: 180
     height: 120
 
-    color: "yellow"
+    color: "#F7EE72"
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
                     ["text"])
+    }
+
+    onSelectedChanged: {
+        textInput.focus = selected
     }
 
     Rectangle {
@@ -43,12 +47,13 @@ Node {
             horizontalCenter: parent.left
             verticalCenter: parent.top
         }
-        width: parent.height / 3
+        width: 32
         height: width
         radius: width / 2
         color: "#c6dbef"
         border.width: width * 0.1
         border.color: "#f7fbff"
+        visible: textInput.activeFocus
 
         Image {
             anchors.fill: parent
