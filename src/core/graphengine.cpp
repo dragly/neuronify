@@ -87,15 +87,19 @@ void GraphEngine::step(double dt)
     }
 
     for(Edge* edge : m_edges) {
-        if(edge->itemA() && edge->itemB()) {
-            NodeEngine* engineA = edge->itemA()->engine();
-            NodeEngine* engineB = edge->itemB()->engine();
-            if(engineA->hasFired()) {
-                engineB->receiveFire(engineA->fireOutput());
-            }
-            if(engineA->currentOutput() != 0.0) {
-                engineB->receiveCurrent(engineA->currentOutput());
-            }
+        if(!(edge->itemA()) || !(edge->itemB())) {
+            continue;
+        }
+        NodeEngine* engineA = edge->itemA()->engine();
+        NodeEngine* engineB = edge->itemB()->engine();
+        if(!engineA || !engineB) {
+            continue;
+        }
+        if(engineA->hasFired()) {
+            engineB->receiveFire(engineA->fireOutput());
+        }
+        if(engineA->currentOutput() != 0.0) {
+            engineB->receiveCurrent(engineA->currentOutput());
         }
     }
 
