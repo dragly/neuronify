@@ -22,6 +22,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             drag.target: parent
+            propagateComposedEvents: true
             onPositionChanged: {
                 if(drag.active) {
                     var xDiff = topLeft.x + topLeft.width / 2
@@ -31,6 +32,11 @@ Item {
                     target.width -= xDiff
                     target.height -= yDiff
                     topLeft.resetPosition()
+                }
+            }
+            onClicked: {
+                if(!drag.active) {
+                    mouse.accepted = false
                 }
             }
         }
@@ -51,6 +57,7 @@ Item {
 
         MouseArea {
             anchors.fill: parent
+            propagateComposedEvents: true
             drag.target: parent
             onPositionChanged: {
                 if(drag.active) {
@@ -60,6 +67,11 @@ Item {
                     target.width -= xDiff
                     target.height += yDiff
                     bottomLeft.resetPosition()
+                }
+            }
+            onClicked: {
+                if(!drag.active) {
+                    mouse.accepted = false
                 }
             }
         }
@@ -81,6 +93,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             drag.target: parent
+            propagateComposedEvents: true
             onPositionChanged: {
                 if(drag.active) {
                     var xDiff = topRight.x + topRight.width / 2 - target.width
@@ -89,6 +102,11 @@ Item {
                     target.width += xDiff
                     target.height -= yDiff
                     topRight.resetPosition()
+                }
+            }
+            onClicked: {
+                if(!drag.active) {
+                    mouse.accepted = false
                 }
             }
         }
@@ -110,6 +128,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             drag.target: parent
+            propagateComposedEvents: true
             onPositionChanged: {
                 if(drag.active) {
                     var xDiff = bottomRight.x + bottomRight.width / 2 - target.width
@@ -117,6 +136,11 @@ Item {
                     target.width += xDiff
                     target.height += yDiff
                     bottomRight.resetPosition()
+                }
+            }
+            onClicked: {
+                if(!drag.active) {
+                    mouse.accepted = false
                 }
             }
         }
