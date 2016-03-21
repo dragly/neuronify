@@ -12,11 +12,8 @@ Item {
 
     property var simulations: [
         "empty",
-        "light",
-        "drivenCircularInhibition",
-        "lateralInhibition",
         "recurrentInhibition",
-        "dummy"
+        "light"
     ]
 
     Component.onCompleted: {
