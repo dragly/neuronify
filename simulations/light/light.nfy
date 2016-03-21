@@ -14,7 +14,7 @@ var entity12 = createEntity("neurons/OldNeuron.qml", {"x":456.0015437655178,"y":
 var entity13 = createEntity("neurons/OldNeuron.qml", {"x":688.199276988032,"y":760.1741310208786,"clampCurrent":0,"clampCurrentEnabled":false,"stimulation":1})
 var entity14 = createEntity("meters/Voltmeter.qml", {"x":623.5684207560131,"y":886.6164471804974,"label":""})
 var entity15 = createEntity("annotations/Note.qml", {"x":1032.115479115479,"y":208.2702702702702,"label":"","text":"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\n</style></head><body style=\" font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Input signal, touch the squares in order left to right or right to left. </p></body></html>","width":180,"height":120})
-var entity16 = createEntity("annotations/Note.qml", {"x":214.26507056739578,"y":472.9465744814581,"label":"","text":"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\n</style></head><body style=\" font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Inhibitiry neurons which inhibit the neurons to their one step forward and to the right in the network. </p></body></html>","width":232.7027027027027,"height":134.8648648648649})
+var entity16 = createEntity("annotations/Note.qml", {"x":214.26507056739578,"y":472.9465744814581,"label":"","text":"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\n</style></head><body style=\" font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Inhibitory neurons which inhibit the neurons to their one step forward and to the right in the network. </p></body></html>","width":232.7027027027027,"height":134.8648648648649})
 var entity17 = createEntity("annotations/Note.qml", {"x":959.4916812008905,"y":553.3554987713807,"label":"","text":"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\n</style></head><body style=\" font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">When the left signal arrives to this row the neurons are already inhibited and the signal will not be passed on.</p>\n<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">In the case of a right signal, the signal arrives before the neuron becomes inhibited, and the signal is passed on.</p></body></html>","width":325.34883720930236,"height":147.906976744186})
 var entity18 = createEntity("annotations/Note.qml", {"x":425.7707509683323,"y":739.4020103992876,"label":"","text":"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\n</style></head><body style=\" font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">A signal is observed only when the input moves from the right to the left, not in the reverse order.</p></body></html>","width":180,"height":120})
 var entity19 = createEntity("Entity.qml", {"x":0,"y":0,"label":""})
@@ -22,7 +22,7 @@ var entity20 = createEntity("Entity.qml", {"x":100,"y":0,"label":""})
 var entity21 = createEntity("Entity.qml", {"x":200,"y":0,"label":""})
 var entity22 = createEntity("Entity.qml", {"x":300,"y":0,"label":""})
 var entity23 = createEntity("Entity.qml", {"x":400,"y":0,"label":""})
-var entity24 = createEntity("TouchSensor.qml", {"x":438.0961035875319,"y":229.35225299796696,"label":"","cells":5,"sensingCurrentOutput":150})
+var entity24 = createEntity("sensors/TouchSensor.qml", {"x":433.4766661909519,"y":226.2092193520764,"label":"","cells":5,"sensingCurrentOutput":150})
 var connection0 = connectEntities(entity0, entity7)
 var connection1 = connectEntities(entity0, entity9)
 var connection2 = connectEntities(entity1, entity6)
@@ -40,12 +40,11 @@ var connection13 = connectEntities(entity10, entity5)
 var connection14 = connectEntities(entity11, entity4)
 var connection15 = connectEntities(entity12, entity8)
 var connection16 = connectEntities(entity13, entity14)
-var connection17 = connectEntities(entity12, entity24)
-connectEntities(entity24.cellAt(1), entity0)
 connectEntities(entity24.cellAt(0), entity12)
+connectEntities(entity24.cellAt(1), entity0)
 connectEntities(entity24.cellAt(2), entity1)
 connectEntities(entity24.cellAt(3), entity2)
 connectEntities(entity24.cellAt(4), entity3)
-workspace.x = -17.171913601406345
-workspace.y = -139.76092467502593
-workspace.scale = 0.8600000000000001
+workspace.x = -111.26713286713289
+workspace.y = -151.3650349650349
+workspace.scale = 0.9800000000000001
