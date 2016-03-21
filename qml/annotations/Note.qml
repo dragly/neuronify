@@ -4,6 +4,8 @@ import QtQuick.Controls.Styles 1.4
 import ".."
 import "../style"
 
+import Neuronify 1.0
+
 Node {
     id: noteRoot
     objectName: "note"
@@ -15,6 +17,12 @@ Node {
     height: 120
 
     color: "#CCBD06"
+
+    engine: NodeEngine {
+        onReceivedFire: {
+        }
+    }
+
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
