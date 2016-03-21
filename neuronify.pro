@@ -24,8 +24,10 @@ HEADERS += \
     src/retina/videosurface.h \
     src/neurons/passivecurrent.h \
     src/neurons/adaptationcurrent.h \
-    src/retina/kernels/kernel.h \
-    src/retina/kernels/gaborkernel.h
+    src/retina/kernel.h \
+    src/retina/kernels/gaborkernelengine.h \
+    src/retina/kernels/abstractkernelengine.h \
+    src/retina/kernels/rectangularkernelengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -42,8 +44,10 @@ SOURCES += \
     src/retina/androidmultimediautils.cpp \
     src/neurons/adaptationcurrent.cpp \
     src/neurons/passivecurrent.cpp \
-    src/retina/kernels/kernel.cpp \
-    src/retina/kernels/gaborkernel.cpp
+    src/retina/kernel.cpp \
+    src/retina/kernels/gaborkernelengine.cpp \
+    src/retina/kernels/abstractkernelengine.cpp \
+    src/retina/kernels/rectangularkernelengine.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

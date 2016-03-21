@@ -12,6 +12,7 @@ import "../controls"
 import ".."
 
 
+
 /*!
 \qmltype Retina
 \inqmlmodule Neuronify
@@ -48,11 +49,18 @@ Node {
         }
     }
 
+    Loader{
+        id: kernelLoader
+    }
+
     Kernel{
         id:kernel
-        resolutionHeight : 80
-        resolutionWidth : 80
-        spatialType: Kernel.OffRightRF
+        resolutionHeight : kernelLoader.item ?
+                               kernelLoader.item.resolutionHeight: 10
+        resolutionWidth : kernelLoader.item ?
+                              kernelLoader.item.resolutionWidth : 10
+        abstractKernelEngineType: kernelLoader.item ?
+                                      kernelLoader.item.engine : null
     }
 
     engine: RetinaEngine {
@@ -67,28 +75,28 @@ Node {
             anchors.fill: parent
 
 
-// Slider to change the resolution:
-//            Text {
-//                text: "Resolution Height: " + kernel.resolutionHeight.toFixed(1)
-//            }
-//            BoundSlider {
-//                minimumValue: 10
-//                maximumValue: 300
-//                stepSize: 100
-//                target: kernel
-//                property: "resolutionHeight"
-//            }
+            // Slider to change the resolution:
+            //            Text {
+            //                text: "Resolution Height: " + kernel.resolutionHeight.toFixed(1)
+            //            }
+            //            BoundSlider {
+            //                minimumValue: 10
+            //                maximumValue: 300
+            //                stepSize: 100
+            //                target: kernel
+            //                property: "resolutionHeight"
+            //            }
 
-//            Text {
-//                text: "Resolution Width: " + kernel.resolutionWidth.toFixed(1)
-//            }
-//            BoundSlider {
-//                minimumValue: 10
-//                maximumValue: 300
-//                stepSize: 100
-//                target: kernel
-//                property: "resolutionWidth"
-//            }
+            //            Text {
+            //                text: "Resolution Width: " + kernel.resolutionWidth.toFixed(1)
+            //            }
+            //            BoundSlider {
+            //                minimumValue: 10
+            //                maximumValue: 300
+            //                stepSize: 100
+            //                target: kernel
+            //                property: "resolutionWidth"
+            //            }
 
             Text {
                 text: "Show: "
@@ -106,7 +114,6 @@ Node {
                 }
 
                 onCurrentIndexChanged: {
-                    //kernel.KernelType = model.get(currentIndex).name
                     if(currentIndex == 0) retinaEngine.plotKernel = false
                     else retinaEngine.plotKernel = true
                     viewIndex = currentIndex
@@ -128,11 +135,15 @@ Node {
                 }
 
                 onCurrentIndexChanged: {
-                    kernel.spatialType = model.get(currentIndex).name
+                    kernelLoader.source = model.get(currentIndex).name
                     fieldIndex = currentIndex
                 }
 
             }
+            Text {
+                text: "Receptive field settings: "
+            }
+
 
         }
 
@@ -140,12 +151,8 @@ Node {
 
     ListModel {
         id: fieldTypes
-        ListElement {text: "Gabor"; name: Kernel.GaborRF}
-        ListElement {text: "Off-left";   name: Kernel.OffLeftRF}
-        ListElement {text: "Off-right";  name: Kernel.OffRightRF}
-        ListElement {text: "Off-top";    name: Kernel.OffTopRF}
-        ListElement {text: "Off-bottom"; name: Kernel.OffBottomRF}
-
+        ListElement {text: "Gabor"; name: "kernels/GaborKernel.qml"}
+        ListElement {text: "Rectangular"; name: "kernels/RectangularKernel.qml"}
     }
 
 

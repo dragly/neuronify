@@ -2,10 +2,14 @@
 #include "core/nodeengine.h"
 #include "core/edge.h"
 #include "core/graphengine.h"
-#include "retina/kernels/kernel.h"
+
+#include "retina/kernel.h"
+#include "retina/kernels/gaborkernelengine.h"
+#include "retina/kernels/rectangularkernelengine.h"
 #include "retina/retinaengine.h"
 #include "retina/retinapainter.h"
 #include "retina/videosurface.h"
+
 #include "neurons/neuronengine.h"
 #include "neurons/current.h"
 #include "neurons/passivecurrent.h"
@@ -28,6 +32,13 @@ int main(int argc, char *argv[])
     qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngine");
+
+    qmlRegisterUncreatableType<AbstractKernelEngine>("Neuronify", 1, 0,
+                                               "AbstractKernelEngine",
+                                               "Derived classes need this");
+    qmlRegisterType<GaborKernelEngine>("Neuronify", 1, 0, "GaborKernelEngine");
+    qmlRegisterType<RectangularKernelEngine>("Neuronify", 1, 0,
+                                             "RectangularKernelEngine");
 
     qmlRegisterType<Kernel>("Neuronify", 1, 0, "Kernel");
     qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");

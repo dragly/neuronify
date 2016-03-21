@@ -8,7 +8,7 @@
 
 #include "videosurface.h"
 #include "../core/nodeengine.h"
-#include "kernels/kernel.h"
+#include "kernel.h"
 
 using namespace std;
 

@@ -66,5 +66,7 @@
         <file>qml/neurons/AdaptationInhibitoryNeuron.qml</file>
         <file>qml/ResizeRectangle.qml</file>
         <file>qml/annotations/Note.qml</file>
+        <file>qml/sensors/kernels/GaborKernel.qml</file>
+        <file>qml/sensors/kernels/RectangularKernel.qml</file>
     </qresource>
 </RCC>

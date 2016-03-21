@@ -5,8 +5,10 @@
 #include <vector>
 #include <iostream>
 #include <QImage>
-#include<iomanip>
+#include <iomanip>
 #include <limits>
+
+#include "kernels/abstractkernelengine.h"
 
 using namespace std;
 
@@ -16,8 +18,8 @@ class Kernel : public QQuickItem
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
     Q_PROPERTY(int resolutionWidth READ resolutionWidth WRITE setResolutionWidth NOTIFY resolutionWidthChanged)
     Q_PROPERTY(QImage spatialImage READ spatialImage WRITE setSpatialImage NOTIFY imageChanged)
-    Q_PROPERTY(spatialTypes spatialType READ spatialType WRITE setSpatialType NOTIFY spatialTypeChanged)
-    Q_ENUMS(spatialTypes)
+    Q_PROPERTY(AbstractKernelEngine* abstractKernelEngineType READ abstractKernelEngineType WRITE setAbstractKernelEngineType NOTIFY abstractKernelEngineTypeChanged)
+
 
 public:
     Kernel();
@@ -35,41 +37,39 @@ public:
     int resolutionWidth() const;
     void recreate();
 
-    //Kernel types:
-    void createOffLeft();
-    void createOffRight();
-    void createOffTop();
-    void createOffBottom();
-    void createGabor();
-    double gaborFunction(int x, int y);
 
+    //Kernel types:
+//    void createOffLeft();
+//    void createOffRight();
+//    void createOffTop();
+//    void createOffBottom();
 
     vector<vector<double> > spatial();
-    spatialTypes spatialType() const;
-
-
+    AbstractKernelEngine* abstractKernelEngineType() const;
     QImage spatialImage() const;
 
 public slots:
-    void setSpatialType(spatialTypes spatialType);
     void setResolutionHeight(int resolutionHeight);
     void setResolutionWidth(int resolutionWidth);
-
     void setSpatialImage(QImage spatialImage);
+    void setAbstractKernelEngineType(AbstractKernelEngine* abstractKernelEngineType);
 
 signals:
     void resolutionHeightChanged(int resolutionHeight);
     void resolutionWidthChanged(int resolutionWidth);
-    void spatialTypeChanged(spatialTypes spatialType);
-
     void imageChanged(QImage spatialImage);
+    void abstractKernelEngineTypeChanged(AbstractKernelEngine* abstractKernelEngineType);
+
 
 private:
+    AbstractKernelEngine* m_abstractKernelEngineType = nullptr;
+
+protected:
     int m_resolutionHeight = 10;
     int m_resolutionWidth = 10;
     vector< vector <double>> m_spatial;
-    spatialTypes m_spatialType = OffLeftRF;
     QImage m_spatialImage;
+
 };
 
 

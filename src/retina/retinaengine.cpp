@@ -36,7 +36,6 @@ void RetinaEngine::receivedImage()
     m_paintedImage =  m_videoSurface->paintedImage();
     m_paintedImage =  m_paintedImage.scaled(resolutionWidth,resolutionHeight);
 
-
     for(int i = 0; i < m_paintedImage.width(); i++){
         for(int j = 0; j < m_paintedImage.height(); j++){
 #ifdef Q_OS_ANDROID
