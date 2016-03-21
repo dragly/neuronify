@@ -1,6 +1,8 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.2
+import QtQuick.Controls 1.4
+import QtQuick.Controls.Styles 1.4
 import ".."
+import "../style"
 
 Node {
     id: noteRoot
@@ -12,7 +14,7 @@ Node {
     width: 180
     height: 120
 
-    color: "yellow"
+    color: "#CCBD06"
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
@@ -22,17 +24,36 @@ Node {
     Rectangle {
         anchors.fill: parent
         color: parent.color
+
+        border.width: 1.0
+        border.color: "#CCBD06"
     }
 
-    TextInput {
+    TextArea {
+
+
+
         id: textInput
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 1
         horizontalAlignment: TextInput.AlignHCenter
         verticalAlignment: TextInput.AlignVCenter
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         clip: true
         onFocusChanged: noteRoot.selected = focus
+
+        textMargin: 10
+        textFormat: Text.RichText
+
+        style: TextAreaStyle {
+            textColor: Style.font.color
+            backgroundColor: "#FFF144"
+
+         }
+
+
+
+
     }
 
     ResizeRectangle {
