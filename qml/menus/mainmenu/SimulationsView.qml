@@ -12,6 +12,7 @@ Item {
 
     property var simulations: [
         "empty",
+        "singleCell",
         "recurrentInhibition",
         "light"
     ]

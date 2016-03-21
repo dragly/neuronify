@@ -16,30 +16,27 @@ Node {
     width: 180
     height: 120
 
-    color: "#CCBD06"
+    color: "#54B2FF"
 
-    engine: NodeEngine {
-        onReceivedFire: {
+    Component.onCompleted: {
+        dumpableProperties = dumpableProperties.concat(
+                    ["text", "width", "height"])
+    }
+
+    onSelectedChanged: {
+        transformMove.visible = !transformMove.visible
+        if (!noteRoot.selected) {
+             textInput.select(0, 0)
         }
     }
 
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["text"])
-    }
-
     Rectangle {
         anchors.fill: parent
         color: parent.color
-
-        border.width: 1.0
-        border.color: "#CCBD06"
     }
 
     TextArea {
-
-
 
         id: textInput
         anchors.fill: parent
@@ -48,18 +45,20 @@ Node {
         verticalAlignment: TextInput.AlignVCenter
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         clip: true
-        onFocusChanged: noteRoot.selected = focus
+        onFocusChanged: {
+              noteRoot.selected = focus
+        }
+
+        enabled: noteRoot.selected
 
         textMargin: 10
         textFormat: Text.RichText
 
         style: TextAreaStyle {
             textColor: Style.font.color
-            backgroundColor: "#FFF144"
+            backgroundColor: "#AEDBFF"
 
          }
-
-
 
 
     }
@@ -68,6 +67,8 @@ Node {
     }
 
     Rectangle {
+        id: transformMove
+
         anchors {
             horizontalCenter: parent.left
             verticalCenter: parent.top
@@ -78,8 +79,10 @@ Node {
         color: "#c6dbef"
         border.width: width * 0.1
         border.color: "#f7fbff"
+        visible: false
 
         Image {
+
             anchors.fill: parent
             anchors.margins: parent.width * 0.1
             source: "qrc:/images/transform-move.png"
