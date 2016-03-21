@@ -2,7 +2,7 @@
 #include "core/nodeengine.h"
 #include "core/edge.h"
 #include "core/graphengine.h"
-#include "retina/receptivefield.h"
+#include "retina/kernels/kernel.h"
 #include "retina/retinaengine.h"
 #include "retina/retinapainter.h"
 #include "retina/videosurface.h"
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngine");
 
-    qmlRegisterType<ReceptiveField>("Neuronify", 1, 0, "ReceptiveField");
+    qmlRegisterType<Kernel>("Neuronify", 1, 0, "Kernel");
     qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");
     qmlRegisterType<RetinaPainter>("Neuronify", 1, 0, "RetinaPainter");
     qmlRegisterType<VideoSurface>("Neuronify", 1, 0, "VideoSurface");

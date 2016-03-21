@@ -8,7 +8,7 @@
 
 #include "videosurface.h"
 #include "../core/nodeengine.h"
-#include "receptivefield.h"
+#include "kernels/kernel.h"
 
 using namespace std;
 
@@ -16,8 +16,8 @@ class RetinaEngine : public NodeEngine
 {
     Q_OBJECT
     Q_PROPERTY(VideoSurface *  videoSurface READ videoSurface WRITE setVideoSurface NOTIFY videoSurfaceChanged)
-    Q_PROPERTY(ReceptiveField * receptiveField READ receptiveField WRITE setReceptiveField NOTIFY receptiveFieldChanged)
-    Q_PROPERTY(bool plotReceptiveField READ plotReceptiveField WRITE setPlotReceptiveField NOTIFY plotReceptiveFieldChanged)
+    Q_PROPERTY(Kernel * kernel READ kernel WRITE setKernel NOTIFY kernelChanged)
+    Q_PROPERTY(bool plotKernel READ plotKernel WRITE setPlotKernel NOTIFY plotKernelChanged)
 
 public:
     RetinaEngine();
@@ -28,39 +28,38 @@ public:
 
     VideoSurface * videoSurface() const;
     QImage paintedImage() const;
-    ReceptiveField * receptiveField() const;
+    Kernel * kernel() const;
 
-    bool plotReceptiveField() const
+    bool plotKernel() const
     {
-        return m_plotReceptiveField;
+        return m_plotKernel;
     }
 
 public slots:
     void receivedImage();
     void setVideoSurface(VideoSurface * videoSurface);
-    void setReceptiveField(ReceptiveField * receptiveField);
+    void setKernel(Kernel * kernel);
 
-    void setPlotReceptiveField(bool plotReceptiveField)
+    void setPlotKernel(bool plotKernel)
     {
-        if (m_plotReceptiveField == plotReceptiveField)
+        if (m_plotKernel == plotKernel)
             return;
 
-        m_plotReceptiveField = plotReceptiveField;
-        emit plotReceptiveFieldChanged(plotReceptiveField);
+        m_plotKernel = plotKernel;
+        emit plotKernelChanged(plotKernel);
     }
 
 signals:
     void videoSurfaceChanged(VideoSurface * videoSurface);
-    void receptiveFieldChanged(ReceptiveField * receptiveField);
-
-    void plotReceptiveFieldChanged(bool plotReceptiveField);
+    void kernelChanged(Kernel * kernel);
+    void plotKernelChanged(bool plotKernel);
 
 protected:
     virtual void stepEvent(double dt);
 
 private:
     VideoSurface * m_videoSurface = nullptr;
-    ReceptiveField * m_receptiveField = nullptr;
+    Kernel * m_kernel = nullptr;
     QImage m_paintedImage;
 
 
@@ -68,7 +67,7 @@ private:
 
     vector< vector <double>> m_stim;
 
-    bool m_plotReceptiveField;
+    bool m_plotKernel;
 };
 
 

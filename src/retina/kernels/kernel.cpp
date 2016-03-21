@@ -1,21 +1,21 @@
-#include "receptivefield.h"
+#include "kernel.h"
 
 #include <cmath>
 
 /*!
- * \class ReceptiveField
+ * \class Kernel
  * \inmodule Neuronify
  * \ingroup neuronify-sensors
- * \brief Creates different receptive field types, including both the spatial and temporal functions.
+ * \brief Creates different kernel types.
  */
 
 const static long double pi = 3.141592653589793238462643383279502884L;
 
-ReceptiveField::ReceptiveField()
+Kernel::Kernel()
 {
 }
 
-void ReceptiveField::createOffLeft()
+void Kernel::createOffLeft()
 {
 
     for(int i = 0; i < m_resolutionWidth; i++){
@@ -32,7 +32,7 @@ void ReceptiveField::createOffLeft()
 
 }
 
-void ReceptiveField::createOffRight()
+void Kernel::createOffRight()
 {
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
@@ -48,7 +48,7 @@ void ReceptiveField::createOffRight()
 
 }
 
-void ReceptiveField::createOffTop()
+void Kernel::createOffTop()
 {
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
@@ -63,7 +63,7 @@ void ReceptiveField::createOffTop()
     }
 }
 
-void ReceptiveField::createOffBottom()
+void Kernel::createOffBottom()
 {
 
     for(int i = 0; i < m_resolutionWidth; i++){
@@ -79,7 +79,7 @@ void ReceptiveField::createOffBottom()
     }
 }
 
-void ReceptiveField::recreate()
+void Kernel::recreate()
 {
 
     m_spatial.resize(m_resolutionWidth);
@@ -128,12 +128,12 @@ void ReceptiveField::recreate()
 
 }
 
-void ReceptiveField::createGabor()
+void Kernel::createGabor()
 {;
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
             m_spatial.at(i).at(j)= gaborFunction(i,j)*20000.;
-//            qDebug() << m_receptiveField.at(i).at(j);
+//            qDebug() << m_kernel.at(i).at(j);
         }
     }
 
@@ -141,7 +141,7 @@ void ReceptiveField::createGabor()
 //    {
 //        for(int j=0; j<m_resolutionWidth; j++) //This loops on the columns
 //        {
-//            cout << setprecision(3)<< fixed << m_receptiveField[i][j]  << "  ";
+//            cout << setprecision(3)<< fixed << m_kernel[i][j]  << "  ";
 //        }
 //        cout << endl;
 //    }
@@ -150,7 +150,7 @@ void ReceptiveField::createGabor()
 
 
 
-double ReceptiveField::gaborFunction(int idx, int idy)
+double Kernel::gaborFunction(int idx, int idy)
 {
     double sigmaX = 5.;
     double sigmaY = 5.;
@@ -158,8 +158,10 @@ double ReceptiveField::gaborFunction(int idx, int idy)
     double phi = 0.0;
     double theta = 0.0;
 
-    double x =  (idx - m_resolutionHeight/2) * cos(theta) + (idy-m_resolutionWidth/2) * sin(theta);
-    double y = -(idx - m_resolutionHeight/2) * sin(theta) + (idy-m_resolutionWidth/2) * cos(theta);
+    double x =  (idx - m_resolutionHeight/2) * cos(theta)
+            + (idy-m_resolutionWidth/2) * sin(theta);
+    double y = -(idx - m_resolutionHeight/2) * sin(theta)
+            + (idy-m_resolutionWidth/2) * cos(theta);
 
     double prefactor = 1.0/(2.* pi * sigmaX * sigmaY);
     double expFactor = exp(-x*x/(2.* sigmaX * sigmaX) - y*y/(2. * sigmaY * sigmaY));
@@ -168,24 +170,17 @@ double ReceptiveField::gaborFunction(int idx, int idy)
 }
 
 
-double ReceptiveField::temporal(const double tau)
-{
-    double alpha = 1.;
-    return alpha*exp(-alpha*tau)*(pow(alpha*tau, 5)/120. - pow(alpha*tau, 7)/5040.);
-}
-
-
-int ReceptiveField::resolutionHeight() const
+int Kernel::resolutionHeight() const
 {
     return m_resolutionHeight;
 }
 
-int ReceptiveField::resolutionWidth() const
+int Kernel::resolutionWidth() const
 {
     return m_resolutionWidth;
 }
 
-vector<vector<double> > ReceptiveField::spatial()
+vector<vector<double> > Kernel::spatial()
 {
     if(m_spatial.empty()){
         recreate();
@@ -193,17 +188,17 @@ vector<vector<double> > ReceptiveField::spatial()
     return m_spatial;
 }
 
-ReceptiveField::spatialTypes ReceptiveField::spatialType() const
+Kernel::spatialTypes Kernel::spatialType() const
 {
     return m_spatialType;
 }
 
-QImage ReceptiveField::spatialImage() const
+QImage Kernel::spatialImage() const
 {
     return m_spatialImage;
 }
 
-void ReceptiveField::setSpatialType(ReceptiveField::spatialTypes spatialType)
+void Kernel::setSpatialType(Kernel::spatialTypes spatialType)
 {
     if (m_spatialType == spatialType)
         return;
@@ -214,7 +209,7 @@ void ReceptiveField::setSpatialType(ReceptiveField::spatialTypes spatialType)
     emit spatialTypeChanged(spatialType);
 }
 
-void ReceptiveField::setResolutionHeight(int resolutionHeight)
+void Kernel::setResolutionHeight(int resolutionHeight)
 {
     if (m_resolutionHeight == resolutionHeight)
         return;
@@ -224,7 +219,7 @@ void ReceptiveField::setResolutionHeight(int resolutionHeight)
     emit resolutionHeightChanged(resolutionHeight);
 }
 
-void ReceptiveField::setResolutionWidth(int resolutionWidth)
+void Kernel::setResolutionWidth(int resolutionWidth)
 {
     if (m_resolutionWidth == resolutionWidth)
         return;
@@ -234,7 +229,7 @@ void ReceptiveField::setResolutionWidth(int resolutionWidth)
     emit resolutionWidthChanged(resolutionWidth);
 }
 
-void ReceptiveField::setSpatialImage(QImage image)
+void Kernel::setSpatialImage(QImage image)
 {
     if (m_spatialImage == image)
         return;

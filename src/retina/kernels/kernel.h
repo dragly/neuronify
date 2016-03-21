@@ -1,5 +1,5 @@
-#ifndef RECEPTIVEFIELD_H
-#define RECEPTIVEFIELD_H
+#ifndef KERNEL_H
+#define KERNEL_H
 
 #include <QQuickItem>
 #include <vector>
@@ -10,7 +10,7 @@
 
 using namespace std;
 
-class ReceptiveField : public QQuickItem
+class Kernel : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
@@ -20,7 +20,7 @@ class ReceptiveField : public QQuickItem
     Q_ENUMS(spatialTypes)
 
 public:
-    ReceptiveField();
+    Kernel();
 
 public:
     enum spatialTypes{
@@ -35,13 +35,12 @@ public:
     int resolutionWidth() const;
     void recreate();
 
-    //Receptive Field types:
+    //Kernel types:
     void createOffLeft();
     void createOffRight();
     void createOffTop();
     void createOffBottom();
     void createGabor();
-    double temporal(const double tau);
     double gaborFunction(int x, int y);
 
 
@@ -74,4 +73,4 @@ private:
 };
 
 
-#endif // RECEPTIVEFIELD_H
+#endif // KERNEL_H

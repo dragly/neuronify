@@ -48,44 +48,70 @@ Node {
         }
     }
 
-    ReceptiveField{
-        id:recField
-        resolutionHeight : 50
-        resolutionWidth : 50
-        spatialType: ReceptiveField.OffLeftRF
+    Kernel{
+        id:kernel
+        resolutionHeight : 80
+        resolutionWidth : 80
+        spatialType: Kernel.OffRightRF
     }
 
     engine: RetinaEngine {
         id: retinaEngine
-        receptiveField: recField
+        kernel: kernel
         videoSurface: root.videoSurface
-        plotReceptiveField: false
+        plotKernel: false
     }
 
     controls: Component {
         Column {
             anchors.fill: parent
 
-            Text {
-                text: "Resolution Height: " + recField.resolutionHeight.toFixed(1)
-            }
-            BoundSlider {
-                minimumValue: 10
-                maximumValue: 300
-                stepSize: 1
-                target: recField
-                property: "resolutionHeight"
-            }
+
+// Slider to change the resolution:
+//            Text {
+//                text: "Resolution Height: " + kernel.resolutionHeight.toFixed(1)
+//            }
+//            BoundSlider {
+//                minimumValue: 10
+//                maximumValue: 300
+//                stepSize: 100
+//                target: kernel
+//                property: "resolutionHeight"
+//            }
+
+//            Text {
+//                text: "Resolution Width: " + kernel.resolutionWidth.toFixed(1)
+//            }
+//            BoundSlider {
+//                minimumValue: 10
+//                maximumValue: 300
+//                stepSize: 100
+//                target: kernel
+//                property: "resolutionWidth"
+//            }
 
             Text {
-                text: "Resolution Width: " + recField.resolutionWidth.toFixed(1)
+                text: "Show: "
             }
-            BoundSlider {
-                minimumValue: 10
-                maximumValue: 300
-                stepSize: 1
-                target: recField
-                property: "resolutionWidth"
+            ComboBox {
+                id: displayComboBox
+                width: 200
+                model: imageView
+
+                onChildrenChanged: {
+                    if(!currentIndex+1){
+
+                        currentIndex = viewIndex
+                    }
+                }
+
+                onCurrentIndexChanged: {
+                    //kernel.KernelType = model.get(currentIndex).name
+                    if(currentIndex == 0) retinaEngine.plotKernel = false
+                    else retinaEngine.plotKernel = true
+                    viewIndex = currentIndex
+                }
+
             }
             Text {
                 text: "Receptive Field: "
@@ -102,28 +128,8 @@ Node {
                 }
 
                 onCurrentIndexChanged: {
-                    recField.spatialType = model.get(currentIndex).name
+                    kernel.spatialType = model.get(currentIndex).name
                     fieldIndex = currentIndex
-                }
-
-            }
-            ComboBox {
-                id: displayComboBox
-                width: 200
-                model: imageView
-
-                onChildrenChanged: {
-                    if(!currentIndex+1){
-
-                        currentIndex = viewIndex
-                    }
-                }
-
-                onCurrentIndexChanged: {
-                    //recField.receptiveFieldType = model.get(currentIndex).name
-                    if(currentIndex == 0) retinaEngine.plotReceptiveField = false
-                    else retinaEngine.plotReceptiveField = true
-                    viewIndex = currentIndex
                 }
 
             }
@@ -134,11 +140,11 @@ Node {
 
     ListModel {
         id: fieldTypes
-        ListElement {text: "Gabor"; name: ReceptiveField.GaborRF}
-        ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
-        ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
-        ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
-        ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
+        ListElement {text: "Gabor"; name: Kernel.GaborRF}
+        ListElement {text: "Off-left";   name: Kernel.OffLeftRF}
+        ListElement {text: "Off-right";  name: Kernel.OffRightRF}
+        ListElement {text: "Off-top";    name: Kernel.OffTopRF}
+        ListElement {text: "Off-bottom"; name: Kernel.OffBottomRF}
 
     }
 
@@ -164,7 +170,7 @@ Node {
             fill: parent
             margins: 5
         }
-        property bool plotReceptiveField: true
+        property bool plotKernel: true
     }
 
     ResizeRectangle {

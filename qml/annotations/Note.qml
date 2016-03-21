@@ -12,7 +12,7 @@ Node {
     width: 180
     height: 120
 
-    color: "yellow"
+    color: "#c6dbef"
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
