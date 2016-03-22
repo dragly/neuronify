@@ -18,9 +18,9 @@ void RetinaPainter::paint(QPainter *painter)
     if(!m_retinaEngine) {
         return;
     }
-    if (m_retinaEngine->plotReceptiveField()){
-        if(m_retinaEngine->receptiveField()){
-            painter->drawImage(boundingRect(), m_retinaEngine->receptiveField()->spatialImage());
+    if (m_retinaEngine->plotKernel()){
+        if(m_retinaEngine->kernel()){
+            painter->drawImage(boundingRect(), m_retinaEngine->kernel()->spatialImage());
             update();
         }
     } else {

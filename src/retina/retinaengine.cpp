@@ -22,12 +22,12 @@ RetinaEngine::~RetinaEngine()
 
 void RetinaEngine::receivedImage()
 {
-    if(!m_receptiveField){
+    if(!m_kernel){
         return;
     }
 
-    int resolutionHeight = m_receptiveField->resolutionHeight();
-    int resolutionWidth = m_receptiveField->resolutionWidth();
+    int resolutionHeight = m_kernel->resolutionHeight();
+    int resolutionWidth = m_kernel->resolutionWidth();
     m_stim.resize(resolutionWidth);
     for(int i = 0; i < resolutionWidth; i++){
         m_stim.at(i).resize(resolutionHeight,0.0);
@@ -35,7 +35,6 @@ void RetinaEngine::receivedImage()
 
     m_paintedImage =  m_videoSurface->paintedImage();
     m_paintedImage =  m_paintedImage.scaled(resolutionWidth,resolutionHeight);
-
 
     for(int i = 0; i < m_paintedImage.width(); i++){
         for(int j = 0; j < m_paintedImage.height(); j++){
@@ -46,7 +45,7 @@ void RetinaEngine::receivedImage()
             QRgb color = qRgb(gray, gray, gray);
             m_paintedImage.setPixel(i,j,color);
 #endif
-            m_stim.at(i).at(j) = gray-128./256;
+            m_stim.at(i).at(j) = (gray-128.)/256;
         }
     }
 
@@ -56,13 +55,13 @@ void RetinaEngine::receivedImage()
 
 void RetinaEngine::calculateFiringRate()
 {
-    if(!m_receptiveField){
+    if(!m_kernel){
         return;
     }
 
-    vector< vector <double>> spatial = m_receptiveField->spatial();
-    int resolutionHeight= m_receptiveField->resolutionHeight();
-    int resolutionWidth = m_receptiveField->resolutionWidth();
+    vector< vector <double>> spatial = m_kernel->spatial();
+    int resolutionHeight= m_kernel->resolutionHeight();
+    int resolutionWidth = m_kernel->resolutionWidth();
 
     m_firingRate = 0.0;
     for(int i = 0; i < resolutionWidth; i++){
@@ -113,16 +112,25 @@ void RetinaEngine::setVideoSurface(VideoSurface *videoSurface)
 
 
 
-void RetinaEngine::setReceptiveField(ReceptiveField *recField)
+void RetinaEngine::setKernel(Kernel *kernel)
 {
-    if (m_receptiveField == recField)
+    if (m_kernel == kernel)
         return;
 
-    m_receptiveField = recField;
+    m_kernel = kernel;
 
 
 
-    emit receptiveFieldChanged(recField);
+    emit kernelChanged(kernel);
+}
+
+void RetinaEngine::setPlotKernel(bool plotKernel)
+{
+    if (m_plotKernel == plotKernel)
+        return;
+    
+    m_plotKernel = plotKernel;
+    emit plotKernelChanged(plotKernel);
 }
 
 
@@ -134,9 +142,14 @@ QImage RetinaEngine::paintedImage() const
 
 
 
-ReceptiveField *RetinaEngine::receptiveField() const
+Kernel *RetinaEngine::kernel() const
 {
-    return m_receptiveField;
+    return m_kernel;
+}
+
+bool RetinaEngine::plotKernel() const
+{
+    return m_plotKernel;
 }
 
 VideoSurface *RetinaEngine::videoSurface() const

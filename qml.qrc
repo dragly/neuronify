@@ -66,5 +66,12 @@
         <file>qml/neurons/AdaptationInhibitoryNeuron.qml</file>
         <file>qml/ResizeRectangle.qml</file>
         <file>qml/annotations/Note.qml</file>
+        <file>qml/sensors/kernels/GaborKernel.qml</file>
+        <file>qml/sensors/kernels/KernelContainer.qml</file>
+        <file>qml/sensors/kernels/OffLeftKernel.qml</file>
+        <file>qml/sensors/kernels/OffBottomKernel.qml</file>
+        <file>qml/sensors/kernels/OffTopKernel.qml</file>
+        <file>qml/sensors/kernels/OffRightKernel.qml</file>
+        <file>qml/sensors/kernels/DogKernel.qml</file>
     </qresource>
 </RCC>
