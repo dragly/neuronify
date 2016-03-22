@@ -4,6 +4,7 @@ import "../paths"
 import "../hud"
 import Neuronify 1.0
 import QtQuick.Controls 1.3
+import QtQuick.Particles 2.0
 
 /*!
 \qmltype Neuron
@@ -41,6 +42,10 @@ Node {
         }
     }
 
+    onFired: {
+        trailsNormal.burst(10)
+    }
+
     engine: NeuronEngine {
         PassiveCurrent {
             id: passiveCurrent
@@ -49,6 +54,34 @@ Node {
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat("fireOutput")
+    }
+
+    ParticleSystem {
+        id: system
+
+        anchors.centerIn: parent
+
+        ImageParticle {
+            source: "qrc:/images/neurons/passive.png"
+        }
+
+        Emitter {
+            id: trailsNormal
+
+            anchors.centerIn: parent
+            system: system
+
+            emitRate: 0
+            lifeSpan: 800
+
+            velocity: PointDirection {xVariation: 400; yVariation: 400;}
+//            acceleration: PointDirection {xVariation: 800; yVariation: 800;}
+
+            velocityFromMovement: 8
+
+            size: 8
+            sizeVariation: 4
+        }
     }
 
     Image {
