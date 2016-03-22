@@ -59,8 +59,11 @@ Edge {
             }
 
         } else if (diffx >= 0 && diffy >= 0) {
-
-            x = itemB.connectionPoint.x
+            if (dx >= dy) {
+                x = itemB.connectionPoint.x + itemB.width/2.
+            } else {
+                x = itemB.connectionPoint.x + itemB.width/2*dx/dy
+            }
         } else if (diffx >= 0 && diffy <= 0) {
 
 
@@ -90,8 +93,11 @@ Edge {
             }
 
         } else if (diffx >= 0 && diffy >= 0) {
-            y = itemB.connectionPoint.y
-
+            if (dx >= dy) {
+                y = itemB.connectionPoint.y + itemB.height/2.*dy/dx
+            } else {
+                y = itemB.connectionPoint.y + itemB.height/2.
+            }
 
         } else if (diffx >= 0 && diffy <= 0) {
              y = itemB.connectionPoint.y
