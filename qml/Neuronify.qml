@@ -632,7 +632,8 @@ Rectangle {
     }
 
     VideoOutput {
-        anchors.centerIn: parent
+        // dummy output needed for camera to work on Android
+        x: -10
         enabled: Qt.platform.os === "android" && videoSurface.enabled
         visible: Qt.platform.os === "android" && videoSurface.enabled
         width: 10
