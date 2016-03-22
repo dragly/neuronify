@@ -152,13 +152,13 @@ Edge {
     }
 
     BezierCurve {
-
         id: sCurve
         color: connectionRoot._internalColor
         startPoint: itemA ? Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y) : Qt.point(0,0)
         endPoint: Qt.point(cx, cy)
         controlPoint1: Qt.point(startPoint.x + curved*15, startPoint.y + curved*15)
         controlPoint2: Qt.point(endPoint.x + curved*15, endPoint.y + curved*15)
+
 
     }
 
