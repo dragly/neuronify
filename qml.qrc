@@ -72,5 +72,6 @@
         <file>qml/sensors/kernels/OffBottomKernel.qml</file>
         <file>qml/sensors/kernels/OffTopKernel.qml</file>
         <file>qml/sensors/kernels/OffRightKernel.qml</file>
+        <file>qml/sensors/kernels/DogKernel.qml</file>
     </qresource>
 </RCC>

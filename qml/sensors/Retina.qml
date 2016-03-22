@@ -148,6 +148,7 @@ Node {
     ListModel {
         id: fieldTypes
         ListElement {text: "Gabor"; name: "kernels/GaborKernel.qml"}
+        ListElement {text: "Dog"; name: "kernels/DogKernel.qml"}
         ListElement {text: "OffLeft"; name: "kernels/OffLeftKernel.qml"}
         ListElement {text: "OffRight"; name: "kernels/OffRightKernel.qml"}
         ListElement {text: "OffTop"; name: "kernels/OffTopKernel.qml"}

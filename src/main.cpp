@@ -5,6 +5,7 @@
 
 #include "retina/kernel.h"
 #include "retina/kernels/gaborkernelengine.h"
+#include "retina/kernels/dogkernelengine.h"
 #include "retina/kernels/offleftkernelengine.h"
 #include "retina/kernels/offrightkernelengine.h"
 #include "retina/kernels/offbottomkernelengine.h"
@@ -41,6 +42,7 @@ int main(int argc, char *argv[])
                                                "AbstractKernelEngine",
                                                "Derived classes need this");
     qmlRegisterType<GaborKernelEngine>("Neuronify", 1, 0, "GaborKernelEngine");
+    qmlRegisterType<DogKernelEngine>("Neuronify", 1, 0, "DogKernelEngine");
     qmlRegisterType<OffLeftKernelEngine>("Neuronify", 1, 0, "OffLeftKernelEngine");
     qmlRegisterType<OffRightKernelEngine>("Neuronify", 1, 0, "OffRightKernelEngine");
     qmlRegisterType<OffTopKernelEngine>("Neuronify", 1, 0, "OffTopKernelEngine");

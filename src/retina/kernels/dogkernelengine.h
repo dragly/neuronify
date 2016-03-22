@@ -13,6 +13,8 @@ public:
     // AbstractKernelEngine interface
 public:
     virtual void createKernel(vector<vector<double> > *spatial);
+private:
+    double advance(int idx, int idy);
 };
 
 #endif // DOGKERNELENGINE_H
