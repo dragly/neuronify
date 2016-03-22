@@ -45,7 +45,7 @@ void RetinaEngine::receivedImage()
             QRgb color = qRgb(gray, gray, gray);
             m_paintedImage.setPixel(i,j,color);
 #endif
-            m_stim.at(i).at(j) = gray-128./256;
+            m_stim.at(i).at(j) = (gray-128.)/256;
         }
     }
 

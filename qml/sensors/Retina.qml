@@ -31,7 +31,7 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
     property int viewIndex: 0
-    property string kernelType: "kernels/DogKernel.qml"
+    property string kernelType: "kernels/GaborKernel.qml"
 
 
     width: 240
@@ -109,6 +109,7 @@ Node {
                     if(Qt.resolvedUrl(item.name) ===
                             Qt.resolvedUrl(root.kernelType)) {
                         comboBox.currentIndex = i
+                        break
                     }
                 }
             }
@@ -161,6 +162,7 @@ Node {
                             if(Qt.resolvedUrl(item.name) ===
                                     Qt.resolvedUrl(root.kernelType)) {
                                 comboBox.currentIndex = i
+                                break
                             }
                         }
                     }

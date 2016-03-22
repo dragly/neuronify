@@ -32,14 +32,10 @@ void Kernel::recreate()
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-
-#ifdef Q_OS_ANDROID
-            int gray = m_spatialImage.pixel(i,j);
-#else
             int gray = spatial().at(i).at(j) + 128;
             QRgb color = qRgb(gray, gray, gray);
             m_spatialImage.setPixel(i,j,color);
-#endif
+
         }
     }
 
