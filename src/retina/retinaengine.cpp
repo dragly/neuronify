@@ -124,6 +124,15 @@ void RetinaEngine::setKernel(Kernel *kernel)
     emit kernelChanged(kernel);
 }
 
+void RetinaEngine::setPlotKernel(bool plotKernel)
+{
+    if (m_plotKernel == plotKernel)
+        return;
+    
+    m_plotKernel = plotKernel;
+    emit plotKernelChanged(plotKernel);
+}
+
 
 QImage RetinaEngine::paintedImage() const
 {
@@ -136,6 +145,11 @@ QImage RetinaEngine::paintedImage() const
 Kernel *RetinaEngine::kernel() const
 {
     return m_kernel;
+}
+
+bool RetinaEngine::plotKernel() const
+{
+    return m_plotKernel;
 }
 
 VideoSurface *RetinaEngine::videoSurface() const

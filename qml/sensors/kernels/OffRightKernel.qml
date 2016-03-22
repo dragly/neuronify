@@ -5,14 +5,13 @@ import "../../controls"
 
 KernelContainer {
 
-    property alias resolutionWidth: engine.resolutionWidth
-    property alias resolutionHeight: engine.resolutionHeight
+    id: root
     property alias engine: engine
 
     OffRightKernelEngine{
         id: engine
-        resolutionHeight: 80
-        resolutionWidth: 80
+        resolutionHeight: root.resolutionHeight
+        resolutionWidth: root.resolutionWidth
     }
 
 

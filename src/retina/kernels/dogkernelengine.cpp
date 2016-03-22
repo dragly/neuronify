@@ -15,7 +15,7 @@ void DogKernelEngine::createKernel(vector<vector<double> > *spatial)
         }
     }
 
-    cout << spatial->at(m_resolutionWidth/2).at(m_resolutionHeight/2) << endl;
+//    cout << spatial->at(m_resolutionWidth/2).at(m_resolutionHeight/2) << endl;
 
 }
 

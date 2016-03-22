@@ -1,8 +1,8 @@
-var entity0 = createEntity("sensors/Retina.qml", {"x":865.8848294562579,"y":610.9030969030968})
-var entity1 = createEntity("neurons/PassiveNeuron.qml", {"x":1205.5582988440128,"y":507.84187241330073,"label":"","fireOutput":2})
-var entity2 = createEntity("meters/Voltmeter.qml", {"x":1339.3542172113603,"y":484.3724846581988,"label":""})
+var entity0 = createEntity("neurons/PassiveNeuron.qml", {"x":1205.5582988440128,"y":507.84187241330073,"label":"","fireOutput":2})
+var entity1 = createEntity("meters/Voltmeter.qml", {"x":1339.3542172113603,"y":484.3724846581988,"label":""})
+var entity2 = createEntity("sensors/Retina.qml", {"x":844.4562580276865,"y":452.7398315969742,"kernelType":"kernels/OffLeftKernel.qml"})
 var connection0 = connectEntities(entity0, entity1)
-var connection1 = connectEntities(entity1, entity2)
+var connection1 = connectEntities(entity2, entity0)
 workspace.x = -453.2671328671329
-workspace.y = -197.3650349650349
+workspace.y = -101.36503496503491
 workspace.scale = 0.9800000000000001

@@ -21,6 +21,7 @@ void RetinaPainter::paint(QPainter *painter)
     if (m_retinaEngine->plotKernel()){
         if(m_retinaEngine->kernel()){
             painter->drawImage(boundingRect(), m_retinaEngine->kernel()->spatialImage());
+            qDebug() << m_retinaEngine->kernel()->spatialImage();
             update();
         }
     } else {

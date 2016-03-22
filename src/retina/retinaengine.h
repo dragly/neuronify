@@ -29,25 +29,13 @@ public:
     VideoSurface * videoSurface() const;
     QImage paintedImage() const;
     Kernel * kernel() const;
-
-    bool plotKernel() const
-    {
-        return m_plotKernel;
-    }
+    bool plotKernel() const;
 
 public slots:
     void receivedImage();
     void setVideoSurface(VideoSurface * videoSurface);
     void setKernel(Kernel * kernel);
-
-    void setPlotKernel(bool plotKernel)
-    {
-        if (m_plotKernel == plotKernel)
-            return;
-
-        m_plotKernel = plotKernel;
-        emit plotKernelChanged(plotKernel);
-    }
+    void setPlotKernel(bool plotKernel);
 
 signals:
     void videoSurfaceChanged(VideoSurface * videoSurface);

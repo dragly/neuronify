@@ -31,13 +31,16 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
     property int viewIndex: 0
+    property string kernelType: "kernels/DogKernel.qml"
+
 
     width: 240
     height: 180
 
     dumpableProperties: [
         "x",
-        "y"
+        "y",
+        "kernelType"
     ]
 
     onVideoSurfaceChanged: {
@@ -51,6 +54,7 @@ Node {
 
     Loader{
         id: kernelLoader
+        source: root.kernelType
     }
 
     Kernel{
@@ -98,6 +102,17 @@ Node {
             //                property: "resolutionWidth"
             //            }
 
+
+            Component.onCompleted: {
+                for(var i = 0; i < fieldTypes.count; i++) {
+                    var item = fieldTypes.get(i)
+                    if(Qt.resolvedUrl(item.name) ===
+                            Qt.resolvedUrl(root.kernelType)) {
+                        comboBox.currentIndex = i
+                    }
+                }
+            }
+
             Text {
                 text: "Show: "
             }
@@ -127,6 +142,7 @@ Node {
                 id: comboBox
                 width: 200
                 model: fieldTypes
+                property bool created: false
 
                 onChildrenChanged: {
                     if(!currentIndex+1){
@@ -135,8 +151,19 @@ Node {
                 }
 
                 onCurrentIndexChanged: {
-                    kernelLoader.source = model.get(currentIndex).name
-                    fieldIndex = currentIndex
+                    if(created){
+                        kernelType = model.get(currentIndex).name
+                        fieldIndex = currentIndex
+                    }else{
+                        created = true
+                        for(var i = 0; i < fieldTypes.count; i++) {
+                            var item = fieldTypes.get(i)
+                            if(Qt.resolvedUrl(item.name) ===
+                                    Qt.resolvedUrl(root.kernelType)) {
+                                comboBox.currentIndex = i
+                            }
+                        }
+                    }
                 }
 
             }
