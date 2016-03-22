@@ -31,17 +31,15 @@ Node {
         }
     }
 
-
     Rectangle {
         anchors.fill: parent
         color: parent.color
     }
 
     TextArea {
-
         id: textInput
         anchors.fill: parent
-        anchors.margins: 1
+        anchors.margins: 10
         horizontalAlignment: TextInput.AlignHCenter
         verticalAlignment: TextInput.AlignVCenter
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -50,9 +48,8 @@ Node {
               noteRoot.selected = focus
         }
 
-        enabled: noteRoot.selected
+        visible: noteRoot.selected
 
-        textMargin: 10
         textFormat: Text.RichText
 
         style: TextAreaStyle {
@@ -60,8 +57,18 @@ Node {
             backgroundColor: "#AEDBFF"
 
          }
+    }
 
-
+    Text {
+        anchors.fill: textInput.anchors.fill
+        anchors.margins: textInput.anchors.margins
+        text: textInput.text
+        visible: !textInput.visible
+        textFormat: textInput.textFormat
+        horizontalAlignment: textInput.horizontalAlignment
+        verticalAlignment: textInput.verticalAlignment
+        wrapMode: textInput.wrapMode
+        clip: textInput.clip
     }
 
     ResizeRectangle {
@@ -74,7 +81,7 @@ Node {
             horizontalCenter: parent.left
             verticalCenter: parent.top
         }
-        width: parent.height / 3
+        width: 32
         height: width
         radius: width / 2
         color: "#c6dbef"
