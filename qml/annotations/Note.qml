@@ -17,11 +17,9 @@ Node {
     width: 180
     height: 120
 
-<<<<<<< HEAD
-    color: "#c6dbef"
-=======
+
     color: "#54B2FF"
->>>>>>> 0e6c3116f7608be0d32e78ffc4bdef310ac3833b
+
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
