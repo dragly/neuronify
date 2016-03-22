@@ -19,8 +19,6 @@ Edge {
     property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y : 0
     property real length: Math.sqrt(diffx*diffx + diffy*diffy)
     property real angle: Math.atan(diffy/diffx)*180/Math.PI
-//    property real cx: valid ? itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length : 0
-//    property real cy: valid ? itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length : 0
     property real cx: valid ? intersectX(): 0
     property real cy: valid ? intersectY(): 0
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
