@@ -1,0 +1,3 @@
+[submodule "libs/qtcharts"]
+	path = libs/qtcharts
+	url = https://dragly@codereview.qt-project.org/qt/qtcharts

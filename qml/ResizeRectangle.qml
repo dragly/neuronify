@@ -1,16 +1,40 @@
 import QtQuick 2.0
+import "style"
 
 Item {
     id: resizeRectangle
 
     property var target: parent
+
+    property real targetWidth: target.width
+    property real targetHeight: target.width
+
     anchors.fill: target
+
+    function resetAllPositions() {
+        topLeft.resetPosition()
+        topRight.resetPosition()
+        bottomLeft.resetPosition()
+        bottomRight.resetPosition()
+    }
+
+    onTargetChanged: {
+        resetAllPositions()
+    }
+
+    onTargetWidthChanged: {
+        resetAllPositions()
+    }
+
+    onTargetHeightChanged: {
+        resetAllPositions()
+    }
     
     Item {
         id: topLeft
 
-        width: 100
-        height: 100
+        width: Style.touchableSize
+        height: Style.touchableSize
 
         function resetPosition() {
             x = 0 - width / 2
@@ -18,6 +42,8 @@ Item {
         }
 
         Component.onCompleted: resetPosition()
+        onWidthChanged: resetPosition()
+        onHeightChanged: resetPosition()
 
         MouseArea {
             anchors.fill: parent
@@ -27,6 +53,10 @@ Item {
                 if(drag.active) {
                     var xDiff = topLeft.x + topLeft.width / 2
                     var yDiff = topLeft.y + topLeft.height / 2
+                    if(target.width - xDiff < 20 || target.width - yDiff < 20) {
+                        topLeft.resetPosition()
+                        return
+                    }
                     target.x += xDiff
                     target.y += yDiff
                     target.width -= xDiff
@@ -42,11 +72,12 @@ Item {
         }
     }
 
+
     Item {
         id: bottomLeft
 
-        width: 100
-        height: 100
+        width: Style.touchableSize
+        height: Style.touchableSize
 
         function resetPosition() {
             x = 0 - width / 2
@@ -54,6 +85,8 @@ Item {
         }
 
         Component.onCompleted: resetPosition()
+        onWidthChanged: resetPosition()
+        onHeightChanged: resetPosition()
 
         MouseArea {
             anchors.fill: parent
@@ -63,6 +96,10 @@ Item {
                 if(drag.active) {
                     var xDiff = bottomLeft.x + bottomLeft.width / 2
                     var yDiff = bottomLeft.y + bottomLeft.height / 2 - target.height
+                    if(target.width - xDiff < 20 || target.width + yDiff < 20) {
+                        bottomLeft.resetPosition()
+                        return
+                    }
                     target.x += xDiff
                     target.width -= xDiff
                     target.height += yDiff
@@ -77,11 +114,12 @@ Item {
         }
     }
 
+
     Item {
         id: topRight
 
-        width: 100
-        height: 100
+        width: Style.touchableSize
+        height: Style.touchableSize
 
         function resetPosition() {
             x = target.width - width / 2
@@ -89,6 +127,8 @@ Item {
         }
 
         Component.onCompleted: resetPosition()
+        onWidthChanged: resetPosition()
+        onHeightChanged: resetPosition()
 
         MouseArea {
             anchors.fill: parent
@@ -98,6 +138,10 @@ Item {
                 if(drag.active) {
                     var xDiff = topRight.x + topRight.width / 2 - target.width
                     var yDiff = topRight.y + topRight.height / 2
+                    if(target.width + xDiff < 20 || target.width - yDiff < 20) {
+                        topRight.resetPosition()
+                        return
+                    }
                     target.y += yDiff
                     target.width += xDiff
                     target.height -= yDiff
@@ -112,11 +156,12 @@ Item {
         }
     }
 
+
     Item {
         id: bottomRight
 
-        width: 100
-        height: 100
+        width: Style.touchableSize
+        height: Style.touchableSize
 
         function resetPosition() {
             x = target.width - width / 2
@@ -124,6 +169,8 @@ Item {
         }
 
         Component.onCompleted: resetPosition()
+        onWidthChanged: resetPosition()
+        onHeightChanged: resetPosition()
 
         MouseArea {
             anchors.fill: parent
@@ -133,6 +180,10 @@ Item {
                 if(drag.active) {
                     var xDiff = bottomRight.x + bottomRight.width / 2 - target.width
                     var yDiff = bottomRight.y + bottomRight.height / 2 - target.height
+                    if(target.width + xDiff < 20 || target.width + yDiff < 20) {
+                        bottomRight.resetPosition()
+                        return
+                    }
                     target.width += xDiff
                     target.height += yDiff
                     bottomRight.resetPosition()
