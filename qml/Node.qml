@@ -41,6 +41,7 @@ NodeBase {
     property Component controls
     property Item simulator
     property bool useDefaultMouseHandling: true
+    property bool square: false
     property var dumpableProperties: [
         "x",
         "y",

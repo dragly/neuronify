@@ -3,8 +3,8 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
 import QtQuick.Window 2.1
-import QtMultimedia 5.0
 import QtCharts 2.0
+import QtMultimedia 5.5
 
 import Neuronify 1.0
 
@@ -476,6 +476,7 @@ Rectangle {
                 return output
             }
 
+
             Rectangle {
                 id: workspaceRectangle
                 anchors.fill: parent
@@ -490,6 +491,7 @@ Rectangle {
             Item {
                 id: neuronLayer
                 anchors.fill: parent
+
             }
         }
     }
@@ -506,6 +508,13 @@ Rectangle {
             creationMenu.revealed = true
         }
     }
+
+    CreationMenuButton {
+        onClicked: {
+            creationMenu.revealed = true
+        }
+    }
+
 
     DeleteButton {
         revealed: activeObject ? true : false
@@ -608,6 +617,7 @@ Rectangle {
         enabled: root.running
         camera: Camera{
             id:camera
+            viewfinder.resolution : Qt.size(1280,720)
             property bool active: retinaCounter > 0 && root.running
             property int retinaCounter: 0
 

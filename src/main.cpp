@@ -2,10 +2,19 @@
 #include "core/nodeengine.h"
 #include "core/edge.h"
 #include "core/graphengine.h"
-#include "retina/receptivefield.h"
+
+#include "retina/kernel.h"
+#include "retina/kernels/gaborkernelengine.h"
+#include "retina/kernels/dogkernelengine.h"
+#include "retina/kernels/offleftkernelengine.h"
+#include "retina/kernels/offrightkernelengine.h"
+#include "retina/kernels/offbottomkernelengine.h"
+#include "retina/kernels/offtopkernelengine.h"
+
 #include "retina/retinaengine.h"
 #include "retina/retinapainter.h"
 #include "retina/videosurface.h"
+
 #include "neurons/neuronengine.h"
 #include "neurons/current.h"
 #include "neurons/passivecurrent.h"
@@ -29,7 +38,17 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngine");
 
-    qmlRegisterType<ReceptiveField>("Neuronify", 1, 0, "ReceptiveField");
+    qmlRegisterUncreatableType<AbstractKernelEngine>("Neuronify", 1, 0,
+                                               "AbstractKernelEngine",
+                                               "Derived classes need this");
+    qmlRegisterType<GaborKernelEngine>("Neuronify", 1, 0, "GaborKernelEngine");
+    qmlRegisterType<DogKernelEngine>("Neuronify", 1, 0, "DogKernelEngine");
+    qmlRegisterType<OffLeftKernelEngine>("Neuronify", 1, 0, "OffLeftKernelEngine");
+    qmlRegisterType<OffRightKernelEngine>("Neuronify", 1, 0, "OffRightKernelEngine");
+    qmlRegisterType<OffTopKernelEngine>("Neuronify", 1, 0, "OffTopKernelEngine");
+    qmlRegisterType<OffBottomKernelEngine>("Neuronify", 1, 0, "OffBottomKernelEngine");
+
+    qmlRegisterType<Kernel>("Neuronify", 1, 0, "Kernel");
     qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");
     qmlRegisterType<RetinaPainter>("Neuronify", 1, 0, "RetinaPainter");
     qmlRegisterType<VideoSurface>("Neuronify", 1, 0, "VideoSurface");

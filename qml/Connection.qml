@@ -8,6 +8,9 @@ Edge {
     signal clicked(var connection)
     signal aboutToDie(var connection)
 
+
+
+
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
     property real conductance: 1.0
@@ -16,8 +19,8 @@ Edge {
     property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y : 0
     property real length: Math.sqrt(diffx*diffx + diffy*diffy)
     property real angle: Math.atan(diffy/diffx)*180/Math.PI
-    property real cx: valid ? itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length : 0
-    property real cy: valid ? itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length : 0
+    property real cx: valid ? intersectX(): 0
+    property real cy: valid ? intersectY(): 0
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
     property var customDump
     property Component controls: Component {
@@ -29,9 +32,103 @@ Edge {
         }
     }
 
+
+
     Component.onDestruction: {
         aboutToDie(connectionRoot)
     }
+
+
+
+    function intersectX() {
+        var x
+
+        var dx = Math.abs(diffx)
+        var dy = Math.abs(diffy)
+
+
+        if (!itemB.square) {
+            return itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length
+        }
+
+        if (diffx <= 0 && diffy >= 0) {
+            if (dx >= dy) {
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)
+
+            } else {
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)*dx/dy
+            }
+
+        } else if (diffx >= 0 && diffy >= 0) {
+            if (dx >= dy) {
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)
+            } else {
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)*dx/dy
+            }
+        } else if (diffx >= 0 && diffy <= 0) {
+            if (dx >= dy) {
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)
+            } else {
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)*dx/dy
+            }
+
+        } else {
+            if (dx >= dy) {
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)
+            } else {
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)*dx/dy
+            }
+        }
+
+        return x
+    }
+
+
+    function intersectY() {
+        var y
+
+        var dx = Math.abs(diffx)
+        var dy = Math.abs(diffy)
+
+        if (!itemB.square) {
+            return itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length
+        }
+
+
+        if (diffx <= 0 && diffy >= 0) {
+            if (dx >= dy) {
+                y = itemB.connectionPoint.y + (itemB.height/2 + connectionSpot.width)*dy/dx
+            } else {
+                y = itemB.connectionPoint.y + (itemB.height/2. + connectionSpot.width)
+            }
+
+        } else if (diffx >= 0 && diffy >= 0) {
+            if (dx >= dy) {
+                y = itemB.connectionPoint.y + (itemB.height/2 + connectionSpot.width)*dy/dx
+            } else {
+                y = itemB.connectionPoint.y + (itemB.height/2. + connectionSpot.width)
+            }
+
+        } else if (diffx >= 0 && diffy <= 0) {
+            if (dx >= dy) {
+                y = itemB.connectionPoint.y - (itemB.height/2 + connectionSpot.width)*dy/dx
+            } else {
+                y = itemB.connectionPoint.y - (itemB.height/2. + connectionSpot.width)
+            }
+
+        } else {
+            if (dx >= dy) {
+                y = itemB.connectionPoint.y - (itemB.height/2 + connectionSpot.width)*dy/dx
+            } else {
+                y = itemB.connectionPoint.y - (itemB.height/2. + connectionSpot.width)
+            }
+
+
+        }
+
+        return y
+    }
+
 
     function dump(index, graphEngine) {
         if(customDump) {

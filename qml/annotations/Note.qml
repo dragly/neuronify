@@ -10,6 +10,7 @@ Node {
     id: noteRoot
     objectName: "note"
     fileName: "annotations/Note.qml"
+    square: true
 
     property alias text: textInput.text
 

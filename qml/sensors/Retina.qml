@@ -12,6 +12,7 @@ import "../controls"
 import ".."
 
 
+
 /*!
 \qmltype Retina
 \inqmlmodule Neuronify
@@ -25,18 +26,23 @@ Node {
     id: root
     objectName: "retina"
     fileName: "sensors/Retina.qml"
+    square: true
+
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
     property int viewIndex: 0
+    property string kernelType: "kernels/GaborKernel.qml"
+
 
     width: 240
     height: 180
 
     dumpableProperties: [
         "x",
-        "y"
+        "y",
+        "kernelType"
     ]
 
     onVideoSurfaceChanged: {
@@ -48,64 +54,70 @@ Node {
         }
     }
 
-    ReceptiveField{
-        id:recField
-        resolutionHeight : 50
-        resolutionWidth : 50
-        spatialType: ReceptiveField.OffLeftRF
+    Loader{
+        id: kernelLoader
+        source: root.kernelType
+    }
+
+    Kernel{
+        id:kernel
+        resolutionHeight : kernelLoader.item ?
+                               kernelLoader.item.resolutionHeight: 80
+        resolutionWidth : kernelLoader.item ?
+                              kernelLoader.item.resolutionWidth : 80
+        abstractKernelEngineType: kernelLoader.item ?
+                                      kernelLoader.item.engine : null
     }
 
     engine: RetinaEngine {
         id: retinaEngine
-        receptiveField: recField
+        kernel: kernel
         videoSurface: root.videoSurface
-        plotReceptiveField: false
+        plotKernel: false
     }
 
     controls: Component {
         Column {
             anchors.fill: parent
 
-            Text {
-                text: "Resolution Height: " + recField.resolutionHeight.toFixed(1)
-            }
-            BoundSlider {
-                minimumValue: 10
-                maximumValue: 300
-                stepSize: 1
-                target: recField
-                property: "resolutionHeight"
-            }
 
-            Text {
-                text: "Resolution Width: " + recField.resolutionWidth.toFixed(1)
-            }
-            BoundSlider {
-                minimumValue: 10
-                maximumValue: 300
-                stepSize: 1
-                target: recField
-                property: "resolutionWidth"
-            }
-            Text {
-                text: "Receptive Field: "
-            }
-            ComboBox {
-                id: comboBox
-                width: 200
-                model: fieldTypes
+            // Slider to change the resolution:
+            //            Text {
+            //                text: "Resolution Height: " + kernel.resolutionHeight.toFixed(1)
+            //            }
+            //            BoundSlider {
+            //                minimumValue: 10
+            //                maximumValue: 300
+            //                stepSize: 100
+            //                target: kernel
+            //                property: "resolutionHeight"
+            //            }
 
-                onChildrenChanged: {
-                    if(!currentIndex+1){
-                        currentIndex = fieldIndex
+            //            Text {
+            //                text: "Resolution Width: " + kernel.resolutionWidth.toFixed(1)
+            //            }
+            //            BoundSlider {
+            //                minimumValue: 10
+            //                maximumValue: 300
+            //                stepSize: 100
+            //                target: kernel
+            //                property: "resolutionWidth"
+            //            }
+
+
+            Component.onCompleted: {
+                for(var i = 0; i < fieldTypes.count; i++) {
+                    var item = fieldTypes.get(i)
+                    if(Qt.resolvedUrl(item.name) ===
+                            Qt.resolvedUrl(root.kernelType)) {
+                        comboBox.currentIndex = i
+                        break
                     }
                 }
+            }
 
-                onCurrentIndexChanged: {
-                    recField.spatialType = model.get(currentIndex).name
-                    fieldIndex = currentIndex
-                }
-
+            Text {
+                text: "Show: "
             }
             ComboBox {
                 id: displayComboBox
@@ -120,10 +132,42 @@ Node {
                 }
 
                 onCurrentIndexChanged: {
-                    //recField.receptiveFieldType = model.get(currentIndex).name
-                    if(currentIndex == 0) retinaEngine.plotReceptiveField = false
-                    else retinaEngine.plotReceptiveField = true
+                    if(currentIndex == 0) retinaEngine.plotKernel = false
+                    else retinaEngine.plotKernel = true
                     viewIndex = currentIndex
+                }
+
+            }
+            Text {
+                text: "Receptive Field: "
+            }
+            ComboBox {
+                id: comboBox
+                width: 200
+                model: fieldTypes
+                property bool created: false
+
+                onChildrenChanged: {
+                    if(!currentIndex+1){
+                        currentIndex = fieldIndex
+                    }
+                }
+
+                onCurrentIndexChanged: {
+                    if(created){
+                        kernelType = model.get(currentIndex).name
+                        fieldIndex = currentIndex
+                    }else{
+                        created = true
+                        for(var i = 0; i < fieldTypes.count; i++) {
+                            var item = fieldTypes.get(i)
+                            if(Qt.resolvedUrl(item.name) ===
+                                    Qt.resolvedUrl(root.kernelType)) {
+                                comboBox.currentIndex = i
+                                break
+                            }
+                        }
+                    }
                 }
 
             }
@@ -134,12 +178,12 @@ Node {
 
     ListModel {
         id: fieldTypes
-        ListElement {text: "Gabor"; name: ReceptiveField.GaborRF}
-        ListElement {text: "Off-left";   name: ReceptiveField.OffLeftRF}
-        ListElement {text: "Off-right";  name: ReceptiveField.OffRightRF}
-        ListElement {text: "Off-top";    name: ReceptiveField.OffTopRF}
-        ListElement {text: "Off-bottom"; name: ReceptiveField.OffBottomRF}
-
+        ListElement {text: "Gabor"; name: "kernels/GaborKernel.qml"}
+        ListElement {text: "Dog"; name: "kernels/DogKernel.qml"}
+        ListElement {text: "OffLeft"; name: "kernels/OffLeftKernel.qml"}
+        ListElement {text: "OffRight"; name: "kernels/OffRightKernel.qml"}
+        ListElement {text: "OffTop"; name: "kernels/OffTopKernel.qml"}
+        ListElement {text: "OffBottom"; name: "kernels/OffBottomKernel.qml"}
     }
 
 
@@ -164,7 +208,7 @@ Node {
             fill: parent
             margins: 5
         }
-        property bool plotReceptiveField: true
+        property bool plotKernel: true
     }
 
     ResizeRectangle {

@@ -19,12 +19,19 @@ HEADERS += \
     src/neurons/current.h \
     src/neurons/neuronengine.h \
     src/retina/androidmultimediautils.h \
-    src/retina/receptivefield.h \
     src/retina/retinaengine.h \
     src/retina/retinapainter.h \
     src/retina/videosurface.h \
     src/neurons/passivecurrent.h \
-    src/neurons/adaptationcurrent.h
+    src/neurons/adaptationcurrent.h \
+    src/retina/kernel.h \
+    src/retina/kernels/gaborkernelengine.h \
+    src/retina/kernels/abstractkernelengine.h \
+    src/retina/kernels/offleftkernelengine.h \
+    src/retina/kernels/dogkernelengine.h \
+    src/retina/kernels/offrightkernelengine.h \
+    src/retina/kernels/offtopkernelengine.h \
+    src/retina/kernels/offbottomkernelengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -38,10 +45,17 @@ SOURCES += \
     src/retina/retinaengine.cpp \
     src/retina/retinapainter.cpp \
     src/retina/videosurface.cpp \
-    src/retina/receptivefield.cpp \
     src/retina/androidmultimediautils.cpp \
     src/neurons/adaptationcurrent.cpp \
-    src/neurons/passivecurrent.cpp
+    src/neurons/passivecurrent.cpp \
+    src/retina/kernel.cpp \
+    src/retina/kernels/gaborkernelengine.cpp \
+    src/retina/kernels/abstractkernelengine.cpp \
+    src/retina/kernels/offleftkernelengine.cpp \
+    src/retina/kernels/dogkernelengine.cpp \
+    src/retina/kernels/offrightkernelengine.cpp \
+    src/retina/kernels/offtopkernelengine.cpp \
+    src/retina/kernels/offbottomkernelengine.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \
