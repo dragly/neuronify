@@ -15,8 +15,8 @@ Edge {
     property bool valid: (itemA && itemB) ? true : false
     property real conductance: 1.0
     property color color: valid ? itemA.color : "white"
-    property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x : 0
-    property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y : 0
+    property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x + 10*curved: 0
+    property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y + 10*curved: 0
     property real length: Math.sqrt(diffx*diffx + diffy*diffy)
     property real angle: Math.atan(diffy/diffx)*180/Math.PI
     property real cx: valid ? intersectX(): 0
@@ -151,12 +151,19 @@ Edge {
         return outputString
     }
 
-    Line {
+    BezierCurve {
+
         id: sCurve
         color: connectionRoot._internalColor
         startPoint: itemA ? Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y) : Qt.point(0,0)
         endPoint: Qt.point(cx, cy)
+        controlPoint1: Qt.point(startPoint.x + curved*15, startPoint.y + curved*15)
+        controlPoint2: Qt.point(endPoint.x + curved*15, endPoint.y + curved*15)
+
     }
+
+
+
 
     Item {
         x: sCurve.startPoint.x + height / 2 * Math.sin(rotation * Math.PI / 180)
