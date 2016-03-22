@@ -9,7 +9,7 @@ KernelContainer {
     property alias resolutionHeight: engine.resolutionHeight
     property alias engine: engine
 
-    GaborKernelEngine{
+    OffRightKernelEngine{
         id: engine
         resolutionHeight: 80
         resolutionWidth: 80
@@ -17,3 +17,4 @@ KernelContainer {
 
 
 }
+

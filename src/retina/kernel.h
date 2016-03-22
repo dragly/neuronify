@@ -37,13 +37,6 @@ public:
     int resolutionWidth() const;
     void recreate();
 
-
-    //Kernel types:
-//    void createOffLeft();
-//    void createOffRight();
-//    void createOffTop();
-//    void createOffBottom();
-
     vector<vector<double> > spatial();
     AbstractKernelEngine* abstractKernelEngineType() const;
     QImage spatialImage() const;
@@ -65,8 +58,8 @@ private:
     AbstractKernelEngine* m_abstractKernelEngineType = nullptr;
 
 protected:
-    int m_resolutionHeight = 10;
-    int m_resolutionWidth = 10;
+    int m_resolutionHeight = 80;
+    int m_resolutionWidth = 80;
     vector< vector <double>> m_spatial;
     QImage m_spatialImage;
 

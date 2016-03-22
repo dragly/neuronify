@@ -27,7 +27,11 @@ HEADERS += \
     src/retina/kernel.h \
     src/retina/kernels/gaborkernelengine.h \
     src/retina/kernels/abstractkernelengine.h \
-    src/retina/kernels/rectangularkernelengine.h
+    src/retina/kernels/offleftkernelengine.h \
+    src/retina/kernels/dogkernelengine.h \
+    src/retina/kernels/offrightkernelengine.h \
+    src/retina/kernels/offtopkernelengine.h \
+    src/retina/kernels/offbottomkernelengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -47,7 +51,11 @@ SOURCES += \
     src/retina/kernel.cpp \
     src/retina/kernels/gaborkernelengine.cpp \
     src/retina/kernels/abstractkernelengine.cpp \
-    src/retina/kernels/rectangularkernelengine.cpp
+    src/retina/kernels/offleftkernelengine.cpp \
+    src/retina/kernels/dogkernelengine.cpp \
+    src/retina/kernels/offrightkernelengine.cpp \
+    src/retina/kernels/offtopkernelengine.cpp \
+    src/retina/kernels/offbottomkernelengine.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

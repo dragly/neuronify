@@ -56,9 +56,9 @@ Node {
     Kernel{
         id:kernel
         resolutionHeight : kernelLoader.item ?
-                               kernelLoader.item.resolutionHeight: 10
+                               kernelLoader.item.resolutionHeight: 80
         resolutionWidth : kernelLoader.item ?
-                              kernelLoader.item.resolutionWidth : 10
+                              kernelLoader.item.resolutionWidth : 80
         abstractKernelEngineType: kernelLoader.item ?
                                       kernelLoader.item.engine : null
     }
@@ -140,10 +140,6 @@ Node {
                 }
 
             }
-            Text {
-                text: "Receptive field settings: "
-            }
-
 
         }
 
@@ -152,7 +148,10 @@ Node {
     ListModel {
         id: fieldTypes
         ListElement {text: "Gabor"; name: "kernels/GaborKernel.qml"}
-        ListElement {text: "Rectangular"; name: "kernels/RectangularKernel.qml"}
+        ListElement {text: "OffLeft"; name: "kernels/OffLeftKernel.qml"}
+        ListElement {text: "OffRight"; name: "kernels/OffRightKernel.qml"}
+        ListElement {text: "OffTop"; name: "kernels/OffTopKernel.qml"}
+        ListElement {text: "OffBottom"; name: "kernels/OffBottomKernel.qml"}
     }
 
 

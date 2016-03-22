@@ -1,15 +1,20 @@
 import QtQuick 2.0
 import Neuronify 1.0
 
-Item {
+import "../../controls"
+
+KernelContainer {
 
     property alias resolutionWidth: engine.resolutionWidth
     property alias resolutionHeight: engine.resolutionHeight
     property alias engine: engine
 
-    RectangularKernelEngine{
+    OffBottomKernelEngine{
         id: engine
         resolutionHeight: 80
         resolutionWidth: 80
     }
+
+
 }
+
