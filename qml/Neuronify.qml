@@ -63,7 +63,7 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        loadState("/simulations/dummy/dummy.nfy")
+        loadState("/simulations/singleCell/singleCell.nfy")
         resetStyle()
     }
 

@@ -5,6 +5,6 @@ ListModel {
         name: "Note"
         description: "Annotate simulations with notes."
         source: "../annotations/Note.qml"
-        imageSource: "qrc:/images/neurons/burst.png"
+        imageSource: "qrc:/images/annotate/annotate.png"
     }
 }

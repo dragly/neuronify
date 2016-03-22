@@ -41,6 +41,7 @@ NodeBase {
     property Component controls
     property Item simulator
     property bool useDefaultMouseHandling: true
+    property bool square: false
     property var dumpableProperties: [
         "x",
         "y",
@@ -56,6 +57,12 @@ NodeBase {
             engine.fired.connect(root.fired)
         }
     }
+
+    engine: NodeEngine {
+        onReceivedFire: {
+        }
+    }
+
 
     function _deleteAllConnectionsInList(connectionsToDelete) {
         for(var i in connectionsToDelete) {

@@ -18,5 +18,8 @@
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.nfy</file>
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.png</file>
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.qml</file>
+        <file>simulations/singleCell/singleCell.nfy</file>
+        <file>simulations/singleCell/singleCell.png</file>
+        <file>simulations/singleCell/singleCell.qml</file>
     </qresource>
 </RCC>

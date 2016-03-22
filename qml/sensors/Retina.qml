@@ -26,6 +26,8 @@ Node {
     id: root
     objectName: "retina"
     fileName: "sensors/Retina.qml"
+    square: true
+
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property VideoSurface videoSurface: null;
