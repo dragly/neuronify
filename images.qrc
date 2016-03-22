@@ -46,5 +46,7 @@
         <file>images/generators/ac_clamp.png</file>
         <file>images/generators/poisson_generator_inhibitory.png</file>
         <file>qml/hud/AnnotationsList.qml</file>
+        <file>images/categories/annotate.png</file>
+        <file>images/annotate/annotate.png</file>
     </qresource>
 </RCC>

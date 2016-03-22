@@ -57,6 +57,12 @@ NodeBase {
         }
     }
 
+    engine: NodeEngine {
+        onReceivedFire: {
+        }
+    }
+
+
     function _deleteAllConnectionsInList(connectionsToDelete) {
         for(var i in connectionsToDelete) {
             var connection = connectionsToDelete[i]

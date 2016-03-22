@@ -51,7 +51,7 @@ Item {
 
         ListElement  {
             listSource: "AnnotationsList.qml"
-            imageSource: "qrc:/images/categories/sensors.png"
+            imageSource: "qrc:/images/categories/annotate.png"
         }
     }
 

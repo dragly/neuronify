@@ -23,7 +23,7 @@ neurons.
 Node {
     id: sensorRoot
     objectName: "touchSensor"
-    fileName: "TouchSensor.qml"
+    fileName: "sensors/TouchSensor.qml"
 
     property int cells: 5
     property int _oldCells: 0
