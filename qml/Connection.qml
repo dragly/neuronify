@@ -41,8 +41,6 @@ Edge {
     }
 
 
-//    intersect.sign = sign = (value) ->
-//      if value < 0 then -1 else 1
 
     function intersectX() {
         var x
@@ -51,37 +49,42 @@ Edge {
         var dy = Math.abs(diffy)
 
 
+        if (!itemB.square) {
+            return itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length
+        }
+
         if (diffx <= 0 && diffy >= 0) {
             if (dx >= dy) {
-                x = itemB.connectionPoint.x - itemB.width/2.
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)
+
             } else {
-                x = itemB.connectionPoint.x - itemB.width/2*dx/dy
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)*dx/dy
             }
 
         } else if (diffx >= 0 && diffy >= 0) {
             if (dx >= dy) {
-                x = itemB.connectionPoint.x + itemB.width/2.
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)
             } else {
-                x = itemB.connectionPoint.x + itemB.width/2*dx/dy
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)*dx/dy
             }
         } else if (diffx >= 0 && diffy <= 0) {
             if (dx >= dy) {
-                x = itemB.connectionPoint.x + itemB.width/2.
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)
             } else {
-                x = itemB.connectionPoint.x + itemB.width/2*dx/dy
+                x = itemB.connectionPoint.x + (itemB.width/2. + connectionSpot.width)*dx/dy
             }
 
         } else {
             if (dx >= dy) {
-                x = itemB.connectionPoint.x - itemB.width/2.
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)
             } else {
-                x = itemB.connectionPoint.x - itemB.width/2*dx/dy
+                x = itemB.connectionPoint.x - (itemB.width/2. + connectionSpot.width)*dx/dy
             }
         }
 
         return x
-
     }
+
 
     function intersectY() {
         var y
@@ -89,39 +92,43 @@ Edge {
         var dx = Math.abs(diffx)
         var dy = Math.abs(diffy)
 
+        if (!itemB.square) {
+            return itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length
+        }
+
 
         if (diffx <= 0 && diffy >= 0) {
             if (dx >= dy) {
-                y = itemB.connectionPoint.y + itemB.height/2.*dy/dx
+                y = itemB.connectionPoint.y + (itemB.height/2 + connectionSpot.width)*dy/dx
             } else {
-                y = itemB.connectionPoint.y + itemB.height/2.
+                y = itemB.connectionPoint.y + (itemB.height/2. + connectionSpot.width)
             }
 
         } else if (diffx >= 0 && diffy >= 0) {
             if (dx >= dy) {
-                y = itemB.connectionPoint.y + itemB.height/2.*dy/dx
+                y = itemB.connectionPoint.y + (itemB.height/2 + connectionSpot.width)*dy/dx
             } else {
-                y = itemB.connectionPoint.y + itemB.height/2.
+                y = itemB.connectionPoint.y + (itemB.height/2. + connectionSpot.width)
             }
 
         } else if (diffx >= 0 && diffy <= 0) {
             if (dx >= dy) {
-                y = itemB.connectionPoint.y - itemB.height/2.*dy/dx
+                y = itemB.connectionPoint.y - (itemB.height/2 + connectionSpot.width)*dy/dx
             } else {
-                y = itemB.connectionPoint.y - itemB.height/2.
+                y = itemB.connectionPoint.y - (itemB.height/2. + connectionSpot.width)
             }
 
         } else {
             if (dx >= dy) {
-                y = itemB.connectionPoint.y - itemB.height/2.*dy/dx
+                y = itemB.connectionPoint.y - (itemB.height/2 + connectionSpot.width)*dy/dx
             } else {
-                y = itemB.connectionPoint.y - itemB.height/2.
+                y = itemB.connectionPoint.y - (itemB.height/2. + connectionSpot.width)
             }
 
 
         }
-        return y
 
+        return y
     }
 
 
