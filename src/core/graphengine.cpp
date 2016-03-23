@@ -50,7 +50,16 @@ void GraphEngine::addNode(NodeBase *node)
 
 void GraphEngine::addEdge(Edge *edge)
 {
+    for (Edge *otherEdge : m_edges) {
+        if (edge->itemA() == otherEdge->itemB() && edge->itemB() == otherEdge->itemA()){
+            edge->setCurved(-1);
+            otherEdge->setCurved(1);
+        }
+    }
+
     m_edges.append(edge);
+
+
 }
 
 void GraphEngine::removeNode(NodeBase *node)
@@ -69,6 +78,13 @@ void GraphEngine::removeNode(NodeBase *node)
 
 void GraphEngine::removeEdge(Edge *edge)
 {
+    for (Edge *otherEdge : m_edges) {
+        if (edge->itemA() == otherEdge->itemB() && edge->itemB() == otherEdge->itemA()){
+            edge->setCurved(0);
+            otherEdge->setCurved(0);
+        }
+    }
+
     if(edge->itemA()) {
         edge->setItemA(nullptr); // This also removes edges from itemA
     }

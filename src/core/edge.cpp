@@ -19,6 +19,7 @@
 Edge::Edge(QQuickItem *parent)
     : QQuickItem(parent)
 {
+    m_curved = 0;
 }
 
 NodeBase *Edge::itemA() const
@@ -29,6 +30,11 @@ NodeBase *Edge::itemA() const
 NodeBase *Edge::itemB() const
 {
     return m_itemB;
+}
+
+int Edge::curved() const
+{
+    return m_curved;
 }
 
 void Edge::setItemA(NodeBase *arg)
@@ -67,5 +73,14 @@ void Edge::setItemB(NodeBase *arg)
     }
 
     emit itemBChanged(arg);
+}
+
+void Edge::setCurved(int curved)
+{
+    if (m_curved == curved)
+        return;
+
+    m_curved = curved;
+    emit curvedChanged(curved);
 }
 
