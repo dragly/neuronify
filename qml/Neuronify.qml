@@ -170,9 +170,9 @@ Rectangle {
         if(selectedEntities.indexOf(entity) !== -1) {
             deselectAll()
         }
+        // TODO should these be removed
         deleteFromList(autoLayout.entities, entity)
         deleteFromList(voltmeters, entity)
-        graphEngine.removeNode(entity)
 
         resetOrganize()
     }
@@ -234,7 +234,9 @@ Rectangle {
             toDelete.push(selectedEntities[i])
         }
         for(var i in toDelete) {
-            toDelete[i].destroy(1)
+            var node = toDelete[i]
+            graphEngine.removeNode(node)
+            node.destroy(1)
         }
 
 

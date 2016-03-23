@@ -94,9 +94,11 @@ void GraphEngine::removeEdge(Edge *edge)
 
     if(edge->itemA()) {
         edge->m_itemA = nullptr;
+        emit edge->itemAChanged(nullptr);
     }
     if(edge->itemB()) {
         edge->m_itemB = nullptr;
+        emit edge->itemBChanged(nullptr);
     }
     m_edges.removeAll(edge);
 }
