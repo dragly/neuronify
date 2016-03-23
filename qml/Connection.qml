@@ -156,10 +156,31 @@ Edge {
         color: connectionRoot._internalColor
         startPoint: itemA ? Qt.point(itemA.connectionPoint.x, itemA.connectionPoint.y) : Qt.point(0,0)
         endPoint: Qt.point(cx, cy)
-        controlPoint1: Qt.point(startPoint.x + curved*15, startPoint.y + curved*15)
-        controlPoint2: Qt.point(endPoint.x + curved*15, endPoint.y + curved*15)
+
+        controlPoint1: Qt.point(calculateControlPointX(), calculateControlPointY())
+        controlPoint2: Qt.point(calculateControlPointX(), calculateControlPointY())
+
+        function calculateControlPointX() {
+            var dx = cx - startPoint.x
+            var length = 20
+
+            var x_0 = startPoint.x + dx/2.
 
 
+            var x = curved*length*Math.cos((angle + 90) * Math.PI / 180)
+
+            return x_0 + x
+        }
+
+        function calculateControlPointY() {
+            var dy = cy - startPoint.y
+            var length = 20
+
+            var y_0 = startPoint.y + dy/2.
+            var y = curved*length*Math.sin((angle + 90) * Math.PI / 180)
+
+            return y_0 + y
+        }
     }
 
 
