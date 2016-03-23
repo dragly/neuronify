@@ -64,8 +64,12 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        loadState("/simulations/singleCell/singleCell.nfy")
+        loadState("file:///tmp/tmp.nfy")
         resetStyle()
+    }
+
+    Component.onDestruction: {
+        saveState("file:///tmp/tmp.nfy")
     }
 
     function deleteFromList(list, item) {
