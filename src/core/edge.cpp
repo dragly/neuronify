@@ -44,13 +44,13 @@ void Edge::setItemA(NodeBase *arg)
 
     NodeBase* previousItemA = m_itemA;
     if(previousItemA) {
-        previousItemA->removeEdge(this);
+        emit previousItemA->edgeRemoved(this);
     }
 
     m_itemA = arg;
 
     if(m_itemA) {
-        m_itemA->addEdge(this);
+        emit m_itemA->edgeAdded(this);
     }
 
     emit itemAChanged(arg);
@@ -63,13 +63,13 @@ void Edge::setItemB(NodeBase *arg)
 
     NodeBase* previousItemB = m_itemB;
     if(previousItemB) {
-        previousItemB->removeEdge(this);
+        emit previousItemB->edgeRemoved(this);
     }
 
     m_itemB = arg;
 
     if(m_itemB) {
-        m_itemB->addEdge(this);
+        emit m_itemB->edgeAdded(this);
     }
 
     emit itemBChanged(arg);

@@ -120,12 +120,12 @@ void NeuronEngine::fireEvent()
     m_firedLastTime = true;
 }
 
-void NeuronEngine::receiveCurrentEvent(double currentOutput)
+void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
 {
     m_receivedCurrents += currentOutput;
 }
 
-void NeuronEngine::receiveFireEvent(double stimulation)
+void NeuronEngine::receiveFireEvent(double stimulation, NodeEngine *sender)
 {
     m_synapticConductance += stimulation;
 }

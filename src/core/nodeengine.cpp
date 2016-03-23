@@ -83,22 +83,22 @@ void NodeEngine::fire()
     emit fired();
 }
 
-void NodeEngine::receiveFire(double stimulation)
+void NodeEngine::receiveFire(double stimulation, NodeEngine *sender)
 {
     for(NodeEngine* child : findChildren<NodeEngine*>()) {
-        child->receiveFire(stimulation);
+        child->receiveFire(stimulation, sender);
     }
-    receiveFireEvent(stimulation);
-    emit receivedFire(stimulation);
+    receiveFireEvent(stimulation, sender);
+    emit receivedFire(stimulation, sender);
 }
 
-void NodeEngine::receiveCurrent(double current)
+void NodeEngine::receiveCurrent(double current, NodeEngine *sender)
 {
     for(NodeEngine* child : findChildren<NodeEngine*>()) {
-        child->receiveCurrent(current);
+        child->receiveCurrent(current, sender);
     }
-    receiveCurrentEvent(current);
-    emit receivedFire(current);
+    receiveCurrentEvent(current, sender);
+    emit receivedFire(current, sender);
 }
 
 void NodeEngine::finalizeStep(double dt)
@@ -121,14 +121,16 @@ void NodeEngine::fireEvent()
 
 }
 
-void NodeEngine::receiveFireEvent(double fireOutput)
+void NodeEngine::receiveFireEvent(double fireOutput, NodeEngine *sender)
 {
     Q_UNUSED(fireOutput);
+    Q_UNUSED(sender);
 }
 
-void NodeEngine::receiveCurrentEvent(double currentOutput)
+void NodeEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
 {
     Q_UNUSED(currentOutput);
+    Q_UNUSED(sender);
 }
 
 void NodeEngine::finalizeStepEvent(double dt)

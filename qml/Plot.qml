@@ -3,12 +3,15 @@ import "tools"
 
 LineSeries {
     id: seriesRoot
-    property alias scroller: seriesScroller
-    property alias timeRange: seriesScroller.timeRange
+    property alias timeRange: scroller.timeRange
+
+    function addPoint(x, y) {
+        scroller.append(x, y)
+    }
 
     ChartScroller {
-        id: seriesScroller
-        lineSeries: seriesRoot
+        id: scroller
+        series: seriesRoot
     }
 
     pointsVisible: false

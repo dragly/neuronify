@@ -53,8 +53,8 @@ signals:
 protected:
     virtual void stepEvent(double dt);
     virtual void fireEvent();
-    virtual void receiveFireEvent(double fireOutput);
-    virtual void receiveCurrentEvent(double currentOutput);
+    virtual void receiveFireEvent(double fireOutput, NodeEngine *sender);
+    virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender);
 
 private:
     void checkFire();

@@ -37,6 +37,8 @@ private:
     QPointer<NodeBase> m_itemA;
     QPointer<NodeBase> m_itemB;
     int m_curved;
+
+    friend class GraphEngine;
 };
 
 #endif // EDGE_H

@@ -29,12 +29,12 @@ Item {
     onTargetHeightChanged: {
         resetAllPositions()
     }
-    
+
     Item {
         id: topLeft
 
-        width: Style.touchableSize
-        height: Style.touchableSize
+        width: 50
+        height: 50
 
         function resetPosition() {
             x = 0 - width / 2
@@ -72,12 +72,11 @@ Item {
         }
     }
 
-
     Item {
         id: bottomLeft
 
-        width: Style.touchableSize
-        height: Style.touchableSize
+        width: 50
+        height: 50
 
         function resetPosition() {
             x = 0 - width / 2
@@ -114,12 +113,11 @@ Item {
         }
     }
 
-
     Item {
         id: topRight
 
-        width: Style.touchableSize
-        height: Style.touchableSize
+        width: 50
+        height: 50
 
         function resetPosition() {
             x = target.width - width / 2
@@ -156,12 +154,11 @@ Item {
         }
     }
 
-
     Item {
         id: bottomRight
 
-        width: Style.touchableSize
-        height: Style.touchableSize
+        width: 50
+        height: 50
 
         function resetPosition() {
             x = target.width - width / 2

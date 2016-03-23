@@ -63,8 +63,7 @@ Node {
                 var neuron = connectionPlot.connection.itemA
                 if(neuron) {
                     if(mode === "voltage" && neuron.voltage) {
-                        plot.scroller.time = time
-                        plot.scroller.value = neuron.voltage
+                        plot.addPoint(time, neuron.voltage)
                     }
                 }
             }
@@ -120,11 +119,6 @@ Node {
         border.width: 1.0
         smooth: true
         antialiasing: true
-    }
-
-    Item {
-        id: plotLayer
-        anchors.fill: parent
     }
 
     ChartView {
