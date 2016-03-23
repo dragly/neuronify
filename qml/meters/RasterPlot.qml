@@ -39,7 +39,7 @@ Node {
             for(var i in neurons) {
                 var neuron = neurons[i]
                 if(neuron.engine === sender) {
-                    scroller.append(time, i)
+                    scroller.append(time, parseFloat(i) + 1.0)
                 }
             }
         }
@@ -56,28 +56,43 @@ Node {
         }
     }
 
+    function refreshCategories() {
+        var toRemove = []
+        for(var i in axisY.categoriesLabels) {
+            toRemove.push(axisY.categoriesLabels[i])
+        }
+        for(var i in toRemove) {
+            var label = toRemove[i]
+            axisY.remove(label)
+        }
+        for(var i in neurons) {
+            var neuron = neurons[i]
+            var position = parseFloat(i) + 1.5
+            axisY.append(" " + neuron.label, position)
+        }
+    }
+
     onEdgeAdded: {
         var neuron = edge.itemA
         var newList = neurons
         neurons.push(neuron)
         neurons = newList
+
+        refreshCategories()
     }
 
     onEdgeRemoved: {
-        console.log(edge)
-        console.log(edge.itemA)
-        console.log(edge.itemB)
-        console.log("....")
         var neuron = edge.itemA
+        console.log(neuron)
         var newList = neurons
         var index = newList.indexOf(neuron)
-        console.log("Removing")
-        console.log(neuron)
-        console.log(index)
+        console.log("Index " + index)
         if(index > -1) {
             newList.splice(index, 1)
             neurons = newList
         }
+
+        refreshCategories()
     }
 
     Rectangle {
@@ -93,11 +108,13 @@ Node {
         anchors.fill: parent
         enabled: false // disable mouse input
         legend.visible: false
+        backgroundColor: "transparent"
         ScatterSeries {
             id: scatterSeries
             borderWidth: 0.2
             markerSize: 8.0
             axisX: ValueAxis {
+                id: axisX
                 min: time - timeRange
                 max: time
                 tickCount: 0
@@ -105,19 +122,17 @@ Node {
                 gridVisible: false
                 visible: false
             }
-            axisY: ValueAxis {
+            axisY: CategoryAxis {
+                id: axisY
                 min: 0.0
                 max: 10.0
-                tickCount: 0
-                labelsVisible: false
-                gridVisible: false
-                visible: false
+                startValue: 0.5
             }
         }
         ChartScroller {
             id: scroller
             series: scatterSeries
-            timeRange: rasterRoot.timeRange
+            timeRange: 100.0
         }
     }
 
