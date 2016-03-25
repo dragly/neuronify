@@ -576,7 +576,7 @@ Rectangle {
 
         Text {
             anchors.centerIn: parent
-            text: "Click other items to connect"
+            text: "Connection mode: Select other items to connect them."
         }
 
         Button {
@@ -659,6 +659,10 @@ Rectangle {
             viewfinder.resolution : Qt.size(1280,720)
             property bool active: retinaCounter > 0 && root.running
             property int retinaCounter: 0
+
+            Component.onCompleted: {
+                camera.stop()
+            }
 
             onActiveChanged: {
                 if(active){
