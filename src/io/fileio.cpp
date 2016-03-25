@@ -49,12 +49,18 @@ QString FileIO::read()
 
 bool FileIO::write(const QString& data)
 {
-    if (mSource.isEmpty())
-        return false;
+    QString path = QQmlFile::urlToLocalFileOrQrc(mSource);
 
-    QFile file(mSource.path());
-    if (!file.open(QFile::WriteOnly | QFile::Truncate))
+    if (mSource.isEmpty()){
+        qDebug() << "source is empty!";
         return false;
+}
+    QFile file(path);
+    if (!file.open(QFile::WriteOnly | QFile::Truncate)){
+
+        qDebug() << "couldn't open file:" << path;
+        return false;
+    }
 
     QTextStream out(&file);
     out << data;

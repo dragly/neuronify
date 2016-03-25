@@ -1,7 +1,9 @@
 import QtQuick 2.0
 import "../paths"
 import "../hud"
+import "../tools"
 import ".."
+import QtCharts 2.0
 
 import Neuronify 1.0
 
@@ -23,15 +25,25 @@ Node {
     square: true
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#999999"]
-    property int currentColor: 0
+    property int currentSeries: 0
     property string mode: "voltage"
     property string title: "mV"
 
     property real minimumValue: -100.0
     property real maximumValue: 100.0
+    property real timeRange: 10.0
 
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
+
+    property var series: [
+        series1,
+        series2,
+        series3,
+        series4
+    ]
+
+    property real time: 0.0
 
     controls: Component {
         VoltmeterControls {
@@ -44,67 +56,33 @@ Node {
 
     engine: NodeEngine {
         onStepped: {
-            timeSinceLastUpdate += dt
-            var currentUpdateTime = Date.now()
-            var timeDiff = (currentUpdateTime - lastUpdateTime) / 1000
-            if(timeDiff < 0.010) {
-                return
-            }
-
+            time += dt
             for(var i in voltmeterRoot.connectionPlots) {
                 var connectionPlot = voltmeterRoot.connectionPlots[i]
                 var plot = connectionPlot.plot
                 var neuron = connectionPlot.connection.itemA
                 if(neuron) {
                     if(mode === "voltage" && neuron.voltage) {
-                        plot.addPoint(neuron.voltage)
+                        plot.scroller.time = time
+                        plot.scroller.value = neuron.voltage
                     }
                 }
             }
-            lastUpdateTime = currentUpdateTime
-            timeSinceLastUpdate = 0
         }
-    }
-
-    function resetMinMax(plot) {
-        plot.minimumValue = minimumValue
-        plot.maximumValue = maximumValue
-    }
-
-    function resetAllMinMax() {
-        for(var i in connectionPlots) {
-            var connectionPlot = connectionPlots[i]
-            resetMinMax(connectionPlot.plot)
-        }
-    }
-
-    onMinimumValueChanged: {
-        resetAllMinMax()
-    }
-
-    onMaximumValueChanged: {
-        resetAllMinMax()
     }
 
     onEdgeAdded: {
-        if(currentColor > colors.length - 1) {
-            currentColor = 0
+        if(currentSeries > series.length - 1) {
+            currentSeries += 1
+            return
         }
-        var color = colors[currentColor]
-
-        var newList = voltmeterRoot.connectionPlots
-        var plotComponent = Qt.createComponent("../Plot.qml")
-        if(plotComponent.status !== Component.Ready) {
-            console.log("Could not create plot component.")
-            console.log(plotComponent.errorString())
-        }
-
-        var plot = plotComponent.createObject(plotLayer, {strokeStyle: color})
-//        connection.color = color
-        resetMinMax(plot)
+        var plot = series[currentSeries]
+        console.log("Got series" + plot + currentSeries)
+        plot.visible = true
+        var newList = connectionPlots
         newList.push({connection: edge, plot: plot})
-        voltmeterRoot.connectionPlots = newList
-        currentColor += 1
+        connectionPlots = newList
+        currentSeries += 1
     }
 
     onEdgeRemoved: {
@@ -112,11 +90,12 @@ Node {
             var connectionPlot = connectionPlots[i]
             var connectionOther = connectionPlot.connection
             if(connectionOther === edge) {
+                connectionPlot.plot.clear()
                 connectionPlots.splice(i, 1)
-                connectionPlot.plot.destroy(1)
                 break
             }
         }
+        currentSeries -= 1
     }
 
     onModeChanged: {
@@ -148,14 +127,62 @@ Node {
         anchors.fill: parent
     }
 
-    Text {
-        anchors {
-            right: parent.right
-            top: parent.top
-            margins: parent.height * 0.04
+    ChartView {
+        id: chartView
+        anchors.fill: parent
+        legend.visible: false
+        antialiasing: true
+        backgroundColor: "transparent"
+
+        enabled: false // disables mouse input
+
+        Plot {
+            id: series1
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange
         }
-        font.pixelSize: 12
-        text: voltmeterRoot.title
+
+        Plot {
+            id: series2
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange
+        }
+
+        Plot {
+            id: series3
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange
+        }
+
+        Plot {
+            id: series4
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange
+        }
+
+        ValueAxis {
+            id: axisX
+            min: voltmeterRoot.time - timeRange
+            max: voltmeterRoot.time
+            tickCount: 0
+            labelsVisible: false
+            gridVisible: false
+            visible: false
+        }
+
+        ValueAxis {
+            id: axisY
+            min: -100.0
+            max: 100.0
+            tickCount: 0
+            labelsVisible: false
+            gridVisible: false
+            visible: false
+        }
     }
 
     Text {
@@ -165,7 +192,7 @@ Node {
             margins: parent.height * 0.04
         }
         font.pixelSize: 12
-        text: maximumValue.toFixed(0)
+        text: axisY.max.toFixed(0)
     }
 
     Text {
@@ -175,34 +202,8 @@ Node {
             margins: parent.height * 0.04
         }
         font.pixelSize: 12
-        text: minimumValue.toFixed(0)
+        text: axisY.min.toFixed(0)
     }
 
-    Item {
-        id: resizeRectangle
-
-        Component.onCompleted: {
-            resetPosition()
-        }
-
-        function resetPosition() {
-            x = voltmeterRoot.width - width / 2
-            y = voltmeterRoot.height - height / 2
-        }
-
-        width: 40
-        height: 40
-        MouseArea {
-            anchors.fill: parent
-            drag.target: parent
-            onPositionChanged: {
-                if(drag.active) {
-                    var relativePosition = resizeRectangle.mapToItem(voltmeterRoot, 0, 0)
-                    voltmeterRoot.width = relativePosition.x + resizeRectangle.width / 2
-                    voltmeterRoot.height = relativePosition.y + resizeRectangle.width / 2
-                    resizeRectangle.resetPosition()
-                }
-            }
-        }
-    }
+    ResizeRectangle {}
 }

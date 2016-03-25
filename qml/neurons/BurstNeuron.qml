@@ -15,6 +15,23 @@ Neuron {
         id: engine
         fireOutput: 2.0
         PassiveCurrent {}
+//        AdaptationCurrent{}
+        Current {
+            property real boost: 0.0
+            onFired: {
+                if(boost < 0.1) {
+                    boost = 4.0
+                }
+            }
+            onStepped: {
+                if(boost > 0.0) {
+                    boost = boost - 1.0*dt
+                } else {
+                    boost = 0.0
+                }
+                current = -boost * (engine.voltage - 60.0)
+            }
+        }
     }
 }
 

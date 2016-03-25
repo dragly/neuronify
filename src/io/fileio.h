@@ -16,7 +16,7 @@ public:
     explicit FileIO(QObject *parent = 0);
 
     Q_INVOKABLE QString read();
-    Q_INVOKABLE bool write(const QString& data);
+    Q_INVOKABLE bool write(const QString &data);
 
     QUrl source() { return mSource; }
 

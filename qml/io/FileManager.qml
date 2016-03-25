@@ -82,16 +82,10 @@ Item {
         title: "Please enter a filename"
         visible : false
         selectExisting: false
-        nameFilters: Qt.platform.os === "osx" ? [] : ["Nestify files (*.nfy)", "All files (*)"]
+        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
 
         onAccepted: {
-            var fileUrlNew = fileUrl
-            var extensionSplit = fileUrlNew.toString().split(".")
-            var fileExtension = extensionSplit[extensionSplit.length - 1]
-            if(fileExtension !== "nfy") {
-                fileUrlNew = Qt.resolvedUrl(fileUrlNew.toString() + ".nfy")
-            }
-            saveState(fileUrlNew)
+            saveState(fileUrl)
         }
     }
 
@@ -99,7 +93,7 @@ Item {
         id: loadFileDialog
         title: "Please choose a file"
         visible : false
-        nameFilters: Qt.platform.os === "osx" ? [] : ["Nestify files (*.nfy)", "All files (*)"]
+        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
 
         onAccepted: {
             console.log("Load dialog accepted")
