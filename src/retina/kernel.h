@@ -58,8 +58,8 @@ private:
     AbstractKernelEngine* m_abstractKernelEngineType = nullptr;
 
 protected:
-    int m_resolutionHeight = 80;
-    int m_resolutionWidth = 80;
+    int m_resolutionHeight = 20;
+    int m_resolutionWidth = 20;
     vector< vector <double>> m_spatial;
     QImage m_spatialImage;
 

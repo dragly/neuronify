@@ -28,13 +28,15 @@ void RetinaEngine::receivedImage()
 
     int resolutionHeight = m_kernel->resolutionHeight();
     int resolutionWidth = m_kernel->resolutionWidth();
+
     m_stim.resize(resolutionWidth);
     for(int i = 0; i < resolutionWidth; i++){
         m_stim.at(i).resize(resolutionHeight,0.0);
     }
 
     m_paintedImage =  m_videoSurface->paintedImage();
-    m_paintedImage =  m_paintedImage.scaled(resolutionWidth,resolutionHeight);
+    m_paintedImage =  m_paintedImage.scaled(resolutionWidth,
+                                            resolutionHeight);
 
     for(int i = 0; i < m_paintedImage.width(); i++){
         for(int j = 0; j < m_paintedImage.height(); j++){
@@ -45,7 +47,7 @@ void RetinaEngine::receivedImage()
             QRgb color = qRgb(gray, gray, gray);
             m_paintedImage.setPixel(i,j,color);
 #endif
-            m_stim.at(i).at(j) = (gray-128.)/256;
+            m_stim.at(i).at(j) = (gray-128.)/128;
         }
     }
 
@@ -66,14 +68,13 @@ void RetinaEngine::calculateFiringRate()
     m_firingRate = 0.0;
     for(int i = 0; i < resolutionWidth; i++){
         for(int j = 0; j < resolutionHeight; j++){
-            m_firingRate += m_stim.at(i).at(j) *  spatial.at(i).at(j)/256;
+            m_firingRate += m_stim.at(i).at(j) *  spatial.at(i).at(j);
         }
     }
-    int size = resolutionHeight*resolutionWidth;
-    m_firingRate /= size;
-    if(m_firingRate < 0){
-        m_firingRate = 0;
-    }
+    m_firingRate /= resolutionHeight*resolutionWidth;
+//    if(m_firingRate < 0){
+//        m_firingRate = 0;
+//    }
 }
 
 
@@ -118,9 +119,6 @@ void RetinaEngine::setKernel(Kernel *kernel)
         return;
 
     m_kernel = kernel;
-
-
-
     emit kernelChanged(kernel);
 }
 

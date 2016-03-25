@@ -11,7 +11,7 @@ void DogKernelEngine::createKernel(vector<vector<double> > *spatial)
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            spatial->at(i).at(j)= advance(i,j)*1000;
+            spatial->at(i).at(j)= advance(i,j);
         }
     }
 
@@ -25,7 +25,7 @@ double DogKernelEngine::advance(int idx, int idy)
     double A = 1.0;
     double a = 2.25;
     double B = 0.85;
-    double b = 2.83;
+    double b = 0.83;
 
 
     double x =  (idx - m_resolutionHeight/2);

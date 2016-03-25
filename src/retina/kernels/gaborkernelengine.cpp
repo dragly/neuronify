@@ -26,12 +26,10 @@ double GaborKernelEngine::advance(int idx, int idy)
 
 void GaborKernelEngine::createKernel(vector<vector<double> >* spatial)
 {
-//    cout << m_resolutionWidth << endl;
-//    cout << m_resolutionHeight << endl;
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            spatial->at(i).at(j)= advance(i,j)*20000.;
+            spatial->at(i).at(j)= advance(i,j)*100.;
 //            qDebug() << m_kernel.at(i).at(j);
         }
     }
