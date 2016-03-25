@@ -31,7 +31,8 @@ HEADERS += \
     src/retina/kernels/dogkernelengine.h \
     src/retina/kernels/offrightkernelengine.h \
     src/retina/kernels/offtopkernelengine.h \
-    src/retina/kernels/offbottomkernelengine.h
+    src/retina/kernels/offbottomkernelengine.h \
+    src/io/standardpaths.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -55,7 +56,8 @@ SOURCES += \
     src/retina/kernels/dogkernelengine.cpp \
     src/retina/kernels/offrightkernelengine.cpp \
     src/retina/kernels/offtopkernelengine.cpp \
-    src/retina/kernels/offbottomkernelengine.cpp
+    src/retina/kernels/offbottomkernelengine.cpp \
+    src/io/standardpaths.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

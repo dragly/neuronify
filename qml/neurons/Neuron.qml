@@ -43,7 +43,7 @@ Node {
     }
 
     onFired: {
-        fireAnimation.start()
+        fireAnimation.restart()
     }
 
     engine: NeuronEngine {
@@ -90,7 +90,7 @@ Node {
             property: "opacity"
             from: 1.0
             to: 0.0
-            duration: 400
+            duration: 800
             easing.type: Easing.OutQuad
         }
     }

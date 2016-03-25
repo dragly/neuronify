@@ -4,6 +4,7 @@
 #include <QTextStream>
 #include <QDebug>
 #include <QQmlFile>
+#include <QDir>
 
 /*!
  * \class FileIO
@@ -22,12 +23,12 @@ FileIO::FileIO(QObject *parent) :
 
 QString FileIO::read()
 {
-    if (mSource.isEmpty()){
+    if (m_source.isEmpty()){
         emit error("source is empty");
         return QString();
     }
 
-    QString path = QQmlFile::urlToLocalFileOrQrc(mSource);
+    QString path = QQmlFile::urlToLocalFileOrQrc(m_source);
 
     QFile file(path);
     QString fileContent;
@@ -37,7 +38,7 @@ QString FileIO::read()
         do {
             line = t.readLine();
             fileContent += line + "\n";
-         } while (!line.isNull());
+        } while (!line.isNull());
         file.close();
     } else {
         emit error("Unable to open the file " + path);
@@ -49,16 +50,20 @@ QString FileIO::read()
 
 bool FileIO::write(const QString& data)
 {
-    QString path = QQmlFile::urlToLocalFileOrQrc(mSource);
-
-    if (mSource.isEmpty()){
-        qDebug() << "source is empty!";
+    if (m_source.isEmpty()){
+        qDebug() << "Source is empty!";
         return false;
-}
+    }
+    QString path = QQmlFile::urlToLocalFileOrQrc(m_source);
+    QFileInfo fileinfo(path);
+    QDir directory = fileinfo.absoluteDir();
+    if(!directory.exists() && !directory.mkpath(".")) {
+        qDebug() << "Cannot make path to file" << m_source;
+        return false;
+    }
     QFile file(path);
     if (!file.open(QFile::WriteOnly | QFile::Truncate)){
-
-        qDebug() << "couldn't open file:" << path;
+        qDebug() << "Couldn't open file" << path;
         return false;
     }
 

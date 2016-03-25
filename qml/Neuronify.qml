@@ -57,20 +57,18 @@ Rectangle {
         }
     }
 
-    width: 400
-    height: 300
     color: "#deebf7"
     antialiasing: true
     smooth: true
     focus: true
 
     Component.onCompleted: {
-        loadState("file:///tmp/tmp.nfy")
+        loadState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
         resetStyle()
     }
 
     Component.onDestruction: {
-        saveState("file:///tmp/tmp.nfy")
+        saveState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
     }
 
     function deleteFromList(list, item) {
