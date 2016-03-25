@@ -24,6 +24,7 @@ functionality of \l Node in C++.
 NodeBase {
     id: root
     signal clicked(var entity, var mouse)
+    signal clickedConnector(var entity, var mouse)
     signal dragStarted
     signal aboutToDie(var entity)
     signal droppedConnector(var poissonGenerator, var connector)

@@ -43,6 +43,7 @@ Rectangle {
     property bool undoRecordingEnabled: true
     property bool canRedo: false
     property bool running: applicationActive && !mainMenu.revealed
+    property string clickMode: "selection"
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -216,6 +217,7 @@ Rectangle {
     }
 
     function deselectAll() {
+        clickMode = "selection"
         selectedEntities.length = 0
         activeObject = null
         for(var i in graphEngine.nodes) {
@@ -248,39 +250,47 @@ Rectangle {
     }
 
     function clickedEntity(entity, mouse) {
-        if(activeObject) {
-            activeObject.selected = false
-        }
+        if(clickMode === "selection") {
+            if(activeObject) {
+                activeObject.selected = false
+            }
 
-        if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
-            var alreadySelected = false
-            for(var j in selectedEntities) {
-                var alreadySelectedEntity = selectedEntities[j]
-                if(alreadySelectedEntity ===  entity) {
-                    alreadySelected = true
+            if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
+                var alreadySelected = false
+                for(var j in selectedEntities) {
+                    var alreadySelectedEntity = selectedEntities[j]
+                    if(alreadySelectedEntity ===  entity) {
+                        alreadySelected = true
+                    }
                 }
-            }
-            if(!alreadySelected) {
+                if(!alreadySelected) {
+                    selectedEntities.push(entity)
+                }
+            } else {
+                deselectAll()
                 selectedEntities.push(entity)
+                entity.selected = true
             }
-        } else {
-            deselectAll()
-            selectedEntities.push(entity)
-            entity.selected = true
-        }
 
-        for(var i in selectedEntities) {
-            var selectedEntity = selectedEntities[i]
-            selectedEntity.selected = true
-        }
+            for(var i in selectedEntities) {
+                var selectedEntity = selectedEntities[i]
+                selectedEntity.selected = true
+            }
 
-        activeObject = entity
+            activeObject = entity
+        } else if (clickMode === "connection") {
+            connectEntities(activeObject, entity)
+        }
     }
 
     function clickedConnection(connection) {
         deselectAll()
         activeObject = connection
         connection.selected = true
+    }
+
+    function clickedConnector() {
+        clickMode = "connection"
     }
 
     function createEntity(fileUrl, properties, useAutoLayout) {
@@ -316,6 +326,7 @@ Rectangle {
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.aboutToDie.connect(cleanupDeletedEntity)
+        entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)
 
         graphEngine.addNode(entity)
@@ -339,6 +350,12 @@ Rectangle {
     }
 
     function connectEntities(itemA, itemB) {
+        if(itemA === itemB) {
+            return
+        }
+        if(connectionExists(itemA, itemB)) {
+            return
+        }
         var connection = createConnection(itemA, itemB)
         autoLayout.connections.push(connection)
         graphEngine.addEdge(connection)
@@ -363,14 +380,7 @@ Rectangle {
     function createConnectionToPoint(itemA, connector) {
         var targetEntity = itemUnderConnector(itemA, connector)
         if(targetEntity) {
-            if(connectionExists(itemA, targetEntity)) {
-                return
-            }
-            if(itemA === targetEntity) {
-                return
-            }
             connectEntities(itemA, targetEntity)
-            return
         }
     }
 
@@ -556,6 +566,32 @@ Rectangle {
     PropertiesPanel {
         id: propertiesPanel
         activeObject: root.activeObject
+    }
+
+    Rectangle {
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+        }
+        height: Style.touchableSize
+        visible: clickMode === "connection"
+
+        Text {
+            anchors.centerIn: parent
+            text: "Click other items to connect"
+        }
+
+        Button {
+            anchors {
+                verticalCenter: parent.verticalCenter
+                right: parent.right
+            }
+            text: "Done"
+            onClicked: {
+                clickMode = "selection"
+            }
+        }
     }
 
     MainMenu {

@@ -8,7 +8,8 @@ Item {
     property Node _parent: parent
 
     property point attachmentPoint: Qt.point(parent.width / 2, parent.height / 2)
-    property point initialPoint: Qt.point(parent.width - draggable.width / 2, parent.height - draggable.height / 2)
+    property point initialPoint: Qt.point(parent.width, parent.height)
+    property point offset: Qt.point(0.0, 0.0)
 
     property alias connectorWidth: draggable.width
     property alias connectorHeight: draggable.height
@@ -41,13 +42,15 @@ Item {
             draggable.y = root.initialPoint.y
         }
 
-        width: 32
+        width: 64
         height: width
 
         Rectangle {
             id: connectorCircle
-            anchors.centerIn: parent
-            width: parent.width / 2.0
+            anchors {
+                centerIn: parent
+            }
+            width: parent.width * 0.4
             height: width
             color: "#4292c6"
             border.color: "#f7fbff"
@@ -62,6 +65,9 @@ Item {
             onReleased: {
                 root.dropped(draggable)
                 draggable.resetPosition()
+            }
+            onClicked: {
+                root.parent.clickedConnector(parent, mouse)
             }
         }
     }
