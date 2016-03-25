@@ -40,7 +40,7 @@ Node {
     }
 
     onEdgeRemoved: {
-        connections.splice(connections.indexOf(connection), 1)
+        connections.splice(connections.indexOf(edge), 1)
     }
 
     engine: NodeEngine {
