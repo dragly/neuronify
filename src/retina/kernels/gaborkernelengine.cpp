@@ -4,23 +4,22 @@ GaborKernelEngine::GaborKernelEngine()
 {
 }
 
-double GaborKernelEngine::advance(int idx, int idy)
+double GaborKernelEngine::advance(double x, double y)
 {
-    double sigmaX = 5.;
-    double sigmaY = 5.;
-    double k = 0.5;
+    double sigmaX = 0.1;
+    double sigmaY = 0.2;
+    double k = 20.;
     double phi = 0.0;
     double theta = 0.0;
 
-    double x =  (idx - m_resolutionHeight/2) * cos(theta)
-            + (idy-m_resolutionWidth/2) * sin(theta);
-    double y = -(idx - m_resolutionHeight/2) * sin(theta)
-            + (idy-m_resolutionWidth/2) * cos(theta);
+    double xr =  x * cos(theta) + y * sin(theta);
+    double yr = -x * sin(theta) + y * cos(theta);
 
     double prefactor = 1.0/(2.* pi * sigmaX * sigmaY);
-    double expFactor = exp(-x*x/(2.* sigmaX * sigmaX) - y*y/(2. * sigmaY * sigmaY));
-    double cosFactor = cos(k * x - phi);
-    return prefactor * expFactor * cosFactor;
+    double expFactor = exp(-xr*xr/(2.* sigmaX * sigmaX)
+                           - yr*yr/(2. * sigmaY * sigmaY));
+    double cosFactor = cos(k * xr - phi);
+    return 1 * expFactor * cosFactor;
 }
 
 
@@ -29,18 +28,9 @@ void GaborKernelEngine::createKernel(vector<vector<double> >* spatial)
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            spatial->at(i).at(j)= advance(i,j)*100.;
-//            qDebug() << m_kernel.at(i).at(j);
+            spatial->at(i).at(j)= advance(m_x.at(i), m_y.at(j));
         }
     }
-
-//    for(int i=0; i<m_resolutionHeight; i++)    //This loops on the rows.
-//    {
-//        for(int j=0; j<m_resolutionWidth; j++) //This loops on the columns
-//        {
-//            cout << setprecision(3)<< fixed << m_kernel[i][j]  << "  ";
-//        }
-//        cou
 }
 
 double GaborKernelEngine::sigmaX() const

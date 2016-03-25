@@ -40,7 +40,7 @@ signals:
     void thetaChanged(double theta);
 
 private:
-    double advance(int x, int y);
+    double advance(double x, double y);
     double m_sigmaX;
     double m_sigmaY;
     double m_k;

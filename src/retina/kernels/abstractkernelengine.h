@@ -23,6 +23,9 @@ public:
     int resolutionHeight() const;
     int resolutionWidth() const;
 
+    vector<double> x() const;
+    vector<double> y() const;
+
 public slots:
     void setResolutionHeight(int resolutionHeight);
     void setResolutionWidth(int resolutionWidth);
@@ -32,8 +35,14 @@ signals:
     void resolutionWidthChanged(int resolutionWidth);
 
 protected:
-    int m_resolutionHeight = 80;
-    int m_resolutionWidth = 80;
+    int m_resolutionHeight;
+    int m_resolutionWidth;
+    vector<double> m_x;
+    vector<double> m_y;
+
+private:
+    void updateX();
+    void updateY();
 };
 
 #endif // KERNELABSTRACTENGINE_H

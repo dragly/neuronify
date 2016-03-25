@@ -14,7 +14,7 @@ public:
 public:
     virtual void createKernel(vector<vector<double> > *spatial);
 private:
-    double advance(int idx, int idy);
+    double advance(double x, double y);
 };
 
 #endif // DOGKERNELENGINE_H
