@@ -19,7 +19,9 @@
 #include "neurons/current.h"
 #include "neurons/passivecurrent.h"
 #include "neurons/adaptationcurrent.h"
+
 #include "io/fileio.h"
+#include "io/standardpaths.h"
 
 #include <QApplication>
 #include <QQmlApplicationEngine>
@@ -30,6 +32,7 @@
 int main(int argc, char *argv[])
 {
     qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
+    qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
 
     qmlRegisterType<NodeBase>("Neuronify", 1, 0, "NodeBase");
     qmlRegisterType<NodeEngine>("Neuronify", 1, 0, "NodeEngine");
@@ -58,6 +61,9 @@ int main(int argc, char *argv[])
     qmlRegisterType<AdaptationCurrent>("Neuronify", 1, 0, "AdaptationCurrent");
 
     QApplication app(argc, argv);
+    app.setOrganizationName("Ovilab");
+    app.setOrganizationDomain("net");
+    app.setApplicationName("Neuronify");
 
     QQmlApplicationEngine engine;
     engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));

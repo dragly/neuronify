@@ -46,10 +46,11 @@ Node {
         onFocusChanged: {
               noteRoot.selected = focus
         }
+        font.pixelSize: 14
 
         visible: noteRoot.selected
 
-        textFormat: Text.RichText
+        textFormat: Text.PlainText
 
         style: TextAreaStyle {
             textColor: Style.font.color
@@ -68,6 +69,7 @@ Node {
         verticalAlignment: textInput.verticalAlignment
         wrapMode: textInput.wrapMode
         clip: textInput.clip
+        font.pixelSize: textInput.font.pixelSize
     }
 
     ResizeRectangle {

@@ -2,7 +2,7 @@ import QtQuick 2.0
 
 import "../style"
 
-Image {
+Item {
     id: root
 
     signal clicked
@@ -10,12 +10,16 @@ Image {
     anchors {
         right: parent.right
         top: parent.top
-        margins: Style.margin
     }
-    width: Style.touchableSize
+    width: Style.touchableSize * 2
     height: width
+    Image {
+        width: Style.touchableSize
+        height: width
+        anchors.centerIn: parent
 
-    source: "qrc:/images/back.png"
+        source: "qrc:/images/back.png"
+    }
 
     MouseArea {
         anchors.fill: parent

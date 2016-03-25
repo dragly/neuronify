@@ -43,17 +43,18 @@ Node {
     }
 
     onFired: {
-        fireAnimation.start()
+        fireAnimation.restart()
     }
 
     engine: NeuronEngine {
+        id: engine
         PassiveCurrent {
             id: passiveCurrent
         }
     }
 
     Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat("fireOutput")
+        dumpableProperties = dumpableProperties.concat("fireOutput", "inhibitory")
     }
 
     Image {
@@ -90,7 +91,7 @@ Node {
             property: "opacity"
             from: 1.0
             to: 0.0
-            duration: 400
+            duration: 800
             easing.type: Easing.OutQuad
         }
     }

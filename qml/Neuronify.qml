@@ -57,20 +57,23 @@ Rectangle {
         }
     }
 
-    width: 400
-    height: 300
     color: "#deebf7"
     antialiasing: true
     smooth: true
     focus: true
 
     Component.onCompleted: {
-        loadState("file:///tmp/tmp.nfy")
+        var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy")
+        if(latest !== "") {
+            loadState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+        } else {
+            loadState("qrc:/simulations/singleCell/singleCell.nfy")
+        }
         resetStyle()
     }
 
     Component.onDestruction: {
-        saveState("file:///tmp/tmp.nfy")
+        saveState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
     }
 
     function deleteFromList(list, item) {
@@ -516,12 +519,6 @@ Rectangle {
         revealed: !mainMenu.revealed
         onClicked: {
             mainMenu.revealed = true
-        }
-    }
-
-    CreationMenuButton {
-        onClicked: {
-            creationMenu.revealed = true
         }
     }
 

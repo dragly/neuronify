@@ -18,17 +18,17 @@ public:
     Q_INVOKABLE QString read();
     Q_INVOKABLE bool write(const QString &data);
 
-    QUrl source() { return mSource; }
+    QUrl source() { return m_source; }
 
 public slots:
-    void setSource(const QUrl& source) { mSource = source; }
+    void setSource(const QUrl& source) { m_source = source; }
 
 signals:
     void sourceChanged(const QUrl& source);
     void error(const QString& msg);
 
 private:
-    QUrl mSource;
+    QUrl m_source;
 };
 
 #endif // FILEIO_H

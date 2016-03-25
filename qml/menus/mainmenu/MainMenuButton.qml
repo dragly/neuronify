@@ -1,24 +1,22 @@
 import QtQuick 2.0
 import "../../style"
 
-Image {
-    id: root
-    property bool revealed: true
 
-    signal clicked
+Item {
+    id: root
 
     anchors {
         top: parent.top
         left: parent.left
-        margins: Style.margin
     }
-    width: Style.touchableSize
+    width: Style.touchableSize * 2
     height: width
 
     enabled: revealed
     state: revealed ? "revealed" : "hidden"
+    property bool revealed: true
 
-    source: "qrc:/images/menus/mainmenu.png"
+    signal clicked
 
     states: [
         State {
@@ -46,6 +44,15 @@ Image {
             }
         }
     ]
+    Image {
+
+        anchors.centerIn: parent
+        width: Style.touchableSize
+        height: width
+
+        source: "qrc:/images/menus/mainmenu.png"
+    }
+
 
     MouseArea {
         anchors.fill: parent
