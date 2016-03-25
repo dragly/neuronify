@@ -26,11 +26,7 @@ public slots:
     void setEngine(NodeEngine* arg);
 
 private:
-    void addEdge(Edge* edge);
-    void removeEdge(Edge* edge);
-
     NodeEngine* m_engine = nullptr;
-
     friend class Edge;
 };
 

@@ -86,10 +86,19 @@ void GraphEngine::removeEdge(Edge *edge)
     }
 
     if(edge->itemA()) {
-        edge->setItemA(nullptr); // This also removes edges from itemA
+        emit edge->itemA()->edgeRemoved(edge);
     }
     if(edge->itemB()) {
-        edge->setItemB(nullptr); // This also removes edges from itemB
+        emit edge->itemB()->edgeRemoved(edge);
+    }
+
+    if(edge->itemA()) {
+        edge->m_itemA = nullptr;
+        emit edge->itemAChanged(nullptr);
+    }
+    if(edge->itemB()) {
+        edge->m_itemB = nullptr;
+        emit edge->itemBChanged(nullptr);
     }
     m_edges.removeAll(edge);
 }
@@ -112,10 +121,10 @@ void GraphEngine::step(double dt)
             continue;
         }
         if(engineA->hasFired()) {
-            engineB->receiveFire(engineA->fireOutput());
+            engineB->receiveFire(engineA->fireOutput(), engineA);
         }
         if(engineA->currentOutput() != 0.0) {
-            engineB->receiveCurrent(engineA->currentOutput());
+            engineB->receiveCurrent(engineA->currentOutput(), engineA);
         }
     }
 

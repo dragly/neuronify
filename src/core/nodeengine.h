@@ -22,8 +22,8 @@ public:
 signals:
     void stepped(double dt);
     void fired();
-    void receivedFire(double stimulation);
-    void receivedCurrent(double current);
+    void receivedFire(double stimulation, NodeEngine *sender);
+    void receivedCurrent(double current, NodeEngine *sender);
     void finalizedStep(double dt);
     void fireOutputChanged(double arg);
     void currentOutputChanged(double arg);
@@ -31,8 +31,8 @@ signals:
 public slots:
     void step(double dt);
     void fire();
-    void receiveFire(double fireOutput);
-    void receiveCurrent(double currentOutput);
+    void receiveFire(double fireOutput, NodeEngine *sender);
+    void receiveCurrent(double currentOutput, NodeEngine *sender);
     void finalizeStep(double dt);
     void setFireOutput(double arg);
     void setCurrentOutput(double arg);
@@ -40,8 +40,8 @@ public slots:
 protected:
     virtual void stepEvent(double dt);
     virtual void fireEvent();
-    virtual void receiveFireEvent(double fireOutput);
-    virtual void receiveCurrentEvent(double currentOutput);
+    virtual void receiveFireEvent(double fireOutput, NodeEngine *sender);
+    virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender);
     virtual void finalizeStepEvent(double dt);
 
 private:

@@ -43,7 +43,7 @@ Node {
     }
 
     onFired: {
-        trailsNormal.burst(10)
+        fireAnimation.start()
     }
 
     engine: NeuronEngine {
@@ -56,34 +56,6 @@ Node {
         dumpableProperties = dumpableProperties.concat("fireOutput")
     }
 
-    ParticleSystem {
-        id: system
-
-        anchors.centerIn: parent
-
-        ImageParticle {
-            source: "qrc:/images/neurons/passive.png"
-        }
-
-        Emitter {
-            id: trailsNormal
-
-            anchors.centerIn: parent
-            system: system
-
-            emitRate: 0
-            lifeSpan: 800
-
-            velocity: PointDirection {xVariation: 400; yVariation: 400;}
-//            acceleration: PointDirection {xVariation: 800; yVariation: 800;}
-
-            velocityFromMovement: 8
-
-            size: 8
-            sizeVariation: 4
-        }
-    }
-
     Image {
         anchors.fill: parent
         source: inhibitory ? inhibitoryImageSource : imageSource
@@ -93,13 +65,35 @@ Node {
     }
 
     Rectangle {
+        property real value: Math.max(0.0, (voltage + 100) / 150)
+
+        anchors.fill: parent
+        anchors.margins: value * 6.0
+        radius: width * 0.5
+        border.color: "#f7fbff"
+        color: "transparent"
+        border.width: value * 12.0
+        opacity: value * 0.4
+    }
+
+    Rectangle {
+        id: fireIndicator
         anchors.fill: parent
         anchors.margins: 2.0
         radius: width * 0.5
         color: "#f7fbff"
-        opacity: (voltage + 100) / (150)
+        opacity: 0.0
+        NumberAnimation {
+            id: fireAnimation
+            running: false
+            target: fireIndicator
+            property: "opacity"
+            from: 1.0
+            to: 0.0
+            duration: 400
+            easing.type: Easing.OutQuad
+        }
     }
 
-    Connector {
-    }
+    Connector {}
 }

@@ -32,8 +32,6 @@ Edge {
         }
     }
 
-
-
     Component.onDestruction: {
         aboutToDie(connectionRoot)
     }
