@@ -528,12 +528,6 @@ Rectangle {
         }
     }
 
-    CreationMenuButton {
-        onClicked: {
-            creationMenu.revealed = true
-        }
-    }
-
 
     DeleteButton {
         revealed: activeObject ? true : false

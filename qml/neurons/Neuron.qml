@@ -47,13 +47,14 @@ Node {
     }
 
     engine: NeuronEngine {
+        id: engine
         PassiveCurrent {
             id: passiveCurrent
         }
     }
 
     Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat("fireOutput")
+        dumpableProperties = dumpableProperties.concat("fireOutput", "inhibitory")
     }
 
     Image {

@@ -3,7 +3,7 @@ import QtQuick 2.0
 import ".."
 import "../style"
 
-Image {
+Item {
     id: root
 
     signal clicked
@@ -13,16 +13,19 @@ Image {
     anchors {
         right: parent.right
         bottom: parent.bottom
-        margins: Style.margin
         rightMargin: -width
     }
-
-    width: Style.touchableSize
+    width: Style.touchableSize * 2
     height: width
+    Image {
+        anchors.centerIn: parent
+        width: Style.touchableSize
+        height: width
 
-    fillMode: Image.PreserveAspectFit
+        fillMode: Image.PreserveAspectFit
 
-    source: "qrc:/images/menus/properties.png"
+        source: "qrc:/images/menus/properties.png"
+    }
 
     MouseArea {
         anchors.fill: parent
@@ -35,7 +38,7 @@ Image {
         when: revealed
         PropertyChanges {
             target: root
-            anchors.rightMargin: Style.margin
+            anchors.rightMargin: 0
         }
     }
 
