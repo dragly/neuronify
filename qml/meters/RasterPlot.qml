@@ -22,7 +22,7 @@ Node {
 
     width: 180
     height: 120
-    color: "lightgrey"
+    color: "#deebf7"
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
@@ -76,6 +76,7 @@ Node {
         var neuron = edge.itemA
         var newList = neurons
         neurons.push(neuron)
+        neuron.onLabelChanged.connect(refreshCategories)
         neurons = newList
 
         refreshCategories()
@@ -91,7 +92,9 @@ Node {
             newList.splice(index, 1)
             neurons = newList
         }
+        neuron.onLabelChanged.disconnect(refreshCategories)
 
+        scatterSeries.clear()
         refreshCategories()
     }
 
@@ -125,8 +128,11 @@ Node {
             axisY: CategoryAxis {
                 id: axisY
                 min: 0.0
-                max: 10.0
+                max: neurons.length + 1.0
                 startValue: 0.5
+                gridVisible: false
+                tickCount: 0
+                lineVisible: false
             }
         }
         ChartScroller {
