@@ -36,6 +36,7 @@ public:
 
     explicit StandardPaths(QObject *parent = nullptr);
     Q_INVOKABLE static QString writableLocation(StandardLocation location);
+    Q_INVOKABLE static QString locate(StandardLocation location, const QString &fileName);
 
     static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
 signals:

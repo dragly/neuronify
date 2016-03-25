@@ -63,7 +63,12 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        loadState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+        var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy")
+        if(latest !== "") {
+            loadState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+        } else {
+            loadState("qrc:/simulations/singleCell/singleCell.nfy")
+        }
         resetStyle()
     }
 
