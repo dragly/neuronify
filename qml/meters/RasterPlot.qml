@@ -24,6 +24,11 @@ Node {
     height: 120
     color: "#deebf7"
 
+    margins.top: 0
+    margins.bottom: 0
+    margins.left: 0
+    margins.right: 0
+
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
                     ["width",
@@ -122,6 +127,7 @@ Node {
                 max: time
                 tickCount: 2
                 gridVisible: false
+                labelsFont.pixelSize: 14
             }
             axisY: CategoryAxis {
                 id: axisY
@@ -131,6 +137,7 @@ Node {
                 gridVisible: false
                 tickCount: 0
                 lineVisible: false
+                labelsFont.pixelSize: 14
             }
         }
         ChartScroller {

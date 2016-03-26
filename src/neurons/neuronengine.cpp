@@ -27,12 +27,7 @@ using namespace std;
 
 NeuronEngine::NeuronEngine(QQuickItem *parent)
     : NodeEngine(parent)
-    , m_voltage(0)
-    , m_membraneRestingPotential(0)
-    , m_synapsePotential(0)
-    , m_synapticConductance(0)
 {
-    initialize();
     reset();
 }
 
@@ -59,6 +54,11 @@ double NeuronEngine::synapsePotential() const
 double NeuronEngine::threshold() const
 {
     return m_threshold;
+}
+
+double NeuronEngine::capacitance() const
+{
+    return m_capacitance;
 }
 
 void NeuronEngine::setVoltage(double arg)
@@ -109,6 +109,7 @@ void NeuronEngine::fireEvent()
 
 void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
 {
+    Q_UNUSED(sender);
     m_receivedCurrents += currentOutput;
 }
 
@@ -143,7 +144,7 @@ void NeuronEngine::setSynapsePotential(double arg)
 
 void NeuronEngine::reset()
 {
-    m_voltage = 0.0;
+    m_voltage = m_membraneRestingPotential;
     m_synapticConductance = 0.0;
 }
 
@@ -155,13 +156,6 @@ void NeuronEngine::resetVoltage()
     emit synapticConductanceChanged(m_synapticConductance);
 }
 
-void NeuronEngine::initialize()
-{
-    m_membraneRestingPotential = 0.0e-3;
-    m_synapsePotential = 50.0e-3;
-    m_threshold = 20.0e-3;
-}
-
 void NeuronEngine::setThreshold(double threshold)
 {
     if (m_threshold == threshold)
@@ -169,6 +163,15 @@ void NeuronEngine::setThreshold(double threshold)
 
     m_threshold = threshold;
     emit thresholdChanged(threshold);
+}
+
+void NeuronEngine::setCapacitance(double capacitance)
+{
+    if (m_capacitance == capacitance)
+        return;
+
+    m_capacitance = capacitance;
+    emit capacitanceChanged(capacitance);
 }
 
 void NeuronEngine::checkFire()

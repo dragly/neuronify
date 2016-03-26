@@ -15,6 +15,7 @@ class NeuronEngine : public NodeEngine
     Q_PROPERTY(double restingPotential READ restingPotential WRITE setRestingPotential NOTIFY restingPotentialChanged)
     Q_PROPERTY(double synapsePotential READ synapsePotential WRITE setSynapsePotential NOTIFY synapsePotentialChanged)
     Q_PROPERTY(double threshold READ threshold WRITE setThreshold NOTIFY thresholdChanged)
+    Q_PROPERTY(double capacitance READ capacitance WRITE setCapacitance NOTIFY capacitanceChanged)
 
 public:
     NeuronEngine(QQuickItem *parent = 0);
@@ -24,6 +25,7 @@ public:
     double restingPotential() const;
     double synapsePotential() const;
     double threshold() const;
+    double capacitance() const;
 
 public slots:
     void setVoltage(double arg);
@@ -32,8 +34,8 @@ public slots:
     void setSynapsePotential(double arg);
     void reset();
     void resetVoltage();
-    void initialize();
     void setThreshold(double threshold);
+    void setCapacitance(double capacitance);
 
 signals:
     void voltageChanged(double arg);
@@ -41,6 +43,7 @@ signals:
     void restingPotentialChanged(double arg);
     void synapsePotentialChanged(double arg);
     void thresholdChanged(double threshold);
+    void capacitanceChanged(double capacitance);
 
 protected:
     virtual void stepEvent(double dt);
@@ -51,12 +54,12 @@ protected:
 private:
     void checkFire();
 
-    double m_voltage = 0.0;
-    double m_membraneRestingPotential = 0.0;
-    double m_synapsePotential = 0.0;
+    double m_voltage = -65.0e-3;
+    double m_membraneRestingPotential = -65.0e-3;
+    double m_synapsePotential = 50.0e-3;
     double m_synapticConductance = 0.0;
     double m_receivedCurrents = 0.0;
-    double m_threshold = 0.0;
+    double m_threshold = 0.0e-3;
     double m_capacitance = 1.0e-6;
 };
 
