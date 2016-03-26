@@ -2,24 +2,25 @@
 
 GaborKernelEngine::GaborKernelEngine()
 {
+    m_sigmaX = 0.1;
+    m_sigmaY = 0.2;
+    m_k = 20.;
+    m_phi = 0.;
+    m_theta = 0.;
 }
 
 double GaborKernelEngine::advance(double x, double y)
 {
-    double sigmaX = 0.1;
-    double sigmaY = 0.2;
-    double k = 20.;
-    double phi = 0.0;
-    double theta = 0.0;
 
-    double xr =  x * cos(theta) + y * sin(theta);
-    double yr = -x * sin(theta) + y * cos(theta);
+    double xr =  x * cos(m_theta) + y * sin(m_theta);
+    double yr = -x * sin(m_theta) + y * cos(m_theta);
 
-    double prefactor = 1.0/(2.* pi * sigmaX * sigmaY);
-    double expFactor = exp(-xr*xr/(2.* sigmaX * sigmaX)
-                           - yr*yr/(2. * sigmaY * sigmaY));
-    double cosFactor = cos(k * xr - phi);
-    return 1 * expFactor * cosFactor;
+//    double prefactor = 1.0/(2.* pi * m_sigmaX * m_sigmaY);
+    double prefactor = 1.0;
+    double expFactor = exp(-xr*xr/(2.* m_sigmaX * m_sigmaX)
+                           -yr*yr/(2. * m_sigmaY * m_sigmaY));
+    double cosFactor = cos(m_k * xr - m_phi);
+    return prefactor * expFactor * cosFactor;
 }
 
 
