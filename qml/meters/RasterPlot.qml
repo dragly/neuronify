@@ -12,7 +12,7 @@ Node {
     id: rasterRoot
 
     property real time: 0.0
-    property real timeRange: 30.0
+    property real timeRange: 10.0
 
     property var neurons: []
 
@@ -51,7 +51,7 @@ Node {
                 target: rasterRoot
                 property: "timeRange"
                 minimumValue: 1.0
-                maximumValue: 1000.0
+                maximumValue: 100.0
             }
         }
     }
@@ -120,10 +120,8 @@ Node {
                 id: axisX
                 min: time - timeRange
                 max: time
-                tickCount: 0
-                labelsVisible: false
+                tickCount: 2
                 gridVisible: false
-                visible: false
             }
             axisY: CategoryAxis {
                 id: axisY
