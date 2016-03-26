@@ -46,12 +46,16 @@ Node {
     }
 
     controls: Component {
-        Item {
+        Column {
+            anchors.fill: parent
+        Text {
+            text: "Time range: " + timeRange.toFixed(0)
+        }
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"
                 minimumValue: 1.0
-                maximumValue: 1000.0
+                maximumValue: 50.0
             }
         }
     }
