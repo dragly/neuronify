@@ -42,7 +42,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.7"
-     inkscape:cx="304.50204"
+     inkscape:cx="190.21633"
      inkscape:cy="491.27279"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -50,7 +50,7 @@
      units="px"
      inkscape:window-width="1560"
      inkscape:window-height="1735"
-     inkscape:window-x="81"
+     inkscape:window-x="1640"
      inkscape:window-y="30"
      inkscape:window-maximized="0"
      inkscape:object-nodes="true"
@@ -88,7 +88,7 @@
        ry="169.38075" />
     <text
        xml:space="preserve"
-       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:385.67501068px;line-height:125%;font-family:Ubuntu;-inkscape-font-specification:'Ubuntu, Medium';text-align:start;writing-mode:lr;text-anchor:start;opacity:1;fill:#ffcc00;fill-opacity:1;stroke:none;stroke-width:80.04003906;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:385.67501068px;line-height:125%;font-family:Ubuntu;-inkscape-font-specification:'Ubuntu, Normal';text-align:start;writing-mode:lr;text-anchor:start;opacity:1;fill:#ffcc00;fill-opacity:1;stroke:none;stroke-width:80.04003906;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;"
        x="184.2644"
        y="930.57715"
        id="text3424"
@@ -97,6 +97,6 @@
          id="tspan3426"
          x="184.2644"
          y="930.57715"
-         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-family:Ubuntu;-inkscape-font-specification:'Ubuntu, Medium';fill:#ffcc00;stroke:none;stroke-width:80.04003906;fill-opacity:1;font-size:385.67501068px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%;">?</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Ubuntu;-inkscape-font-specification:'Ubuntu, Normal';fill:#ffcc00;stroke:none;stroke-width:80.04003906;fill-opacity:1;font-size:385.67501068px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%;">?</tspan></text>
   </g>
 </svg>

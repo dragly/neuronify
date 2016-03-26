@@ -28,8 +28,8 @@ Node {
     objectName: "poissonGenerator"
     fileName: "generators/PoissonGenerator.qml"
 
-    width: parent.width * 0.015
-    height: width
+    width: 62
+    height: 62
     color: inhibitory ? "#d45500" : "#55d400"
     readonly property bool inhibitory: root.engine.fireOutput < 0.0
     property url imageSource: "qrc:/images/generators/poisson_generator.png"
