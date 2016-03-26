@@ -97,7 +97,7 @@ Node {
             width: parent.width / 1.1
             height: width
             color: "#0088aa"
-            border.color: "#80e5ff"
+            border.color: "#f7fbff"
             border.width: 1.0
             radius: width
         }

@@ -36,6 +36,7 @@ Node {
     property string kernelType: "kernels/GaborKernel.qml"
     property alias sensitivity: retinaEngine.sensitivity
 
+    color: "#0088aa"
     width: 240
     height: 180
 
@@ -230,6 +231,8 @@ Node {
 
     Connector {
         visible: root.selected
+        curveColor: "#0088aa"
+        connectorColor: "#0088aa"
         onDropped: {
             root.droppedConnector(root, connector)
         }

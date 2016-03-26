@@ -14,6 +14,9 @@ Item {
     property alias connectorWidth: draggable.width
     property alias connectorHeight: draggable.height
 
+    property color curveColor: "#4292c6"
+    property color connectorColor: "#4292c6"
+
     visible: _parent.selected
 
     onDropped: {
@@ -22,7 +25,7 @@ Item {
 
     SCurve {
         id: curve
-        color: "#4292c6"
+        color: curveColor
         parent: root.parent
         z: -1
         startPoint: root.attachmentPoint
@@ -52,7 +55,7 @@ Item {
             }
             width: parent.width * 0.4
             height: width
-            color: "#4292c6"
+            color: connectorColor
             border.color: "#f7fbff"
             border.width: 1.0
             radius: width
