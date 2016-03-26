@@ -48,5 +48,7 @@
         <file>qml/hud/AnnotationsList.qml</file>
         <file>images/categories/annotate.png</file>
         <file>images/annotate/annotate.png</file>
+        <file>images/meters/spikemeter.png</file>
+        <file>images/generators/poisson_generator_excitatory.png</file>
     </qresource>
 </RCC>

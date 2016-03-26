@@ -34,15 +34,17 @@ Node {
     property int fieldIndex: 0
     property int viewIndex: 0
     property string kernelType: "kernels/GaborKernel.qml"
+    property alias sensitivity: retinaEngine.sensitivity
 
-
+    color: "#0088aa"
     width: 240
     height: 180
 
     dumpableProperties: [
         "x",
         "y",
-        "kernelType"
+        "kernelType",
+        "sensitivity"
     ]
 
     onVideoSurfaceChanged: {
@@ -172,14 +174,27 @@ Node {
 
             }
 
+            //Slider to change the sensitivity:
+            Text {
+                text: "Sensitivity: " + retinaEngine.sensitivity.toFixed(0)
+            }
+            BoundSlider {
+                minimumValue: 1
+                maximumValue: 10
+                stepSize: 1
+                target: retinaEngine
+                property: "sensitivity"
+            }
+
         }
 
     }
 
     ListModel {
         id: fieldTypes
-        ListElement {text: "Gabor"; name: "kernels/GaborKernel.qml"}
-        ListElement {text: "Dog"; name: "kernels/DogKernel.qml"}
+        ListElement {text: "Orientation selective";
+            name: "kernels/GaborKernel.qml"}
+        ListElement {text: "Center-surround"; name: "kernels/DogKernel.qml"}
         ListElement {text: "OffLeft"; name: "kernels/OffLeftKernel.qml"}
         ListElement {text: "OffRight"; name: "kernels/OffRightKernel.qml"}
         ListElement {text: "OffTop"; name: "kernels/OffTopKernel.qml"}
@@ -194,11 +209,11 @@ Node {
     }
 
     Rectangle {
-        color: "#756bb1"
+        color: "#0088aa"
         anchors.fill: parent
         radius: 5
-        border.width: 2.0
-        border.color: "#BCBDDC"
+        border.width: 0.0
+        border.color: "#80e5ff"
     }
 
     RetinaPainter {
@@ -216,6 +231,8 @@ Node {
 
     Connector {
         visible: root.selected
+        curveColor: "#0088aa"
+        connectorColor: "#0088aa"
         onDropped: {
             root.droppedConnector(root, connector)
         }

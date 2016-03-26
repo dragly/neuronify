@@ -17,7 +17,6 @@ Kernel::Kernel()
 
 void Kernel::recreate()
 {
-
     m_spatial.resize(m_resolutionWidth);
     for(int i = 0; i < m_resolutionWidth; i++){
         m_spatial.at(i).resize(m_resolutionHeight,0);
@@ -27,12 +26,13 @@ void Kernel::recreate()
         return;
     }
     m_abstractKernelEngineType->createKernel(&m_spatial);
-
-    m_spatialImage = QImage(m_resolutionWidth, m_resolutionHeight, QImage::Format_RGBA8888);
+    m_spatialImage = QImage(m_resolutionWidth,
+                            m_resolutionHeight,
+                            QImage::Format_RGBA8888);
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            int gray = spatial().at(i).at(j) + 128;
+            int gray = (m_spatial.at(i).at(j) + 1) * 127;
             QRgb color = qRgb(gray, gray, gray);
             m_spatialImage.setPixel(i,j,color);
 

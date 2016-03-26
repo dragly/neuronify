@@ -25,7 +25,7 @@ Node {
     width: 100
     height: 100
 
-    color: cell.sensing ? "#9ecae1" : "#4292c6"
+    color: cell.sensing ? "#80e5ff" : "#0088aa"
     connectionPoint: Qt.point(sensor.x + cell.x + cell.width / 2,
                               sensor.y + cell.y + cell.height)
 
@@ -69,7 +69,7 @@ Node {
         id: connectorCurve
         visible: sensor.selected
         z: -1
-        color: "#4292c6"
+        color: "#0088aa"
         startPoint: Qt.point(parent.width / 2, parent.height / 2)
         endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
     }
@@ -94,9 +94,9 @@ Node {
         Rectangle {
             id: connectorCircle
             anchors.centerIn: parent
-            width: parent.width / 2.0
+            width: parent.width / 1.1
             height: width
-            color: "#4292c6"
+            color: "#0088aa"
             border.color: "#f7fbff"
             border.width: 1.0
             radius: width
