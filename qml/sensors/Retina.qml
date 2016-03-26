@@ -75,7 +75,6 @@ Node {
         kernel: kernel
         videoSurface: root.videoSurface
         plotKernel: false
-        sensitivity: root.sensitivity
     }
 
     controls: Component {
@@ -209,11 +208,11 @@ Node {
     }
 
     Rectangle {
-        color: "#756bb1"
+        color: "#0088aa"
         anchors.fill: parent
         radius: 5
-        border.width: 2.0
-        border.color: "#BCBDDC"
+        border.width: 0.0
+        border.color: "#80e5ff"
     }
 
     RetinaPainter {
