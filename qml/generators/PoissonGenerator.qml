@@ -30,10 +30,16 @@ Node {
 
     width: 62
     height: 62
-    color: inhibitory ? "#d45500" : "#55d400"
+    color: inhibitory ? "#e41a1c" : "#6baed6"
     readonly property bool inhibitory: root.engine.fireOutput < 0.0
     property url imageSource: "qrc:/images/generators/poisson_generator_excitatory.png"
     property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
+
+    property alias fireOutput: engine.fireOutput
+    property alias rate: engine.rate
+
+
+
 
     engine: NodeEngine {
         id: engine
@@ -103,5 +109,12 @@ Node {
         onDropped: {
             root.droppedConnector(root, connector)
         }
+    }
+
+
+    Component.onCompleted: {
+        dumpableProperties = dumpableProperties.concat(
+                    ["fireOutput",
+                    "rate"])
     }
 }
