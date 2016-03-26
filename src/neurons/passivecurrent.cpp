@@ -26,31 +26,13 @@ double PassiveCurrent::resistance() const
     return m_resistance;
 }
 
-double PassiveCurrent::capacitance() const
-{
-    return m_capacitance;
-}
-
 void PassiveCurrent::setResistance(double arg)
 {
     if (m_resistance == arg)
         return;
 
     m_resistance = arg;
-
-    recalculateOneOverResistanceTimesCapacitance();
     emit resistanceChanged(arg);
-}
-
-void PassiveCurrent::setCapacitance(double arg)
-{
-    if (m_capacitance == arg)
-        return;
-
-    m_capacitance = arg;
-
-    recalculateOneOverResistanceTimesCapacitance();
-    emit capacitanceChanged(arg);
 }
 
 void PassiveCurrent::stepEvent(double dt)
@@ -63,14 +45,8 @@ void PassiveCurrent::stepEvent(double dt)
         return;
     }
 
-    double oneOverRmCm = m_oneOverResistanceTimesCapacitance;
     double Em = parentNode->restingPotential();
     double V = parentNode->voltage();
-    double I = - oneOverRmCm * (V - Em);
+    double I = -1.0 / m_resistance * (V - Em);
     setCurrent(I);
-}
-
-void PassiveCurrent::recalculateOneOverResistanceTimesCapacitance()
-{
-    m_oneOverResistanceTimesCapacitance = 1.0 / (m_resistance * m_capacitance);
 }

@@ -29,6 +29,10 @@ Column {
     TextField {
         id: labelField
         text: neuron.label
+        anchors {
+            left: parent.left
+            right: parent.right
+        }
     }
     Binding {
         target: neuron

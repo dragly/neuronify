@@ -29,9 +29,9 @@ Node {
     property string mode: "voltage"
     property string title: "mV"
 
-    property real minimumValue: -100.0
-    property real maximumValue: 100.0
-    property real timeRange: 10.0
+    property real minimumValue: -100.0e-3
+    property real maximumValue: 100.0e-3
+    property real timeRange: 100.0e-3
 
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
@@ -68,6 +68,22 @@ Node {
                 }
             }
         }
+        onReceivedFire: {
+            console.log("Received fire " + sender + stimulation)
+            for(var i in voltmeterRoot.connectionPlots) {
+                var connectionPlot = voltmeterRoot.connectionPlots[i]
+                var plot = connectionPlot.plot
+                var neuron = connectionPlot.connection.itemA
+                if(neuron.engine && neuron.engine === sender) {
+                    console.log("Add point")
+                    plot.addPoint(time, 100)
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        dumpableProperties = dumpableProperties.concat(["width", "height"])
     }
 
     onEdgeAdded: {
@@ -95,21 +111,6 @@ Node {
             }
         }
         currentSeries -= 1
-    }
-
-    onModeChanged: {
-        switch(mode) {
-        case "voltage":
-            minimumValue = -100
-            maximumValue = 100
-            title = "V"
-            break
-        }
-        for(var i in connectionPlots) {
-            var connectionPlot = connectionPlots[i]
-            resetMinMax(connectionPlot.plot)
-            connectionPlot.plot.clearData()
-        }
     }
 
     Rectangle {
@@ -162,41 +163,17 @@ Node {
             id: axisX
             min: voltmeterRoot.time - timeRange
             max: voltmeterRoot.time
-            tickCount: 0
-            labelsVisible: false
+            tickCount: 2
             gridVisible: false
-            visible: false
         }
 
         ValueAxis {
             id: axisY
-            min: -100.0
-            max: 100.0
-            tickCount: 0
-            labelsVisible: false
+            min: -10.0e-3
+            max: 30.0e-3
+            tickCount: 2
             gridVisible: false
-            visible: false
         }
-    }
-
-    Text {
-        anchors {
-            left: parent.left
-            top: parent.top
-            margins: parent.height * 0.04
-        }
-        font.pixelSize: 12
-        text: axisY.max.toFixed(0)
-    }
-
-    Text {
-        anchors {
-            left: parent.left
-            bottom: parent.bottom
-            margins: parent.height * 0.04
-        }
-        font.pixelSize: 12
-        text: axisY.min.toFixed(0)
     }
 
     ResizeRectangle {}

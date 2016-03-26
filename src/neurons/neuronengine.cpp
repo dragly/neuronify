@@ -31,8 +31,6 @@ NeuronEngine::NeuronEngine(QQuickItem *parent)
     , m_membraneRestingPotential(0)
     , m_synapsePotential(0)
     , m_synapticConductance(0)
-    , m_clampCurrentEnabled(false)
-    , m_clampCurrent(0)
 {
     initialize();
     reset();
@@ -58,19 +56,9 @@ double NeuronEngine::synapsePotential() const
     return m_synapsePotential;
 }
 
-bool NeuronEngine::clampCurrentEnabled() const
-{
-    return m_clampCurrentEnabled;
-}
-
 double NeuronEngine::threshold() const
 {
     return m_threshold;
-}
-
-double NeuronEngine::clampCurrent() const
-{
-    return m_clampCurrent;
 }
 
 void NeuronEngine::setVoltage(double arg)
@@ -99,11 +87,11 @@ void NeuronEngine::stepEvent(double dt)
     double Es = m_synapsePotential;
     double synapticCurrents = -gs * (V - Es);
 
-    double voltageChange = synapticCurrents + otherCurrents + m_receivedCurrents;
-    double dV = voltageChange * dt;
+    double totalCurrent = synapticCurrents + otherCurrents + m_receivedCurrents;
+    double dV = totalCurrent / m_capacitance * dt;
     m_voltage += dV;
 
-    m_voltage = min(max(m_voltage, -200.0), 200.0);
+    m_voltage = min(max(m_voltage, -0.2), 0.2);
 
     m_synapticConductance = gs + dgs;
 
@@ -115,9 +103,8 @@ void NeuronEngine::stepEvent(double dt)
 
 void NeuronEngine::fireEvent()
 {
-    setVoltage(100.0);
+    setVoltage(m_membraneRestingPotential);
     setSynapticConductance(0.0);
-    m_firedLastTime = true;
 }
 
 void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
@@ -154,25 +141,9 @@ void NeuronEngine::setSynapsePotential(double arg)
     }
 }
 
-void NeuronEngine::setClampCurrentEnabled(bool arg)
-{
-    if (m_clampCurrentEnabled != arg) {
-        m_clampCurrentEnabled = arg;
-        emit clampCurrentEnabledChanged(arg);
-    }
-}
-
-void NeuronEngine::setClampCurrent(double arg)
-{
-    if (m_clampCurrent != arg) {
-        m_clampCurrent = arg;
-        emit clampCurrentChanged(arg);
-    }
-}
-
 void NeuronEngine::reset()
 {
-    m_voltage = -100.;
+    m_voltage = 0.0;
     m_synapticConductance = 0.0;
 }
 
@@ -186,10 +157,9 @@ void NeuronEngine::resetVoltage()
 
 void NeuronEngine::initialize()
 {
-    m_membraneRestingPotential = -65.0;
-    m_synapsePotential = 50.0;
-    m_clampCurrentEnabled = false;
-    m_clampCurrent = 0.0;
+    m_membraneRestingPotential = 0.0e-3;
+    m_synapsePotential = 50.0e-3;
+    m_threshold = 20.0e-3;
 }
 
 void NeuronEngine::setThreshold(double threshold)
@@ -203,12 +173,6 @@ void NeuronEngine::setThreshold(double threshold)
 
 void NeuronEngine::checkFire()
 {
-    if(m_firedLastTime) {
-        setVoltage(m_membraneRestingPotential);
-        m_firedLastTime = false;
-        return;
-    }
-
     if(m_voltage > m_threshold) {
         fire();
     }
