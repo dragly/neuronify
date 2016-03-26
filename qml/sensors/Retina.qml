@@ -34,7 +34,7 @@ Node {
     property int fieldIndex: 0
     property int viewIndex: 0
     property string kernelType: "kernels/GaborKernel.qml"
-
+    property alias sensitivity: retinaEngine.sensitivity
 
     width: 240
     height: 180
@@ -42,7 +42,8 @@ Node {
     dumpableProperties: [
         "x",
         "y",
-        "kernelType"
+        "kernelType",
+        "sensitivity"
     ]
 
     onVideoSurfaceChanged: {
@@ -74,6 +75,7 @@ Node {
         kernel: kernel
         videoSurface: root.videoSurface
         plotKernel: false
+        sensitivity: root.sensitivity
     }
 
     controls: Component {
@@ -170,6 +172,18 @@ Node {
                     }
                 }
 
+            }
+
+            //Slider to change the sensitivity:
+            Text {
+                text: "Sensitivity: " + retinaEngine.sensitivity.toFixed(0)
+            }
+            BoundSlider {
+                minimumValue: 1
+                maximumValue: 10
+                stepSize: 1
+                target: retinaEngine
+                property: "sensitivity"
             }
 
         }

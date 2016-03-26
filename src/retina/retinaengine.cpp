@@ -85,7 +85,7 @@ void RetinaEngine::stepEvent(double dt)
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0,1);
 
-    double shouldFire = (dis(gen) < m_firingRate*dt);
+    double shouldFire = (dis(gen) < m_sensitivity * m_firingRate*dt);
     if(shouldFire){
         fire();
     }
@@ -131,6 +131,15 @@ void RetinaEngine::setPlotKernel(bool plotKernel)
     emit plotKernelChanged(plotKernel);
 }
 
+void RetinaEngine::setSensitivity(double sensitivity)
+{
+    if (m_sensitivity == sensitivity)
+        return;
+
+    m_sensitivity = sensitivity;
+    emit sensitivityChanged(sensitivity);
+}
+
 
 QImage RetinaEngine::paintedImage() const
 {
@@ -148,6 +157,11 @@ Kernel *RetinaEngine::kernel() const
 bool RetinaEngine::plotKernel() const
 {
     return m_plotKernel;
+}
+
+double RetinaEngine::sensitivity() const
+{
+    return m_sensitivity;
 }
 
 VideoSurface *RetinaEngine::videoSurface() const
