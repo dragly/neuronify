@@ -70,13 +70,11 @@ Node {
             }
         }
         onReceivedFire: {
-            console.log("Received fire " + sender + stimulation)
             for(var i in voltmeterRoot.connectionPlots) {
                 var connectionPlot = voltmeterRoot.connectionPlots[i]
                 var plot = connectionPlot.plot
                 var neuron = connectionPlot.connection.itemA
                 if(neuron.engine && neuron.engine === sender) {
-                    console.log("Add point")
                     plot.addPoint(time * timeFactor, 1000e-3 * voltageFactor)
                 }
             }
@@ -93,7 +91,6 @@ Node {
             return
         }
         var plot = series[currentSeries]
-        console.log("Got series" + plot + currentSeries)
         plot.visible = true
         var newList = connectionPlots
         newList.push({connection: edge, plot: plot})
