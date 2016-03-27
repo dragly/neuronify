@@ -49,6 +49,7 @@ Node {
     ]
 
     property real time: 0.0
+    property real realTime: 0.0
 
     controls: Component {
         VoltmeterControls {
@@ -61,14 +62,18 @@ Node {
 
     engine: NodeEngine {
         onStepped: {
-            time += dt
-            for(var i in voltmeterRoot.connectionPlots) {
-                var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var plot = connectionPlot.plot
-                var neuron = connectionPlot.connection.itemA
-                if(neuron) {
-                    if(mode === "voltage" && neuron.voltage) {
-                        plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+            realTime += dt
+            if(timeFactor * (realTime - lastUpdateTime) > (maximumValue - minimumValue) / 50.0) {
+                time = realTime
+                lastUpdateTime = realTime
+                for(var i in voltmeterRoot.connectionPlots) {
+                    var connectionPlot = voltmeterRoot.connectionPlots[i]
+                    var plot = connectionPlot.plot
+                    var neuron = connectionPlot.connection.itemA
+                    if(neuron) {
+                        if(mode === "voltage" && neuron.voltage) {
+                            plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+                        }
                     }
                 }
             }
