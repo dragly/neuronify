@@ -29,9 +29,10 @@ Node {
     property string mode: "voltage"
     property string title: "mV"
 
-    property real minimumValue: -100.0
-    property real maximumValue: 100.0
-    property real timeRange: 10.0
+    property real timeFactor: 1000
+    property real voltageFactor: 1000
+
+    property real timeRange: 100.0e-3
 
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
@@ -50,8 +51,8 @@ Node {
             voltmeter: voltmeterRoot
         }
     }
-    width: 180
-    height: 120
+    width: 240
+    height: 180
     color: "#deebf7"
 
     engine: NodeEngine {
@@ -63,11 +64,27 @@ Node {
                 var neuron = connectionPlot.connection.itemA
                 if(neuron) {
                     if(mode === "voltage" && neuron.voltage) {
-                        plot.addPoint(time, neuron.voltage)
+                        plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
                     }
                 }
             }
         }
+        onReceivedFire: {
+            console.log("Received fire " + sender + stimulation)
+            for(var i in voltmeterRoot.connectionPlots) {
+                var connectionPlot = voltmeterRoot.connectionPlots[i]
+                var plot = connectionPlot.plot
+                var neuron = connectionPlot.connection.itemA
+                if(neuron.engine && neuron.engine === sender) {
+                    console.log("Add point")
+                    plot.addPoint(time * timeFactor, 1000e-3 * voltageFactor)
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        dumpableProperties = dumpableProperties.concat(["width", "height"])
     }
 
     onEdgeAdded: {
@@ -97,21 +114,6 @@ Node {
         currentSeries -= 1
     }
 
-    onModeChanged: {
-        switch(mode) {
-        case "voltage":
-            minimumValue = -100
-            maximumValue = 100
-            title = "V"
-            break
-        }
-        for(var i in connectionPlots) {
-            var connectionPlot = connectionPlots[i]
-            resetMinMax(connectionPlot.plot)
-            connectionPlot.plot.clearData()
-        }
-    }
-
     Rectangle {
         anchors.fill: parent
         color: parent.color
@@ -123,80 +125,64 @@ Node {
 
     ChartView {
         id: chartView
+
         anchors.fill: parent
         legend.visible: false
         antialiasing: true
         backgroundColor: "transparent"
-
         enabled: false // disables mouse input
+        margins.top: 0
+        margins.bottom: 0
+        margins.left: 0
+        margins.right: 0
 
         Plot {
             id: series1
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange
+            timeRange: voltmeterRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series2
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange
+            timeRange: voltmeterRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series3
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange
+            timeRange: voltmeterRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series4
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange
+            timeRange: voltmeterRoot.timeRange * timeFactor
         }
 
         ValueAxis {
             id: axisX
-            min: voltmeterRoot.time - timeRange
-            max: voltmeterRoot.time
-            tickCount: 0
-            labelsVisible: false
+            min: (voltmeterRoot.time - timeRange) * timeFactor
+            max: voltmeterRoot.time * timeFactor
+            tickCount: 2
             gridVisible: false
-            visible: false
+            labelFormat: "%.0f"
+            labelsFont.pixelSize: 14
         }
 
         ValueAxis {
             id: axisY
-            min: -100.0
-            max: 100.0
-            tickCount: 0
-            labelsVisible: false
+            min: -100.0e-3 * voltageFactor
+            max: 50.0e-3 * voltageFactor
+            tickCount: 2
             gridVisible: false
-            visible: false
+            labelFormat: "%.0f"
+            labelsFont.pixelSize: 14
         }
-    }
-
-    Text {
-        anchors {
-            left: parent.left
-            top: parent.top
-            margins: parent.height * 0.04
-        }
-        font.pixelSize: 12
-        text: axisY.max.toFixed(0)
-    }
-
-    Text {
-        anchors {
-            left: parent.left
-            bottom: parent.bottom
-            margins: parent.height * 0.04
-        }
-        font.pixelSize: 12
-        text: axisY.min.toFixed(0)
     }
 
     ResizeRectangle {}

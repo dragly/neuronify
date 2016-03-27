@@ -12,7 +12,7 @@ Node {
     id: rasterRoot
 
     property real time: 0.0
-    property real timeRange: 30.0
+    property real timeRange: 10.0
 
     property var neurons: []
 
@@ -23,6 +23,11 @@ Node {
     width: 180
     height: 120
     color: "#deebf7"
+
+    margins.top: 0
+    margins.bottom: 0
+    margins.left: 0
+    margins.right: 0
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
@@ -55,7 +60,7 @@ Node {
                 target: rasterRoot
                 property: "timeRange"
                 minimumValue: 1.0
-                maximumValue: 50.0
+                maximumValue: 100.0
             }
         }
     }
@@ -124,10 +129,9 @@ Node {
                 id: axisX
                 min: time - timeRange
                 max: time
-                tickCount: 0
-                labelsVisible: false
+                tickCount: 2
                 gridVisible: false
-                visible: false
+                labelsFont.pixelSize: 14
             }
             axisY: CategoryAxis {
                 id: axisY
@@ -137,6 +141,7 @@ Node {
                 gridVisible: false
                 tickCount: 0
                 lineVisible: false
+                labelsFont.pixelSize: 14
             }
         }
         ChartScroller {

@@ -66,7 +66,7 @@ Node {
     }
 
     Rectangle {
-        property real value: Math.max(0.0, (voltage + 100) / 150)
+        property real value: Math.max(0.0, (voltage + 100e-3) / 150e-3)
 
         anchors.fill: parent
         anchors.margins: value * 6.0
@@ -74,6 +74,8 @@ Node {
         border.color: "#f7fbff"
         color: "transparent"
         border.width: value * 12.0
+        smooth: true
+        antialiasing: true
         opacity: value * 0.4
     }
 

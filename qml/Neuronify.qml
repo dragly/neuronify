@@ -27,7 +27,6 @@ import "tools"
 Rectangle {
     id: root
 
-    property real lastStepTime: Date.now()
     property var organizedItems: []
     property var organizedConnections: []
     property alias graphEngine: graphEngine
@@ -576,7 +575,7 @@ Rectangle {
 
         Text {
             anchors.centerIn: parent
-            text: "Click other items to connect"
+            text: "Connection mode: Select other items to connect them."
         }
 
         Button {
@@ -617,25 +616,11 @@ Rectangle {
         interval: 16
         repeat: true
         running: root.running
-        onRunningChanged: {
-            if(running) {
-                lastStepTime = Date.now()
-            }
-        }
 
         onTriggered: {
-            var currentTime = Date.now()
-            var dt = (currentTime - lastStepTime) / 1000
-            var trueDt = dt
-            dt *= 3.0
-            dt = Math.min(0.050, dt)
-
-            currentTimeStep = 0.99 * currentTimeStep + 0.01 * dt
+            var dt = 0.1e-3
             time += dt
-
             graphEngine.step(dt)
-
-            lastStepTime = currentTime
         }
     }
 
@@ -659,6 +644,10 @@ Rectangle {
             viewfinder.resolution : Qt.size(1280,720)
             property bool active: retinaCounter > 0 && root.running
             property int retinaCounter: 0
+
+            Component.onCompleted: {
+                camera.stop()
+            }
 
             onActiveChanged: {
                 if(active){

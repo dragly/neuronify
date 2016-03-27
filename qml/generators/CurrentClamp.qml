@@ -17,7 +17,7 @@ import "../controls"
 */
 
 Node {
-    property alias currentOutput: engine.currentOutput
+    property alias currentOutputScaled: engine.currentOutputScaled
 
     fileName: "generators/CurrentClamp.qml"
 
@@ -27,31 +27,26 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        currentOutput: 75.0
+        property real currentOutputScaled: 1.8
+        currentOutput: currentOutputScaled * 1e-6
     }
 
     controls: Component {
         Item {
             anchors.fill: parent
-
-            Column {
-                anchors.fill: parent
-                Text {
-                    text: "Current output: " + currentOutput.toFixed(0) + " mA"
-                }
-
-                BoundSlider {
-                    target: engine
-                    property: "currentOutput"
-                    minimumValue: 0.0
-                    maximumValue: 200.0
-                }
+            BoundSlider {
+                target: engine
+                property: "currentOutputScaled"
+                text: "Current output"
+                unit: "uA"
+                minimumValue: 0.0
+                maximumValue: 20.0
             }
         }
     }
 
     Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat("currentOutput")
+        dumpableProperties = dumpableProperties.concat("currentOutputScaled")
     }
 
     Image {
