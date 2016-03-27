@@ -12,7 +12,7 @@ Node {
     id: rasterRoot
 
     property real time: 0.0
-    property real timeRange: 10.0
+    property real timeRange: 10.0e-3
 
     property var neurons: []
 
@@ -50,8 +50,12 @@ Node {
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"
-                minimumValue: 1.0
-                maximumValue: 100.0
+                text: "Time range"
+                unit: "ms"
+                unitScale: 1e-3
+                minimumValue: 1.0e-3
+                maximumValue: 100.0e-3
+                stepSize: 1.0e-3
             }
         }
     }
