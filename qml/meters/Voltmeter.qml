@@ -3,7 +3,7 @@ import "../paths"
 import "../hud"
 import "../tools"
 import ".."
-import QtCharts 2.0
+import QtCharts 2.1
 
 import Neuronify 1.0
 

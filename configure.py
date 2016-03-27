@@ -12,8 +12,9 @@ qmake_path = argv[1]
 subprocess.call("git submodule init", shell=True)
 subprocess.call("git submodule update", shell=True)
 
-os.chdir("libs/qtcharts")
+os.mkdir("libs/build-qtcharts")
+os.chdir("libs/build-qtcharts")
 
-subprocess.call(qmake_path, shell=True)
+subprocess.call(qmake_path + " ../qtcharts", shell=True)
 subprocess.call("make -j4", shell=True)
 subprocess.call("make install", shell=True)
