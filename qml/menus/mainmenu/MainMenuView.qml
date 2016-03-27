@@ -6,6 +6,7 @@ Item {
     property string title: "Neuronify"
 
     signal continueClicked
+    signal newSimulationClicked
     signal simulationsClicked
     signal aboutClicked
     signal advancedClicked
@@ -31,12 +32,18 @@ Item {
         }
         MenuButton {
             width: parent.width
+            text: "New simulation"
+            onClicked: {
+                newSimulationClicked()
+            }
+        }
+        MenuButton {
+            width: parent.width
             text: "Select simulation"
             onClicked: {
                 simulationsClicked()
             }
         }
-
         MenuButton {
             width: parent.width
             text: "About"

@@ -13,6 +13,10 @@ Loader {
     }
 
     source: folder + "/" + identifier(folder) + ".qml"
+    onSourceChanged: {
+        console.log("Source is " + source)
+    }
+
     onLoaded: {
         item.folder = folder
     }

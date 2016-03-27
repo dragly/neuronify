@@ -13,6 +13,7 @@ Item {
     property real touchableSize: 6 * size
     property real size: 72
     property real margin: 4 * size
+    property real baseMargin: margin
     property real scale: 1.0
 
     property alias font: fontObject
@@ -20,15 +21,20 @@ Item {
 
     Item {
         id: buttonObject
-        property color color: "#dedede"
-        property color fontColor: Qt.rgba(0.15, 0.15, 0.15, 0.9)
-        property real fontSize: 3 * size
+        property color color: Qt.rgba(0.15, 0.15, 0.15, 1.0)
+        property color backgroundColor: "#dedede"
+        property alias font: fontProxy.font
+        Text {
+            id: fontProxy
+            font.pixelSize: 3 * root.size
+            font.weight: Font.Light
+            font.family: "Roboto"
+        }
     }
 
     Item {
         id: fontObject
         property alias heading: headingObject
-        property alias button: buttonObject
 
         property real size: 2.5 * root.size
         property color color: Qt.rgba(0.15, 0.15, 0.15, 0.9)

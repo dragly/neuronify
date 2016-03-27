@@ -13,7 +13,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Style.button.color
+        color: Style.button.backgroundColor
         antialiasing: true
     }
 
@@ -26,11 +26,9 @@ Item {
         }
 
         text: "Begin"
-        font.pixelSize: Style.button.fontSize
-        font.weight: Font.Light
-        font.family: "Roboto"
+        font: Style.button.font
         renderType: Text.QtRendering
-        color: Style.button.fontColor
+        color: Style.button.color
     }
 
     MouseArea {
