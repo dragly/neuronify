@@ -18,15 +18,15 @@ void RetinaPainter::paint(QPainter *painter)
     if(!m_retinaEngine) {
         return;
     }
+    painter->drawImage(boundingRect(), m_retinaEngine->paintedImage());
+
     if (m_retinaEngine->plotKernel()){
         if(m_retinaEngine->kernel()){
-            painter->drawImage(boundingRect(), m_retinaEngine->kernel()->spatialImage());
-            update();
+            painter->drawImage(boundingRect(),
+                               m_retinaEngine->kernel()->spatialImage());
         }
-    } else {
-        painter->drawImage(boundingRect(), m_retinaEngine->paintedImage());
-        update();
     }
+    update();
 }
 
 void RetinaPainter::setRetinaEngine(RetinaEngine *retinaEngine)

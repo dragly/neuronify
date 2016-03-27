@@ -33,7 +33,7 @@ void Kernel::recreate()
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
             int gray = (m_spatial.at(i).at(j) + 1) * 127;
-            QRgb color = qRgb(gray, gray, gray);
+            QRgb color = qRgba(gray, gray, gray, m_imageAlpha);
             m_spatialImage.setPixel(i,j,color);
 
         }
@@ -64,6 +64,11 @@ vector<vector<double> > Kernel::spatial()
 QImage Kernel::spatialImage() const
 {
     return m_spatialImage;
+}
+
+int Kernel::imageAlpha() const
+{
+    return m_imageAlpha;
 }
 
 
@@ -108,6 +113,15 @@ void Kernel::setAbstractKernelEngineType(AbstractKernelEngine* abstractKernelEng
     m_abstractKernelEngineType = abstractKernelEngineType;
     recreate();
     emit abstractKernelEngineTypeChanged(abstractKernelEngineType);
+}
+
+void Kernel::setImageAlpha(int imageAlpha)
+{
+    if (m_imageAlpha == imageAlpha)
+        return;
+
+    m_imageAlpha = imageAlpha;
+    emit imageAlphaChanged(imageAlpha);
 }
 
 

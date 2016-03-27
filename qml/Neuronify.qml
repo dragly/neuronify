@@ -3,7 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
 import QtQuick.Window 2.1
-import QtCharts 2.0
+import QtCharts 2.1
 import QtMultimedia 5.5
 
 import Neuronify 1.0

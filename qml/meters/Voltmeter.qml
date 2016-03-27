@@ -24,7 +24,8 @@ Node {
     fileName: "meters/Voltmeter.qml"
     square: true
     property var connectionPlots: []
-    property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#999999"]
+    property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
+        "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentSeries: 0
     property string mode: "voltage"
     property string title: "mV"
@@ -36,6 +37,9 @@ Node {
 
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
+
+    property alias maximumValue: axisY.max
+    property alias minimumValue: axisY.min
 
     property var series: [
         series1,

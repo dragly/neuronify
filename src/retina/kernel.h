@@ -19,6 +19,7 @@ class Kernel : public QQuickItem
     Q_PROPERTY(int resolutionWidth READ resolutionWidth WRITE setResolutionWidth NOTIFY resolutionWidthChanged)
     Q_PROPERTY(QImage spatialImage READ spatialImage WRITE setSpatialImage NOTIFY imageChanged)
     Q_PROPERTY(AbstractKernelEngine* abstractKernelEngineType READ abstractKernelEngineType WRITE setAbstractKernelEngineType NOTIFY abstractKernelEngineTypeChanged)
+    Q_PROPERTY(int imageAlpha READ imageAlpha WRITE setImageAlpha NOTIFY imageAlphaChanged)
 
 
 public:
@@ -35,6 +36,8 @@ public:
 
     int resolutionHeight() const;
     int resolutionWidth() const;
+    int imageAlpha() const;
+
     void recreate();
 
     vector<vector<double> > spatial();
@@ -47,6 +50,8 @@ public slots:
     void setSpatialImage(QImage spatialImage);
     void setAbstractKernelEngineType(AbstractKernelEngine* abstractKernelEngineType);
 
+    void setImageAlpha(int imageAlpha);
+
 signals:
     void resolutionHeightChanged(int resolutionHeight);
     void resolutionWidthChanged(int resolutionWidth);
@@ -54,8 +59,11 @@ signals:
     void abstractKernelEngineTypeChanged(AbstractKernelEngine* abstractKernelEngineType);
 
 
+    void imageAlphaChanged(int imageAlpha);
+
 private:
     AbstractKernelEngine* m_abstractKernelEngineType = nullptr;
+    int m_imageAlpha = 225;
 
 protected:
     int m_resolutionHeight = 20;
