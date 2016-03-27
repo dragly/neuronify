@@ -38,13 +38,10 @@ Node {
     property alias fireOutput: engine.fireOutput
     property alias rate: engine.rate
 
-
-
-
     engine: NodeEngine {
         id: engine
-        property real rate: 1.0
-        fireOutput: 1.0
+        property real rate: 0.5e3
+        fireOutput: 1.0e-6
 
         onStepped: {
             var shouldFire = (Math.random() < rate*dt)
@@ -58,13 +55,12 @@ Node {
     controls: Component {
         Column {
             anchors.fill: parent
-
-            Text {
-                text: "Firing rate: " + engine.rate.toFixed(1) + " ms⁻¹"
-            }
             BoundSlider {
-                minimumValue: 0.0
-                maximumValue: 5.0
+                text: "Rate"
+                minimumValue: 0.0e3
+                maximumValue: 1.0e3
+                unitScale: 1.0e3
+                unit: "/ms"
                 target: engine
                 property: "rate"
             }

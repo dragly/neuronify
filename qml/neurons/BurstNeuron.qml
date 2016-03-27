@@ -13,23 +13,22 @@ Neuron {
 
     engine: NeuronEngine {
         id: engine
-        fireOutput: 2.0
+        fireOutput: 2.0e-6
         PassiveCurrent {}
-//        AdaptationCurrent{}
         Current {
             property real boost: 0.0
             onFired: {
-                if(boost < 0.1) {
-                    boost = 4.0
+                if(boost < 1.0e-9) {
+                    boost = 100.0e-6
                 }
             }
             onStepped: {
                 if(boost > 0.0) {
-                    boost = boost - 1.0*dt
+                    boost = boost - 1000.0e-6*dt
                 } else {
                     boost = 0.0
                 }
-                current = -boost * (engine.voltage - 60.0)
+                current = -boost * (engine.voltage - 60.0e-3)
             }
         }
     }

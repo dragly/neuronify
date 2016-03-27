@@ -1,6 +1,6 @@
 import QtQuick 2.0
 
 PassiveNeuron {
-    fireOutput: -2.0
+    fireOutput: -2.0e-6
 }
 

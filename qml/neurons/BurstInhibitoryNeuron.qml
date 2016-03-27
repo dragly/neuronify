@@ -4,6 +4,6 @@ import Neuronify 1.0
 import ".."
 
 BurstNeuron {
-    fireOutput : -2.0
+    fireOutput : -2.0e-6
 }
 

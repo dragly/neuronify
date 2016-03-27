@@ -12,7 +12,8 @@ Node {
     id: rasterRoot
 
     property real time: 0.0
-    property real timeRange: 10.0
+    property real timeRange: 10.0e-3
+    property real timeScale: 1e-3
 
     property var neurons: []
 
@@ -23,11 +24,6 @@ Node {
     width: 180
     height: 120
     color: "#deebf7"
-
-    margins.top: 0
-    margins.bottom: 0
-    margins.left: 0
-    margins.right: 0
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
@@ -44,7 +40,7 @@ Node {
             for(var i in neurons) {
                 var neuron = neurons[i]
                 if(neuron.engine === sender) {
-                    scroller.append(time, parseFloat(i) + 1.0)
+                    scroller.append(time / timeScale, parseFloat(i) + 1.0)
                 }
             }
         }
@@ -59,8 +55,12 @@ Node {
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"
-                minimumValue: 1.0
-                maximumValue: 100.0
+                text: "Time range"
+                unit: "ms"
+                unitScale: 1e-3
+                minimumValue: 1.0e-3
+                maximumValue: 100.0e-3
+                stepSize: 1.0e-3
             }
         }
     }
@@ -121,17 +121,24 @@ Node {
         enabled: false // disable mouse input
         legend.visible: false
         backgroundColor: "transparent"
+
+        margins.top: 0
+        margins.bottom: 0
+        margins.left: 0
+        margins.right: 0
+
         ScatterSeries {
             id: scatterSeries
             borderWidth: 0.2
             markerSize: 8.0
             axisX: ValueAxis {
                 id: axisX
-                min: time - timeRange
-                max: time
+                min: (time - timeRange) / timeScale
+                max: time / timeScale
                 tickCount: 2
                 gridVisible: false
                 labelsFont.pixelSize: 14
+                labelFormat: "%.0f"
             }
             axisY: CategoryAxis {
                 id: axisY

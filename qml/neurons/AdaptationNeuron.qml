@@ -7,9 +7,10 @@ import ".."
 import "../controls"
 
 Neuron {
+    id: neuronRoot
     property alias adaptation: adaptationCurrent.adaptation
     property alias timeConstant: adaptationCurrent.timeConstant
-    property alias fireOutput: engine.fireOutput
+    property alias fireOutput: neuronEngine.fireOutput
 
     objectName: "adaptationNeuron"
     fileName: "neurons/AdaptationNeuron.qml"
@@ -17,19 +18,20 @@ Neuron {
     inhibitoryImageSource: "qrc:/images/neurons/adaptive_inhibitory.png"
 
     engine: NeuronEngine {
-        id: engine
-        fireOutput: 2.0
-        PassiveCurrent {
-        }
+        id: neuronEngine
+        fireOutput: 200.0e-6
+        PassiveCurrent {}
         AdaptationCurrent {
             id: adaptationCurrent
-            adaptation: 10.0
-            timeConstant: 1.0
+            adaptation: 10.0e-6
+            timeConstant: 500.0e-3
         }
     }
 
     controls: Component {
-        Column {
+        NeuronControls {
+            neuron: neuronRoot
+            engine: neuronEngine
             Text {
                 text: "Adaptation: " + adaptation.toFixed(1)
             }

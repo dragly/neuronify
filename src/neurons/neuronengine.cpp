@@ -61,6 +61,16 @@ double NeuronEngine::capacitance() const
     return m_capacitance;
 }
 
+double NeuronEngine::initialPotential() const
+{
+    return m_initialPotential;
+}
+
+double NeuronEngine::synapticTimeConstant() const
+{
+    return m_synapticTimeConstant;
+}
+
 void NeuronEngine::setVoltage(double arg)
 {
     if (m_voltage != arg) {
@@ -81,7 +91,8 @@ void NeuronEngine::stepEvent(double dt)
     }
 
     double gs = m_synapticConductance;
-    double dgs = -gs / 1.0 * dt;
+    double tau = m_synapticTimeConstant;
+    double dgs = -gs / tau * dt;
 
     double V = m_voltage;
     double Es = m_synapsePotential;
@@ -103,7 +114,7 @@ void NeuronEngine::stepEvent(double dt)
 
 void NeuronEngine::fireEvent()
 {
-    setVoltage(m_membraneRestingPotential);
+    setVoltage(m_initialPotential);
     setSynapticConductance(0.0);
 }
 
@@ -115,6 +126,7 @@ void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
 
 void NeuronEngine::receiveFireEvent(double stimulation, NodeEngine *sender)
 {
+    Q_UNUSED(sender);
     m_synapticConductance += stimulation;
 }
 
@@ -144,13 +156,13 @@ void NeuronEngine::setSynapsePotential(double arg)
 
 void NeuronEngine::reset()
 {
-    m_voltage = m_membraneRestingPotential;
+    m_voltage = m_initialPotential;
     m_synapticConductance = 0.0;
 }
 
 void NeuronEngine::resetVoltage()
 {
-    m_voltage = m_membraneRestingPotential;
+    m_voltage = m_initialPotential;
     m_synapticConductance = 0.0;
     emit voltageChanged(m_voltage);
     emit synapticConductanceChanged(m_synapticConductance);
@@ -172,6 +184,24 @@ void NeuronEngine::setCapacitance(double capacitance)
 
     m_capacitance = capacitance;
     emit capacitanceChanged(capacitance);
+}
+
+void NeuronEngine::setInitialPotential(double postFirePotential)
+{
+    if (m_initialPotential == postFirePotential)
+        return;
+
+    m_initialPotential = postFirePotential;
+    emit initialPotentialChanged(postFirePotential);
+}
+
+void NeuronEngine::setSynapticTimeConstant(double synapticTimeConstant)
+{
+    if (m_synapticTimeConstant == synapticTimeConstant)
+        return;
+
+    m_synapticTimeConstant = synapticTimeConstant;
+    emit synapticTimeConstantChanged(synapticTimeConstant);
 }
 
 void NeuronEngine::checkFire()
