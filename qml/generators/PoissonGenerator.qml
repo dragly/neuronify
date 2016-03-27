@@ -40,10 +40,12 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        property real rate: 1.0
+        property real rate: 0.5e3
         fireOutput: 1.0e-6
 
         onStepped: {
+            console.log(Math.random())
+            console.log(dt + " " + rate + " " + rate*dt)
             var shouldFire = (Math.random() < rate*dt)
             if(shouldFire) {
                 fire()
@@ -60,8 +62,8 @@ Node {
                 text: "Firing rate: " + engine.rate.toFixed(1) + " ms⁻¹"
             }
             BoundSlider {
-                minimumValue: 0.0
-                maximumValue: 5.0
+                minimumValue: 0.0e3
+                maximumValue: 1.0e3
                 target: engine
                 property: "rate"
             }
