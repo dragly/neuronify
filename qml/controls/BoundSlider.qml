@@ -18,7 +18,6 @@ Column {
     width: parent.width
 
     Text {
-
         text: root.text ? (root.text + ": " + slider.value.toFixed(precision) + " " + root.unit) : ""
     }
     Slider {
@@ -35,6 +34,6 @@ Column {
     Binding {
         target: slider
         property: "value"
-        value: root.target[root.property] / valueScale
+        value: root.target[root.property] / unitScale
     }
 }
