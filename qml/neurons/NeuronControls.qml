@@ -46,18 +46,20 @@ Column {
         property: "restingPotential"
         text: "Resting potential"
         unit: "mV"
-        precision: 0
-        minimumValue: -100
-        maximumValue: 50
+        precision: 3
+        minimumValue: -100e-3
+        maximumValue: 50e-3
+        stepSize: 1e-3
     }
 
     BoundSlider {
         target: engine
         property: "threshold"
         text: "Firing threshold"
-        minimumValue: -50
-        maximumValue: 50
-        precision: 0
+        minimumValue: -50e-3
+        maximumValue: 50e-3
+        stepSize: 1e-3
+        precision: 3
         unit: "mV"
     }
 
