@@ -1,5 +1,5 @@
 import QtQuick 2.5
-import QtCharts 2.0
+import QtCharts 2.1
 import Neuronify 1.0
 
 import "../paths"
