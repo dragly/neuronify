@@ -13,7 +13,7 @@ Neuron {
 
     engine: NeuronEngine {
         id: engine
-        fireOutput: 2.0e-6
+        fireOutput: 200.0e-6
         PassiveCurrent {}
         Current {
             property real boost: 0.0

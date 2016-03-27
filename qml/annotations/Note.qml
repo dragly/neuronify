@@ -20,7 +20,9 @@ Node {
     color: "#54B2FF"
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
-                    ["text", "width", "height"])
+                    ["text",
+                     "width",
+                     "height"])
     }
 
     onSelectedChanged: {

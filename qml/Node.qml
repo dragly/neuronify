@@ -43,6 +43,7 @@ NodeBase {
     property Item simulator
     property bool useDefaultMouseHandling: true
     property bool square: false
+    property var removableChildren: [] // used by nodes such as TouchSensor that has child nodes
     property var dumpableProperties: [
         "x",
         "y",

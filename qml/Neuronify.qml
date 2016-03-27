@@ -109,6 +109,11 @@ Rectangle {
         deleteEverything();
 
         var code = fileManager.read(fileUrl);
+        if(!code) {
+            console.log("Load state got empty contents.")
+            return;
+        }
+
         var data = JSON.parse(code);
 
         var createdEntities = [];
@@ -130,9 +135,13 @@ Rectangle {
             var properties = aliases[i].properties;
             var position = aliases[i].position;
             var parent = createdEntities[properties.parent];
+            if(!parent) {
+                console.warn("ERROR: Could not find parent of alias during file load.");
+            }
+
             var entity = parent.resolveAlias(properties.childIndex);
             if(!entity) {
-                console.warn("ERROR: Could not resolve alias when loading file.")
+                console.warn("ERROR: Could not resolve alias during file load.")
             }
             createdEntities[position] = entity;
         }
@@ -286,6 +295,13 @@ Rectangle {
         }
         for(var i in toDelete) {
             var node = toDelete[i]
+            console.log("Deleting node " + node)
+            console.log("With children " + node.removableChildren)
+            for(var j in node.removableChildren) {
+                var child = node.removableChildren[j]
+                graphEngine.removeNode(child)
+                child.destroy(1)
+            }
             graphEngine.removeNode(node)
             node.destroy(1)
         }
@@ -478,7 +494,7 @@ Rectangle {
             property double startScale: 1.0
 
             function clampScale(scale) {
-                return Math.min(3.0, Math.max(0.1, scale))
+                return Math.min(1.0, Math.max(0.1, scale))
             }
 
             onPinchStarted: {

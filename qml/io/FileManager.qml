@@ -74,7 +74,11 @@ Item {
 
     function read(fileUrl) {
         console.log("Reading file " + fileUrl)
-        loadFileIO.source = fileUrl
+        if(!fileUrl) {
+            loadFileIO.source = "";
+        } else {
+            loadFileIO.source = fileUrl
+        }
         var stateFile = loadFileIO.read()
         return stateFile
     }

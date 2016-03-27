@@ -12,7 +12,7 @@ Neuron {
 
     engine: NeuronEngine {
         id: nEngine
-        fireOutput: 2.0e-6
+        fireOutput: 200.0e-6
         PassiveCurrent {}
     }
 
