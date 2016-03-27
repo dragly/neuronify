@@ -23,8 +23,8 @@ Neuron {
         }
         AdaptationCurrent {
             id: adaptationCurrent
-            adaptation: 10.0
-            timeConstant: 1.0
+            adaptation: 10.0e-6
+            timeConstant: 500.0e-3
         }
     }
 
