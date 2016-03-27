@@ -13,7 +13,6 @@ Item {
     Flickable {
         anchors.fill: parent
         anchors.margins: Style.baseMargin
-//        anchors.margins: 0.0
         contentWidth: width
         contentHeight: categories.height
         flickableDirection: Flickable.VerticalFlick
@@ -31,6 +30,12 @@ Item {
             Repeater {
                 model: [
                     {
+                        name: "Simple",
+                        simulations: [
+                            "qrc:/simulations/singleCell",
+                        ]
+                    },
+                    {
                         name: "Inhibition",
                         simulations: [
                             "qrc:/simulations/lateralInhibition",
@@ -46,7 +51,7 @@ Item {
                     {
                         name: "Sterratt Examples",
                         simulations: [
-                            "qrc:/simulations/empty",
+                            "qrc:/simulations/sterratt/fig_8_5",
                         ]
                     }
                 ]

@@ -18,6 +18,7 @@ public:
 
     bool hasFired();
     void setHasFired(bool arg);
+    Q_INVOKABLE void reset();
 
 signals:
     void stepped(double dt);
@@ -27,6 +28,7 @@ signals:
     void finalizedStep(double dt);
     void fireOutputChanged(double arg);
     void currentOutputChanged(double arg);
+    void resetted();
 
 public slots:
     void step(double dt);
@@ -43,6 +45,7 @@ protected:
     virtual void receiveFireEvent(double fireOutput, NodeEngine *sender);
     virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender);
     virtual void finalizeStepEvent(double dt);
+    virtual void resetEvent();
 
 private:
     bool m_hasFired = false;

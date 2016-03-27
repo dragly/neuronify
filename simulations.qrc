@@ -21,5 +21,8 @@
         <file>simulations/singleCell/singleCell.nfy</file>
         <file>simulations/singleCell/singleCell.png</file>
         <file>simulations/singleCell/singleCell.qml</file>
+        <file>simulations/sterratt/fig_8_5/fig_8_5.nfy</file>
+        <file>simulations/sterratt/fig_8_5/fig_8_5.png</file>
+        <file>simulations/sterratt/fig_8_5/fig_8_5.qml</file>
     </qresource>
 </RCC>

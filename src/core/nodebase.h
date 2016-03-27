@@ -16,6 +16,7 @@ public:
     ~NodeBase();
 
     NodeEngine* engine() const;
+    void reset();
 
 signals:
     void edgeAdded(Edge* edge);

@@ -1,4 +1,5 @@
 #include "nodebase.h"
+#include "nodeengine.h"
 
 /*!
  * \class NodeBase
@@ -33,6 +34,13 @@ NodeBase::~NodeBase()
 NodeEngine *NodeBase::engine() const
 {
     return m_engine;
+}
+
+void NodeBase::reset()
+{
+    if(m_engine) {
+        m_engine->reset();
+    }
 }
 
 void NodeBase::setEngine(NodeEngine *arg)

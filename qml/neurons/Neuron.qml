@@ -63,7 +63,12 @@ Node {
                     ["engine.fireOutput",
                      "engine.initialPotential",
                      "engine.restingPotential",
-                     "engine.threshold"])
+                     "engine.threshold",
+                     "engine.voltage",
+                     "engine.capacitance",
+                     "engine.synapticConductance",
+                     "engine.synapticTimeConstant",
+                     "engine.synapsePotential"])
     }
 
     Image {

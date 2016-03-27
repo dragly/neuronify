@@ -88,7 +88,7 @@ Column {
     Button {
         text: "Reset"
         onClicked: {
-            engine.resetVoltage()
+            engine.reset()
         }
     }
 
@@ -101,7 +101,7 @@ Column {
         onClicked: {
             for (var i in graphEngine.nodes){
                 if (graphEngine.nodes[i].isNeuron) {
-                    graphEngine.nodes[i].engine.resetVoltage()
+                    graphEngine.nodes[i].engine.reset()
                 }
 
             }
