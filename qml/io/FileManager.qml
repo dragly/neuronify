@@ -42,8 +42,11 @@ Item {
 
         var counter = 0
         for(var i in entities) {
-            var entity = entities[i]
-            entityList.push(entity.dump(i))
+            var entity = entities[i];
+            var dump = entity.dump(i);
+            if(dump) {
+                entityList.push(dump);
+            }
         }
 
         for(var i in connections) {

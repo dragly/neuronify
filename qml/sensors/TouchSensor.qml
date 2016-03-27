@@ -48,9 +48,14 @@ Node {
 
     Component.onCompleted: {
         dropFunction = simulator.createConnectionToPoint
-        dumpableProperties = dumpableProperties.concat(["cells",
-                                   "sensingCurrentOutput"])
+        dumpableProperties = dumpableProperties.concat(
+                    ["cells",
+                     "sensingCurrentOutput"])
         resetCells()
+    }
+
+    function resolveAlias(index) {
+        return actualCells[index];
     }
 
     function resetCells() {

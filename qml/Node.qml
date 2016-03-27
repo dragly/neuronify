@@ -65,6 +65,9 @@ NodeBase {
         }
     }
 
+    function resolveAlias(index) {
+        return undefined;
+    }
 
     function _deleteAllConnectionsInList(connectionsToDelete) {
         for(var i in connectionsToDelete) {

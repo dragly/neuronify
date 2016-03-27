@@ -106,12 +106,29 @@ Rectangle {
         var data = JSON.parse(code);
 
         var createdEntities = [];
+        var aliases = [];
 
         for(var i in data.entities) {
             var properties = data.entities[i];
+            if(properties.isAlias && properties.isAlias === true) {
+                createdEntities.push({});
+                aliases.push({position: i, properties: properties});
+                continue;
+            }
             var entity = createEntity(properties.fileName, {}, false);
             applyProperties(entity, properties);
             createdEntities.push(entity);
+        }
+
+        for(var i in aliases) {
+            var properties = aliases[i].properties;
+            var position = aliases[i].position;
+            var parent = createdEntities[properties.parent];
+            var entity = parent.resolveAlias(properties.childIndex);
+            if(!entity) {
+                console.warn("ERROR: Could not resolve alias when loading file.")
+            }
+            createdEntities[position] = entity;
         }
 
         for(var i in data.connections) {

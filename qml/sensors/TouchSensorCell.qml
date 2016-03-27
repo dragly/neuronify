@@ -29,14 +29,16 @@ Node {
     connectionPoint: Qt.point(sensor.x + cell.x + cell.width / 2,
                               sensor.y + cell.y + cell.height)
 
+    function dump() {
+        return {
+            isAlias: true,
+            parent: graphEngine.nodeIndex(sensor),
+            childIndex: cellIndex
+        }
+    }
+
     onEdgeAdded: {
         connections.push(edge)
-        edge.customDump = function(index, graphEngine) {
-            var toNeuron = edge.itemB
-            var indexOfToNeuron = graphEngine.nodeIndex(toNeuron)
-            var sensorName = "entity" + graphEngine.nodeIndex(sensor)
-            return "connectEntities(" + sensorName + ".cellAt(" + cellIndex + "), entity" + indexOfToNeuron + ")\n"
-        }
     }
 
     onEdgeRemoved: {
