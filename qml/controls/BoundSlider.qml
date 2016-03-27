@@ -11,9 +11,9 @@ Column {
     property int precision: 1
     property real unitScale: 1.0
 
-    property real minimumValue: slider.minimumValue
-    property real maximumValue: slider.maximumValue
-    property real stepSize: slider.stepSize
+    property real minimumValue: -1.0
+    property real maximumValue: 1.0
+    property real stepSize: 0.01
 
     width: parent.width
 
@@ -25,6 +25,7 @@ Column {
         width: parent.width
         minimumValue: root.minimumValue / unitScale
         maximumValue: root.maximumValue / unitScale
+        stepSize: root.stepSize / unitScale
     }
     Binding {
         target: root.target
