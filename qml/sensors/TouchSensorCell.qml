@@ -65,51 +65,55 @@ Node {
         droppedConnector.connect(sensor.dropFunction)
     }
 
-    SCurve {
-        id: connectorCurve
+    Connector{
         visible: sensor.selected
-        z: -1
-        color: "#0088aa"
-        startPoint: Qt.point(parent.width / 2, parent.height / 2)
-        endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
     }
 
-    Item {
-        id: connector
+//    SCurve {
+//        id: connectorCurve
+//        visible: sensor.selected
+//        z: -1
+//        color: "#0088aa"
+//        startPoint: Qt.point(parent.width / 2, parent.height / 2)
+//        endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
+//    }
 
-        visible: sensor.selected
+//    Item {
+//        id: connector
 
-        Component.onCompleted: {
-            resetPosition()
-        }
+//        visible: sensor.selected
 
-        function resetPosition() {
-            connector.x = parent.width / 2 - width / 2
-            connector.y = parent.height - height / 2
-        }
+//        Component.onCompleted: {
+//            resetPosition()
+//        }
 
-        width: parent.width * 0.3
-        height: width
+//        function resetPosition() {
+//            connector.x = parent.width / 2 - width / 2
+//            connector.y = parent.height - height / 2
+//        }
 
-        Rectangle {
-            id: connectorCircle
-            anchors.centerIn: parent
-            width: parent.width / 1.1
-            height: width
-            color: "#0088aa"
-            border.color: "#f7fbff"
-            border.width: 1.0
-            radius: width
-        }
+//        width: parent.width * 0.3
+//        height: width
 
-        MouseArea {
-            id: connectorMouseArea
-            anchors.fill: parent
-            drag.target: parent
-            onReleased: {
-                cell.droppedConnector(cell, connector)
-                connector.resetPosition()
-            }
-        }
-    }
+//        Rectangle {
+//            id: connectorCircle
+//            anchors.centerIn: parent
+//            width: parent.width / 1.1
+//            height: width
+//            color: "#0088aa"
+//            border.color: "#f7fbff"
+//            border.width: 1.0
+//            radius: width
+//        }
+
+//        MouseArea {
+//            id: connectorMouseArea
+//            anchors.fill: parent
+//            drag.target: parent
+//            onReleased: {
+//                cell.droppedConnector(cell, connector)
+//                connector.resetPosition()
+//            }
+//        }
+//    }
 }

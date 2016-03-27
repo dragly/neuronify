@@ -28,7 +28,7 @@ Node {
 
 
     property int cells: 5
-    property int _oldCells: 0
+//    property int _oldCells: 0
     property var actualCells: []
     property real sensingCurrentOutput: 150.0
     property var dropFunction
@@ -48,8 +48,9 @@ Node {
 
     Component.onCompleted: {
         dropFunction = simulator.createConnectionToPoint
-        dumpableProperties = dumpableProperties.concat(["cells",
-                                   "sensingCurrentOutput"])
+        dumpableProperties = dumpableProperties.concat(
+                    ["cells",
+                     "sensingCurrentOutput"])
         resetCells()
     }
 
@@ -64,7 +65,9 @@ Node {
         }
         actualCells.length = 0
         for(var i = 0; i < cells; i++) {
-            var cell = simulator.createEntity("sensors/TouchSensorCell.qml", {cellIndex: i, sensor: sensorRoot})
+            var cell = simulator.createEntity("sensors/TouchSensorCell.qml"
+                                              , {cellIndex: i,
+                                                  sensor: sensorRoot})
             cell.parent = cellRow
             actualCells.push(cell)
         }
