@@ -18,7 +18,9 @@ Column {
     width: parent.width
 
     Text {
-        text: root.text ? (root.text + ": " + slider.value.toFixed(precision) + " " + root.unit) : ""
+        text: root.text ? (root.text + ": "
+                           + slider.value.toFixed(precision) + " "
+                           + root.unit) : ""
     }
     Slider {
         id: slider
