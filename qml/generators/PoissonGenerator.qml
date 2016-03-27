@@ -38,13 +38,10 @@ Node {
     property alias fireOutput: engine.fireOutput
     property alias rate: engine.rate
 
-
-
-
     engine: NodeEngine {
         id: engine
         property real rate: 1.0
-        fireOutput: 1.0
+        fireOutput: 1.0e-6
 
         onStepped: {
             var shouldFire = (Math.random() < rate*dt)

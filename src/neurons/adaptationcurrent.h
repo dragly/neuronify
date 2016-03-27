@@ -16,19 +16,16 @@ public:
 
     double adaptation() const;
     double conductance() const;
-
     double timeConstant() const;
 
 signals:
     void adaptationChanged(double arg);
     void conductanceChanged(double arg);
-
     void timeConstantChanged(double arg);
 
 public slots:
     void setAdaptation(double arg);
     void setConductance(double arg);
-
     void setTimeConstant(double arg);
 
 protected:

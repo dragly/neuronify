@@ -1,4 +1,4 @@
-var entity0 = createEntity("neurons/PassiveNeuron.qml", {"x":948.4154417011559,"y":633.3520764949335,"label":"","fireOutput":2,"inhibitory":false})
+var entity0 = createEntity("neurons/PassiveNeuron.qml", {"x":948.4154417011559,"y":633.3520764949335,"label":"","fireOutput":2e-6,"inhibitory":false})
 var entity1 = createEntity("generators/CurrentClamp.qml", {"x":752.4970743542171,"y":629.2704438418723,"label":"","currentOutputScaled":9.069226570242815})
 var entity2 = createEntity("meters/Voltmeter.qml", {"x":1117.6728417158768,"y":478.4836180918596,"label":"","width":383.3115308902113,"height":252.77176249895882})
 var entity3 = createEntity("annotations/Note.qml", {"x":681.3134008848291,"y":735.3928928214638,"label":"","text":"A DC clamp.\n \nGenerates a constant current","width":180,"height":120})

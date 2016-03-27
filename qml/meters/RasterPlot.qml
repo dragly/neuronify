@@ -24,11 +24,6 @@ Node {
     height: 120
     color: "#deebf7"
 
-    margins.top: 0
-    margins.bottom: 0
-    margins.left: 0
-    margins.right: 0
-
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
                     ["width",
@@ -117,6 +112,12 @@ Node {
         enabled: false // disable mouse input
         legend.visible: false
         backgroundColor: "transparent"
+
+        margins.top: 0
+        margins.bottom: 0
+        margins.left: 0
+        margins.right: 0
+
         ScatterSeries {
             id: scatterSeries
             borderWidth: 0.2
