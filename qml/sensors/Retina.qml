@@ -69,6 +69,8 @@ Node {
                               kernelLoader.item.resolutionWidth : 80
         abstractKernelEngineType: kernelLoader.item ?
                                       kernelLoader.item.engine : null
+
+        imageAlpha: 225
     }
 
     engine: RetinaEngine {
@@ -118,28 +120,7 @@ Node {
                 }
             }
 
-            Text {
-                text: "Show: "
-            }
-            ComboBox {
-                id: displayComboBox
-                width: 200
-                model: imageView
 
-                onChildrenChanged: {
-                    if(!currentIndex+1){
-
-                        currentIndex = viewIndex
-                    }
-                }
-
-                onCurrentIndexChanged: {
-                    if(currentIndex == 0) retinaEngine.plotKernel = false
-                    else retinaEngine.plotKernel = true
-                    viewIndex = currentIndex
-                }
-
-            }
             Text {
                 text: "Receptive Field: "
             }
@@ -174,6 +155,18 @@ Node {
 
             }
 
+            CheckBox {
+                id: inhibitoryCheckbox
+                text: "Show receptive field"
+                onCheckedChanged: {
+                    if(checked) {
+                        retinaEngine.plotKernel = true
+                    }else{
+                        retinaEngine.plotKernel = false
+                    }
+                }
+            }
+
             //Slider to change the sensitivity:
             Text {
                 text: "Sensitivity: " + retinaEngine.sensitivity.toFixed(0)
@@ -199,13 +192,6 @@ Node {
         ListElement {text: "OffRight"; name: "kernels/OffRightKernel.qml"}
         ListElement {text: "OffTop"; name: "kernels/OffTopKernel.qml"}
         ListElement {text: "OffBottom"; name: "kernels/OffBottomKernel.qml"}
-    }
-
-
-    ListModel {
-        id: imageView
-        ListElement {text: "Camera";   name: 1}
-        ListElement {text: "Receptive Field";   name: 2}
     }
 
     Rectangle {
