@@ -28,7 +28,6 @@ using namespace std;
 NeuronEngine::NeuronEngine(QQuickItem *parent)
     : NodeEngine(parent)
 {
-    reset();
 }
 
 double NeuronEngine::voltage() const
@@ -154,18 +153,10 @@ void NeuronEngine::setSynapsePotential(double arg)
     }
 }
 
-void NeuronEngine::reset()
+void NeuronEngine::resetEvent()
 {
-    m_voltage = m_initialPotential;
-    m_synapticConductance = 0.0;
-}
-
-void NeuronEngine::resetVoltage()
-{
-    m_voltage = m_initialPotential;
-    m_synapticConductance = 0.0;
-    emit voltageChanged(m_voltage);
-    emit synapticConductanceChanged(m_synapticConductance);
+    setVoltage(m_initialPotential);
+    setSynapticConductance(0.0);
 }
 
 void NeuronEngine::setThreshold(double threshold)

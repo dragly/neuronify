@@ -37,8 +37,7 @@ public slots:
     void setSynapticConductance(double arg);
     void setRestingPotential(double arg);
     void setSynapsePotential(double arg);
-    void reset();
-    void resetVoltage();
+    void resetEvent();
     void setThreshold(double threshold);
     void setCapacitance(double capacitance);
     void setInitialPotential(double initialPotential);

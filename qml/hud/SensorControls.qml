@@ -15,26 +15,23 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         spacing: 10
-
-        Text {
-            text: "Cells: " + sensor.cells
-        }
         BoundSlider {
             Layout.fillWidth: true
             minimumValue: 1
             maximumValue: 10
             stepSize: 1
+            text: "Sensor cells"
             target: sensor
             property: "cells"
         }
-
-        Text {
-            text: "Current output: " + sensor.sensingCurrentOutput.toFixed(1) + " mA"
-        }
         BoundSlider {
             Layout.fillWidth: true
-            minimumValue: 0.0
-            maximumValue: 1000
+            minimumValue: 0.0e-6
+            maximumValue: 50e-6
+            unitScale: 1e-6
+            stepSize: 1e-7
+            text: "Current output"
+            unit: "µA"
             target: sensor
             property: "sensingCurrentOutput"
         }

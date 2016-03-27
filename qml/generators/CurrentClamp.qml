@@ -27,7 +27,7 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        property real currentOutputScaled: 1.8
+        property real currentOutputScaled: 10.0
         currentOutput: currentOutputScaled * 1e-6
     }
 

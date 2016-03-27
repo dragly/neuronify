@@ -20,9 +20,14 @@ Node {
     objectName: "neuron"
     fileName: "neurons/Neuron.qml"
 
-    readonly property real fireOutput: root.engine.fireOutput
-    readonly property bool inhibitory: root.engine.fireOutput < 0.0
+//    readonly property alias fireOutput: root.engine.fireOutput
+//    readonly property alias initialPotential: root.engine.initialPotential
+//    readonly property alias restingPotential: root.engine.restingPotential
+//    readonly property alias threshold: root.engine.threshold
+
     readonly property real voltage: root.engine.voltage
+    readonly property bool inhibitory: root.engine.fireOutput < 0.0
+
     property url imageSource
     property url inhibitoryImageSource
     property bool isNeuron: true
@@ -54,7 +59,16 @@ Node {
     }
 
     Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat("fireOutput", "inhibitory")
+        dumpableProperties = dumpableProperties.concat(
+                    ["engine.fireOutput",
+                     "engine.initialPotential",
+                     "engine.restingPotential",
+                     "engine.threshold",
+                     "engine.voltage",
+                     "engine.capacitance",
+                     "engine.synapticConductance",
+                     "engine.synapticTimeConstant",
+                     "engine.synapsePotential"])
     }
 
     Image {

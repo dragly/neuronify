@@ -132,21 +132,20 @@ Edge {
         if(customDump) {
             return customDump(index, graphEngine)
         }
-
-        var outputString = ""
         var itemAEntityIndex = graphEngine.nodeIndex(itemA)
         if(itemAEntityIndex === -1) {
             console.error("Could not find index of node " + itemA + " in GraphEngine! Aborting dump!")
             return ""
         }
-
         var itemBEntityIndex = graphEngine.nodeIndex(itemB)
         if(itemBEntityIndex === -1) {
             console.error("Could not find index of node " + itemB + " in GraphEngine! Aborting dump!")
             return ""
         }
-        outputString += "var connection" + index + " = connectEntities(entity" + itemAEntityIndex + ", entity" + itemBEntityIndex + ")\n"
-        return outputString
+        return {
+            "from": itemAEntityIndex,
+            "to": itemBEntityIndex
+        }
     }
 
     BezierCurve {

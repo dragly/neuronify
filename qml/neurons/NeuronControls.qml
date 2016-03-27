@@ -18,7 +18,7 @@ Column {
     spacing: 10
 
     Text {
-        text: engine.voltage.toFixed(0) + " mV"
+        text: (neuron.voltage * 1e3).toFixed(0) + " mV"
         anchors.right: parent.right
     }
 
@@ -46,23 +46,35 @@ Column {
         property: "restingPotential"
         text: "Resting potential"
         unit: "mV"
-        precision: 3
         minimumValue: -100e-3
         maximumValue: 50e-3
-        stepSize: 1e-3
         unitScale: 1e-3
+        stepSize: 1e-4
+        precision: 1
     }
 
     BoundSlider {
         target: engine
         property: "threshold"
         text: "Firing threshold"
+        unit: "mV"
         minimumValue: -50e-3
         maximumValue: 50e-3
-        stepSize: 1e-3
-        precision: 3
-        unit: "mV"
         unitScale: 1e-3
+        stepSize: 1e-4
+        precision: 1
+    }
+
+    BoundSlider {
+        target: engine
+        property: "initialPotential"
+        text: "Initial potential"
+        unit: "mV"
+        minimumValue: -100e-3
+        maximumValue: 50e-3
+        unitScale: 1e-3
+        stepSize: 1e-4
+        precision: 1
     }
 
     FireOutputControl {
@@ -76,7 +88,7 @@ Column {
     Button {
         text: "Reset"
         onClicked: {
-            engine.resetVoltage()
+            engine.reset()
         }
     }
 
@@ -89,7 +101,7 @@ Column {
         onClicked: {
             for (var i in graphEngine.nodes){
                 if (graphEngine.nodes[i].isNeuron) {
-                    graphEngine.nodes[i].engine.resetVoltage()
+                    graphEngine.nodes[i].engine.reset()
                 }
 
             }

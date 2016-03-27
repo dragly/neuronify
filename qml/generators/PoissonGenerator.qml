@@ -41,7 +41,7 @@ Node {
     engine: NodeEngine {
         id: engine
         property real rate: 0.5e3
-        fireOutput: 1.0e-6
+        fireOutput: 100.0e-6
 
         onStepped: {
             var shouldFire = (Math.random() < rate*dt)

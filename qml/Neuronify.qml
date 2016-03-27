@@ -86,17 +86,72 @@ Rectangle {
         fileManager.saveState(fileUrl)
     }
 
+    function applyProperties(object, properties) {
+        for(var i in properties) {
+            var prop = properties[i];
+            if(typeof(prop) === "object") {
+                applyProperties(object[i], prop);
+            } else {
+                object[i] = prop;
+            }
+        }
+    }
+
     function loadState(fileUrl) {
         console.log("Load state called")
-        deleteEverything()
+
         undoList.length = 0
 
         undoIdx = 1
         undoRecordingEnabled = false
-        var code = fileManager.read(fileUrl)
-        console.log("Evaluating code")
-        eval(code)
-        undoList.push(code)
+
+        deleteEverything();
+
+        var code = fileManager.read(fileUrl);
+        if(!code) {
+            console.log("Load state got empty contents.")
+            return;
+        }
+
+        var data = JSON.parse(code);
+
+        var createdEntities = [];
+        var aliases = [];
+
+        for(var i in data.entities) {
+            var properties = data.entities[i];
+            if(properties.isAlias && properties.isAlias === true) {
+                createdEntities.push({});
+                aliases.push({position: i, properties: properties});
+                continue;
+            }
+            var entity = createEntity(properties.fileName, {}, false);
+            applyProperties(entity, properties);
+            createdEntities.push(entity);
+        }
+
+        for(var i in aliases) {
+            var properties = aliases[i].properties;
+            var position = aliases[i].position;
+            var parent = createdEntities[properties.parent];
+            if(!parent) {
+                console.warn("ERROR: Could not find parent of alias during file load.");
+            }
+
+            var entity = parent.resolveAlias(properties.childIndex);
+            if(!entity) {
+                console.warn("ERROR: Could not resolve alias during file load.")
+            }
+            createdEntities[position] = entity;
+        }
+
+        for(var i in data.connections) {
+            var connection = data.connections[i];
+            var from = parseInt(connection.from);
+            var to = parseInt(connection.to);
+            var connection = connectEntities(createdEntities[from], createdEntities[to]);
+        }
+
         undoRecordingEnabled = true
     }
 
@@ -239,6 +294,13 @@ Rectangle {
         }
         for(var i in toDelete) {
             var node = toDelete[i]
+            console.log("Deleting node " + node)
+            console.log("With children " + node.removableChildren)
+            for(var j in node.removableChildren) {
+                var child = node.removableChildren[j]
+                graphEngine.removeNode(child)
+                child.destroy(1)
+            }
             graphEngine.removeNode(node)
             node.destroy(1)
         }
@@ -308,7 +370,6 @@ Rectangle {
             camera.retinaCounter += 1
             properties.videoSurface = videoSurface
         }
-
 
         properties.simulator = root
         var entity = component.createObject(neuronLayer, properties)
@@ -432,7 +493,7 @@ Rectangle {
             property double startScale: 1.0
 
             function clampScale(scale) {
-                return Math.min(3.0, Math.max(0.1, scale))
+                return Math.min(1.0, Math.max(0.1, scale))
             }
 
             onPinchStarted: {
@@ -486,12 +547,12 @@ Rectangle {
             transformOrigin: Item.TopLeft
 
             function dump() {
-                var properties = ["x", "y", "scale"]
-                var output = ""
-                for(var i in properties) {
-                    output += "workspace." + properties[i] + " = " + workspace[properties[i]] + "\n"
-                }
-                return output
+//                var properties = ["x", "y", "scale"]
+//                var output = ""
+//                for(var i in properties) {
+//                    output += "workspace." + properties[i] + " = " + workspace[properties[i]] + "\n"
+//                }
+//                return output
             }
 
 

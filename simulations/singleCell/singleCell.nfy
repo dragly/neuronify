@@ -1,11 +1,1 @@
-var entity0 = createEntity("neurons/PassiveNeuron.qml", {"x":948.4154417011559,"y":633.3520764949335,"label":"","fireOutput":2e-6,"inhibitory":false})
-var entity1 = createEntity("generators/CurrentClamp.qml", {"x":752.4970743542171,"y":629.2704438418723,"label":"","currentOutputScaled":9.069226570242815})
-var entity2 = createEntity("meters/Voltmeter.qml", {"x":1117.6728417158768,"y":478.4836180918596,"label":"","width":383.3115308902113,"height":252.77176249895882})
-var entity3 = createEntity("annotations/Note.qml", {"x":681.3134008848291,"y":735.3928928214638,"label":"","text":"A DC clamp.\n \nGenerates a constant current","width":180,"height":120})
-var entity4 = createEntity("annotations/Note.qml", {"x":867.0276865991146,"y":429.2704438418723,"label":"","text":"A neuron.\n\nGenerates a spike as soon as the voltage is above a given threshold.","width":222.85714285714272,"height":129.1836734693877})
-var entity5 = createEntity("annotations/Note.qml", {"x":1173.1501355787072,"y":770.0867703724839,"label":"","text":"A voltmeter.\n\nDisplayes the voltage of the neuron","width":180,"height":120})
-var connection0 = connectEntities(entity1, entity0)
-var connection1 = connectEntities(entity0, entity2)
-workspace.x = -764.7268286607064
-workspace.y = -585.0292172205945
-workspace.scale = 1.690377403921185
+{"connections":[{"from":1,"to":0},{"from":0,"to":2}],"entities":[{"x":948.4154417011559,"y":633.3520764949335,"label":"","fileName":"neurons/PassiveNeuron.qml","engine":{"fireOutput":0.000002,"initialPotential":-0.08,"restingPotential":-0.065,"threshold":0}},{"x":752.4970743542171,"y":629.2704438418723,"label":"","fileName":"generators/CurrentClamp.qml","currentOutputScaled":9.069226570242815},{"x":1117.6728417158768,"y":478.4836180918596,"label":"","fileName":"meters/Voltmeter.qml","width":383.3115308902113,"height":252.77176249895882},{"x":681.3134008848291,"y":735.3928928214638,"label":"","fileName":"annotations/Note.qml","text":"A DC clamp.\n \nGenerates a constant current","width":180,"height":120},{"x":867.0276865991146,"y":429.2704438418723,"label":"","fileName":"annotations/Note.qml","text":"A neuron.\n\nGenerates a spike as soon as the voltage is above a given threshold.","width":222.85714285714272,"height":129.1836734693877},{"x":1173.1501355787072,"y":770.0867703724839,"label":"","fileName":"annotations/Note.qml","text":"A voltmeter.\n\nDisplayes the voltage of the neuron","width":180,"height":120}],"other":[]}

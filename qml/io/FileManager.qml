@@ -31,26 +31,40 @@ Item {
     }
 
     function saveState(fileUrl) {
+//        console.warn("WARNING: Save disabled!");
+//        return;
         var entities = graphEngine.nodes
         var connections = graphEngine.edges
-        var fileString = ""
+        var entityList = [];
+        var connectionList = [];
+        var otherList = [];
         console.log("Saving to " + fileUrl)
 
         var counter = 0
         for(var i in entities) {
-            var entity = entities[i]
-            fileString += entity.dump(i)
+            var entity = entities[i];
+            var dump = entity.dump(i);
+            if(dump) {
+                entityList.push(dump);
+            }
         }
 
         for(var i in connections) {
             var connection = connections[i]
-            fileString += connection.dump(i, graphEngine)
+            connectionList.push(connection.dump(i, graphEngine))
         }
 
-        for(var i in otherItems) {
-            var item = otherItems[i]
-            fileString += item.dump()
-        }
+//        for(var i in otherItems) {
+//            var item = otherItems[i]
+//            otherList.push(item.dump())
+//        }
+
+        var result = {
+            connections: connectionList,
+            entities: entityList,
+            other: otherList
+        };
+        var fileString = JSON.stringify(result);
 
         console.log(fileString)
 
@@ -60,7 +74,11 @@ Item {
 
     function read(fileUrl) {
         console.log("Reading file " + fileUrl)
-        loadFileIO.source = fileUrl
+        if(!fileUrl) {
+            loadFileIO.source = "";
+        } else {
+            loadFileIO.source = fileUrl
+        }
         var stateFile = loadFileIO.read()
         return stateFile
     }

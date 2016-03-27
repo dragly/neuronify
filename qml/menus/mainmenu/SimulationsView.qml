@@ -1,146 +1,119 @@
 import QtQuick 2.0
-import "../../style"
+
+import "qrc:/qml/style"
+import "qrc:/qml/tools"
 
 Item {
-    id: simulationSelectionView
-    property alias model: listView.model
-    property string title: "Select simulation"
-    signal loadSimulation(var simulation)
-    signal readMore(var text)
+    id: simulationsViewRoot
 
+    signal simulationClicked(var simulation)
+    signal backClicked
     clip: true
 
-    property var simulations: [
-        "empty",
-        "singleCell",
-        "recurrentInhibition",
-        "light"
-    ]
-
-    Component.onCompleted: {
-        for(var i in simulations) {
-            var name = simulations[i]
-
-            simulationsModel.append({folder: "../../simulations/" + name})
-        }
-    }
-
-    ListModel {
-        id: simulationsModel
-    }
-
-    ListView {
-        id: listView
-        anchors {
-            top: parent.top
-            bottom: dots.top
-            left: parent.left
-            right: parent.right
-            bottomMargin: Style.touchableSize * 0.1
-        }
-
-        orientation: Qt.Horizontal
-        snapMode: ListView.SnapOneItem
-        model: simulationsModel
-        cacheBuffer: 999999
-
-        onContentXChanged: {
-            dotsRepeater.currentIndex = indexAt(contentX + width / 2, contentY)
-        }
-
-        delegate: SimulationButton {
-            width: listView.width
-            height: listView.height
-            folder: model.folder
-            onLoadSimulation: {
-                simulationSelectionView.loadSimulation(simulation)
+    Flickable {
+        anchors.fill: parent
+        anchors.margins: Style.baseMargin
+        contentWidth: width
+        contentHeight: categories.height
+        flickableDirection: Flickable.VerticalFlick
+        Column {
+            id: categories
+            anchors{
+                left: parent.left
+                right: parent.right
             }
-            onReadMore: {
-                simulationSelectionView.readMore(text)
+            spacing: Style.baseMargin
+            Item {
+                width: 100
+                height: Style.touchableSize
             }
-        }
-    }
-
-    Row {
-        id: dots
-        anchors {
-            bottom: parent.bottom
-            bottomMargin: Style.touchableSize * 0.7
-            horizontalCenter: parent.horizontalCenter
-        }
-        height: Style.size * 1.2
-        spacing: Style.size * 0.8
-
-        Repeater {
-            id: dotsRepeater
-            property int currentIndex: 0
-            model: simulationsModel.count
-
-            function refresh() {
-                if(currentIndex < 0) {
-                    return
-                }
-
-                for(var i = 0; i < count; i++) {
-                    itemAt(i).selected = false
-                }
-                itemAt(currentIndex).selected = true
-            }
-
-            Component.onCompleted: {
-                refresh()
-            }
-
-            onCurrentIndexChanged: {
-                refresh()
-            }
-
-            Rectangle {
-                id: dot
-                property bool selected: false
-                anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-                width: Style.size * 0.8
-                height: width
-                color: "lightgrey"
-
-                radius: width / 2
-
-                states: [
-                    State {
-                        name: "selected"
-                        when: selected
-                        PropertyChanges {
-                            target: dot
-                            color: "grey"
-                        }
-                        PropertyChanges {
-                            target: dot
-                            width: Style.size * 1.2
-                        }
+            Repeater {
+                model: [
+                    {
+                        name: "Simple",
+                        simulations: [
+                            "qrc:/simulations/singleCell",
+                        ]
+                    },
+                    {
+                        name: "Inhibition",
+                        simulations: [
+                            "qrc:/simulations/lateralInhibition",
+                            "qrc:/simulations/recurrentInhibition",
+                        ]
+                    },
+                    {
+                        name: "Visual system",
+                        simulations: [
+                            "qrc:/simulations/light",
+                        ]
+                    },
+                    {
+                        name: "Sterratt Examples",
+                        simulations: [
+                            "qrc:/simulations/sterratt/fig_8_5",
+                        ]
                     }
                 ]
+                Column {
+                    spacing: Style.baseMargin
+                    Text {
+                        text: modelData.name
+                        font: Style.button.font
+                        color: Style.button.color
+                    }
+                    Flickable {
+                        width: categories.width
+                        height: simulationsRow.height
+                        contentHeight: height
+                        contentWidth: simulationsRow.width
+                        flickableDirection: Flickable.HorizontalFlick
+                        Row {
+                            id: simulationsRow
+                            spacing: Style.baseMargin * 0.5
+                            Repeater {
+                                model: modelData.simulations
+                                Item {
+                                    width: simulationColumn.width
+                                    height: simulationColumn.height
+                                    SimulationLoader {
+                                        id: loader
+                                        folder: modelData
+                                    }
+                                    Column {
+                                        id: simulationColumn
+                                        Image {
+                                            id: simulationImage
+                                            property int simulationsCount: simulationsViewRoot.width / (Style.touchableSize * 2.5 + Style.baseMargin)
 
-                transitions: [
-                    Transition {
-                        ParallelAnimation {
-                            NumberAnimation {
-                                target: dot
-                                property: "width"
-                                duration: 400
-                                easing.type: Easing.InOutQuad
-                            }
-                            NumberAnimation {
-                                target: dot
-                                property: "height"
-                                duration: 400
-                                easing.type: Easing.InOutQuad
-                            }
-                            ColorAnimation {
-                                duration: 400
+                                            width: (simulationsViewRoot.width - Style.baseMargin) / (simulationsCount + 0.3) - simulationsRow.spacing
+                                            height: width
+
+                                            source: loader.item ? loader.item.screenshotSource : ""
+                                            smooth: true
+                                            antialiasing: true
+                                            fillMode: Image.PreserveAspectCrop
+                                        }
+                                        Text {
+                                            id: title
+                                            font.pixelSize: Style.font.size
+                                            color: Style.font.color
+                                            text: loader.item ? loader.item.name : "N/A"
+                                            width: simulationImage.width
+                                            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                                            horizontalAlignment: Text.AlignHCenter
+
+                                        }
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: simulationClicked(loader.item)
+                                    }
+                                }
                             }
                         }
                     }
-                ]
+                }
             }
         }
     }

@@ -18,12 +18,11 @@
 NodeEngine::NodeEngine(QQuickItem *parent)
     : QQuickItem(parent)
 {
-
+    reset();
 }
 
 NodeEngine::~NodeEngine()
 {
-
 }
 
 double NodeEngine::fireOutput() const
@@ -57,6 +56,15 @@ bool NodeEngine::hasFired()
 void NodeEngine::setHasFired(bool fired)
 {
     m_hasFired = fired;
+}
+
+void NodeEngine::reset()
+{
+    for(NodeEngine* child : findChildren<NodeEngine*>()) {
+        child->reset();
+    }
+    resetEvent();
+    emit resetted();
 }
 
 double NodeEngine::currentOutput() const
@@ -136,4 +144,9 @@ void NodeEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
 void NodeEngine::finalizeStepEvent(double dt)
 {
     Q_UNUSED(dt);
+}
+
+void NodeEngine::resetEvent()
+{
+
 }

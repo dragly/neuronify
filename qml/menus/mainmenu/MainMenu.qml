@@ -152,6 +152,11 @@ Item {
         onAdvancedClicked: {
             stackView.push(advancedView)
         }
+
+        onNewSimulationClicked: {
+            hide()
+            loadSimulation("qrc:/simulations/empty/empty.nfy")
+        }
     }
 
     SimulationsView {
@@ -160,7 +165,7 @@ Item {
         width: parent.width
         height: parent.height
 
-        onLoadSimulation: {
+        onSimulationClicked: {
             root.loadSimulation(simulation)
             stackView.pop(0)
         }

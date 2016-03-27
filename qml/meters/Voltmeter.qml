@@ -86,7 +86,11 @@ Node {
     }
 
     Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(["width", "height"])
+        dumpableProperties = dumpableProperties.concat(
+                    ["width",
+                     "height",
+                     "maximumValue",
+                     "minimumValue"])
     }
 
     onEdgeAdded: {

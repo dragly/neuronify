@@ -71,6 +71,7 @@ void GraphEngine::removeNode(NodeBase *node)
             toDelete.append(edge);
         }
     }
+    qDebug() << "Delete edges" << toDelete.length();
     for(Edge *edge : toDelete) {
         edge->deleteLater();
     }

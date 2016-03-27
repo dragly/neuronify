@@ -30,11 +30,22 @@ Node {
     property int cells: 5
 //    property int _oldCells: 0
     property var actualCells: []
-    property real sensingCurrentOutput: 150.0
+    property real sensingCurrentOutput: 150.0e-6
     property var dropFunction
+
+    removableChildren: actualCells
 
     width: cells * 100
     height: 100
+
+    engine: NodeEngine {
+        onStepped: {
+            for(var i in actualCells) {
+                var cell = actualCells[i]
+                cell.engine.step(dt)
+            }
+        }
+    }
 
     controls: Component {
         SensorControls {
@@ -54,6 +65,10 @@ Node {
         resetCells()
     }
 
+    function resolveAlias(index) {
+        return actualCells[index];
+    }
+
     function resetCells() {
         for(var i = 0; i < actualCells.length; i++) {
             var cell = actualCells[i]
@@ -70,15 +85,6 @@ Node {
                                                   sensor: sensorRoot})
             cell.parent = cellRow
             actualCells.push(cell)
-        }
-    }
-
-    engine: NodeEngine {
-        onStepped: {
-            for(var i in actualCells) {
-                var cell = actualCells[i]
-                cell.engine.step(dt)
-            }
         }
     }
 
