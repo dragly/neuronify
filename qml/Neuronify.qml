@@ -89,7 +89,6 @@ Rectangle {
     function applyProperties(object, properties) {
         for(var i in properties) {
             var prop = properties[i];
-            console.log("Got prop " + i + " val " + prop + " " + typeof(prop))
             if(typeof(prop) === "object") {
                 applyProperties(object[i], prop);
             } else {
