@@ -100,6 +100,12 @@ Rectangle {
 
     function loadState(fileUrl) {
         console.log("Load state called")
+
+        undoList.length = 0
+
+        undoIdx = 1
+        undoRecordingEnabled = false
+
         deleteEverything();
 
         var code = fileManager.read(fileUrl);
@@ -138,18 +144,7 @@ Rectangle {
             var connection = connectEntities(createdEntities[from], createdEntities[to]);
         }
 
-//        undoList.length = 0
-
-//        undoIdx = 1
-//        undoRecordingEnabled = false
-//        var code = fileManager.read(fileUrl)
-//        console.log("Evaluating code")
-//        eval(code)
-
-
-
-//        undoList.push(code)
-//        undoRecordingEnabled = true
+        undoRecordingEnabled = true
     }
 
     function addToUndoList() {
