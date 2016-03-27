@@ -31,26 +31,37 @@ Item {
     }
 
     function saveState(fileUrl) {
+//        console.warn("WARNING: Save disabled!");
+//        return;
         var entities = graphEngine.nodes
         var connections = graphEngine.edges
-        var fileString = ""
+        var entityList = [];
+        var connectionList = [];
+        var otherList = [];
         console.log("Saving to " + fileUrl)
 
         var counter = 0
         for(var i in entities) {
             var entity = entities[i]
-            fileString += entity.dump(i)
+            entityList.push(entity.dump(i))
         }
 
         for(var i in connections) {
             var connection = connections[i]
-            fileString += connection.dump(i, graphEngine)
+            connectionList.push(connection.dump(i, graphEngine))
         }
 
-        for(var i in otherItems) {
-            var item = otherItems[i]
-            fileString += item.dump()
-        }
+//        for(var i in otherItems) {
+//            var item = otherItems[i]
+//            otherList.push(item.dump())
+//        }
+
+        var result = {
+            connections: connectionList,
+            entities: entityList,
+            other: otherList
+        };
+        var fileString = JSON.stringify(result);
 
         console.log(fileString)
 

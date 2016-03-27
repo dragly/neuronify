@@ -46,7 +46,8 @@ NodeBase {
     property var dumpableProperties: [
         "x",
         "y",
-        "label"
+        "label",
+        "fileName"
     ]
 
     Component.onDestruction: {
@@ -72,25 +73,35 @@ NodeBase {
         }
     }
 
-    function _basicSelfDump(index) {
-        var outputString = ""
-        var entityData = {}
+    function _basicSelfDump() {
+        var outputString = "";
+        var entityData = {};
 
         for(var i in dumpableProperties) {
-            var propertyName = dumpableProperties[i]
-            entityData[propertyName] = root[propertyName]
+            var propertyName = dumpableProperties[i];
+//            entityData[propertyName] = root[propertyName];
+            var sourceObject = root;
+            var targetObject = entityData;
+            var previousTargetObject = targetObject;
+            var splits = propertyName.split(".");
+            var subName = "";
+            for(var j in splits) {
+                subName = splits[j];
+                sourceObject = sourceObject[subName];
+                if(!targetObject[subName]) {
+                    targetObject[subName] = {};
+                }
+                previousTargetObject = targetObject;
+                targetObject = targetObject[subName];
+            }
+            previousTargetObject[subName] = sourceObject;
         }
 
-        var entityName = "entity" + index
-        var ss = "var " + entityName + " = createEntity(\"" + fileName + "\", " + JSON.stringify(entityData) + ")"
-        outputString += ss + "\n"
-        return outputString
+        return entityData;
     }
 
-    function dump(index, entities) {
-        var outputString = ""
-        outputString += _basicSelfDump(index)
-        return outputString
+    function dump() {
+        return _basicSelfDump()
     }
 
     Rectangle{

@@ -86,18 +86,53 @@ Rectangle {
         fileManager.saveState(fileUrl)
     }
 
+    function applyProperties(object, properties) {
+        for(var i in properties) {
+            var prop = properties[i];
+            console.log("Got prop " + i + " val " + prop + " " + typeof(prop))
+            if(typeof(prop) === "object") {
+                applyProperties(object[i], prop);
+            } else {
+                object[i] = prop;
+            }
+        }
+    }
+
     function loadState(fileUrl) {
         console.log("Load state called")
-        deleteEverything()
-        undoList.length = 0
+        deleteEverything();
 
-        undoIdx = 1
-        undoRecordingEnabled = false
-        var code = fileManager.read(fileUrl)
-        console.log("Evaluating code")
-        eval(code)
-        undoList.push(code)
-        undoRecordingEnabled = true
+        var code = fileManager.read(fileUrl);
+        var data = JSON.parse(code);
+
+        var createdEntities = [];
+
+        for(var i in data.entities) {
+            var properties = data.entities[i];
+            var entity = createEntity(properties.fileName, {}, false);
+            applyProperties(entity, properties);
+            createdEntities.push(entity);
+        }
+
+        for(var i in data.connections) {
+            var connection = data.connections[i];
+            var from = parseInt(connection.from);
+            var to = parseInt(connection.to);
+            var connection = connectEntities(createdEntities[from], createdEntities[to]);
+        }
+
+//        undoList.length = 0
+
+//        undoIdx = 1
+//        undoRecordingEnabled = false
+//        var code = fileManager.read(fileUrl)
+//        console.log("Evaluating code")
+//        eval(code)
+
+
+
+//        undoList.push(code)
+//        undoRecordingEnabled = true
     }
 
     function addToUndoList() {
@@ -309,7 +344,6 @@ Rectangle {
             properties.videoSurface = videoSurface
         }
 
-
         properties.simulator = root
         var entity = component.createObject(neuronLayer, properties)
         if(!entity) {
@@ -486,12 +520,12 @@ Rectangle {
             transformOrigin: Item.TopLeft
 
             function dump() {
-                var properties = ["x", "y", "scale"]
-                var output = ""
-                for(var i in properties) {
-                    output += "workspace." + properties[i] + " = " + workspace[properties[i]] + "\n"
-                }
-                return output
+//                var properties = ["x", "y", "scale"]
+//                var output = ""
+//                for(var i in properties) {
+//                    output += "workspace." + properties[i] + " = " + workspace[properties[i]] + "\n"
+//                }
+//                return output
             }
 
 
