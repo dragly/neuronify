@@ -41,15 +41,23 @@ Node {
     property alias maximumValue: axisY.max
     property alias minimumValue: axisY.min
 
+    property real maximumPointCount: {
+        if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
+            return 80.0
+        } else {
+            return 240.0
+        }
+    }
+
+    property real time: 0.0
+    property real realTime: 0.0
+
     property var series: [
         series1,
         series2,
         series3,
         series4
     ]
-
-    property real time: 0.0
-    property real realTime: 0.0
 
     controls: Component {
         VoltmeterControls {
@@ -63,7 +71,7 @@ Node {
     engine: NodeEngine {
         onStepped: {
             realTime += dt
-            if(timeFactor * (realTime - lastUpdateTime) > (maximumValue - minimumValue) / 50.0) {
+            if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
                 time = realTime
                 lastUpdateTime = realTime
                 for(var i in voltmeterRoot.connectionPlots) {
