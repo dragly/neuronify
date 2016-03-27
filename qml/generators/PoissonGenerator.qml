@@ -44,8 +44,6 @@ Node {
         fireOutput: 1.0e-6
 
         onStepped: {
-            console.log(Math.random())
-            console.log(dt + " " + rate + " " + rate*dt)
             var shouldFire = (Math.random() < rate*dt)
             if(shouldFire) {
                 fire()
@@ -57,13 +55,12 @@ Node {
     controls: Component {
         Column {
             anchors.fill: parent
-
-            Text {
-                text: "Firing rate: " + engine.rate.toFixed(1) + " ms⁻¹"
-            }
             BoundSlider {
+                text: "Rate"
                 minimumValue: 0.0e3
                 maximumValue: 1.0e3
+                unitScale: 1.0e3
+                unit: "/ms"
                 target: engine
                 property: "rate"
             }

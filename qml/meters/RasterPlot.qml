@@ -13,6 +13,7 @@ Node {
 
     property real time: 0.0
     property real timeRange: 10.0e-3
+    property real timeScale: 1e-3
 
     property var neurons: []
 
@@ -39,7 +40,7 @@ Node {
             for(var i in neurons) {
                 var neuron = neurons[i]
                 if(neuron.engine === sender) {
-                    scroller.append(time, parseFloat(i) + 1.0)
+                    scroller.append(time / timeScale, parseFloat(i) + 1.0)
                 }
             }
         }
@@ -128,11 +129,12 @@ Node {
             markerSize: 8.0
             axisX: ValueAxis {
                 id: axisX
-                min: time - timeRange
-                max: time
+                min: (time - timeRange) / timeScale
+                max: time / timeScale
                 tickCount: 2
                 gridVisible: false
                 labelsFont.pixelSize: 14
+                labelFormat: "%.0f"
             }
             axisY: CategoryAxis {
                 id: axisY
