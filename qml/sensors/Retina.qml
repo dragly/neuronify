@@ -35,6 +35,8 @@ Node {
     property int viewIndex: 0
     property string kernelType: "kernels/GaborKernel.qml"
     property alias sensitivity: retinaEngine.sensitivity
+    property alias plotKernel: retinaEngine.plotKernel
+
 
     color: "#0088aa"
     width: 240
@@ -44,7 +46,8 @@ Node {
         "x",
         "y",
         "kernelType",
-        "sensitivity"
+        "sensitivity",
+        "plotKernel"
     ]
 
     onVideoSurfaceChanged: {
@@ -77,7 +80,7 @@ Node {
         id: retinaEngine
         kernel: kernel
         videoSurface: root.videoSurface
-        plotKernel: false
+        plotKernel: true
     }
 
     controls: Component {
@@ -158,6 +161,7 @@ Node {
             CheckBox {
                 id: inhibitoryCheckbox
                 text: "Show receptive field"
+                checked: retinaEngine.plotKernel
                 onCheckedChanged: {
                     if(checked) {
                         retinaEngine.plotKernel = true
