@@ -43,6 +43,7 @@ Rectangle {
     property bool canRedo: false
     property bool running: applicationActive && !mainMenu.revealed
     property string clickMode: "selection"
+    property real highestZ: 0.0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -357,6 +358,11 @@ Rectangle {
         clickMode = "connection"
     }
 
+    function raiseToTop(node) {
+        highestZ += 1.0;
+        node.z = highestZ;
+    }
+
     function createEntity(fileUrl, properties, useAutoLayout) {
         var component = Qt.createComponent(fileUrl)
         if(component.status !== Component.Ready) {
@@ -385,9 +391,11 @@ Rectangle {
         }
 
         entity.dragStarted.connect(resetOrganize)
+        entity.dragStarted.connect(raiseToTop)
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
+        entity.clicked.connect(raiseToTop)
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)

@@ -8,9 +8,6 @@ Edge {
     signal clicked(var connection)
     signal aboutToDie(var connection)
 
-
-
-
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
     property real conductance: 1.0
@@ -35,8 +32,6 @@ Edge {
     Component.onDestruction: {
         aboutToDie(connectionRoot)
     }
-
-
 
     function intersectX() {
         var x
