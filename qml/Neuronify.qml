@@ -169,10 +169,12 @@ Rectangle {
             var parent = createdNodes[properties.parent];
             if(!parent) {
                 console.warn("ERROR: Could not find parent of alias during file load.");
+                continue;
             }
             var entity = parent.resolveAlias(properties.childIndex);
             if(!entity) {
                 console.warn("ERROR: Could not resolve alias during file load.")
+                continue;
             }
             createdNodes[position] = entity;
         }
@@ -251,9 +253,12 @@ Rectangle {
     }
 
     function deleteEverything() {
-        var entitiesToDelete = graphEngine.nodes;
-        for(var i in entitiesToDelete) {
-            var node = entitiesToDelete[i];
+        var nodesToDelete = [];
+        for(var i in graphEngine.nodes) {
+            nodesToDelete.push(graphEngine.nodes[i])
+        }
+        for(var i in nodesToDelete) {
+            var node = nodesToDelete[i];
             graphEngine.removeNode(node);
         }
     }
