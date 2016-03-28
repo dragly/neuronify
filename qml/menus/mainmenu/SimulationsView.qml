@@ -107,7 +107,9 @@ Item {
                                     }
                                     MouseArea {
                                         anchors.fill: parent
-                                        onClicked: simulationClicked(loader.item)
+                                        onClicked: {
+                                            simulationClicked(loader.item)
+                                        }
                                     }
                                 }
                             }

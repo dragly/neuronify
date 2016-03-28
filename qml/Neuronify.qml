@@ -66,9 +66,9 @@ Rectangle {
     Component.onCompleted: {
         var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy")
         if(latest !== "") {
-            loadState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+            loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
         } else {
-            loadState("qrc:/simulations/singleCell/singleCell.nfy")
+            loadSimulation("qrc:/simulations/singleCell/singleCell.nfy")
         }
         resetStyle()
     }
@@ -99,7 +99,7 @@ Rectangle {
         }
     }
 
-    function loadState(fileUrl) {
+    function loadSimulation(fileUrl) {
         console.log("Load state called")
 
         undoList.length = 0
@@ -588,6 +588,7 @@ Rectangle {
         revealed: !mainMenu.revealed
         onClicked: {
             mainMenu.revealed = true
+            root.running = false
         }
     }
 
@@ -606,7 +607,6 @@ Rectangle {
     }
 
     PropertiesButton {
-//        revealed: activeObject ? true : false
         revealed: true
         onClicked: {
             propertiesPanel.revealed = true
@@ -670,22 +670,41 @@ Rectangle {
 
     MainMenu {
         id: mainMenu
+
+        property bool wasRunning: true
+
         anchors.fill: parent
         blurSource: workspaceFlickable
 
-        onLoadSimulation: {
-            loadState(simulation.stateSource)
+        onRevealedChanged: {
+            if(revealed) {
+                wasRunning = root.running
+            }
+        }
+
+        onContinueClicked: {
             mainMenu.revealed = false
+            root.running = wasRunning
+        }
+
+        onNewClicked: {
+            root.loadSimulation("qrc:/simulations/empty/empty.nfy")
+            mainMenu.revealed = false
+            root.running = wasRunning
+        }
+
+        onLoadSimulation: {
+            root.loadSimulation(simulation.stateSource)
+            mainMenu.revealed = false
+            root.running = wasRunning
         }
 
         onSaveSimulationRequested: {
             fileManager.showSaveDialog()
-            mainMenu.revealed = false
         }
 
         onLoadSimulationRequested: {
             fileManager.showLoadDialog()
-            mainMenu.revealed = false
         }
     }
 
@@ -710,7 +729,7 @@ Rectangle {
 
         onLoadState: {
             console.log("Load state signal caught")
-            root.loadState(fileUrl)
+            root.loadSimulation(fileUrl)
         }
     }
 
