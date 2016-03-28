@@ -3,8 +3,9 @@ import "../paths"
 import "../hud"
 import "../tools"
 import ".."
-import QtCharts 2.1
+import "../controls"
 
+import QtCharts 2.1
 import Neuronify 1.0
 
 /*!
@@ -39,6 +40,8 @@ Node {
     property alias maximumValue: axisY.max
     property alias minimumValue: axisY.min
 
+    property alias binLength: engine.binLength
+
     property real maximumPointCount: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
             return 80.0
@@ -58,6 +61,7 @@ Node {
     ]
 
     controls: Component {
+        id: meterContols
         MeterControls {
             meter: ratePlotRoot
             sliderMinimum: 0
@@ -65,13 +69,27 @@ Node {
             unit: "Hz"
             meterType: "firing rate"
 
+            BoundSlider {
+                id: sliderBinLength
+                text: "Bin length"
+                minimumValue: 10
+                maximumValue: 1000
+                target: engine
+                property: "binLength"
+                stepSize: 10
+                unitScale: 1.0
+
+
+            }
         }
+
     }
     width: 240
     height: 180
     color: "#deebf7"
 
-    engine: NodeEngine {
+    engine: NeuronEngine {
+        id: engine
         onStepped: {
             if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
                 time = realTime
@@ -80,7 +98,6 @@ Node {
                     var connectionPlot = ratePlotRoot.connectionPlots[i]
                     var plot = connectionPlot.plot
                     var neuron = connectionPlot.connection.itemA
-//                    console.log(neuron.firingRate)
                     if(neuron) {
 //                        if(neuron.firingRate) {
                             plot.addPoint(time * timeFactor,
@@ -99,7 +116,8 @@ Node {
                     ["width",
                      "height",
                      "maximumValue",
-                     "minimumValue"])
+                     "minimumValue",
+                     "binLength"])
     }
 
     onEdgeAdded: {

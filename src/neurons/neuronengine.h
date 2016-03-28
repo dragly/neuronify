@@ -19,6 +19,7 @@ class NeuronEngine : public NodeEngine
     Q_PROPERTY(double threshold READ threshold WRITE setThreshold NOTIFY thresholdChanged)
     Q_PROPERTY(double capacitance READ capacitance WRITE setCapacitance NOTIFY capacitanceChanged)
     Q_PROPERTY(double firingRate READ firingRate WRITE setFiringRate NOTIFY firingRateChanged)
+    Q_PROPERTY(double binLength READ binLength WRITE setBinLength NOTIFY binLengthChanged)
 
 public:
     NeuronEngine(QQuickItem *parent = 0);
@@ -32,8 +33,7 @@ public:
     double initialPotential() const;
     double synapticTimeConstant() const;
     double firingRate() const;
-
-
+    double binLength() const;
 
 public slots:
     void setVoltage(double arg);
@@ -46,6 +46,7 @@ public slots:
     void setInitialPotential(double initialPotential);
     void setSynapticTimeConstant(double synapticTimeConstant);
     void setFiringRate(double firingRate);
+    void setBinLength(double binLength);
 
 signals:
     void voltageChanged(double arg);
@@ -57,6 +58,7 @@ signals:
     void initialPotentialChanged(double initialPotential);
     void synapticTimeConstantChanged(double synapticTimeConstant);
     void firingRateChanged(double firingRate);
+    void binLengthChanged(double binLength);
 
 protected:
     virtual void stepEvent(double dt);
@@ -80,6 +82,7 @@ private:
 
     int m_spikeCount = 0;
     double m_window = 0.0;
+    double m_binLength = 50;
 };
 
 #endif // NEURONIFY_NEURONENGINE_H
