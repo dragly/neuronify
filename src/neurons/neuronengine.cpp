@@ -86,6 +86,7 @@ void NeuronEngine::setVoltage(double arg)
 void NeuronEngine::stepEvent(double dt)
 {
     checkFire();
+    m_window +=dt;
 
     double otherCurrents = 0.0;
     for(Current* current : findChildren<Current*>()) {
@@ -109,26 +110,17 @@ void NeuronEngine::stepEvent(double dt)
     m_voltage = min(max(m_voltage, -0.2), 0.2);
     m_synapticConductance = gs + dgs;
 
-    double R_m = 10e3;
-    double tau_m = m_capacitance * R_m;
-    double diff = m_initialPotential;
-
-    double argu = (m_threshold - diff)
-            /((synapticCurrents+m_receivedCurrents) * R_m);
-    if(argu != 0 && argu < 1){
-        m_firingRate = 1./(-tau_m * log(1. - argu));
-    }else{
-        m_firingRate = 0;
+    if(m_window > 1e2 * dt){
+        m_firingRate = m_spikeCount / m_window;
+        m_spikeCount = 0;
+        m_window = 0.0;
+        emit firingRateChanged(m_firingRate);
     }
+//    qDebug() << m_window <<"   " << m_firingRate << endl;
 
-//    qDebug() << synapticCurrents << "   "
-//             << otherCurrents << "   "
-//             << m_receivedCurrents<< "  "
-//             << m_firingRate;
 
     emit voltageChanged(m_voltage);
     emit synapticConductanceChanged(m_synapticConductance);
-    emit firingRateChanged(m_firingRate);
 
     m_receivedCurrents = 0.0;
 }
@@ -232,5 +224,7 @@ void NeuronEngine::checkFire()
 {
     if(m_voltage > m_threshold) {
         fire();
+        m_spikeCount +=1;
     }
+
 }

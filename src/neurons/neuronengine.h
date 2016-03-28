@@ -77,6 +77,9 @@ private:
     double m_initialPotential = -80.0e-3;
     double m_synapticTimeConstant = 10.0e-3;
     double m_firingRate = 0.0;
+
+    int m_spikeCount = 0;
+    double m_window = 0.0;
 };
 
 #endif // NEURONIFY_NEURONENGINE_H
