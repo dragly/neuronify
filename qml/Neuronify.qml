@@ -58,7 +58,7 @@ Rectangle {
         }
     }
 
-    color: "#deebf7"
+    color: "#f7fbff"
     antialiasing: true
     smooth: true
     focus: true
@@ -570,29 +570,12 @@ Rectangle {
 
         Item {
             id: workspace
-            property alias color: workspaceRectangle.color
 
             width: 3840
             height: 2160
 
             scale: 1.1
             transformOrigin: Item.TopLeft
-
-            function dump() {
-//                var properties = ["x", "y", "scale"]
-//                var output = ""
-//                for(var i in properties) {
-//                    output += "workspace." + properties[i] + " = " + workspace[properties[i]] + "\n"
-//                }
-//                return output
-            }
-
-
-            Rectangle {
-                id: workspaceRectangle
-                anchors.fill: parent
-                color: "#f7fbff"
-            }
 
             Item {
                 id: connectionLayer
