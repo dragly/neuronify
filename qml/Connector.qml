@@ -65,12 +65,14 @@ Item {
             id: connectorMouseArea
             anchors.fill: parent
             drag.target: parent
-            onReleased: {
-                root.dropped(draggable)
-                draggable.resetPosition()
-            }
             onClicked: {
                 root.parent.clickedConnector(parent, mouse)
+            }
+            onReleased: {
+                if(drag.active) {
+                    root.dropped(draggable)
+                }
+                draggable.resetPosition()
             }
         }
     }

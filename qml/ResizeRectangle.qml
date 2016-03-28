@@ -6,9 +6,6 @@ Item {
 
     property var target: parent
 
-    property real targetWidth: target.width
-    property real targetHeight: target.width
-
     anchors.fill: target
 
     function resetAllPositions() {
@@ -18,19 +15,20 @@ Item {
         bottomRight.resetPosition()
     }
 
-    onTargetChanged: {
+    Component.onCompleted: {
         resetAllPositions()
     }
 
-    onTargetWidthChanged: {
+    onWidthChanged: {
         resetAllPositions()
     }
 
-    onTargetHeightChanged: {
+    onHeightChanged: {
         resetAllPositions()
     }
 
     Item {
+
         id: topLeft
 
         width: 50
@@ -73,6 +71,7 @@ Item {
     }
 
     Item {
+
         id: bottomLeft
 
         width: 50
@@ -114,6 +113,7 @@ Item {
     }
 
     Item {
+
         id: topRight
 
         width: 50
@@ -155,6 +155,7 @@ Item {
     }
 
     Item {
+
         id: bottomRight
 
         width: 50

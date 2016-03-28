@@ -29,6 +29,7 @@ NodeBase {
     signal aboutToDie(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
     signal fired
+    property var dragProxy
     property string label: ""
     property string objectName: "entity"
     property string fileName: "Entity.qml"
@@ -151,7 +152,8 @@ NodeBase {
     MouseArea {
         enabled: useDefaultMouseHandling
         anchors.fill: parent
-        drag.target: parent
+        drag.target: root.selected ? root.dragProxy : root
+
         onPressed: {
             root.dragging = true
             dragStarted(root)

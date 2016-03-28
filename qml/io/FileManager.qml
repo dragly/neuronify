@@ -20,6 +20,7 @@ Item {
     signal loadState(var fileUrl)
 
     property GraphEngine graphEngine: null
+    property var workspace: null
     property var otherItems: []
 
     function showSaveDialog() {
@@ -31,38 +32,38 @@ Item {
     }
 
     function saveState(fileUrl) {
-//        console.warn("WARNING: Save disabled!");
-//        return;
-        var entities = graphEngine.nodes
-        var connections = graphEngine.edges
-        var entityList = [];
-        var connectionList = [];
+        var nodes = graphEngine.nodes
+        var edges = graphEngine.edges
+        var nodeList = [];
+        var edgeList = [];
         var otherList = [];
+
         console.log("Saving to " + fileUrl)
 
         var counter = 0
-        for(var i in entities) {
-            var entity = entities[i];
+        for(var i in nodes) {
+            var entity = nodes[i];
             var dump = entity.dump(i);
             if(dump) {
-                entityList.push(dump);
+                nodeList.push(dump);
             }
         }
 
-        for(var i in connections) {
-            var connection = connections[i]
-            connectionList.push(connection.dump(i, graphEngine))
+        for(var i in edges) {
+            var connection = edges[i]
+            edgeList.push(connection.dump(i, graphEngine))
         }
 
-//        for(var i in otherItems) {
-//            var item = otherItems[i]
-//            otherList.push(item.dump())
-//        }
+        var workspaceProperties = {
+            x: workspace.x,
+            y: workspace.y,
+            scale: workspace.scale,
+        };
 
         var result = {
-            connections: connectionList,
-            entities: entityList,
-            other: otherList
+            edges: edgeList,
+            nodes: nodeList,
+            workspace: workspaceProperties
         };
         var fileString = JSON.stringify(result);
 
