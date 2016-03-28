@@ -35,30 +35,6 @@ Column {
 
     }
 
-    Button {
-        text: "Connect to all neurons"
-        onClicked: {
-            var itemA = meter
-            for (var i in meter.simulator.graphEngine.nodes){
-                var itemB = graphEngine.nodes[i]
-                if (itemB.isNeuron){
-                    if (!meter.simulator.connectionExists(itemB, itemA)){
-                        meter.simulator.connectEntities(itemB, itemA)
-                    }
-                }
-            }
-        }
-    }
-
-    Button {
-        text: "Disconnect from all neurons"
-        onClicked: {
-            for (var i in meter.connectionPlots){
-                connectionPlots[i].connection.destroy(1)
-            }
-        }
-    }
-
     BoundSlider {
         target: meter
         property: "minimumValue"
