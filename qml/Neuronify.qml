@@ -43,7 +43,7 @@ Rectangle {
     property bool running: applicationActive && !mainMenu.revealed
     property string clickMode: "selection"
     property real highestZ: 0.0
-    property real playbackSpeed: 1.0
+    property alias playbackSpeed: workspace.playbackSpeed
     property real snapGridSize: propertiesPanel.snappingEnabled ? 32.0 : 1.0
 
     property bool applicationActive: {
@@ -572,6 +572,8 @@ Rectangle {
         Item {
             id: workspace
 
+            property real playbackSpeed: 1.0
+
             width: 3840
             height: 2160
 
@@ -686,6 +688,7 @@ Rectangle {
         id: propertiesPanel
         activeObject: root.activeObject
         running: root.running
+        workspace: workspace
         onPlaybackSpeedSelected: {
             root.playbackSpeed = speed
         }

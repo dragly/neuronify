@@ -58,6 +58,7 @@ Item {
             x: workspace.x,
             y: workspace.y,
             scale: workspace.scale,
+            playbackSpeed: workspace.playbackSpeed,
         };
 
         var result = {

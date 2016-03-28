@@ -9,6 +9,7 @@ Item {
     signal playClicked
     signal playbackSpeedSelected(var speed)
 
+    property var workspace
     property Item activeObject: null
     property bool revealed: false
     property bool running: false
@@ -52,7 +53,7 @@ Item {
                         right: parent.right
                     }
 
-                    sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : playbackControls
+                    sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
                 }
 
                 CheckBox {
@@ -60,21 +61,29 @@ Item {
                     text: "Enable snapping"
                     checked: true
                 }
+
+                PlaybackControls {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    workspace: root.workspace
+
+                    running: root.running
+                    onPlayClicked: {
+                        root.playClicked()
+                    }
+                    onPlaybackSpeedSelected: {
+                        root.playbackSpeedSelected(speed)
+                    }
+                }
             }
         }
 
-        Component {
-            id: playbackControls
-            PlaybackControls {
-                running: root.running
-                onPlayClicked: {
-                    root.playClicked()
-                }
-                onPlaybackSpeedSelected: {
-                    root.playbackSpeedSelected(speed)
-                }
-            }
-        }
+//        Component {
+//            id: playbackControls
+//        }
 
         states: State {
             when: root.revealed
