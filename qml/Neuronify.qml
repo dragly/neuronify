@@ -470,10 +470,16 @@ Rectangle {
 
     function connectEntities(itemA, itemB) {
         if(itemA === itemB) {
-            return
+            console.warn("connectEntities(): Cannot connect an item to itself.")
+            return;
         }
         if(connectionExists(itemA, itemB)) {
-            return
+            console.warn("connectEntities(): Connection already exists.")
+            return;
+        }
+        if(!itemB.canReceiveConnections) {
+            console.warn("connectEntities(): " + itemB + " cannot receive connections.")
+            return;
         }
         var connection = createConnection(itemA, itemB)
         autoLayout.connections.push(connection)

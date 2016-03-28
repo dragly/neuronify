@@ -41,6 +41,7 @@ Node {
     color: "#0088aa"
     width: 240
     height: 180
+    canReceiveConnections: false
 
     dumpableProperties: [
         "x",

@@ -8,11 +8,14 @@ import Neuronify 1.0
 
 Node {
     id: noteRoot
+
+    property alias text: textInput.text
+
     objectName: "note"
     fileName: "annotations/Note.qml"
     square: true
 
-    property alias text: textInput.text
+    canReceiveConnections: false
 
     width: 180
     height: 120
