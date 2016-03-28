@@ -104,7 +104,7 @@ Node {
             property: "opacity"
             from: 1.0
             to: 0.0
-            duration: 800
+            duration: 600
             easing.type: Easing.OutQuad
         }
     }
