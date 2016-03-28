@@ -63,59 +63,7 @@ Node {
         border.color: "#f7fbff"
     }
 
-    Component.onCompleted: {
-        droppedConnector.connect(sensor.dropFunction)
-    }
-
     Connector{
         visible: sensor.selected
     }
-
-//    SCurve {
-//        id: connectorCurve
-//        visible: sensor.selected
-//        z: -1
-//        color: "#0088aa"
-//        startPoint: Qt.point(parent.width / 2, parent.height / 2)
-//        endPoint: Qt.point(connector.x + connector.width / 2, connector.y + connector.width / 2)
-//    }
-
-//    Item {
-//        id: connector
-
-//        visible: sensor.selected
-
-//        Component.onCompleted: {
-//            resetPosition()
-//        }
-
-//        function resetPosition() {
-//            connector.x = parent.width / 2 - width / 2
-//            connector.y = parent.height - height / 2
-//        }
-
-//        width: parent.width * 0.3
-//        height: width
-
-//        Rectangle {
-//            id: connectorCircle
-//            anchors.centerIn: parent
-//            width: parent.width / 1.1
-//            height: width
-//            color: "#0088aa"
-//            border.color: "#f7fbff"
-//            border.width: 1.0
-//            radius: width
-//        }
-
-//        MouseArea {
-//            id: connectorMouseArea
-//            anchors.fill: parent
-//            drag.target: parent
-//            onReleased: {
-//                cell.droppedConnector(cell, connector)
-//                connector.resetPosition()
-//            }
-//        }
-//    }
 }
