@@ -12,6 +12,7 @@ Item {
     property Item activeObject: null
     property bool revealed: false
     property bool running: false
+    property alias snappingEnabled: snapCheckbox.checked
 
     anchors.fill: parent
 
@@ -52,6 +53,12 @@ Item {
                     }
 
                     sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : playbackControls
+                }
+
+                CheckBox {
+                    id: snapCheckbox
+                    text: "Enable snapping"
+                    checked: true
                 }
             }
         }

@@ -166,7 +166,7 @@ Node {
             drag.target: sensorRoot
             onPressed: {
                 sensorRoot.dragging = true
-                dragStarted()
+                dragStarted(sensorRoot)
             }
 
             onClicked: {
