@@ -24,5 +24,8 @@
         <file>simulations/sterratt/fig_8_5/fig_8_5.nfy</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.png</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.qml</file>
+        <file>simulations/twoNeuronOscillator/twoNeuronOscillator.png</file>
+        <file>simulations/twoNeuronOscillator/twoNeuronOscillator.nfy</file>
+        <file>simulations/twoNeuronOscillator/twoNeuronOscillator.qml</file>
     </qresource>
 </RCC>
