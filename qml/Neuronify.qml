@@ -43,6 +43,8 @@ Rectangle {
     property bool canRedo: false
     property bool running: applicationActive && !mainMenu.revealed
     property string clickMode: "selection"
+    property real highestZ: 0.0
+    property real playbackSpeed: 1.0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -357,6 +359,11 @@ Rectangle {
         clickMode = "connection"
     }
 
+    function raiseToTop(node) {
+        highestZ += 1.0;
+        node.z = highestZ;
+    }
+
     function createEntity(fileUrl, properties, useAutoLayout) {
         var component = Qt.createComponent(fileUrl)
         if(component.status !== Component.Ready) {
@@ -385,9 +392,11 @@ Rectangle {
         }
 
         entity.dragStarted.connect(resetOrganize)
+        entity.dragStarted.connect(raiseToTop)
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
+        entity.clicked.connect(raiseToTop)
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)
@@ -597,7 +606,8 @@ Rectangle {
     }
 
     PropertiesButton {
-        revealed: activeObject ? true : false
+//        revealed: activeObject ? true : false
+        revealed: true
         onClicked: {
             propertiesPanel.revealed = true
         }
@@ -623,6 +633,13 @@ Rectangle {
     PropertiesPanel {
         id: propertiesPanel
         activeObject: root.activeObject
+        running: root.running
+        onPlaybackSpeedSelected: {
+            root.playbackSpeed = speed
+        }
+        onPlayClicked: {
+            root.running = !root.running
+        }
     }
 
     Rectangle {
@@ -679,7 +696,7 @@ Rectangle {
         running: root.running
 
         onTriggered: {
-            var dt = 0.1e-3
+            var dt = 0.4e-3 * playbackSpeed
             time += dt
             graphEngine.step(dt)
         }

@@ -1,12 +1,17 @@
 import QtQuick 2.0
+import QtQuick.Controls 1.4
 
 import "../style"
 
 Item {
     id: root
 
+    signal playClicked
+    signal playbackSpeedSelected(var speed)
+
     property Item activeObject: null
     property bool revealed: false
+    property bool running: false
 
     anchors.fill: parent
 
@@ -29,16 +34,38 @@ Item {
             anchors.fill: parent
         }
 
-        Item {
-            id: container
-            anchors {
-                fill: parent
-                margins: 10
-            }
+        Flickable {
+            anchors.fill: parent
+            Column {
+                id: container
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    margins: 10
+                }
+                spacing: 10
 
-            Loader {
-                anchors.fill: parent
-                sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : null
+                Loader {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : playbackControls
+                }
+            }
+        }
+
+        Component {
+            id: playbackControls
+            PlaybackControls {
+                running: root.running
+                onPlayClicked: {
+                    root.playClicked()
+                }
+                onPlaybackSpeedSelected: {
+                    root.playbackSpeedSelected(speed)
+                }
             }
         }
 

@@ -41,14 +41,23 @@ Node {
     property alias maximumValue: axisY.max
     property alias minimumValue: axisY.min
 
+    property real maximumPointCount: {
+        if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
+            return 80.0
+        } else {
+            return 240.0
+        }
+    }
+
+    property real time: 0.0
+    property real realTime: 0.0
+
     property var series: [
         series1,
         series2,
         series3,
         series4
     ]
-
-    property real time: 0.0
 
     controls: Component {
         VoltmeterControls {
@@ -61,25 +70,30 @@ Node {
 
     engine: NodeEngine {
         onStepped: {
-            time += dt
-            for(var i in voltmeterRoot.connectionPlots) {
-                var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var plot = connectionPlot.plot
-                var neuron = connectionPlot.connection.itemA
-                if(neuron) {
-                    if(mode === "voltage" && neuron.voltage) {
-                        plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+            if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
+                time = realTime
+                lastUpdateTime = realTime
+                for(var i in voltmeterRoot.connectionPlots) {
+                    var connectionPlot = voltmeterRoot.connectionPlots[i]
+                    var plot = connectionPlot.plot
+                    var neuron = connectionPlot.connection.itemA
+                    if(neuron) {
+                        if(mode === "voltage" && neuron.voltage) {
+                            plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+                        }
                     }
                 }
             }
+            realTime += dt
         }
         onReceivedFire: {
             for(var i in voltmeterRoot.connectionPlots) {
                 var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var plot = connectionPlot.plot
                 var neuron = connectionPlot.connection.itemA
                 if(neuron.engine && neuron.engine === sender) {
-                    plot.addPoint(time * timeFactor, 1000e-3 * voltageFactor)
+                    fireSeries.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
+                    fireSeries.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+                    fireSeries.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
                 }
             }
         }
@@ -140,6 +154,14 @@ Node {
         margins.bottom: 0
         margins.left: 0
         margins.right: 0
+
+        Plot {
+            id: fireSeries
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange * timeFactor
+            visible: true
+        }
 
         Plot {
             id: series1

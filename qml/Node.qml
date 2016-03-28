@@ -25,7 +25,7 @@ NodeBase {
     id: root
     signal clicked(var entity, var mouse)
     signal clickedConnector(var entity, var mouse)
-    signal dragStarted
+    signal dragStarted(var entity)
     signal aboutToDie(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
     signal fired
@@ -154,7 +154,7 @@ NodeBase {
         drag.target: parent
         onPressed: {
             root.dragging = true
-            dragStarted()
+            dragStarted(root)
         }
 
         onClicked: {

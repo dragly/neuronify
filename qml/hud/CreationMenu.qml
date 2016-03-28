@@ -28,7 +28,6 @@ Item {
             listSource: "NeuronList.qml"
             imageSource: "qrc:/images/categories/neuron.png"
         }
-
         ListElement  {
             listSource: "InhibitoryNeuronList.qml"
             imageSource: "qrc:/images/categories/inhibitory_neuron.png"
@@ -48,7 +47,6 @@ Item {
             listSource: "SensorsList.qml"
             imageSource: "qrc:/images/categories/sensors.png"
         }
-
         ListElement  {
             listSource: "AnnotationsList.qml"
             imageSource: "qrc:/images/categories/annotate.png"
