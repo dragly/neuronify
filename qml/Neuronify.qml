@@ -44,6 +44,7 @@ Rectangle {
     property bool running: applicationActive && !mainMenu.revealed
     property string clickMode: "selection"
     property real highestZ: 0.0
+    property real playbackSpeed: 1.0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -605,7 +606,8 @@ Rectangle {
     }
 
     PropertiesButton {
-        revealed: activeObject ? true : false
+//        revealed: activeObject ? true : false
+        revealed: true
         onClicked: {
             propertiesPanel.revealed = true
         }
@@ -631,6 +633,13 @@ Rectangle {
     PropertiesPanel {
         id: propertiesPanel
         activeObject: root.activeObject
+        running: root.running
+        onPlaybackSpeedSelected: {
+            root.playbackSpeed = speed
+        }
+        onPlayClicked: {
+            root.running = !root.running
+        }
     }
 
     Rectangle {
@@ -687,7 +696,7 @@ Rectangle {
         running: root.running
 
         onTriggered: {
-            var dt = 0.1e-3
+            var dt = 0.4e-3 * playbackSpeed
             time += dt
             graphEngine.step(dt)
         }

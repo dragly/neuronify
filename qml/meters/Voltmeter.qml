@@ -70,7 +70,6 @@ Node {
 
     engine: NodeEngine {
         onStepped: {
-            realTime += dt
             if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
                 time = realTime
                 lastUpdateTime = realTime
@@ -85,14 +84,16 @@ Node {
                     }
                 }
             }
+            realTime += dt
         }
         onReceivedFire: {
             for(var i in voltmeterRoot.connectionPlots) {
                 var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var plot = connectionPlot.plot
                 var neuron = connectionPlot.connection.itemA
                 if(neuron.engine && neuron.engine === sender) {
-                    plot.addPoint(time * timeFactor, 1000e-3 * voltageFactor)
+                    fireSeries.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
+                    fireSeries.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+                    fireSeries.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
                 }
             }
         }
@@ -153,6 +154,14 @@ Node {
         margins.bottom: 0
         margins.left: 0
         margins.right: 0
+
+        Plot {
+            id: fireSeries
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange * timeFactor
+            visible: true
+        }
 
         Plot {
             id: series1

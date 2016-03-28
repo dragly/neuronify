@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.1
 
 import ".."
 import "../controls"
+import "qrc:/qml/style"
 
 /*!
     \qmltype VoltMeterControls
@@ -20,7 +21,7 @@ import "../controls"
 \endlist
 */
 
-Item {
+Column {
     id: voltmeterControlsRoot
     property Item voltmeter: null
 
@@ -35,79 +36,66 @@ Item {
             break
         }
     }
+    spacing: 10
+    Text {
+        text: "Mode:"
+    }
 
-    anchors.fill: parent
+    ExclusiveGroup {
+        id: modeGroup
+    }
 
-    ColumnLayout {
-
-        anchors.fill: parent
-        spacing: 10
-        anchors.margins: 10
-
-        Text {
-            text: "Mode:"
-        }
-
-        ExclusiveGroup {
-            id: modeGroup
-        }
-
-        RadioButton {
-            id: voltageRadioButton
-            text: "Voltage"
-            exclusiveGroup: modeGroup
-            onCheckedChanged: {
-                if(checked) {
-                    voltmeterControlsRoot.voltmeter.mode = "voltage"
-                }
+    RadioButton {
+        id: voltageRadioButton
+        text: "Voltage"
+        exclusiveGroup: modeGroup
+        onCheckedChanged: {
+            if(checked) {
+                voltmeterControlsRoot.voltmeter.mode = "voltage"
             }
         }
+    }
 
-        Button {
-            text: "Connect to all neurons"
-            onClicked: {
-                var itemA = voltmeter
-                for (var i in voltmeter.simulator.graphEngine.nodes){
-                    var itemB = graphEngine.nodes[i]
-                    if (itemB.isNeuron){
-                        if (!voltmeter.simulator.connectionExists(itemB, itemA)){
-                            voltmeter.simulator.connectEntities(itemB, itemA)
-                        }
+    Button {
+        text: "Connect to all neurons"
+        onClicked: {
+            var itemA = voltmeter
+            for (var i in voltmeter.simulator.graphEngine.nodes){
+                var itemB = graphEngine.nodes[i]
+                if (itemB.isNeuron){
+                    if (!voltmeter.simulator.connectionExists(itemB, itemA)){
+                        voltmeter.simulator.connectEntities(itemB, itemA)
                     }
                 }
             }
         }
+    }
 
-        Button {
-            text: "Disconnect from all neurons"
-            onClicked: {
-                for (var i in voltmeter.connectionPlots){
-                    connectionPlots[i].connection.destroy(1)
-                }
+    Button {
+        text: "Disconnect from all neurons"
+        onClicked: {
+            for (var i in voltmeter.connectionPlots){
+                connectionPlots[i].connection.destroy(1)
             }
         }
+    }
 
-        BoundSlider {
-            target: voltmeter
-            property: "minimumValue"
-            text: "Minimum voltage"
-            unit: "mV"
-            minimumValue: -250
-            maximumValue: 250
-        }
+    BoundSlider {
+        target: voltmeter
+        property: "minimumValue"
+        text: "Minimum voltage"
+        unit: "mV"
+        minimumValue: -250
+        maximumValue: 250
+    }
 
-        BoundSlider {
-            target: voltmeter
-            property: "maximumValue"
-            text: "Maximum voltage"
-            unit: "mV"
-            minimumValue: -250
-            maximumValue: 250
-        }
-
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-        }
+    BoundSlider {
+        target: voltmeter
+        property: "maximumValue"
+        text: "Maximum voltage"
+        unit: "mV"
+        minimumValue: -250
+        maximumValue: 250
     }
 }
+

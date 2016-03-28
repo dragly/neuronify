@@ -2,71 +2,94 @@ import QtQuick 2.0
 import QtQuick.Layouts 1.1
 import QtQuick.Controls 1.2
 
-Rectangle {
+import "qrc:/qml/style"
+
+Column {
     id: playbackControls
 
-    property real speed: Math.pow(10, playbackSpeedSlider.value)
+    signal playClicked
+    signal playbackSpeedSelected(var speed)
 
-    anchors {
-        bottom: parent.bottom
-        left: parent.left
-        right: parent.right
+    property bool running: false
+
+    Text {
+        text: "Playback controls"
     }
-    height: parent.height * 0.08
 
-    color: "#deebf7"
-    border.color: "#9ecae1"
-    border.width: 1.0
-
-    RowLayout {
-        spacing: 10
-        anchors.fill: parent
-        anchors.margins: 10
-
-        CheckBox {
-            id: playingCheckbox
-            text: "Simulate"
-            checked: true
+    Button {
+        text: running ? "Pause" : "Play"
+        onClicked: {
+            playClicked()
         }
+    }
 
-        Text {
-            text: "Speed: "
+    Text {
+        text: "Playback speed"
+    }
+
+    ListView {
+        id: playbackSpeedView
+        anchors {
+            left: parent.left
+            right: parent.right
         }
+        height: 100
 
-        Slider {
-            id: playbackSpeedSlider
-            minimumValue: -1
-            maximumValue: 1.2
-            Layout.fillWidth: true
+        model: ListModel {
+            id: playbackSpeedModel
+            ListElement {
+                key: "¼x"
+                value: 0.25
+            }
+            ListElement {
+                key: "½x"
+                value: 0.5
+            }
+            ListElement {
+                key: "1x"
+                value: 1.0
+            }
+            ListElement {
+                key: "2x"
+                value: 2.0
+            }
+            ListElement {
+                key: "4x"
+                value: 4.0
+            }
+            ListElement {
+                key: "8x"
+                value: 8.0
+            }
         }
-
-        Text {
-            text: playbackControls.speed.toFixed(1) + " x"
-        }
-
-        Button {
-            id: resetButton
-
-            text: "Reset!"
-            onClicked: {
-                for(var i in neurons) {
-                    var neuron = neurons[i]
-                    neuron.reset()
+        orientation: ListView.Horizontal
+        clip: true
+        preferredHighlightBegin: width / 2 - Style.touchableSize / 2
+        preferredHighlightEnd: width / 2 + Style.touchableSize / 2
+        delegate: Item {
+            height: Style.touchableSize
+            width: height
+            Text {
+                id: playbackSpeedText
+                anchors.centerIn: parent
+                text: model.key
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    playbackSpeedView.currentIndex = index
                 }
             }
         }
-
-        Text {
-            text: "dt: " + currentTimeStep.toFixed(3)
+        highlight: Rectangle {
+            color: "white"
         }
-
-        Text {
-            text: "Time: " + time.toFixed(3) + " ms"
-        }
-
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
+        currentIndex: 2
+        onCurrentIndexChanged: {
+            if(!playbackSpeedModel) {
+                return
+            }
+            playbackSpeedSelected(playbackSpeedModel.get(currentIndex).value)
         }
     }
 }
