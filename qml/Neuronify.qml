@@ -117,25 +117,44 @@ Rectangle {
 
         var data = JSON.parse(code);
 
-        var createdEntities = [];
+        var createdNodes = [];
         var aliases = [];
 
-        for(var i in data.entities) {
-            var properties = data.entities[i];
+        // TODO remove these once simulations no longer contain "connections" and "entities"
+        if(data.entities && !data.nodes) {
+            console.warn("WARNING: File contains entities, please replace with nodes.")
+            data.nodes = data.entities;
+        }
+        if(data.connections && !data.edges) {
+            console.warn("WARNING: File contains connections, please replace with edges.")
+            data.edges = data.connections;
+        }
+
+        if(!data.nodes) {
+            console.warn("ERROR: Could not find nodes. Cannot load simulation " + fileUrl)
+            return
+        }
+        if(!data.edges) {
+            console.warn("ERROR: Could not find edges. Cannot load simulation " + fileUrl)
+            return
+        }
+
+        for(var i in data.nodes) {
+            var properties = data.nodes[i];
             if(properties.isAlias && properties.isAlias === true) {
-                createdEntities.push({});
+                createdNodes.push({});
                 aliases.push({position: i, properties: properties});
                 continue;
             }
             var entity = createEntity(properties.fileName, {}, false);
             applyProperties(entity, properties);
-            createdEntities.push(entity);
+            createdNodes.push(entity);
         }
 
         for(var i in aliases) {
             var properties = aliases[i].properties;
             var position = aliases[i].position;
-            var parent = createdEntities[properties.parent];
+            var parent = createdNodes[properties.parent];
             if(!parent) {
                 console.warn("ERROR: Could not find parent of alias during file load.");
             }
@@ -144,14 +163,18 @@ Rectangle {
             if(!entity) {
                 console.warn("ERROR: Could not resolve alias during file load.")
             }
-            createdEntities[position] = entity;
+            createdNodes[position] = entity;
         }
 
-        for(var i in data.connections) {
-            var connection = data.connections[i];
-            var from = parseInt(connection.from);
-            var to = parseInt(connection.to);
-            var connection = connectEntities(createdEntities[from], createdEntities[to]);
+        for(var i in data.edges) {
+            var edgeProperties = data.edges[i];
+            var from = parseInt(edgeProperties.from);
+            var to = parseInt(edgeProperties.to);
+            connectEntities(createdNodes[from], createdNodes[to]);
+        }
+
+        if(data.workspace) {
+            applyProperties(workspace, data.workspace);
         }
 
         undoRecordingEnabled = true
@@ -725,7 +748,7 @@ Rectangle {
         id: fileManager
 
         graphEngine: graphEngine
-        otherItems: [workspace]
+        workspace: workspace
 
         onLoadState: {
             console.log("Load state signal caught")
