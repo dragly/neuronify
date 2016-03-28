@@ -32,6 +32,7 @@ Node {
     property var dropFunction
 
     removableChildren: actualCells
+    canReceiveConnections: false
 
     width: 500
     height: 100

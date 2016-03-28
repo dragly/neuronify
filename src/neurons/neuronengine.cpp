@@ -75,6 +75,11 @@ double NeuronEngine::firingRate() const
     return m_firingRate;
 }
 
+double NeuronEngine::binLength() const
+{
+    return m_binLength;
+}
+
 void NeuronEngine::setVoltage(double arg)
 {
     if (m_voltage != arg) {
@@ -110,7 +115,8 @@ void NeuronEngine::stepEvent(double dt)
     m_voltage = min(max(m_voltage, -0.2), 0.2);
     m_synapticConductance = gs + dgs;
 
-    if(m_window > 1e2 * 0.4e-3){
+    qDebug() << m_binLength;
+    if(m_window > m_binLength * 0.4e-3){
         m_firingRate = m_spikeCount / m_window;
         m_spikeCount = 0;
         m_window = 0.0;
@@ -216,6 +222,15 @@ void NeuronEngine::setFiringRate(double firingRate)
 
     m_firingRate = firingRate;
     emit firingRateChanged(firingRate);
+}
+
+void NeuronEngine::setBinLength(double binLength)
+{
+    if (m_binLength == binLength)
+        return;
+
+    m_binLength = binLength;
+    emit binLengthChanged(binLength);
 }
 
 void NeuronEngine::checkFire()

@@ -24,6 +24,7 @@ Node {
     width: 62
     height: 62
     color: "#dd5900"
+    canReceiveConnections: false
 
     engine: NodeEngine {
         id: engine
