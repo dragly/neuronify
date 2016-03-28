@@ -178,8 +178,8 @@ Node {
             }
             BoundSlider {
                 minimumValue: 1
-                maximumValue: 10
-                stepSize: 1
+                maximumValue: 50
+                stepSize: 5
                 target: retinaEngine
                 property: "sensitivity"
             }

@@ -40,6 +40,7 @@ Item {
                         simulations: [
                             "qrc:/simulations/lateralInhibition",
                             "qrc:/simulations/recurrentInhibition",
+                            "qrc:/simulations/twoNeuronOscillator",
                         ]
                     },
                     {
