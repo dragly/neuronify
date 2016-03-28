@@ -24,6 +24,12 @@ Node {
     id: root
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
+    readonly property bool inhibitory: root.engine.fireOutput < 0.0
+    property url imageSource: "qrc:/images/generators/poisson_generator_excitatory.png"
+    property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
+
+    property alias fireOutput: engine.fireOutput
+    property alias rate: engine.rate
 
     objectName: "poissonGenerator"
     fileName: "generators/PoissonGenerator.qml"
@@ -31,12 +37,7 @@ Node {
     width: 62
     height: 62
     color: inhibitory ? "#e41a1c" : "#6baed6"
-    readonly property bool inhibitory: root.engine.fireOutput < 0.0
-    property url imageSource: "qrc:/images/generators/poisson_generator_excitatory.png"
-    property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
-
-    property alias fireOutput: engine.fireOutput
-    property alias rate: engine.rate
+    canReceiveConnections: false
 
     engine: NodeEngine {
         id: engine

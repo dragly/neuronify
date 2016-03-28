@@ -67,6 +67,7 @@ Node {
     width: 240
     height: 180
     color: "#deebf7"
+    canReceiveConnections: false
 
     engine: NodeEngine {
         onStepped: {
