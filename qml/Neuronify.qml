@@ -5,6 +5,7 @@ import QtQuick.Dialogs 1.0
 import QtQuick.Window 2.1
 import QtCharts 2.1
 import QtMultimedia 5.5
+import Qt.labs.settings 1.0
 
 import Neuronify 1.0
 
@@ -31,6 +32,7 @@ Rectangle {
     property var organizedConnections: []
     property alias graphEngine: graphEngine
     property var selectedEntities: []
+    property var draggedEntity: undefined
     property var copiedNeurons: []
     property var voltmeters: []
     property real currentTimeStep: 0.0
@@ -45,6 +47,7 @@ Rectangle {
     property string clickMode: "selection"
     property real highestZ: 0.0
     property real playbackSpeed: 1.0
+    property real snapGridSize: propertiesPanel.snappingEnabled ? 32.0 : 1.0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -58,7 +61,7 @@ Rectangle {
         }
     }
 
-    color: "#deebf7"
+    color: "#f7fbff"
     antialiasing: true
     smooth: true
     focus: true
@@ -66,15 +69,19 @@ Rectangle {
     Component.onCompleted: {
         var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy")
         if(latest !== "") {
-            loadState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+            loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
         } else {
-            loadState("qrc:/simulations/singleCell/singleCell.nfy")
+            loadSimulation("qrc:/simulations/singleCell/singleCell.nfy")
         }
         resetStyle()
     }
 
     Component.onDestruction: {
         saveState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+    }
+
+    Settings {
+        property alias snappingEnabled: propertiesPanel.snappingEnabled
     }
 
     function deleteFromList(list, item) {
@@ -99,7 +106,7 @@ Rectangle {
         }
     }
 
-    function loadState(fileUrl) {
+    function loadSimulation(fileUrl) {
         console.log("Load state called")
 
         undoList.length = 0
@@ -117,25 +124,44 @@ Rectangle {
 
         var data = JSON.parse(code);
 
-        var createdEntities = [];
+        var createdNodes = [];
         var aliases = [];
 
-        for(var i in data.entities) {
-            var properties = data.entities[i];
+        // TODO remove these once simulations no longer contain "connections" and "entities"
+        if(data.entities && !data.nodes) {
+            console.warn("WARNING: File contains entities, please replace with nodes.")
+            data.nodes = data.entities;
+        }
+        if(data.connections && !data.edges) {
+            console.warn("WARNING: File contains connections, please replace with edges.")
+            data.edges = data.connections;
+        }
+
+        if(!data.nodes) {
+            console.warn("ERROR: Could not find nodes. Cannot load simulation " + fileUrl)
+            return
+        }
+        if(!data.edges) {
+            console.warn("ERROR: Could not find edges. Cannot load simulation " + fileUrl)
+            return
+        }
+
+        for(var i in data.nodes) {
+            var properties = data.nodes[i];
             if(properties.isAlias && properties.isAlias === true) {
-                createdEntities.push({});
+                createdNodes.push({});
                 aliases.push({position: i, properties: properties});
                 continue;
             }
             var entity = createEntity(properties.fileName, {}, false);
             applyProperties(entity, properties);
-            createdEntities.push(entity);
+            createdNodes.push(entity);
         }
 
         for(var i in aliases) {
             var properties = aliases[i].properties;
             var position = aliases[i].position;
-            var parent = createdEntities[properties.parent];
+            var parent = createdNodes[properties.parent];
             if(!parent) {
                 console.warn("ERROR: Could not find parent of alias during file load.");
             }
@@ -144,14 +170,18 @@ Rectangle {
             if(!entity) {
                 console.warn("ERROR: Could not resolve alias during file load.")
             }
-            createdEntities[position] = entity;
+            createdNodes[position] = entity;
         }
 
-        for(var i in data.connections) {
-            var connection = data.connections[i];
-            var from = parseInt(connection.from);
-            var to = parseInt(connection.to);
-            var connection = connectEntities(createdEntities[from], createdEntities[to]);
+        for(var i in data.edges) {
+            var edgeProperties = data.edges[i];
+            var from = parseInt(edgeProperties.from);
+            var to = parseInt(edgeProperties.to);
+            connectEntities(createdNodes[from], createdNodes[to]);
+        }
+
+        if(data.workspace) {
+            applyProperties(workspace, data.workspace);
         }
 
         undoRecordingEnabled = true
@@ -195,7 +225,7 @@ Rectangle {
         }
     }
 
-    function redo(){
+    function redo() {
         if (undoIdx < undoList.length){
             undoIdx += 1
             deleteEverything()
@@ -268,11 +298,13 @@ Rectangle {
     }
 
     function selectAll() {
+        var selectedList = selectedEntities
         for(var i in graphEngine.nodes) {
             var listObject = graphEngine.nodes[i]
             listObject.selected = true
-            selectedEntities.push(listObject)
+            selectedList.push(listObject)
         }
+        selectedEntities = selectedList
     }
 
     function deselectAll() {
@@ -320,28 +352,31 @@ Rectangle {
             if(activeObject) {
                 activeObject.selected = false
             }
+            var selectedList = selectedEntities
 
             if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
                 var alreadySelected = false
-                for(var j in selectedEntities) {
-                    var alreadySelectedEntity = selectedEntities[j]
+                for(var j in selectedList) {
+                    var alreadySelectedEntity = selectedList[j]
                     if(alreadySelectedEntity ===  entity) {
                         alreadySelected = true
                     }
                 }
                 if(!alreadySelected) {
-                    selectedEntities.push(entity)
+                    selectedList.push(entity)
                 }
             } else {
                 deselectAll()
-                selectedEntities.push(entity)
+                selectedList.push(entity)
                 entity.selected = true
             }
 
-            for(var i in selectedEntities) {
-                var selectedEntity = selectedEntities[i]
+            for(var i in selectedList) {
+                var selectedEntity = selectedList[i]
                 selectedEntity.selected = true
             }
+
+            selectedEntities = selectedList
 
             activeObject = entity
         } else if (clickMode === "connection") {
@@ -362,6 +397,14 @@ Rectangle {
     function raiseToTop(node) {
         highestZ += 1.0;
         node.z = highestZ;
+    }
+
+    function startedDragEntity(entity) {
+        draggedEntity = entity;
+    }
+
+    function endedDragEntity(entity) {
+        draggedEntity = undefined;
     }
 
     function createEntity(fileUrl, properties, useAutoLayout) {
@@ -393,6 +436,8 @@ Rectangle {
 
         entity.dragStarted.connect(resetOrganize)
         entity.dragStarted.connect(raiseToTop)
+        entity.dragStarted.connect(startedDragEntity)
+        entity.dragEnded.connect(endedDragEntity)
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
@@ -400,6 +445,8 @@ Rectangle {
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)
+        entity.dragProxy = dragProxy
+        entity.snapGridSize = Qt.binding(function() {return root.snapGridSize})
 
         graphEngine.addNode(entity)
         if(useAutoLayout) {
@@ -547,7 +594,6 @@ Rectangle {
 
         Item {
             id: workspace
-            property alias color: workspaceRectangle.color
 
             width: 3840
             height: 2160
@@ -555,20 +601,49 @@ Rectangle {
             scale: 1.1
             transformOrigin: Item.TopLeft
 
-            function dump() {
-//                var properties = ["x", "y", "scale"]
-//                var output = ""
-//                for(var i in properties) {
-//                    output += "workspace." + properties[i] + " = " + workspace[properties[i]] + "\n"
-//                }
-//                return output
-            }
+            Item {
+                id: dragProxy
 
+                property point previousPosition
+                property point gridPosition
 
-            Rectangle {
-                id: workspaceRectangle
-                anchors.fill: parent
-                color: "#f7fbff"
+                onXChanged: {
+                    gridPosition.x = x - x % snapGridSize
+                    if(x !== previousPosition.x) {
+                        var delta = Qt.point(previousPosition.x - gridPosition.x, 0.0);
+                        apply(delta)
+                    }
+                }
+                onYChanged: {
+                    gridPosition.y = y - y % snapGridSize
+                    if(gridPosition.y !== previousPosition.y) {
+                        var delta = Qt.point(0.0, previousPosition.y - gridPosition.y);
+                        apply(delta)
+                    }
+                }
+
+                function moveEntity(entity, delta) {
+                    var newX = entity.x - delta.x;
+                    var newY = entity.y - delta.y;
+                    entity.x = newX - newX % snapGridSize;
+                    entity.y = newY - newY % snapGridSize;
+                }
+
+                function apply(delta) {
+
+                    if(!draggedEntity) {
+                        return
+                    }
+                    if(selectedEntities.indexOf(draggedEntity) > -1) {
+                        for(var i in selectedEntities) {
+                            var entity = selectedEntities[i];
+                            moveEntity(entity, delta);
+                        }
+                    } else {
+                        moveEntity(draggedEntity, delta);
+                    }
+                    previousPosition = gridPosition
+                }
             }
 
             Item {
@@ -588,6 +663,7 @@ Rectangle {
         revealed: !mainMenu.revealed
         onClicked: {
             mainMenu.revealed = true
+            root.running = false
         }
     }
 
@@ -606,7 +682,6 @@ Rectangle {
     }
 
     PropertiesButton {
-//        revealed: activeObject ? true : false
         revealed: true
         onClicked: {
             propertiesPanel.revealed = true
@@ -642,50 +717,50 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-        }
-        height: Style.touchableSize
+    ConnectionMenu {
         visible: clickMode === "connection"
-
-        Text {
-            anchors.centerIn: parent
-            text: "Connection mode: Select other items to connect them."
-        }
-
-        Button {
-            anchors {
-                verticalCenter: parent.verticalCenter
-                right: parent.right
-            }
-            text: "Done"
-            onClicked: {
-                clickMode = "selection"
-            }
+        onDoneClicked: {
+            clickMode = "selection"
         }
     }
 
     MainMenu {
         id: mainMenu
+
+        property bool wasRunning: true
+
         anchors.fill: parent
         blurSource: workspaceFlickable
 
-        onLoadSimulation: {
-            loadState(simulation.stateSource)
+        onRevealedChanged: {
+            if(revealed) {
+                wasRunning = root.running
+            }
+        }
+
+        onContinueClicked: {
             mainMenu.revealed = false
+            root.running = wasRunning
+        }
+
+        onNewClicked: {
+            root.loadSimulation("qrc:/simulations/empty/empty.nfy")
+            mainMenu.revealed = false
+            root.running = wasRunning
+        }
+
+        onLoadSimulation: {
+            root.loadSimulation(simulation.stateSource)
+            mainMenu.revealed = false
+            root.running = wasRunning
         }
 
         onSaveSimulationRequested: {
             fileManager.showSaveDialog()
-            mainMenu.revealed = false
         }
 
         onLoadSimulationRequested: {
             fileManager.showLoadDialog()
-            mainMenu.revealed = false
         }
     }
 
@@ -706,11 +781,11 @@ Rectangle {
         id: fileManager
 
         graphEngine: graphEngine
-        otherItems: [workspace]
+        workspace: workspace
 
         onLoadState: {
             console.log("Load state signal caught")
-            root.loadState(fileUrl)
+            root.loadSimulation(fileUrl)
         }
     }
 

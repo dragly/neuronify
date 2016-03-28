@@ -6,8 +6,10 @@ import QtGraphicalEffects 1.0
 import "../../style"
 
 Item {
-    id: root
+    id: mainMenuRoot
 
+    signal continueClicked
+    signal newClicked
     signal loadSimulation(var simulation)
     signal saveSimulationRequested
     signal loadSimulationRequested
@@ -18,12 +20,8 @@ Item {
     width: 100
     height: 62
 
-    function hide() {
-        revealed = false
-    }
-
     MouseArea {
-        enabled: root.revealed
+        enabled: mainMenuRoot.revealed
         anchors.fill: parent
     }
 
@@ -45,7 +43,7 @@ Item {
 
     Item {
         id: menuRectangle
-        enabled: root.revealed
+        enabled: mainMenuRoot.revealed
         anchors.fill: parent
 
         StackView {
@@ -138,7 +136,11 @@ Item {
         height: parent.height
 
         onContinueClicked: {
-            hide()
+            mainMenuRoot.continueClicked()
+        }
+
+        onNewSimulationClicked: {
+            mainMenuRoot.newClicked()
         }
 
         onSimulationsClicked: {
@@ -152,11 +154,6 @@ Item {
         onAdvancedClicked: {
             stackView.push(advancedView)
         }
-
-        onNewSimulationClicked: {
-            hide()
-            loadSimulation("qrc:/simulations/empty/empty.nfy")
-        }
     }
 
     SimulationsView {
@@ -166,7 +163,7 @@ Item {
         height: parent.height
 
         onSimulationClicked: {
-            root.loadSimulation(simulation)
+            mainMenuRoot.loadSimulation(simulation)
             stackView.pop(0)
         }
     }
@@ -195,7 +192,7 @@ Item {
 
     states: [
         State {
-            when: !root.revealed
+            when: !mainMenuRoot.revealed
             PropertyChanges {
                 target: menuRectangle
                 opacity: 0.0
