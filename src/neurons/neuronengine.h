@@ -18,6 +18,7 @@ class NeuronEngine : public NodeEngine
     Q_PROPERTY(double synapsePotential READ synapsePotential WRITE setSynapsePotential NOTIFY synapsePotentialChanged)
     Q_PROPERTY(double threshold READ threshold WRITE setThreshold NOTIFY thresholdChanged)
     Q_PROPERTY(double capacitance READ capacitance WRITE setCapacitance NOTIFY capacitanceChanged)
+    Q_PROPERTY(double firingRate READ firingRate WRITE setFiringRate NOTIFY firingRateChanged)
 
 public:
     NeuronEngine(QQuickItem *parent = 0);
@@ -29,8 +30,10 @@ public:
     double threshold() const;
     double capacitance() const;
     double initialPotential() const;
-
     double synapticTimeConstant() const;
+    double firingRate() const;
+
+
 
 public slots:
     void setVoltage(double arg);
@@ -41,8 +44,8 @@ public slots:
     void setThreshold(double threshold);
     void setCapacitance(double capacitance);
     void setInitialPotential(double initialPotential);
-
     void setSynapticTimeConstant(double synapticTimeConstant);
+    void setFiringRate(double firingRate);
 
 signals:
     void voltageChanged(double arg);
@@ -52,8 +55,8 @@ signals:
     void thresholdChanged(double threshold);
     void capacitanceChanged(double capacitance);
     void initialPotentialChanged(double initialPotential);
-
     void synapticTimeConstantChanged(double synapticTimeConstant);
+    void firingRateChanged(double firingRate);
 
 protected:
     virtual void stepEvent(double dt);
@@ -73,6 +76,7 @@ private:
     double m_capacitance = 1.0e-6;
     double m_initialPotential = -80.0e-3;
     double m_synapticTimeConstant = 10.0e-3;
+    double m_firingRate = 0.0;
 };
 
 #endif // NEURONIFY_NEURONENGINE_H

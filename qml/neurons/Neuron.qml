@@ -27,6 +27,7 @@ Node {
 
     readonly property real voltage: root.engine.voltage
     readonly property bool inhibitory: root.engine.fireOutput < 0.0
+    readonly property real firingRate: root.engine.firingRate
 
     property url imageSource
     property url inhibitoryImageSource

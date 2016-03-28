@@ -8,29 +8,28 @@ import QtCharts 2.1
 import Neuronify 1.0
 
 /*!
-\qmltype Voltmeter
+\qmltype FiringRateMeter
 \inqmlmodule Neuronify
 \ingroup neuronify-meters
-\brief Reads the voltage of the neurons and shows a trace plot
+\brief Reads the firing rate of the neurons and shows a trace plot
 
-Neurons can connect to the voltmeter. When they do, the voltmeter shows their voltage trace
-as a function of time. Each neuron gets spesific color in the voltmeter plot. To each voltmeter
-there is an associated \l{VoltmeterControls} item.
+Neurons can connect to the firing rate-meter. When they do, the firing rate-meter shows their rate trace
+as a function of time. Each neuron gets spesific color in the firing rate-meter plot.
 */
 
 Node {
-    id: voltmeterRoot
-    objectName: "voltmeter"
-    fileName: "meters/Voltmeter.qml"
+    id: rateMeterRoot
+    objectName: "firingRateMeter"
+    fileName: "meters/FiringRateMeter.qml"
     square: true
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentSeries: 0
-    property string title: "mV"
+    property string title: "Hz"
 
     property real timeFactor: 1000
-    property real voltageFactor: 1000
+    property real rateFactor: 1000.
 
     property real timeRange: 100.0e-3
 
@@ -60,11 +59,11 @@ Node {
 
     controls: Component {
         MeterControls {
-            meter: voltmeterRoot
-            sliderMinimum: -250
-            sliderMaximum: 250
-            unit: "mV"
-            meterType: "voltmeter"
+            meter: rateMeterRoot
+            sliderMinimum: -10
+            sliderMaximum: 2500
+            unit: "Hz"
+            meterType: "firing rate"
 
         }
     }
@@ -77,30 +76,22 @@ Node {
             if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
                 time = realTime
                 lastUpdateTime = realTime
-                for(var i in voltmeterRoot.connectionPlots) {
-                    var connectionPlot = voltmeterRoot.connectionPlots[i]
+                for(var i in rateMeterRoot.connectionPlots) {
+                    var connectionPlot = rateMeterRoot.connectionPlots[i]
                     var plot = connectionPlot.plot
                     var neuron = connectionPlot.connection.itemA
+                    console.log(neuron.firingRate)
                     if(neuron) {
-                        if(neuron.voltage) {
-                            plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
-                        }
+//                        if(neuron.firingRate) {
+                            plot.addPoint(time * timeFactor,
+                                          neuron.firingRate)
+//                        }
                     }
                 }
             }
             realTime += dt
         }
-        onReceivedFire: {
-            for(var i in voltmeterRoot.connectionPlots) {
-                var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var neuron = connectionPlot.connection.itemA
-                if(neuron.engine && neuron.engine === sender) {
-                    fireSeries.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
-                    fireSeries.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
-                    fireSeries.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
-                }
-            }
-        }
+
     }
 
     Component.onCompleted: {
@@ -163,7 +154,7 @@ Node {
             id: fireSeries
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange * timeFactor
+            timeRange: rateMeterRoot.timeRange * timeFactor
             visible: true
         }
 
@@ -171,34 +162,34 @@ Node {
             id: series1
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange * timeFactor
+            timeRange: rateMeterRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series2
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange * timeFactor
+            timeRange: rateMeterRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series3
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange * timeFactor
+            timeRange: rateMeterRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series4
             axisX: axisX
             axisY: axisY
-            timeRange: voltmeterRoot.timeRange * timeFactor
+            timeRange: rateMeterRoot.timeRange * timeFactor
         }
 
         ValueAxis {
             id: axisX
-            min: (voltmeterRoot.time - timeRange) * timeFactor
-            max: voltmeterRoot.time * timeFactor
+            min: (rateMeterRoot.time - timeRange) * timeFactor
+            max: rateMeterRoot.time * timeFactor
             tickCount: 2
             gridVisible: false
             labelFormat: "%.0f"
@@ -207,8 +198,8 @@ Node {
 
         ValueAxis {
             id: axisY
-            min: -100.0e-3 * voltageFactor
-            max: 50.0e-3 * voltageFactor
+            min: -10. * rateFactor
+            max: 1.0 * rateFactor
             tickCount: 2
             gridVisible: false
             labelFormat: "%.0f"
