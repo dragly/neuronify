@@ -5,6 +5,7 @@ import QtQuick.Dialogs 1.0
 import QtQuick.Window 2.1
 import QtCharts 2.1
 import QtMultimedia 5.5
+import Qt.labs.settings 1.0
 
 import Neuronify 1.0
 
@@ -31,6 +32,7 @@ Rectangle {
     property var organizedConnections: []
     property alias graphEngine: graphEngine
     property var selectedEntities: []
+    property var draggedEntity: undefined
     property var copiedNeurons: []
     property var voltmeters: []
     property real currentTimeStep: 0.0
@@ -45,6 +47,7 @@ Rectangle {
     property string clickMode: "selection"
     property real highestZ: 0.0
     property real playbackSpeed: 1.0
+    property real snapGridSize: propertiesPanel.snappingEnabled ? 32.0 : 1.0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -75,6 +78,10 @@ Rectangle {
 
     Component.onDestruction: {
         saveState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+    }
+
+    Settings {
+        property alias snappingEnabled: propertiesPanel.snappingEnabled
     }
 
     function deleteFromList(list, item) {
@@ -218,7 +225,7 @@ Rectangle {
         }
     }
 
-    function redo(){
+    function redo() {
         if (undoIdx < undoList.length){
             undoIdx += 1
             deleteEverything()
@@ -392,6 +399,14 @@ Rectangle {
         node.z = highestZ;
     }
 
+    function startedDragEntity(entity) {
+        draggedEntity = entity;
+    }
+
+    function endedDragEntity(entity) {
+        draggedEntity = undefined;
+    }
+
     function createEntity(fileUrl, properties, useAutoLayout) {
         var component = Qt.createComponent(fileUrl)
         if(component.status !== Component.Ready) {
@@ -421,6 +436,8 @@ Rectangle {
 
         entity.dragStarted.connect(resetOrganize)
         entity.dragStarted.connect(raiseToTop)
+        entity.dragStarted.connect(startedDragEntity)
+        entity.dragEnded.connect(endedDragEntity)
         entity.widthChanged.connect(resetOrganize)
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
@@ -429,6 +446,7 @@ Rectangle {
         entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)
         entity.dragProxy = dragProxy
+        entity.snapGridSize = Qt.binding(function() {return root.snapGridSize})
 
         graphEngine.addNode(entity)
         if(useAutoLayout) {
@@ -587,23 +605,44 @@ Rectangle {
                 id: dragProxy
 
                 property point previousPosition
+                property point gridPosition
 
                 onXChanged: {
-                    apply()
+                    gridPosition.x = x - x % snapGridSize
+                    if(x !== previousPosition.x) {
+                        var delta = Qt.point(previousPosition.x - gridPosition.x, 0.0);
+                        apply(delta)
+                    }
                 }
                 onYChanged: {
-                    apply()
+                    gridPosition.y = y - y % snapGridSize
+                    if(gridPosition.y !== previousPosition.y) {
+                        var delta = Qt.point(0.0, previousPosition.y - gridPosition.y);
+                        apply(delta)
+                    }
                 }
 
-                function apply() {
-                    var deltaX = previousPosition.x - x
-                    var deltaY = previousPosition.y - y
-                    for(var i in selectedEntities) {
-                        var entity = selectedEntities[i];
-                        entity.x -= deltaX// / workspace.scale
-                        entity.y -= deltaY// / workspace.scale
+                function moveEntity(entity, delta) {
+                    var newX = entity.x - delta.x;
+                    var newY = entity.y - delta.y;
+                    entity.x = newX - newX % snapGridSize;
+                    entity.y = newY - newY % snapGridSize;
+                }
+
+                function apply(delta) {
+
+                    if(!draggedEntity) {
+                        return
                     }
-                    previousPosition = Qt.point(x, y)
+                    if(selectedEntities.indexOf(draggedEntity) > -1) {
+                        for(var i in selectedEntities) {
+                            var entity = selectedEntities[i];
+                            moveEntity(entity, delta);
+                        }
+                    } else {
+                        moveEntity(draggedEntity, delta);
+                    }
+                    previousPosition = gridPosition
                 }
             }
 

@@ -26,9 +26,11 @@ NodeBase {
     signal clicked(var entity, var mouse)
     signal clickedConnector(var entity, var mouse)
     signal dragStarted(var entity)
+    signal dragEnded(var entity)
     signal aboutToDie(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
     signal fired
+    property real snapGridSize: 1.0
     property var dragProxy
     property string label: ""
     property string objectName: "entity"
@@ -152,7 +154,7 @@ NodeBase {
     MouseArea {
         enabled: useDefaultMouseHandling
         anchors.fill: parent
-        drag.target: root.selected ? root.dragProxy : root
+        drag.target: root.dragProxy
 
         onPressed: {
             root.dragging = true
@@ -165,6 +167,7 @@ NodeBase {
 
         onReleased: {
             root.dragging = false
+            dragEnded(root)
         }
     }
 }
