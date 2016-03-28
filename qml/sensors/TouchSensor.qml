@@ -26,9 +26,7 @@ Node {
     fileName: "sensors/TouchSensor.qml"
     square: true
 
-
     property int cells: 5
-    property int _oldCells: 0
     property var actualCells: []
     property real sensingCurrentOutput: 150.0e-6
     property var dropFunction
@@ -36,7 +34,7 @@ Node {
     removableChildren: actualCells
     canReceiveConnections: false
 
-    width: cells * 100
+    width: 500
     height: 100
 
     engine: NodeEngine {
@@ -72,12 +70,8 @@ Node {
 
     function resetCells() {
         for(var i = 0; i < actualCells.length; i++) {
-            var cell = actualCells[i]
-            for(var j in cell.connections) {
-                var connection = cell.connections[j]
-                connection.destroy()
-            }
-            cell.destroy()
+            var cell = actualCells[i];
+            simulator.deleteNode(cell);
         }
         actualCells.length = 0
         for(var i = 0; i < cells; i++) {

@@ -321,6 +321,16 @@ Rectangle {
         }
     }
 
+    function deleteNode(node) {
+        for(var j in node.removableChildren) {
+            var child = node.removableChildren[j]
+            graphEngine.removeNode(child)
+            child.destroy(1)
+        }
+        graphEngine.removeNode(node)
+        node.destroy(1)
+    }
+
     function deleteSelected() {
         var toDelete = []
         for(var i in selectedEntities) {
@@ -328,18 +338,8 @@ Rectangle {
         }
         for(var i in toDelete) {
             var node = toDelete[i]
-            console.log("Deleting node " + node)
-            console.log("With children " + node.removableChildren)
-            for(var j in node.removableChildren) {
-                var child = node.removableChildren[j]
-                graphEngine.removeNode(child)
-                child.destroy(1)
-            }
-            graphEngine.removeNode(node)
-            node.destroy(1)
+            deleteNode(node);
         }
-
-
         if(activeObject) {
             activeObject.destroy(1)
         }
