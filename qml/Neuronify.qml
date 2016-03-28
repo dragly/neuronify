@@ -648,29 +648,10 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-        }
-        height: Style.touchableSize
+    ConnectionMenu {
         visible: clickMode === "connection"
-
-        Text {
-            anchors.centerIn: parent
-            text: "Connection mode: Select other items to connect them."
-        }
-
-        Button {
-            anchors {
-                verticalCenter: parent.verticalCenter
-                right: parent.right
-            }
-            text: "Done"
-            onClicked: {
-                clickMode = "selection"
-            }
+        onDoneClicked: {
+            clickMode = "selection"
         }
     }
 
