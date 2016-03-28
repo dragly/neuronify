@@ -243,34 +243,28 @@ Rectangle {
     }
 
     function deleteEverything() {
-        console.log("Asked to delete everything")
-        var connectionsToDelete = graphEngine.edges
-        for(var i in connectionsToDelete) {
-            connectionsToDelete[i].destroy(1)
-        }
-        graphEngine.edges = []
-        var entitiesToDelete = graphEngine.nodes; //.slice()
+        var entitiesToDelete = graphEngine.nodes;
         for(var i in entitiesToDelete) {
-            entitiesToDelete[i].destroy(1)
+            var node = entitiesToDelete[i];
+            graphEngine.removeNode(node);
         }
-        graphEngine.nodes = []
     }
 
     function cleanupDeletedEntity(entity) {
-        if(selectedEntities.indexOf(entity) !== -1) {
-            deselectAll()
-        }
-        // TODO should these be removed
-        deleteFromList(autoLayout.entities, entity)
-        deleteFromList(voltmeters, entity)
+//        if(selectedEntities.indexOf(entity) !== -1) {
+//            deselectAll()
+//        }
+//        // TODO should these be removed
+//        deleteFromList(autoLayout.entities, entity)
+//        deleteFromList(voltmeters, entity)
 
-        resetOrganize()
+//        resetOrganize()
     }
 
     function cleanupDeletedConnection(connection) {
-        deleteFromList(autoLayout.connections, connection)
-        graphEngine.removeEdge(connection)
-        resetOrganize()
+//        deleteFromList(autoLayout.connections, connection)
+//        graphEngine.removeEdge(connection)
+//        resetOrganize()
     }
 
     function isItemUnderConnector(item, source, connector) {
@@ -322,13 +316,26 @@ Rectangle {
     }
 
     function deleteNode(node) {
-        for(var j in node.removableChildren) {
-            var child = node.removableChildren[j]
-            graphEngine.removeNode(child)
-            child.destroy(1)
+        console.log("Delete node");
+        if(selectedEntities.indexOf(node) !== -1) {
+            deselectAll();
         }
-        graphEngine.removeNode(node)
-        node.destroy(1)
+
+        if(node.objectName === "retina"){
+            camera.retinaCounter -= 1;
+        }
+
+        for(var j in node.removableChildren) {
+            var child = node.removableChildren[j];
+            graphEngine.removeNode(child);
+        }
+
+        graphEngine.removeNode(node);
+    }
+
+    function deleteEdge(edge) {
+        console.log("Delete edge");
+        graphEngine.removeEdge(edge);
     }
 
     function deleteSelected() {
@@ -338,12 +345,12 @@ Rectangle {
         }
         for(var i in toDelete) {
             var node = toDelete[i]
+            console.log("Deleting " + node);
             deleteNode(node);
         }
-        if(activeObject) {
-            activeObject.destroy(1)
+        if(activeObject && activeObject.objectName === "connection") {
+            deleteEdge(activeObject);
         }
-
         deselectAll()
     }
 
@@ -428,12 +435,6 @@ Rectangle {
             return
         }
 
-        if(isRetina){
-            entity.aboutToDie.connect(function(dead){
-                camera.retinaCounter-=1
-            })
-        }
-
         entity.dragStarted.connect(resetOrganize)
         entity.dragStarted.connect(raiseToTop)
         entity.dragStarted.connect(startedDragEntity)
@@ -442,7 +443,6 @@ Rectangle {
         entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.clicked.connect(raiseToTop)
-        entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)
         entity.dragProxy = dragProxy
@@ -484,7 +484,6 @@ Rectangle {
         var connection = createConnection(itemA, itemB)
         autoLayout.connections.push(connection)
         graphEngine.addEdge(connection)
-        connection.aboutToDie.connect(cleanupDeletedConnection)
         resetOrganize()
         return connection
     }

@@ -8,11 +8,9 @@
         <file>qml/meters/Voltmeter.qml</file>
         <file>qml/hud/PropertiesPanel.qml</file>
         <file>qml/hud/VoltmeterControls.qml</file>
-        <file>qml/hud/ConnectionControls.qml</file>
         <file>qml/hud/CreationMenu.qml</file>
         <file>qml/GraphItem.qml</file>
         <file>qml/neurons/Neuron.qml</file>
-        <file>qml/neurons/OldNeuronControls.qml</file>
         <file>qml/paths/Line.qml</file>
         <file>qml/Neuronify.qml</file>
         <file>qml/hud/CreationItem.qml</file>
@@ -38,7 +36,6 @@
         <file>qml/neurons/AdaptationNeuron.qml</file>
         <file>qml/generators/PoissonGenerator.qml</file>
         <file>qml/Connector.qml</file>
-        <file>qml/neurons/OldNeuron.qml</file>
         <file>qml/neurons/NeuronControls.qml</file>
         <file>qml/generators/CurrentClamp.qml</file>
         <file>qml/hud/CreationMenuButton.qml</file>
