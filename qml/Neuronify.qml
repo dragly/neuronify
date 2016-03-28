@@ -154,6 +154,11 @@ Rectangle {
                 continue;
             }
             var entity = createEntity(properties.fileName, {}, false);
+            if(!entity) {
+                console.warn("WARNING: Could not create entity of type " + properties.fileName + " while loading " + fileUrl);
+                continue;
+            }
+
             applyProperties(entity, properties);
             createdNodes.push(entity);
         }
@@ -165,7 +170,6 @@ Rectangle {
             if(!parent) {
                 console.warn("ERROR: Could not find parent of alias during file load.");
             }
-
             var entity = parent.resolveAlias(properties.childIndex);
             if(!entity) {
                 console.warn("ERROR: Could not resolve alias during file load.")
@@ -177,6 +181,10 @@ Rectangle {
             var edgeProperties = data.edges[i];
             var from = parseInt(edgeProperties.from);
             var to = parseInt(edgeProperties.to);
+            if(!createdNodes[from] || !createdNodes[to]) {
+                console.warn("WARNING: Cannot connect entities " + from + " and " + to + " while loading " + fileUrl);
+                continue;
+            }
             connectEntities(createdNodes[from], createdNodes[to]);
         }
 
