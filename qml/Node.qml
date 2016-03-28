@@ -27,7 +27,6 @@ NodeBase {
     signal clickedConnector(var entity, var mouse)
     signal dragStarted(var entity)
     signal dragEnded(var entity)
-    signal aboutToDie(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
     signal fired
     property real snapGridSize: 1.0
@@ -54,10 +53,6 @@ NodeBase {
         "fileName"
     ]
 
-    Component.onDestruction: {
-        aboutToDie(root)
-    }
-
     onEngineChanged: {
         if(engine) {
             engine.fired.connect(root.fired)
@@ -71,13 +66,6 @@ NodeBase {
 
     function resolveAlias(index) {
         return undefined;
-    }
-
-    function _deleteAllConnectionsInList(connectionsToDelete) {
-        for(var i in connectionsToDelete) {
-            var connection = connectionsToDelete[i]
-            connection.destroy(1)
-        }
     }
 
     function _basicSelfDump() {

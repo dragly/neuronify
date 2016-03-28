@@ -6,8 +6,8 @@ import Neuronify 1.0
 Edge {
     id: connectionRoot
     signal clicked(var connection)
-    signal aboutToDie(var connection)
 
+    property string objectName: "connection"
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
     property real conductance: 1.0
@@ -21,16 +21,7 @@ Edge {
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
     property var customDump
     property Component controls: Component {
-        ConnectionControls {
-            connection: connectionRoot
-            onDeleteClicked: {
-                connectionRoot.destroy(1)
-            }
-        }
-    }
-
-    Component.onDestruction: {
-        aboutToDie(connectionRoot)
+        Item {}
     }
 
     function intersectX() {

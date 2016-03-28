@@ -9,8 +9,6 @@ import ".."
 import "../controls"
 
 Column {
-    signal deleteClicked
-
     property var neuron: null
     property NeuronEngine engine: null
 

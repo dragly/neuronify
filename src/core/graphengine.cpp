@@ -73,8 +73,9 @@ void GraphEngine::removeNode(NodeBase *node)
     }
     qDebug() << "Delete edges" << toDelete.length();
     for(Edge *edge : toDelete) {
-        edge->deleteLater();
+        removeEdge(edge);
     }
+    node->deleteLater();
 }
 
 void GraphEngine::removeEdge(Edge *edge)
@@ -102,6 +103,7 @@ void GraphEngine::removeEdge(Edge *edge)
         emit edge->itemBChanged(nullptr);
     }
     m_edges.removeAll(edge);
+    edge->deleteLater();
 }
 
 void GraphEngine::step(double dt)
