@@ -25,60 +25,7 @@ Column {
     id: voltmeterControlsRoot
     property Item voltmeter: null
 
-    onVoltmeterChanged: {
-        if(!voltmeterControlsRoot.voltmeter) {
-            return
-        }
-        var voltmeter = voltmeterControlsRoot.voltmeter
-        switch(voltmeter.mode) {
-        case "voltage":
-            voltageRadioButton.checked = true
-            break
-        }
-    }
     spacing: 10
-    Text {
-        text: "Mode:"
-    }
-
-    ExclusiveGroup {
-        id: modeGroup
-    }
-
-    RadioButton {
-        id: voltageRadioButton
-        text: "Voltage"
-        exclusiveGroup: modeGroup
-        onCheckedChanged: {
-            if(checked) {
-                voltmeterControlsRoot.voltmeter.mode = "voltage"
-            }
-        }
-    }
-
-    Button {
-        text: "Connect to all neurons"
-        onClicked: {
-            var itemA = voltmeter
-            for (var i in voltmeter.simulator.graphEngine.nodes){
-                var itemB = graphEngine.nodes[i]
-                if (itemB.isNeuron){
-                    if (!voltmeter.simulator.connectionExists(itemB, itemA)){
-                        voltmeter.simulator.connectEntities(itemB, itemA)
-                    }
-                }
-            }
-        }
-    }
-
-    Button {
-        text: "Disconnect from all neurons"
-        onClicked: {
-            for (var i in voltmeter.connectionPlots){
-                connectionPlots[i].connection.destroy(1)
-            }
-        }
-    }
 
     BoundSlider {
         target: voltmeter
