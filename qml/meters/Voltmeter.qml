@@ -213,6 +213,7 @@ Node {
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
+            titleText: voltmeterRoot.title
         }
     }
 

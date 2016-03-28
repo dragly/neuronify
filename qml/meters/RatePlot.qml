@@ -8,7 +8,7 @@ import QtCharts 2.1
 import Neuronify 1.0
 
 /*!
-\qmltype FiringRateMeter
+\qmltype RatePlot
 \inqmlmodule Neuronify
 \ingroup neuronify-meters
 \brief Reads the firing rate of the neurons and shows a trace plot
@@ -18,9 +18,9 @@ as a function of time. Each neuron gets spesific color in the firing rate-meter 
 */
 
 Node {
-    id: rateMeterRoot
-    objectName: "firingRateMeter"
-    fileName: "meters/FiringRateMeter.qml"
+    id: ratePlotRoot
+    objectName: "ratePlot"
+    fileName: "meters/RatePlot.qml"
     square: true
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
@@ -59,8 +59,8 @@ Node {
 
     controls: Component {
         MeterControls {
-            meter: rateMeterRoot
-            sliderMinimum: -10
+            meter: ratePlotRoot
+            sliderMinimum: 0
             sliderMaximum: 2500
             unit: "Hz"
             meterType: "firing rate"
@@ -76,11 +76,11 @@ Node {
             if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
                 time = realTime
                 lastUpdateTime = realTime
-                for(var i in rateMeterRoot.connectionPlots) {
-                    var connectionPlot = rateMeterRoot.connectionPlots[i]
+                for(var i in ratePlotRoot.connectionPlots) {
+                    var connectionPlot = ratePlotRoot.connectionPlots[i]
                     var plot = connectionPlot.plot
                     var neuron = connectionPlot.connection.itemA
-                    console.log(neuron.firingRate)
+//                    console.log(neuron.firingRate)
                     if(neuron) {
 //                        if(neuron.firingRate) {
                             plot.addPoint(time * timeFactor,
@@ -154,7 +154,7 @@ Node {
             id: fireSeries
             axisX: axisX
             axisY: axisY
-            timeRange: rateMeterRoot.timeRange * timeFactor
+            timeRange: ratePlotRoot.timeRange * timeFactor
             visible: true
         }
 
@@ -162,48 +162,50 @@ Node {
             id: series1
             axisX: axisX
             axisY: axisY
-            timeRange: rateMeterRoot.timeRange * timeFactor
+            timeRange: ratePlotRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series2
             axisX: axisX
             axisY: axisY
-            timeRange: rateMeterRoot.timeRange * timeFactor
+            timeRange: ratePlotRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series3
             axisX: axisX
             axisY: axisY
-            timeRange: rateMeterRoot.timeRange * timeFactor
+            timeRange: ratePlotRoot.timeRange * timeFactor
         }
 
         Plot {
             id: series4
             axisX: axisX
             axisY: axisY
-            timeRange: rateMeterRoot.timeRange * timeFactor
+            timeRange: ratePlotRoot.timeRange * timeFactor
         }
 
         ValueAxis {
             id: axisX
-            min: (rateMeterRoot.time - timeRange) * timeFactor
-            max: rateMeterRoot.time * timeFactor
+            min: (ratePlotRoot.time - timeRange) * timeFactor
+            max: ratePlotRoot.time * timeFactor
             tickCount: 2
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
+
         }
 
         ValueAxis {
             id: axisY
-            min: -10. * rateFactor
-            max: 1.0 * rateFactor
+            min: 0.0
+            max: 100.
             tickCount: 2
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
+            titleText: ratePlotRoot.title
         }
     }
 

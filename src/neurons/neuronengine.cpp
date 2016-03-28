@@ -110,14 +110,12 @@ void NeuronEngine::stepEvent(double dt)
     m_voltage = min(max(m_voltage, -0.2), 0.2);
     m_synapticConductance = gs + dgs;
 
-    if(m_window > 1e2 * dt){
+    if(m_window > 1e2 * 0.4e-3){
         m_firingRate = m_spikeCount / m_window;
         m_spikeCount = 0;
         m_window = 0.0;
         emit firingRateChanged(m_firingRate);
     }
-//    qDebug() << m_window <<"   " << m_firingRate << endl;
-
 
     emit voltageChanged(m_voltage);
     emit synapticConductanceChanged(m_synapticConductance);

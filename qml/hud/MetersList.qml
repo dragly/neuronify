@@ -16,8 +16,8 @@ ListModel {
     ListElement {
         name: "Firing rate plot"
         description: "Shows firing rate of neurons"
-        source: "qrc:/qml/meters/FiringRateMeter.qml"
-        imageSource: "qrc:/images/meters/voltmeter.png"
+        source: "qrc:/qml/meters/RatePlot.qml"
+        imageSource: "qrc:/images/meters/ratePlot.png"
     }
     ListElement {
         name: "Speaker"

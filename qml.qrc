@@ -75,7 +75,7 @@
         <file>qml/sensors/kernels/OffRightKernel.qml</file>
         <file>qml/sensors/kernels/DogKernel.qml</file>
         <file>qml/meters/RasterPlot.qml</file>
-        <file>qml/meters/FiringRateMeter.qml</file>
+        <file>qml/meters/RatePlot.qml</file>
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
     </qresource>
