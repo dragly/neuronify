@@ -291,11 +291,13 @@ Rectangle {
     }
 
     function selectAll() {
+        var selectedList = selectedEntities
         for(var i in graphEngine.nodes) {
             var listObject = graphEngine.nodes[i]
             listObject.selected = true
-            selectedEntities.push(listObject)
+            selectedList.push(listObject)
         }
+        selectedEntities = selectedList
     }
 
     function deselectAll() {
@@ -343,28 +345,31 @@ Rectangle {
             if(activeObject) {
                 activeObject.selected = false
             }
+            var selectedList = selectedEntities
 
             if ((mouse.button === Qt.LeftButton) && (mouse.modifiers & Qt.ShiftModifier)){
                 var alreadySelected = false
-                for(var j in selectedEntities) {
-                    var alreadySelectedEntity = selectedEntities[j]
+                for(var j in selectedList) {
+                    var alreadySelectedEntity = selectedList[j]
                     if(alreadySelectedEntity ===  entity) {
                         alreadySelected = true
                     }
                 }
                 if(!alreadySelected) {
-                    selectedEntities.push(entity)
+                    selectedList.push(entity)
                 }
             } else {
                 deselectAll()
-                selectedEntities.push(entity)
+                selectedList.push(entity)
                 entity.selected = true
             }
 
-            for(var i in selectedEntities) {
-                var selectedEntity = selectedEntities[i]
+            for(var i in selectedList) {
+                var selectedEntity = selectedList[i]
                 selectedEntity.selected = true
             }
+
+            selectedEntities = selectedList
 
             activeObject = entity
         } else if (clickMode === "connection") {
@@ -423,6 +428,7 @@ Rectangle {
         entity.aboutToDie.connect(cleanupDeletedEntity)
         entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)
+        entity.dragProxy = dragProxy
 
         graphEngine.addNode(entity)
         if(useAutoLayout) {
@@ -576,6 +582,30 @@ Rectangle {
 
             scale: 1.1
             transformOrigin: Item.TopLeft
+
+            Item {
+                id: dragProxy
+
+                property point previousPosition
+
+                onXChanged: {
+                    apply()
+                }
+                onYChanged: {
+                    apply()
+                }
+
+                function apply() {
+                    var deltaX = previousPosition.x - x
+                    var deltaY = previousPosition.y - y
+                    for(var i in selectedEntities) {
+                        var entity = selectedEntities[i];
+                        entity.x -= deltaX// / workspace.scale
+                        entity.y -= deltaY// / workspace.scale
+                    }
+                    previousPosition = Qt.point(x, y)
+                }
+            }
 
             Item {
                 id: connectionLayer
