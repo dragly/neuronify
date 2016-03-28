@@ -9,7 +9,7 @@ import "../style"
 Item {
     id: root
 
-    signal droppedEntity(var fileUrl, var properties, var controlParent, var useAutoLayout)
+    signal droppedEntity(var fileUrl, var properties, var controlParent)
     signal deleteEverything()
 
     property var blurSource: null
@@ -202,7 +202,7 @@ Item {
                     }
 
                     onDropped: {
-                        droppedEntity(fileUrl, properties, controlParent, useAutoLayout)
+                        droppedEntity(fileUrl, properties, controlParent)
                     }
                 }
 

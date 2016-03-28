@@ -2,7 +2,7 @@ import QtQuick 2.0
 import "../style"
 
 Row {
-    signal droppedEntity(var fileUrl, var properties, var controlParent, var useAutoLayout)
+    signal droppedEntity(var fileUrl, var properties, var controlParent)
     signal clicked(var entity)
 
     Component.onCompleted: {

@@ -55,8 +55,6 @@ Rectangle {
                 }
             }
         }
-
-        resetOrganize()
     }
 }
 

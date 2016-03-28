@@ -5,7 +5,7 @@ Item {
     id: root
     property string objectName: "CreationItem"
 
-    signal dropped(var fileUrl, var properties, var controlParent, var useAutoLayout)
+    signal dropped(var fileUrl, var properties, var controlParent)
     signal clicked(var entity)
 
     default property alias subChildren: creationControl.children
@@ -14,7 +14,6 @@ Item {
     property string description: ""
     property url source: ""
     property url imageSource: ""
-    property bool autoLayout: false
 
     width: Style.touchableSize
     height: width
@@ -50,7 +49,7 @@ Item {
             drag.onActiveChanged: {
                 if (!dragArea.drag.active) {
                     var properties = {x: creationControl.x, y: creationControl.y}
-                    dropped(source, properties, root, autoLayout)
+                    dropped(source, properties, root)
                 }
             }
             onClicked: {

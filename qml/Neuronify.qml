@@ -28,13 +28,10 @@ import "tools"
 Rectangle {
     id: root
 
-    property var organizedItems: []
-    property var organizedConnections: []
     property alias graphEngine: graphEngine
     property var selectedEntities: []
     property var draggedEntity: undefined
     property var copiedNeurons: []
-    property var voltmeters: []
     property real currentTimeStep: 0.0
     property real time: 0.0
     property var activeObject: null
@@ -263,23 +260,6 @@ Rectangle {
         }
     }
 
-    function cleanupDeletedEntity(entity) {
-//        if(selectedEntities.indexOf(entity) !== -1) {
-//            deselectAll()
-//        }
-//        // TODO should these be removed
-//        deleteFromList(autoLayout.entities, entity)
-//        deleteFromList(voltmeters, entity)
-
-//        resetOrganize()
-    }
-
-    function cleanupDeletedConnection(connection) {
-//        deleteFromList(autoLayout.connections, connection)
-//        graphEngine.removeEdge(connection)
-//        resetOrganize()
-    }
-
     function isItemUnderConnector(item, source, connector) {
         var mouse2 = item.mapFromItem(source,
                                       connector.x + connector.width / 2,
@@ -427,7 +407,7 @@ Rectangle {
         draggedEntity = undefined;
     }
 
-    function createEntity(fileUrl, properties, useAutoLayout) {
+    function createEntity(fileUrl, properties) {
         var component = Qt.createComponent(fileUrl)
         if(component.status !== Component.Ready) {
             console.error("Could not create component of type " + fileUrl)
@@ -448,12 +428,9 @@ Rectangle {
             return
         }
 
-        entity.dragStarted.connect(resetOrganize)
         entity.dragStarted.connect(raiseToTop)
         entity.dragStarted.connect(startedDragEntity)
         entity.dragEnded.connect(endedDragEntity)
-        entity.widthChanged.connect(resetOrganize)
-        entity.heightChanged.connect(resetOrganize)
         entity.clicked.connect(clickedEntity)
         entity.clicked.connect(raiseToTop)
         entity.clickedConnector.connect(clickedConnector)
@@ -462,10 +439,6 @@ Rectangle {
         entity.snapGridSize = Qt.binding(function() {return root.snapGridSize})
 
         graphEngine.addNode(entity)
-        if(useAutoLayout) {
-            autoLayout.entities.push(entity)
-            resetOrganize()
-        }
         addToUndoList()
         return entity
     }
@@ -495,9 +468,7 @@ Rectangle {
             return;
         }
         var connection = createConnection(itemA, itemB)
-        autoLayout.connections.push(connection)
         graphEngine.addEdge(connection)
-        resetOrganize()
         return connection
     }
 
@@ -521,10 +492,6 @@ Rectangle {
         }
     }
 
-    function resetOrganize() {
-        autoLayout.resetOrganize()
-    }
-
     function resetStyle() {
         Style.reset(width, height, Screen.pixelDensity)
     }
@@ -539,14 +506,6 @@ Rectangle {
 
     GraphEngine {
         id: graphEngine
-    }
-
-    AutoLayout {
-        id: autoLayout
-        enabled: false
-        //        enabled: creationControls.autoLayout
-        maximumWidth: neuronLayer.width
-        maximumHeight: neuronLayer.height
     }
 
     Clipboard {
@@ -715,7 +674,7 @@ Rectangle {
             var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
             properties.x = workspacePosition.x
             properties.y = workspacePosition.y
-            root.createEntity(fileUrl, properties, useAutoLayout)
+            root.createEntity(fileUrl, properties)
         }
 
         onDeleteEverything: {
