@@ -4,10 +4,10 @@
 #include <QQuickItem>
 #include <vector>
 #include <iostream>
+#include "../../utility/mathhelper.h"
 
 using namespace std;
 
-const static long double pi = 3.141592653589793238462643383279502884L;
 
 class AbstractKernelEngine: public QQuickItem
 {

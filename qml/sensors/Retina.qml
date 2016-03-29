@@ -88,31 +88,6 @@ Node {
         Column {
             anchors.fill: parent
 
-
-            // Slider to change the resolution:
-            //            Text {
-            //                text: "Resolution Height: " + kernel.resolutionHeight.toFixed(1)
-            //            }
-            //            BoundSlider {
-            //                minimumValue: 10
-            //                maximumValue: 300
-            //                stepSize: 100
-            //                target: kernel
-            //                property: "resolutionHeight"
-            //            }
-
-            //            Text {
-            //                text: "Resolution Width: " + kernel.resolutionWidth.toFixed(1)
-            //            }
-            //            BoundSlider {
-            //                minimumValue: 10
-            //                maximumValue: 300
-            //                stepSize: 100
-            //                target: kernel
-            //                property: "resolutionWidth"
-            //            }
-
-
             Component.onCompleted: {
                 for(var i = 0; i < fieldTypes.count; i++) {
                     var item = fieldTypes.get(i)

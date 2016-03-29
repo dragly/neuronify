@@ -33,7 +33,8 @@ HEADERS += \
     src/retina/kernels/offtopkernelengine.h \
     src/retina/kernels/offbottomkernelengine.h \
     src/io/standardpaths.h \
-    src/neurons/rateengine.h
+    src/neurons/rateengine.h \
+    src/utility/mathhelper.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -59,7 +60,8 @@ SOURCES += \
     src/retina/kernels/offtopkernelengine.cpp \
     src/retina/kernels/offbottomkernelengine.cpp \
     src/io/standardpaths.cpp \
-    src/neurons/rateengine.cpp
+    src/neurons/rateengine.cpp \
+    src/utility/mathhelper.cpp
 
 RESOURCES += qml.qrc \
     images.qrc \

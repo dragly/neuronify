@@ -18,7 +18,6 @@ using namespace std;
 RateEngine::RateEngine(QQuickItem *parent)
     : NodeEngine(parent)
 {
-
 }
 
 void RateEngine::receiveFireEvent(double fireOutput, NodeEngine *sender)
@@ -26,19 +25,49 @@ void RateEngine::receiveFireEvent(double fireOutput, NodeEngine *sender)
     Q_UNUSED(sender);
     Q_UNUSED(fireOutput);
 
-    m_spikeCount +=1;
-
-
+    m_spikeTimes.push_back(m_time);
 }
+
+void RateEngine::computeFiringRate()
+{
+    double value = 0.0;
+    double sigma = 100e-3;
+
+    for(int j= m_spikeTimes.size(); j > 0; j--){
+        double tau = m_time - m_spikeTimes[j-1];
+        if(tau < m_windowDuration){
+            value += 1./(sqrt(2*sigma*sigma)) *exp(-tau*tau/2./sigma/sigma);
+
+        //value += MathHelper::heaviside(
+        //sigma * sigma * tau * exp(-sigma * tau));
+
+        }else{
+            break;
+        }
+    }
+    m_firingRate = value;
+    emit firingRateChanged(m_firingRate);
+}
+
+
+void RateEngine::stepEvent(double dt)
+{
+    if(m_neuronCount < 1){
+        return;
+    }
+    m_time +=dt;
+    computeFiringRate();
+}
+
 
 double RateEngine::firingRate() const
 {
     return m_firingRate;
 }
 
-double RateEngine::binLength() const
+double RateEngine::windowDuration() const
 {
-    return m_binLength;
+    return m_windowDuration;
 }
 
 int RateEngine::neuronCount() const
@@ -55,13 +84,13 @@ void RateEngine::setFiringRate(double firingRate)
     emit firingRateChanged(firingRate);
 }
 
-void RateEngine::setBinLength(double binLength)
+void RateEngine::setWindowDuration(double windowDuration)
 {
-    if (m_binLength == binLength)
+    if (m_windowDuration == windowDuration)
         return;
 
-    m_binLength = binLength;
-    emit binLengthChanged(binLength);
+    m_windowDuration = windowDuration;
+    emit windowDurationChanged(windowDuration);
 }
 
 void RateEngine::setNeuronCount(int neuronCount)
@@ -73,21 +102,3 @@ void RateEngine::setNeuronCount(int neuronCount)
     emit neuronCountChanged(neuronCount);
 }
 
-
-void RateEngine::stepEvent(double dt)
-{
-    if(m_neuronCount < 1){
-        return;
-    }
-
-    m_window +=dt;
-//    qDebug() << m_window << " F " << m_firingRate << "  S " << m_spikeCount
-//             << "  N " << m_neuronCount;
-    if(m_window > m_binLength){
-        m_firingRate = m_spikeCount / m_window/ m_neuronCount;
-//        m_firingRate = m_firingRate * 0.9 + 0.1 * m_spikeCount / m_window/m_neuronCount;
-        m_spikeCount = 0;
-        m_window = 0.0;
-        emit firingRateChanged(m_firingRate);
-    }
-}

@@ -4,6 +4,7 @@
 #include <QQuickItem>
 #include <QPointer>
 
+
 class NodeBase;
 class Edge : public QQuickItem
 {

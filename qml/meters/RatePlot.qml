@@ -40,7 +40,7 @@ Node {
     property alias maximumValue: axisY.max
     property alias minimumValue: axisY.min
 
-    property alias binLength: rateEngine.binLength
+    property alias windowDuration: rateEngine.windowDuration
 
     property real maximumPointCount: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -64,12 +64,12 @@ Node {
             meterType: "firing rate"
 
             BoundSlider {
-                id: sliderBinLength
-                text: "Bin length"
+                id: sliderWindowDuration
+                text: "Window duration"
                 minimumValue: 10e-3
                 maximumValue: 1000e-3
                 target: rateEngine
-                property: "binLength"
+                property: "windowDuration"
                 stepSize: 10e-3
                 unitScale: 1e-3
                 unit: "ms"
@@ -87,7 +87,7 @@ Node {
             if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
                 time = realTime
                 lastUpdateTime = realTime
-                console.log(time * timeFactor +"    " + rateEngine.firingRate)
+//                console.log(time * timeFactor +"    " + rateEngine.firingRate)
                 series1.addPoint(time * timeFactor, rateEngine.firingRate)
             }
 
@@ -102,7 +102,7 @@ Node {
                      "height",
                      "maximumValue",
                      "minimumValue",
-                     "binLength"])
+                     "windowDuration"])
     }
 
     onEdgeAdded: {
