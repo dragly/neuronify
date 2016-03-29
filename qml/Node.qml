@@ -92,7 +92,6 @@ NodeBase {
             }
             previousTargetObject[subName] = sourceObject;
         }
-
         return entityData;
     }
 

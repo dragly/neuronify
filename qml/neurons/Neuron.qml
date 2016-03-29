@@ -20,11 +20,6 @@ Node {
     objectName: "neuron"
     fileName: "neurons/Neuron.qml"
 
-//    readonly property alias fireOutput: root.engine.fireOutput
-//    readonly property alias initialPotential: root.engine.initialPotential
-//    readonly property alias restingPotential: root.engine.restingPotential
-//    readonly property alias threshold: root.engine.threshold
-
     readonly property real voltage: root.engine.voltage
     readonly property bool inhibitory: root.engine.fireOutput < 0.0
 
