@@ -66,7 +66,7 @@ Node {
                      "engine.capacitance",
                      "engine.synapticConductance",
                      "engine.synapticTimeConstant",
-                     "engine.synapsePotential"])
+                     "engine.synapticPotential"])
     }
 
     Image {

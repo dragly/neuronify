@@ -66,5 +66,6 @@ Node {
 
     Connector{
         visible: sensor.selected
+        z: -1
     }
 }

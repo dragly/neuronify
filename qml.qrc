@@ -31,7 +31,6 @@
         <file>qml/Node.qml</file>
         <file>qml/hud/SensorControls.qml</file>
         <file>qml/io/FileManager.qml</file>
-        <file>qml/tools/AutoLayout.qml</file>
         <file>qml/tools/Clipboard.qml</file>
         <file>qml/neurons/AdaptationNeuron.qml</file>
         <file>qml/generators/PoissonGenerator.qml</file>
@@ -75,5 +74,6 @@
         <file>qml/meters/RatePlot.qml</file>
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
+        <file>qml/controls/RestPotentialControl.qml</file>
     </qresource>
 </RCC>
