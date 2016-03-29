@@ -33,7 +33,7 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
     property int viewIndex: 0
-    property string kernelType: "kernels/GaborKernel.qml"
+    property string kernelType: "kernels/DogKernel.qml"
     property alias sensitivity: retinaEngine.sensitivity
     property alias plotKernel: retinaEngine.plotKernel
 
@@ -43,13 +43,18 @@ Node {
     height: 180
     canReceiveConnections: false
 
-    savedProperties: PropertyGroup {
-        property alias x: root.x
-        property alias y: root.y
-        property alias kernelType: root.kernelType
-        property alias sensitivity: root.sensitivity
-        property alias plotKernel: root.plotKernel
-    }
+    savedProperties: [
+        PropertyGroup {
+            property alias x: root.x
+            property alias y: root.y
+            property alias kernelType: root.kernelType
+            property alias sensitivity: root.sensitivity
+            property alias plotKernel: root.plotKernel
+        },
+        PropertyGroup { // Note: Don't reorder! This needs to be saved after kernelType.
+            property alias kernelProperties: kernelLoader.item
+        }
+    ]
 
     onVideoSurfaceChanged: {
         if(!videoSurface){
@@ -63,6 +68,9 @@ Node {
     Loader{
         id: kernelLoader
         source: root.kernelType
+        onLoaded: {
+            console.log("Loaded " + source)
+        }
     }
 
     Kernel{

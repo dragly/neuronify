@@ -4,12 +4,13 @@
 #include <QQuickItem>
 #include <vector>
 #include <iostream>
+#include "../../core/neuronifyobject.h"
 #include "../../utility/mathhelper.h"
 
 using namespace std;
 
 
-class AbstractKernelEngine: public QQuickItem
+class AbstractKernelEngine: public NeuronifyObject
 {
     Q_OBJECT
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
