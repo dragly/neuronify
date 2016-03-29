@@ -19,6 +19,12 @@ Item {
     property alias font: fontObject
     property alias button: buttonObject
 
+    property alias colors: colorsObject
+    QtObject {
+        id: colorsObject
+        property color background: "#f7fbff"
+    }
+
     Item {
         id: buttonObject
         property color color: Qt.rgba(0.15, 0.15, 0.15, 1.0)
