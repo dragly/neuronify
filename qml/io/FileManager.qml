@@ -75,12 +75,7 @@ Item {
             edgeList.push(edge.dump(i, graphEngine))
         }
 
-        var workspaceProperties = {
-            x: workspace.x,
-            y: workspace.y,
-            scale: workspace.scale,
-            playbackSpeed: workspace.playbackSpeed,
-        };
+        var workspaceProperties = objectify(workspace);
 
         var result = {
             edges: edgeList,
