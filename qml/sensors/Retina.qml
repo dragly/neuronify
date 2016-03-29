@@ -10,7 +10,7 @@ import "../paths"
 import "../hud"
 import "../controls"
 import ".."
-
+import "qrc:/qml/style"
 
 
 /*!
@@ -68,9 +68,6 @@ Node {
     Loader{
         id: kernelLoader
         source: root.kernelType
-        onLoaded: {
-            console.log("Loaded " + source)
-        }
     }
 
     Kernel{
@@ -92,95 +89,6 @@ Node {
         plotKernel: true
     }
 
-    controls: Component {
-        Column {
-            anchors.fill: parent
-
-            Component.onCompleted: {
-                for(var i = 0; i < fieldTypes.count; i++) {
-                    var item = fieldTypes.get(i)
-                    if(Qt.resolvedUrl(item.name) ===
-                            Qt.resolvedUrl(root.kernelType)) {
-                        comboBox.currentIndex = i
-                        break
-                    }
-                }
-            }
-
-
-            Text {
-                text: "Receptive Field: "
-            }
-            ComboBox {
-                id: comboBox
-                width: 200
-                model: fieldTypes
-                property bool created: false
-
-                onChildrenChanged: {
-                    if(!currentIndex+1){
-                        currentIndex = fieldIndex
-                    }
-                }
-
-                onCurrentIndexChanged: {
-                    if(created){
-                        kernelType = model.get(currentIndex).name
-                        fieldIndex = currentIndex
-                    }else{
-                        created = true
-                        for(var i = 0; i < fieldTypes.count; i++) {
-                            var item = fieldTypes.get(i)
-                            if(Qt.resolvedUrl(item.name) ===
-                                    Qt.resolvedUrl(root.kernelType)) {
-                                comboBox.currentIndex = i
-                                break
-                            }
-                        }
-                    }
-                }
-
-            }
-
-            CheckBox {
-                id: inhibitoryCheckbox
-                text: "Show receptive field"
-                checked: retinaEngine.plotKernel
-                onCheckedChanged: {
-                    if(checked) {
-                        retinaEngine.plotKernel = true
-                    }else{
-                        retinaEngine.plotKernel = false
-                    }
-                }
-            }
-
-            //Slider to change the sensitivity:
-            Text {
-                text: "Sensitivity: " + retinaEngine.sensitivity.toFixed(0)
-            }
-            BoundSlider {
-                minimumValue: 1
-                maximumValue: 50
-                stepSize: 5
-                target: retinaEngine
-                property: "sensitivity"
-            }
-
-        }
-
-    }
-
-    ListModel {
-        id: fieldTypes
-        ListElement {text: "Orientation selective";
-            name: "kernels/GaborKernel.qml"}
-        ListElement {text: "Center-surround"; name: "kernels/DogKernel.qml"}
-        ListElement {text: "OffLeft"; name: "kernels/OffLeftKernel.qml"}
-        ListElement {text: "OffRight"; name: "kernels/OffRightKernel.qml"}
-        ListElement {text: "OffTop"; name: "kernels/OffTopKernel.qml"}
-        ListElement {text: "OffBottom"; name: "kernels/OffBottomKernel.qml"}
-    }
 
     Rectangle {
         color: "#0088aa"
@@ -211,6 +119,142 @@ Node {
             root.droppedConnector(root, connector)
         }
     }
+
+
+    controls: Component {
+        Column {
+            anchors.fill: parent
+
+            Component.onCompleted: {
+                for(var i = 0; i < fieldTypes.count; i++) {
+                    var item = fieldTypes.get(i)
+                    if(Qt.resolvedUrl(item.value) ===
+                            Qt.resolvedUrl(root.kernelType)) {
+                        fieldTypesView.currentIndex = i
+                        break
+                    }
+                }
+            }
+
+
+            Text {
+                text: "Receptive Field: "
+            }
+
+            GridView {
+                id: fieldTypesView
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                height: Style.touchableSize * 3.0
+                cellWidth: Style.touchableSize
+                cellHeight: Style.touchableSize
+
+                property bool created: false
+
+                onChildrenChanged: {
+                    if(!currentIndex+1){
+                        currentIndex = fieldIndex
+                    }
+                }
+                onCurrentIndexChanged: {
+                    if(created){
+                        kernelType = model.get(currentIndex).value
+                        fieldIndex = currentIndex
+                    }else{
+                        created = true
+                        for(var i = 0; i < fieldTypes.count; i++) {
+                            var item = fieldTypes.get(i)
+                            if(Qt.resolvedUrl(item.name) ===
+                                    Qt.resolvedUrl(root.kernelType)) {
+                                fieldTypesView.currentIndex = i
+                                break
+                            }
+                        }
+                    }
+                }
+
+                model: ListModel {
+                    id: fieldTypes
+                    ListElement {
+                        key: "qrc:/images/sensors/kernels/gabor.png"
+                        value: "kernels/GaborKernel.qml"
+                    }
+                    ListElement {
+                        key: "qrc:/images/sensors/kernels/dog.png"
+                        value: "kernels/DogKernel.qml"
+                    }
+                    ListElement {
+                        key: "qrc:/images/sensors/kernels/offLeft.png"
+                        value: "kernels/OffLeftKernel.qml"
+                    }
+                    ListElement {
+                        key: "qrc:/images/sensors/kernels/offRight.png"
+                        value: "kernels/OffRightKernel.qml"
+                    }
+                    ListElement {
+                        key: "qrc:/images/sensors/kernels/offTop.png"
+                        value: "kernels/OffTopKernel.qml"
+                    }
+                    ListElement {
+                        key: "qrc:/images/sensors/kernels/offBottom.png"
+                        value: "kernels/OffBottomKernel.qml"
+                    }
+                }
+                clip: true
+                delegate: Item {
+                    height: Style.touchableSize
+                    width: height
+
+                    Image {
+                        id: fieldTypesImage
+                        anchors.centerIn: parent
+                        source: model.key
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            fieldTypesView.currentIndex = index
+                        }
+                    }
+                }
+                highlight: Rectangle {
+                    color: "#deebf7"
+                }
+
+            }
+
+            CheckBox {
+                text: "Show receptive field"
+                checked: retinaEngine.plotKernel
+                onCheckedChanged: {
+                    if(checked) {
+                        retinaEngine.plotKernel = true
+                    }else{
+                        retinaEngine.plotKernel = false
+                    }
+                }
+            }
+
+            //Slider to change the sensitivity:
+            Text {
+                text: "Sensitivity: " + retinaEngine.sensitivity.toFixed(0)
+            }
+            BoundSlider {
+                minimumValue: 1
+                maximumValue: 50
+                stepSize: 5
+                target: retinaEngine
+                property: "sensitivity"
+            }
+
+        }
+
+    }
+
+
+
 }
 
 

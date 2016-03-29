@@ -96,16 +96,16 @@ Rectangle {
         if(!object){
             console.warn("WARNING: apply properties got missing object: " + object)
             console.warn("with properties:")
-            for(var i in properties) {
-                console.log(i + ": " + properties[i])
-            }
+//            for(var i in properties) {
+//                console.log(i + ": " + properties[i])
+//            }
             console.log("Cannot apply.")
             return
         }
 
         for(var i in properties) {
             var prop = properties[i];
-            console.log("Setting " + i + ": " + prop)
+//            console.log("Setting " + i + ": " + prop)
             if(!object.hasOwnProperty("savedProperties")) {
                 console.warn("WARNING: Object " + object + " is missing savedProperties property.");
                 continue;
@@ -241,7 +241,7 @@ Rectangle {
         undoList = undoList.slice(0,undoIdx)
         undoIdx += 1
         undoList.push(fileString)
-        console.log("Making new undolist item ", undoIdx, undoList.length)
+//        console.log("Making new undolist item ", undoIdx, undoList.length)
         canRedo = false
     }
 
@@ -249,13 +249,13 @@ Rectangle {
         if (undoIdx > 1){
             undoIdx -= 1
             deleteEverything()
-            console.log("Undoing...", undoIdx, undoList.length)
+//            console.log("Undoing...", undoIdx, undoList.length)
             undoRecordingEnabled = false
             eval(undoList[undoIdx-1])
             undoRecordingEnabled = true
             canRedo = true
         } else {
-            console.log("Nothing to undo! ")
+//            console.log("Nothing to undo! ")
         }
     }
 

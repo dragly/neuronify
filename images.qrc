@@ -51,5 +51,11 @@
         <file>images/meters/spikemeter.png</file>
         <file>images/generators/poisson_generator_excitatory.png</file>
         <file>images/meters/ratePlot.png</file>
+        <file>images/sensors/kernels/offLeft.png</file>
+        <file>images/sensors/kernels/offTop.png</file>
+        <file>images/sensors/kernels/offRight.png</file>
+        <file>images/sensors/kernels/offBottom.png</file>
+        <file>images/sensors/kernels/gabor.png</file>
+        <file>images/sensors/kernels/dog.png</file>
     </qresource>
 </RCC>
