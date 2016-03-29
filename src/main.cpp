@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<Edge>("Neuronify", 1, 0, "Edge");
     qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
 
-    qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngine");
+    qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngineBase");
 
     qmlRegisterUncreatableType<AbstractKernelEngine>("Neuronify", 1, 0,
                                                "AbstractKernelEngine",

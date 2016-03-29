@@ -206,15 +206,15 @@ Rectangle {
         var fileString = ""
 
         var counter = 0
-        for(var i in graphEngine.nodes) {
-            var entity = graphEngine.nodes[i]
-            fileString += entity.dump(i)
-        }
+//        for(var i in graphEngine.nodes) {
+//            var entity = graphEngine.nodes[i]
+//            fileString += entity.dump(i)
+//        }
 
-        for(var i in graphEngine.edges) {
-            var connection = graphEngine.edges[i]
-            fileString += connection.dump(i, graphEngine)
-        }
+//        for(var i in graphEngine.edges) {
+//            var connection = graphEngine.edges[i]
+//            fileString += connection.dump(i, graphEngine)
+//        }
 
         undoList = undoList.slice(0,undoIdx)
         undoIdx += 1

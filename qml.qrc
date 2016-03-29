@@ -75,5 +75,6 @@
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
         <file>qml/controls/RestPotentialControl.qml</file>
+        <file>qml/neurons/NeuronEngine.qml</file>
     </qresource>
 </RCC>

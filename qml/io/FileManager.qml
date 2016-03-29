@@ -39,7 +39,9 @@ Item {
                 var prop = properties[name];
                 if(typeof(prop) === "object") {
                     result[name] = objectify(prop);
+                    console.log("Objectifying " + name)
                 } else {
+                    console.log(name + " " + prop)
                     result[name] = prop;
                 }
             }
