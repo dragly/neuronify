@@ -38,7 +38,6 @@ public:
     int resolutionWidth() const;
     int imageAlpha() const;
 
-    void recreate();
 
     vector<vector<double> > spatial();
     AbstractKernelEngine* abstractKernelEngineType() const;
@@ -49,7 +48,7 @@ public slots:
     void setResolutionWidth(int resolutionWidth);
     void setSpatialImage(QImage spatialImage);
     void setAbstractKernelEngineType(AbstractKernelEngine* abstractKernelEngineType);
-
+    void recreate();
     void setImageAlpha(int imageAlpha);
 
 signals:

@@ -4,108 +4,93 @@ import QtQuick.Controls 1.2
 
 import "qrc:/qml/style"
 
-Column {
-    id: playbackControls
+Rectangle {
+    id: playbackRoot
 
-    signal playClicked
-    signal playbackSpeedSelected(var speed)
+    property real playbackSpeed: 1.0
 
-    property var workspace
-    property bool running: false
+    anchors {
+        bottom: parent.bottom
+        horizontalCenter: parent.horizontalCenter
+        margins: Style.touchableSize * 0.25
+    }
 
-//    Text {
-//        text: "Playback controls"
-//    }
+    radius: height * 0.4
 
-//    Button {
-//        text: running ? "Pause" : "Play"
-//        onClicked: {
-//            playClicked()
-//        }
-//    }
+    color: Style.color.background
+    border.width: Style.border.width
+    border.color: Style.color.border
+    width: playbackControls.count * playbackControls.height + playbackControls.anchors.margins * 2
+    height: Style.touchableSize * 1.5
 
-//    Text {
-//        text: "Playback speed"
-//    }
+    ListView {
+        id: playbackControls
 
-//    Binding {
-//        target: playbackSpeedView
-//        property: "currentIndex"
-//        value: {
-//            if(!workspace) {
-//                return 0;
-//            }
-//            for(var i = 0; i < playbackSpeedModel.count; i++) {
-//                if(playbackSpeedModel.get(i).value === workspace.playbackSpeed) {
-//                    return i;
-//                }
-//            }
-//            return 0;
-//        }
-//    }
+        anchors {
+            fill: parent
+            margins: Style.touchableSize * 0.25
+        }
 
-//    GridView {
-//        id: playbackSpeedView
-//        anchors {
-//            left: parent.left
-//            right: parent.right
-//        }
-//        height: Style.touchableSize * 3.0
-//        cellWidth: Style.touchableSize
-//        cellHeight: Style.touchableSize
-//        model: ListModel {
-//            id: playbackSpeedModel
-//            ListElement {
-//                key: "¼x"
-//                value: 0.25
-//            }
-//            ListElement {
-//                key: "½x"
-//                value: 0.5
-//            }
-//            ListElement {
-//                key: "1x"
-//                value: 1.0
-//            }
-//            ListElement {
-//                key: "2x"
-//                value: 2.0
-//            }
-//            ListElement {
-//                key: "4x"
-//                value: 4.0
-//            }
-//            ListElement {
-//                key: "8x"
-//                value: 8.0
-//            }
-//        }
-//        clip: true
-//        delegate: Item {
-//            height: Style.touchableSize
-//            width: height
-//            Text {
-//                id: playbackSpeedText
-//                anchors.centerIn: parent
-//                text: model.key
-//            }
-//            MouseArea {
-//                anchors.fill: parent
-//                onClicked: {
-//                    playbackSpeedView.currentIndex = index
-//                }
-//            }
-//        }
-//        highlight: Rectangle {
-//            color: "#deebf7"
-//        }
-//        currentIndex: 2
-//        onCurrentIndexChanged: {
-//            if(!playbackSpeedModel) {
-//                return
-//            }
-//            playbackSpeedSelected(playbackSpeedModel.get(currentIndex).value)
-//        }
-//    }
+        interactive: false
+        orientation: ListView.Horizontal
+        model: ListModel {
+            id: playbackSpeedModel
+            ListElement {
+                image: "qrc:/images/playback/pause.svg"
+                value: 0.0
+            }
+            ListElement {
+                image: "qrc:/images/playback/play.svg"
+                value: 1.0
+            }
+            ListElement {
+                image: "qrc:/images/playback/fast.svg"
+                value: 2.0
+            }
+            ListElement {
+                image: "qrc:/images/playback/superfast.svg"
+                value: 4.0
+            }
+            ListElement {
+                image: "qrc:/images/playback/superduperfast.svg"
+                value: 8.0
+            }
+        }
+        delegate: Item {
+            height: playbackControls.height
+            width: height
+            Image {
+                anchors {
+                    fill: parent
+                    margins: parent.width * 0.05
+                }
+                source: model.image
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    playbackControls.currentIndex = index
+                    playbackSpeed = playbackSpeedModel.get(playbackControls.currentIndex).value
+                }
+            }
+        }
+        highlight: Rectangle {
+            color: Style.color.background
+            border.width: Style.border.width
+            border.color: Style.color.border
+            radius: width * 0.5
+        }
+        Binding {
+            target: playbackControls
+            property: "currentIndex"
+            value: {
+                for(var i = 0; i < playbackSpeedModel.count; i++) {
+                    if(playbackSpeedModel.get(i).value === playbackSpeed) {
+                        return i;
+                    }
+                }
+                return 0;
+            }
+        }
+    }
 }
-

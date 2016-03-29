@@ -57,5 +57,10 @@
         <file>images/sensors/kernels/offBottom.png</file>
         <file>images/sensors/kernels/gabor.png</file>
         <file>images/sensors/kernels/dog.png</file>
+        <file>images/playback/fast.svg</file>
+        <file>images/playback/pause.svg</file>
+        <file>images/playback/play.svg</file>
+        <file>images/playback/superduperfast.svg</file>
+        <file>images/playback/superfast.svg</file>
     </qresource>
 </RCC>

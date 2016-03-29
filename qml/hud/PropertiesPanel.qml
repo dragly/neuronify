@@ -6,14 +6,9 @@ import "../style"
 Item {
     id: root
 
-    signal playClicked
-    signal playbackSpeedSelected(var speed)
-
     property var workspace
     property Item activeObject: null
     property bool revealed: false
-    property bool running: false
-    property alias snappingEnabled: snapCheckbox.checked
 
     anchors.fill: parent
 
@@ -24,6 +19,7 @@ Item {
             top: parent.top
             rightMargin: -width
             bottom: parent.bottom
+
         }
 
         color: "#f7fbff"
@@ -41,6 +37,7 @@ Item {
             Column {
                 id: container
                 anchors {
+                    top: parent.top
                     left: parent.left
                     right: parent.right
                     margins: 10
@@ -55,35 +52,8 @@ Item {
 
                     sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
                 }
-
-                CheckBox {
-                    id: snapCheckbox
-                    text: "Enable snapping"
-                    checked: true
-                }
-
-                PlaybackControls {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
-
-                    workspace: root.workspace
-
-                    running: root.running
-                    onPlayClicked: {
-                        root.playClicked()
-                    }
-                    onPlaybackSpeedSelected: {
-                        root.playbackSpeedSelected(speed)
-                    }
-                }
             }
         }
-
-//        Component {
-//            id: playbackControls
-//        }
 
         states: State {
             when: root.revealed

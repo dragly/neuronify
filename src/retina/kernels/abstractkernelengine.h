@@ -34,6 +34,7 @@ public slots:
 signals:
     void resolutionHeightChanged(int resolutionHeight);
     void resolutionWidthChanged(int resolutionWidth);
+    void needsRecreation();
 
 protected:
     int m_resolutionHeight;

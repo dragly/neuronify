@@ -123,8 +123,6 @@ Node {
 
     controls: Component {
         Column {
-            anchors.fill: parent
-
             Component.onCompleted: {
                 for(var i = 0; i < fieldTypes.count; i++) {
                     var item = fieldTypes.get(i)
@@ -137,8 +135,10 @@ Node {
             }
 
 
+            spacing: 10
             Text {
-                text: "Receptive Field: "
+                text: "Receptive Field: " +
+                      fieldTypes.get(fieldTypesView.currentIndex).name
             }
 
             GridView {
@@ -147,9 +147,11 @@ Node {
                     left: parent.left
                     right: parent.right
                 }
-                height: Style.touchableSize * 3.0
+
                 cellWidth: Style.touchableSize
                 cellHeight: Style.touchableSize
+                height: Style.touchableSize *
+                        (Math.floor(count / Math.floor(width/cellWidth)))
 
                 property bool created: false
 
@@ -174,30 +176,36 @@ Node {
                         }
                     }
                 }
-
+                interactive: false
                 model: ListModel {
                     id: fieldTypes
                     ListElement {
+                        name: "Orientation selective"
                         key: "qrc:/images/sensors/kernels/gabor.png"
                         value: "kernels/GaborKernel.qml"
                     }
                     ListElement {
+                        name: "Center-surround"
                         key: "qrc:/images/sensors/kernels/dog.png"
                         value: "kernels/DogKernel.qml"
                     }
                     ListElement {
+                        name: "Off left"
                         key: "qrc:/images/sensors/kernels/offLeft.png"
                         value: "kernels/OffLeftKernel.qml"
                     }
                     ListElement {
+                        name: "Off right"
                         key: "qrc:/images/sensors/kernels/offRight.png"
                         value: "kernels/OffRightKernel.qml"
                     }
                     ListElement {
+                        name: "Off top"
                         key: "qrc:/images/sensors/kernels/offTop.png"
                         value: "kernels/OffTopKernel.qml"
                     }
                     ListElement {
+                        name: "Off bottom"
                         key: "qrc:/images/sensors/kernels/offBottom.png"
                         value: "kernels/OffBottomKernel.qml"
                     }
@@ -209,7 +217,7 @@ Node {
 
                     Image {
                         id: fieldTypesImage
-                        anchors.centerIn: parent
+                        anchors.fill: parent
                         source: model.key
                     }
                     MouseArea {
@@ -249,7 +257,17 @@ Node {
                 property: "sensitivity"
             }
 
+
+            Loader{
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                sourceComponent: (kernelLoader.item && kernelLoader.item.controls) ? kernelLoader.item.controls : undefined
+            }
+
         }
+
 
     }
 

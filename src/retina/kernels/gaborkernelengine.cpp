@@ -102,4 +102,5 @@ void GaborKernelEngine::setTheta(double theta)
 
     m_theta = theta;
     emit thetaChanged(theta);
+    emit needsRecreation();
 }

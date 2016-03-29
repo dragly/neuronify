@@ -82,7 +82,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: Style.colors.background
+            color: Style.color.background
             border.color: Qt.rgba(0.8, 0.8, 0.8)
             border.width: 2.0
         }

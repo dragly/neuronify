@@ -8,6 +8,24 @@ GaborKernelEngine{
     resolutionHeight: 20
     resolutionWidth: 20
 
+    property Component controls: Component{
+        Column{
+            BoundSlider {
+                target: gaborEngine
+                property: "theta"
+                minimumValue: 0.0
+                maximumValue: Math.PI
+                unitScale: Math.PI
+                stepSize: Math.PI/8
+                precision: 1
+                text: "Orientation"
+                unit: "π"
+            }
+
+        }
+
+    }
+
     savedProperties: PropertyGroup {
         property alias theta: gaborEngine.theta
     }

@@ -19,10 +19,20 @@ Item {
     property alias font: fontObject
     property alias button: buttonObject
 
-    property alias colors: colorsObject
+    property alias color: colorsObject
+    property alias border: borderObject
+
     QtObject {
         id: colorsObject
         property color background: "#f7fbff"
+        property color foreground: "#deebf7"
+        property color border: "#9ecae1"
+    }
+
+    QtObject {
+        id: borderObject
+        property alias color: colorsObject.border
+        property real width: 2.0
     }
 
     Item {

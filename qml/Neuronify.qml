@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick 2.5
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
@@ -40,11 +40,12 @@ Rectangle {
     property int undoIdxCopy: 0
     property bool undoRecordingEnabled: true
     property bool canRedo: false
-    property bool running: applicationActive && !mainMenu.revealed
+    readonly property bool paused: workspace.playbackSpeed <= 0.0
+    readonly property bool running: applicationActive && !mainMenu.revealed && !paused
     property string clickMode: "selection"
     property real highestZ: 0.0
-    property alias playbackSpeed: workspace.playbackSpeed
-    property real snapGridSize: propertiesPanel.snappingEnabled ? 32.0 : 1.0
+    property bool snappingEnabled: false
+    property real snapGridSize: snappingEnabled ? 32.0 : 1.0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -78,7 +79,7 @@ Rectangle {
     }
 
     Settings {
-        property alias snappingEnabled: propertiesPanel.snappingEnabled
+        property alias snappingEnabled: root.snappingEnabled
     }
 
     function deleteFromList(list, item) {
@@ -599,7 +600,7 @@ Rectangle {
         Item {
             id: workspace
 
-            property real playbackSpeed: 1.0
+            property alias playbackSpeed: playbackControls.playbackSpeed
             property list<PropertyGroup> savedProperties: [
                 PropertyGroup {
                     property alias x: workspace.x
@@ -678,7 +679,6 @@ Rectangle {
         revealed: !mainMenu.revealed
         onClicked: {
             mainMenu.revealed = true
-            root.running = false
         }
     }
 
@@ -697,7 +697,7 @@ Rectangle {
     }
 
     PropertiesButton {
-        revealed: true
+        revealed: activeObject ? true : false
         onClicked: {
             propertiesPanel.revealed = true
         }
@@ -723,14 +723,7 @@ Rectangle {
     PropertiesPanel {
         id: propertiesPanel
         activeObject: root.activeObject
-        running: root.running
         workspace: workspace
-        onPlaybackSpeedSelected: {
-            root.playbackSpeed = speed
-        }
-        onPlayClicked: {
-            root.running = !root.running
-        }
     }
 
     ConnectionMenu {
@@ -738,6 +731,10 @@ Rectangle {
         onDoneClicked: {
             clickMode = "selection"
         }
+    }
+
+    PlaybackControls {
+        id: playbackControls
     }
 
     MainMenu {
@@ -756,19 +753,16 @@ Rectangle {
 
         onContinueClicked: {
             mainMenu.revealed = false
-            root.running = wasRunning
         }
 
         onNewClicked: {
             root.loadSimulation("qrc:/simulations/empty/empty.nfy")
             mainMenu.revealed = false
-            root.running = wasRunning
         }
 
         onLoadSimulation: {
             root.loadSimulation(simulation.stateSource)
             mainMenu.revealed = false
-            root.running = wasRunning
         }
 
         onSaveSimulationRequested: {
@@ -787,7 +781,7 @@ Rectangle {
         running: root.running
 
         onTriggered: {
-            var dt = 0.4e-3 * playbackSpeed
+            var dt = 0.1e-3 * workspace.playbackSpeed
             time += dt
             graphEngine.step(dt)
         }
@@ -838,8 +832,6 @@ Rectangle {
         source: videoSurface && videoSurface.camera ? videoSurface.camera : null
     }
 
-    //////////////////////// save/load ////////////////
-
     Keys.onPressed: {
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
             selectAll()
@@ -855,4 +847,8 @@ Rectangle {
         }
     }
 
+    Shortcut {
+        sequence: "Shift+5"
+        onActivated: root.snappingEnabled = !root.snappingEnabled
+    }
 }

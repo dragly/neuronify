@@ -111,6 +111,14 @@ void Kernel::setAbstractKernelEngineType(AbstractKernelEngine* abstractKernelEng
     if (m_abstractKernelEngineType == abstractKernelEngineType)
         return;
 
+    if(m_abstractKernelEngineType){
+        disconnect(m_abstractKernelEngineType, 0, this, 0);
+    }
+
+    if(abstractKernelEngineType){
+        connect(abstractKernelEngineType, &AbstractKernelEngine::needsRecreation, this, &Kernel::recreate);
+    }
+
     m_abstractKernelEngineType = abstractKernelEngineType;
     recreate();
     emit abstractKernelEngineTypeChanged(abstractKernelEngineType);
