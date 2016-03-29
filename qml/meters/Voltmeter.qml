@@ -1,8 +1,9 @@
 import QtQuick 2.0
-import "../paths"
-import "../hud"
-import "../tools"
-import ".."
+import "qrc:/qml/"
+import "qrc:/qml/hud"
+import "qrc:/qml/paths"
+import "qrc:/qml/tools"
+import "qrc:/qml/style"
 import QtCharts 2.1
 
 import Neuronify 1.0
@@ -70,7 +71,7 @@ Node {
     }
     width: 240
     height: 180
-    color: "#deebf7"
+    color: Style.color.foreground
 
     engine: NodeEngine {
         onStepped: {
@@ -139,8 +140,8 @@ Node {
     Rectangle {
         anchors.fill: parent
         color: parent.color
-        border.color: "#9ecae1"
-        border.width: 1.0
+        border.color: Style.border.color
+        border.width: Style.border.width
         smooth: true
         antialiasing: true
     }

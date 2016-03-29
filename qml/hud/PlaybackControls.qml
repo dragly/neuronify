@@ -4,108 +4,93 @@ import QtQuick.Controls 1.2
 
 import "qrc:/qml/style"
 
-Column {
-    id: playbackControls
+Rectangle {
+    id: playbackRoot
 
-    signal playClicked
-    signal playbackSpeedSelected(var speed)
+    property real playbackSpeed: 1.0
 
-    property var workspace
-    property bool running: false
-
-    Text {
-        text: "Playback controls"
+    anchors {
+        left: parent.left
+        bottom: parent.bottom
+        margins: Style.touchableSize * 0.25
     }
 
-    Button {
-        text: running ? "Pause" : "Play"
-        onClicked: {
-            playClicked()
-        }
-    }
+    radius: height * 0.4
 
-    Text {
-        text: "Playback speed"
-    }
+    color: Style.color.background
+    border.width: Style.border.width
+    border.color: Style.color.border
+    width: playbackControls.count * playbackControls.height + playbackControls.anchors.margins * 2
+    height: Style.touchableSize * 1.5
 
-    Binding {
-        target: playbackSpeedView
-        property: "currentIndex"
-        value: {
-            if(!workspace) {
-                return 0;
-            }
-            for(var i = 0; i < playbackSpeedModel.count; i++) {
-                if(playbackSpeedModel.get(i).value === workspace.playbackSpeed) {
-                    return i;
-                }
-            }
-            return 0;
-        }
-    }
+    ListView {
+        id: playbackControls
 
-    GridView {
-        id: playbackSpeedView
         anchors {
-            left: parent.left
-            right: parent.right
+            fill: parent
+            margins: Style.touchableSize * 0.25
         }
-        height: Style.touchableSize * 3.0
-        cellWidth: Style.touchableSize
-        cellHeight: Style.touchableSize
+
+        interactive: false
+        orientation: ListView.Horizontal
         model: ListModel {
             id: playbackSpeedModel
             ListElement {
-                key: "¼x"
-                value: 0.25
+                image: "qrc:/images/playback/pause.svg"
+                value: 0.0
             }
             ListElement {
-                key: "½x"
-                value: 0.5
-            }
-            ListElement {
-                key: "1x"
+                image: "qrc:/images/playback/play.svg"
                 value: 1.0
             }
             ListElement {
-                key: "2x"
+                image: "qrc:/images/playback/fast.svg"
                 value: 2.0
             }
             ListElement {
-                key: "4x"
+                image: "qrc:/images/playback/superfast.svg"
                 value: 4.0
             }
             ListElement {
-                key: "8x"
+                image: "qrc:/images/playback/superduperfast.svg"
                 value: 8.0
             }
         }
-        clip: true
         delegate: Item {
-            height: Style.touchableSize
+            height: playbackControls.height
             width: height
-            Text {
-                id: playbackSpeedText
-                anchors.centerIn: parent
-                text: model.key
+            Image {
+                anchors {
+                    fill: parent
+                    margins: parent.width * 0.05
+                }
+                source: model.image
             }
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    playbackSpeedView.currentIndex = index
+                    playbackControls.currentIndex = index
+                    playbackSpeed = playbackSpeedModel.get(playbackControls.currentIndex).value
                 }
             }
         }
         highlight: Rectangle {
-            color: "#deebf7"
+            color: Style.color.background
+            border.width: Style.border.width
+            border.color: Style.color.border
+            radius: width * 0.5
         }
-        currentIndex: 2
-        onCurrentIndexChanged: {
-            if(!playbackSpeedModel) {
-                return
+        Binding {
+            target: playbackControls
+            property: "currentIndex"
+            value: {
+                for(var i = 0; i < playbackSpeedModel.count; i++) {
+                    if(playbackSpeedModel.get(i).value === playbackSpeed) {
+                        return i;
+                    }
+                }
+                return 0;
             }
-            playbackSpeedSelected(playbackSpeedModel.get(currentIndex).value)
         }
     }
 }
-

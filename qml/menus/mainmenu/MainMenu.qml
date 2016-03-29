@@ -31,7 +31,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: Style.colors.background
+            color: Style.color.background
         }
     }
 

@@ -51,5 +51,10 @@
         <file>images/meters/spikemeter.png</file>
         <file>images/generators/poisson_generator_excitatory.png</file>
         <file>images/meters/ratePlot.png</file>
+        <file>images/playback/fast.svg</file>
+        <file>images/playback/pause.svg</file>
+        <file>images/playback/play.svg</file>
+        <file>images/playback/superduperfast.svg</file>
+        <file>images/playback/superfast.svg</file>
     </qresource>
 </RCC>
