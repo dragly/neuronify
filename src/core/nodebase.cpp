@@ -21,7 +21,7 @@
  */
 
 NodeBase::NodeBase(QQuickItem *parent)
-    : QQuickItem(parent)
+    : NeuronifyObject(parent)
 {
 
 }

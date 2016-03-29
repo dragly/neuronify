@@ -9,10 +9,11 @@
 #include <limits>
 
 #include "kernels/abstractkernelengine.h"
+#include "../core/neuronifyobject.h"
 
 using namespace std;
 
-class Kernel : public QQuickItem
+class Kernel : public NeuronifyObject
 {
     Q_OBJECT
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
@@ -21,9 +22,8 @@ class Kernel : public QQuickItem
     Q_PROPERTY(AbstractKernelEngine* abstractKernelEngineType READ abstractKernelEngineType WRITE setAbstractKernelEngineType NOTIFY abstractKernelEngineTypeChanged)
     Q_PROPERTY(int imageAlpha READ imageAlpha WRITE setImageAlpha NOTIFY imageAlphaChanged)
 
-
 public:
-    Kernel();
+    Kernel(QQuickItem *parent = 0);
 
 public:
     enum spatialTypes{

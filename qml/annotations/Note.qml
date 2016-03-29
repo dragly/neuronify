@@ -21,17 +21,16 @@ Node {
     height: 120
 
     color: "#54B2FF"
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["text",
-                     "width",
-                     "height"])
+    savedProperties: PropertyGroup {
+        property alias text: noteRoot.text
+        property alias width: noteRoot.width
+        property alias height: noteRoot.height
     }
 
     onSelectedChanged: {
         transformMove.visible = !transformMove.visible
         if (!noteRoot.selected) {
-             textInput.select(0, 0)
+            textInput.select(0, 0)
         }
     }
 
@@ -49,7 +48,7 @@ Node {
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         clip: true
         onFocusChanged: {
-              noteRoot.selected = focus
+            noteRoot.selected = focus
         }
         font.pixelSize: 14
 
@@ -61,7 +60,7 @@ Node {
             textColor: Style.font.color
             backgroundColor: "#AEDBFF"
 
-         }
+        }
     }
 
     Text {

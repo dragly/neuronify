@@ -31,6 +31,27 @@ Item {
         loadFileDialog.visible = true
     }
 
+    function objectify(obj) {
+        if(obj.isAlias) {
+            return obj.aliasInfo();
+        }
+        var result = {};
+        for(var i in obj.savedProperties) {
+            var properties = obj.savedProperties[i].dump();
+            for(var name in properties) {
+                var prop = properties[name];
+                if(typeof(prop) === "object") {
+                    result[name] = objectify(prop);
+                    console.log("Objectifying " + name)
+                } else {
+                    console.log(name + " " + prop)
+                    result[name] = prop;
+                }
+            }
+        }
+        return result;
+    }
+
     function saveState(fileUrl) {
         var nodes = graphEngine.nodes
         var edges = graphEngine.edges
@@ -42,22 +63,23 @@ Item {
 
         var counter = 0
         for(var i in nodes) {
-            var entity = nodes[i];
-            var dump = entity.dump(i);
+            var node = nodes[i];
+            var dump = objectify(node);
             if(dump) {
                 nodeList.push(dump);
             }
         }
 
         for(var i in edges) {
-            var connection = edges[i]
-            edgeList.push(connection.dump(i, graphEngine))
+            var edge = edges[i]
+            edgeList.push(edge.dump(i, graphEngine))
         }
 
         var workspaceProperties = {
             x: workspace.x,
             y: workspace.y,
             scale: workspace.scale,
+            playbackSpeed: workspace.playbackSpeed,
         };
 
         var result = {

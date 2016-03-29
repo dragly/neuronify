@@ -43,7 +43,7 @@ Rectangle {
     property bool running: applicationActive && !mainMenu.revealed
     property string clickMode: "selection"
     property real highestZ: 0.0
-    property real playbackSpeed: 1.0
+    property alias playbackSpeed: workspace.playbackSpeed
     property real snapGridSize: propertiesPanel.snappingEnabled ? 32.0 : 1.0
 
     property bool applicationActive: {
@@ -206,15 +206,15 @@ Rectangle {
         var fileString = ""
 
         var counter = 0
-        for(var i in graphEngine.nodes) {
-            var entity = graphEngine.nodes[i]
-            fileString += entity.dump(i)
-        }
+//        for(var i in graphEngine.nodes) {
+//            var entity = graphEngine.nodes[i]
+//            fileString += entity.dump(i)
+//        }
 
-        for(var i in graphEngine.edges) {
-            var connection = graphEngine.edges[i]
-            fileString += connection.dump(i, graphEngine)
-        }
+//        for(var i in graphEngine.edges) {
+//            var connection = graphEngine.edges[i]
+//            fileString += connection.dump(i, graphEngine)
+//        }
 
         undoList = undoList.slice(0,undoIdx)
         undoIdx += 1
@@ -577,6 +577,8 @@ Rectangle {
         Item {
             id: workspace
 
+            property real playbackSpeed: 1.0
+
             width: 3840
             height: 2160
 
@@ -691,6 +693,7 @@ Rectangle {
         id: propertiesPanel
         activeObject: root.activeObject
         running: root.running
+        workspace: workspace
         onPlaybackSpeedSelected: {
             root.playbackSpeed = speed
         }

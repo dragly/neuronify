@@ -20,11 +20,6 @@ Node {
     objectName: "neuron"
     fileName: "neurons/Neuron.qml"
 
-//    readonly property alias fireOutput: root.engine.fireOutput
-//    readonly property alias initialPotential: root.engine.initialPotential
-//    readonly property alias restingPotential: root.engine.restingPotential
-//    readonly property alias threshold: root.engine.threshold
-
     readonly property real voltage: root.engine.voltage
     readonly property bool inhibitory: root.engine.fireOutput < 0.0
 
@@ -49,25 +44,8 @@ Node {
         fireAnimation.restart()
     }
 
-    engine: NeuronEngine {
-        id: engine
-        PassiveCurrent {
-            id: passiveCurrent
-        }
-    }
-
-
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["engine.fireOutput",
-                     "engine.initialPotential",
-                     "engine.restingPotential",
-                     "engine.threshold",
-                     "engine.voltage",
-                     "engine.capacitance",
-                     "engine.synapticConductance",
-                     "engine.synapticTimeConstant",
-                     "engine.synapticPotential"])
+    savedProperties: PropertyGroup {
+        property alias engine: root.engine
     }
 
     Image {
@@ -106,7 +84,7 @@ Node {
             property: "opacity"
             from: 1.0
             to: 0.0
-            duration: 800
+            duration: 600
             easing.type: Easing.OutQuad
         }
     }

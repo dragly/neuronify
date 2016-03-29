@@ -5,7 +5,8 @@ import QtQuick.Controls.Styles 1.1
 
 import Neuronify 1.0
 
-import ".."
+import "qrc:/qml"
+import "qrc:/qml/neurons"
 
 Column {
     id: root

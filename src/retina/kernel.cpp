@@ -10,7 +10,8 @@
  */
 
 
-Kernel::Kernel()
+Kernel::Kernel(QQuickItem *parent)
+    : NeuronifyObject(parent)
 {
 }
 

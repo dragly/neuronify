@@ -25,11 +25,10 @@ Node {
     height: 120
     color: "#deebf7"
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["width",
-                     "height",
-                     "timeRange"])
+    savedProperties: PropertyGroup {
+        property alias width: rasterRoot.width
+        property alias height: rasterRoot.height
+        property alias timeRange: rasterRoot.timeRange
     }
 
     engine: NodeEngine {

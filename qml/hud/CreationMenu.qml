@@ -80,23 +80,9 @@ Item {
         id: background
         anchors.fill: creationColumn
 
-        ShaderEffectSource {
-            id: effectSource
-            sourceItem: blurSource
-            sourceRect: Qt.rect(creationColumn.x, creationColumn.y, background.width, background.height)
-            anchors.fill: parent
-        }
-
-        FastBlur {
-            anchors.fill: parent
-            source: effectSource
-
-            radius: Style.size * 6
-        }
-
         Rectangle {
             anchors.fill: parent
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.6)
+            color: Style.colors.background
             border.color: Qt.rgba(0.8, 0.8, 0.8)
             border.width: 2.0
         }

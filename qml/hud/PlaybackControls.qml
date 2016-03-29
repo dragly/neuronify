@@ -10,6 +10,7 @@ Column {
     signal playClicked
     signal playbackSpeedSelected(var speed)
 
+    property var workspace
     property bool running: false
 
     Text {
@@ -27,14 +28,31 @@ Column {
         text: "Playback speed"
     }
 
-    ListView {
+    Binding {
+        target: playbackSpeedView
+        property: "currentIndex"
+        value: {
+            if(!workspace) {
+                return 0;
+            }
+            for(var i = 0; i < playbackSpeedModel.count; i++) {
+                if(playbackSpeedModel.get(i).value === workspace.playbackSpeed) {
+                    return i;
+                }
+            }
+            return 0;
+        }
+    }
+
+    GridView {
         id: playbackSpeedView
         anchors {
             left: parent.left
             right: parent.right
         }
-        height: 100
-
+        height: Style.touchableSize * 3.0
+        cellWidth: Style.touchableSize
+        cellHeight: Style.touchableSize
         model: ListModel {
             id: playbackSpeedModel
             ListElement {
@@ -62,10 +80,7 @@ Column {
                 value: 8.0
             }
         }
-        orientation: ListView.Horizontal
         clip: true
-        preferredHighlightBegin: width / 2 - Style.touchableSize / 2
-        preferredHighlightEnd: width / 2 + Style.touchableSize / 2
         delegate: Item {
             height: Style.touchableSize
             width: height
@@ -82,7 +97,7 @@ Column {
             }
         }
         highlight: Rectangle {
-            color: "white"
+            color: "#deebf7"
         }
         currentIndex: 2
         onCurrentIndexChanged: {

@@ -1,12 +1,14 @@
 #ifndef NODEBASE_H
 #define NODEBASE_H
 
+#include "neuronifyobject.h"
+
 #include <QQuickItem>
 
 class NodeEngine;
 class Edge;
 class GraphEngine;
-class NodeBase : public QQuickItem
+class NodeBase : public NeuronifyObject
 {
     Q_OBJECT
     Q_PROPERTY(NodeEngine* engine READ engine WRITE setEngine NOTIFY engineChanged)

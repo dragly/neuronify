@@ -43,13 +43,13 @@ Node {
     height: 180
     canReceiveConnections: false
 
-    dumpableProperties: [
-        "x",
-        "y",
-        "kernelType",
-        "sensitivity",
-        "plotKernel"
-    ]
+    savedProperties: PropertyGroup {
+        property alias x: root.x
+        property alias y: root.y
+        property alias kernelType: root.kernelType
+        property alias sensitivity: root.sensitivity
+        property alias plotKernel: root.plotKernel
+    }
 
     onVideoSurfaceChanged: {
         if(!videoSurface){
