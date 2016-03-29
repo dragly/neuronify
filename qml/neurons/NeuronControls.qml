@@ -117,34 +117,4 @@ Column {
         target: engine
     }
 
-//    RestPotentialControl{
-//        engine: engine
-//    }
-    
-//    Text {
-//        text: "Reset the potential:"
-//    }
-
-//    Button {
-//        text: "Reset"
-//        onClicked: {
-//            engine.reset()
-//        }
-//    }
-
-//    Text {
-//        text: "Reset the potential of all neurons:"
-//    }
-
-//    Button {
-//        text: "Reset all"
-//        onClicked: {
-//            for (var i in graphEngine.nodes){
-//                if (graphEngine.nodes[i].isNeuron) {
-//                    graphEngine.nodes[i].engine.reset()
-//                }
-
-//            }
-//        }
-//    }
 }
