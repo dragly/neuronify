@@ -50,5 +50,6 @@
         <file>images/annotate/annotate.png</file>
         <file>images/meters/spikemeter.png</file>
         <file>images/generators/poisson_generator_excitatory.png</file>
+        <file>images/meters/ratePlot.png</file>
     </qresource>
 </RCC>

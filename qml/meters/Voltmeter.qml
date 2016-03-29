@@ -27,7 +27,6 @@ Node {
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentSeries: 0
-    property string mode: "voltage"
     property string title: "mV"
 
     property real timeFactor: 1000
@@ -60,8 +59,13 @@ Node {
     ]
 
     controls: Component {
-        VoltmeterControls {
-            voltmeter: voltmeterRoot
+        MeterControls {
+            meter: voltmeterRoot
+            sliderMinimum: -250
+            sliderMaximum: 250
+            unit: "mV"
+            meterType: "voltmeter"
+
         }
     }
     width: 240
@@ -78,7 +82,7 @@ Node {
                     var plot = connectionPlot.plot
                     var neuron = connectionPlot.connection.itemA
                     if(neuron) {
-                        if(mode === "voltage" && neuron.voltage) {
+                        if(neuron.voltage) {
                             plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
                         }
                     }
@@ -209,6 +213,7 @@ Node {
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
+            titleText: voltmeterRoot.title
         }
     }
 

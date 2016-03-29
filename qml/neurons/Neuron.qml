@@ -27,6 +27,7 @@ Node {
     property url inhibitoryImageSource
     property bool isNeuron: true
 
+
     radius: width / 2
     width: 60
     height: width
@@ -50,6 +51,7 @@ Node {
         }
     }
 
+
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
                     ["engine.fireOutput",
@@ -60,7 +62,7 @@ Node {
                      "engine.capacitance",
                      "engine.synapticConductance",
                      "engine.synapticTimeConstant",
-                     "engine.synapsePotential"])
+                     "engine.synapticPotential"])
     }
 
     Image {

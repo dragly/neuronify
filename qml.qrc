@@ -7,7 +7,7 @@
         <file>qml/paths/SCurve.qml</file>
         <file>qml/meters/Voltmeter.qml</file>
         <file>qml/hud/PropertiesPanel.qml</file>
-        <file>qml/hud/VoltmeterControls.qml</file>
+        <file>qml/hud/MeterControls.qml</file>
         <file>qml/hud/CreationMenu.qml</file>
         <file>qml/GraphItem.qml</file>
         <file>qml/neurons/Neuron.qml</file>
@@ -71,7 +71,9 @@
         <file>qml/sensors/kernels/OffRightKernel.qml</file>
         <file>qml/sensors/kernels/DogKernel.qml</file>
         <file>qml/meters/RasterPlot.qml</file>
+        <file>qml/meters/RatePlot.qml</file>
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
+        <file>qml/controls/RestPotentialControl.qml</file>
     </qresource>
 </RCC>

@@ -76,8 +76,7 @@ Node {
         actualCells.length = 0
         for(var i = 0; i < cells; i++) {
             var cell = simulator.createEntity("sensors/TouchSensorCell.qml"
-                                              , {cellIndex: i,
-                                                  sensor: sensorRoot})
+                                              , {cellIndex: i, sensor: sensorRoot})
             cell.parent = cellRow
             actualCells.push(cell)
         }

@@ -2,18 +2,49 @@ import QtQuick 2.0
 import Neuronify 1.0
 
 import ".."
-
+import "../controls"
 Neuron {
-    property alias fireOutput: nEngine.fireOutput
+    id: neuronRoot
+    property alias resistance: passiveCurrent.resistance
+    property alias fireOutput: neuronEngine.fireOutput
+
     objectName: "passiveNeuron"
     fileName: "neurons/PassiveNeuron.qml"
     imageSource: "qrc:/images/neurons/passive.png"
     inhibitoryImageSource: "qrc:/images/neurons/passive_inhibitory.png"
 
     engine: NeuronEngine {
-        id: nEngine
+        id: neuronEngine
         fireOutput: 200.0e-6
-        PassiveCurrent {}
+        PassiveCurrent {
+            id: passiveCurrent
+        }
+    }
+
+    controls: Component {
+        NeuronControls {
+            neuron: neuronRoot
+            engine: neuronEngine
+            BoundSlider {
+                target: passiveCurrent
+                property: "resistance"
+                minimumValue: 0.1e3
+                maximumValue: 100e3
+                unitScale: 1e3
+                stepSize: 1e2
+                precision: 1
+                text: "Membrane resistance"
+                unit: "kΩ"
+            }
+            RestPotentialControl{
+                engine: neuronEngine
+            }
+        }
+
+    }
+
+    Component.onCompleted: {
+        dumpableProperties = dumpableProperties.concat("resistance")
     }
 
 }

@@ -98,6 +98,11 @@ Rectangle {
             if(typeof(prop) === "object") {
                 applyProperties(object[i], prop);
             } else {
+                if(!object.hasOwnProperty(i)){
+                    console.warn("WARNING: cannot assign property: " + i + " to " + object)
+                    continue
+                }
+
                 object[i] = prop;
             }
         }

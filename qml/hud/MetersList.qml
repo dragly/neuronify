@@ -14,6 +14,12 @@ ListModel {
         imageSource: "qrc:/images/meters/spikemeter.png"
     }
     ListElement {
+        name: "Firing rate plot"
+        description: "Shows firing rate of neurons"
+        source: "qrc:/qml/meters/RatePlot.qml"
+        imageSource: "qrc:/images/meters/ratePlot.png"
+    }
+    ListElement {
         name: "Speaker"
         description: "Plays a sound when a connected object fires."
         source: "qrc:/qml/meters/Speaker.qml"
