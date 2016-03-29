@@ -60,9 +60,8 @@ Neuron {
         }
     }
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["resistance"])
+    savedProperties: PropertyGroup {
+        property alias resistance: neuronRoot.resistance
     }
 }
 

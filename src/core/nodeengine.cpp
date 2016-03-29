@@ -16,7 +16,7 @@
  */
 
 NodeEngine::NodeEngine(QQuickItem *parent)
-    : QQuickItem(parent)
+    : NeuronifyObject(parent)
 {
     reset();
 }

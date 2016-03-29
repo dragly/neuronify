@@ -101,8 +101,8 @@ Node {
         }
     }
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat("source")
+    savedProperties: PropertyGroup {
+        property alias source: speaker.source
     }
 
     Image {

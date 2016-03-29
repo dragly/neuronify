@@ -31,11 +31,21 @@ Node {
         property real amplitude: 75.0e-6
         property real frequency: 1.0
         property real pi: 3.14159
+        savedProperties: PropertyGroup {
+            property alias amplitude: engine.amplitude
+            property alias frequency: engine.frequency
+            property alias time: engine.time
+        }
+
         currentOutput: amplitude*Math.sin(2*pi*frequency*time)
         onStepped: {
             time += dt
         }
 
+    }
+
+    savedProperties: PropertyGroup {
+        property alias engine: engine
     }
 
     controls: Component {
@@ -66,14 +76,6 @@ Node {
                 }
             }
         }
-    }
-
-
-
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(["engine.amplitude",
-                                                       "engine.frequency",
-                                                       "engine.time"])
     }
 
     Image {

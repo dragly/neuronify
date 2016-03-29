@@ -78,11 +78,10 @@ Neuron {
         }
     }
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["resistance",
-                    "adaptation",
-                    "timeConstant"])
+    savedProperties: PropertyGroup {
+        property alias resistance: neuronRoot.resistance
+        property alias adaptation: neuronRoot.adaptation
+        property alias timeConstant: neuronRoot.timeConstant
     }
 }
 

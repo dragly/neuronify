@@ -23,6 +23,7 @@
 
 #include "io/fileio.h"
 #include "io/standardpaths.h"
+#include "io/propertygroup.h"
 
 #include <QApplication>
 #include <QQmlApplicationEngine>
@@ -62,6 +63,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<AdaptationCurrent>("Neuronify", 1, 0, "AdaptationCurrent");
 
     qmlRegisterType<RateEngine>("Neuronify", 1, 0, "RateEngine");
+    qmlRegisterType<PropertyGroup>("Neuronify", 1, 0, "PropertyGroup");
 
     QApplication app(argc, argv);
     app.setOrganizationName("Ovilab");

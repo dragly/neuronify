@@ -103,12 +103,11 @@ Node {
         }
     }
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["width",
-                     "height",
-                     "maximumValue",
-                     "minimumValue"])
+    savedProperties: PropertyGroup {
+        property alias width: voltmeterRoot.width
+        property alias height: voltmeterRoot.height
+        property alias maximumValue: voltmeterRoot.maximumValue
+        property alias minimumValue: voltmeterRoot.minimumValue
     }
 
     onEdgeAdded: {

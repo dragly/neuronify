@@ -1,9 +1,11 @@
 #ifndef NODEENGINE_H
 #define NODEENGINE_H
 
+#include "neuronifyobject.h"
+
 #include <QQuickItem>
 
-class NodeEngine : public QQuickItem
+class NodeEngine : public NeuronifyObject
 {
     Q_OBJECT
     Q_PROPERTY(double fireOutput READ fireOutput WRITE setFireOutput NOTIFY fireOutputChanged)

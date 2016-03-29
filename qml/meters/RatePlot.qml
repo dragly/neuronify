@@ -91,18 +91,17 @@ Node {
                 series1.addPoint(time * timeFactor, rateEngine.firingRate)
             }
 
-    realTime += dt
-}
+            realTime += dt
+        }
 
-}
+    }
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["width",
-                     "height",
-                     "maximumValue",
-                     "minimumValue",
-                     "binLength"])
+    savedProperties: PropertyGroup {
+        property alias width: ratePlotRoot.width
+        property alias height: ratePlotRoot.height
+        property alias maximumValue: ratePlotRoot.maximumValue
+        property alias minimumValue: ratePlotRoot.minimumValue
+        property alias binLength: ratePlotRoot.binLength
     }
 
     onEdgeAdded: {

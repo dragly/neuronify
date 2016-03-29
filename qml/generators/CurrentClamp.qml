@@ -46,8 +46,9 @@ Node {
         }
     }
 
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat("currentOutputScaled")
+
+    savedProperties: PropertyGroup {
+        property alias currentOutputScaled: engine.currentOutputScaled
     }
 
     Image {

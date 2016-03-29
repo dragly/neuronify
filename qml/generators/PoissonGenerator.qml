@@ -31,6 +31,10 @@ Node {
     property alias fireOutput: engine.fireOutput
     property alias rate: engine.rate
 
+    savedProperties: PropertyGroup {
+        property alias engine: engine
+    }
+
     objectName: "poissonGenerator"
     fileName: "generators/PoissonGenerator.qml"
 
@@ -43,6 +47,11 @@ Node {
         id: engine
         property real rate: 0.5e3
         fireOutput: 100.0e-6
+
+        savedProperties: PropertyGroup {
+            property alias fireOutput: engine.fireOutput
+            property alias rate: engine.rate
+        }
 
         onStepped: {
             var shouldFire = (Math.random() < rate*dt)
@@ -108,12 +117,5 @@ Node {
         onDropped: {
             root.droppedConnector(root, connector)
         }
-    }
-
-
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["fireOutput",
-                    "rate"])
     }
 }

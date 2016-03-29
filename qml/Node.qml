@@ -47,12 +47,13 @@ NodeBase {
     property bool square: false
     property var removableChildren: [] // used by nodes such as TouchSensor that has child nodes
     property bool canReceiveConnections: true
-    property var dumpableProperties: [
-        "x",
-        "y",
-        "label",
-        "fileName"
-    ]
+
+    savedProperties: PropertyGroup {
+        property alias x: root.x
+        property alias y: root.y
+        property alias label: root.label
+        property alias fileName: root.fileName
+    }
 
     onEngineChanged: {
         if(engine) {
@@ -69,35 +70,35 @@ NodeBase {
         return undefined;
     }
 
-    function _basicSelfDump() {
-        var outputString = "";
-        var entityData = {};
+//    function _basicSelfDump() {
+//        var outputString = "";
+//        var entityData = {};
 
-        for(var i in dumpableProperties) {
-            var propertyName = dumpableProperties[i];
-//            entityData[propertyName] = root[propertyName];
-            var sourceObject = root;
-            var targetObject = entityData;
-            var previousTargetObject = targetObject;
-            var splits = propertyName.split(".");
-            var subName = "";
-            for(var j in splits) {
-                subName = splits[j];
-                sourceObject = sourceObject[subName];
-                if(!targetObject[subName]) {
-                    targetObject[subName] = {};
-                }
-                previousTargetObject = targetObject;
-                targetObject = targetObject[subName];
-            }
-            previousTargetObject[subName] = sourceObject;
-        }
-        return entityData;
-    }
+//        for(var i in dumpableProperties) {
+//            var propertyName = dumpableProperties[i];
+////            entityData[propertyName] = root[propertyName];
+//            var sourceObject = root;
+//            var targetObject = entityData;
+//            var previousTargetObject = targetObject;
+//            var splits = propertyName.split(".");
+//            var subName = "";
+//            for(var j in splits) {
+//                subName = splits[j];
+//                sourceObject = sourceObject[subName];
+//                if(!targetObject[subName]) {
+//                    targetObject[subName] = {};
+//                }
+//                previousTargetObject = targetObject;
+//                targetObject = targetObject[subName];
+//            }
+//            previousTargetObject[subName] = sourceObject;
+//        }
+//        return entityData;
+//    }
 
-    function dump() {
-        return _basicSelfDump()
-    }
+//    function dump() {
+//        return _basicSelfDump()
+//    }
 
     Rectangle{
         anchors.fill: labelBox

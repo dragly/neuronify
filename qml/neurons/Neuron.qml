@@ -46,23 +46,26 @@ Node {
 
     engine: NeuronEngine {
         id: engine
+
+        savedProperties: PropertyGroup {
+            property alias fireOutput: engine.fireOutput
+            property alias initialPotential: engine.initialPotential
+            property alias restingPotential: engine.restingPotential
+            property alias threshold: engine.threshold
+            property alias voltage: engine.voltage
+            property alias capacitance: engine.capacitance
+            property alias synapticConductance: engine.synapticConductance
+            property alias synapticTimeConstant: engine.synapticTimeConstant
+            property alias synapticPotential: engine.synapticPotential
+        }
+
         PassiveCurrent {
             id: passiveCurrent
         }
     }
 
-
-    Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat(
-                    ["engine.fireOutput",
-                     "engine.initialPotential",
-                     "engine.restingPotential",
-                     "engine.threshold",
-                     "engine.voltage",
-                     "engine.capacitance",
-                     "engine.synapticConductance",
-                     "engine.synapticTimeConstant",
-                     "engine.synapticPotential"])
+    savedProperties: PropertyGroup {
+        property alias engine: engine
     }
 
     Image {
