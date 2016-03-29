@@ -36,7 +36,11 @@ Neuron {
                 text: "Membrane resistance"
                 unit: "Ω"
             }
+            RestPotentialControl{
+                engine: neuronEngine
+            }
         }
+
     }
 
     Component.onCompleted: {

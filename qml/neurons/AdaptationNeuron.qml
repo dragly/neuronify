@@ -72,6 +72,9 @@ Neuron {
                 stepSize: 1e-4
                 precision: 1
             }
+            RestPotentialControl{
+                engine: neuronEngine
+            }
         }
     }
 
