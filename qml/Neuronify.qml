@@ -94,27 +94,39 @@ Rectangle {
     }
 
     function applyProperties(object, properties) {
+        if(!object){
+            console.warn("WARNING: apply properties got missing object: " + object)
+            console.warn("with properties:")
+            for(var i in properties) {
+                console.log(i + ": " + properties[i])
+            }
+            console.log("Cannot apply.")
+            return
+        }
+
         for(var i in properties) {
             var prop = properties[i];
-            if(typeof(prop) === "object") {
-                applyProperties(object[i], prop);
-            } else {
-                if(!object.hasOwnProperty("savedProperties")) {
-                    console.warn("WARNING: Object " + object + " is missing savedProperties property.");
+            console.log("Setting " + i + ": " + prop)
+            if(!object.hasOwnProperty("savedProperties")) {
+                console.warn("WARNING: Object " + object + " is missing savedProperties property.");
+                continue;
+            }
+            var found = false;
+            for(var j in object.savedProperties) {
+                var propertyGroup = object.savedProperties[j];
+                if(!propertyGroup.hasOwnProperty(i)) {
                     continue;
                 }
-                var found = false;
-                for(var j in object.savedProperties) {
-                    var propertyGroup = object.savedProperties[j];
-                    if(!propertyGroup.hasOwnProperty(i)){
-                        continue;
-                    }
-                    found = true;
+                found = true;
+                // TODO what if one of them is not an object?
+                if(typeof(prop) === "object" && typeof(propertyGroup[i]) == "object") {
+                    applyProperties(propertyGroup[i], prop);
+                } else {
                     propertyGroup[i] = prop;
                 }
-                if(!found) {
-                    console.warn("WARNING: Cannot assign to " + i + " on savedProperties of " + object);
-                }
+            }
+            if(!found) {
+                console.warn("WARNING: Cannot assign to " + i + " on savedProperties of " + object);
             }
         }
     }

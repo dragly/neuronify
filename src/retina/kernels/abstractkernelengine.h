@@ -4,12 +4,13 @@
 #include <QQuickItem>
 #include <vector>
 #include <iostream>
+#include "../../core/neuronifyobject.h"
+#include "../../utility/mathhelper.h"
 
 using namespace std;
 
-const static long double pi = 3.141592653589793238462643383279502884L;
 
-class AbstractKernelEngine: public QQuickItem
+class AbstractKernelEngine: public NeuronifyObject
 {
     Q_OBJECT
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)

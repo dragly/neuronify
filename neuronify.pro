@@ -34,6 +34,7 @@ HEADERS += \
     src/retina/kernels/offbottomkernelengine.h \
     src/io/standardpaths.h \
     src/neurons/rateengine.h \
+    src/utility/mathhelper.h \
     src/core/neuronifyobject.h \
     src/io/propertygroup.h
 
@@ -62,8 +63,10 @@ SOURCES += \
     src/retina/kernels/offbottomkernelengine.cpp \
     src/io/standardpaths.cpp \
     src/neurons/rateengine.cpp \
+    src/utility/mathhelper.cpp \
     src/core/neuronifyobject.cpp \
     src/io/propertygroup.cpp
+
 
 RESOURCES += qml.qrc \
     images.qrc \

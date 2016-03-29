@@ -3,14 +3,13 @@ import Neuronify 1.0
 
 import "../../controls"
 
-KernelContainer {
-    id: root
-    property alias engine: engine
+GaborKernelEngine{
+    id: gaborEngine
+    resolutionHeight: 20
+    resolutionWidth: 20
 
-    GaborKernelEngine{
-        id: engine
-        resolutionHeight: root.resolutionHeight
-        resolutionWidth: root.resolutionWidth
+    savedProperties: PropertyGroup {
+        property alias theta: gaborEngine.theta
     }
-
 }
+

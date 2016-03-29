@@ -33,7 +33,7 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
     property int viewIndex: 0
-    property string kernelType: "kernels/GaborKernel.qml"
+    property string kernelType: "kernels/DogKernel.qml"
     property alias sensitivity: retinaEngine.sensitivity
     property alias plotKernel: retinaEngine.plotKernel
 
@@ -43,13 +43,18 @@ Node {
     height: 180
     canReceiveConnections: false
 
-    savedProperties: PropertyGroup {
-        property alias x: root.x
-        property alias y: root.y
-        property alias kernelType: root.kernelType
-        property alias sensitivity: root.sensitivity
-        property alias plotKernel: root.plotKernel
-    }
+    savedProperties: [
+        PropertyGroup {
+            property alias x: root.x
+            property alias y: root.y
+            property alias kernelType: root.kernelType
+            property alias sensitivity: root.sensitivity
+            property alias plotKernel: root.plotKernel
+        },
+        PropertyGroup { // Note: Don't reorder! This needs to be saved after kernelType.
+            property alias kernelProperties: kernelLoader.item
+        }
+    ]
 
     onVideoSurfaceChanged: {
         if(!videoSurface){
@@ -63,6 +68,9 @@ Node {
     Loader{
         id: kernelLoader
         source: root.kernelType
+        onLoaded: {
+            console.log("Loaded " + source)
+        }
     }
 
     Kernel{
@@ -72,7 +80,7 @@ Node {
         resolutionWidth : kernelLoader.item ?
                               kernelLoader.item.resolutionWidth : 80
         abstractKernelEngineType: kernelLoader.item ?
-                                      kernelLoader.item.engine : null
+                                      kernelLoader.item : null
 
         imageAlpha: 225
     }
@@ -87,31 +95,6 @@ Node {
     controls: Component {
         Column {
             anchors.fill: parent
-
-
-            // Slider to change the resolution:
-            //            Text {
-            //                text: "Resolution Height: " + kernel.resolutionHeight.toFixed(1)
-            //            }
-            //            BoundSlider {
-            //                minimumValue: 10
-            //                maximumValue: 300
-            //                stepSize: 100
-            //                target: kernel
-            //                property: "resolutionHeight"
-            //            }
-
-            //            Text {
-            //                text: "Resolution Width: " + kernel.resolutionWidth.toFixed(1)
-            //            }
-            //            BoundSlider {
-            //                minimumValue: 10
-            //                maximumValue: 300
-            //                stepSize: 100
-            //                target: kernel
-            //                property: "resolutionWidth"
-            //            }
-
 
             Component.onCompleted: {
                 for(var i = 0; i < fieldTypes.count; i++) {
