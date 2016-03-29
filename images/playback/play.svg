@@ -15,7 +15,7 @@
    version="1.1"
    inkscape:version="0.91 r13725"
    sodipodi:docname="play.svg"
-   inkscape:export-filename="mainmenu.png"
+   inkscape:export-filename="play.png"
    inkscape:export-xdpi="22.5"
    inkscape:export-ydpi="22.5">
   <defs
@@ -49,7 +49,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.2139587"
-     inkscape:cx="271.10019"
+     inkscape:cx="132.70998"
      inkscape:cy="211.53592"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -62,11 +62,11 @@
      inkscape:snap-object-midpoints="true"
      inkscape:snap-center="true"
      inkscape:snap-page="true"
-     inkscape:window-width="2507"
-     inkscape:window-height="1416"
-     inkscape:window-x="5173"
+     inkscape:window-width="1254"
+     inkscape:window-height="1388"
+     inkscape:window-x="6426"
      inkscape:window-y="24"
-     inkscape:window-maximized="1">
+     inkscape:window-maximized="0">
     <inkscape:grid
        type="xygrid"
        id="grid2985"

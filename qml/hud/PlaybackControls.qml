@@ -36,23 +36,23 @@ Rectangle {
         model: ListModel {
             id: playbackSpeedModel
             ListElement {
-                image: "qrc:/images/playback/pause.svg"
+                image: "qrc:/images/playback/pause.png"
                 value: 0.0
             }
             ListElement {
-                image: "qrc:/images/playback/play.svg"
+                image: "qrc:/images/playback/play.png"
                 value: 1.0
             }
             ListElement {
-                image: "qrc:/images/playback/fast.svg"
+                image: "qrc:/images/playback/fast.png"
                 value: 2.0
             }
             ListElement {
-                image: "qrc:/images/playback/superfast.svg"
+                image: "qrc:/images/playback/superfast.png"
                 value: 4.0
             }
             ListElement {
-                image: "qrc:/images/playback/superduperfast.svg"
+                image: "qrc:/images/playback/superduperfast.png"
                 value: 8.0
             }
         }
