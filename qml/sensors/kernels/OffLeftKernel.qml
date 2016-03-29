@@ -3,16 +3,10 @@ import Neuronify 1.0
 
 import "../../controls"
 
-KernelContainer {
-    id: root
-    property alias engine: engine
-
-    OffLeftKernelEngine{
-        id: engine
-        resolutionHeight: root.resolutionHeight
-        resolutionWidth: root.resolutionWidth
-    }
-
-
+OffLeftKernelEngine{
+    resolutionHeight: 20
+    resolutionWidth: 20
 }
+
+
 

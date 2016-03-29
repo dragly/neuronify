@@ -72,7 +72,7 @@ Node {
         resolutionWidth : kernelLoader.item ?
                               kernelLoader.item.resolutionWidth : 80
         abstractKernelEngineType: kernelLoader.item ?
-                                      kernelLoader.item.engine : null
+                                      kernelLoader.item : null
 
         imageAlpha: 225
     }
