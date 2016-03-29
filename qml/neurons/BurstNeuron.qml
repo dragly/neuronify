@@ -24,7 +24,7 @@ Neuron {
             property real boost: 0.0
             onFired: {
                 if(boost < 1.0e-9) {
-                    boost = 100.0e-6
+                    boost = 200.0e-6
                 }
             }
             onStepped: {
@@ -46,13 +46,13 @@ Neuron {
             BoundSlider {
                 target: passiveCurrent
                 property: "resistance"
-                minimumValue: 1
-                maximumValue: 1000
-                unitScale: 1
-                stepSize: 1
+                minimumValue: 1e3
+                maximumValue: 100e3
+                unitScale: 1e3
+                stepSize: 1e3
                 precision: 1
                 text: "Membrane resistance"
-                unit: "Ω"
+                unit: "kΩ"
             }
             RestPotentialControl{
                 engine: neuronEngine

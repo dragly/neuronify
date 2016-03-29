@@ -29,6 +29,7 @@ NodeBase {
     signal dragEnded(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
     signal fired
+
     property real snapGridSize: 1.0
     property var dragProxy
     property string label: ""
@@ -47,6 +48,7 @@ NodeBase {
     property bool square: false
     property var removableChildren: [] // used by nodes such as TouchSensor that has child nodes
     property bool canReceiveConnections: true
+    property bool isAlias: false
 
     savedProperties: PropertyGroup {
         property alias x: root.x

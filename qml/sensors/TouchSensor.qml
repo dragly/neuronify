@@ -56,11 +56,13 @@ Node {
         }
     }
 
+    savedProperties: PropertyGroup {
+        property alias cells: sensorRoot.cells
+        property alias sensingCurrentOutput: sensorRoot.sensingCurrentOutput
+    }
+
     Component.onCompleted: {
         dropFunction = simulator.createConnectionToPoint
-        dumpableProperties = dumpableProperties.concat(
-                    ["cells",
-                     "sensingCurrentOutput"])
         resetCells()
     }
 

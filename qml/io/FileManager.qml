@@ -32,6 +32,9 @@ Item {
     }
 
     function objectify(obj) {
+        if(obj.isAlias) {
+            return obj.aliasInfo();
+        }
         var result = {};
         for(var i in obj.savedProperties) {
             var properties = obj.savedProperties[i].dump();

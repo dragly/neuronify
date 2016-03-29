@@ -30,7 +30,9 @@ Node {
     connectionPoint: Qt.point(sensor.x + cell.x + cell.width / 2,
                               sensor.y + cell.y + cell.height)
 
-    function dump() {
+    isAlias: true
+
+    function aliasInfo() {
         return {
             isAlias: true,
             parent: graphEngine.nodeIndex(sensor),
