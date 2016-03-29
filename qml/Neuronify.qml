@@ -98,12 +98,22 @@ Rectangle {
             if(typeof(prop) === "object") {
                 applyProperties(object[i], prop);
             } else {
-                if(!object.hasOwnProperty(i)){
-                    console.warn("WARNING: cannot assign property: " + i + " to " + object)
-                    continue
+                if(!object.hasOwnProperty("savedProperties")) {
+                    console.warn("WARNING: Object " + object + " is missing savedProperties property.");
+                    continue;
                 }
-
-                object[i] = prop;
+                var found = false;
+                for(var j in object.savedProperties) {
+                    var propertyGroup = object.savedProperties[j];
+                    if(!propertyGroup.hasOwnProperty(i)){
+                        continue;
+                    }
+                    found = true;
+                    propertyGroup[i] = prop;
+                }
+                if(!found) {
+                    console.warn("WARNING: Cannot assign to " + i + " on savedProperties of " + object);
+                }
             }
         }
     }
@@ -578,12 +588,21 @@ Rectangle {
             id: workspace
 
             property real playbackSpeed: 1.0
+            property list<PropertyGroup> savedProperties: [
+                PropertyGroup {
+                    property alias x: workspace.x
+                    property alias y: workspace.y
+                    property alias scale: workspace.scale
+                    property alias playbackSpeed: workspace.playbackSpeed
+                }
+            ]
 
             width: 3840
             height: 2160
 
             scale: 1.1
             transformOrigin: Item.TopLeft
+
 
             Item {
                 id: dragProxy
