@@ -45,9 +45,9 @@ double NeuronEngine::restingPotential() const
     return m_membraneRestingPotential;
 }
 
-double NeuronEngine::synapsePotential() const
+double NeuronEngine::synapticPotential() const
 {
-    return m_synapsePotential;
+    return m_synapticPotential;
 }
 
 double NeuronEngine::threshold() const
@@ -94,7 +94,7 @@ void NeuronEngine::stepEvent(double dt)
     double dgs = -gs / tau * dt;
 
     double V = m_voltage;
-    double Es = m_synapsePotential;
+    double Es = m_synapticPotential;
     double synapticCurrents = -gs * (V - Es);
 
     double totalCurrent = synapticCurrents + otherCurrents + m_receivedCurrents;
@@ -145,11 +145,11 @@ void NeuronEngine::setRestingPotential(double arg)
     }
 }
 
-void NeuronEngine::setSynapsePotential(double arg)
+void NeuronEngine::setSynapticPotential(double arg)
 {
-    if (m_synapsePotential != arg) {
-        m_synapsePotential = arg;
-        emit synapsePotentialChanged(arg);
+    if (m_synapticPotential != arg) {
+        m_synapticPotential = arg;
+        emit synapticPotentialChanged(arg);
     }
 }
 

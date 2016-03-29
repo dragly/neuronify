@@ -75,6 +75,59 @@ Column {
         precision: 1
     }
 
+    ///////////////
+    BoundSlider {
+        target: engine
+        property: "capacitance"
+        text: "Capacitance"
+        unit: "nF"
+        minimumValue: 1.0e-9
+        maximumValue: 10000e-9
+        unitScale: 1e-9
+        stepSize: 1e-8
+        precision: 1
+    }
+
+    BoundSlider {
+        target: engine
+        property: "synapticPotential"
+        text: "Synaptic Potential"
+        unit: "mV"
+        minimumValue: -100e-3
+        maximumValue: 50e-3
+        unitScale: 1e-3
+        stepSize: 1e-4
+        precision: 1
+    }
+
+
+    BoundSlider {
+        target: engine
+        property: "synapticTimeConstant"
+        text: "Synaptic Time Constant"
+        unit: "ms"
+        minimumValue: 0.0
+        maximumValue: 50e-3
+        unitScale: 1e-3
+        stepSize: 1e-4
+        precision: 1
+    }
+
+//    BoundSlider {
+//        target: engine
+//        property: "synapticConductance"
+//        text: "Synaptic Conductance"
+//        unit: " uS"
+//        minimumValue: 0.0
+//        maximumValue: 50e-3
+//        unitScale: 1e-3
+//        stepSize: 1e-4
+//        precision: 1
+//    }
+
+
+    ///////////////
+
     FireOutputControl {
         target: engine
     }
