@@ -2,9 +2,12 @@ import QtQuick 2.0
 import Neuronify 1.0
 
 import ".."
+import "../controls"
 
 Neuron {
-    property alias fireOutput: engine.fireOutput
+    id: neuronRoot
+    property alias fireOutput: neuronEngine.fireOutput
+    property alias resistance: passiveCurrent.resistance
 
     objectName: "BurstNeuron"
     fileName: "neurons/BurstNeuron.qml"
@@ -12,9 +15,11 @@ Neuron {
     inhibitoryImageSource: "qrc:/images/neurons/burst_inhibitory.png"
 
     engine: NeuronEngine {
-        id: engine
+        id: neuronEngine
         fireOutput: 200.0e-6
-        PassiveCurrent {}
+        PassiveCurrent {
+            id: passiveCurrent
+        }
         Current {
             property real boost: 0.0
             onFired: {
@@ -28,9 +33,33 @@ Neuron {
                 } else {
                     boost = 0.0
                 }
-                current = -boost * (engine.voltage - 60.0e-3)
+                current = -boost * (neuronEngine.voltage - 60.0e-3)
             }
         }
+    }
+
+    controls: Component {
+        NeuronControls {
+            neuron: neuronRoot
+            engine: neuronEngine
+
+            BoundSlider {
+                target: passiveCurrent
+                property: "resistance"
+                minimumValue: 1
+                maximumValue: 1000
+                unitScale: 1
+                stepSize: 1
+                precision: 1
+                text: "Membrane resistance"
+                unit: "Ω"
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        dumpableProperties = dumpableProperties.concat(
+                    ["resistance"])
     }
 }
 

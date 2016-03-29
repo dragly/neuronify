@@ -113,20 +113,6 @@ Column {
         precision: 1
     }
 
-//    BoundSlider {
-//        target: engine
-//        property: "synapticConductance"
-//        text: "Synaptic Conductance"
-//        unit: " uS"
-//        minimumValue: 0.0
-//        maximumValue: 50e-3
-//        unitScale: 1e-3
-//        stepSize: 1e-4
-//        precision: 1
-//    }
-
-
-    ///////////////
 
     FireOutputControl {
         target: engine

@@ -6,6 +6,8 @@
 
 #include "../core/nodeengine.h"
 
+class PassiveCurrent;
+
 class NeuronEngine : public NodeEngine
 {
     Q_OBJECT
