@@ -16,6 +16,7 @@
 #include "retina/videosurface.h"
 
 #include "neurons/neuronengine.h"
+#include "neurons/rateengine.h"
 #include "neurons/current.h"
 #include "neurons/passivecurrent.h"
 #include "neurons/adaptationcurrent.h"
@@ -59,6 +60,8 @@ int main(int argc, char *argv[])
     qmlRegisterType<Current>("Neuronify", 1, 0, "Current");
     qmlRegisterType<PassiveCurrent>("Neuronify", 1, 0, "PassiveCurrent");
     qmlRegisterType<AdaptationCurrent>("Neuronify", 1, 0, "AdaptationCurrent");
+
+    qmlRegisterType<RateEngine>("Neuronify", 1, 0, "RateEngine");
 
     QApplication app(argc, argv);
     app.setOrganizationName("Ovilab");

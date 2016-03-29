@@ -17,7 +17,6 @@ import "../controls"
 */
 
 Node {
-    property alias currentAmplitude: engine.currentOutput
 
     fileName: "generators/ACClamp.qml"
 
@@ -29,7 +28,7 @@ Node {
     engine: NodeEngine {
         id: engine
         property real time: 0
-        property real amplitude: 75.0
+        property real amplitude: 75.0e-6
         property real frequency: 1.0
         property real pi: 3.14159
         currentOutput: amplitude*Math.sin(2*pi*frequency*time)
@@ -45,25 +44,25 @@ Node {
 
             Column {
                 anchors.fill: parent
-                Text {
-                    text: "Current amplitude: " + engine.amplitude.toFixed(0) + " mA"
-                }
-
                 BoundSlider {
                     target: engine
                     property: "amplitude"
                     minimumValue: 0.0
-                    maximumValue: 200.0
+                    maximumValue: 50.0e-6
+                    unitScale: 1e-6
+                    unit: "uA"
+                    text: "Current amplitude"
+                    stepSize: 1e-6
                 }
-                Text {
-                    text: "Frequency: " + 1000*engine.frequency.toFixed(3) + "Hz"
-                }
-
                 BoundSlider {
                     target: engine
                     property: "frequency"
                     minimumValue: 0.0
-                    maximumValue: 2.0
+                    maximumValue: 200.0
+                    unitScale: 1
+                    unit: "Hz"
+                    text: "Current frequency"
+                    stepSize: 1.
                 }
             }
         }
@@ -72,7 +71,9 @@ Node {
 
 
     Component.onCompleted: {
-        dumpableProperties = dumpableProperties.concat("currentAmplitude")
+        dumpableProperties = dumpableProperties.concat(["engine.amplitude",
+                                                       "engine.frequency",
+                                                       "engine.time"])
     }
 
     Image {

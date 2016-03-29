@@ -28,13 +28,13 @@ Neuron {
             BoundSlider {
                 target: passiveCurrent
                 property: "resistance"
-                minimumValue: 1
-                maximumValue: 1000
-                unitScale: 1
-                stepSize: 1
+                minimumValue: 0.1e3
+                maximumValue: 100e3
+                unitScale: 1e3
+                stepSize: 1e2
                 precision: 1
                 text: "Membrane resistance"
-                unit: "Ω"
+                unit: "kΩ"
             }
             RestPotentialControl{
                 engine: neuronEngine

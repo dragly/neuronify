@@ -6,8 +6,6 @@
 
 #include "../core/nodeengine.h"
 
-class PassiveCurrent;
-
 class NeuronEngine : public NodeEngine
 {
     Q_OBJECT
@@ -20,8 +18,6 @@ class NeuronEngine : public NodeEngine
     Q_PROPERTY(double synapticPotential READ synapticPotential WRITE setSynapticPotential NOTIFY synapticPotentialChanged)
     Q_PROPERTY(double threshold READ threshold WRITE setThreshold NOTIFY thresholdChanged)
     Q_PROPERTY(double capacitance READ capacitance WRITE setCapacitance NOTIFY capacitanceChanged)
-    Q_PROPERTY(double firingRate READ firingRate WRITE setFiringRate NOTIFY firingRateChanged)
-    Q_PROPERTY(double binLength READ binLength WRITE setBinLength NOTIFY binLengthChanged)
 
 public:
     NeuronEngine(QQuickItem *parent = 0);
@@ -34,8 +30,6 @@ public:
     double capacitance() const;
     double initialPotential() const;
     double synapticTimeConstant() const;
-    double firingRate() const;
-    double binLength() const;
 
 public slots:
     void setVoltage(double arg);
@@ -47,8 +41,6 @@ public slots:
     void setCapacitance(double capacitance);
     void setInitialPotential(double initialPotential);
     void setSynapticTimeConstant(double synapticTimeConstant);
-    void setFiringRate(double firingRate);
-    void setBinLength(double binLength);
 
 signals:
     void voltageChanged(double arg);
@@ -59,8 +51,6 @@ signals:
     void capacitanceChanged(double capacitance);
     void initialPotentialChanged(double initialPotential);
     void synapticTimeConstantChanged(double synapticTimeConstant);
-    void firingRateChanged(double firingRate);
-    void binLengthChanged(double binLength);
 
 protected:
     virtual void stepEvent(double dt);
@@ -80,11 +70,7 @@ private:
     double m_capacitance = 1.0e-6;
     double m_initialPotential = -80.0e-3;
     double m_synapticTimeConstant = 10.0e-3;
-    double m_firingRate = 0.0;
 
-    int m_spikeCount = 0;
-    double m_window = 0.0;
-    double m_binLength = 50;
 };
 
 #endif // NEURONIFY_NEURONENGINE_H

@@ -27,11 +27,11 @@ Node {
 
     readonly property real voltage: root.engine.voltage
     readonly property bool inhibitory: root.engine.fireOutput < 0.0
-    readonly property real firingRate: root.engine.firingRate
 
     property url imageSource
     property url inhibitoryImageSource
     property bool isNeuron: true
+
 
     radius: width / 2
     width: 60
@@ -55,6 +55,7 @@ Node {
             id: passiveCurrent
         }
     }
+
 
     Component.onCompleted: {
         dumpableProperties = dumpableProperties.concat(
