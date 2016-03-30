@@ -14,13 +14,26 @@
    viewBox="0 0 512.00001 512.00001"
    id="svg2"
    version="1.1"
-   inkscape:version="0.91 r"
+   inkscape:version="0.91 r13725"
    sodipodi:docname="speaker.svg"
-   inkscape:export-filename="speaker.png"
+   inkscape:export-filename="/home/milad/Dropbox/software/apps/neuronify/neuronify/images/meters/speaker.png"
    inkscape:export-xdpi="22.5"
    inkscape:export-ydpi="22.5">
   <defs
-     id="defs4" />
+     id="defs4">
+    <inkscape:path-effect
+       is_visible="true"
+       id="path-effect4138"
+       effect="spiro" />
+    <inkscape:path-effect
+       is_visible="true"
+       id="path-effect4138-0"
+       effect="spiro" />
+    <inkscape:path-effect
+       effect="spiro"
+       id="path-effect3875-6"
+       is_visible="true" />
+  </defs>
   <sodipodi:namedview
      id="base"
      pagecolor="#ffffff"
@@ -28,16 +41,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.70000001"
-     inkscape:cx="266.17223"
-     inkscape:cy="150.06262"
+     inkscape:zoom="0.98994951"
+     inkscape:cx="115.68239"
+     inkscape:cy="105.8022"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g4275"
      showgrid="false"
      units="px"
-     inkscape:window-width="2507"
-     inkscape:window-height="1416"
-     inkscape:window-x="2613"
+     inkscape:window-width="1920"
+     inkscape:window-height="1176"
+     inkscape:window-x="0"
      inkscape:window-y="24"
      inkscape:window-maximized="1">
     <inkscape:grid
@@ -52,7 +65,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -61,33 +74,63 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,-540.36216)">
-    <rect
-       style="opacity:1;fill:#333333;fill-opacity:1;stroke:#4d4d4d;stroke-width:6.33599997;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-       id="rect3334"
-       width="320"
-       height="479.99997"
-       x="96"
-       y="556.36218"
-       ry="47.999977" />
-    <ellipse
-       style="opacity:1;fill:#333333;fill-opacity:1;stroke:#ffffff;stroke-width:32;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-       id="path3336"
-       cx="256"
-       cy="668.36218"
-       rx="48"
-       ry="48.000023" />
-    <ellipse
-       ry="93.835701"
-       rx="93.835655"
-       cy="876.36218"
-       cx="256"
-       id="ellipse4140"
-       style="opacity:1;fill:#333333;fill-opacity:1;stroke:#ffffff;stroke-width:32;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
-    <circle
-       style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:32;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-       id="path4142"
-       cx="256"
-       cy="876.36243"
-       r="32" />
+    <g
+       id="g4275">
+      <rect
+         inkscape:export-ydpi="22"
+         inkscape:export-xdpi="22"
+         inkscape:export-filename="voltmeter.png"
+         y="633.93005"
+         x="39.565041"
+         height="320.00003"
+         width="448"
+         id="rect4134"
+         style="fill:#deebf7;fill-opacity:1;stroke:#9ecae1;stroke-width:16;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <g
+         transform="matrix(0.92219085,0,0,0.92219085,11.771825,56.328633)"
+         id="g4268">
+        <g
+           id="g4284">
+          <path
+             inkscape:export-ydpi="22"
+             inkscape:export-xdpi="22"
+             sodipodi:nodetypes="ccccccccc"
+             inkscape:connector-curvature="0"
+             id="polygon1"
+             d="m 216.48107,830.14253 56.52375,48.89305 0,-159.11438 0,0 -55.72463,48.19787 m 0,0 -52.73926,0 0,62.02346 51.94014,0"
+             style="fill:#e41a1c;fill-opacity:1;stroke:#e41a1c;stroke-width:12;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+          <path
+             inkscape:export-ydpi="22"
+             inkscape:export-xdpi="22"
+             inkscape:connector-curvature="0"
+             id="path1"
+             d="m 310.06839,834.46626 c 6.26634,-10.05732 9.94688,-21.89158 9.94688,-34.60618 0,-12.92251 -3.78124,-24.92893 -10.22299,-35.08371"
+             style="fill:none;stroke:#e41a1c;stroke-width:12;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+          <path
+             inkscape:export-ydpi="22"
+             inkscape:export-xdpi="22"
+             inkscape:connector-curvature="0"
+             id="path2"
+             d="m 332.6584,741.90699 c 12.00318,16.19698 19.11413,36.24342 19.11413,57.95309 0,21.50826 -6.98751,41.37928 -18.80226,57.49505"
+             style="fill:none;stroke:#e41a1c;stroke-width:12;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+          <path
+             inkscape:export-ydpi="22"
+             inkscape:export-xdpi="22"
+             inkscape:connector-curvature="0"
+             id="path4216"
+             d="m 354.1894,878.58403 c 17.10982,-21.65444 27.34582,-48.98725 27.34582,-78.72071 0,-29.94133 -10.36919,-57.43982 -27.67391,-79.15923"
+             style="fill:none;stroke:#e41a1c;stroke-width:12;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+          <rect
+             inkscape:export-ydpi="22"
+             inkscape:export-xdpi="22"
+             y="754.82727"
+             x="208.59642"
+             height="93.468102"
+             width="6.7585359"
+             id="rect4266"
+             style="opacity:1;fill:#deebf7;fill-opacity:1;stroke:#deebf7;stroke-width:4.13996983;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        </g>
+      </g>
+    </g>
   </g>
 </svg>
