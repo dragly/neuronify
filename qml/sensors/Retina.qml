@@ -33,7 +33,7 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
     property int viewIndex: 0
-    property string kernelType: "kernels/DogKernel.qml"
+    property string kernelType: "kernels/GaborKernel.qml"
     property alias sensitivity: retinaEngine.sensitivity
     property alias plotKernel: retinaEngine.plotKernel
 
@@ -72,10 +72,6 @@ Node {
 
     Kernel{
         id:kernel
-        resolutionHeight : kernelLoader.item ?
-                               kernelLoader.item.resolutionHeight: 80
-        resolutionWidth : kernelLoader.item ?
-                              kernelLoader.item.resolutionWidth : 80
         abstractKernelEngineType: kernelLoader.item ?
                                       kernelLoader.item : null
 
