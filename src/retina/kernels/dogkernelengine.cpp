@@ -14,9 +14,15 @@ void DogKernelEngine::createKernel(vector<vector<double> > *spatial)
 
     for(int i = 0; i < m_resolutionWidth; i++){
         for(int j = 0; j < m_resolutionHeight; j++){
-            spatial->at(i).at(j)= advance(m_x.at(i), m_y.at(j));
+            spatial->at(i).at(j)= advance(m_x.at(i), m_y.at(j))
+                    * pow(-1, int(m_isOffCenter));
         }
     }
+}
+
+bool DogKernelEngine::isOffCenter() const
+{
+    return m_isOffCenter;
 }
 
 
@@ -25,7 +31,6 @@ double DogKernelEngine::advance(double x, double y)
     double r2 = x*x + y*y;
     double center   = m_centerWeight * exp(-m_centerExp * r2);
     double surround = m_surroundWeight * exp(-m_surroundExp * r2);
-
     return center - surround;
 }
 
@@ -84,5 +89,15 @@ void DogKernelEngine::setSurroundExp(double surroundExp)
 
     m_surroundExp = surroundExp;
     emit surroundExpChanged(surroundExp);
+}
+
+void DogKernelEngine::setIsOffCenter(bool isOffCenter)
+{
+    if (m_isOffCenter == isOffCenter)
+        return;
+
+    m_isOffCenter = isOffCenter;
+    emit isOffCenterChanged(isOffCenter);
+    emit needsRecreation();
 }
 

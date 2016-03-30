@@ -6,10 +6,7 @@
 #include "retina/kernel.h"
 #include "retina/kernels/gaborkernelengine.h"
 #include "retina/kernels/dogkernelengine.h"
-#include "retina/kernels/offleftkernelengine.h"
-#include "retina/kernels/offrightkernelengine.h"
-#include "retina/kernels/offbottomkernelengine.h"
-#include "retina/kernels/offtopkernelengine.h"
+#include "retina/kernels/rectangularkernelengine.h"
 
 #include "retina/retinaengine.h"
 #include "retina/retinapainter.h"
@@ -48,10 +45,9 @@ int main(int argc, char *argv[])
                                                "Derived classes need this");
     qmlRegisterType<GaborKernelEngine>("Neuronify", 1, 0, "GaborKernelEngine");
     qmlRegisterType<DogKernelEngine>("Neuronify", 1, 0, "DogKernelEngine");
-    qmlRegisterType<OffLeftKernelEngine>("Neuronify", 1, 0, "OffLeftKernelEngine");
-    qmlRegisterType<OffRightKernelEngine>("Neuronify", 1, 0, "OffRightKernelEngine");
-    qmlRegisterType<OffTopKernelEngine>("Neuronify", 1, 0, "OffTopKernelEngine");
-    qmlRegisterType<OffBottomKernelEngine>("Neuronify", 1, 0, "OffBottomKernelEngine");
+    qmlRegisterType<RectangularKernelEngine>("Neuronify", 1, 0,
+                                             "RectangularKernelEngine");
+
 
     qmlRegisterType<Kernel>("Neuronify", 1, 0, "Kernel");
     qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");

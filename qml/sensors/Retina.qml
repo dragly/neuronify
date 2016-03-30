@@ -150,8 +150,7 @@ Node {
 
                 cellWidth: Style.touchableSize
                 cellHeight: Style.touchableSize
-                height: Style.touchableSize *
-                        (Math.floor(count / Math.floor(width/cellWidth)))
+                height: Style.touchableSize * 2
 
                 property bool created: false
 
@@ -190,24 +189,9 @@ Node {
                         value: "kernels/DogKernel.qml"
                     }
                     ListElement {
-                        name: "Off left"
-                        key: "qrc:/images/sensors/kernels/offLeft.png"
-                        value: "kernels/OffLeftKernel.qml"
-                    }
-                    ListElement {
-                        name: "Off right"
-                        key: "qrc:/images/sensors/kernels/offRight.png"
-                        value: "kernels/OffRightKernel.qml"
-                    }
-                    ListElement {
-                        name: "Off top"
+                        name: "Rectangular"
                         key: "qrc:/images/sensors/kernels/offTop.png"
-                        value: "kernels/OffTopKernel.qml"
-                    }
-                    ListElement {
-                        name: "Off bottom"
-                        key: "qrc:/images/sensors/kernels/offBottom.png"
-                        value: "kernels/OffBottomKernel.qml"
+                        value: "kernels/RectangularKernel.qml"
                     }
                 }
                 clip: true
