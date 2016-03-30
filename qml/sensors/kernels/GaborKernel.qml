@@ -4,8 +4,8 @@ import "../../controls"
 
 GaborKernelEngine{
     id: gaborEngine
-    resolutionHeight: 80
-    resolutionWidth: 80
+    resolutionHeight: 20
+    resolutionWidth: 20
 
     property Component controls: Component{
         Column{

@@ -226,15 +226,13 @@ Node {
             }
 
             //Slider to change the sensitivity:
-            Text {
-                text: "Sensitivity: " + retinaEngine.sensitivity.toFixed(0)
-            }
             BoundSlider {
                 minimumValue: 1
                 maximumValue: 50
                 stepSize: 5
                 target: retinaEngine
                 property: "sensitivity"
+                text: "Sensitivity"
             }
 
 
