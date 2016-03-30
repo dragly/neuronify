@@ -28,9 +28,6 @@ HEADERS += \
     src/retina/kernels/gaborkernelengine.h \
     src/retina/kernels/abstractkernelengine.h \
     src/retina/kernels/dogkernelengine.h \
-    src/retina/kernels/offrightkernelengine.h \
-    src/retina/kernels/offtopkernelengine.h \
-    src/retina/kernels/offbottomkernelengine.h \
     src/io/standardpaths.h \
     src/neurons/rateengine.h \
     src/utility/mathhelper.h \
@@ -57,9 +54,6 @@ SOURCES += \
     src/retina/kernels/gaborkernelengine.cpp \
     src/retina/kernels/abstractkernelengine.cpp \
     src/retina/kernels/dogkernelengine.cpp \
-    src/retina/kernels/offrightkernelengine.cpp \
-    src/retina/kernels/offtopkernelengine.cpp \
-    src/retina/kernels/offbottomkernelengine.cpp \
     src/io/standardpaths.cpp \
     src/neurons/rateengine.cpp \
     src/utility/mathhelper.cpp \
