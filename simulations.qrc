@@ -27,5 +27,8 @@
         <file>simulations/twoNeuronOscillator/twoNeuronOscillator.png</file>
         <file>simulations/twoNeuronOscillator/twoNeuronOscillator.nfy</file>
         <file>simulations/twoNeuronOscillator/twoNeuronOscillator.qml</file>
+        <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.nfy</file>
+        <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.png</file>
+        <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.qml</file>
     </qresource>
 </RCC>
