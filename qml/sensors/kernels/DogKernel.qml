@@ -13,16 +13,11 @@ DogKernelEngine{
         Column{
             spacing: 10
             Text{
-                text: "Type: "
+                text: "Type: " + (!switchRoot.checked ? " On-center" : " Off-center")
             }
-            Row {
-                Switch{
-                    id: switchRoot
-                    checked: dogEngine.isOffCenter
-                }
-                Text {
-                    text: !switchRoot.checked ? "On-center" : "Off-center"
-                }
+            Switch{
+                id: switchRoot
+                checked: dogEngine.isOffCenter
             }
 
             Binding {

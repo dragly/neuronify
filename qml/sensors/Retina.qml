@@ -150,7 +150,7 @@ Node {
 
                 cellWidth: Style.touchableSize
                 cellHeight: Style.touchableSize
-                height: Style.touchableSize * 2
+                height: Style.touchableSize
 
                 property bool created: false
 
