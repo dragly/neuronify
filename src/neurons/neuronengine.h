@@ -78,7 +78,7 @@ private:
     double m_initialPotential = -80.0e-3;
     double m_synapticTimeConstant = 10.0e-3;
 
-    double m_refractoryPeriod = 20e-3;
+    double m_refractoryPeriod = 0.0;
     double m_timeSinceLastFiring = 0.0;
 };
 
