@@ -41,11 +41,9 @@ Item {
 
             width: aboutFlickable.width
 
-            font.pixelSize: Style.font.size
-            font.weight: Style.font.weight
-            font.family: Style.font.family
+            font: Style.text.font
             wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-            color: Style.font.color
+            color: Style.text.color
             textFormat: Text.RichText
             text: "<p>"+
                   "Neuronify is a neural network simulator developed by PhD students in CINPLA." +

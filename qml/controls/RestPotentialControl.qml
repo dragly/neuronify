@@ -14,23 +14,15 @@ Column {
 
     width: parent.width
 
-    Text {
-        text: "Reset the potential:"
-    }
-
     Button {
-        text: "Reset"
+        text: "Reset potential"
         onClicked: {
             engine.reset()
         }
     }
 
-    Text {
-        text: "Reset the potential of all neurons:"
-    }
-
     Button {
-        text: "Reset all"
+        text: "Reset all neurons"
         onClicked: {
             for (var i in graphEngine.nodes){
                 if (graphEngine.nodes[i].isNeuron) {

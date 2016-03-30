@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick 2.6
 import QtQuick.Controls 1.4
 
 import "../style"
@@ -23,26 +23,47 @@ Item {
 
         color: "#f7fbff"
         width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
+//        width: parent.width * 0.5
 
         border.color: "#9ecae1"
         border.width: 1.0
 
         MouseArea {
             anchors.fill: parent
+            propagateComposedEvents: false
+            onClicked: {
+                mouse.accepted = true
+            }
+            onPressed: {
+                mouse.accepted = true
+            }
+            onReleased: {
+                mouse.accepted = true
+            }
+            onWheel: {
+                wheel.accepted = true
+            }
         }
 
-        Flickable {
+        ScrollView {
+            id: flickableView
             anchors.fill: parent
-            contentHeight: container.height
+
+            flickableItem.flickableDirection: Flickable.VerticalFlick
+//            contentHeight: container.height
+
             Column {
                 id: container
                 anchors {
+//                    left: parent.left
+//                    right: parent.right
                     top: parent.top
-                    left: parent.left
-                    right: parent.right
                     margins: 10
                 }
-                spacing: 10
+                x: 16
+                width: flickableView.width - 48
+
+                spacing: 16
 
                 Loader {
                     anchors {

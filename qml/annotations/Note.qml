@@ -57,7 +57,7 @@ Node {
         textFormat: Text.PlainText
 
         style: TextAreaStyle {
-            textColor: Style.font.color
+            textColor: Style.text.color
             backgroundColor: "#AEDBFF"
 
         }

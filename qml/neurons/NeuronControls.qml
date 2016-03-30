@@ -5,15 +5,16 @@ import QtQuick.Controls.Styles 1.1
 
 import Neuronify 1.0
 
-import ".."
-import "../controls"
+import "qrc:/qml"
+import "qrc:/qml/controls"
+import "qrc:/qml/style"
 
 Column {
     property var neuron: null
     property NeuronEngine engine: null
 
+    spacing: Style.control.spacing
     width: parent ? parent.width : 100
-    spacing: 10
 
     Text {
         text: (neuron.voltage * 1e3).toFixed(0) + " mV"
@@ -32,12 +33,16 @@ Column {
             right: parent.right
         }
     }
+
     Binding {
         target: neuron
         property: "label"
         value: labelField.text
     }
 
+    Text {
+        text: "Neuron dynamics:"
+    }
 
     BoundSlider {       
         target: engine
@@ -87,10 +92,14 @@ Column {
         precision: 1
     }
 
+    Text {
+        text: "Synaptic input:"
+    }
+
     BoundSlider {
         target: engine
         property: "synapticPotential"
-        text: "Synaptic Potential"
+        text: "Potential"
         unit: "mV"
         minimumValue: -100e-3
         maximumValue: 50e-3
@@ -103,7 +112,7 @@ Column {
     BoundSlider {
         target: engine
         property: "synapticTimeConstant"
-        text: "Synaptic Time Constant"
+        text: "Time Constant"
         unit: "ms"
         minimumValue: 0.0
         maximumValue: 50e-3
@@ -112,9 +121,18 @@ Column {
         precision: 1
     }
 
-
-    FireOutputControl {
-        target: engine
+    Text {
+        text: "Synaptic output:"
     }
 
+    BoundSlider {
+        target: engine
+        property: "fireOutput"
+        minimumValue: -100.0e-6
+        maximumValue: 100.0e-6
+        unitScale: 1e-6
+        text: "Stimulation"
+        unit: "uS"
+        stepSize: 1.0e-6
+    }
 }
