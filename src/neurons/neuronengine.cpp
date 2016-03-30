@@ -70,6 +70,11 @@ double NeuronEngine::synapticTimeConstant() const
     return m_synapticTimeConstant;
 }
 
+double NeuronEngine::refractoryPeriod() const
+{
+    return m_refractoryPeriod;
+}
+
 void NeuronEngine::setVoltage(double arg)
 {
     if (m_voltage != arg) {
@@ -80,6 +85,12 @@ void NeuronEngine::setVoltage(double arg)
 
 void NeuronEngine::stepEvent(double dt)
 {
+    m_timeSinceLastFiring +=dt;
+    if(m_timeSinceLastFiring <= m_refractoryPeriod){
+        m_receivedCurrents=0;
+        return;
+    }
+
     checkFire();
 
     double otherCurrents = 0.0;
@@ -195,12 +206,22 @@ void NeuronEngine::setSynapticTimeConstant(double synapticTimeConstant)
     emit synapticTimeConstantChanged(synapticTimeConstant);
 }
 
+void NeuronEngine::setRefractoryPeriod(double refractoryPeriod)
+{
+    if (m_refractoryPeriod == refractoryPeriod)
+        return;
+
+    m_refractoryPeriod = refractoryPeriod;
+    emit refractoryPeriodChanged(refractoryPeriod);
+}
+
 
 
 void NeuronEngine::checkFire()
 {
     if(m_voltage > m_threshold) {
         fire();
+        m_timeSinceLastFiring = 0.0;
     }
 
 }
