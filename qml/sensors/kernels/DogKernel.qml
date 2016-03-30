@@ -1,7 +1,7 @@
 import QtQuick 2.0
 import Neuronify 1.0
 import QtQuick.Controls 1.4
-import Qt.labs.controls 1.0
+//import Qt.labs.controls 1.0
 
 import "../../controls"
 
@@ -19,14 +19,13 @@ DogKernelEngine{
             Text{
                 text: "Type: "
             }
-
-            Switch{
-                id: switchRoot
-                checked: dogEngine.isOffCenter
-                text: !checked ? "On-center" : "Off-center"
-
-                onCheckedChanged: {
-                    text: !checked ? "On-center" : "Off-center"
+            Row {
+                Switch{
+                    id: switchRoot
+                    checked: dogEngine.isOffCenter
+                }
+                Text {
+                    text: !switchRoot.checked ? "On-center" : "Off-center"
                 }
             }
 

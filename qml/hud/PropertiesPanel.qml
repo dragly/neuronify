@@ -19,7 +19,6 @@ Item {
             top: parent.top
             rightMargin: -width
             bottom: parent.bottom
-
         }
 
         color: "#f7fbff"
@@ -34,6 +33,7 @@ Item {
 
         Flickable {
             anchors.fill: parent
+            contentHeight: container.height
             Column {
                 id: container
                 anchors {

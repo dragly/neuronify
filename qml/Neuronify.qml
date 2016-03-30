@@ -703,6 +703,10 @@ Rectangle {
         }
     }
 
+    PlaybackControls {
+        id: playbackControls
+    }
+
     CreationMenu {
         id: creationMenu
 
@@ -731,10 +735,6 @@ Rectangle {
         onDoneClicked: {
             clickMode = "selection"
         }
-    }
-
-    PlaybackControls {
-        id: playbackControls
     }
 
     MainMenu {
