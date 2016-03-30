@@ -97,8 +97,8 @@ Item {
                                         }
                                         Text {
                                             id: title
-                                            font.pixelSize: Style.font.size
-                                            color: Style.font.color
+                                            font: Style.text.font
+                                            color: Style.text.color
                                             text: loader.item ? loader.item.name : "N/A"
                                             width: simulationImage.width
                                             wrapMode: Text.WrapAtWordBoundaryOrAnywhere

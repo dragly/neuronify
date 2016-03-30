@@ -25,6 +25,9 @@ Neuron {
         NeuronControls {
             neuron: neuronRoot
             engine: neuronEngine
+            Text {
+                text: "Passive properties:"
+            }
             BoundSlider {
                 target: passiveCurrent
                 property: "resistance"

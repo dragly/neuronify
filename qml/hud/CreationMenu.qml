@@ -219,8 +219,8 @@ Item {
                     property var item: itemListView.currentItem
                     anchors.fill: parent
 
-                    color: Style.font.color
-                    font.pixelSize: Style.font.size
+                    color: Style.text.color
+                    font: Style.text.font
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 

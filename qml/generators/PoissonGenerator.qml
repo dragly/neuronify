@@ -66,16 +66,23 @@ Node {
         Column {
             anchors.fill: parent
             BoundSlider {
+                target: engine
+                property: "rate"
                 text: "Rate"
                 minimumValue: 0.0e3
                 maximumValue: 1.0e3
                 unitScale: 1.0e3
                 unit: "/ms"
-                target: engine
-                property: "rate"
             }
-            FireOutputControl {
+            BoundSlider {
                 target: engine
+                property: "fireOutput"
+                minimumValue: -100.0e-6
+                maximumValue: 100.0e-6
+                unitScale: 1e-6
+                text: "Stimulation"
+                unit: "uS"
+                stepSize: 1.0e-6
             }
         }
     }

@@ -4,37 +4,28 @@ import QtQuick.Controls 1.0
 Column {
     id: root
     property QtObject target: null
-    property string property: "fireOutput"
-    property alias minimumValue: fireOutputSlider.minimumValue
-    property alias maximumValue: fireOutputSlider.maximumValue
     property real _fireOutput
-    property real valueScale: 1e-6
-
     width: parent.width
-
-    Text {
-        text: "Stimulation output: " + _fireOutput.toFixed(1) + " uS"
-    }
     CheckBox {
         id: inhibitoryCheckbox
         text: "Inhibitory"
     }
-    Slider {
+    BoundSlider {
         id: fireOutputSlider
         width: parent.width
-        minimumValue: 0.0
-        maximumValue: 400.0
-        stepSize: 1.0
+        minimumValue: 0.0e-6
+        maximumValue: 400.0e-6
+        unitScale: 1e-6
+        text: "Stimulation"
+        unit: "uS"
+        stepSize: 1.0e-6
+        target: root
+        property: "_fireOutput"
     }
     Binding {
         target: root.target
-        property: root.property
-        value: (inhibitoryCheckbox.checked ? -1.0 : 1.0) * fireOutputSlider.value * valueScale
-    }
-    Binding {
-        target: fireOutputSlider
-        property: "value"
-        value: Math.abs(root.target[root.property]) / valueScale
+        property: "fireOutput"
+        value: (inhibitoryCheckbox.checked ? -1.0 : 1.0) * _fireOutput
     }
     Binding {
         target: inhibitoryCheckbox
@@ -44,7 +35,7 @@ Column {
     Binding {
         target: root
         property: "_fireOutput"
-        value: root.target[root.property] / valueScale
+        value: root.target[root.property]
     }
 }
 

@@ -1,12 +1,8 @@
 import QtQuick 2.0
 import Neuronify 1.0
 import QtQuick.Controls 1.4
-//import Qt.labs.controls 1.0
 
 import "../../controls"
-
-
-
 
 DogKernelEngine{
     id: dogEngine

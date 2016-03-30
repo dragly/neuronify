@@ -9,11 +9,12 @@ import Qt.labs.settings 1.0
 
 import Neuronify 1.0
 
-import "hud"
-import "menus/mainmenu"
-import "style"
-import "io"
-import "tools"
+import "qrc:/qml/hud"
+import "qrc:/qml/menus/mainmenu"
+import "qrc:/qml/style"
+import "qrc:/qml/io"
+import "qrc:/qml/tools"
+import "qrc:/qml/controls"
 
 /*!
   \qmltype Neuronify
@@ -846,6 +847,55 @@ Rectangle {
             deleteSelected()
         }
     }
+
+//    Flickable {
+
+//        anchors.fill: parent
+
+//        contentWidth: 2000
+//        contentHeight: 2000
+
+//        Column {
+//            x: 500
+//            y: 300
+//            width: 300
+//            spacing: 16
+
+//            BoundSlider {
+//                text: "Hello"
+//                minimumValue: -103.5e-3
+//                maximumValue: 51e-3
+//                unitScale: 1e-3
+//                stepSize: 1e-3
+//                unit: "mV"
+//                target: texta
+//                property: "pos"
+//                width: 300
+//                precision: 1
+//            }
+
+//            BoundSlider {
+//                text: "Hello"
+//                minimumValue: -103.5e-3
+//                maximumValue: 51e-3
+//                unitScale: 1e-3
+//                stepSize: 1e-3
+//                unit: "mV"
+//                target: texta
+//                property: "pos"
+//                width: 300
+//                precision: 1
+//            }
+//        }
+
+//    }
+
+//    Text {
+//        id: texta
+//        property real pos
+//        x: pos * 1000 + 150
+//        text: "LOL"
+//    }
 
     Shortcut {
         sequence: "Shift+5"
