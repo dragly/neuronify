@@ -48,16 +48,6 @@ Node {
         }
     }
 
-//    controls: Component {
-//        SensorControls {
-//            id: sensorControls
-//            sensor: sensorRoot
-//            onDeleteClicked: {
-//                simulatorRoot.deleteSensor(sensor)
-//            }
-//        }
-//    }
-
 
     Component.onCompleted: {
         dropFunction = simulator.createConnectionToPoint
@@ -71,14 +61,6 @@ Node {
     onEdgeRemoved: {
         connections.splice(connections.indexOf(edge), 1)
     }
-
-//    Rectangle {
-//        anchors.fill: parent
-//        color: parent.color
-//        border.width: sensing ? width * 0.03 : width * 0.02
-//        border.color: "#f7fbff"
-//    }
-
 
     Image {
         id: touchImage
