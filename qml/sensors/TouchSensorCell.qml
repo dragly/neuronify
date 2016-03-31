@@ -49,12 +49,11 @@ Node {
     }
 
     engine: NodeEngine {
-        fireOutput: 200.0e-6
+        fireOutput: 100.0
         onStepped: {
             if(sensing) {
-                currentOutput = sensor.sensingCurrentOutput
-            } else {
-                currentOutput = 0.0
+                engine.fire()
+                sensing = false
             }
         }
     }

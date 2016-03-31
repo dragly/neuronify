@@ -14,6 +14,5 @@ NeuronEngineBase {
         property alias synapticConductance: engine.synapticConductance
         property alias synapticTimeConstant: engine.synapticTimeConstant
         property alias synapticPotential: engine.synapticPotential
-        property alias refractoryPeriod: engine.refractoryPeriod
     }
 }

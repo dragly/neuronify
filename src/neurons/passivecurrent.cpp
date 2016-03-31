@@ -35,10 +35,12 @@ void PassiveCurrent::setResistance(double arg)
     emit resistanceChanged(arg);
 }
 
-void PassiveCurrent::stepEvent(double dt)
+void PassiveCurrent::stepEvent(double dt, bool parentEnabled)
 {
     Q_UNUSED(dt);
-
+    if(!parentEnabled) {
+        return;
+    }
     NeuronEngine* parentNode = qobject_cast<NeuronEngine*>(parent());
     if(!parentNode) {
         qWarning() << "Warning: Parent of Current is not NeuronNode. Cannot find voltage.";

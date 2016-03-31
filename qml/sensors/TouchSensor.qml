@@ -26,7 +26,7 @@ Node {
     fileName: "sensors/TouchSensor.qml"
     square: true
 
-    property int cells: 5
+    property int cells: 1
     property var actualCells: []
     property real sensingCurrentOutput: 150.0e-6
     property var dropFunction
@@ -119,9 +119,9 @@ Node {
             senseObject(mouse)
         }
 
-        onPositionChanged: {
-            senseObject(mouse)
-        }
+//        onPositionChanged: {
+//            senseObject(mouse)
+//        }
 
         onReleased: {
             desenseAll()
@@ -134,7 +134,6 @@ Node {
 
     Row {
         id: cellRow
-
     }
 
     Rectangle {

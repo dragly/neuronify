@@ -47,12 +47,15 @@ void RateEngine::computeFiringRate()
 }
 
 
-void RateEngine::stepEvent(double dt)
+void RateEngine::stepEvent(double dt, bool parentEnabled)
 {
+    m_time += dt;
+    if(!parentEnabled) {
+        return;
+    }
     if(m_neuronCount < 1){
         return;
     }
-    m_time +=dt;
     computeFiringRate();
 }
 

@@ -21,7 +21,7 @@ public slots:
     void setResistance(double arg);
 
 protected:
-    virtual void stepEvent(double dt);
+    virtual void stepEvent(double dt, bool parentEnabled);
 
 private:
     double m_resistance = 10.0e3;

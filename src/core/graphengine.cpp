@@ -110,7 +110,7 @@ void GraphEngine::step(double dt)
 {
     for(NodeBase* node : m_nodes) {
         if(node->engine()) {
-            node->engine()->step(dt);
+            node->engine()->step(dt, true);
         }
     }
 

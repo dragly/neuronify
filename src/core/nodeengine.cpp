@@ -72,13 +72,14 @@ double NodeEngine::currentOutput() const
     return m_currentOutput;
 }
 
-void NodeEngine::step(double dt)
+void NodeEngine::step(double dt, bool parentEnabled)
 {
+    bool enable = isEnabled() && parentEnabled;
     for(NodeEngine* child : findChildren<NodeEngine*>()) {
-        child->step(dt);
+        child->step(dt, enable);
     }
-    stepEvent(dt);
-    emit stepped(dt);
+    stepEvent(dt, enable);
+    emit stepped(dt, enable);
 }
 
 void NodeEngine::fire()
@@ -119,7 +120,7 @@ void NodeEngine::finalizeStep(double dt)
     emit finalizedStep(dt);
 }
 
-void NodeEngine::stepEvent(double dt)
+void NodeEngine::stepEvent(double dt, bool parentEnabled)
 {
     Q_UNUSED(dt);
 }
