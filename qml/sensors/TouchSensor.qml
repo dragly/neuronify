@@ -1,7 +1,7 @@
 import QtQuick 2.0
 
 import Neuronify 1.0
-
+import QtGraphicalEffects 1.0
 import "../paths"
 import "../hud"
 import ".."
@@ -72,12 +72,23 @@ Node {
         connections.splice(connections.indexOf(edge), 1)
     }
 
-    Rectangle {
+//    Rectangle {
+//        anchors.fill: parent
+//        color: parent.color
+//        border.width: sensing ? width * 0.03 : width * 0.02
+//        border.color: "#f7fbff"
+//    }
+
+
+    Image {
+        id: touchImage
         anchors.fill: parent
-        color: parent.color
-        border.width: sensing ? width * 0.03 : width * 0.02
-        border.color: "#f7fbff"
+        fillMode: Image.PreserveAspectFit
+        source: "qrc:/images/sensors/touch_sensor.png"
     }
+
+
+
     MouseArea {
         id: mouseRoot
         anchors.fill: parent
@@ -98,6 +109,8 @@ Node {
 
 
     Connector{
+        curveColor: "#0088aa"
+        connectorColor: "#0088aa"
         visible: sensorRoot.selected
         z: -1
     }
