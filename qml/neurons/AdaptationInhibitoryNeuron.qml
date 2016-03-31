@@ -4,7 +4,7 @@ import Neuronify 1.0
 import ".."
 
 AdaptationNeuron {
-    fireOutput : -2.0e-6
+    engine.fireOutput : -2.0e-6
 }
 
 

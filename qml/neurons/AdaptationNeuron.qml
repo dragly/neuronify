@@ -3,15 +3,14 @@ import QtQuick.Controls 1.0
 
 import Neuronify 1.0
 
-import ".."
-import "../controls"
+
+import "qrc:/"
+import "qrc:/qml/"
+import "qrc:/qml/controls"
 
 Neuron {
     id: neuronRoot
-    property alias adaptation: adaptationCurrent.adaptation
-    property alias timeConstant: adaptationCurrent.timeConstant
-    property alias resistance: passiveCurrent.resistance
-    property alias fireOutput: neuronEngine.fireOutput
+
 
     objectName: "adaptationNeuron"
     fileName: "neurons/AdaptationNeuron.qml"
@@ -31,57 +30,45 @@ Neuron {
         }
     }
 
+
     controls: Component {
-        NeuronControls {
-            neuron: neuronRoot
-            engine: neuronEngine
-
-            BoundSlider {
-                target: passiveCurrent
-                property: "resistance"
-                minimumValue: 1
-                maximumValue: 1000
-                unitScale: 1
-                stepSize: 1
-                precision: 1
-                text: "Membrane resistance"
-                unit: "Ω"
+        Column {
+            LabelControl {
+                neuron: neuronRoot
+            }
+            SynapticOutputControl {
+                engine: neuronEngine
             }
 
-            BoundSlider {
-                width: parent.width
-                minimumValue: 0.0
-                maximumValue: 100e-6
-                target: adaptationCurrent
-                property: "adaptation"
-                text: "Adaptation"
-                unitScale: 1e-6
-                stepSize: 1e-7
-                unit: "uS"
-                precision: 1
+            AdaptationControl{
+            current: adaptationCurrent
             }
-            BoundSlider {
-                width: parent.width
-                minimumValue: 0.0
-                maximumValue: 50.0e-3
-                target: adaptationCurrent
-                property: "timeConstant"
-                text: "Time constant"
-                unit: "ms"
-                unitScale: 1e-3
-                stepSize: 1e-4
-                precision: 1
+            AdaptationTimeConstantControl{
+                current: adaptationCurrent
             }
+            spacing: 10
             RestPotentialControl{
                 engine: neuronEngine
             }
         }
     }
 
+
     savedProperties: PropertyGroup {
-        property alias resistance: neuronRoot.resistance
-        property alias adaptation: neuronRoot.adaptation
-        property alias timeConstant: neuronRoot.timeConstant
+        property alias label: neuronRoot.label
+        property alias fireOutput: neuronEngine.fireOutput
+        property alias adaptation: adaptationCurrent.adaptation
+        property alias timeConstant: adaptationCurrent.timeConstant
+
+
+        // Do we need to save these?
+        property alias resistance: passiveCurrent.resistance
+        property alias capacitance: neuronEngine.capacitance
+        property alias restingPotential: neuronEngine.restingPotential
+        property alias initialPotential: neuronEngine.initialPotential
+        property alias threshold: neuronEngine.threshold
+        property alias synapticTimeConstant: neuronEngine.synapticTimeConstant
+        property alias synapticPotential: neuronEngine.synapticPotential
     }
 }
 

@@ -76,5 +76,14 @@
         <file>qml/menus/mainmenu/SaveView.qml</file>
         <file>qml/controls/ResistanceControl.qml</file>
         <file>qml/controls/SynapticOutputControl.qml</file>
+        <file>qml/controls/ThresholdControl.qml</file>
+        <file>qml/controls/RestingPotentialControl.qml</file>
+        <file>qml/controls/InitialPotentialControl.qml</file>
+        <file>qml/controls/CapacitanceControl.qml</file>
+        <file>qml/controls/SynapticPotentialControl.qml</file>
+        <file>qml/controls/SynapticTimeConstantControl.qml</file>
+        <file>qml/controls/LabelControl.qml</file>
+        <file>qml/controls/AdaptationControl.qml</file>
+        <file>qml/controls/AdaptationTimeConstantControl.qml</file>
     </qresource>
 </RCC>

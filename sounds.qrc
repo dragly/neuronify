@@ -7,6 +7,5 @@
         <file>sounds/drip.wav</file>
         <file>sounds/glass.wav</file>
         <file>sounds/sonar.wav</file>
-        <file>qml/controls/LabelControl.qml</file>
     </qresource>
 </RCC>
