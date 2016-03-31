@@ -28,25 +28,35 @@ Node {
     }
 
     controls: Component {
-        TextArea {
-            id: textInput
-            text: noteRoot.text
-            height: 200
-            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-            clip: true
-            textFormat: Text.PlainText
-            onFocusChanged: {
-                noteRoot.selected = focus
+        Column {
+            spacing: Style.spacing
+            Text {
+                text: "Text:"
             }
-            Binding {
-                target: noteRoot
-                property: "text"
-                value: textInput.text
-            }
-            Binding {
-                target: textInput
-                property: "text"
-                value: noteRoot.text
+            TextArea {
+                id: textInput
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                text: noteRoot.text
+                height: 200
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                clip: true
+                textFormat: Text.PlainText
+                onFocusChanged: {
+                    noteRoot.selected = focus
+                }
+                Binding {
+                    target: noteRoot
+                    property: "text"
+                    value: textInput.text
+                }
+                Binding {
+                    target: textInput
+                    property: "text"
+                    value: noteRoot.text
+                }
             }
         }
     }
@@ -65,7 +75,7 @@ Node {
         verticalAlignment: TextInput.AlignVCenter
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         clip: true
-        font.pixelSize: 18
+        font.pixelSize: 14
     }
 
     ResizeRectangle {}

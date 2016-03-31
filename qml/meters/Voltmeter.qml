@@ -28,7 +28,7 @@ Node {
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentSeries: 0
-    property string title: "mV"
+    property bool showLegend: false
 
     property real timeFactor: 1000
     property real voltageFactor: 1000
@@ -43,7 +43,7 @@ Node {
 
     property real maximumPointCount: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
-            return 80.0
+            return 120.0
         } else {
             return 240.0
         }
@@ -69,8 +69,8 @@ Node {
 
         }
     }
-    width: 240
-    height: 180
+    width: 320
+    height: 224
     color: Style.color.foreground
 
     engine: NodeEngine {
@@ -109,6 +109,7 @@ Node {
         property alias height: voltmeterRoot.height
         property alias maximumValue: voltmeterRoot.maximumValue
         property alias minimumValue: voltmeterRoot.minimumValue
+        property alias showLegend: voltmeterRoot.showLegend
     }
 
     onEdgeAdded: {
@@ -203,6 +204,7 @@ Node {
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
+            titleText: voltmeterRoot.showLegend ? "t [ms]" : ""
         }
 
         ValueAxis {
@@ -213,7 +215,7 @@ Node {
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
-            titleText: voltmeterRoot.title
+            titleText: voltmeterRoot.showLegend ? "V [mV]" : ""
         }
     }
 

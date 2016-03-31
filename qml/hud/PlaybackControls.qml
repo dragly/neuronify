@@ -82,28 +82,6 @@ Rectangle {
                 }
             }
         }
-
-        Item {
-            height: Style.touchableSize
-            width: height
-            Image {
-                id: hideImage
-                anchors {
-                    fill: parent
-                    margins: parent.width * 0.2
-                }
-                width: Style.touchableSize
-                height: width
-                source: "qrc:/images/back.png"
-                rotation: 270
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        playbackRoot.revealed = false
-                    }
-                }
-            }
-        }
     }
 
     Binding {

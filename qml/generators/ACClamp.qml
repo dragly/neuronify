@@ -20,8 +20,8 @@ Node {
 
     fileName: "generators/ACClamp.qml"
 
-    width: 62
-    height: 62
+    width: 64
+    height: 64
     color: "#dd5000"
     canReceiveConnections: false
 

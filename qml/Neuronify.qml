@@ -558,7 +558,7 @@ Rectangle {
             property double startScale: 1.0
 
             function clampScale(scale) {
-                return Math.min(1.0, Math.max(0.1, scale))
+                return Math.min(2.0, Math.max(0.1, scale))
             }
 
             onPinchStarted: {
@@ -718,12 +718,16 @@ Rectangle {
                 propertiesPanel.revealed = !propertiesPanel.revealed
             }
         }
+    }
 
-        DeleteButton {
-            revealed: activeObject ? true : false
-            onClicked: {
-                deleteSelected()
-            }
+    DeleteButton {
+        anchors {
+            right: parent.right
+            bottom: parent.bottom
+        }
+        revealed: activeObject ? true : false
+        onClicked: {
+            deleteSelected()
         }
     }
 

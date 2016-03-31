@@ -2,8 +2,8 @@ import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 
-import ".."
-import "../controls"
+import "qrc:/qml"
+import "qrc:/qml/controls"
 import "qrc:/qml/style"
 
 /*!
@@ -27,6 +27,8 @@ Column {
     property double sliderMaximum: 250
     property string unit: ""
     property string meterType: ""
+
+    spacing: Style.spacing
 
     onMeterChanged: {
         if(!meterControlsRoot.meter) {
@@ -52,5 +54,53 @@ Column {
         minimumValue: meterControlsRoot.sliderMinimum
         maximumValue: meterControlsRoot.sliderMaximum
     }
+
+    Item {
+        anchors {
+            left: parent.left
+            right: parent.right
+        }
+        height: Math.max(switchText.height, showLegendSwitch.height)
+
+        Label {
+            id: switchText
+
+            anchors {
+                left: parent.left
+                verticalCenter: parent.verticalCenter
+            }
+            text: "Show legend"
+        }
+
+        Switch {
+            id: showLegendSwitch
+            anchors {
+                right: parent.right
+                verticalCenter: parent.verticalCenter
+            }
+            checked: meter.showLegend
+        }
+
+        Binding {
+            target: showLegendSwitch
+            property: "checked"
+            value: meter.showLegend
+        }
+
+        Binding {
+            target: meter
+            property: "showLegend"
+            value: showLegendSwitch.checked
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            propagateComposedEvents: true
+            onClicked: {
+                showLegendSwitch.checked = !showLegendSwitch.checked
+            }
+        }
+    }
+
 }
 
