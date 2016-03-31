@@ -73,5 +73,7 @@
         <file>qml/controls/RestPotentialControl.qml</file>
         <file>qml/neurons/NeuronEngine.qml</file>
         <file>qml/hud/PlaybackButton.qml</file>
+        <file>qml/io/CustomFileIcon.qml</file>
+        <file>qml/menus/mainmenu/SaveView.qml</file>
     </qresource>
 </RCC>
