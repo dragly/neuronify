@@ -21,6 +21,8 @@ Column {
         }
     }
 
+    spacing: 5
+
     Button {
         text: "Reset all neurons"
         onClicked: {

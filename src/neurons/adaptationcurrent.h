@@ -29,7 +29,7 @@ public slots:
     void setTimeConstant(double arg);
 
 protected:
-    virtual void stepEvent(double dt) override;
+    virtual void stepEvent(double dt, bool parentEnabled) override;
     virtual void fireEvent() override;
 
 private:

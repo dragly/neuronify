@@ -6,7 +6,7 @@ if len(argv) < 2:
     print("Usage: python configure.py <qmake path>")
     print("qmake path is typically /home/username/apps/Qt/5.6/gcc_64/bin/qmake")
     exit(0)
-    
+
 qmake_path = argv[1]
 
 subprocess.call("git submodule init", shell=True)

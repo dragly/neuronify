@@ -807,7 +807,13 @@ Rectangle {
         }
 
         onLoadSimulation: {
-            root.loadSimulation(simulation.stateSource)
+            root.loadSimulation(simulation)
+            mainMenu.revealed = false
+            root.running = wasRunning
+        }
+
+        onSaveSimulation: {
+            root.saveState(simulation)
             mainMenu.revealed = false
         }
 

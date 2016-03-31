@@ -51,7 +51,6 @@
         <file>qml/hud/GeneratorsList.qml</file>
         <file>qml/sensors/Retina.qml</file>
         <file>qml/sensors/TouchSensor.qml</file>
-        <file>qml/sensors/TouchSensorCell.qml</file>
         <file>qml/hud/SensorsList.qml</file>
         <file>qml/controls/BoundSlider.qml</file>
         <file>qml/generators/ACClamp.qml</file>
@@ -73,7 +72,18 @@
         <file>qml/controls/RestPotentialControl.qml</file>
         <file>qml/neurons/NeuronEngine.qml</file>
         <file>qml/hud/PlaybackButton.qml</file>
+        <file>qml/io/CustomFileIcon.qml</file>
+        <file>qml/menus/mainmenu/SaveView.qml</file>
         <file>qml/controls/ResistanceControl.qml</file>
         <file>qml/controls/SynapticOutputControl.qml</file>
+        <file>qml/controls/ThresholdControl.qml</file>
+        <file>qml/controls/RestingPotentialControl.qml</file>
+        <file>qml/controls/InitialPotentialControl.qml</file>
+        <file>qml/controls/CapacitanceControl.qml</file>
+        <file>qml/controls/SynapticPotentialControl.qml</file>
+        <file>qml/controls/SynapticTimeConstantControl.qml</file>
+        <file>qml/controls/LabelControl.qml</file>
+        <file>qml/controls/AdaptationControl.qml</file>
+        <file>qml/controls/AdaptationTimeConstantControl.qml</file>
     </qresource>
 </RCC>
