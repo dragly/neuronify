@@ -10,13 +10,9 @@ Item {
 
     property bool revealed: false
 
-    anchors {
-        left: parent.left
-        bottom: parent.bottom
-        leftMargin: -width
-    }
+    opacity: 0
 
-    width: Style.touchableSize * 2
+    width: Style.touchableSize * 1.5
     height: width
     Image {
         width: Style.touchableSize
@@ -25,7 +21,7 @@ Item {
 
         fillMode: Image.PreserveAspectFit
 
-        source: "../../images/delete.png"
+        source: "qrc:/images/tools/delete.png"
         antialiasing: true
         smooth: true
     }
@@ -41,13 +37,14 @@ Item {
         when: revealed
         PropertyChanges {
             target: root
-            anchors.leftMargin: 0
+//            anchors.rightMargin: 0
+            opacity: 1.0
         }
     }
 
     transitions: Transition {
         NumberAnimation {
-            property: "anchors.leftMargin"
+            property: "opacity"
             duration: 400
             easing.type: Easing.InOutQuad
         }

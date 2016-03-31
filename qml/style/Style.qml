@@ -16,6 +16,7 @@ Item {
     property real margin: 4 * size
     property real baseMargin: margin
     property real scale: 1.0
+    property real spacing: size
 
     property alias text: textObject
     property alias heading: headingObject

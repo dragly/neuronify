@@ -7,18 +7,18 @@ Item {
 
     signal clicked
 
-    anchors {
-        right: parent.right
-        top: parent.top
-    }
-    width: Style.touchableSize * 2
+//    anchors {
+//        right: parent.right
+//        top: parent.top
+//    }
+    width: Style.touchableSize * 1.5
     height: width
     Image {
         width: Style.touchableSize
         height: width
         anchors.centerIn: parent
 
-        source: "qrc:/images/back.png"
+        source: "qrc:/images/tools/create.png"
     }
 
     MouseArea {

@@ -23,49 +23,23 @@ Item {
     
     property bool revealed: true
     
-    anchors {
-        horizontalCenter: parent.horizontalCenter
-        bottom: parent.bottom
-    }
-    width: Style.touchableSize * 2
+//    anchors {
+//        horizontalCenter: parent.horizontalCenter
+//        bottom: parent.bottom
+//    }
+    width: Style.touchableSize * 1.5
     height: width
     
     enabled: revealed
     state: revealed ? "revealed" : "hidden"
-    
-    states: [
-        State {
-            name: "hidden"
-            PropertyChanges {
-                target: playbackButton
-                opacity: 0.0
-            }
-        },
-        State {
-            name: "revealed"
-            PropertyChanges {
-                target: playbackButton
-                opacity: 1.0
-            }
-        }
-    ]
-    
-    transitions: [
-        Transition {
-            NumberAnimation {
-                properties: "opacity"
-                duration: 200
-                easing.type: Easing.InOutQuad
-            }
-        }
-    ]
+
     Image {
         
         anchors.centerIn: parent
         width: Style.touchableSize
         height: width
         
-        source: "qrc:/images/playback/playpause.png"
+        source: "qrc:/images/tools/playback.png"
     }
     
     
@@ -75,4 +49,24 @@ Item {
             playbackButton.clicked()
         }
     }
+
+    states: [
+        State {
+            when: revealed
+            PropertyChanges {
+                target: playbackButton
+                opacity: 1.0
+            }
+        }
+    ]
+
+    transitions: [
+        Transition {
+            NumberAnimation {
+                properties: "opacity"
+                duration: 200
+                easing.type: Easing.InOutQuad
+            }
+        }
+    ]
 }

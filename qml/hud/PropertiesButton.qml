@@ -10,12 +10,13 @@ Item {
 
     property bool revealed: false
 
-    anchors {
-        right: parent.right
-        bottom: parent.bottom
-        rightMargin: -width
-    }
-    width: Style.touchableSize * 2
+//    anchors {
+//        right: parent.right
+//        bottom: parent.bottom
+//        rightMargin: -width
+//    }
+    opacity: 0
+    width: Style.touchableSize * 1.5
     height: width
     Image {
         anchors.centerIn: parent
@@ -24,7 +25,7 @@ Item {
 
         fillMode: Image.PreserveAspectFit
 
-        source: "qrc:/images/menus/properties.png"
+        source: "qrc:/images/tools/properties.png"
     }
 
     MouseArea {
@@ -38,13 +39,15 @@ Item {
         when: revealed
         PropertyChanges {
             target: root
-            anchors.rightMargin: 0
+//            anchors.rightMargin: 0
+            opacity: 1.0
         }
     }
 
     transitions: Transition {
         NumberAnimation {
-            property: "anchors.rightMargin"
+//            property: "anchors.rightMargin"
+            property: "opacity"
             duration: 400
             easing.type: Easing.InOutQuad
         }

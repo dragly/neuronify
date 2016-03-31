@@ -9,7 +9,7 @@ import Neuronify 1.0
 Node {
     id: noteRoot
 
-    property alias text: textInput.text
+    property string text: "Open properties to change this text"
 
     objectName: "note"
     fileName: "annotations/Note.qml"
@@ -27,10 +27,27 @@ Node {
         property alias height: noteRoot.height
     }
 
-    onSelectedChanged: {
-        transformMove.visible = !transformMove.visible
-        if (!noteRoot.selected) {
-            textInput.select(0, 0)
+    controls: Component {
+        TextArea {
+            id: textInput
+            text: noteRoot.text
+            height: 200
+            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            clip: true
+            textFormat: Text.PlainText
+            onFocusChanged: {
+                noteRoot.selected = focus
+            }
+            Binding {
+                target: noteRoot
+                property: "text"
+                value: textInput.text
+            }
+            Binding {
+                target: textInput
+                property: "text"
+                value: noteRoot.text
+            }
         }
     }
 
@@ -39,45 +56,19 @@ Node {
         color: parent.color
     }
 
-    TextArea {
-        id: textInput
+    Text {
         anchors.fill: parent
         anchors.margins: 10
+        text: noteRoot.text
+        textFormat: Text.PlainText
         horizontalAlignment: TextInput.AlignHCenter
         verticalAlignment: TextInput.AlignVCenter
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         clip: true
-        onFocusChanged: {
-            noteRoot.selected = focus
-        }
-        font.pixelSize: 14
-
-        visible: noteRoot.selected
-
-        textFormat: Text.PlainText
-
-        style: TextAreaStyle {
-            textColor: Style.text.color
-            backgroundColor: "#AEDBFF"
-
-        }
+        font.pixelSize: 18
     }
 
-    Text {
-        anchors.fill: textInput.anchors.fill
-        anchors.margins: textInput.anchors.margins
-        text: textInput.text
-        visible: !textInput.visible
-        textFormat: textInput.textFormat
-        horizontalAlignment: textInput.horizontalAlignment
-        verticalAlignment: textInput.verticalAlignment
-        wrapMode: textInput.wrapMode
-        clip: textInput.clip
-        font.pixelSize: textInput.font.pixelSize
-    }
-
-    ResizeRectangle {
-    }
+    ResizeRectangle {}
 
     Rectangle {
         id: transformMove
@@ -92,7 +83,7 @@ Node {
         color: "#c6dbef"
         border.width: width * 0.1
         border.color: "#f7fbff"
-        visible: false
+        visible: noteRoot.selected
 
         Image {
 

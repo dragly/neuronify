@@ -679,39 +679,51 @@ Rectangle {
         }
     }
 
-    MainMenuButton {
-        revealed: !mainMenu.revealed
-        onClicked: {
-            mainMenu.revealed = true
+    Column {
+        anchors {
+            right: parent.right
+            top: parent.top
         }
-    }
+        width: Style.touchableSize * 1.5
 
-    CreationMenuButton {
-        onClicked: {
-            creationMenu.revealed = true
+//        spacing: Style.spacing
+
+        spacing: 0
+
+        MainMenuButton {
+            id: mainMenuButton
+            revealed: !mainMenu.revealed
+            onClicked: {
+                mainMenu.revealed = true
+            }
         }
-    }
 
-    DeleteButton {
-        revealed: activeObject ? true : false
-        onClicked: {
-            deleteSelected()
+        CreationMenuButton {
+            onClicked: {
+                creationMenu.revealed = !creationMenu.revealed
+            }
         }
-    }
 
-    PropertiesButton {
-        revealed: activeObject ? true : false
-        onClicked: {
-            propertiesPanel.revealed = true
+        PlaybackButton {
+            id: playbackButton
+            onClicked: {
+                playbackControlsAutoHideTimer.stop()
+                playbackControls.revealed = !playbackControls.revealed
+            }
         }
-    }
 
-    PlaybackButton {
-        id: playbackButton
-        revealed: !playbackControls.revealed
-        onClicked: {
-            playbackControlsAutoHideTimer.stop()
-            playbackControls.revealed = true
+        PropertiesButton {
+            revealed: activeObject ? true : false
+            onClicked: {
+                propertiesPanel.revealed = !propertiesPanel.revealed
+            }
+        }
+
+        DeleteButton {
+            revealed: activeObject ? true : false
+            onClicked: {
+                deleteSelected()
+            }
         }
     }
 

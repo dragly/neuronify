@@ -5,11 +5,11 @@ import "../../style"
 Item {
     id: root
 
-    anchors {
-        top: parent.top
-        left: parent.left
-    }
-    width: Style.touchableSize * 2
+//    anchors {
+//        top: parent.top
+//        left: parent.left
+//    }
+    width: Style.touchableSize * 1.5
     height: width
 
     enabled: revealed
@@ -50,7 +50,7 @@ Item {
         width: Style.touchableSize
         height: width
 
-        source: "qrc:/images/menus/mainmenu.png"
+        source: "qrc:/images/tools/mainmenu.png"
     }
 
 
