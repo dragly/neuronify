@@ -62,5 +62,12 @@
         <file>images/playback/play.png</file>
         <file>images/playback/superduperfast.png</file>
         <file>images/playback/superfast.png</file>
+        <file>images/playback/playpause.png</file>
+        <file>images/playback/fast-active.png</file>
+        <file>images/playback/pause-active.png</file>
+        <file>images/playback/play-active.png</file>
+        <file>images/playback/playpause-active.png</file>
+        <file>images/playback/superduperfast-active.png</file>
+        <file>images/playback/superfast-active.png</file>
     </qresource>
 </RCC>
