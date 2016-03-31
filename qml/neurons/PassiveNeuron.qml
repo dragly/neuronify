@@ -64,6 +64,11 @@ Neuron {
                 current: passiveCurrent
             }
 
+            RefractoryPeriodControl{
+                engine: neuronEngine
+            }
+
+
             SynapticOutputControl {
                 engine: neuronEngine
             }
