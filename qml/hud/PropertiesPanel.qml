@@ -45,33 +45,32 @@ Item {
             }
         }
 
-        ScrollView {
-            id: flickableView
+        StackView {
+            id: stackView
             anchors.fill: parent
+            initialItem: stackViewComponent
 
-            flickableItem.flickableDirection: Flickable.VerticalFlick
-//            contentHeight: container.height
+            Component {
+                id: stackViewComponent
+                Column {
+                    id: container
+//                    anchors {
+//                        top: parent.top
+//                        margins: 10
+//                    }
+//                    x: 16
+//                    width: flickableView.width - 48
 
-            Column {
-                id: container
-                anchors {
-//                    left: parent.left
-//                    right: parent.right
-                    top: parent.top
-                    margins: 10
-                }
-                x: 16
-                width: flickableView.width - 48
+                    spacing: 16
 
-                spacing: 16
+                    Loader {
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                        }
 
-                Loader {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
+                        sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
                     }
-
-                    sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
                 }
             }
         }
