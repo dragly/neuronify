@@ -23,6 +23,9 @@ Item {
     MouseArea {
         enabled: mainMenuRoot.revealed
         anchors.fill: parent
+        onWheel: {
+            wheel.accepted = true
+        }
     }
 
     Item {

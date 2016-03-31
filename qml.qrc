@@ -72,5 +72,6 @@
         <file>qml/ResizeHandle.qml</file>
         <file>qml/controls/RestPotentialControl.qml</file>
         <file>qml/neurons/NeuronEngine.qml</file>
+        <file>qml/hud/PlaybackButton.qml</file>
     </qresource>
 </RCC>

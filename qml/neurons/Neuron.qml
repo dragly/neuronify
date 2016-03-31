@@ -57,17 +57,17 @@ Node {
     }
 
     Rectangle {
-        property real value: Math.max(0.0, (voltage + 100e-3) / 150e-3)
+        property real thresholdRatio: Math.max(0.0, (voltage - engine.initialPotential) / (engine.threshold - engine.initialPotential))
 
         anchors.fill: parent
-        anchors.margins: value * 6.0
-        radius: width * 0.5
+        anchors.margins: thresholdRatio * 6.0
+        border.width: thresholdRatio * 12.0
         border.color: "#f7fbff"
         color: "transparent"
-        border.width: value * 12.0
+        radius: width * 0.5
         smooth: true
         antialiasing: true
-        opacity: value * 0.4
+        opacity: thresholdRatio * 0.4
     }
 
     Rectangle {

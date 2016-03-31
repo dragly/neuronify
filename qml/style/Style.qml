@@ -36,6 +36,7 @@ Item {
     QtObject {
         id: borderObject
         property color color: "#9ecae1"
+        property color lightColor: "#d5e8f2"
         property real width: 2.0
     }
 

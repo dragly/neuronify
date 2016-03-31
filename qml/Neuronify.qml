@@ -135,6 +135,9 @@ Rectangle {
     function loadSimulation(fileUrl) {
         console.log("Load state called")
 
+        playbackControls.revealed = true
+        playbackControlsAutoHideTimer.restart()
+
         undoList.length = 0
 
         undoIdx = 1
@@ -689,7 +692,6 @@ Rectangle {
         }
     }
 
-
     DeleteButton {
         revealed: activeObject ? true : false
         onClicked: {
@@ -704,8 +706,35 @@ Rectangle {
         }
     }
 
+    PlaybackButton {
+        id: playbackButton
+        revealed: !playbackControls.revealed
+        onClicked: {
+            playbackControlsAutoHideTimer.stop()
+            playbackControls.revealed = true
+        }
+    }
+
     PlaybackControls {
         id: playbackControls
+        revealed: true
+        MouseArea {
+            anchors.fill: parent
+            enabled: playbackControlsAutoHideTimer.running
+            propagateComposedEvents: true
+            onClicked: {
+                playbackControlsAutoHideTimer.stop()
+                mouse.accepted = false
+            }
+        }
+        Timer {
+            id: playbackControlsAutoHideTimer
+            running: root.running
+            interval: 2000
+            onTriggered: {
+                playbackControls.revealed = false
+            }
+        }
     }
 
     CreationMenu {
