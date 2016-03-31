@@ -18,7 +18,6 @@ class NeuronEngine : public NodeEngine
     Q_PROPERTY(double synapticPotential READ synapticPotential WRITE setSynapticPotential NOTIFY synapticPotentialChanged)
     Q_PROPERTY(double threshold READ threshold WRITE setThreshold NOTIFY thresholdChanged)
     Q_PROPERTY(double capacitance READ capacitance WRITE setCapacitance NOTIFY capacitanceChanged)
-    Q_PROPERTY(double refractoryPeriod READ refractoryPeriod WRITE setRefractoryPeriod NOTIFY refractoryPeriodChanged)
 
 public:
     NeuronEngine(QQuickItem *parent = 0);
@@ -32,8 +31,6 @@ public:
     double initialPotential() const;
     double synapticTimeConstant() const;
 
-    double refractoryPeriod() const;
-
 public slots:
     void setVoltage(double arg);
     void setSynapticConductance(double arg);
@@ -45,8 +42,6 @@ public slots:
     void setInitialPotential(double initialPotential);
     void setSynapticTimeConstant(double synapticTimeConstant);
 
-    void setRefractoryPeriod(double refractoryPeriod);
-
 signals:
     void voltageChanged(double arg);
     void synapticConductanceChanged(double arg);
@@ -57,10 +52,9 @@ signals:
     void initialPotentialChanged(double initialPotential);
     void synapticTimeConstantChanged(double synapticTimeConstant);
 
-    void refractoryPeriodChanged(double refractoryPeriod);
 
 protected:
-    virtual void stepEvent(double dt);
+    virtual void stepEvent(double dt, bool parentEnabled);
     virtual void fireEvent();
     virtual void receiveFireEvent(double fireOutput, NodeEngine *sender);
     virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender);
@@ -78,8 +72,6 @@ private:
     double m_initialPotential = -80.0e-3;
     double m_synapticTimeConstant = 10.0e-3;
 
-    double m_refractoryPeriod = 0.0;
-    double m_timeSinceLastFiring = 0.0;
 };
 
 #endif // NEURONIFY_NEURONENGINE_H

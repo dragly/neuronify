@@ -74,17 +74,6 @@ Column {
         precision: 1
     }
 
-    BoundSlider {
-        target: engine
-        property: "refractoryPeriod"
-        text: "Refractory period"
-        unit: "ms"
-        minimumValue: 0.0e-3
-        maximumValue: 100e-3
-        unitScale: 1e-3
-        stepSize: 1e-3
-        precision: 1
-    }
 
     Text {
         text: "Synaptic input:"

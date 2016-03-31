@@ -51,7 +51,6 @@
         <file>qml/hud/GeneratorsList.qml</file>
         <file>qml/sensors/Retina.qml</file>
         <file>qml/sensors/TouchSensor.qml</file>
-        <file>qml/sensors/TouchSensorCell.qml</file>
         <file>qml/hud/SensorsList.qml</file>
         <file>qml/controls/BoundSlider.qml</file>
         <file>qml/generators/ACClamp.qml</file>
