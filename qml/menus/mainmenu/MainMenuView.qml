@@ -14,6 +14,19 @@ Item {
     width: 200
     height: 100
 
+    Image {
+        id: logo
+        anchors {
+            right: parent.right
+            verticalCenter: parent.verticalCenter
+            rightMargin: Style.touchableSize
+        }
+        width: mainMenuView.width * 0.4
+        height: mainMenuView.height * 0.5
+        fillMode: Image.PreserveAspectFit
+        source: "qrc:/images/logo/mainMenuLogo.png"
+    }
+
     Column {
         anchors {
             left: parent.left

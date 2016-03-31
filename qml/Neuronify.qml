@@ -811,9 +811,12 @@ Rectangle {
         running: root.running
 
         onTriggered: {
-            var dt = 0.1e-3 * workspace.playbackSpeed
-            time += dt
-            graphEngine.step(dt)
+//            var dt = 0.1e-3 * workspace.playbackSpeed
+            var dt = 0.1e-3
+            for(var i = 0; i < workspace.playbackSpeed; i++) {
+                time += dt
+                graphEngine.step(dt)
+            }
         }
     }
 
