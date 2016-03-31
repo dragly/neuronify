@@ -18,8 +18,7 @@ sizes = {
     "hdpi": 72,
     "xhdpi": 96,
     "xxhdpi": 144,
-    "xxxhdpi": 192,
-    "store": 512
+    "xxxhdpi": 192
 }
 for name in sizes:
     size = sizes[name]
