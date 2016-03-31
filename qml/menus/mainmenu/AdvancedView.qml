@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import "../../style"
 
+
 Item {
     id: mainMenuView
 
@@ -25,6 +26,7 @@ Item {
             width: parent.width
             text: "Save simulation"
             onClicked: {
+                saveView.isSave = true
                 saveSimulationClicked()
             }
         }
@@ -32,6 +34,7 @@ Item {
             width: parent.width
             text: "Load simulation"
             onClicked: {
+                saveView.isSave = false
                 loadSimulationClicked()
             }
         }

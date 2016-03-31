@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
 
 import "../../style"
+import "../../io"
 
 Item {
     id: mainMenuRoot
@@ -11,6 +12,7 @@ Item {
     signal continueClicked
     signal newClicked
     signal loadSimulation(var simulation)
+    signal saveSimulation(var simulation)
     signal saveSimulationRequested
     signal loadSimulationRequested
 
@@ -175,11 +177,12 @@ Item {
         height: parent.height
 
         onSaveSimulationClicked: {
-            saveSimulationRequested()
+            //saveSimulationRequested()
+            stackView.push(saveView)
         }
 
         onLoadSimulationClicked: {
-            loadSimulationRequested()
+            stackView.push(saveView)
         }
     }
 
@@ -188,6 +191,15 @@ Item {
         visible: false
         width: parent.width
         height: parent.height
+    }
+
+    SaveView {
+        id: saveView
+        visible: false
+        width: parent.width
+        height: parent.height
+        onLoad: loadSimulation(filename)
+        onSave: saveSimulation(filename)
     }
 
     states: [

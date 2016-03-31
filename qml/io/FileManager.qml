@@ -96,17 +96,38 @@ Item {
         onError: console.log(msg)
     }
 
-    FileDialog {
-        id: saveFileDialog
-        title: "Please enter a filename"
-        visible : false
-        selectExisting: false
-        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
 
-        onAccepted: {
-            saveState(fileUrl)
-        }
-    }
+//    Item {
+//        id: saveFileDialog
+//        visible : false
+//        Grid{
+//            id: saveFileDialogGrid
+//            columns: 3
+//            spacing: 2
+//            CustomFileIcon{ }
+//            CustomFileIcon{ }
+//            CustomFileIcon{ }
+//            CustomFileIcon{ }
+//            CustomFileIcon{ }
+//            CustomFileIcon{ }
+
+//        }
+
+
+
+
+
+//    FileDialog {
+//        id: saveFileDialog
+//        title: "Please enter a filename"
+//        visible : false
+//        selectExisting: false
+//        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
+
+//        onAccepted: {
+//            saveState(fileUrl)
+//        }
+//    }
 
     FileDialog {
         id: loadFileDialog
