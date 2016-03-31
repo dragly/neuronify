@@ -1,4 +1,6 @@
-import QtQuick 2.0
+import QtQuick 2.6
+import QtQuick.Controls 1.4
+
 import Neuronify 1.0
 
 import "qrc:/"
@@ -39,48 +41,63 @@ Neuron {
 
     controls: Component {
         Column {
-
-            LabelControl {
-                neuron: neuronRoot
+            property StackView stackView: Stack.view
+            Button {
+                text: "Push me!"
+                onClicked: {
+                    stackView.push(comp)
+                }
             }
 
-            RestingPotentialControl{
-                engine: neuronEngine
+            Component {
+                id: comp
+                Column {
+                    RestingPotentialControl{
+                        engine: neuronEngine
+                    }
+                }
             }
+//            LabelControl {
+//                neuron: neuronRoot
+//            }
 
-            InitialPotentialControl{
-                engine: neuronEngine
-            }
+//            RestingPotentialControl{
+//                engine: neuronEngine
+//            }
 
-            ThresholdControl{
-                engine: neuronEngine
-            }
+//            InitialPotentialControl{
+//                engine: neuronEngine
+//            }
 
-            CapacitanceControl{
-                engine: neuronEngine
-            }
+//            ThresholdControl{
+//                engine: neuronEngine
+//            }
 
-            ResistanceControl{
-                current: passiveCurrent
-            }
+//            CapacitanceControl{
+//                engine: neuronEngine
+//            }
 
-            SynapticOutputControl {
-                engine: neuronEngine
-            }
+//            ResistanceControl{
+//                current: passiveCurrent
+//            }
+
+//            SynapticOutputControl {
+//                engine: neuronEngine
+//            }
 
 
-            SynapticPotentialControl{
-                engine: neuronEngine
-            }
+//            SynapticPotentialControl{
+//                engine: neuronEngine
+//            }
 
-            SynapticTimeConstantControl{
-                engine: neuronEngine
-            }
+//            SynapticTimeConstantControl{
+//                engine: neuronEngine
+//            }
 
-            spacing: 10
-            RestPotentialControl{
-                engine: neuronEngine
-            }
+//            spacing: 10
+//            RestPotentialControl{
+//                engine: neuronEngine
+//            }
         }
     }
 

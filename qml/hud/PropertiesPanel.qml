@@ -52,8 +52,8 @@ Item {
 
             Component {
                 id: stackViewComponent
-                Column {
-                    id: container
+//                Column {
+//                    id: container
 //                    anchors {
 //                        top: parent.top
 //                        margins: 10
@@ -61,17 +61,21 @@ Item {
 //                    x: 16
 //                    width: flickableView.width - 48
 
-                    spacing: 16
+//                    spacing: 16
 
                     Loader {
                         anchors {
                             left: parent.left
                             right: parent.right
                         }
-
                         sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
+                        onLoaded: {
+                            if(item.hasOwnProperty("stackView")) {
+                                item.stackView = Stack.view
+                            }
+                        }
                     }
-                }
+//                }
             }
         }
 

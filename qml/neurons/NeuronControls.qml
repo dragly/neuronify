@@ -23,35 +23,46 @@ Column {
         anchors.right: parent.right
     }
 
-    RestingPotentialControl{
-        engine: root.engine
+    Button {
+        text: "Push me!"
+        onClicked: {
+            Stack.view.push(comp)
+        }
     }
 
-    InitialPotentialControl{
-        engine: root.engine
+    Component {
+        id: comp
+
+        RestingPotentialControl{
+            engine: root.engine
+        }
     }
 
-    ThresholdControl{
-        engine: root.engine
-    }
+    //    InitialPotentialControl{
+    //        engine: root.engine
+    //    }
 
-    CapacitanceControl{
-        engine: root.engine
-    }
+    //    ThresholdControl{
+    //        engine: root.engine
+    //    }
 
-    ResistanceControl{
-    }
+    //    CapacitanceControl{
+    //        engine: root.engine
+    //    }
+
+    //    ResistanceControl{
+    //    }
 
 
-    SynapticPotentialControl{
-        engine: root.engine
-    }
+    //    SynapticPotentialControl{
+    //        engine: root.engine
+    //    }
 
-    SynapticTimeConstantControl{
-        engine: root.engine
-    }
+    //    SynapticTimeConstantControl{
+    //        engine: root.engine
+    //    }
 
-    SynapticOutputControl {
-        engine: root.engine
-    }
+    //    SynapticOutputControl {
+    //        engine: root.engine
+    //    }
 }
