@@ -21,8 +21,8 @@ Node {
 
     fileName: "generators/CurrentClamp.qml"
 
-    width: 62
-    height: 62
+    width: 64
+    height: 64
     color: "#dd5900"
     canReceiveConnections: false
 

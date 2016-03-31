@@ -27,9 +27,8 @@ Node {
     property url inhibitoryImageSource
     property bool isNeuron: true
 
-
     radius: width / 2
-    width: 60
+    width: 64
     height: width
     color: inhibitory ? "#e41a1c" : "#6baed6"
 
@@ -60,7 +59,7 @@ Node {
         property real thresholdRatio: Math.max(0.0, (voltage - engine.initialPotential) / (engine.threshold - engine.initialPotential))
 
         anchors.fill: parent
-        anchors.margins: thresholdRatio * 6.0
+        anchors.margins: 6.0
         border.width: thresholdRatio * 12.0
         border.color: "#f7fbff"
         color: "transparent"

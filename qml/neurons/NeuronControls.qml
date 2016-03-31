@@ -10,6 +10,7 @@ import "qrc:/qml/controls"
 import "qrc:/qml/style"
 
 Column {
+    id: root
     property var neuron: null
     property NeuronEngine engine: null
 
@@ -19,25 +20,6 @@ Column {
     Text {
         text: (neuron.voltage * 1e3).toFixed(0) + " mV"
         anchors.right: parent.right
-    }
-
-    Text {
-        text: "Label:"
-    }
-
-    TextField {
-        id: labelField
-        text: neuron.label
-        anchors {
-            left: parent.left
-            right: parent.right
-        }
-    }
-
-    Binding {
-        target: neuron
-        property: "label"
-        value: labelField.text
     }
 
     Text {
@@ -133,18 +115,7 @@ Column {
         precision: 1
     }
 
-    Text {
-        text: "Synaptic output:"
-    }
-
-    BoundSlider {
-        target: engine
-        property: "fireOutput"
-        minimumValue: -100.0e-6
-        maximumValue: 100.0e-6
-        unitScale: 1e-6
-        text: "Stimulation"
-        unit: "uS"
-        stepSize: 1.0e-6
+    SynapticOutputControl {
+        engine: root.engine
     }
 }

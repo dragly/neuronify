@@ -75,5 +75,7 @@
         <file>qml/hud/PlaybackButton.qml</file>
         <file>qml/io/CustomFileIcon.qml</file>
         <file>qml/menus/mainmenu/SaveView.qml</file>
+        <file>qml/controls/ResistanceControl.qml</file>
+        <file>qml/controls/SynapticOutputControl.qml</file>
     </qresource>
 </RCC>

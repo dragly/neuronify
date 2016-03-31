@@ -9,11 +9,12 @@ LineSeries {
         scroller.append(x, y)
     }
 
+    pointsVisible: false
+    visible: false
+    useOpenGL: true
+
     ChartScroller {
         id: scroller
         series: seriesRoot
     }
-
-    pointsVisible: false
-    visible: false
 }
