@@ -37,8 +37,8 @@ signals:
     void needsRecreation();
 
 protected:
-    int m_resolutionHeight;
-    int m_resolutionWidth;
+    int m_resolutionHeight=20;
+    int m_resolutionWidth=20;
     vector<double> m_x;
     vector<double> m_y;
 

@@ -33,7 +33,7 @@ Node {
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
     property int viewIndex: 0
-    property string kernelType: "kernels/DogKernel.qml"
+    property string kernelType: "kernels/GaborKernel.qml"
     property alias sensitivity: retinaEngine.sensitivity
     property alias plotKernel: retinaEngine.plotKernel
 
@@ -72,10 +72,6 @@ Node {
 
     Kernel{
         id:kernel
-        resolutionHeight : kernelLoader.item ?
-                               kernelLoader.item.resolutionHeight: 80
-        resolutionWidth : kernelLoader.item ?
-                              kernelLoader.item.resolutionWidth : 80
         abstractKernelEngineType: kernelLoader.item ?
                                       kernelLoader.item : null
 
@@ -230,15 +226,13 @@ Node {
             }
 
             //Slider to change the sensitivity:
-            Text {
-                text: "Sensitivity: " + retinaEngine.sensitivity.toFixed(0)
-            }
             BoundSlider {
                 minimumValue: 1
                 maximumValue: 50
                 stepSize: 5
                 target: retinaEngine
                 property: "sensitivity"
+                text: "Sensitivity"
             }
 
 

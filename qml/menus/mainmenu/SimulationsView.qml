@@ -53,6 +53,7 @@ Item {
                         name: "Sterratt Examples",
                         simulations: [
                             "qrc:/simulations/sterratt/fig_8_5",
+                            "qrc:/simulations/sterratt/refractoryPeriod",
                         ]
                     }
                 ]

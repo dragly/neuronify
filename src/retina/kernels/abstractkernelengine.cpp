@@ -2,6 +2,8 @@
 
 AbstractKernelEngine::AbstractKernelEngine()
 {
+        updateX();
+        updateY();
 }
 
 int AbstractKernelEngine::resolutionHeight() const
@@ -22,6 +24,7 @@ void AbstractKernelEngine::setResolutionHeight(int resolutionHeight)
     m_resolutionHeight = resolutionHeight;
     updateY();
     emit resolutionHeightChanged(resolutionHeight);
+    emit needsRecreation();
 }
 
 void AbstractKernelEngine::setResolutionWidth(int resolutionWidth)
@@ -32,6 +35,7 @@ void AbstractKernelEngine::setResolutionWidth(int resolutionWidth)
     m_resolutionWidth = resolutionWidth;
     updateX();
     emit resolutionWidthChanged(resolutionWidth);
+    emit needsRecreation();
 }
 
 vector<double> AbstractKernelEngine::y() const
