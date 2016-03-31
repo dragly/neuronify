@@ -1,13 +1,12 @@
 import QtQuick 2.0
 import Neuronify 1.0
 
-import ".."
-import "../controls"
+import "qrc:/"
+import "qrc:/qml/"
+import "qrc:/qml/controls"
 
 Neuron {
     id: neuronRoot
-    property alias fireOutput: neuronEngine.fireOutput
-    property alias resistance: passiveCurrent.resistance
 
     objectName: "BurstNeuron"
     fileName: "neurons/BurstNeuron.qml"
@@ -39,20 +38,12 @@ Neuron {
     }
 
     controls: Component {
-        NeuronControls {
-            neuron: neuronRoot
-            engine: neuronEngine
-
-            BoundSlider {
-                target: passiveCurrent
-                property: "resistance"
-                minimumValue: 1e3
-                maximumValue: 100e3
-                unitScale: 1e3
-                stepSize: 1e3
-                precision: 1
-                text: "Membrane resistance"
-                unit: "kΩ"
+        Column {
+            LabelControl {
+                neuron: neuronRoot
+            }
+            SynapticOutputControl {
+                engine: neuronEngine
             }
             RestPotentialControl{
                 engine: neuronEngine
@@ -61,7 +52,7 @@ Neuron {
     }
 
     savedProperties: PropertyGroup {
-        property alias resistance: neuronRoot.resistance
+        property alias label: neuronRoot.label
     }
 }
 

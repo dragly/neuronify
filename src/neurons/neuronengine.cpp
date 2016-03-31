@@ -215,8 +215,6 @@ void NeuronEngine::setRefractoryPeriod(double refractoryPeriod)
     emit refractoryPeriodChanged(refractoryPeriod);
 }
 
-
-
 void NeuronEngine::checkFire()
 {
     if(m_voltage > m_threshold) {
