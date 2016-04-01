@@ -41,6 +41,7 @@ Item {
         property real width: 2.0
     }
 
+
     Item {
         id: buttonObject
         property alias font: fontProxy.font

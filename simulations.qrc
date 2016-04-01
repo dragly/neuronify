@@ -30,5 +30,17 @@
         <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.nfy</file>
         <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.png</file>
         <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.qml</file>
+        <file>simulations/typesOfInhibition/typesOfInhibition.qml</file>
+        <file>simulations/typesOfInhibition/typesOfInhibition.png</file>
+        <file>simulations/typesOfInhibition/typesOfInhibition.nfy</file>
+        <file>simulations/rythmTransformation/rythmTransformation.qml</file>
+        <file>simulations/rythmTransformation/rythmTransformation.png</file>
+        <file>simulations/rythmTransformation/rythmTransformation.nfy</file>
+        <file>simulations/reciprocalInhibition/reciprocalInhibition.qml</file>
+        <file>simulations/reciprocalInhibition/reciprocalInhibition.png</file>
+        <file>simulations/reciprocalInhibition/reciprocalInhibition.nfy</file>
+        <file>simulations/prolongedActivity/prolongedActivity.qml</file>
+        <file>simulations/prolongedActivity/prolongedActivity.png</file>
+        <file>simulations/prolongedActivity/prolongedActivity.nfy</file>
     </qresource>
 </RCC>

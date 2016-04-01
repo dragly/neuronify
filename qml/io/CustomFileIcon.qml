@@ -2,7 +2,7 @@ import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.3
 import "../.."
-
+import "../style"
 
 Rectangle {
         id: iconRoot
@@ -13,7 +13,8 @@ Rectangle {
         Layout.fillHeight: true
         width : 1
         height : 1
-        color : fileExists() ? "red" : "blue"
+        //color : fileExists() ? "red" : "blue"
+        color: fileExists() ? Style.button.backgroundColor : "blue"
 
 
         function fileExists(){
@@ -27,16 +28,19 @@ Rectangle {
 
         MouseArea{
             anchors.fill: parent
-//            enabled: fileExists()
+            enabled: (fileExists() || saveView.isSave)
             onClicked: {
                 iconRoot.clicked()
+                iconRoot.color = fileExists() ? Style.button.backgroundColor : "blue"
             }
 
         }
         Text {
             id: saveText
             text: parent.name
-            color: "black"
+            font: Style.button.font
+            renderType: Text.QtRendering
+            color: Style.button.color
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
         }
