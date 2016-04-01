@@ -12,6 +12,13 @@ Item {
 
     anchors.fill: parent
 
+    onActiveObjectChanged: {
+        stackView.clear()
+        if(activeObject && activeObject.controls) {
+            stackView.push(activeObject.controls)
+        }
+    }
+
     Rectangle {
         id: background
         anchors {
@@ -48,10 +55,11 @@ Item {
         StackView {
             id: stackView
             anchors.fill: parent
-            initialItem: stackViewComponent
+            clip: true
+//            initialItem: (activeObject && activeObject.controls) ? activeObject.controls : undefined
 
-            Component {
-                id: stackViewComponent
+//            Component {
+//                id: stackViewComponent
 //                Column {
 //                    id: container
 //                    anchors {
@@ -63,20 +71,20 @@ Item {
 
 //                    spacing: 16
 
-                    Loader {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                        }
-                        sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
-                        onLoaded: {
-                            if(item.hasOwnProperty("stackView")) {
-                                item.stackView = Stack.view
-                            }
-                        }
-                    }
+//                    Loader {
+//                        anchors {
+//                            left: parent.left
+//                            right: parent.right
+//                        }
+//                        sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
+//                        onLoaded: {
+//                            if(item.hasOwnProperty("stackView")) {
+//                                item.stackView = Stack.view
+//                            }
+//                        }
+//                    }
 //                }
-            }
+//            }
         }
 
         states: State {

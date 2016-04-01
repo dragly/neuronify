@@ -12,6 +12,7 @@ import "qrc:/qml/style"
 
 Column {
     id: root
+    property StackView stackView: Stack.view
     property var neuron: null
     property NeuronEngine engine: null
 
@@ -26,7 +27,7 @@ Column {
     Button {
         text: "Push me!"
         onClicked: {
-            Stack.view.push(comp)
+            stackView.push(comp)
         }
     }
 

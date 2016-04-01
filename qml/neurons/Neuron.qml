@@ -32,13 +32,6 @@ Node {
     height: width
     color: inhibitory ? "#e41a1c" : "#6baed6"
 
-    controls: Component {
-        NeuronControls {
-            neuron: root
-            engine: root.engine
-        }
-    }
-
     onFired: {
         fireAnimation.restart()
     }

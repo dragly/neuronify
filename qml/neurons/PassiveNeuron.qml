@@ -42,13 +42,41 @@ Neuron {
     controls: Component {
         Column {
             property StackView stackView: Stack.view
-            Button {
-                text: "Push me!"
-                onClicked: {
-                    stackView.push(comp)
+            ListView {
+                model: ListModel {
+                    ListElement {
+                        name: "Dynamics"
+                    }
+                }
+                delegate: Item {
+                    width: parent.width
+                    height: buttonLabel.height
+                    Label {
+                        id: buttonLabel
+                        anchors {
+                            left: parent.left
+                            leftMargin: Style.spacing
+                            verticalCenter: parent.verticalCenter
+                        }
+                        text: name
+                    }
+                    Image {
+                        anchors {
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            rightMargin: Style.spacing
+                        }
+                        source: "qrc:/images/back.png"
+                        rotation: 180
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            console.log("Push " + name)
+                        }
+                    }
                 }
             }
-
             Component {
                 id: comp
                 Column {
@@ -57,47 +85,47 @@ Neuron {
                     }
                 }
             }
-//            LabelControl {
-//                neuron: neuronRoot
-//            }
+            LabelControl {
+                neuron: neuronRoot
+            }
 
-//            RestingPotentialControl{
-//                engine: neuronEngine
-//            }
+            RestingPotentialControl{
+                engine: neuronEngine
+            }
 
-//            InitialPotentialControl{
-//                engine: neuronEngine
-//            }
+            InitialPotentialControl{
+                engine: neuronEngine
+            }
 
-//            ThresholdControl{
-//                engine: neuronEngine
-//            }
+            ThresholdControl{
+                engine: neuronEngine
+            }
 
-//            CapacitanceControl{
-//                engine: neuronEngine
-//            }
+            CapacitanceControl{
+                engine: neuronEngine
+            }
 
-//            ResistanceControl{
-//                current: passiveCurrent
-//            }
+            ResistanceControl{
+                current: passiveCurrent
+            }
 
-//            SynapticOutputControl {
-//                engine: neuronEngine
-//            }
+            SynapticOutputControl {
+                engine: neuronEngine
+            }
 
 
-//            SynapticPotentialControl{
-//                engine: neuronEngine
-//            }
+            SynapticPotentialControl{
+                engine: neuronEngine
+            }
 
-//            SynapticTimeConstantControl{
-//                engine: neuronEngine
-//            }
+            SynapticTimeConstantControl{
+                engine: neuronEngine
+            }
 
-//            spacing: 10
-//            RestPotentialControl{
-//                engine: neuronEngine
-//            }
+            spacing: 10
+            RestPotentialControl{
+                engine: neuronEngine
+            }
         }
     }
 
