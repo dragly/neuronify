@@ -29,8 +29,8 @@ Item {
         }
 
         color: "#f7fbff"
-        width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
-//        width: parent.width * 0.5
+//        width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
+        width: parent.width * 0.5
 
         border.color: "#9ecae1"
         border.width: 1.0
@@ -52,39 +52,105 @@ Item {
             }
         }
 
-        StackView {
-            id: stackView
+        Item {
             anchors.fill: parent
             clip: true
-//            initialItem: (activeObject && activeObject.controls) ? activeObject.controls : undefined
+            Item {
+                id: header
 
-//            Component {
-//                id: stackViewComponent
-//                Column {
-//                    id: container
-//                    anchors {
-//                        top: parent.top
-//                        margins: 10
-//                    }
-//                    x: 16
-//                    width: flickableView.width - 48
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
 
-//                    spacing: 16
+                height: Style.control.fontMetrics.height * 2.2
 
-//                    Loader {
-//                        anchors {
-//                            left: parent.left
-//                            right: parent.right
-//                        }
-//                        sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
-//                        onLoaded: {
-//                            if(item.hasOwnProperty("stackView")) {
-//                                item.stackView = Stack.view
-//                            }
-//                        }
-//                    }
-//                }
-//            }
+                Image {
+                    id: backButton
+                    anchors {
+                        left: parent.left
+                        top: parent.top
+                        bottom: parent.bottom
+                        topMargin: parent.height * 0.2
+                        bottomMargin: parent.height * 0.2
+                        leftMargin: Style.spacing
+                    }
+                    width: height
+                    source: "qrc:/images/back.png"
+                    states: [
+                        State {
+                            when: stackView.depth > 1 ? 0 : -width
+                            PropertyChanges {
+                                target: backButton
+                                anchors.leftMargin: -backButton.width
+                            }
+                        },
+                        State {
+                            when: !stackView.currentItem || !stackView.currentItem.title || stackView.currentItem.title === ""
+                            PropertyChanges {
+                                target: backButton
+                                anchors.topMargin: -backButton.height
+                            }
+                        }
+
+                    ]
+                    transitions: [
+                        Transition {
+                            NumberAnimation {
+                                properties: "anchors.leftMargin, anchors.topMargin"
+                                duration: 400
+                                easing.type: Easing.InOutQuad
+                            }
+                        }
+                    ]
+                }
+
+                Text {
+                    id: titleText
+                    text: stackView.currentItem && stackView.currentItem.title ? stackView.currentItem.title : ""
+                    anchors {
+                        left: backButton.right
+                        right: parent.right
+                        verticalCenter: backButton.verticalCenter
+                        margins: Style.spacing
+                    }
+                    font: Style.control.heading.font
+                }
+
+                Rectangle {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                    }
+                    height: Style.border.width * 2.0
+                    color: Style.border.color
+                }
+
+                MouseArea {
+                    anchors {
+                        fill: parent
+                    }
+
+                    onClicked: {
+                        stackView.pop()
+                    }
+                }
+            }
+
+            StackView {
+                id: stackView
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    top: header.bottom
+                    topMargin: 4
+                    leftMargin: Style.spacing
+                    rightMargin: Style.spacing
+                }
+                clip: true
+            }
         }
 
         states: State {

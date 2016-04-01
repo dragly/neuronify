@@ -21,20 +21,14 @@ Item {
 
     property bool anyFocus: focus || textInput.focus
 
-    readonly property string defaultState: {
-        if(Style.device === "phone" || Style.device === "tablet") {
-            return "view"
-        } else {
-            return "edit"
-        }
-    }
+    readonly property string defaultState: "edit"
 
     focus: false
 
     state: defaultState
 
     width: parent.width
-    height: fontMetrics.height * 2
+    height: Style.control.fontMetrics.height * 2
 
     function applyTextEdit() {
         root.focus = true
@@ -58,27 +52,12 @@ Item {
         console.log("State: " + state)
     }
 
-    FontMetrics {
-        id: fontMetrics
-        font: fullText.font
-    }
-
-//    MouseArea {
-//        id: defocusTextEdit
-//        width: 9999
-//        height: 9999
-//        anchors.centerIn: parent
-//        enabled: false
-//        onClicked: {
-//            console.log("Defocus")
-//            root.applyTextEdit()
-//        }
-//    }
-
     Rectangle {
         id: backgroundRectangle
         anchors {
             fill: parent
+            topMargin: 2
+            bottomMargin: 2
         }
         radius: height / 2
         color: Style.color.background
@@ -133,8 +112,9 @@ Item {
         TextInput {
             id: textInput
             anchors {
-                fill: parent
-                margins: 8
+                left: parent.left
+                leftMargin: fullText.anchors.leftMargin
+                verticalCenter: fullText.anchors.verticalCenter
             }
             font: fullText.font
 
@@ -254,6 +234,10 @@ Item {
             name: "textedit"
             PropertyChanges {
                 target: fullText
+                visible: false
+            }
+            PropertyChanges {
+                target: numberText
                 visible: false
             }
             PropertyChanges {

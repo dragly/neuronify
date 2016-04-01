@@ -4,10 +4,9 @@ import QtQuick.Controls 1.4
 import Neuronify 1.0
 
 import "qrc:/"
-import "qrc:/qml/"
+import "qrc:/qml"
 import "qrc:/qml/controls"
-
-
+import "qrc:/qml/style"
 
 Neuron {
     id: neuronRoot
@@ -40,96 +39,68 @@ Neuron {
     }
 
     controls: Component {
-        Column {
+        PropertiesPage {
+            property string title: "Passive neuron"
             property StackView stackView: Stack.view
-            ListView {
-                model: ListModel {
-                    ListElement {
-                        name: "Dynamics"
-                    }
-                }
-                delegate: Item {
-                    width: parent.width
-                    height: buttonLabel.height
-                    Label {
-                        id: buttonLabel
-                        anchors {
-                            left: parent.left
-                            leftMargin: Style.spacing
-                            verticalCenter: parent.verticalCenter
-                        }
-                        text: name
-                    }
-                    Image {
-                        anchors {
-                            right: parent.right
-                            verticalCenter: parent.verticalCenter
-                            rightMargin: Style.spacing
-                        }
-                        source: "qrc:/images/back.png"
-                        rotation: 180
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            console.log("Push " + name)
-                        }
-                    }
+            spacing: 0
+            PropertiesItem {
+                text: "Label"
+                info: neuronRoot.label
+                LabelControl {
+                    neuron: neuronRoot
                 }
             }
-            Component {
-                id: comp
-                Column {
-                    RestingPotentialControl{
-                        engine: neuronEngine
-                    }
+            PropertiesItem {
+                text: "Potentials"
+                info: "R: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
+                      "I: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
+                      "θ: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
+                RestingPotentialControl{
+                    id: restingPotentialControl
+                    engine: neuronEngine
+                }
+
+                InitialPotentialControl{
+                    engine: neuronEngine
+                }
+
+                ThresholdControl{
+                    engine: neuronEngine
                 }
             }
-            LabelControl {
-                neuron: neuronRoot
+            PropertiesItem {
+                text: "Membrane"
+                CapacitanceControl{
+                    engine: neuronEngine
+                }
+
+                ResistanceControl{
+                    current: passiveCurrent
+                }
             }
-
-            RestingPotentialControl{
-                engine: neuronEngine
+            PropertiesItem {
+                text: "Synaptic input"
+                SynapticPotentialControl{
+                    engine: neuronEngine
+                }
+                SynapticTimeConstantControl{
+                    engine: neuronEngine
+                }
+                RefractoryPeriodControl{
+                    engine: neuronEngine
+                }
             }
-
-            InitialPotentialControl{
-                engine: neuronEngine
+            PropertiesItem {
+                text: "Synaptic output"
+                SynapticOutputControl {
+                    engine: neuronEngine
+                }
             }
-
-            ThresholdControl{
-                engine: neuronEngine
-            }
-
-            CapacitanceControl{
-                engine: neuronEngine
-            }
-
-            ResistanceControl{
-                current: passiveCurrent
-            }
-
-            RefractoryPeriodControl{
-                engine: neuronEngine
-            }
-
-
-            SynapticOutputControl {
-                engine: neuronEngine
-            }
-
-
-            SynapticPotentialControl{
-                engine: neuronEngine
-            }
-
-            SynapticTimeConstantControl{
-                engine: neuronEngine
-            }
-
-            spacing: 10
-            RestPotentialControl{
-                engine: neuronEngine
+            PropertiesItem {
+                text: "Reset"
+                RestPotentialControl{
+                    engine: neuronEngine
+                }
             }
         }
     }
