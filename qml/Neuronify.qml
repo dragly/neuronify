@@ -625,8 +625,12 @@ Rectangle {
             }
 
             function load(properties) {
-                console.log("Workspace loading properties " + JSON.stringify(properties));
-                playbackControls.playbackSpeed = properties.playbackSpeed;
+                if(properties.playbackSpeed) {
+                    playbackControls.playbackSpeed = properties.playbackSpeed;
+                } else {
+                    playbackControls.playbackSpeed = 1.0;
+                }
+
                 var visibleRectangle = properties.visibleRectangle;
                 if(visibleRectangle) {
                     // reset workspace
@@ -881,11 +885,9 @@ Rectangle {
         running: root.running
 
         onTriggered: {
-//            var dt = 0.1e-3 * workspace.playbackSpeed
             var dt = 0.1e-3
             for(var i = 0; i < root.playbackSpeed; i++) {
                 time += dt
-                console.log(dt)
                 graphEngine.step(dt)
             }
         }
