@@ -19,7 +19,7 @@ Neuron {
         id: neuronEngine
         property real refractoryPeriod: 0.0e-3
         property real timeSinceFire: 99999.0
-        fireOutput: 200.0e-6
+        fireOutput: 300.0e-6
         PassiveCurrent {
             id: passiveCurrent
         }

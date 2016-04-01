@@ -49,17 +49,32 @@ Node {
     }
 
     Rectangle {
-        property real thresholdRatio: Math.max(0.0, (voltage - engine.initialPotential) / (engine.threshold - engine.initialPotential))
+        property real thresholdRatio: Math.max(0.0, 0.5 * (voltage - engine.initialPotential) / (engine.threshold - engine.initialPotential))
+        property real hyperpolarizationRatio: 0.0
+        property real effectRatio: Math.max(thresholdRatio, hyperpolarizationRatio)
 
         anchors.fill: parent
         anchors.margins: 6.0
-        border.width: thresholdRatio * 12.0
-        border.color: "#f7fbff"
+        border.width: effectRatio * 12.0
+        border.color: Qt.rgba(1.0, 1.0, 1.0)
         color: "transparent"
         radius: width * 0.5
         smooth: true
         antialiasing: true
-        opacity: thresholdRatio * 0.4
+        opacity: effectRatio * 0.4
+    }
+
+    Rectangle {
+        property real hyperpolarizationRatio: Math.max(0.0, (engine.initialPotential - voltage) / (engine.threshold - engine.initialPotential))
+
+        anchors.centerIn: parent
+        width: parent.width * Math.min(1.0, hyperpolarizationRatio)
+        height: width
+        color: Qt.rgba(0.5, 0.5, 0.5)
+        radius: width * 0.5
+        smooth: true
+        antialiasing: true
+        opacity: hyperpolarizationRatio * 0.4
     }
 
     Rectangle {
