@@ -14,7 +14,7 @@ Rectangle {
         width : 1
         height : 1
         //color : fileExists() ? "red" : "blue"
-        color: Style.button.backgroundColor
+        color: fileExists() ? Style.button.backgroundColor : "blue"
 
 
         function fileExists(){
@@ -28,9 +28,10 @@ Rectangle {
 
         MouseArea{
             anchors.fill: parent
-            enabled: fileExists()
+            enabled: (fileExists() || saveView.isSave)
             onClicked: {
                 iconRoot.clicked()
+                iconRoot.color = fileExists() ? Style.button.backgroundColor : "blue"
             }
 
         }
