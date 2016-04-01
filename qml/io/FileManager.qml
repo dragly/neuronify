@@ -73,17 +73,15 @@ Item {
             edgeList.push(edge.dump(i, graphEngine))
         }
 
-        var workspaceProperties = objectify(workspace);
+        var workspaceProperties = workspace.dump();
 
         var result = {
-            fileFormatVersion: 1,
+            fileFormatVersion: 2,
             edges: edgeList,
             nodes: nodeList,
             workspace: workspaceProperties
         };
         var fileString = JSON.stringify(result);
-
-        console.log(fileString)
 
         saveFileIO.source = fileUrl
         saveFileIO.write(fileString)

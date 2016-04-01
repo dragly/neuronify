@@ -66,21 +66,11 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy")
-        if(latest !== "") {
-            loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
-        } else {
-            loadSimulation("qrc:/simulations/singleCell/singleCell.nfy")
-        }
-        resetStyle()
+        firstLoadTimer.start()
     }
 
     Component.onDestruction: {
         saveState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
-    }
-
-    Settings {
-        property alias snappingEnabled: root.snappingEnabled
     }
 
     function deleteFromList(list, item) {
@@ -133,6 +123,7 @@ Rectangle {
     }
 
     function loadSimulation(fileUrl) {
+        firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
         console.log("Load state called")
 
         playbackControls.revealed = true
@@ -152,6 +143,12 @@ Rectangle {
         }
 
         var data = JSON.parse(code);
+
+        if(data.fileFormatVersion < 2) {
+            console.warn("The file " + fileUrl + " has format version " + data.fileFormatVersion + ". " +
+                         "We are now at version 2. Some data may be lost when you save it now, because it will be " +
+                         "converted to the newest format.")
+        }
 
         var createdNodes = [];
         var aliases = [];
@@ -220,7 +217,7 @@ Rectangle {
         }
 
         if(data.workspace) {
-            applyProperties(workspace, data.workspace);
+            workspace.load(data.workspace);
         }
 
         undoRecordingEnabled = true
@@ -545,9 +542,17 @@ Rectangle {
     }
 
     Item {
+        id: viewport
+        anchors.fill: parent
+    }
+
+    Item {
         id: workspaceFlickable
 
         anchors.fill: parent
+
+        onWidthChanged: console.log("Width: " + width)
+        Component.onCompleted: console.log("Complete")
 
         PinchArea {
             id: pinchArea
@@ -604,20 +609,58 @@ Rectangle {
         Item {
             id: workspace
 
-            property alias playbackSpeed: playbackControls.playbackSpeed
-            property list<PropertyGroup> savedProperties: [
-                PropertyGroup {
-                    property alias x: workspace.x
-                    property alias y: workspace.y
-                    property alias scale: workspace.scale
-                    property alias playbackSpeed: workspace.playbackSpeed
+            function dump() {
+                var mappedRectangle = viewport.mapToItem(workspace, 0, 0,
+                                                         workspaceFlickable.width, workspaceFlickable.height)
+                return {
+                    playbackSpeed: playbackControls.playbackSpeed,
+                    visibleRectangle: {
+                        x: mappedRectangle.x,
+                        y: mappedRectangle.y,
+                        width: mappedRectangle.width,
+                        height: mappedRectangle.height
+                    }
                 }
-            ]
+            }
+
+            function load(properties) {
+                console.log("Workspace loading properties " + JSON.stringify(properties));
+                playbackControls.playbackSpeed = properties.playbackSpeed;
+                var visibleRectangle = properties.visibleRectangle;
+                if(visibleRectangle) {
+                    // reset workspace
+                    workspace.x = 0;
+                    workspace.y = 0;
+
+                    var widthRatio = visibleRectangle.width / viewport.width;
+                    var heightRatio = visibleRectangle.height / viewport.height;
+                    var scale = 1.0 / Math.max(widthRatio, heightRatio);
+
+                    console.log("Choosing scale: " + widthRatio + " " + heightRatio + " " + scale)
+
+                    workspace.scale = pinchArea.clampScale(scale);
+
+                    var oldCenterX = visibleRectangle.x + visibleRectangle.width / 2.0;
+                    var oldCenterY = visibleRectangle.y + visibleRectangle.height / 2.0;
+
+                    var oldCenterInViewport = workspace.mapToItem(viewport, oldCenterX, oldCenterY);
+
+                    // move old center to (0, 0)
+                    var newPosition = Qt.point(-oldCenterInViewport.x, -oldCenterInViewport.y);
+
+                    // move old center, now in (0, 0), to center of viewport
+                    newPosition.x += viewport.width / 2.0;
+                    newPosition.y += viewport.height / 2.0;
+
+                    workspace.x = newPosition.x;
+                    workspace.y = newPosition.y;
+                }
+            }
 
             width: 3840
             height: 2160
 
-            scale: 1.1
+            scale: 1.0
             transformOrigin: Item.TopLeft
 
 
@@ -891,6 +934,30 @@ Rectangle {
         source: videoSurface && videoSurface.camera ? videoSurface.camera : null
     }
 
+    Settings {
+        property alias snappingEnabled: root.snappingEnabled
+    }
+
+    Timer {
+        // this is needed because workspaceFlickable doesn't have width at onCompleted
+        id: firstLoadTimer
+        interval: 500
+        onTriggered: {
+            var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy")
+            if(latest !== "") {
+                loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+            } else {
+                loadSimulation("qrc:/simulations/singleCell/singleCell.nfy")
+            }
+            resetStyle()
+        }
+    }
+
+    Shortcut {
+        sequence: "Shift+5"
+        onActivated: root.snappingEnabled = !root.snappingEnabled
+    }
+
     Keys.onPressed: {
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
             selectAll()
@@ -904,59 +971,5 @@ Rectangle {
         if(event.key === Qt.Key_Delete) {
             deleteSelected()
         }
-    }
-
-//    Flickable {
-
-//        anchors.fill: parent
-
-//        contentWidth: 2000
-//        contentHeight: 2000
-
-//        Column {
-//            x: 500
-//            y: 300
-//            width: 300
-//            spacing: 16
-
-//            BoundSlider {
-//                text: "Hello"
-//                minimumValue: -103.5e-3
-//                maximumValue: 51e-3
-//                unitScale: 1e-3
-//                stepSize: 1e-3
-//                unit: "mV"
-//                target: texta
-//                property: "pos"
-//                width: 300
-//                precision: 1
-//            }
-
-//            BoundSlider {
-//                text: "Hello"
-//                minimumValue: -103.5e-3
-//                maximumValue: 51e-3
-//                unitScale: 1e-3
-//                stepSize: 1e-3
-//                unit: "mV"
-//                target: texta
-//                property: "pos"
-//                width: 300
-//                precision: 1
-//            }
-//        }
-
-//    }
-
-//    Text {
-//        id: texta
-//        property real pos
-//        x: pos * 1000 + 150
-//        text: "LOL"
-//    }
-
-    Shortcut {
-        sequence: "Shift+5"
-        onActivated: root.snappingEnabled = !root.snappingEnabled
     }
 }
