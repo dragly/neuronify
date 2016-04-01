@@ -40,7 +40,10 @@ Node {
     property alias maximumValue: axisY.max
     property alias minimumValue: axisY.min
 
+    property bool showLegend: true
+
     property alias windowDuration: rateEngine.windowDuration
+     property alias temporalResolution: rateEngine.temporalResolution
 
     property real maximumPointCount: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -74,6 +77,18 @@ Node {
                 unitScale: 1e-3
                 unit: "ms"
             }
+
+            BoundSlider {
+                id: slidertemporalResolution
+                text: "Filter kernel width"
+                minimumValue: 10e-3
+                maximumValue: 1000e-3
+                target: rateEngine
+                property: "temporalResolution"
+                stepSize: 10e-3
+                unitScale: 1e-3
+                unit: "ms"
+            }
         }
     }
 
@@ -102,6 +117,8 @@ Node {
         property alias maximumValue: ratePlotRoot.maximumValue
         property alias minimumValue: ratePlotRoot.minimumValue
         property alias windowDuration: ratePlotRoot.windowDuration
+        property alias temporalResolution: ratePlotRoot.temporalResolution
+        property alias showLegend: ratePlotRoot.showLegend
     }
 
     onEdgeAdded: {
@@ -151,6 +168,7 @@ Node {
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
+            titleText: ratePlotRoot.showLegend ? "t [ms]" : ""
 
         }
 
@@ -162,7 +180,7 @@ Node {
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
-            titleText: ratePlotRoot.title
+            titleText: ratePlotRoot.showLegend ? "f [Hz]" : ""
         }
     }
 
