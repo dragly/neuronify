@@ -10,6 +10,8 @@ Item {
     signal simulationsClicked
     signal aboutClicked
     signal advancedClicked
+    signal saveClicked
+    signal loadClicked
 
     width: 200
     height: 100
@@ -38,25 +40,40 @@ Item {
         //                height: mainMenuRoot.width * 0.4
         MenuButton {
             width: parent.width
-            text: "Continue simulation"
+            text: "Continue"
             onClicked: {
                 continueClicked()
             }
         }
         MenuButton {
             width: parent.width
-            text: "New simulation"
-            onClicked: {
-                newSimulationClicked()
-            }
-        }
-        MenuButton {
-            width: parent.width
-            text: "Select simulation"
+            text: "New"
             onClicked: {
                 simulationsClicked()
             }
         }
+//        MenuButton {
+//            width: parent.width
+//            text: "Select"
+//            onClicked: {
+//                simulationsClicked()
+//            }
+//        }
+        MenuButton {
+            width: parent.width
+            text: "Save"
+            onClicked: {
+                advancedClicked()
+            }
+        }
+        MenuButton {
+            width: parent.width
+            text: "Load"
+            onClicked: {
+                advancedClicked()
+            }
+        }
+
         MenuButton {
             width: parent.width
             text: "About"
@@ -64,13 +81,13 @@ Item {
                 aboutClicked()
             }
         }
-        MenuButton {
-            width: parent.width
-            text: "Advanced options"
-            onClicked: {
-                advancedClicked()
-            }
-        }
+//        MenuButton {
+//            width: parent.width
+//            text: "Advanced options"
+//            onClicked: {
+//                advancedClicked()
+//            }
+//        }
     }
 }
 
