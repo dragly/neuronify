@@ -85,5 +85,6 @@
         <file>qml/controls/LabelControl.qml</file>
         <file>qml/controls/AdaptationControl.qml</file>
         <file>qml/controls/AdaptationTimeConstantControl.qml</file>
+        <file>qml/controls/RefractoryPeriodControl.qml</file>
     </qresource>
 </RCC>

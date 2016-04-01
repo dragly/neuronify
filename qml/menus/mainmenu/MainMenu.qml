@@ -13,6 +13,7 @@ Item {
     signal newClicked
     signal loadSimulation(var simulation)
     signal saveSimulation(var simulation)
+    signal requestScreenshot(var callback)
     signal saveSimulationRequested
     signal loadSimulationRequested
 
@@ -197,6 +198,7 @@ Item {
         height: parent.height
         onLoad: loadSimulation(filename)
         onSave: saveSimulation(filename)
+        onRequestScreenshot: mainMenuRoot.requestScreenshot(callback)
     }
 
     states: [

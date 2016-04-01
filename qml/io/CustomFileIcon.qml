@@ -27,7 +27,7 @@ Rectangle {
 
         MouseArea{
             anchors.fill: parent
-            enabled: fileExists()
+//            enabled: fileExists()
             onClicked: {
                 iconRoot.clicked()
             }
