@@ -58,5 +58,6 @@
         <file>images/tools/mainmenu.png</file>
         <file>images/tools/playback.png</file>
         <file>images/tools/properties.png</file>
+        <file>images/tools/done.png</file>
     </qresource>
 </RCC>
