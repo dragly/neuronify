@@ -14,6 +14,7 @@ Item {
     height: 100
     signal load(var filename)
     signal save(var filename)
+    signal requestScreenshot(var callback)
 
     Heading {
         id: aboutHeading
@@ -43,12 +44,16 @@ Item {
         rowSpacing: padding
         Repeater{
             model : 6
-            CustomFileIcon{
+            CustomFileIcon {
                 name: index;
                 saveFilename: "file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/custom" + index + ".nfy";
                 onClicked: {
                     if (isSave) {
                         save(saveFilename)
+
+                        saveView.requestScreenshot(function(result) {
+                                               result.saveToFile("/tmp/something.png");
+                                           });
                         console.log("calling save from saveView")
                     } else {
                         load(saveFilename)

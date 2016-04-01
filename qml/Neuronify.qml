@@ -824,6 +824,10 @@ Rectangle {
         onLoadSimulationRequested: {
             fileManager.showLoadDialog()
         }
+
+        onRequestScreenshot: {
+            workspaceFlickable.grabToImage(callback)
+        }
     }
 
     Timer {
