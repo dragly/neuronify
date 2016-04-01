@@ -47,6 +47,7 @@ Rectangle {
     property real highestZ: 0.0
     property bool snappingEnabled: false
     property real snapGridSize: snappingEnabled ? 32.0 : 1.0
+    property alias playbackSpeed: playbackControls.playbackSpeed
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -613,7 +614,7 @@ Rectangle {
                 var mappedRectangle = viewport.mapToItem(workspace, 0, 0,
                                                          workspaceFlickable.width, workspaceFlickable.height)
                 return {
-                    playbackSpeed: playbackControls.playbackSpeed,
+                    playbackSpeed: root.playbackSpeed,
                     visibleRectangle: {
                         x: mappedRectangle.x,
                         y: mappedRectangle.y,
@@ -882,8 +883,9 @@ Rectangle {
         onTriggered: {
 //            var dt = 0.1e-3 * workspace.playbackSpeed
             var dt = 0.1e-3
-            for(var i = 0; i < workspace.playbackSpeed; i++) {
+            for(var i = 0; i < root.playbackSpeed; i++) {
                 time += dt
+                console.log(dt)
                 graphEngine.step(dt)
             }
         }
