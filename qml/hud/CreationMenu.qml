@@ -19,7 +19,8 @@ Item {
     anchors.fill: parent
 
     onRevealedChanged: {
-        itemListView.currentIndex = -1
+//        itemListView.currentIndex = -1
+        itemListView.currentIndex = 0
     }
 
     ListModel {
@@ -71,9 +72,9 @@ Item {
     MouseArea {
         anchors.fill: creationColumn
         enabled: root.revealed
-        onClicked: {
-            itemListView.currentIndex = -1
-        }
+//        onClicked: {
+//            itemListView.currentIndex = -1
+//        }
     }
 
     Item {
@@ -153,6 +154,8 @@ Item {
                         onPressed: {
                             categoriesListView.currentIndex = index
                             itemModelLoader.source = model.listSource
+                            itemListView.currentIndex = 0
+
                         }
                     }
                 }
@@ -177,11 +180,13 @@ Item {
 
                 model: itemModelLoader.item
 
+
                 delegate: CreationItem {
                     name: model.name
                     description: model.description
                     source: model.source
                     imageSource: model.imageSource
+
 
                     onClicked: {
                         itemListView.currentIndex = index
@@ -213,7 +218,8 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 width: parent.width
-                height: 0
+                height: 0.0
+                anchors.top: itemListView.bottom
 
                 Text {
                     property var item: itemListView.currentItem

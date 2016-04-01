@@ -53,7 +53,7 @@ private:
     double m_temporalResolution = 100e-3;
 
 protected:
-    virtual void stepEvent(double dt) override;
+    virtual void stepEvent(double dt, bool parentEnabled) override;
 };
 
 #endif // RATEENGINE_H

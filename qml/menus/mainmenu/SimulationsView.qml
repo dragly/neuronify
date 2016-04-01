@@ -110,7 +110,7 @@ Item {
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: {
-                                            simulationClicked(loader.item)
+                                            simulationClicked(loader.item.stateSource)
                                         }
                                     }
                                 }

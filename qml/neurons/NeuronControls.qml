@@ -9,6 +9,7 @@ import "qrc:/qml"
 import "qrc:/qml/controls"
 import "qrc:/qml/style"
 
+
 Column {
     id: root
     property var neuron: null
@@ -22,97 +23,32 @@ Column {
         anchors.right: parent.right
     }
 
-    Text {
-        text: "Neuron dynamics:"
+    RestingPotentialControl{
+        engine: root.engine
     }
 
-    BoundSlider {       
-        target: engine
-        property: "restingPotential"
-        text: "Resting potential"
-        unit: "mV"
-        minimumValue: -100e-3
-        maximumValue: 50e-3
-        unitScale: 1e-3
-        stepSize: 1e-4
-        precision: 1
+    InitialPotentialControl{
+        engine: root.engine
     }
 
-    BoundSlider {
-        target: engine
-        property: "threshold"
-        text: "Firing threshold"
-        unit: "mV"
-        minimumValue: -50e-3
-        maximumValue: 50e-3
-        unitScale: 1e-3
-        stepSize: 1e-4
-        precision: 1
+    ThresholdControl{
+        engine: root.engine
     }
 
-    BoundSlider {
-        target: engine
-        property: "initialPotential"
-        text: "Initial potential"
-        unit: "mV"
-        minimumValue: -100e-3
-        maximumValue: 50e-3
-        unitScale: 1e-3
-        stepSize: 1e-4
-        precision: 1
+    CapacitanceControl{
+        engine: root.engine
     }
 
-    BoundSlider {
-        target: engine
-        property: "capacitance"
-        text: "Capacitance"
-        unit: "nF"
-        minimumValue: 1.0e-9
-        maximumValue: 10000e-9
-        unitScale: 1e-9
-        stepSize: 1e-8
-        precision: 1
-    }
-
-    BoundSlider {
-        target: engine
-        property: "refractoryPeriod"
-        text: "Refractory period"
-        unit: "ms"
-        minimumValue: 0.0e-3
-        maximumValue: 100e-3
-        unitScale: 1e-3
-        stepSize: 1e-3
-        precision: 1
-    }
-
-    Text {
-        text: "Synaptic input:"
-    }
-
-    BoundSlider {
-        target: engine
-        property: "synapticPotential"
-        text: "Potential"
-        unit: "mV"
-        minimumValue: -100e-3
-        maximumValue: 50e-3
-        unitScale: 1e-3
-        stepSize: 1e-4
-        precision: 1
+    ResistanceControl{
     }
 
 
-    BoundSlider {
-        target: engine
-        property: "synapticTimeConstant"
-        text: "Time Constant"
-        unit: "ms"
-        minimumValue: 0.0
-        maximumValue: 50e-3
-        unitScale: 1e-3
-        stepSize: 1e-4
-        precision: 1
+    SynapticPotentialControl{
+        engine: root.engine
+    }
+
+    SynapticTimeConstantControl{
+        engine: root.engine
     }
 
     SynapticOutputControl {

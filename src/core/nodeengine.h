@@ -23,7 +23,7 @@ public:
     Q_INVOKABLE void reset();
 
 signals:
-    void stepped(double dt);
+    void stepped(double dt, bool parentEnabled);
     void fired();
     void receivedFire(double stimulation, NodeEngine *sender);
     void receivedCurrent(double current, NodeEngine *sender);
@@ -33,7 +33,7 @@ signals:
     void resetted();
 
 public slots:
-    void step(double dt);
+    void step(double dt, bool parentEnabled);
     void fire();
     void receiveFire(double fireOutput, NodeEngine *sender);
     void receiveCurrent(double currentOutput, NodeEngine *sender);
@@ -42,7 +42,7 @@ public slots:
     void setCurrentOutput(double arg);
 
 protected:
-    virtual void stepEvent(double dt);
+    virtual void stepEvent(double dt, bool parentEnabled);
     virtual void fireEvent();
     virtual void receiveFireEvent(double fireOutput, NodeEngine *sender);
     virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender);

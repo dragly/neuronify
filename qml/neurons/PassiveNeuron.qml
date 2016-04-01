@@ -1,12 +1,14 @@
 import QtQuick 2.0
 import Neuronify 1.0
 
-import ".."
-import "../controls"
+import "qrc:/"
+import "qrc:/qml/"
+import "qrc:/qml/controls"
+
+
+
 Neuron {
     id: neuronRoot
-    property alias resistance: passiveCurrent.resistance
-    property alias fireOutput: neuronEngine.fireOutput
 
     objectName: "passiveNeuron"
     fileName: "neurons/PassiveNeuron.qml"
@@ -15,40 +17,90 @@ Neuron {
 
     engine: NeuronEngine {
         id: neuronEngine
+        property real refractoryPeriod: 0.0e-3
+        property real timeSinceFire: 99999.0
         fireOutput: 200.0e-6
         PassiveCurrent {
             id: passiveCurrent
         }
+        onStepped: {
+            if(timeSinceFire < refractoryPeriod) {
+                neuronEngine.enabled = false
+            } else {
+                neuronEngine.enabled = true
+            }
+            timeSinceFire += dt
+        }
+
+        onFired: {
+            timeSinceFire = 0.0
+        }
     }
 
     controls: Component {
-        NeuronControls {
-            neuron: neuronRoot
-            engine: neuronEngine
-            Text {
-                text: "Passive properties:"
+        Column {
+
+            LabelControl {
+                neuron: neuronRoot
             }
-            BoundSlider {
-                target: passiveCurrent
-                property: "resistance"
-                minimumValue: 0.1e3
-                maximumValue: 100e3
-                unitScale: 1e3
-                stepSize: 1e2
-                precision: 1
-                text: "Membrane resistance"
-                unit: "kΩ"
+
+            RestingPotentialControl{
+                engine: neuronEngine
             }
+
+            InitialPotentialControl{
+                engine: neuronEngine
+            }
+
+            ThresholdControl{
+                engine: neuronEngine
+            }
+
+            CapacitanceControl{
+                engine: neuronEngine
+            }
+
+            ResistanceControl{
+                current: passiveCurrent
+            }
+
+            RefractoryPeriodControl{
+                engine: neuronEngine
+            }
+
+
+            SynapticOutputControl {
+                engine: neuronEngine
+            }
+
+
+            SynapticPotentialControl{
+                engine: neuronEngine
+            }
+
+            SynapticTimeConstantControl{
+                engine: neuronEngine
+            }
+
+            spacing: 10
             RestPotentialControl{
                 engine: neuronEngine
             }
         }
-
     }
 
     savedProperties: PropertyGroup {
-        property alias resistance: neuronRoot.resistance
-        property alias fireOutput: neuronRoot.fireOutput
+        property alias label: neuronRoot.label
+        property alias fireOutput: neuronEngine.fireOutput
+        property alias resistance: passiveCurrent.resistance
+        property alias capacitance: neuronEngine.capacitance
+        property alias refractoryPeriod: neuronEngine.refractoryPeriod
+        property alias restingPotential: neuronEngine.restingPotential
+        property alias initialPotential: neuronEngine.initialPotential
+        property alias threshold: neuronEngine.threshold
+        property alias synapticTimeConstant: neuronEngine.synapticTimeConstant
+        property alias synapticPotential: neuronEngine.synapticPotential
+
     }
 
 }

@@ -45,6 +45,8 @@ Neuron {
             SynapticOutputControl {
                 engine: neuronEngine
             }
+
+            spacing: 10
             RestPotentialControl{
                 engine: neuronEngine
             }
@@ -53,6 +55,16 @@ Neuron {
 
     savedProperties: PropertyGroup {
         property alias label: neuronRoot.label
+        property alias fireOutput: neuronEngine.fireOutput
+
+        // Do we need to save these?
+        property alias resistance: passiveCurrent.resistance
+        property alias capacitance: neuronEngine.capacitance
+        property alias restingPotential: neuronEngine.restingPotential
+        property alias initialPotential: neuronEngine.initialPotential
+        property alias threshold: neuronEngine.threshold
+        property alias synapticTimeConstant: neuronEngine.synapticTimeConstant
+        property alias synapticPotential: neuronEngine.synapticPotential
     }
 }
 

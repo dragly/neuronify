@@ -64,10 +64,12 @@ void AdaptationCurrent::setTimeConstant(double arg)
     emit timeConstantChanged(arg);
 }
 
-void AdaptationCurrent::stepEvent(double dt)
+void AdaptationCurrent::stepEvent(double dt, bool parentEnabled)
 {
     Q_UNUSED(dt);
-
+    if(!parentEnabled) {
+        return;
+    }
     NeuronEngine* parentNode = qobject_cast<NeuronEngine*>(parent());
     if(!parentNode) {
         qWarning() << "Warning: Parent of Current is not NeuronNode. Cannot find voltage.";

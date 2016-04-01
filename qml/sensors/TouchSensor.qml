@@ -1,7 +1,7 @@
 import QtQuick 2.0
 
 import Neuronify 1.0
-
+import QtGraphicalEffects 1.0
 import "../paths"
 import "../hud"
 import ".."
@@ -26,115 +26,75 @@ Node {
     fileName: "sensors/TouchSensor.qml"
     square: true
 
-    property int cells: 5
-    property var actualCells: []
-    property real sensingCurrentOutput: 150.0e-6
-    property var dropFunction
+    property bool sensing: false
+    property real sensingCurrentOutput: 100
 
-    removableChildren: actualCells
+    property var dropFunction
+    property var connections: []
+
+    useDefaultMouseHandling: false
     canReceiveConnections: false
 
-    width: 500
+    width: 100
     height: 100
+    color: sensorRoot.sensing ? "#80e5ff" : "#0088aa"
 
     engine: NodeEngine {
         onStepped: {
-            for(var i in actualCells) {
-                var cell = actualCells[i]
-                cell.engine.step(dt)
+            if(sensing) {
+                engine.fire()
+                sensing = false
             }
         }
     }
 
-    controls: Component {
-        SensorControls {
-            id: sensorControls
-            sensor: sensorRoot
-            onDeleteClicked: {
-                simulatorRoot.deleteSensor(sensor)
-            }
-        }
-    }
-
-    savedProperties: PropertyGroup {
-        property alias cells: sensorRoot.cells
-        property alias sensingCurrentOutput: sensorRoot.sensingCurrentOutput
-    }
 
     Component.onCompleted: {
         dropFunction = simulator.createConnectionToPoint
-        resetCells()
     }
 
-    function resolveAlias(index) {
-        return actualCells[index];
+
+    onEdgeAdded: {
+        connections.push(edge)
     }
 
-    function resetCells() {
-        for(var i = 0; i < actualCells.length; i++) {
-            var cell = actualCells[i];
-            simulator.deleteNode(cell);
-        }
-        actualCells.length = 0
-        for(var i = 0; i < cells; i++) {
-            var cell = simulator.createEntity("sensors/TouchSensorCell.qml"
-                                              , {cellIndex: i, sensor: sensorRoot})
-            cell.parent = cellRow
-            actualCells.push(cell)
-        }
+    onEdgeRemoved: {
+        connections.splice(connections.indexOf(edge), 1)
     }
 
-    function cellAt(index) {
-        var cell = actualCells[index]
-        if(!cell) {
-            console.warn("WARNING: No cell at index " + index)
-        }
-        return cell
+    Image {
+        id: touchImage
+        anchors.fill: parent
+        fillMode: Image.PreserveAspectFit
+        source: "qrc:/images/sensors/touch_sensor.png"
     }
 
-    onCellsChanged: {
-        resetCells()
-    }
+
 
     MouseArea {
-        anchors.fill: cellRow
-
-        function desenseAll() {
-            for(var i in actualCells) {
-                var item = actualCells[i]
-                item.sensing = false
-            }
-        }
-
-        function senseObject(mouse) {
-            desenseAll()
-            var index = parseInt(mouse.x / 100)
-            var item = actualCells[index]
-            if(item) {
-                item.sensing = true
-            }
-        }
+        id: mouseRoot
+        anchors.fill: parent
 
         onPressed: {
-            senseObject(mouse)
-        }
-
-        onPositionChanged: {
-            senseObject(mouse)
+            sensorRoot.sensing = true
+            sensorRoot.clicked(sensorRoot, mouse)
         }
 
         onReleased: {
-            desenseAll()
+            sensorRoot.sensing = false
         }
 
         onExited: {
-            desenseAll()
+            sensorRoot.sensing =  false
         }
     }
 
-    Row {
-        id: cellRow
 
+    Connector{
+        curveColor: "#0088aa"
+        connectorColor: "#0088aa"
+        visible: sensorRoot.selected
+        z: -1
     }
 
     Rectangle {
@@ -174,5 +134,6 @@ Node {
             }
         }
     }
+
 }
 
