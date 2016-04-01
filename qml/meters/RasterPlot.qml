@@ -18,6 +18,10 @@ Node {
 
     property var neurons: []
 
+    property real realTime: 0.0
+    property real timeSinceLastUpdate: 0
+    property real lastUpdateTime: 0
+    property real maximumPointCount: 120
 
     objectName: "rasterplot"
     fileName: "meters/RasterPlot.qml"
@@ -36,8 +40,14 @@ Node {
 
     engine: NodeEngine {
         onStepped: {
-            time += dt
+            if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
+                time = realTime
+                lastUpdateTime = realTime
+            }
+            realTime += dt
         }
+
+
         onReceivedFire: {
             for(var i in neurons) {
                 var neuron = neurons[i]
@@ -51,9 +61,9 @@ Node {
     controls: Component {
         Column {
             anchors.fill: parent
-        Text {
-            text: "Time range: " + timeRange.toFixed(0)
-        }
+            Text {
+                text: "Time range: " + timeRange.toFixed(0)
+            }
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"
@@ -131,6 +141,7 @@ Node {
 
         ScatterSeries {
             id: scatterSeries
+            useOpenGL: true
             borderWidth: 0.2
             markerSize: 8.0
             axisX: ValueAxis {
@@ -152,7 +163,7 @@ Node {
                 tickCount: 0
                 lineVisible: false
                 labelsFont.pixelSize: 14
-//                titleText: rasterRoot.showLegend ? "Cell" : ""
+                //                titleText: rasterRoot.showLegend ? "Cell" : ""
             }
         }
         ChartScroller {
