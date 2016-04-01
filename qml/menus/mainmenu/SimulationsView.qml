@@ -32,6 +32,7 @@ Item {
                     {
                         name: "Simple",
                         simulations: [
+                            "qrc:/simulations/empty",
                             "qrc:/simulations/singleCell",
                         ]
                     },
@@ -95,6 +96,13 @@ Item {
                                             smooth: true
                                             antialiasing: true
                                             fillMode: Image.PreserveAspectCrop
+                                            Rectangle {
+                                                color: "transparent"
+                                                width: parent.width
+                                                height: parent.height
+                                                border.color: Style.border.color
+                                                border.width: Style.border.width
+                                            }
                                         }
                                         Text {
                                             id: title

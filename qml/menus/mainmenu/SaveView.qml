@@ -34,7 +34,9 @@ Item {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
-            margins: padding
+            leftMargin: Style.touchableSize
+            rightMargin: Style.touchableSize
+            bottomMargin: Style.touchableSize
         }
         width : parent.width
         height: parent.height
