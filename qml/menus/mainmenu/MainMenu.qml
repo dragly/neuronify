@@ -154,6 +154,12 @@ Item {
         onAdvancedClicked: {
             stackView.push(advancedView)
         }
+        onSaveClicked: {
+            stackView.push(saveView)
+        }
+        onLoadClicked: {
+            stackView.push(saveView)
+        }
     }
 
     SimulationsView {
@@ -196,8 +202,14 @@ Item {
         visible: false
         width: parent.width
         height: parent.height
-        onLoad: loadSimulation(filename)
-        onSave: saveSimulation(filename)
+        onLoad: {
+            loadSimulation(filename)
+            stackView.pop()
+        }
+        onSave: {
+            saveSimulation(filename)
+            stackView.pop()
+        }
         onRequestScreenshot: mainMenuRoot.requestScreenshot(callback)
     }
 

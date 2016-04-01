@@ -63,14 +63,16 @@ Item {
             width: parent.width
             text: "Save"
             onClicked: {
-                advancedClicked()
+                saveView.isSave = true
+                saveClicked()
             }
         }
         MenuButton {
             width: parent.width
             text: "Load"
             onClicked: {
-                advancedClicked()
+                saveView.isSave = false
+                loadClicked()
             }
         }
 
