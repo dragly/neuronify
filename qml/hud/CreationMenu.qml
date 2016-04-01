@@ -213,7 +213,8 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 width: parent.width
-                height: 0
+                height: 0.0
+                anchors.top: itemListView.bottom
 
                 Text {
                     property var item: itemListView.currentItem
