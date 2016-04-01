@@ -38,8 +38,10 @@ Item {
                     {
                         name: "Inhibition",
                         simulations: [
+                            "qrc:/simulations/typesOfInhibition",
                             "qrc:/simulations/lateralInhibition",
                             "qrc:/simulations/recurrentInhibition",
+                            "qrc:/simulations/reciprocalInhibition",
                             "qrc:/simulations/twoNeuronOscillator",
                         ]
                     },
@@ -55,7 +57,14 @@ Item {
                             "qrc:/simulations/sterratt/fig_8_5",
                             "qrc:/simulations/sterratt/refractoryPeriod",
                         ]
-                    }
+                    },
+                    {
+                        name: "Mix",
+                        simulations: [
+                            "qrc:/simulations/rythmTransformation",
+                            "qrc:/simulations/prolongedActivity",
+                        ]
+                    },
                 ]
                 Column {
                     spacing: Style.baseMargin
