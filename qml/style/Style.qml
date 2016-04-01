@@ -16,7 +16,7 @@ Item {
     property real margin: 4 * size
     property real baseMargin: margin
     property real scale: 1.0
-    property real spacing: size
+    property real spacing: size * 0.5
 
     property alias text: textObject
     property alias heading: headingObject
@@ -69,16 +69,38 @@ Item {
 
     Item {
         id: controlObject
-        property alias font: controlFontProxy.font
+
+        property alias text: controlTextProxy
+        property alias subText: controlSubTextProxy
+        property alias heading: controlHeadingProxy
+        property alias font: controlTextProxy.font
+        property alias fontMetrics: controlFontMetrics
+
         property color color: Qt.rgba(0.15, 0.15, 0.15, 0.9)
         property real spacing: controlFontMetrics.height * 0.5
+
         FontMetrics {
             id: controlFontMetrics
             font: controlObject.font
         }
         Text {
-            id: controlFontProxy
+            id: controlTextProxy
+            color: "#222"
             font.family: "Roboto"
+            font.pixelSize: root.windowHeight * 0.042
+        }
+        Text {
+            id: controlSubTextProxy
+            color: "#999"
+            font.family: "Roboto"
+            font.pixelSize: controlObject.font.pixelSize * 0.8
+        }
+        Text {
+            id: controlHeadingProxy
+            color: "#000"
+            font.family: "Roboto"
+            font.weight: Font.Light
+            font.pixelSize: controlObject.font.pixelSize * 1.2
         }
     }
 

@@ -75,7 +75,7 @@ Node {
         verticalAlignment: TextInput.AlignVCenter
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         clip: true
-        font.pixelSize: 14
+        font.pixelSize: 20
     }
 
     ResizeRectangle {}

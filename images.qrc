@@ -29,7 +29,6 @@
         <file>images/meters/speaker.png</file>
         <file>images/generators/ac_clamp.png</file>
         <file>images/generators/poisson_generator_inhibitory.png</file>
-        <file>qml/hud/AnnotationsList.qml</file>
         <file>images/categories/annotate.png</file>
         <file>images/annotate/annotate.png</file>
         <file>images/meters/spikemeter.png</file>
@@ -59,5 +58,6 @@
         <file>images/tools/mainmenu.png</file>
         <file>images/tools/playback.png</file>
         <file>images/tools/properties.png</file>
+        <file>images/tools/done.png</file>
     </qresource>
 </RCC>

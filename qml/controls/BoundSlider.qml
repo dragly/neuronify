@@ -21,20 +21,12 @@ Item {
 
     property bool anyFocus: focus || textInput.focus
 
-    readonly property string defaultState: {
-        if(Style.device === "phone" || Style.device === "tablet") {
-            return "view"
-        } else {
-            return "edit"
-        }
-    }
-
     focus: false
 
-    state: defaultState
+    state: "edit"
 
     width: parent.width
-    height: fontMetrics.height * 2
+    height: Style.control.fontMetrics.height * 2
 
     function applyTextEdit() {
         root.focus = true
@@ -48,37 +40,17 @@ Item {
     }
 
     onAnyFocusChanged: {
-        console.log("anyFocus: " + anyFocus)
         if(!anyFocus) {
-            state = defaultState
+            state = "edit"
         }
     }
-
-    onStateChanged: {
-        console.log("State: " + state)
-    }
-
-    FontMetrics {
-        id: fontMetrics
-        font: fullText.font
-    }
-
-//    MouseArea {
-//        id: defocusTextEdit
-//        width: 9999
-//        height: 9999
-//        anchors.centerIn: parent
-//        enabled: false
-//        onClicked: {
-//            console.log("Defocus")
-//            root.applyTextEdit()
-//        }
-//    }
 
     Rectangle {
         id: backgroundRectangle
         anchors {
             fill: parent
+            topMargin: 2
+            bottomMargin: 2
         }
         radius: height / 2
         color: Style.color.background
@@ -91,6 +63,11 @@ Item {
                 left: parent.left
                 top: parent.top
                 bottom: parent.bottom
+            }
+            gradient: Gradient {
+                id: grad
+                GradientStop { position: 0.0; color: Style.color.foreground }
+                GradientStop { position: 1.0; color: Style.color.border }
             }
             width: parent.width * sliderMouseArea.fraction
             color: "lightgrey" // Style.color.foreground
@@ -133,8 +110,9 @@ Item {
         TextInput {
             id: textInput
             anchors {
-                fill: parent
-                margins: 8
+                left: parent.left
+                leftMargin: fullText.anchors.leftMargin
+                verticalCenter: fullText.anchors.verticalCenter
             }
             font: fullText.font
 
@@ -151,6 +129,25 @@ Item {
 
             Keys.onEscapePressed: {
                 root.discardTextEdit()
+            }
+        }
+
+        Image {
+            id: doneButton
+            anchors {
+                right: parent.right
+                rightMargin: backgroundRectangle.radius
+                top: parent.top
+                bottom: parent.bottom
+            }
+            width: height
+            source: "qrc:/images/tools/done.png"
+            visible: false
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    root.state = "edit"
+                }
             }
         }
 
@@ -222,16 +219,6 @@ Item {
         }
     }
 
-    MouseArea {
-        id: editMouseArea
-        anchors.fill: parent
-        onClicked: {
-            console.log("Focus!")
-            root.focus = true
-            root.state = "edit"
-        }
-    }
-
     Binding {
         target: root.target
         property: root.property
@@ -243,17 +230,15 @@ Item {
         value: root.target[root.property]
     }
 
-    Gradient {
-        id: grad
-        GradientStop { position: 0.0; color: Style.color.foreground }
-        GradientStop { position: 1.0; color: Style.color.border }
-    }
-
     states: [
         State {
             name: "textedit"
             PropertyChanges {
                 target: fullText
+                visible: false
+            }
+            PropertyChanges {
+                target: numberText
                 visible: false
             }
             PropertyChanges {
@@ -270,29 +255,16 @@ Item {
                 enabled: false
             }
             PropertyChanges {
-                target: editMouseArea
-                enabled: false
+                target: sliderRectangle
+                visible: false
+            }
+            PropertyChanges {
+                target: doneButton
+                visible: true
             }
         },
         State {
             name: "edit"
-            PropertyChanges {
-                target: sliderRectangle
-                visible: true
-                gradient: grad
-            }
-            PropertyChanges {
-                target: sliderMouseArea
-                enabled: true
-            }
-            PropertyChanges {
-                target: editMouseArea
-                enabled: false
-            }
-        },
-        State {
-            name: "view"
         }
-
     ]
 }

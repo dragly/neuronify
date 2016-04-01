@@ -86,5 +86,7 @@
         <file>qml/controls/AdaptationControl.qml</file>
         <file>qml/controls/AdaptationTimeConstantControl.qml</file>
         <file>qml/controls/RefractoryPeriodControl.qml</file>
+        <file>qml/controls/PropertiesItem.qml</file>
+        <file>qml/controls/PropertiesPage.qml</file>
     </qresource>
 </RCC>

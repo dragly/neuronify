@@ -20,7 +20,7 @@ import "qrc:/qml/style"
 \endlist
 */
 
-Column {
+PropertiesPage {
     id: meterControlsRoot
     property Item meter: null
     property double sliderMinimum: -250
@@ -28,7 +28,7 @@ Column {
     property string unit: ""
     property string meterType: ""
 
-    spacing: Style.spacing
+    title: meterType
 
     onMeterChanged: {
         if(!meterControlsRoot.meter) {
@@ -62,7 +62,7 @@ Column {
         }
         height: Math.max(switchText.height, showLegendSwitch.height)
 
-        Label {
+        Text {
             id: switchText
 
             anchors {

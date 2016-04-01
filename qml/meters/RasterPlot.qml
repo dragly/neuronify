@@ -14,8 +14,14 @@ Node {
     property real time: 0.0
     property real timeRange: 10.0e-3
     property real timeScale: 1e-3
+    property bool showLegend: true
 
     property var neurons: []
+
+    property real realTime: 0.0
+    property real timeSinceLastUpdate: 0
+    property real lastUpdateTime: 0
+    property real maximumPointCount: 120
 
     objectName: "rasterplot"
     fileName: "meters/RasterPlot.qml"
@@ -29,12 +35,19 @@ Node {
         property alias width: rasterRoot.width
         property alias height: rasterRoot.height
         property alias timeRange: rasterRoot.timeRange
+        property alias showLegend: rasterRoot.showLegend
     }
 
     engine: NodeEngine {
         onStepped: {
-            time += dt
+            if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
+                time = realTime
+                lastUpdateTime = realTime
+            }
+            realTime += dt
         }
+
+
         onReceivedFire: {
             for(var i in neurons) {
                 var neuron = neurons[i]
@@ -48,9 +61,9 @@ Node {
     controls: Component {
         Column {
             anchors.fill: parent
-        Text {
-            text: "Time range: " + timeRange.toFixed(0)
-        }
+            Text {
+                text: "Time range: " + timeRange.toFixed(0)
+            }
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"
@@ -128,6 +141,7 @@ Node {
 
         ScatterSeries {
             id: scatterSeries
+            useOpenGL: true
             borderWidth: 0.2
             markerSize: 8.0
             axisX: ValueAxis {
@@ -138,6 +152,7 @@ Node {
                 gridVisible: false
                 labelsFont.pixelSize: 14
                 labelFormat: "%.0f"
+                titleText: rasterRoot.showLegend ? "t [ms]" : ""
             }
             axisY: CategoryAxis {
                 id: axisY
@@ -148,6 +163,7 @@ Node {
                 tickCount: 0
                 lineVisible: false
                 labelsFont.pixelSize: 14
+                //                titleText: rasterRoot.showLegend ? "Cell" : ""
             }
         }
         ChartScroller {

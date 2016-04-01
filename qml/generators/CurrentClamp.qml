@@ -33,8 +33,8 @@ Node {
     }
 
     controls: Component {
-        Item {
-            anchors.fill: parent
+        PropertiesPage {
+            title: "Current clamp"
             BoundSlider {
                 target: engine
                 property: "currentOutputScaled"

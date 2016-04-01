@@ -12,6 +12,13 @@ Item {
 
     anchors.fill: parent
 
+    onActiveObjectChanged: {
+        stackView.clear()
+        if(activeObject && activeObject.controls) {
+            stackView.push(activeObject.controls)
+        }
+    }
+
     Rectangle {
         id: background
         anchors {
@@ -22,8 +29,8 @@ Item {
         }
 
         color: "#f7fbff"
-        width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
-//        width: parent.width * 0.5
+//        width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
+        width: parent.width * 0.5
 
         border.color: "#9ecae1"
         border.width: 1.0
@@ -45,34 +52,104 @@ Item {
             }
         }
 
-        ScrollView {
-            id: flickableView
+        Item {
             anchors.fill: parent
+            clip: true
+            Item {
+                id: header
 
-            flickableItem.flickableDirection: Flickable.VerticalFlick
-//            contentHeight: container.height
-
-            Column {
-                id: container
                 anchors {
-//                    left: parent.left
-//                    right: parent.right
-                    top: parent.top
-                    margins: 10
+                    left: parent.left
+                    right: parent.right
                 }
-                x: 16
-                width: flickableView.width - 48
 
-                spacing: 16
+                height: Style.control.fontMetrics.height * 2.2
 
-                Loader {
+                Image {
+                    id: backButton
+                    anchors {
+                        left: parent.left
+                        top: parent.top
+                        bottom: parent.bottom
+                        topMargin: parent.height * 0.2
+                        bottomMargin: parent.height * 0.2
+                        leftMargin: Style.spacing
+                    }
+                    width: height
+                    source: "qrc:/images/back.png"
+                    states: [
+                        State {
+                            when: stackView.depth > 1 ? 0 : -width
+                            PropertyChanges {
+                                target: backButton
+                                anchors.leftMargin: -backButton.width
+                            }
+                        },
+                        State {
+                            when: !stackView.currentItem || !stackView.currentItem.title || stackView.currentItem.title === ""
+                            PropertyChanges {
+                                target: backButton
+                                anchors.topMargin: -backButton.height
+                            }
+                        }
+
+                    ]
+                    transitions: [
+                        Transition {
+                            NumberAnimation {
+                                properties: "anchors.leftMargin, anchors.topMargin"
+                                duration: 400
+                                easing.type: Easing.InOutQuad
+                            }
+                        }
+                    ]
+                }
+
+                Text {
+                    id: titleText
+                    text: stackView.currentItem && stackView.currentItem.title ? stackView.currentItem.title : ""
+                    anchors {
+                        left: backButton.right
+                        right: parent.right
+                        verticalCenter: backButton.verticalCenter
+                        margins: Style.spacing
+                    }
+                    font: Style.control.heading.font
+                }
+
+                Rectangle {
                     anchors {
                         left: parent.left
                         right: parent.right
+                        bottom: parent.bottom
+                    }
+                    height: Style.border.width * 2.0
+                    color: Style.border.color
+                }
+
+                MouseArea {
+                    anchors {
+                        fill: parent
                     }
 
-                    sourceComponent: (activeObject && activeObject.controls) ? activeObject.controls : undefined
+                    onClicked: {
+                        stackView.pop()
+                    }
                 }
+            }
+
+            StackView {
+                id: stackView
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    top: header.bottom
+                    topMargin: 4
+                    leftMargin: Style.spacing
+                    rightMargin: Style.spacing
+                }
+                clip: true
             }
         }
 

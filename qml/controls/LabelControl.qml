@@ -10,8 +10,14 @@ import "qrc:/qml/style"
 
 Column {
     property Neuron neuron
+    anchors {
+        left: parent.left
+        right: parent.right
+    }
     Text {
-        text: "Label:"
+        text: "Label text:"
+        font: Style.control.font
+        color: Style.text.color
     }
     TextField {
         id: labelField
