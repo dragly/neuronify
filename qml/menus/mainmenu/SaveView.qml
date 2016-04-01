@@ -49,12 +49,15 @@ Item {
             CustomFileIcon {
                 name: index;
                 saveFilename: "file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/custom" + index + ".nfy";
+                imageName: StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/custom" + index + ".png";
                 onClicked: {
                     if (isSave) {
                         save(saveFilename)
 
                         saveView.requestScreenshot(function(result) {
-                            result.saveToFile("/tmp/something.png");
+                            console.log("saving image to: " + imageName)
+                            result.saveToFile(imageName);
+                            refresh()
                         });
                         console.log("calling save from saveView")
                     } else {
