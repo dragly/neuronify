@@ -63,8 +63,8 @@ Node {
     }
 
     controls: Component {
-        Column {
-            anchors.fill: parent
+        PropertiesPage {
+            title: "Poisson generator"
             BoundSlider {
                 target: engine
                 property: "rate"
@@ -85,6 +85,7 @@ Node {
                 stepSize: 1.0e-6
             }
         }
+
     }
 
     Image {

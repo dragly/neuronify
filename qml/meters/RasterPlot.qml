@@ -59,11 +59,8 @@ Node {
     }
 
     controls: Component {
-        Column {
-            anchors.fill: parent
-            Text {
-                text: "Time range: " + timeRange.toFixed(0)
-            }
+       PropertiesPage {
+           property string title: "Raster plot"
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"

@@ -16,7 +16,7 @@ Item {
     property StackView stackView: parent.stackView
 
     width: parent.width
-    height: fontMetrics.height * 2.2
+    height: Style.control.fontMetrics.height * 2.2
 
     PropertiesPage {
         id: propertiesPage
@@ -24,10 +24,6 @@ Item {
         title: root.text
     }
 
-    FontMetrics {
-        id: fontMetrics
-        font: buttonText.font
-    }
     Rectangle {
         anchors.fill: parent
         color: "#11000000"

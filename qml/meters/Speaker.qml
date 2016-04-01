@@ -5,6 +5,8 @@ import Neuronify 1.0
 
 import ".."
 import "../controls"
+import "qrc:/qml/style"
+import QtQuick.Controls.Styles 1.0
 
 /*!
 \qmltype Speaker
@@ -34,7 +36,8 @@ Node {
     }
 
     controls: Component {
-        Column {
+        PropertiesPage {
+            property string title: "Speaker"
             width: parent ? parent.width : 100
 
             Component.onCompleted: {
@@ -46,25 +49,31 @@ Node {
                 }
             }
 
+
+            BoundSlider {
+                target: soundBank
+                property: "volume"
+                minimumValue: 0.0
+                maximumValue: 1.0
+                text: "Volume"
+            }
+
             CheckBox {
                 id: mutedCheckBox
-                text: "Muted"
+                Text{
+                    anchors.left: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Muted"
+                    font: Style.control.font
+                    color: Style.text.color
+                }
+
                 checked: soundBank.muted
             }
             Binding {
                 target: soundBank
                 property: "muted"
                 value: mutedCheckBox.checked
-            }
-
-            Text {
-                text: "Volume: " + soundBank.volume.toFixed(1)
-            }
-            BoundSlider {
-                target: soundBank
-                property: "volume"
-                minimumValue: 0.0
-                maximumValue: 1.0
             }
             Button {
                 text: "Connect to all neurons"
@@ -89,7 +98,14 @@ Node {
                     property url source: model.source
                     exclusiveGroup: soundGroup
 
-                    text: model.name
+                    Text{
+                        anchors.left: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text:  model.name
+                        font: Style.control.font
+                        color: Style.text.color
+                    }
+//                    text: model.name
 
                     onCheckedChanged: {
                         if(checked) {

@@ -49,34 +49,31 @@ Node {
     }
 
     controls: Component {
-        Item {
-            anchors.fill: parent
-
-            Column {
-                anchors.fill: parent
-                BoundSlider {
-                    target: engine
-                    property: "amplitude"
-                    minimumValue: 0.0
-                    maximumValue: 50.0e-6
-                    unitScale: 1e-6
-                    unit: "uA"
-                    text: "Current amplitude"
-                    stepSize: 1e-6
-                }
-                BoundSlider {
-                    target: engine
-                    property: "frequency"
-                    minimumValue: 0.0
-                    maximumValue: 200.0
-                    unitScale: 1
-                    unit: "Hz"
-                    text: "Current frequency"
-                    stepSize: 1.
-                }
+        PropertiesPage {
+            title: "AC clamp"
+            BoundSlider {
+                target: engine
+                property: "amplitude"
+                minimumValue: 0.0
+                maximumValue: 50.0e-6
+                unitScale: 1e-6
+                unit: "uA"
+                text: "Current amplitude"
+                stepSize: 1e-6
+            }
+            BoundSlider {
+                target: engine
+                property: "frequency"
+                minimumValue: 0.0
+                maximumValue: 200.0
+                unitScale: 1
+                unit: "Hz"
+                text: "Current frequency"
+                stepSize: 1.
             }
         }
     }
+
 
     Image {
         anchors.fill: parent

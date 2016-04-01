@@ -88,5 +88,6 @@
         <file>qml/controls/RefractoryPeriodControl.qml</file>
         <file>qml/controls/PropertiesItem.qml</file>
         <file>qml/controls/PropertiesPage.qml</file>
+        <file>qml/hud/AnnotationsList.qml</file>
     </qresource>
 </RCC>

@@ -5,6 +5,7 @@ import QtGraphicalEffects 1.0
 import "../paths"
 import "../hud"
 import ".."
+import "../controls"
 
 /*!
 \qmltype TouchSensor
@@ -45,6 +46,13 @@ Node {
                 engine.fire()
                 sensing = false
             }
+        }
+    }
+
+    controls: Component {
+        PropertiesPage {
+             property string title: "Touch sensor"
+
         }
     }
 

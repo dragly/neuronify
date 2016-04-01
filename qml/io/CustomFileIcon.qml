@@ -9,12 +9,13 @@ Rectangle {
         signal clicked
         property var name
         property var saveFilename
+        property var imageName
         Layout.fillWidth : true
         Layout.fillHeight: true
         width : 1
         height : 1
         //color : fileExists() ? "red" : "blue"
-        color: fileExists() ? Style.button.backgroundColor : "blue"
+        color: Style.button.backgroundColor
 
 
         function fileExists(){
@@ -26,18 +27,44 @@ Rectangle {
             }
         }
 
+
+        function imageExists(){
+            var code = customFileManager.read("file://" + imageName);
+            if(!code) {
+                return false;
+            } else {
+                return true
+            }
+        }
+
+        function refresh(){
+            if (imageExists()){
+                    iconImage.source = ("file://" + imageName)
+                    saveText.text = ""
+            }
+        }
+
+        Image{
+            id: iconImage
+            //source: "file://" + imageName
+            source: imageExists() ? ("file://" + imageName) : ""
+            width: parent.width
+            height: parent.height
+        }
+
         MouseArea{
             anchors.fill: parent
             enabled: (fileExists() || saveView.isSave)
             onClicked: {
                 iconRoot.clicked()
+                //iconImage.source = ("file://" + imageName)
                 iconRoot.color = fileExists() ? Style.button.backgroundColor : "blue"
             }
 
         }
         Text {
             id: saveText
-            text: parent.name
+            text: fileExists() ? "" : "Empty file"
             font: Style.button.font
             renderType: Text.QtRendering
             color: Style.button.color

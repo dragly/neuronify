@@ -65,7 +65,7 @@ Node {
             sliderMinimum: -250
             sliderMaximum: 250
             unit: "mV"
-            meterType: "voltmeter"
+            meterType: "Voltmeter"
 
         }
     }

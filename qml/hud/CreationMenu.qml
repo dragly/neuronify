@@ -69,13 +69,6 @@ Item {
         }
     }
 
-    MouseArea {
-        anchors.fill: creationColumn
-        enabled: root.revealed
-//        onClicked: {
-//            itemListView.currentIndex = -1
-//        }
-    }
 
     Item {
         id: background
@@ -188,7 +181,7 @@ Item {
                     imageSource: model.imageSource
 
 
-                    onClicked: {
+                    onPressed: {
                         itemListView.currentIndex = index
                     }
 

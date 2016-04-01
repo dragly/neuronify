@@ -32,7 +32,8 @@ Neuron {
 
 
     controls: Component {
-        Column {
+        PropertiesPage {
+            property string title: "Adaptive neuron"
             LabelControl {
                 neuron: neuronRoot
             }
