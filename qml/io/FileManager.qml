@@ -76,6 +76,7 @@ Item {
         var workspaceProperties = objectify(workspace);
 
         var result = {
+            fileFormatVersion: 1,
             edges: edgeList,
             nodes: nodeList,
             workspace: workspaceProperties
