@@ -70,6 +70,8 @@ PropertiesPage {
                 verticalCenter: parent.verticalCenter
             }
             text: "Show legend"
+            font: Style.control.font
+            color: Style.text.color
         }
 
         Switch {

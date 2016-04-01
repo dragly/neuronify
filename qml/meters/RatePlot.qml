@@ -64,7 +64,7 @@ Node {
             sliderMinimum: 0
             sliderMaximum: 2500
             unit: "Hz"
-            meterType: "firing rate"
+            meterType: "Firing rate"
 
             BoundSlider {
                 id: sliderWindowDuration

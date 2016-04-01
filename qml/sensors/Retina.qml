@@ -118,7 +118,8 @@ Node {
 
 
     controls: Component {
-        Column {
+        PropertiesPage {
+            property string title: "Retina"
             Component.onCompleted: {
                 for(var i = 0; i < fieldTypes.count; i++) {
                     var item = fieldTypes.get(i)
@@ -135,6 +136,9 @@ Node {
             Text {
                 text: "Receptive Field: " +
                       fieldTypes.get(fieldTypesView.currentIndex).name
+
+                font: Style.control.font
+                color: Style.text.color
             }
 
             GridView {
@@ -214,7 +218,14 @@ Node {
             }
 
             CheckBox {
-                text: "Show receptive field"
+                Text{
+                    anchors.left: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Show receptive field"
+                    font: Style.control.font
+                    color: Style.text.color
+                }
+
                 checked: retinaEngine.plotKernel
                 onCheckedChanged: {
                     if(checked) {
@@ -224,6 +235,7 @@ Node {
                     }
                 }
             }
+
 
             //Slider to change the sensitivity:
             BoundSlider {

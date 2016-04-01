@@ -4,6 +4,10 @@ import QtQuick.Controls.Styles 1.4
 import ".."
 import "../style"
 
+import "qrc:/"
+import "qrc:/qml/"
+import "qrc:/qml/controls"
+
 import Neuronify 1.0
 
 Node {
@@ -28,10 +32,13 @@ Node {
     }
 
     controls: Component {
-        Column {
+        PropertiesPage {
+            property string title: "Note"
             spacing: Style.spacing
             Text {
                 text: "Text:"
+                font: Style.control.font
+                color: Style.text.color
             }
             TextArea {
                 id: textInput

@@ -41,6 +41,9 @@ Item {
         property real width: 2.0
     }
 
+    FontMetrics {
+        id: defaultMetrics
+    }
 
     Item {
         id: buttonObject
@@ -83,11 +86,12 @@ Item {
             id: controlFontMetrics
             font: controlObject.font
         }
+
         Text {
             id: controlTextProxy
             color: "#222"
             font.family: "Roboto"
-            font.pixelSize: root.windowHeight * 0.042
+            font.pixelSize: Math.min(root.windowHeight * 0.042, defaultMetrics.font.pixelSize)
         }
         Text {
             id: controlSubTextProxy

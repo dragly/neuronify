@@ -7,6 +7,7 @@ Item {
 
     signal dropped(var fileUrl, var properties, var controlParent)
     signal clicked(var entity)
+    signal pressed(var entity)
 
     default property alias subChildren: creationControl.children
 
@@ -54,6 +55,9 @@ Item {
             }
             onClicked: {
                 root.clicked(root)
+            }
+            onPressed: {
+                root.pressed(root)
             }
         }
     }

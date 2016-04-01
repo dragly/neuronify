@@ -29,8 +29,8 @@ Item {
         }
 
         color: "#f7fbff"
-//        width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
-        width: parent.width * 0.5
+        width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
+//        width: parent.width * 0.5
 
         border.color: "#9ecae1"
         border.width: 1.0

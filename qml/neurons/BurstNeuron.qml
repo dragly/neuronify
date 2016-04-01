@@ -38,7 +38,8 @@ Neuron {
     }
 
     controls: Component {
-        Column {
+        PropertiesPage {
+            property string title: "Burst neuron"
             LabelControl {
                 neuron: neuronRoot
             }
