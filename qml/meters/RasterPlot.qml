@@ -14,8 +14,10 @@ Node {
     property real time: 0.0
     property real timeRange: 10.0e-3
     property real timeScale: 1e-3
+    property bool showLegend: true
 
     property var neurons: []
+
 
     objectName: "rasterplot"
     fileName: "meters/RasterPlot.qml"
@@ -29,6 +31,7 @@ Node {
         property alias width: rasterRoot.width
         property alias height: rasterRoot.height
         property alias timeRange: rasterRoot.timeRange
+        property alias showLegend: rasterRoot.showLegend
     }
 
     engine: NodeEngine {
@@ -138,6 +141,7 @@ Node {
                 gridVisible: false
                 labelsFont.pixelSize: 14
                 labelFormat: "%.0f"
+                titleText: rasterRoot.showLegend ? "t [ms]" : ""
             }
             axisY: CategoryAxis {
                 id: axisY
@@ -148,6 +152,7 @@ Node {
                 tickCount: 0
                 lineVisible: false
                 labelsFont.pixelSize: 14
+//                titleText: rasterRoot.showLegend ? "Cell" : ""
             }
         }
         ChartScroller {
