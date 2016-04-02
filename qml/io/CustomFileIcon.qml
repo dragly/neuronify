@@ -1,80 +1,51 @@
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.3
+import Qt.labs.folderlistmodel 2.1
+
 import "../.."
 import "../style"
 
 Rectangle {
-        id: iconRoot
-        signal clicked
-        property var name
-        property var saveFilename
-        property var imageName
-        Layout.fillWidth : true
-        Layout.fillHeight: true
-        width : 1
-        height : 1
-        //color : fileExists() ? "red" : "blue"
-        color: Style.button.backgroundColor
+    id: iconRoot
+    signal clicked
+    property string basePath
+    property string filePath: "file://" + basePath + ".nfy"
+    property string imagePath:"file://" +  basePath + ".png"
+    property string imageFilename: basePath + ".png"
+    property bool empty: false
 
+    Layout.fillWidth : true
+    Layout.fillHeight: true
+    width : 1
+    height : 1
+    color: Style.color.background
+    border.color: Style.border.color
+    border.width: Style.border.width
 
-        function fileExists(){
-            var code = customFileManager.read(saveFilename);
-            if(!code) {
-                return false;
-            } else {
-                return true
-            }
-        }
+    Image{
+        id: iconImage
 
+        anchors.fill: parent
 
-        function imageExists(){
-            var code = customFileManager.read("file://" + imageName);
-            if(!code) {
-                return false;
-            } else {
-                return true
-            }
-        }
+        source: empty ? "" : imagePath
+        fillMode: Image.PreserveAspectCrop
+    }
 
-        function refresh(){
-            if (imageExists()){
-                    iconImage.source = ("file://" + imageName)
-                    saveText.text = ""
-            }
-        }
+    Text {
+        id: saveText
+        anchors.centerIn: parent
+        text: iconRoot.empty ? "Empty file" : ""
+        font: Style.button.font
+        renderType: Text.QtRendering
+        color: Style.button.color
+    }
 
-        Image{
-            id: iconImage
-            //source: "file://" + imageName
-            source: imageExists() ? ("file://" + imageName) : ""
-            width: parent.width
-            height: parent.height
-        }
-
-        MouseArea{
-            anchors.fill: parent
-            enabled: (fileExists() || saveView.isSave)
-            onClicked: {
-                iconRoot.clicked()
-                //iconImage.source = ("file://" + imageName)
-                iconRoot.color = fileExists() ? Style.button.backgroundColor : "blue"
-            }
-
-        }
-        Text {
-            id: saveText
-            text: fileExists() ? "" : "Empty file"
-            font: Style.button.font
-            renderType: Text.QtRendering
-            color: Style.button.color
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-        }
-
-        FileManager {
-            id: customFileManager
-
+    MouseArea{
+        anchors.fill: parent
+        onClicked: {
+            iconRoot.clicked()
         }
     }
+}
 

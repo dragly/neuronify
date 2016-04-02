@@ -66,6 +66,9 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("net");
     app.setApplicationName("Neuronify");
 
+    qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
+    QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
+
     QQmlApplicationEngine engine;
     engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
 

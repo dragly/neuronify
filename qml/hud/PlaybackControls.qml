@@ -20,8 +20,6 @@ Rectangle {
     radius: height * 0.5
 
     color: Style.color.background
-//    border.width: Style.border.width
-//    border.color: Style.border.lightColor
     width: playbackControls.width + Style.touchableSize * 0.3
     height: playbackControls.height + Style.touchableSize * 0.3
 

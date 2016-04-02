@@ -29,6 +29,7 @@ Item {
         color: "#11000000"
         visible: mouseArea.pressed
     }
+
     Rectangle {
         anchors {
             left: parent.left
