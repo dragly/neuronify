@@ -552,9 +552,6 @@ Rectangle {
 
         anchors.fill: parent
 
-        onWidthChanged: console.log("Width: " + width)
-        Component.onCompleted: console.log("Complete")
-
         PinchArea {
             id: pinchArea
             anchors.fill: parent
@@ -640,8 +637,6 @@ Rectangle {
                     var widthRatio = visibleRectangle.width / viewport.width;
                     var heightRatio = visibleRectangle.height / viewport.height;
                     var scale = 1.0 / Math.max(widthRatio, heightRatio);
-
-                    console.log("Choosing scale: " + widthRatio + " " + heightRatio + " " + scale)
 
                     workspace.scale = pinchArea.clampScale(scale);
 
