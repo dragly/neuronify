@@ -345,7 +345,7 @@ Rectangle {
         }
 
         if(node.objectName === "retina"){
-            camera.retinaCounter -= 1;
+            videoSurface.retinaCounter -= 1;
         }
 
         for(var j in node.removableChildren) {
@@ -447,7 +447,7 @@ Rectangle {
 
         var isRetina = fileUrl.toString().indexOf("Retina.qml")> -1
         if(isRetina){
-            camera.retinaCounter += 1
+            videoSurface.retinaCounter += 1
             properties.videoSurface = videoSurface
         }
 
@@ -907,23 +907,22 @@ Rectangle {
 
     VideoSurface{
         id: videoSurface
-        enabled: root.running
+        property int retinaCounter: 0
+        property bool active: retinaCounter > 0 && root.running
+        enabled: active
         camera: Camera{
-            id:camera
+            id: camera
             viewfinder.resolution : Qt.size(1280,720)
-            property bool active: retinaCounter > 0 && root.running
-            property int retinaCounter: 0
 
             Component.onCompleted: {
                 camera.stop()
             }
-
-            onActiveChanged: {
-                if(active){
-                    camera.start()
-                }else{
-                    camera.stop()
-                }
+        }
+        onActiveChanged: {
+            if(active){
+                camera.start()
+            }else{
+                camera.stop()
             }
         }
     }
