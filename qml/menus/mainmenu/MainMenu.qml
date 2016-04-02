@@ -174,22 +174,6 @@ Item {
         }
     }
 
-    AdvancedView {
-        id: advancedView
-        visible: false
-        width: parent.width
-        height: parent.height
-
-        onSaveSimulationClicked: {
-            //saveSimulationRequested()
-            stackView.push(saveView)
-        }
-
-        onLoadSimulationClicked: {
-            stackView.push(saveView)
-        }
-    }
-
     AboutView {
         id: aboutView
         visible: false

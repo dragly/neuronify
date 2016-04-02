@@ -27,7 +27,6 @@
         <file>qml/Simulation.qml</file>
         <file>qml/hud/PlaybackControls.qml</file>
         <file>qml/menus/mainmenu/MainMenuButton.qml</file>
-        <file>qml/menus/mainmenu/AdvancedView.qml</file>
         <file>qml/Node.qml</file>
         <file>qml/hud/SensorControls.qml</file>
         <file>qml/io/FileManager.qml</file>
