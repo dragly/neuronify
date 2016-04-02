@@ -49,7 +49,7 @@ signals:
     void sensitivityChanged(double sensitivity);
 
 protected:
-    virtual void stepEvent(double dt);
+    virtual void stepEvent(double dt, bool parentEnabled) override;
 
 private:
     VideoSurface * m_videoSurface = nullptr;
