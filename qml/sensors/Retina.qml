@@ -42,6 +42,14 @@ Node {
     width: 240
     height: 180
     canReceiveConnections: false
+    controls: controlsComponent
+
+    engine: RetinaEngine {
+        id: retinaEngine
+        kernel: kernel
+        videoSurface: root.videoSurface
+        plotKernel: true
+    }
 
     savedProperties: [
         PropertyGroup {
@@ -78,14 +86,6 @@ Node {
         imageAlpha: 225
     }
 
-    engine: RetinaEngine {
-        id: retinaEngine
-        kernel: kernel
-        videoSurface: root.videoSurface
-        plotKernel: true
-    }
-
-
     Rectangle {
         color: "#0088aa"
         anchors.fill: parent
@@ -113,8 +113,8 @@ Node {
         connectorColor: "#0088aa"
     }
 
-
-    controls: Component {
+    Component {
+        id: controlsComponent
         PropertiesPage {
             property string title: "Retina"
             Component.onCompleted: {
@@ -127,7 +127,6 @@ Node {
                     }
                 }
             }
-
 
             spacing: 10
             Text {
@@ -236,9 +235,9 @@ Node {
 
             //Slider to change the sensitivity:
             BoundSlider {
-                minimumValue: 1
-                maximumValue: 50
-                stepSize: 5
+                minimumValue: 0
+                maximumValue: 10000
+                stepSize: 10
                 target: retinaEngine
                 property: "sensitivity"
                 text: "Sensitivity"
