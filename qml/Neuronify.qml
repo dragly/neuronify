@@ -99,16 +99,16 @@ Rectangle {
         if(!object){
             console.warn("WARNING: apply properties got missing object: " + object)
             console.warn("with properties:")
-//            for(var i in properties) {
-//                console.log(i + ": " + properties[i])
-//            }
+            //            for(var i in properties) {
+            //                console.log(i + ": " + properties[i])
+            //            }
             console.log("Cannot apply.")
             return
         }
 
         for(var i in properties) {
             var prop = properties[i];
-//            console.log("Setting " + i + ": " + prop)
+            //            console.log("Setting " + i + ": " + prop)
             if(!object.hasOwnProperty("savedProperties")) {
                 console.warn("WARNING: Object " + object + " is missing savedProperties property.");
                 continue;
@@ -241,20 +241,20 @@ Rectangle {
         var fileString = ""
 
         var counter = 0
-//        for(var i in graphEngine.nodes) {
-//            var entity = graphEngine.nodes[i]
-//            fileString += entity.dump(i)
-//        }
+        //        for(var i in graphEngine.nodes) {
+        //            var entity = graphEngine.nodes[i]
+        //            fileString += entity.dump(i)
+        //        }
 
-//        for(var i in graphEngine.edges) {
-//            var connection = graphEngine.edges[i]
-//            fileString += connection.dump(i, graphEngine)
-//        }
+        //        for(var i in graphEngine.edges) {
+        //            var connection = graphEngine.edges[i]
+        //            fileString += connection.dump(i, graphEngine)
+        //        }
 
         undoList = undoList.slice(0,undoIdx)
         undoIdx += 1
         undoList.push(fileString)
-//        console.log("Making new undolist item ", undoIdx, undoList.length)
+        //        console.log("Making new undolist item ", undoIdx, undoList.length)
         canRedo = false
     }
 
@@ -262,13 +262,13 @@ Rectangle {
         if (undoIdx > 1){
             undoIdx -= 1
             deleteEverything()
-//            console.log("Undoing...", undoIdx, undoList.length)
+            //            console.log("Undoing...", undoIdx, undoList.length)
             undoRecordingEnabled = false
             eval(undoList[undoIdx-1])
             undoRecordingEnabled = true
             canRedo = true
         } else {
-//            console.log("Nothing to undo! ")
+            //            console.log("Nothing to undo! ")
         }
     }
 
@@ -355,7 +355,7 @@ Rectangle {
         }
 
         if(node.objectName === "retina"){
-            videoSurface.retinaCounter -= 1;
+            retinaLoader.retinaCounter -= 1;
         }
 
         for(var j in node.removableChildren) {
@@ -457,8 +457,8 @@ Rectangle {
 
         var isRetina = fileUrl.toString().indexOf("Retina.qml")> -1
         if(isRetina){
-            videoSurface.retinaCounter += 1
-            properties.videoSurface = videoSurface
+            retinaLoader.retinaCounter += 1
+            properties.videoSurface = retinaLoader.item.videoSurface
         }
 
         properties.simulator = root
@@ -739,7 +739,7 @@ Rectangle {
         }
         width: Style.touchableSize * 1.5
 
-//        spacing: Style.spacing
+        //        spacing: Style.spacing
 
         spacing: 0
 
@@ -910,36 +910,49 @@ Rectangle {
         }
     }
 
-    VideoSurface{
-        id: videoSurface
-        property int retinaCounter: 0
-        property bool active: retinaCounter > 0 && root.running
-        enabled: active
-        camera: Camera{
-            id: camera
-            viewfinder.resolution : Qt.size(1280,720)
+    Loader {
+        id: retinaLoader
 
-            Component.onCompleted: {
-                camera.stop()
-            }
-        }
-        onActiveChanged: {
-            if(active){
-                camera.start()
-            }else{
-                camera.stop()
-            }
-        }
+        property int retinaCounter: 0
+        property bool active: retinaCounter > 0
+
+        sourceComponent: active ? retinaComponent : undefined
     }
 
-    VideoOutput {
-        // dummy output needed for camera to work on Android
-        x: -10
-        enabled: Qt.platform.os === "android" && videoSurface.enabled
-        visible: Qt.platform.os === "android" && videoSurface.enabled
-        width: 10
-        height: 10
-        source: videoSurface && videoSurface.camera ? videoSurface.camera : null
+    Component {
+        id: retinaComponent
+        Item {
+            x: -10
+            width: 10
+            height: 10
+            property alias videoSurface: _videoSurface
+            VideoSurface{
+                id: _videoSurface
+                enabled: root.running
+                camera: Camera{
+                    id: _camera
+                    viewfinder.resolution : Qt.size(1280,720)
+                    Component.onCompleted: {
+                        _camera.stop()
+                    }
+                }
+                onEnabledChanged: {
+                    if(!enabled) {
+                        _camera.stop()
+                    } else {
+                        _camera.start()
+                    }
+                }
+            }
+            VideoOutput {
+                // dummy output needed for camera to work on Android
+                anchors.fill: parent
+                enabled: Qt.platform.os === "android" && root.running
+                visible: Qt.platform.os === "android" && root.running
+                source: _videoSurface.camera
+            }
+        }
+
     }
 
     Settings {
