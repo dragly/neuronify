@@ -58,7 +58,7 @@ private:
 
 
     double m_firingRate = 0.0;
-    double m_sensitivity = 1.0;
+    double m_sensitivity = 1000.0;
 
     vector< vector <double>> m_stim;
     bool m_plotKernel;

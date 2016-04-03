@@ -40,14 +40,15 @@ void RetinaEngine::receivedImage()
 
     for(int i = 0; i < m_paintedImage.width(); i++){
         for(int j = 0; j < m_paintedImage.height(); j++){
+            int value = 0;
+            value = qGray(m_paintedImage.pixel(i,j));
 #ifdef Q_OS_ANDROID
-            int gray = m_paintedImage.pixel(i,j);
+            // already RGB with grey color on Android, can pick only one component, but let's not for safety
 #else
-            int gray = qGray(m_paintedImage.pixel(i,j));
-            QRgb color = qRgb(gray, gray, gray);
-            m_paintedImage.setPixel(i,j,color);
+            QRgb grayAsRgb = qRgb(value, value, value);
+            m_paintedImage.setPixel(i, j, grayAsRgb);
 #endif
-            m_stim.at(i).at(j) = (gray-128.)/128;
+            m_stim.at(i).at(j) = (value - 128.)/128;
         }
     }
 
@@ -68,16 +69,11 @@ void RetinaEngine::calculateFiringRate()
     m_firingRate = 0.0;
     for(int i = 0; i < resolutionWidth; i++){
         for(int j = 0; j < resolutionHeight; j++){
-            m_firingRate += m_stim.at(i).at(j) *  spatial.at(i).at(j);
+            m_firingRate += m_stim.at(i).at(j) * spatial.at(i).at(j);
         }
     }
     m_firingRate /= resolutionHeight*resolutionWidth;
-//    if(m_firingRate < 0){
-//        m_firingRate = 0;
-//    }
 }
-
-
 
 void RetinaEngine::stepEvent(double dt, bool parentEnabled)
 {
@@ -88,7 +84,7 @@ void RetinaEngine::stepEvent(double dt, bool parentEnabled)
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0,1);
 
-    double shouldFire = (dis(gen) < m_sensitivity * m_firingRate*dt);
+    double shouldFire = (dis(gen) < m_sensitivity * m_firingRate * dt);
     if(shouldFire){
         fire();
     }
