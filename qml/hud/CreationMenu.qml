@@ -139,8 +139,6 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 spacing: Style.touchableSize * 0.5
-                //                orientation: ListView.Horizontal
-                //                boundsBehavior: Flickable.StopAtBounds
 
                 Repeater {
 
@@ -176,13 +174,6 @@ Item {
                             }
                         }
                     }
-
-                    //                highlight: Image {
-                    //                    source: "qrc:/images/categories/marker.png"
-
-                    //                    width: Style.touchableSize
-                    //                    height: width
-                    //                }
                 }
             }
 
