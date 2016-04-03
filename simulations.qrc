@@ -18,9 +18,6 @@
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.nfy</file>
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.png</file>
         <file>simulations/drivenCircularInhibition/drivenCircularInhibition.qml</file>
-        <file>simulations/singleCell/singleCell.nfy</file>
-        <file>simulations/singleCell/singleCell.png</file>
-        <file>simulations/singleCell/singleCell.qml</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.nfy</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.png</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.qml</file>
@@ -54,5 +51,14 @@
         <file>simulations/neurons/burst/burst.nfy</file>
         <file>simulations/neurons/burst/burst.png</file>
         <file>simulations/neurons/burst/burst.qml</file>
+        <file>simulations/neurons/passive/passive.nfy</file>
+        <file>simulations/neurons/passive/passive.png</file>
+        <file>simulations/neurons/passive/passive.qml</file>
+        <file>simulations/neurons/adaptation/adaptation.nfy</file>
+        <file>simulations/neurons/adaptation/adaptation.png</file>
+        <file>simulations/neurons/adaptation/adaptation.qml</file>
+        <file>simulations/neurons/inhibitory/inhibitory.nfy</file>
+        <file>simulations/neurons/inhibitory/inhibitory.png</file>
+        <file>simulations/neurons/inhibitory/inhibitory.qml</file>
     </qresource>
 </RCC>

@@ -19,14 +19,13 @@ Neuron {
 
     engine: NeuronEngine {
         id: neuronEngine
-        fireOutput: 200.0e-6
         PassiveCurrent {
             id: passiveCurrent
         }
         AdaptationCurrent {
             id: adaptationCurrent
-            adaptation: 10.0e-6
-            timeConstant: 500.0e-3
+            adaptation: 50.0e-6
+            timeConstant: 300.0e-3
         }
     }
 
@@ -40,9 +39,8 @@ Neuron {
             SynapticOutputControl {
                 engine: neuronEngine
             }
-
             AdaptationControl{
-            current: adaptationCurrent
+                current: adaptationCurrent
             }
             AdaptationTimeConstantControl{
                 current: adaptationCurrent

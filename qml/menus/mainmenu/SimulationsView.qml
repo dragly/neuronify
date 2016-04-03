@@ -39,13 +39,6 @@ Item {
                         ]
                     },
                     {
-                        name: "Neurons",
-                        simulations: [
-//                            "qrc:/simulations/cells/passive",
-                            "qrc:/simulations/neurons/burst",
-                        ]
-                    },
-                    {
                         name: "Inhibition",
                         simulations: [
                             "qrc:/simulations/typesOfInhibition",
@@ -62,17 +55,26 @@ Item {
                         ]
                     },
                     {
-                        name: "Sterratt Examples",
-                        simulations: [
-                            "qrc:/simulations/sterratt/fig_8_5",
-                            "qrc:/simulations/sterratt/refractoryPeriod",
-                        ]
-                    },
-                    {
                         name: "Mix",
                         simulations: [
                             "qrc:/simulations/rythmTransformation",
                             "qrc:/simulations/prolongedActivity",
+                        ]
+                    },
+                    {
+                        name: "Neurons",
+                        simulations: [
+                            "qrc:/simulations/neurons/passive",
+                            "qrc:/simulations/neurons/inhibitory",
+                            "qrc:/simulations/neurons/burst",
+                            "qrc:/simulations/neurons/adaptation",
+                        ]
+                    },
+                    {
+                        name: "Sterratt Examples",
+                        simulations: [
+                            "qrc:/simulations/sterratt/fig_8_5",
+                            "qrc:/simulations/sterratt/refractoryPeriod",
                         ]
                     },
                 ]
