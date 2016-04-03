@@ -561,6 +561,9 @@ Rectangle {
     Item {
         id: workspaceFlickable
 
+        property bool scaleSetByDoubleClick: false
+        property real previousScale: 1.0
+
         anchors.fill: parent
 
         PinchArea {
@@ -570,25 +573,46 @@ Rectangle {
             property point workspaceStart
             property var localStartCenter
             property double startScale: 1.0
+            property point pinchStart
+            property real minimumScale: 0.1
+            property real maximumScale: 2.0
 
             function clampScale(scale) {
-                return Math.min(2.0, Math.max(0.1, scale))
+                return Math.max(minimumScale, Math.min(maximumScale, scale));
+            }
+
+            function calculateScaleAndPosition(localX, localY, targetScale) {
+                var localStartCenter = mapToItem(workspace, localX, localY);
+                var scale = pinchArea.clampScale(targetScale);
+                var oldScale = workspace.scale;
+                workspace.scale = scale;
+                var x = localX - localStartCenter.x * workspace.scale;
+                var y = localY - localStartCenter.y * workspace.scale;
+                workspace.scale = oldScale;
+                return {x: x, y: y, scale: scale};
+            }
+
+            function scaleAndPosition(localX, localY, targetScale) {
+                var result = calculateScaleAndPosition(localX, localY, targetScale);
+                workspace.scale = result.scale;
+                workspace.x = result.x;
+                workspace.y = result.y;
             }
 
             onPinchStarted: {
-                localStartCenter = mapToItem(workspace, pinch.center.x, pinch.center.y)
-                startScale = workspace.scale
+                pinchStart = Qt.point(pinch.center.x, pinch.center.y);
+                startScale = workspace.scale;
             }
 
             onPinchUpdated: {
-                var newScale = pinch.scale * startScale
-                workspace.scale = clampScale(newScale)
-                workspace.x = pinch.center.x - localStartCenter.x * workspace.scale
-                workspace.y = pinch.center.y - localStartCenter.y * workspace.scale
+                var newScale = pinch.scale * startScale;
+                scaleAndPosition(pinchStart.x, pinchStart.y, newScale);
+                workspaceFlickable.scaleSetByDoubleClick = false;
             }
 
             MouseArea {
                 id: workspaceMouseArea
+
                 anchors.fill: parent
 
                 propagateComposedEvents: true
@@ -596,22 +620,70 @@ Rectangle {
 
                 onWheel: {
                     if(wheel.modifiers & Qt.ControlModifier) {
-                        var localStartCenter = mapToItem(workspace, wheel.x, wheel.y)
-                        var newScale = workspace.scale + wheel.angleDelta.y * 0.001
-                        workspace.scale = pinchArea.clampScale(newScale)
-                        workspace.x = wheel.x - localStartCenter.x * workspace.scale
-                        workspace.y = wheel.y - localStartCenter.y * workspace.scale
+                        var targetScale = workspace.scale + wheel.angleDelta.y * 0.001;
+                        pinchArea.scaleAndPosition(wheel.x, wheel.y, targetScale);
+                        workspaceFlickable.scaleSetByDoubleClick = false;
                     } else {
-                        workspace.x += wheel.angleDelta.x * 0.4
-                        workspace.y += wheel.angleDelta.y * 0.4
+                        workspace.x += wheel.angleDelta.x * 0.4;
+                        workspace.y += wheel.angleDelta.y * 0.4;
                     }
                 }
 
                 onClicked: {
-                    propertiesPanel.revealed = false
-                    deselectAll()
-                    selectedEntities = []
+                    propertiesPanel.revealed = false;
+                    deselectAll();
+                    selectedEntities = [];
                 }
+
+                onDoubleClicked: {
+                    var result;
+                    var targetScale;
+                    if(workspaceFlickable.scaleSetByDoubleClick) {
+                        targetScale = workspaceFlickable.previousScale;
+                        workspaceFlickable.scaleSetByDoubleClick = false;
+                    } else {
+                        workspaceFlickable.previousScale = workspace.scale;
+                        var ratio = 2.4;
+                        if(workspace.scale * ratio > pinchArea.maximumScale) {
+                            targetScale = workspace.scale / ratio;
+                        } else {
+                            targetScale = workspace.scale * ratio;
+                        }
+                        workspaceFlickable.scaleSetByDoubleClick = true;
+                    }
+                    result = pinchArea.calculateScaleAndPosition(mouse.x, mouse.y, targetScale);
+                    scaleAnimationX.to = result.x;
+                    scaleAnimationY.to = result.y;
+                    scaleAnimationScale.to = result.scale;
+                    scaleAnimation.restart();
+                }
+            }
+        }
+
+        ParallelAnimation {
+            id: scaleAnimation
+            property real duration: 400
+            property int easingType: Easing.OutQuad
+            PropertyAnimation {
+                id: scaleAnimationX
+                target: workspace
+                property: "x"
+                duration: scaleAnimation.duration
+                easing.type: scaleAnimation.easingType
+            }
+            PropertyAnimation {
+                id: scaleAnimationY
+                target: workspace
+                property: "y"
+                duration: scaleAnimation.duration
+                easing.type: scaleAnimation.easingType
+            }
+            PropertyAnimation {
+                id: scaleAnimationScale
+                target: workspace
+                property: "scale"
+                duration: scaleAnimation.duration
+                easing.type: scaleAnimation.easingType
             }
         }
 
@@ -674,7 +746,6 @@ Rectangle {
             scale: 1.0
             transformOrigin: Item.TopLeft
 
-
             Item {
                 id: dragProxy
 
@@ -728,7 +799,6 @@ Rectangle {
             Item {
                 id: neuronLayer
                 anchors.fill: parent
-
             }
         }
     }

@@ -147,20 +147,29 @@ NodeBase {
         enabled: useDefaultMouseHandling
         anchors.fill: parent
         drag.target: root.dragProxy
+        propagateComposedEvents: true
 
         onPressed: {
             root.dragging = true
             dragStarted(root)
+            mouse.accepted = true;
         }
 
         onClicked: {
             root.clicked(root, mouse)
+            mouse.accepted = true;
         }
 
         onReleased: {
             root.dragging = false
             dragEnded(root)
+            mouse.accepted = true;
         }
+
+        onDoubleClicked: {
+            mouse.accepted = false;
+        }
+
     }
 }
 

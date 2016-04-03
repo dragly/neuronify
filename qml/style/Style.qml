@@ -145,8 +145,9 @@ Item {
                 device = "phone"
             }
         } else {
-            device = "dekstop"
-            size = root.windowWidth * 0.01
+            device = "dekstop";
+            var base = Math.min(root.windowWidth, root.windowHeight);
+            size = base * 0.02;
         }
     }
 }
