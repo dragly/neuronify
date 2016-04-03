@@ -354,10 +354,6 @@ Rectangle {
             deselectAll();
         }
 
-        if(node.objectName === "retina"){
-            retinaLoader.retinaCounter -= 1;
-        }
-
         for(var j in node.removableChildren) {
             var child = node.removableChildren[j];
             graphEngine.removeNode(child);
@@ -476,7 +472,15 @@ Rectangle {
         entity.clickedConnector.connect(clickedConnector)
         entity.droppedConnector.connect(createConnectionToPoint)
         entity.dragProxy = dragProxy
-        entity.snapGridSize = Qt.binding(function() {return root.snapGridSize})
+        entity.snapGridSize = Qt.binding(function() {
+            return root.snapGridSize
+        })
+
+        if(isRetina) {
+            entity.Component.destruction.connect(function() {
+                retinaLoader.retinaCounter -= 1;
+            });
+        }
 
         graphEngine.addNode(entity)
         addToUndoList()
