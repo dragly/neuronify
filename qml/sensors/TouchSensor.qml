@@ -6,6 +6,7 @@ import "../paths"
 import "../hud"
 import ".."
 import "../controls"
+import "../tools"
 
 /*!
 \qmltype TouchSensor
