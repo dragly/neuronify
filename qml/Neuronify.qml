@@ -561,14 +561,14 @@ Rectangle {
     Item {
         id: workspaceFlickable
 
-        property bool scaleSetByDoubleClick: false
-        property real previousScale: 1.0
-
         anchors.fill: parent
 
         PinchArea {
             id: pinchArea
             anchors.fill: parent
+
+            property bool scaleSetByDoubleClick: false
+            property real previousScale: 1.0
 
             property point workspaceStart
             property var localStartCenter
@@ -607,7 +607,7 @@ Rectangle {
             onPinchUpdated: {
                 var newScale = pinch.scale * startScale;
                 scaleAndPosition(pinchStart.x, pinchStart.y, newScale);
-                workspaceFlickable.scaleSetByDoubleClick = false;
+                pinchArea.scaleSetByDoubleClick = false;
             }
 
             MouseArea {
@@ -622,7 +622,7 @@ Rectangle {
                     if(wheel.modifiers & Qt.ControlModifier) {
                         var targetScale = workspace.scale + wheel.angleDelta.y * 0.001;
                         pinchArea.scaleAndPosition(wheel.x, wheel.y, targetScale);
-                        workspaceFlickable.scaleSetByDoubleClick = false;
+                        pinchArea.scaleSetByDoubleClick = false;
                     } else {
                         workspace.x += wheel.angleDelta.x * 0.4;
                         workspace.y += wheel.angleDelta.y * 0.4;
@@ -638,18 +638,19 @@ Rectangle {
                 onDoubleClicked: {
                     var result;
                     var targetScale;
-                    if(workspaceFlickable.scaleSetByDoubleClick) {
-                        targetScale = workspaceFlickable.previousScale;
-                        workspaceFlickable.scaleSetByDoubleClick = false;
+                    var ratio = 2.4;
+                    if(pinchArea.scaleSetByDoubleClick) {
+                        targetScale = pinchArea.previousScale;
+                        pinchArea.scaleSetByDoubleClick = false;
                     } else {
-                        workspaceFlickable.previousScale = workspace.scale;
-                        var ratio = 2.4;
-                        if(workspace.scale * ratio > pinchArea.maximumScale) {
+                        pinchArea.previousScale = workspace.scale;
+                        if(workspace.scale / pinchArea.maximumScale > 0.75) {
+                            // if zoomed very far in already, zoom out instead
                             targetScale = workspace.scale / ratio;
                         } else {
                             targetScale = workspace.scale * ratio;
                         }
-                        workspaceFlickable.scaleSetByDoubleClick = true;
+                        pinchArea.scaleSetByDoubleClick = true;
                     }
                     result = pinchArea.calculateScaleAndPosition(mouse.x, mouse.y, targetScale);
                     scaleAnimationX.to = result.x;

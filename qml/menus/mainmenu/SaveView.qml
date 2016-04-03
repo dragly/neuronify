@@ -39,7 +39,7 @@ MainMenuPage {
         width : parent.width
         height: parent.height
 
-        columns: 3
+        columns: saveView.width > saveView.height ? 3 : 2
         columnSpacing: padding
         rowSpacing: padding
 
