@@ -88,5 +88,7 @@
         <file>qml/controls/PropertiesItem.qml</file>
         <file>qml/controls/PropertiesPage.qml</file>
         <file>qml/hud/AnnotationsList.qml</file>
+        <file>qml/annotations/NextTutorial.qml</file>
+        <file>qml/tools/MoveHandle.qml</file>
     </qresource>
 </RCC>

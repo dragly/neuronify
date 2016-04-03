@@ -146,7 +146,7 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    root.applyTextEdit()
+                    root.applyTextEdit();
                 }
             }
         }

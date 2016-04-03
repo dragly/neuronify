@@ -59,5 +59,6 @@
         <file>images/tools/playback.png</file>
         <file>images/tools/properties.png</file>
         <file>images/tools/done.png</file>
+        <file>images/annotate/next.png</file>
     </qresource>
 </RCC>
