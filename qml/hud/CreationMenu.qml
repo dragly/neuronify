@@ -19,7 +19,7 @@ Item {
     anchors.fill: parent
 
     onRevealedChanged: {
-//        itemListView.currentIndex = -1
+        //        itemListView.currentIndex = -1
         itemListView.currentIndex = 0
     }
 
@@ -69,7 +69,6 @@ Item {
         }
     }
 
-
     Item {
         id: background
         anchors.fill: creationColumn
@@ -83,10 +82,11 @@ Item {
     }
 
     Image {
+        id: backButton
         anchors {
             right: creationColumn.right
             top: creationColumn.top
-            margins: Style.margin
+            topMargin: Style.margin
         }
         width: Style.touchableSize
         height: width
@@ -113,6 +113,10 @@ Item {
         width: parent.width
         height: column.height + column.anchors.margins * 2
 
+        MouseArea {
+            anchors.fill: parent
+        }
+
         Column {
             id: column
 
@@ -120,134 +124,165 @@ Item {
                 top: parent.top
                 left: parent.left
                 right: parent.right
-                margins: Style.touchableSize * 0.5
+                rightMargin: backButton.width
+                margins: Style.touchableSize * 0.2
             }
 
-            spacing: Style.touchableSize * 0.5
+            spacing: Style.touchableSize * 0.2
 
-            ListView {
+            Row {
                 id: categoriesListView
+
+                property int currentIndex: 0
+
                 height: Style.touchableSize
-                width: count * (Style.touchableSize + spacing) - spacing
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 spacing: Style.touchableSize * 0.5
-                orientation: ListView.Horizontal
-                boundsBehavior: Flickable.StopAtBounds
+                //                orientation: ListView.Horizontal
+                //                boundsBehavior: Flickable.StopAtBounds
 
-                model: categories
+                Repeater {
 
-                delegate: Image {
-                    width: Style.touchableSize
-                    height: width
-                    source: model.imageSource
+                    model: categories
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onPressed: {
-                            categoriesListView.currentIndex = index
-                            itemModelLoader.source = model.listSource
-                            itemListView.currentIndex = 0
+                    Item {
+                        width: Math.min(Style.touchableSize, column.width / categories.count - categoriesListView.spacing)
+                        height: width
 
+                        Image {
+                            anchors {
+                                fill: parent
+                                margins: -parent.width * 0.05
+                            }
+                            source: "qrc:/images/categories/marker.png"
+                            smooth: true
+                            antialiasing: true
+                            visible: index === categoriesListView.currentIndex
+                        }
+                        Image {
+                            anchors.fill: parent
+                            source: model.imageSource
+                            smooth: true
+                            antialiasing: true
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onPressed: {
+                                categoriesListView.currentIndex = index;
+                                itemModelLoader.source = model.listSource;
+                                itemListView.currentIndex = 0;
+
+                            }
                         }
                     }
-                }
 
-                highlight: Image {
-                    source: "qrc:/images/categories/marker.png"
+                    //                highlight: Image {
+                    //                    source: "qrc:/images/categories/marker.png"
 
-                    width: Style.touchableSize
-                    height: width
+                    //                    width: Style.touchableSize
+                    //                    height: width
+                    //                }
                 }
             }
 
-            ListView {
+            Row {
                 id: itemListView
+
+                property int currentIndex: 0
+                property var currentItem
+
+                function refresh() {
+                    if(itemListRepeater.itemAt(currentIndex)) {
+                        currentItem = itemListRepeater.itemAt(currentIndex).item;
+                    } else {
+                        currentItem = null;
+                    }
+                }
+
+                onCurrentIndexChanged: {
+                    itemListView.refresh();
+                }
+
                 height: Style.touchableSize
-                width: count * (Style.touchableSize + spacing) - spacing
+                width: itemModelLoader.item.count * (Style.touchableSize + spacing) - spacing
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 spacing: Style.touchableSize * 0.5
-                orientation: ListView.Horizontal
-                boundsBehavior: Flickable.StopAtBounds
 
-                model: itemModelLoader.item
+                Repeater {
+                    id: itemListRepeater
 
+                    model: itemModelLoader.item
 
-                delegate: CreationItem {
-                    name: model.name
-                    description: model.description
-                    source: model.source
-                    imageSource: model.imageSource
+                    delegate: Item {
+                        property var item: creationItem
+                        width: Math.min(Style.touchableSize, column.width / itemListRepeater.count - itemListView.spacing)
+                        height: width
 
+                        Image {
+                            anchors {
+                                fill: parent
+                                margins: -parent.width * 0.1
+                            }
+                            source: "qrc:/images/categories/marker.png"
+                            smooth: true
+                            antialiasing: true
+                            visible: index === itemListView.currentIndex
+                        }
+                        CreationItem {
+                            id: creationItem
+                            name: model.name
+                            description: model.description
+                            source: model.source
+                            imageSource: model.imageSource
 
-                    onPressed: {
-                        itemListView.currentIndex = index
+                            onPressed: {
+                                itemListView.currentIndex = index
+                            }
+
+                            onDropped: {
+                                droppedEntity(fileUrl, properties, controlParent)
+                            }
+                        }
                     }
 
-                    onDropped: {
-                        droppedEntity(fileUrl, properties, controlParent)
-                    }
-                }
-
-                highlight: Image {
-                    z: 99
-                    source: "qrc:/images/categories/marker.png"
-
-                    opacity: 0.6
-
-                    width: Style.touchableSize
-                    height: width
-                }
-
-                onModelChanged: {
-                    currentIndex = -1
-                }
-            }
-
-            Item {
-                id: itemDescription
-
-                anchors.horizontalCenter: parent.horizontalCenter
-
-                width: parent.width
-                height: 0.0
-                anchors.top: itemListView.bottom
-
-                Text {
-                    property var item: itemListView.currentItem
-                    anchors.fill: parent
-
-                    color: Style.text.color
-                    font: Style.text.font
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-
-                    text: item ? "<b>" + item.name + "</b> - " + item.description : ""
-                }
-
-                states: State {
-                    when: itemListView.currentItem !== null
-                    PropertyChanges {
-                        target: itemDescription
-                        height: Style.font.size * 1.1
+                    onModelChanged: {
+                        itemListView.currentIndex = 0;
+                        itemListView.refresh();
                     }
                 }
             }
 
-            states: State {
-                when: root.revealed
-                AnchorChanges {
-                    target: creationColumn
-                    anchors.left: root.left
-                }
-            }
+            Text {
+                property var item: itemListView.currentItem
 
-            transitions: Transition {
-                AnchorAnimation {
-                    duration: 400
-                    easing.type: Easing.InOutQuad
+                anchors {
+                    left: parent.left
+                    right: parent.right
                 }
+
+                color: Style.text.color
+                font: Style.text.font
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                text: item ? "<b>" + item.name + "</b> - " + item.description : ""
+            }
+        }
+
+        states: State {
+            when: root.revealed
+            AnchorChanges {
+                target: creationColumn
+                anchors.left: root.left
+            }
+        }
+
+        transitions: Transition {
+            AnchorAnimation {
+                duration: 400
+                easing.type: Easing.InOutQuad
             }
         }
     }
