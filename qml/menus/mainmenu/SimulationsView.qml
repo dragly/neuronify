@@ -39,19 +39,21 @@ Item {
                         ]
                     },
                     {
+                        name: "Neurons",
+                        simulations: [
+                            "qrc:/simulations/neurons/passive",
+                            "qrc:/simulations/neurons/inhibitory",
+                            "qrc:/simulations/neurons/burst",
+                            "qrc:/simulations/neurons/adaptation",
+                        ]
+                    },
+                    {
                         name: "Inhibition",
                         simulations: [
                             "qrc:/simulations/typesOfInhibition",
                             "qrc:/simulations/lateralInhibition",
                             "qrc:/simulations/recurrentInhibition",
                             "qrc:/simulations/reciprocalInhibition",
-                            "qrc:/simulations/twoNeuronOscillator",
-                        ]
-                    },
-                    {
-                        name: "Visual system",
-                        simulations: [
-                            "qrc:/simulations/light",
                         ]
                     },
                     {
@@ -59,15 +61,8 @@ Item {
                         simulations: [
                             "qrc:/simulations/rythmTransformation",
                             "qrc:/simulations/prolongedActivity",
-                        ]
-                    },
-                    {
-                        name: "Neurons",
-                        simulations: [
-                            "qrc:/simulations/neurons/passive",
-                            "qrc:/simulations/neurons/inhibitory",
-                            "qrc:/simulations/neurons/burst",
-                            "qrc:/simulations/neurons/adaptation",
+                            "qrc:/simulations/twoNeuronOscillator",
+
                         ]
                     },
                     {

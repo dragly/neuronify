@@ -27,6 +27,7 @@ Node {
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
+
     property int currentSeries: 0
     property bool showLegend: false
 
@@ -57,6 +58,13 @@ Node {
         series2,
         series3,
         series4
+    ]
+
+    property var fireSeries: [
+        fireSeries1,
+        fireSeries2,
+        fireSeries3,
+        fireSeries4
     ]
 
     controls: Component {
@@ -94,11 +102,12 @@ Node {
         onReceivedFire: {
             for(var i in voltmeterRoot.connectionPlots) {
                 var connectionPlot = voltmeterRoot.connectionPlots[i]
+                var firePlot = connectionPlot.firePlot
                 var neuron = connectionPlot.connection.itemA
                 if(neuron.engine && neuron.engine === sender) {
-                    fireSeries.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
-                    fireSeries.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
-                    fireSeries.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
+                    firePlot.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
+                    firePlot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+                    firePlot.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
                 }
             }
         }
@@ -119,8 +128,12 @@ Node {
         }
         var plot = series[currentSeries]
         plot.visible = true
+
+        var firePlot = fireSeries[currentSeries]
+        plot.visible = true
+
         var newList = connectionPlots
-        newList.push({connection: edge, plot: plot})
+        newList.push({connection: edge, plot: plot, firePlot: firePlot})
         connectionPlots = newList
         currentSeries += 1
     }
@@ -131,6 +144,7 @@ Node {
             var connectionOther = connectionPlot.connection
             if(connectionOther === edge) {
                 connectionPlot.plot.clear()
+                connectionPlot.firePlot.clear()
                 connectionPlots.splice(i, 1)
                 break
             }
@@ -161,18 +175,48 @@ Node {
         margins.right: 0
 
         Plot {
-            id: fireSeries
+            id: fireSeries1
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
             visible: true
+            color: series1.color
         }
+
+        Plot {
+            id: fireSeries2
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange * timeFactor
+            visible: true
+            color: series2.color
+        }
+
+        Plot {
+            id: fireSeries3
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange * timeFactor
+            visible: true
+            color: series3.color
+        }
+
+        Plot {
+            id: fireSeries4
+            axisX: axisX
+            axisY: axisY
+            timeRange: voltmeterRoot.timeRange * timeFactor
+            visible: true
+            color: series4.color
+        }
+
 
         Plot {
             id: series1
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
+            color: colors[0]
         }
 
         Plot {
@@ -180,6 +224,7 @@ Node {
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
+            color: colors[1]
         }
 
         Plot {
@@ -187,6 +232,7 @@ Node {
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
+            color: colors[2]
         }
 
         Plot {
@@ -194,6 +240,7 @@ Node {
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
+            color: colors[3]
         }
 
         ValueAxis {

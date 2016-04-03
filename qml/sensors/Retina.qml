@@ -111,9 +111,6 @@ Node {
         visible: root.selected
         curveColor: "#0088aa"
         connectorColor: "#0088aa"
-        onDropped: {
-            root.droppedConnector(root, connector)
-        }
     }
 
     Component {
@@ -239,8 +236,8 @@ Node {
             //Slider to change the sensitivity:
             BoundSlider {
                 minimumValue: 0
-                maximumValue: 10000
-                stepSize: 10
+                maximumValue: 10e3
+                stepSize: 1e2
                 target: retinaEngine
                 property: "sensitivity"
                 text: "Sensitivity"

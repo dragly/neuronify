@@ -125,7 +125,7 @@ void RetinaEngine::setPlotKernel(bool plotKernel)
 {
     if (m_plotKernel == plotKernel)
         return;
-    
+
     m_plotKernel = plotKernel;
     emit plotKernelChanged(plotKernel);
 }
@@ -167,7 +167,6 @@ VideoSurface *RetinaEngine::videoSurface() const
 {
     return m_videoSurface;
 }
-
 
 
 
