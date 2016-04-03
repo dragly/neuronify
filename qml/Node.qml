@@ -114,6 +114,7 @@ NodeBase {
         id: labelBox
         z: 99
         text: qsTr(label)
+        font.pixelSize: 20
     }
 
     Rectangle {
