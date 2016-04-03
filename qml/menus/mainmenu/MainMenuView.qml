@@ -81,13 +81,27 @@ MainMenuPage {
             height: 1
             Layout.fillHeight: true
             Layout.fillWidth: true
+            Text {
+                id: landscapeText
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                    margins: 0.1 * parent.width
+                }
+                horizontalAlignment: Text.AlignHCenter
+                visible: mainMenuView.width < mainMenuView.height ? true : false
+                text: "Neuronify is best viewed in landscape orientation"
+                font: Style.font
+                color: "#777"
+            }
             Image {
                 id: logo
                 anchors {
                     left: parent.left
                     right: parent.right
-                    top: parent.top
-                    bottom: mainMenuView.width < mainMenuView.height ? landscapeText.top : parent.bottom
+                    top: mainMenuView.width < mainMenuView.height ? landscapeText.top : parent.top
+                    bottom: parent.bottom
                     leftMargin: 0.1 * parent.width
                     rightMargin: 0.1 * parent.width
                     topMargin: 0.1 * parent.width
@@ -97,20 +111,6 @@ MainMenuPage {
                 source: "qrc:/images/logo/mainMenuLogo.png"
                 smooth: true
                 antialiasing: true
-            }
-            Text {
-                id: landscapeText
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    bottom: parent.bottom
-                    margins: 0.1 * parent.width
-                }
-                horizontalAlignment: Text.AlignHCenter
-                visible: mainMenuView.width < mainMenuView.height ? true : false
-                text: "Neuronify is best viewed in landscape orientation"
-                font: Style.font
-                color: "#777"
             }
         }
     }

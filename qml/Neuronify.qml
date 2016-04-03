@@ -137,13 +137,15 @@ Rectangle {
         firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
         console.log("Load state called")
 
-        playbackControls.revealed = true
-        playbackControlsAutoHideTimer.restart()
+        pinchArea.scaleSetByDoubleClick = false;
 
-        undoList.length = 0
+        playbackControls.revealed = true;
+        playbackControlsAutoHideTimer.restart();
 
-        undoIdx = 1
-        undoRecordingEnabled = false
+        undoList.length = 0;
+
+        undoIdx = 1;
+        undoRecordingEnabled = false;
 
         deleteEverything();
 
