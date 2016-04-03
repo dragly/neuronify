@@ -354,10 +354,6 @@ Rectangle {
             deselectAll();
         }
 
-        if(node.objectName === "retina"){
-            retinaLoader.retinaCounter -= 1;
-        }
-
         for(var j in node.removableChildren) {
             var child = node.removableChildren[j];
             graphEngine.removeNode(child);
@@ -424,27 +420,9 @@ Rectangle {
         }
     }
 
-    function clickedConnection(connection) {
-        deselectAll()
-        activeObject = connection
-        connection.selected = true
-    }
-
-    function clickedConnector() {
-        clickMode = "connection"
-    }
-
     function raiseToTop(node) {
         highestZ += 1.0;
         node.z = highestZ;
-    }
-
-    function startedDragEntity(entity) {
-        draggedEntity = entity;
-    }
-
-    function endedDragEntity(entity) {
-        draggedEntity = undefined;
     }
 
     function createEntity(fileUrl, properties) {
@@ -462,22 +440,48 @@ Rectangle {
         }
 
         properties.simulator = root
+        properties.dragProxy = dragProxy
+
         var entity = component.createObject(neuronLayer, properties)
         if(!entity) {
             console.error("Could not create entity from component " + fileUrl)
             return
         }
 
-        entity.dragStarted.connect(raiseToTop)
-        entity.dragStarted.connect(startedDragEntity)
-        entity.dragEnded.connect(endedDragEntity)
+        // properties
+        entity.snapGridSize = Qt.binding(function() {
+            return root.snapGridSize
+        })
+
+        // signals
         entity.clicked.connect(clickedEntity)
         entity.clicked.connect(raiseToTop)
-        entity.clickedConnector.connect(clickedConnector)
-        entity.droppedConnector.connect(createConnectionToPoint)
-        entity.dragProxy = dragProxy
-        entity.snapGridSize = Qt.binding(function() {return root.snapGridSize})
+        entity.dragStarted.connect(raiseToTop)
 
+        entity.dragStarted.connect(function(entity) {
+            draggedEntity = entity;
+        });
+        entity.dragEnded.connect(function(entity) {
+            draggedEntity = undefined;
+        });
+        entity.clickedConnector.connect(function() {
+            clickMode = "connection";
+        });
+        entity.droppedConnector.connect(function(itemA, connector) {
+            var targetEntity = itemUnderConnector(itemA, connector)
+            if(targetEntity) {
+                connectEntities(itemA, targetEntity)
+            }
+        })
+
+        // retina specific
+        if(isRetina) {
+            entity.Component.destruction.connect(function() {
+                retinaLoader.retinaCounter -= 1;
+            });
+        }
+
+        // finalize
         graphEngine.addNode(entity)
         addToUndoList()
         return entity
@@ -489,7 +493,11 @@ Rectangle {
                                                               itemA: sourceObject,
                                                               itemB: targetObject
                                                           })
-        connection.clicked.connect(clickedConnection)
+        connection.clicked.connect(function(connection) {
+            deselectAll();
+            activeObject = connection;
+            connection.selected = true;
+        });
         addToUndoList()
         return connection
     }
@@ -523,13 +531,6 @@ Rectangle {
             }
         }
         return connectionAlreadyExists
-    }
-
-    function createConnectionToPoint(itemA, connector) {
-        var targetEntity = itemUnderConnector(itemA, connector)
-        if(targetEntity) {
-            connectEntities(itemA, targetEntity)
-        }
     }
 
     function resetStyle() {
