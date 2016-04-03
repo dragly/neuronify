@@ -111,9 +111,6 @@ Node {
         visible: root.selected
         curveColor: "#0088aa"
         connectorColor: "#0088aa"
-        onDropped: {
-            root.droppedConnector(root, connector)
-        }
     }
 
 
