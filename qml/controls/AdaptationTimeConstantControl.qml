@@ -8,7 +8,7 @@ BoundSlider {
     property AdaptationCurrent current
     target: current
     minimumValue: 0.0
-    maximumValue: 50.0e-3
+    maximumValue: 600.0e-3
     property: "timeConstant"
     text: "Time constant"
     unit: "ms"

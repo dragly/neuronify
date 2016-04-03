@@ -41,6 +41,7 @@ Node {
     color: sensorRoot.sensing ? "#80e5ff" : "#0088aa"
 
     engine: NodeEngine {
+        fireOutput: 1.0
         onStepped: {
             if(sensing) {
                 engine.fire()

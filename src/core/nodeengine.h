@@ -51,7 +51,7 @@ protected:
 
 private:
     bool m_hasFired = false;
-    double m_fireOutput = 1.0;
+    double m_fireOutput = 300.0e-6;
     double m_currentOutput = 0.0;
 };
 
