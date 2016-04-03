@@ -2,10 +2,11 @@ import QtQuick 2.0
 
 import Neuronify 1.0
 import QtGraphicalEffects 1.0
-import "../paths"
-import "../hud"
 import ".."
 import "../controls"
+import "../hud"
+import "../tools"
+import "../paths"
 
 /*!
 \qmltype TouchSensor
