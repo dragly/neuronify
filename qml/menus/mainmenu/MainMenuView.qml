@@ -34,7 +34,7 @@ MainMenuPage {
                     rightMargin: 0.1 * parent.width
                 }
                 spacing: mainMenuView.width * 0.02
-                //                height: mainMenuRoot.width * 0.4
+
                 MenuButton {
                     width: parent.width
                     text: "Continue"
@@ -49,13 +49,6 @@ MainMenuPage {
                         simulationsClicked()
                     }
                 }
-                //        MenuButton {
-                //            width: parent.width
-                //            text: "Select"
-                //            onClicked: {
-                //                simulationsClicked()
-                //            }
-                //        }
                 MenuButton {
                     width: parent.width
                     text: "Save"
@@ -80,13 +73,6 @@ MainMenuPage {
                         aboutClicked()
                     }
                 }
-                //        MenuButton {
-                //            width: parent.width
-                //            text: "Advanced options"
-                //            onClicked: {
-                //                advancedClicked()
-                //            }
-                //        }
             }
         }
 
