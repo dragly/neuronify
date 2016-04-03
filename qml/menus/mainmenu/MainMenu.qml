@@ -52,7 +52,8 @@ Item {
             anchors {
                 top: parent.top
                 left: parent.left
-                margins: Style.margin
+                topMargin: Style.margin
+                leftMargin: Style.margin
             }
 
             width: Style.touchableSize
@@ -87,7 +88,7 @@ Item {
                 margins: Style.margin
             }
 
-            text: stackView.currentItem.title
+            text: stackView.currentItem ? stackView.currentItem.title : ""
         }
 
         StackView {
