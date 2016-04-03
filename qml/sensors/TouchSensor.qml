@@ -5,8 +5,8 @@ import QtGraphicalEffects 1.0
 import ".."
 import "../controls"
 import "../hud"
-import "../tools"
 import "../paths"
+import "../tools"
 
 /*!
 \qmltype TouchSensor

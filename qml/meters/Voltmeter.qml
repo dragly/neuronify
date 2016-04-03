@@ -174,6 +174,7 @@ Node {
         margins.left: 0
         margins.right: 0
 
+
         Plot {
             id: fireSeries1
             axisX: axisX
@@ -241,6 +242,7 @@ Node {
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
             color: colors[3]
+
         }
 
         ValueAxis {
