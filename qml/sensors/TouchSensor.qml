@@ -30,7 +30,6 @@ Node {
     property bool sensing: false
     property real sensingCurrentOutput: 100
 
-    property var dropFunction
     property var connections: []
 
     useDefaultMouseHandling: false
@@ -56,12 +55,6 @@ Node {
 
         }
     }
-
-
-    Component.onCompleted: {
-        dropFunction = simulator.createConnectionToPoint
-    }
-
 
     onEdgeAdded: {
         connections.push(edge)
