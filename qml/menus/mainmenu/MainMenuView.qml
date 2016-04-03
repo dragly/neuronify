@@ -1,10 +1,8 @@
 import QtQuick 2.0
 import "../../style"
 
-Item {
+MainMenuPage {
     id: mainMenuView
-    property string title: "Neuronify"
-
     signal continueClicked
     signal newSimulationClicked
     signal simulationsClicked

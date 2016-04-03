@@ -13,7 +13,7 @@ Item {
     property real pixelDensity: 72
     property real touchableSize: 6 * size
     property real size: 72
-    property real margin: 4 * size
+    property real margin: 2 * size
     property real baseMargin: margin
     property real scale: 1.0
     property real spacing: size * 0.5

@@ -3,34 +3,21 @@ import "../../style"
 import "../"
 
 
-Item {
+MainMenuPage {
     id: aboutView
+
+    title: "About"
 
     clip: true
 
     width: 200
     height: 100
 
-    Heading {
-        id: aboutHeading
-        anchors {
-            top: parent.top
-            horizontalCenter: parent.horizontalCenter
-            topMargin: Style.margin
-        }
-        text: "About"
-    }
-
     Flickable {
         id: aboutFlickable
         anchors {
-            left: parent.left
-            right: parent.right
-            top: aboutHeading.bottom
-            bottom: parent.bottom
-            leftMargin: Style.margin
-            rightMargin: Style.margin
-            topMargin: Style.margin
+            fill: parent
+            margins: Style.margin
         }
 
         clip: true

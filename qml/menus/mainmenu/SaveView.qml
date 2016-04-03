@@ -8,7 +8,7 @@ import ".."
 
 import Neuronify 1.0
 
-Item {
+MainMenuPage {
     id: saveView
     clip: true
     property bool isSave
@@ -24,30 +24,17 @@ Item {
         refreshTimer.restart();
     }
 
+    title: isSave ? "Save" : "Load"
+
     width: 200
     height: 100
-
-    Heading {
-        id: aboutHeading
-        anchors {
-            top: parent.top
-            horizontalCenter: parent.horizontalCenter
-            topMargin: Style.margin
-        }
-        text: isSave ? "Save" : "Load"
-    }
 
     GridLayout{
         id: saveFileDialog
         property int padding: 10
-        anchors{
-            top: aboutHeading.bottom
-            left: parent.left
-            right: parent.right
-            bottom: parent.bottom
-            leftMargin: Style.touchableSize
-            rightMargin: Style.touchableSize
-            bottomMargin: Style.touchableSize
+        anchors {
+            fill: parent
+            margins: Style.margin
         }
         width : parent.width
         height: parent.height

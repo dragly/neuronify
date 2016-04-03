@@ -3,8 +3,9 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
 
-import "../../style"
+import ".."
 import "../../io"
+import "../../style"
 
 Item {
     id: mainMenuRoot
@@ -46,14 +47,58 @@ Item {
         enabled: mainMenuRoot.revealed
         anchors.fill: parent
 
+        Image {
+            id: backButton
+            anchors {
+                top: parent.top
+                left: parent.left
+                margins: Style.margin
+            }
+
+            width: Style.touchableSize
+            height: width
+            source: "qrc:/images/back.png"
+            enabled: stackView.depth > 1
+            opacity: stackView.depth > 1
+
+            rotation: 90
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 1000
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: {
+                    if(stackView.depth > 1) {
+                        stackView.pop()
+                    }
+                }
+            }
+        }
+
+        Heading {
+            anchors {
+                top: parent.top
+                horizontalCenter: parent.horizontalCenter
+                margins: Style.margin
+            }
+
+            text: stackView.currentItem.title
+        }
+
         StackView {
             id: stackView
             anchors {
-                top: parent.top
+                top: backButton.bottom
                 left: parent.left
                 right: parent.right
                 bottom: parent.bottom
             }
+            clip: true
             initialItem: mainMenuView
             delegate: StackViewDelegate {
                 pushTransition: StackViewTransition {
@@ -90,39 +135,6 @@ Item {
                         to: exitItem.height
                         duration: 600
                         easing.type: Easing.InOutQuad
-                    }
-                }
-            }
-        }
-
-        Image {
-            id: backButton
-            anchors {
-                top: parent.top
-                left: parent.left
-                margins: Style.margin
-            }
-
-            width: Style.touchableSize
-            height: width
-            source: "qrc:/images/back.png"
-            enabled: stackView.depth > 1
-            opacity: stackView.depth > 1
-
-            rotation: 90
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: 1000
-                    easing.type: Easing.InOutQuad
-                }
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                onPressed: {
-                    if(stackView.depth > 1) {
-                        stackView.pop()
                     }
                 }
             }

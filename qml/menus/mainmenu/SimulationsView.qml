@@ -3,16 +3,18 @@ import QtQuick 2.0
 import "qrc:/qml/style"
 import "qrc:/qml/tools"
 
-Item {
+MainMenuPage {
     id: simulationsViewRoot
 
     signal simulationClicked(var simulation)
     signal backClicked
+
+    title: "New"
     clip: true
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: Style.baseMargin
+        anchors.margins: Style.margin
         contentWidth: width
         contentHeight: categories.height
         flickableDirection: Flickable.VerticalFlick
@@ -23,14 +25,10 @@ Item {
                 right: parent.right
             }
             spacing: Style.baseMargin
-            Item {
-                width: 100
-                height: Style.touchableSize
-            }
             Repeater {
                 model: [
                     {
-                        name: "",
+                        name: "Tutorial",
                         simulations: [
                             "qrc:/simulations/empty",
                             "qrc:/simulations/tutorial/tutorial_1_intro",

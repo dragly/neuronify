@@ -90,5 +90,6 @@
         <file>qml/hud/AnnotationsList.qml</file>
         <file>qml/annotations/NextTutorial.qml</file>
         <file>qml/tools/MoveHandle.qml</file>
+        <file>qml/menus/mainmenu/MainMenuPage.qml</file>
     </qresource>
 </RCC>
