@@ -30,10 +30,19 @@ Item {
             Repeater {
                 model: [
                     {
-                        name: "Simple",
+                        name: "",
                         simulations: [
                             "qrc:/simulations/empty",
-                            "qrc:/simulations/singleCell",
+                            "qrc:/simulations/tutorial/tutorial_1_intro",
+                            "qrc:/simulations/tutorial/tutorial_2_circuits",
+                            "qrc:/simulations/tutorial/tutorial_3_creation",
+                        ]
+                    },
+                    {
+                        name: "Neurons",
+                        simulations: [
+//                            "qrc:/simulations/cells/passive",
+                            "qrc:/simulations/neurons/burst",
                         ]
                     },
                     {

@@ -70,6 +70,16 @@ Rectangle {
         firstLoadTimer.start()
     }
 
+    function firstLoad() {
+        resetStyle();
+        var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy");
+        if(latest !== "") {
+            loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy");
+        } else {
+            loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro.nfy");
+        }
+    }
+
     Component.onDestruction: {
         saveState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
     }
@@ -941,13 +951,7 @@ Rectangle {
         id: firstLoadTimer
         interval: 500
         onTriggered: {
-            var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy")
-            if(latest !== "") {
-                loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
-            } else {
-                loadSimulation("qrc:/simulations/singleCell/singleCell.nfy")
-            }
-            resetStyle()
+            root.firstLoad();
         }
     }
 

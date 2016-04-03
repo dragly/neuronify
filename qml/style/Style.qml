@@ -64,7 +64,7 @@ Item {
         property color color: Qt.rgba(0.15, 0.15, 0.15, 0.9)
         Text {
             id: textFontProxy
-            font.pixelSize: 1.5 * root.size
+            font.pixelSize: 2.0 * root.size
             font.weight: Font.Light
             font.family: "Roboto"
         }

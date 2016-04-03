@@ -2,11 +2,8 @@ import QtQuick 2.0
 import QtQuick.Controls 1.4
 import QtQuick.Controls.Styles 1.4
 import ".."
+import "../controls"
 import "../style"
-
-import "qrc:/"
-import "qrc:/qml/"
-import "qrc:/qml/controls"
 
 import Neuronify 1.0
 
@@ -86,47 +83,5 @@ Node {
     }
 
     ResizeRectangle {}
-
-    Rectangle {
-        id: transformMove
-
-        anchors {
-            horizontalCenter: parent.left
-            verticalCenter: parent.top
-        }
-        width: 32
-        height: width
-        radius: width / 2
-        color: "#c6dbef"
-        border.width: width * 0.1
-        border.color: "#f7fbff"
-        visible: noteRoot.selected
-
-        Image {
-
-            anchors.fill: parent
-            anchors.margins: parent.width * 0.1
-            source: "qrc:/images/transform-move.png"
-            smooth: true
-            antialiasing: true
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            drag.target: noteRoot
-            onPressed: {
-                noteRoot.dragging = true
-                dragStarted()
-            }
-
-            onClicked: {
-                noteRoot.clicked(noteRoot, mouse)
-            }
-
-            onReleased: {
-                noteRoot.dragging = false
-            }
-        }
-    }
 }
 

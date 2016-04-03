@@ -42,5 +42,17 @@
         <file>simulations/prolongedActivity/prolongedActivity.qml</file>
         <file>simulations/prolongedActivity/prolongedActivity.png</file>
         <file>simulations/prolongedActivity/prolongedActivity.nfy</file>
+        <file>simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy</file>
+        <file>simulations/tutorial/tutorial_1_intro/tutorial_1_intro.png</file>
+        <file>simulations/tutorial/tutorial_1_intro/tutorial_1_intro.qml</file>
+        <file>simulations/tutorial/tutorial_2_circuits/tutorial_2_circuits.nfy</file>
+        <file>simulations/tutorial/tutorial_2_circuits/tutorial_2_circuits.png</file>
+        <file>simulations/tutorial/tutorial_2_circuits/tutorial_2_circuits.qml</file>
+        <file>simulations/tutorial/tutorial_3_creation/tutorial_3_creation.nfy</file>
+        <file>simulations/tutorial/tutorial_3_creation/tutorial_3_creation.png</file>
+        <file>simulations/tutorial/tutorial_3_creation/tutorial_3_creation.qml</file>
+        <file>simulations/neurons/burst/burst.nfy</file>
+        <file>simulations/neurons/burst/burst.png</file>
+        <file>simulations/neurons/burst/burst.qml</file>
     </qresource>
 </RCC>
