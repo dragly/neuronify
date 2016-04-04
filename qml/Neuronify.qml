@@ -959,6 +959,12 @@ Rectangle {
 
     Timer {
         id: timer
+
+        property real frameTime: 0.0
+        property int counter: 0
+        property real lastTime: Date.now();
+        property bool calculatePerformance: false
+
         interval: 16
         repeat: true
         running: root.running
@@ -968,6 +974,18 @@ Rectangle {
             for(var i = 0; i < root.playbackSpeed; i++) {
                 time += dt
                 graphEngine.step(dt)
+            }
+
+            if(calculatePerformance) {
+                var endTime = Date.now();
+                frameTime = 0.95 * frameTime + 0.05 * (endTime - lastTime);
+                lastTime = endTime;
+
+                if(counter > 10) {
+                    console.log("frameTime: " + frameTime);
+                    counter = 0;
+                }
+                counter += 1;
             }
         }
     }
