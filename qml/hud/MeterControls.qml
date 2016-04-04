@@ -54,55 +54,5 @@ PropertiesPage {
         minimumValue: meterControlsRoot.sliderMinimum
         maximumValue: meterControlsRoot.sliderMaximum
     }
-
-    Item {
-        anchors {
-            left: parent.left
-            right: parent.right
-        }
-        height: Math.max(switchText.height, showLegendSwitch.height)
-
-        Text {
-            id: switchText
-
-            anchors {
-                left: parent.left
-                verticalCenter: parent.verticalCenter
-            }
-            text: "Show legend"
-            font: Style.control.font
-            color: Style.text.color
-        }
-
-        Switch {
-            id: showLegendSwitch
-            anchors {
-                right: parent.right
-                verticalCenter: parent.verticalCenter
-            }
-            checked: meter.showLegend
-        }
-
-        Binding {
-            target: showLegendSwitch
-            property: "checked"
-            value: meter.showLegend
-        }
-
-        Binding {
-            target: meter
-            property: "showLegend"
-            value: showLegendSwitch.checked
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            propagateComposedEvents: true
-            onClicked: {
-                showLegendSwitch.checked = !showLegendSwitch.checked
-            }
-        }
-    }
-
 }
 
