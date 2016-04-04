@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick 2.6
 
 import "qrc:/qml/style"
 import "qrc:/qml/tools"

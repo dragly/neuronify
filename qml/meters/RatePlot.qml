@@ -169,7 +169,7 @@ Node {
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
             titleText: ratePlotRoot.showLegend ? "t [ms]" : ""
-
+            titleFont.weight: Font.Normal
         }
 
         ValueAxis {
@@ -181,6 +181,7 @@ Node {
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
             titleText: ratePlotRoot.showLegend ? "f [Hz]" : ""
+            titleFont.weight: Font.Normal
         }
     }
 
