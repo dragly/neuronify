@@ -35,13 +35,14 @@
      inkscape:window-width="2507"
      inkscape:window-height="1416"
      inkscape:window-x="5173"
-     inkscape:window-y="24"
+     inkscape:window-y="1464"
      inkscape:window-maximized="1"
      inkscape:object-paths="true"
      inkscape:snap-intersection-paths="true"
      inkscape:object-nodes="true"
      inkscape:snap-smooth-nodes="true"
-     inkscape:snap-midpoints="true">
+     inkscape:snap-midpoints="true"
+     inkscape:snap-global="false">
     <inkscape:grid
        type="xygrid"
        id="grid3336"
@@ -556,21 +557,21 @@
        x="604.36218"
        y="-1312" />
     <rect
-       y="-678.90448"
-       x="2657.7705"
+       y="-989.27106"
+       x="2559.8792"
        height="64.000015"
        width="256"
        id="rect4385-7"
-       style="fill:#b3b3b3;fill-opacity:1;stroke:none"
-       transform="matrix(0.8660254,0.5,-0.5,0.8660254,0,0)" />
+       style="fill:#787878;fill-opacity:1;stroke:none"
+       transform="matrix(0.80036209,0.59951691,-0.59951691,0.80036209,0,0)" />
     <rect
-       y="-2912.7903"
-       x="-951.70032"
+       y="-2814.8989"
+       x="-1262.0669"
        height="64.000015"
        width="320"
        id="rect4270"
-       style="fill:#b3b3b3;fill-opacity:1;stroke:none"
-       transform="matrix(-0.5,0.8660254,-0.8660254,-0.5,0,0)" />
+       style="fill:#787878;fill-opacity:1;stroke:none"
+       transform="matrix(-0.59951691,0.80036209,-0.80036209,-0.59951691,0,0)" />
     <rect
        y="668.36218"
        x="1600"

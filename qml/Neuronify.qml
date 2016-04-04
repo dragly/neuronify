@@ -76,7 +76,7 @@ Rectangle {
         if(latest !== "") {
             loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy");
         } else {
-            loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro.nfy");
+            loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy");
         }
     }
 
@@ -514,7 +514,7 @@ Rectangle {
             return;
         }
         if(!itemB.canReceiveConnections) {
-            console.warn("connectEntities(): " + itemB + " cannot receive connections.")
+            console.warn("connectEntities(): " + itemB.fileName + " cannot receive connections.")
             return;
         }
         var connection = createConnection(itemA, itemB)

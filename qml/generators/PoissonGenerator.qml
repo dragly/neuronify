@@ -77,8 +77,8 @@ Node {
             BoundSlider {
                 target: engine
                 property: "fireOutput"
-                minimumValue: -100.0e-6
-                maximumValue: 100.0e-6
+                minimumValue: -500.0e-6
+                maximumValue: 500.0e-6
                 unitScale: 1e-6
                 text: "Stimulation"
                 unit: "uS"

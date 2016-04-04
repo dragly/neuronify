@@ -112,16 +112,7 @@ Neuron {
 
     savedProperties: PropertyGroup {
         property alias label: neuronRoot.label
-        property alias fireOutput: neuronEngine.fireOutput
         property alias resistance: passiveCurrent.resistance
-        property alias capacitance: neuronEngine.capacitance
-        property alias refractoryPeriod: neuronEngine.refractoryPeriod
-        property alias restingPotential: neuronEngine.restingPotential
-        property alias initialPotential: neuronEngine.initialPotential
-        property alias threshold: neuronEngine.threshold
-        property alias synapticTimeConstant: neuronEngine.synapticTimeConstant
-        property alias synapticPotential: neuronEngine.synapticPotential
-
     }
 
 }
