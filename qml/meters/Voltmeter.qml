@@ -40,6 +40,9 @@ Node {
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
 
+//    property real minimumValue:  -100
+//    property real maximumValue:  50
+
     property alias minimumValue:  dummyAxisY.min
     property alias maximumValue:  dummyAxisY.max
 
@@ -170,6 +173,7 @@ Node {
         gridVisible: false
         labelsVisible: false
         lineVisible: false
+        tickCount: 2
     }
 
     ColumnLayout{
@@ -254,7 +258,7 @@ Node {
                     bottom: tMin.top
                 }
 
-                text: dummyAxisY.min.toFixed(0)
+                text: voltmeterRoot.minimumValue.toFixed(0)
                 font.pixelSize: voltmeterRoot.fontSize
                 visible: showAxis
             }
@@ -266,7 +270,7 @@ Node {
                     topMargin: 13
                 }
 
-                text: dummyAxisY.max.toFixed(0)
+                text: voltmeterRoot.maximumValue.toFixed(0)
                 font.pixelSize: voltmeterRoot.fontSize
                 visible:showAxis
             }
@@ -318,6 +322,7 @@ Node {
                     id: axisX
                     min: voltmeterRoot.minimumTime
                     max: voltmeterRoot.maximumTime
+                    tickCount: 2 // IMPORTANT: Needs to be low because something gets recalculated everytime min/max changes and tickCount depends on this
                     gridVisible: false
                     labelsVisible: false
                     lineVisible: false
@@ -325,8 +330,9 @@ Node {
 
                 ValueAxis {
                     id: axisY
-                    min: -50
-                    max: 100
+                    min: voltmeterRoot.minimumValue
+                    max: voltmeterRoot.maximumValue
+                    tickCount: 2
                     gridVisible: false
                     labelsVisible: false
                     lineVisible: false
