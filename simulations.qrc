@@ -6,36 +6,9 @@
         <file>simulations/dummy/dummy.nfy</file>
         <file>simulations/dummy/dummy.png</file>
         <file>simulations/dummy/dummy.qml</file>
-        <file>simulations/lateralInhibition/lateralInhibition.qml</file>
-        <file>simulations/lateralInhibition/lateralInhibition.png</file>
-        <file>simulations/lateralInhibition/lateralInhibition.nfy</file>
-        <file>simulations/recurrentInhibition/recurrentInhibition.qml</file>
-        <file>simulations/recurrentInhibition/recurrentInhibition.png</file>
-        <file>simulations/recurrentInhibition/recurrentInhibition.nfy</file>
-        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.nfy</file>
-        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.png</file>
-        <file>simulations/drivenCircularInhibition/drivenCircularInhibition.qml</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.nfy</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.png</file>
         <file>simulations/sterratt/fig_8_5/fig_8_5.qml</file>
-        <file>simulations/twoNeuronOscillator/twoNeuronOscillator.png</file>
-        <file>simulations/twoNeuronOscillator/twoNeuronOscillator.nfy</file>
-        <file>simulations/twoNeuronOscillator/twoNeuronOscillator.qml</file>
-        <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.nfy</file>
-        <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.png</file>
-        <file>simulations/sterratt/refractoryPeriod/refractoryPeriod.qml</file>
-        <file>simulations/typesOfInhibition/typesOfInhibition.qml</file>
-        <file>simulations/typesOfInhibition/typesOfInhibition.png</file>
-        <file>simulations/typesOfInhibition/typesOfInhibition.nfy</file>
-        <file>simulations/rythmTransformation/rythmTransformation.qml</file>
-        <file>simulations/rythmTransformation/rythmTransformation.png</file>
-        <file>simulations/rythmTransformation/rythmTransformation.nfy</file>
-        <file>simulations/reciprocalInhibition/reciprocalInhibition.qml</file>
-        <file>simulations/reciprocalInhibition/reciprocalInhibition.png</file>
-        <file>simulations/reciprocalInhibition/reciprocalInhibition.nfy</file>
-        <file>simulations/prolongedActivity/prolongedActivity.qml</file>
-        <file>simulations/prolongedActivity/prolongedActivity.png</file>
-        <file>simulations/prolongedActivity/prolongedActivity.nfy</file>
         <file>simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy</file>
         <file>simulations/tutorial/tutorial_1_intro/tutorial_1_intro.png</file>
         <file>simulations/tutorial/tutorial_1_intro/tutorial_1_intro.qml</file>
@@ -57,5 +30,29 @@
         <file>simulations/neurons/inhibitory/inhibitory.nfy</file>
         <file>simulations/neurons/inhibitory/inhibitory.png</file>
         <file>simulations/neurons/inhibitory/inhibitory.qml</file>
+        <file>simulations/inhibition/types_of_inhibition/types_of_inhibition.nfy</file>
+        <file>simulations/inhibition/types_of_inhibition/types_of_inhibition.png</file>
+        <file>simulations/inhibition/types_of_inhibition/types_of_inhibition.qml</file>
+        <file>simulations/inhibition/lateral_inhibition/lateral_inhibition.nfy</file>
+        <file>simulations/inhibition/lateral_inhibition/lateral_inhibition.png</file>
+        <file>simulations/inhibition/lateral_inhibition/lateral_inhibition.qml</file>
+        <file>simulations/inhibition/reciprocal_inhibition/reciprocal_inhibition.nfy</file>
+        <file>simulations/inhibition/reciprocal_inhibition/reciprocal_inhibition.png</file>
+        <file>simulations/inhibition/reciprocal_inhibition/reciprocal_inhibition.qml</file>
+        <file>simulations/inhibition/recurrent_inhibition/recurrent_inhibition.nfy</file>
+        <file>simulations/inhibition/recurrent_inhibition/recurrent_inhibition.png</file>
+        <file>simulations/inhibition/recurrent_inhibition/recurrent_inhibition.qml</file>
+        <file>simulations/mix/rythm_transformation/rythm_transformation.nfy</file>
+        <file>simulations/mix/rythm_transformation/rythm_transformation.png</file>
+        <file>simulations/mix/rythm_transformation/rythm_transformation.qml</file>
+        <file>simulations/mix/prolonged_activity/prolonged_activity.nfy</file>
+        <file>simulations/mix/prolonged_activity/prolonged_activity.png</file>
+        <file>simulations/mix/prolonged_activity/prolonged_activity.qml</file>
+        <file>simulations/mix/two_neuron_oscillator/two_neuron_oscillator.nfy</file>
+        <file>simulations/mix/two_neuron_oscillator/two_neuron_oscillator.png</file>
+        <file>simulations/mix/two_neuron_oscillator/two_neuron_oscillator.qml</file>
+        <file>simulations/sterratt/refractory_period/refractory_period.nfy</file>
+        <file>simulations/sterratt/refractory_period/refractory_period.png</file>
+        <file>simulations/sterratt/refractory_period/refractory_period.qml</file>
     </qresource>
 </RCC>

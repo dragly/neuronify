@@ -29,7 +29,17 @@ Item {
         }
 
         color: "#f7fbff"
-        width: Style.device === "phone" ? parent.width * 0.5 : parent.width * 0.25
+        width: {
+            if(Style.device === "phone") {
+                if(parent.width > parent.height) {
+                    return parent.width * 0.5;
+                } else {
+                    return parent.width * 0.85;
+                }
+            } else {
+                return parent.width * 0.25;
+            }
+        }
 //        width: parent.width * 0.5
 
         border.color: "#9ecae1"

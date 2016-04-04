@@ -48,18 +48,18 @@ MainMenuPage {
                     {
                         name: "Inhibition",
                         simulations: [
-                            "qrc:/simulations/typesOfInhibition",
-                            "qrc:/simulations/lateralInhibition",
-                            "qrc:/simulations/recurrentInhibition",
-                            "qrc:/simulations/reciprocalInhibition",
+                            "qrc:/simulations/inhibition/types_of_inhibition",
+                            "qrc:/simulations/inhibition/lateral_inhibition",
+                            "qrc:/simulations/inhibition/recurrent_inhibition",
+                            "qrc:/simulations/inhibition/reciprocal_inhibition",
                         ]
                     },
                     {
                         name: "Mix",
                         simulations: [
-                            "qrc:/simulations/rythmTransformation",
-                            "qrc:/simulations/prolongedActivity",
-                            "qrc:/simulations/twoNeuronOscillator",
+                            "qrc:/simulations/mix/rythm_transformation",
+                            "qrc:/simulations/mix/prolonged_activity",
+                            "qrc:/simulations/mix/two_neuron_oscillator",
 
                         ]
                     },
@@ -67,7 +67,7 @@ MainMenuPage {
                         name: "Sterratt Examples",
                         simulations: [
                             "qrc:/simulations/sterratt/fig_8_5",
-                            "qrc:/simulations/sterratt/refractoryPeriod",
+                            "qrc:/simulations/sterratt/refractory_period",
                         ]
                     },
                 ]

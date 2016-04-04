@@ -1,8 +1,8 @@
 import QtQuick 2.0
-import "../../qml"
-
+import "qrc:/qml"
 
 Simulation {
-    name: "Reciprocal inhibtion"
+    name: "Rythm transformation"
     description: ""
 }
+

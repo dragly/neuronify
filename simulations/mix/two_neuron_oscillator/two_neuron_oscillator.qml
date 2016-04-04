@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import "../../qml"
+import "qrc:/qml"
 
 Simulation {
     name: "Two Neuron Oscillator"

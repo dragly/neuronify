@@ -1,8 +1,8 @@
 import QtQuick 2.0
-import "../../qml"
-
+ 
+import "qrc:/qml"
 
 Simulation {
-    name: "Prolonged Activity"
+    name: "Types of Inhibition"
     description: ""
 }
