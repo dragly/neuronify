@@ -31,7 +31,6 @@ Node {
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
 
     property int currentSeries: 0
-    property bool showLegend: false
 
     property real timeFactor: 1000
     property real voltageFactor: 1000
@@ -201,12 +200,10 @@ Node {
             property bool showAxisLabel: false
             property color lineColor: "red"
 
-
             Layout.fillWidth: true
             Layout.fillHeight: true
             width: 1
             height: 1
-
 
             // Axis label V and t
             Text{
@@ -217,9 +214,11 @@ Node {
                     leftMargin: 20
                 }
                 rotation: 270
-                text: chartItem.showAxisLabel ? "V [mV]" : ""
+                text: "V [mV]"
+                visible: chartItem.showAxisLabel && (vMin.y - vMax.y - vMax.height) > width ? true : false
                 font.pixelSize: voltmeterRoot.fontSize
             }
+
             Text{
                 id: xlabel
                 anchors{
@@ -231,7 +230,6 @@ Node {
                 text: chartItem.showAxisLabel ? "t [ms]" : ""
                 font.pixelSize: voltmeterRoot.fontSize
             }
-
 
             //Time axis min/max:
             Text{
@@ -320,6 +318,16 @@ Node {
 
                 }
 
+
+                Plot {
+                    id: fireSeries
+                    axisX: axisX
+                    axisY: axisY
+                    timeRange: series.timeRange
+                    color: chartItem.lineColor
+
+                }
+
                 ValueAxis {
                     id: axisX
                     min: dummyAxisX.min
@@ -336,47 +344,6 @@ Node {
                     gridVisible: false
                     labelsVisible: false
                     lineVisible: false
-                }
-            }
-
-            ChartView {
-                id: chartView2
-                anchors.fill: parent
-                legend.visible: false
-                antialiasing: true
-                backgroundColor: "transparent"
-                enabled: false // disables mouse input
-                margins.top: chartView.margins.top
-                margins.bottom: chartView.margins.bottom
-                margins.left: chartView.margins.left
-                margins.right: chartView.margins.right
-
-
-                Plot {
-                    id: fireSeries
-                    axisX: axisX2
-                    axisY: axisY2
-                    timeRange: series.timeRange
-                    color: chartItem.lineColor
-
-                }
-
-                ValueAxis {
-                    id: axisX2
-                    min: dummyAxisX.min
-                    max: dummyAxisX.max
-                    gridVisible: false
-                    labelsVisible: false
-                    lineVisible: showAxis
-                }
-
-                ValueAxis {
-                    id: axisY2
-                    min: dummyAxisY.min
-                    max: dummyAxisY.max
-                    gridVisible: false
-                    labelsVisible: false
-                    lineVisible: showAxis
                 }
             }
         }
