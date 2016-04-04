@@ -166,9 +166,6 @@ Edge {
         }
     }
 
-
-
-
     Item {
         x: sCurve.startPoint.x + height / 2 * Math.sin(rotation * Math.PI / 180)
         y: sCurve.startPoint.y - height / 2 * Math.cos(rotation * Math.PI / 180)

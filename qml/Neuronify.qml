@@ -514,7 +514,7 @@ Rectangle {
             return;
         }
         if(!itemB.canReceiveConnections) {
-            console.warn("connectEntities(): " + itemB + " cannot receive connections.")
+            console.warn("connectEntities(): " + itemB.fileName + " cannot receive connections.")
             return;
         }
         var connection = createConnection(itemA, itemB)
