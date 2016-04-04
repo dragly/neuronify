@@ -43,10 +43,10 @@ Node {
     property alias minimumValue:  dummyAxisY.min
     property alias maximumValue:  dummyAxisY.max
 
-    property alias minimumTime: dummyAxisX.min
-    property alias maximumTime:  dummyAxisX.max
-    property double fontSize : 14
+    property real minimumTime: (time - timeRange) * timeFactor
+    property real maximumTime: time * timeFactor
 
+    property double fontSize : 14
 
     property real maximumPointCount: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -172,21 +172,11 @@ Node {
         lineVisible: false
     }
 
-    ValueAxis {
-        id: dummyAxisX
-        min: (time - timeRange) * timeFactor
-        max: time * timeFactor
-        gridVisible: false
-        labelsVisible: false
-        lineVisible: false
-    }
-
     ColumnLayout{
         id: chartContainer
         anchors.fill: parent
 
     }
-
 
     Component{
         id: chartViewComponent
@@ -239,7 +229,7 @@ Node {
                     left: vMin.right
                 }
 
-                text: dummyAxisX.min.toFixed(0)
+                text: voltmeterRoot.minimumTime.toFixed(0)
                 font.pixelSize: voltmeterRoot.fontSize
                 visible: showAxis
             }
@@ -251,7 +241,7 @@ Node {
                     rightMargin: 20
                 }
 
-                text: dummyAxisX.max.toFixed(0)
+                text: voltmeterRoot.maximumTime.toFixed(0)
                 font.pixelSize: voltmeterRoot.fontSize
                 visible: showAxis
             }
@@ -294,8 +284,6 @@ Node {
 
             }
 
-
-
             ChartView {
                 id: chartView
                 anchors.fill: parent
@@ -308,7 +296,6 @@ Node {
                 margins.left: 10
                 margins.right: 0
 
-
                 Plot {
                     id: series
                     axisX: axisX
@@ -317,7 +304,6 @@ Node {
                     color: chartItem.lineColor
 
                 }
-
 
                 Plot {
                     id: fireSeries
@@ -330,8 +316,8 @@ Node {
 
                 ValueAxis {
                     id: axisX
-                    min: dummyAxisX.min
-                    max: dummyAxisX.max
+                    min: voltmeterRoot.minimumTime
+                    max: voltmeterRoot.maximumTime
                     gridVisible: false
                     labelsVisible: false
                     lineVisible: false
@@ -339,8 +325,8 @@ Node {
 
                 ValueAxis {
                     id: axisY
-                    min: dummyAxisY.min
-                    max: dummyAxisY.max
+                    min: -50
+                    max: 100
                     gridVisible: false
                     labelsVisible: false
                     lineVisible: false
