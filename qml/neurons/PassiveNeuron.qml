@@ -51,9 +51,9 @@ Neuron {
             }
             PropertiesItem {
                 text: "Potentials"
-                info: "R: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
-                      "I: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
-                      "θ: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
+                info: "Vr: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
+                      "Vi: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
+                      "Vt: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
                 RestingPotentialControl{
                     id: restingPotentialControl
                     engine: neuronEngine
@@ -69,6 +69,8 @@ Neuron {
             }
             PropertiesItem {
                 text: "Membrane"
+                info: "C: " + (neuronEngine.capacitance * 1e9).toFixed(1) + " nF, " +
+                      "R: " + (passiveCurrent.resistance * 1e-3).toFixed(1) + " kΩ, "
                 CapacitanceControl{
                     engine: neuronEngine
                 }
@@ -79,6 +81,9 @@ Neuron {
             }
             PropertiesItem {
                 text: "Synaptic input"
+                info: "Es: " + (neuronEngine.synapticPotential * 1e3).toFixed(1) + " mV, " +
+                      "Ts: " + (neuronEngine.synapticTimeConstant* 1e3).toFixed(1) + " ms, "+
+                      "Tr: " + (neuronEngine.refractoryPeriod * 1e3).toFixed(1) + " ms, "
                 SynapticPotentialControl{
                     engine: neuronEngine
                 }
@@ -91,6 +96,7 @@ Neuron {
             }
             PropertiesItem {
                 text: "Synaptic output"
+                info: "Gs: " + (neuronEngine.fireOutput * 1e6).toFixed(1) + " uS, "
                 SynapticOutputControl {
                     engine: neuronEngine
                 }
