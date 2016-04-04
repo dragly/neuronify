@@ -29,7 +29,7 @@ Node {
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
 
     property int currentSeries: 0
-    property bool showLegend: false
+    property bool showLegend: true
 
     property real timeFactor: 1000
     property real voltageFactor: 1000
@@ -128,9 +128,11 @@ Node {
         }
         var plot = series[currentSeries]
         plot.visible = true
+        plot.name = edge.itemA.label
 
         var firePlot = fireSeries[currentSeries]
-        plot.visible = true
+        firePlot.visible = true
+        firePlot.name = edge.itemA.label
 
         var newList = connectionPlots
         newList.push({connection: edge, plot: plot, firePlot: firePlot})
@@ -180,8 +182,8 @@ Node {
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
-            visible: true
             color: series1.color
+
         }
 
         Plot {
@@ -189,7 +191,6 @@ Node {
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
-            visible: true
             color: series2.color
         }
 
@@ -198,7 +199,6 @@ Node {
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
-            visible: true
             color: series3.color
         }
 
@@ -207,7 +207,6 @@ Node {
             axisX: axisX
             axisY: axisY
             timeRange: voltmeterRoot.timeRange * timeFactor
-            visible: true
             color: series4.color
         }
 
