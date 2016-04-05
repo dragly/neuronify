@@ -119,6 +119,8 @@ Item {
             verticalAlignment: Text.AlignVCenter
             visible: false
 
+            inputMethodHints: Qt.ImhFormattedNumbersOnly
+
             Keys.onEnterPressed: {
                 root.applyTextEdit()
             }

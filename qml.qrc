@@ -91,6 +91,7 @@
         <file>qml/annotations/NextTutorial.qml</file>
         <file>qml/tools/MoveHandle.qml</file>
         <file>qml/menus/mainmenu/MainMenuPage.qml</file>
+        <file>images/tools/back.png</file>
         <file>qml/generators/RhythmGenerator.qml</file>
     </qresource>
 </RCC>

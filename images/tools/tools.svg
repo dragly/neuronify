@@ -25,17 +25,17 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.22338774"
-     inkscape:cx="-339.02919"
-     inkscape:cy="169.73055"
+     inkscape:zoom="0.63183594"
+     inkscape:cx="3152.1539"
+     inkscape:cy="80.331524"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
      units="px"
      inkscape:window-width="2507"
      inkscape:window-height="1416"
-     inkscape:window-x="5173"
-     inkscape:window-y="1464"
+     inkscape:window-x="2613"
+     inkscape:window-y="24"
      inkscape:window-maximized="1"
      inkscape:object-paths="true"
      inkscape:snap-intersection-paths="true"
@@ -641,6 +641,22 @@
          d="m 224,668.36218 0,256 256,-128 -256,-128"
          style="fill:url(#linearGradient9718);fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     </g>
+    <rect
+       transform="matrix(0.71738741,0.69667446,-0.69667446,0.71738741,0,0)"
+       style="fill:#787878;fill-opacity:1;stroke:none"
+       id="rect4251"
+       width="256"
+       height="64.000015"
+       x="2835.0078"
+       y="-1705.3132" />
+    <rect
+       y="2835.0657"
+       x="1641.3711"
+       height="64.000015"
+       width="256"
+       id="rect4253"
+       style="fill:#787878;fill-opacity:1;stroke:none"
+       transform="matrix(0.69667446,-0.71738741,0.71738741,0.69667446,0,0)" />
   </g>
   <g
      style="display:inline"
@@ -657,7 +673,7 @@
        height="512">
       <desc
          id="desc4160">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -670,7 +686,7 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc4214">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -696,7 +712,7 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc4377">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -709,7 +725,7 @@ layout-position-anchor: tl</desc>
        height="511.99997">
       <desc
          id="desc4615">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -722,7 +738,20 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc4381">format: png
-dpi: 90
+dpi: 30
+layout-disposition: bg-el-norepeat
+layout-position-anchor: tl</desc>
+    </rect>
+    <rect
+       style="opacity:0.5;fill:#ff0000"
+       id="back"
+       x="3072"
+       y="0"
+       width="512"
+       height="512">
+      <desc
+         id="desc4249">format: png
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>

@@ -56,9 +56,10 @@ Item {
                 leftMargin: Style.margin
             }
 
+            asynchronous: true
             width: Style.touchableSize
             height: width
-            source: "qrc:/images/back.png"
+            source: "qrc:/images/tools/back.png"
             enabled: stackView.depth > 1
             opacity: stackView.depth > 1
 
@@ -142,72 +143,82 @@ Item {
         }
     }
 
-    MainMenuView {
+    Component {
         id: mainMenuView
-        visible: false
-        width: parent.width
-        height: parent.height
+        MainMenuView {
+            visible: false
+            width: parent.width
+            height: parent.height
 
-        onContinueClicked: {
-            mainMenuRoot.continueClicked()
-        }
+            onContinueClicked: {
+                mainMenuRoot.continueClicked()
+            }
 
-        onNewSimulationClicked: {
-            mainMenuRoot.newClicked()
-        }
+            onNewSimulationClicked: {
+                mainMenuRoot.newClicked()
+            }
 
-        onSimulationsClicked: {
-            stackView.push(simulationsView)
-        }
+            onSimulationsClicked: {
+                stackView.push(simulationsView)
+            }
 
-        onAboutClicked: {
-            stackView.push(aboutView)
-        }
+            onAboutClicked: {
+                stackView.push(aboutView)
+            }
 
-        onAdvancedClicked: {
-            stackView.push(advancedView)
-        }
-        onSaveClicked: {
-            stackView.push(saveView)
-        }
-        onLoadClicked: {
-            stackView.push(saveView)
+            onAdvancedClicked: {
+                stackView.push(advancedView)
+            }
+            onSaveClicked: {
+                stackView.push(saveView);
+                stackView.currentItem.isSave = true;
+            }
+            onLoadClicked: {
+                stackView.push(saveView);
+                stackView.currentItem.isSave = false;
+            }
         }
     }
 
-    SimulationsView {
+    Component {
         id: simulationsView
-        visible: false
-        width: parent.width
-        height: parent.height
+        SimulationsView {
+            visible: false
+            width: parent.width
+            height: parent.height
 
-        onSimulationClicked: {
-            mainMenuRoot.loadSimulation(simulation)
-            stackView.pop(0)
+            onSimulationClicked: {
+                mainMenuRoot.loadSimulation(simulation)
+                stackView.pop(0)
+            }
         }
     }
 
-    AboutView {
+    Component {
         id: aboutView
-        visible: false
-        width: parent.width
-        height: parent.height
+        AboutView {
+            visible: false
+            width: parent.width
+            height: parent.height
+        }
     }
 
-    SaveView {
+    Component {
         id: saveView
-        visible: false
-        width: parent.width
-        height: parent.height
-        onLoad: {
-            loadSimulation(filename)
-            stackView.pop()
+        SaveView {
+            visible: false
+            width: parent.width
+            height: parent.height
+            onLoad: {
+                loadSimulation(filename)
+                stackView.pop()
+            }
+            onSave: {
+                saveSimulation(filename)
+                stackView.pop()
+            }
+            onRequestScreenshot: mainMenuRoot.requestScreenshot(callback)
         }
-        onSave: {
-            saveSimulation(filename)
-            stackView.pop()
-        }
-        onRequestScreenshot: mainMenuRoot.requestScreenshot(callback)
     }
 
     states: [

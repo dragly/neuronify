@@ -26,7 +26,11 @@ Rectangle {
     Image{
         id: iconImage
 
+        asynchronous: true
         anchors.fill: parent
+
+        smooth: true
+        antialiasing: true
 
         source: empty ? "" : imagePath
         fillMode: Image.PreserveAspectCrop

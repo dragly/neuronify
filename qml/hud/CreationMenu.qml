@@ -91,7 +91,7 @@ Item {
         width: Style.touchableSize
         height: width
 
-        source: "qrc:/images/back.png"
+        source: "qrc:/images/tools/back.png"
 
         rotation: 180
 
@@ -154,12 +154,14 @@ Item {
                                 margins: -parent.width * 0.05
                             }
                             source: "qrc:/images/categories/marker.png"
+                            asynchronous: true
                             smooth: true
                             antialiasing: true
                             visible: index === categoriesListView.currentIndex
                         }
                         Image {
                             anchors.fill: parent
+                            asynchronous: true
                             source: model.imageSource
                             smooth: true
                             antialiasing: true

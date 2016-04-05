@@ -70,6 +70,7 @@ Rectangle {
                         margins: parent.width * 0.05
                     }
                     source: "qrc:/images/playback/" + model.image + active + ".png"
+                    asynchronous: true
                 }
                 MouseArea {
                     anchors.fill: parent
