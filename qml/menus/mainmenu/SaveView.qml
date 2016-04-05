@@ -17,11 +17,21 @@ MainMenuPage {
     signal save(var filename)
     signal requestScreenshot(var callback)
 
-    property string saveFolder: StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/savedata"
+    property url saveFolderUrl: StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "savedata")
+    property string saveFolder: Qt.resolvedUrl(saveFolderUrl)
 
     function refresh() {
         saveView.refreshing = true;
         refreshTimer.restart();
+    }
+
+    function saveStateImplementation(fileUrl, imageUrl) {
+        saveView.save(fileUrl)
+        saveView.requestScreenshot(function(result) {
+            var imageFile = StandardPaths.toLocalFile(imageUrl);
+            console.log("Saving image to " + imageFile);
+            result.saveToFile(imageFile);
+        });
     }
 
     title: isSave ? "Save" : "Load"
@@ -43,6 +53,7 @@ MainMenuPage {
         columnSpacing: padding
         rowSpacing: padding
 
+
         Repeater {
             id: iconRepeater
 
@@ -53,11 +64,7 @@ MainMenuPage {
                 basePath: saveView.saveFolder + "/" + fileBaseName
                 onClicked: {
                     if (isSave) {
-                        saveView.save(filePath)
-                        saveView.requestScreenshot(function(result) {
-                            result.saveToFile(imageFilename);
-                            saveView.refresh();
-                        });
+                        saveStateImplementation(filePath, imagePath);
                     } else {
                         saveView.load(filePath)
                     }
@@ -72,10 +79,7 @@ MainMenuPage {
                 empty: true
                 onClicked: {
                     if(saveView.isSave) {
-                        saveView.save(filePath)
-                        saveView.requestScreenshot(function(result) {
-                            result.saveToFile(imageFilename);
-                        });
+                        saveStateImplementation(filePath, imagePath);
                     }
                 }
             }
@@ -85,7 +89,7 @@ MainMenuPage {
     FolderListModel {
         id: folderModel
         nameFilters: ["custom*.png"]
-        folder: "file:///" + saveView.saveFolder
+        folder: saveView.saveFolderUrl
     }
 
     Timer {

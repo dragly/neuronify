@@ -8,14 +8,23 @@ StandardPaths::StandardPaths(QObject *parent)
 
 }
 
-QString StandardPaths::writableLocation(StandardLocation location)
+QUrl StandardPaths::writableLocation(StandardLocation location, const QString &fileName)
 {
-    return QStandardPaths::writableLocation((QStandardPaths::StandardLocation)location);
+    QString path = QStandardPaths::writableLocation((QStandardPaths::StandardLocation)location);
+    if(!fileName.isEmpty()) {
+        path += "/" + fileName;
+    }
+    return QUrl::fromLocalFile(path);
 }
 
-QString StandardPaths::locate(StandardLocation location, const QString &fileName)
+QUrl StandardPaths::locate(StandardLocation location, const QString &fileName)
 {
-    return QStandardPaths::locate((QStandardPaths::StandardLocation)location, fileName);
+    return QUrl::fromLocalFile(QStandardPaths::locate((QStandardPaths::StandardLocation)location, fileName));
+}
+
+QString StandardPaths::toLocalFile(QUrl url)
+{
+    return url.toLocalFile();
 }
 
 QObject* StandardPaths::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine)

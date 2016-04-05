@@ -9,10 +9,9 @@ import "../style"
 Rectangle {
     id: iconRoot
     signal clicked
-    property string basePath
-    property string filePath: "file:///" + basePath + ".nfy"
-    property string imagePath:"file:///" +  basePath + ".png"
-    property string imageFilename: basePath + ".png"
+    property url basePath
+    property url filePath: basePath + ".nfy"
+    property url imagePath: basePath + ".png"
     property bool empty: false
 
     Layout.fillWidth : true
