@@ -150,6 +150,7 @@ Node {
                 labelsFont.pixelSize: 14
                 labelFormat: "%.0f"
                 titleFont.weight: Font.Normal
+                titleFont.pixelSize: 14
                 titleText: rasterRoot.showLegend ? "t [ms]" : ""
             }
             axisY: CategoryAxis {
@@ -161,6 +162,8 @@ Node {
                 tickCount: 0
                 lineVisible: false
                 labelsFont.pixelSize: 14
+                titleFont.weight: Font.Normal
+                titleFont.pixelSize: 14
                 //                titleText: rasterRoot.showLegend ? "Cell" : ""
             }
         }

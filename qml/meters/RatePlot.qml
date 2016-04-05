@@ -170,6 +170,7 @@ Node {
             labelsFont.pixelSize: 14
             titleText: ratePlotRoot.showLegend ? "t [ms]" : ""
             titleFont.weight: Font.Normal
+            titleFont.pixelSize: 14
         }
 
         ValueAxis {
@@ -182,6 +183,7 @@ Node {
             labelsFont.pixelSize: 14
             titleText: ratePlotRoot.showLegend ? "f [Hz]" : ""
             titleFont.weight: Font.Normal
+            titleFont.pixelSize: 14
         }
     }
 
