@@ -1,4 +1,5 @@
 #include "gaborkernelengine.h"
+#include <math.h>
 
 GaborKernelEngine::GaborKernelEngine()
 {

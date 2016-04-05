@@ -1,4 +1,5 @@
 #include "rectangularkernelengine.h"
+#include <math.h>
 
 RectangularKernelEngine::RectangularKernelEngine()
 {

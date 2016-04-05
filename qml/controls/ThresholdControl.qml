@@ -12,8 +12,8 @@ BoundSlider {
     property: "threshold"
     text: "Firing threshold"
     unit: "mV"
-    minimumValue: -50e-3
-    maximumValue: 50e-3
+    minimumValue: -60e-3
+    maximumValue: 60e-3
     unitScale: 1e-3
     stepSize: 1e-4
     precision: 1

@@ -21,4 +21,11 @@ ListModel {
         source: "../generators/PoissonGenerator.qml"
         imageSource: "qrc:/images/generators/poisson_generator.png"
     }
+
+    ListElement {
+        name: "Rhythm generator"
+        description: "Generates rhytmic spikes depending on a given firing rate."
+        source: "../generators/RhythmGenerator.qml"
+        imageSource: "qrc:/images/generators/rhythm_generator.png"
+    }
 }

@@ -40,9 +40,6 @@ Node {
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
 
-//    property real minimumValue:  -100
-//    property real maximumValue:  50
-
     property alias minimumValue:  dummyAxisY.min
     property alias maximumValue:  dummyAxisY.max
 
@@ -326,7 +323,7 @@ Node {
                     tickCount: 2 // IMPORTANT: Needs to be low because something gets recalculated everytime min/max changes and tickCount depends on this
                     gridVisible: false
                     labelsVisible: false
-                    lineVisible: false
+                    lineVisible: showAxis
                 }
 
                 ValueAxis {
@@ -336,7 +333,7 @@ Node {
                     tickCount: 2
                     gridVisible: false
                     labelsVisible: false
-                    lineVisible: false
+                    lineVisible: showAxis
                 }
             }
         }
