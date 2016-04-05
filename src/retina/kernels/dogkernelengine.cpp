@@ -1,5 +1,5 @@
 #include "dogkernelengine.h"
-
+#include <math.h>
 DogKernelEngine::DogKernelEngine()
 {
     m_centerWeight = 1.0;
