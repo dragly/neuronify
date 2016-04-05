@@ -149,6 +149,7 @@ Node {
                 gridVisible: false
                 labelsFont.pixelSize: 14
                 labelFormat: "%.0f"
+                titleFont.weight: Font.Normal
                 titleText: rasterRoot.showLegend ? "t [ms]" : ""
             }
             axisY: CategoryAxis {
