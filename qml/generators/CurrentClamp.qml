@@ -41,7 +41,8 @@ Node {
                 text: "Current output"
                 unit: "uA"
                 minimumValue: 0.0
-                maximumValue: 20.0
+                maximumValue: 40.0
+                stepSize: 1e-2
             }
         }
     }

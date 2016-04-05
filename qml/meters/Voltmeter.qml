@@ -279,8 +279,9 @@ Node {
                 id: titleText
                 anchors{
                     top: chartView.top
-                    topMargin: 10
+                    topMargin: 2
                     horizontalCenter: chartView.horizontalCenter
+
                 }
 
                 text: label

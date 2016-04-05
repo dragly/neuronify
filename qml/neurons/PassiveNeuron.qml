@@ -113,6 +113,7 @@ Neuron {
     savedProperties: PropertyGroup {
         property alias label: neuronRoot.label
         property alias resistance: passiveCurrent.resistance
+        property alias refractoryPeriod: neuronEngine.refractoryPeriod
     }
 
 }

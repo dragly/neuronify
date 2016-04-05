@@ -64,9 +64,9 @@ MainMenuPage {
                         ]
                     },
                     {
-                        name: "Sterratt Examples",
+                        name: "Textbook Examples",
                         simulations: [
-                            "qrc:/simulations/sterratt/fig_8_5",
+                            "qrc:/simulations/sterratt/if_response",
                             "qrc:/simulations/sterratt/refractory_period",
                         ]
                     },
