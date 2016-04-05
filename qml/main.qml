@@ -10,18 +10,19 @@ ApplicationWindow {
     height: 640
     title: qsTr("Neuronify")
 
+    Component.onCompleted: {
+        console.log("ApplicationWindow load completed " + Date.now());
+    }
+
     Settings {
         id: settings
         property alias width: applicationWindow1.width
         property alias height: applicationWindow1.height
         property alias x: applicationWindow1.x
         property alias y: applicationWindow1.y
-
     }
 
     Neuronify {
         anchors.fill: parent
     }
-
-
 }

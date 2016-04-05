@@ -67,7 +67,8 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        firstLoadTimer.start()
+        console.log("Neuronify.qml load completed " + Date.now());
+        firstLoadTimer.start();
     }
 
     function firstLoad() {

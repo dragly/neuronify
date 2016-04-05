@@ -30,6 +30,8 @@
 
 int main(int argc, char *argv[])
 {
+    qDebug() << "Neuronify started" << QDateTime::currentMSecsSinceEpoch();
+
     qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
     qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
 
