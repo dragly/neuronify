@@ -10,8 +10,8 @@ Rectangle {
     id: iconRoot
     signal clicked
     property string basePath
-    property string filePath: "file://" + basePath + ".nfy"
-    property string imagePath:"file://" +  basePath + ".png"
+    property string filePath: "file:///" + basePath + ".nfy"
+    property string imagePath:"file:///" +  basePath + ".png"
     property string imageFilename: basePath + ".png"
     property bool empty: false
 

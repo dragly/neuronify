@@ -54,7 +54,7 @@ Item {
             id: fontProxy
             font.pixelSize: 3 * root.size
             font.weight: Font.Light
-            font.family: "Roboto"
+            font.family: "Roboto Light, Roboto"
         }
     }
 
@@ -66,7 +66,7 @@ Item {
             id: textFontProxy
             font.pixelSize: 2.0 * root.size
             font.weight: Font.Light
-            font.family: "Roboto"
+            font.family: "Roboto Light, Roboto"
         }
     }
 
@@ -102,7 +102,7 @@ Item {
         Text {
             id: controlHeadingProxy
             color: "#000"
-            font.family: "Roboto"
+            font.family: "Roboto Light, Roboto"
             font.weight: Font.Light
             font.pixelSize: controlObject.font.pixelSize * 1.2
         }
@@ -117,7 +117,7 @@ Item {
             id: headingFontProxy
             font.pixelSize: 2.5 * root.font.pixelSize
             font.weight: Font.Light
-            font.family: "Roboto"
+            font.family: "Roboto Light, Roboto"
         }
     }
 

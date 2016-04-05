@@ -28,7 +28,6 @@
 #include <QtQml>
 #include <QQmlContext>
 
-
 int main(int argc, char *argv[])
 {
     qint64 startupTime = QDateTime::currentMSecsSinceEpoch();

@@ -75,14 +75,14 @@ Rectangle {
         resetStyle();
         var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy");
         if(latest !== "") {
-            loadSimulation("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy");
+            loadSimulation("file:///" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy");
         } else {
             loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy");
         }
     }
 
     Component.onDestruction: {
-        saveState("file://" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
+        saveState("file:///" + StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/latest.nfy")
     }
 
     function deleteFromList(list, item) {

@@ -84,8 +84,8 @@ MainMenuPage {
 
     FolderListModel {
         id: folderModel
-        nameFilters: ["*.png"]
-        folder: "file://" + saveView.saveFolder
+        nameFilters: ["custom*.png"]
+        folder: "file:///" + saveView.saveFolder
     }
 
     Timer {

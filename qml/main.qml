@@ -26,6 +26,18 @@ ApplicationWindow {
         property alias y: applicationWindow1.y
     }
 
+    FontLoader {
+        source: "qrc:/fonts/roboto/Roboto-Regular.ttf"
+    }
+
+    FontLoader {
+        source: "qrc:/fonts/roboto/Roboto-Light.ttf"
+    }
+
+    FontLoader {
+        source: "qrc:/fonts/roboto/Roboto-Bold.ttf"
+    }
+
     Neuronify {
         anchors.fill: parent
     }
