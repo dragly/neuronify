@@ -615,6 +615,9 @@ Rectangle {
             MouseArea {
                 id: workspaceMouseArea
 
+                property point pressedPosition
+                property point previousPressedPosition
+
                 anchors.fill: parent
 
                 propagateComposedEvents: true
@@ -638,6 +641,15 @@ Rectangle {
                 }
 
                 onDoubleClicked: {
+                    // how long the mouse moved during double click
+                    var diffX = previousPressedPosition.x - mouse.x;
+                    var diffY = previousPressedPosition.y - mouse.y;
+
+                    if(Math.sqrt(diffX*diffX + diffY*diffY) > Style.touchableSize) {
+                        // discard if we moved more than 10 % of the window size
+                        return;
+                    }
+
                     var result;
                     var targetScale;
                     var ratio = 2.4;
@@ -659,6 +671,11 @@ Rectangle {
                     scaleAnimationY.to = result.y;
                     scaleAnimationScale.to = result.scale;
                     scaleAnimation.restart();
+                }
+
+                onPressed: {
+                    previousPressedPosition = pressedPosition;
+                    pressedPosition = Qt.point(mouse.x, mouse.y);
                 }
             }
         }
