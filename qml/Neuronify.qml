@@ -963,7 +963,7 @@ Rectangle {
         property real frameTime: 0.0
         property int counter: 0
         property real lastTime: Date.now();
-        property bool calculatePerformance: true
+        property bool calculatePerformance: false
 
         interval: 16
         repeat: true
