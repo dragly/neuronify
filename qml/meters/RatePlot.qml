@@ -43,7 +43,7 @@ Node {
     property bool showLegend: true
 
     property alias windowDuration: rateEngine.windowDuration
-     property alias temporalResolution: rateEngine.temporalResolution
+    property alias temporalResolution: rateEngine.temporalResolution
 
     property real maximumPointCount: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
