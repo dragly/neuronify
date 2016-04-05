@@ -143,16 +143,16 @@ Item {
 //        }
 //    }
 
-    FileDialog {
-        id: loadFileDialog
-        title: "Please choose a file"
-        visible : false
-        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
+//    FileDialog {
+//        id: loadFileDialog
+//        title: "Please choose a file"
+//        visible : false
+//        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
 
-        onAccepted: {
-            console.log("Load dialog accepted")
-            loadState(fileUrl)
-        }
-    }
+//        onAccepted: {
+//            console.log("Load dialog accepted")
+//            loadState(fileUrl)
+//        }
+//    }
 }
 

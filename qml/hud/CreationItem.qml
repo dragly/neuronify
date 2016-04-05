@@ -41,6 +41,7 @@ Item {
             fillMode: Image.PreserveAspectFit
             antialiasing: true
             smooth: true
+            asynchronous: true
         }
 
         MouseArea {

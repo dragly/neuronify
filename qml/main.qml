@@ -5,6 +5,9 @@ import Qt.labs.settings 1.0
 
 ApplicationWindow {
     id: applicationWindow1
+
+    property real startupTime: 0
+
     visible: true
     width: 1136
     height: 640
@@ -12,6 +15,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         console.log("ApplicationWindow load completed " + Date.now());
+        startupTime = Date.now();
     }
 
     Settings {

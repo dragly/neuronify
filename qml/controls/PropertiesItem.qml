@@ -70,7 +70,7 @@ Item {
         }
         width: height
         fillMode: Image.PreserveAspectFit
-        source: "qrc:/images/back.png"
+        source: "qrc:/images/tools/back.png"
         rotation: 180
     }
     MouseArea {

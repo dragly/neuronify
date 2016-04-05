@@ -26,11 +26,13 @@
 #include <QQmlApplicationEngine>
 #include <QTextStream>
 #include <QtQml>
+#include <QQmlContext>
 
 
 int main(int argc, char *argv[])
 {
-    qDebug() << "Neuronify started" << QDateTime::currentMSecsSinceEpoch();
+    qint64 startupTime = QDateTime::currentMSecsSinceEpoch();
+    qDebug() << "Neuronify started at" << startupTime;
 
     qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
     qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
@@ -73,6 +75,8 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
+    QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
+    qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
 
     return app.exec();
 }

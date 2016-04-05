@@ -28,10 +28,10 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.42919921"
-     inkscape:cx="1219.8827"
+     inkscape:cx="826.12615"
      inkscape:cy="381.39919"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="webslicer-layer"
      showgrid="true"
      inkscape:object-paths="true"
      inkscape:object-nodes="true"
@@ -618,7 +618,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -861,7 +861,7 @@
        height="512">
       <desc
          id="desc7176">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -874,7 +874,7 @@ layout-position-anchor: tl</desc>
        height="512">
       <desc
          id="desc7493">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -887,7 +887,7 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc7648">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -900,7 +900,7 @@ layout-position-anchor: tl</desc>
        height="512">
       <desc
          id="desc7807">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -913,7 +913,7 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc7970">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -926,7 +926,7 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc8355">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -939,7 +939,7 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc8363">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -952,7 +952,7 @@ layout-position-anchor: tl</desc>
        height="512">
       <desc
          id="desc8367">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -965,7 +965,7 @@ layout-position-anchor: tl</desc>
        style="opacity:0.5;fill:#ff0000">
       <desc
          id="desc8371">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>
@@ -978,7 +978,7 @@ layout-position-anchor: tl</desc>
        height="512">
       <desc
          id="desc8375">format: png
-dpi: 90
+dpi: 30
 layout-disposition: bg-el-norepeat
 layout-position-anchor: tl</desc>
     </rect>

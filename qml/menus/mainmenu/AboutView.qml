@@ -48,6 +48,7 @@ MainMenuPage {
                 horizontalCenter: parent.horizontalCenter
             }
 
+            asynchronous: true
             width: Style.size * 48
             height: Style.size * 24
             fillMode: Image.PreserveAspectFit

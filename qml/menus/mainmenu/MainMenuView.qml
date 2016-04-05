@@ -53,7 +53,6 @@ MainMenuPage {
                     width: parent.width
                     text: "Save"
                     onClicked: {
-                        saveView.isSave = true
                         saveClicked()
                     }
                 }
@@ -61,7 +60,6 @@ MainMenuPage {
                     width: parent.width
                     text: "Load"
                     onClicked: {
-                        saveView.isSave = false
                         loadClicked()
                     }
                 }

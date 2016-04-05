@@ -86,7 +86,7 @@ Item {
                         leftMargin: Style.spacing
                     }
                     width: height
-                    source: "qrc:/images/back.png"
+                    source: "qrc:/images/tools/back.png"
                     states: [
                         State {
                             when: stackView.depth > 1 ? 0 : -width

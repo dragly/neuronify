@@ -23,21 +23,30 @@ Rectangle {
         left: parent.left
         right: parent.right
     }
-    height: Style.touchableSize
+    height: Style.touchableSize * 1.5
     
     Text {
         anchors.centerIn: parent
         text: "Connection mode: Select other items to connect them."
     }
     
-    Button {
+    Rectangle {
         anchors {
             verticalCenter: parent.verticalCenter
             right: parent.right
+            rightMargin: Style.margin
         }
-        text: "Done"
-        onClicked: {
-            doneClicked()
+        width: doneText.width
+        height: Style.touchableSize
+        Text {
+            id: doneText
+            text: "Done"
+        }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                doneClicked()
+            }
         }
     }
 }
