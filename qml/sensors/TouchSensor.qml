@@ -46,6 +46,7 @@ Node {
             if(sensing) {
                 engine.fire()
                 sensing = false
+                overlayAnimation.restart()
             }
         }
     }
@@ -92,6 +93,27 @@ Node {
         }
     }
 
+
+    Image {
+        id: overlay
+        anchors.fill: parent
+
+        source: "qrc:/images/sensors/touch_sensor_overlay.png"
+        smooth: true
+        antialiasing: true
+        fillMode: Image.PreserveAspectFit
+        opacity: 0
+    }
+
+    NumberAnimation {
+        id: overlayAnimation
+        target: overlay
+        property: "opacity"
+        from: 0.5
+        to: 0
+        duration: 200
+        easing.type: Easing.OutQuad
+    }
 
     Connector{
         curveColor: "#0088aa"

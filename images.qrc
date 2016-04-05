@@ -60,5 +60,6 @@
         <file>images/tools/properties.png</file>
         <file>images/tools/done.png</file>
         <file>images/annotate/next.png</file>
+        <file>images/sensors/touch_sensor_overlay.png</file>
     </qresource>
 </RCC>
