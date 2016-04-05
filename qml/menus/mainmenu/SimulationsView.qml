@@ -109,6 +109,8 @@ MainMenuPage {
                                             smooth: true
                                             antialiasing: true
                                             fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+
                                             Rectangle {
                                                 color: "transparent"
                                                 width: parent.width

@@ -971,7 +971,14 @@ Rectangle {
         }
 
         onRequestScreenshot: {
-            workspaceFlickable.grabToImage(callback)
+            var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
+            var imageWidth;
+            if(workspaceFlickable.width > workspaceFlickable.height) {
+                imageWidth = workspaceFlickable.width / 3.0; // three icons per row in save view
+            } else {
+                imageWidth = workspaceFlickable.width / 2.0; // two icons per row in save view
+            }
+            workspaceFlickable.grabToImage(callback, Qt.size(imageWidth, imageWidth / aspectRatio));
         }
     }
 

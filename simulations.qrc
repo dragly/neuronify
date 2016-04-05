@@ -3,9 +3,6 @@
         <file>simulations/empty/empty.nfy</file>
         <file>simulations/empty/empty.png</file>
         <file>simulations/empty/empty.qml</file>
-        <file>simulations/dummy/dummy.nfy</file>
-        <file>simulations/dummy/dummy.png</file>
-        <file>simulations/dummy/dummy.qml</file>
         <file>simulations/sterratt/if_response/if_response.nfy</file>
         <file>simulations/sterratt/if_response/if_response.png</file>
         <file>simulations/sterratt/if_response/if_response.qml</file>
