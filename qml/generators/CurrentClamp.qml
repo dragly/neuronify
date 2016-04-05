@@ -17,7 +17,6 @@ import "../controls"
 */
 
 Node {
-    property alias currentOutputScaled: engine.currentOutputScaled
 
     fileName: "generators/CurrentClamp.qml"
 
@@ -28,8 +27,10 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        property real currentOutputScaled: 10.0
-        currentOutput: currentOutputScaled * 1e-6
+        currentOutput: 10e-6
+        savedProperties: PropertyGroup {
+            property alias currentOutput: engine.currentOutput
+        }
     }
 
     controls: Component {
@@ -37,19 +38,22 @@ Node {
             title: "Current clamp"
             BoundSlider {
                 target: engine
-                property: "currentOutputScaled"
+                property: "currentOutput"
                 text: "Current output"
                 unit: "uA"
-                minimumValue: 0.0
-                maximumValue: 40.0
-                stepSize: 1e-2
+                minimumValue: 0.0e-6
+                maximumValue: 40.0e-6
+                stepSize: 1e-8
+                unitScale: 1e-6
+                precision: 2
             }
         }
     }
 
 
+
     savedProperties: PropertyGroup {
-        property alias currentOutputScaled: engine.currentOutputScaled
+        property alias engine: engine
     }
 
     Image {
