@@ -109,9 +109,9 @@ Node {
         id: overlayAnimation
         target: overlay
         property: "opacity"
-        from: 0.5
+        from: 1.0
         to: 0
-        duration: 200
+        duration: 1000
         easing.type: Easing.OutQuad
     }
 

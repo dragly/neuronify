@@ -9,13 +9,12 @@ import "../controls"
 import ".."
 
 /*!
-    \qmltype PoissonGenerator
+    \qmltype RhythmGenerator
     \inqmlmodule Neuronify
     \ingroup neuronify-generators
     \brief An spike generator which can supply input spikes to neurons.
 
-    The Poisson generator can be connected to neurons, and will then supply the neurons with spikes
-    generated from a poisson process.
+    The Rhythm generator can be connected to neurons, and will then supply the neurons with spikes in regular intervals.
     The generator has a control panel where you can adjust the firing rate and stimulation output, as
     well as whether or not the generated spikes are inhibitory or excitatory.
 */
@@ -25,8 +24,8 @@ Node {
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     readonly property bool inhibitory: root.engine.fireOutput < 0.0
-    property url imageSource: "qrc:/images/generators/poisson_generator_excitatory.png"
-    property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
+    property url imageSource: "qrc:/images/generators/rhythm_generator_excitatory.png"
+    property url inhibitoryImageSource: "qrc:/images/generators/rhythm_generator_inhibitory.png"
 
     property alias fireOutput: engine.fireOutput
     property alias rate: engine.rate
@@ -35,8 +34,8 @@ Node {
         property alias engine: engine
     }
 
-    objectName: "poissonGenerator"
-    fileName: "generators/PoissonGenerator.qml"
+    objectName: "rhythmGenerator"
+    fileName: "generators/RhythmGenerator.qml"
 
     width: 62
     height: 62
@@ -45,8 +44,9 @@ Node {
 
     engine: NodeEngine {
         id: engine
+        fireOutput: 500.0e-6
         property real rate: 0.5e3
-        fireOutput: 100.0e-6
+        property real timeSinceFiring: 0.0
 
         savedProperties: PropertyGroup {
             property alias fireOutput: engine.fireOutput
@@ -54,17 +54,22 @@ Node {
         }
 
         onStepped: {
-            var shouldFire = (Math.random() < rate*dt)
+            timeSinceFiring+=dt
+            var shouldFire = (timeSinceFiring > 1./rate);
             if(shouldFire) {
                 fire()
                 overlayAnimation.restart()
             }
         }
+
+        onFired:{
+            timeSinceFiring = 0.0
+        }
     }
 
     controls: Component {
         PropertiesPage {
-            title: "Poisson generator"
+            title: "Rhythm generator"
             BoundSlider {
                 target: engine
                 property: "rate"
@@ -73,6 +78,9 @@ Node {
                 maximumValue: 1.0e3
                 unitScale: 1.0e3
                 unit: "/ms"
+                stepSize: 1.0e1
+                precision: 2
+
             }
             BoundSlider {
                 target: engine
