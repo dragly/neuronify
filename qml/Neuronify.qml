@@ -74,10 +74,10 @@ Rectangle {
     function firstLoad() {
         resetStyle();
         var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy");
-        if(latest !== "") {
-            loadSimulation(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "latest.nfy"));
-        } else {
+        if(latest.toString() === "") {
             loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy");
+        } else {
+            loadSimulation(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "latest.nfy"));
         }
     }
 

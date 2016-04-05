@@ -20,6 +20,7 @@ MainMenuPage {
     property url saveFolderUrl: StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "savedata")
     property string saveFolder: Qt.resolvedUrl(saveFolderUrl)
 
+    // TODO picture doesn't get properly updated when overwriting. Do we need to refresh the pixmap too?
     function refresh() {
         saveView.refreshing = true;
         refreshTimer.restart();
@@ -28,6 +29,7 @@ MainMenuPage {
     function saveStateImplementation(fileUrl, imageUrl) {
         saveView.save(fileUrl)
         saveView.requestScreenshot(function(result) {
+            // needs to be local file because of type of "result"
             var imageFile = StandardPaths.toLocalFile(imageUrl);
             console.log("Saving image to " + imageFile);
             result.saveToFile(imageFile);
