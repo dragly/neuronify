@@ -118,6 +118,11 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
     m_paintedImage = flipped;
 #endif
 
+#ifdef Q_OS_MAC
+    // flip image because webcam data is messed up on mac as well...
+    m_paintedImage = m_paintedImage.mirrored(true, false);
+#endif
+
 
     emit gotImage(QRect());
     return true;
