@@ -8,6 +8,8 @@ import "qrc:/qml/"
 import "qrc:/qml/controls"
 import "qrc:/qml/style"
 
+
+
 Item {
     id: root
     property string text: ""

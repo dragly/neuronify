@@ -7,7 +7,7 @@ import "qrc:/qml/controls"
 \qmltype AdaptationControl
 \inqmlmodule Neuronify
 \ingroup neuronify-controls
-\brief Controls for adaptation current.
+\brief Control for adaptation current.
 */
 
 
