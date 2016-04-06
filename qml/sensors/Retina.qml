@@ -124,6 +124,16 @@ Node {
                 angle: 180
             }
         ]
+        property list<Rotation> linuxTransforms: [
+            Rotation {
+                axis.x: 0
+                axis.y: 1
+                axis.z: 0
+                origin.x: retinaPainter.width * 0.5
+                origin.y: retinaPainter.height * 0.5
+                angle: 180
+            }
+        ]
         property list<Rotation> androidTransforms: [
             Rotation {
                 axis.x: 0
@@ -160,6 +170,8 @@ Node {
                 return windowsTransforms;
             case "osx":
                 return osxTransforms;
+            case "linux":
+                return linuxTransforms;
             case "android":
                 return androidTransforms;
             }
