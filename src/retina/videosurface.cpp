@@ -109,6 +109,8 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
 
 bool VideoSurface::present(const QVideoFrame &constFrame)
 {
+    // TODO read only the center square of the image (it is shown as a square in QML anyways)
+
     if(!m_enabled) {
         return true;
     }
