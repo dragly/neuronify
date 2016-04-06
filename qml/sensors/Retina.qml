@@ -105,21 +105,42 @@ Node {
 
         retinaEngine: retinaEngine
 
-        rotation: {
-            if(Qt.platform.os === "android") {
-                switch(Screen.primaryOrientation) {
-                case Qt.PortraitOrientation:
-                    return 90;
-                case Qt.LandscapeOrientation:
-                    return 0;
-                case Qt.InvertedPortraitOrientation:
-                    return 270;
-                case Qt.LandscapeOrientation:
-                    return 180;
+        transform: Rotation {
+            origin.x: retinaPainter.width * 0.5;
+            origin.y: retinaPainter.height * 0.5;
+            axis.x: 0;
+            axis.y: {
+                if(Qt.platform.os === "windows" || Qt.platform.os === "osx") {
+                    return 1;
                 }
+                return 0;
             }
-            return 0;
+            axis.z: {
+                if(Qt.platform.os === "android") {
+                    return 1;
+                }
+                return 0;
+            }
+
+            angle: {
+                if(Qt.platform.os === "windows" || Qt.platform.os === "osx") {
+                    return 180;
+                } else if(Qt.platform.os === "android") {
+                    switch(Screen.primaryOrientation) {
+                    case Qt.PortraitOrientation:
+                        return 90;
+                    case Qt.LandscapeOrientation:
+                        return 0;
+                    case Qt.InvertedPortraitOrientation:
+                        return 270;
+                    case Qt.LandscapeOrientation:
+                        return 180;
+                    }
+                }
+                return 0;
+            }
         }
+
     }
 
     ResizeRectangle {

@@ -141,22 +141,6 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
 
     m_paintedImage = QImage(myFrame.bits(), myFrame.width(), myFrame.height(),
                      myFrame.bytesPerLine(), imageFormat);
-#ifdef Q_OS_WIN
-    // flip image because webcam data is messed up on Windows...
-    QImage flipped(m_paintedImage.width(), m_paintedImage.height(), m_paintedImage.format());
-    QPainter painter(&flipped);
-    QTransform transf = painter.transform();
-    transf.scale(1, -1);
-    painter.setTransform(transf);
-    painter.drawImage(0, -m_paintedImage.height(), m_paintedImage);
-    m_paintedImage = flipped;
-#endif
-
-#ifdef Q_OS_MAC
-    // flip image because webcam data is messed up on mac as well...
-    m_paintedImage = m_paintedImage.mirrored(true, false);
-#endif
-
 
     emit gotImage(QRect());
     return true;
