@@ -69,6 +69,8 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
     pixelFormat.append(QVideoFrame::Format_RGB24);
     pixelFormat.append(QVideoFrame::Format_RGB32);
     pixelFormat.append(QVideoFrame::Format_NV21);
+    pixelFormat.append(QVideoFrame::Format_ARGB32);
+
 
     return pixelFormat;
 }
@@ -114,6 +116,11 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
     painter.setTransform(transf);
     painter.drawImage(0, -m_paintedImage.height(), m_paintedImage);
     m_paintedImage = flipped;
+#endif
+
+#ifdef Q_OS_MAC
+    // flip image because webcam data is messed up on mac as well...
+    m_paintedImage = m_paintedImage.mirrored(true, false);
 #endif
 
 
