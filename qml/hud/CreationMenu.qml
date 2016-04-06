@@ -19,7 +19,6 @@ Item {
     anchors.fill: parent
 
     onRevealedChanged: {
-        //        itemListView.currentIndex = -1
         itemListView.currentIndex = 0
     }
 
@@ -214,15 +213,17 @@ Item {
                         height: width
 
                         Image {
+                            id: markerImage
                             anchors {
                                 fill: parent
-                                margins: -parent.width * 0.1
+                                margins: -parent.width * 0.2
                             }
                             source: "qrc:/images/categories/marker.png"
                             smooth: true
                             antialiasing: true
                             visible: index === itemListView.currentIndex
                         }
+
                         CreationItem {
                             id: creationItem
                             name: model.name
