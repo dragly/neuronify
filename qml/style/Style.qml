@@ -21,8 +21,9 @@ Item {
     property alias text: textObject
     property alias heading: headingObject
     property alias font: textFontProxy.font
-    property alias button: buttonObject
+    property alias button: menuButtonObject
     property alias control: controlObject
+    property alias menu: menuObject
 
     property alias color: colorsObject
     property alias border: borderObject
@@ -46,19 +47,6 @@ Item {
     }
 
     Item {
-        id: buttonObject
-        property alias font: fontProxy.font
-        property color color: Qt.rgba(0.15, 0.15, 0.15, 1.0)
-        property color backgroundColor: "#dedede"
-        Text {
-            id: fontProxy
-            font.pixelSize: 3 * root.size
-            font.weight: Font.Light
-            font.family: "Roboto Light, Roboto"
-        }
-    }
-
-    Item {
         id: textObject
         property alias font: textFontProxy.font
         property color color: Qt.rgba(0.15, 0.15, 0.15, 0.9)
@@ -67,6 +55,38 @@ Item {
             font.pixelSize: 2.0 * root.size
             font.weight: Font.Light
             font.family: "Roboto Light, Roboto"
+        }
+    }
+
+    Item {
+        id: menuObject
+
+        property alias button: menuButtonObject
+        property alias text: menuTextObject
+
+        Item {
+            id: menuButtonObject
+            property alias font: menuButtonFontProxy.font
+            property color color: Qt.rgba(0.15, 0.15, 0.15, 1.0)
+            property color backgroundColor: "#dedede"
+            Text {
+                id: menuButtonFontProxy
+                font.pixelSize: 3 * root.size
+                font.weight: Font.Light
+                font.family: "Roboto Light, Roboto"
+            }
+        }
+
+        Item {
+            id: menuTextObject
+            property alias font: menuTextFontProxy.font
+            property color color: Qt.rgba(0.15, 0.15, 0.15, 1.0)
+            property color backgroundColor: "#dedede"
+            Text {
+                id: menuTextFontProxy
+                font.pixelSize: 2.5 * root.size
+                font.family: "Roboto Light, Roboto"
+            }
         }
     }
 
