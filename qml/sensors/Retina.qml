@@ -145,6 +145,7 @@ Node {
                 }
             }
         ]
+        property list<Rotation> noTransforms
         property bool plotKernel: true
         anchors {
             fill: parent
@@ -154,9 +155,15 @@ Node {
         retinaEngine: retinaEngine
 
         transform: {
-            if(Qt.platform.os === "windows"){
+            switch(Qt.platform.os) {
+            case "windows":
                 return windowsTransforms;
+            case "osx":
+                return osxTransforms;
+            case "android":
+                return androidTransforms;
             }
+            return noTransforms;
         }
     }
 
