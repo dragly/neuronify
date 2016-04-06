@@ -68,6 +68,7 @@ Rectangle {
 
     Component.onCompleted: {
         console.log("Neuronify.qml load completed " + Date.now());
+        Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
         firstLoadTimer.start();
     }
 
@@ -1043,7 +1044,7 @@ Rectangle {
             width: 10
             height: 10
             property alias videoSurface: _videoSurface
-            VideoSurface{
+            VideoSurface {
                 id: _videoSurface
                 enabled: root.running
                 camera: Camera{

@@ -5,8 +5,11 @@ Item {
     id: resizeRectangle
 
     property var target: parent
+    property bool forceSquare: false
 
     anchors.fill: target
+//    enabled: target.selected
+    visible: target.selected
 
     ResizeHandle {
         id: topLeft
@@ -17,11 +20,11 @@ Item {
             leftMargin: -width / 2
             topMargin: -height / 2
         }
-
         xFactor: 1.0
         yFactor: 1.0
         widthFactor: -1.0
         heightFactor: -1.0
+        forceSquare: resizeRectangle.forceSquare
     }
 
     ResizeHandle {
@@ -37,6 +40,7 @@ Item {
         yFactor: 0.0
         widthFactor: -1.0
         heightFactor: 1.0
+        forceSquare: resizeRectangle.forceSquare
     }
 
     ResizeHandle {
@@ -52,6 +56,7 @@ Item {
         yFactor: 1.0
         widthFactor: 1.0
         heightFactor: -1.0
+        forceSquare: resizeRectangle.forceSquare
     }
 
     ResizeHandle {
@@ -67,6 +72,6 @@ Item {
         yFactor: 0.0
         widthFactor:  1.0
         heightFactor: 1.0
+        forceSquare: resizeRectangle.forceSquare
     }
-
 }

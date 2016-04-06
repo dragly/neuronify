@@ -1,4 +1,6 @@
-import QtQuick 2.0
+import QtQuick 2.6
+import QtQuick.Controls 1.4
+
 import "../../style"
 import "../"
 
@@ -13,32 +15,45 @@ MainMenuPage {
     width: 200
     height: 100
 
-    Flickable {
+    ScrollView {
         id: aboutFlickable
         anchors {
             fill: parent
             margins: Style.margin
         }
 
+        flickableItem.flickableDirection: Flickable.VerticalFlick
+        horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
+
         clip: true
-        contentHeight: aboutText.height
+//        contentHeight: aboutText.height
 
         Text {
             id: aboutText
 
-            width: aboutFlickable.width
+            width: aboutFlickable.width * 0.95
 
-            font: Style.text.font
+            font: Style.menu.text.font
+            color: Style.menu.text.color
+
             wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-            color: Style.text.color
             textFormat: Text.RichText
-            text: "<p>"+
-                  "Neuronify is an educational tool meant to create intuition for how neurons and neural networks behave. You can use it to combine neurons with different connections, just like the ones we have in our brain, and explore how changes on single cells lead to behavioral changes in important networks."
-                  +"<p>"+
-                  "We aim to provide a low entry point to simulation-based neuroscience. Most undergraduate students don’t have the computational experience to create their own neural simulator. These students should also have the opportunity to build up their intuition by experimenting with neural phenomena."
-                  +"<p>"+
-                  "Neuronify is based on an integrate-and-fire model of neurons. This is one of the simplest models of neurons that exist. It focuses on the spike timing of a neuron and ignores the details of the action potential dynamics. These neurons are modelled as simple RC circuits. When the membrane potential is above a certain threshold, a spike is generated and the voltage is reset to its resting potential. This spike then signals other neurons through its synapses.  "
-                  +"</p>"
+            text: "
+<p>Neuronify is an educational tool meant to give intuition for how neurons and neural
+networks behave. You can use it to combine neurons with different connections, just
+like the ones we have in our brain, and explore how changes on single cells lead to
+behavioral changes in important networks.</p>
+<p>We aim to provide a low entry point to simulation-based neuroscience.
+Most students won't get the opportunity to create their own neural simulator.
+With Neuronify, these students are still able to build up their intuition by
+experimenting with neural phenomena.</p>
+<p>Neuronify is based on an integrate-and-fire model of neurons. This is one of the
+simplest models of neurons that exist. It focuses on the spike timing of a neuron and
+ignores the details of the action potential dynamics. These neurons are modelled as
+simple RC circuits. When the membrane potential is above a certain threshold, a spike is
+generated and the voltage is reset to its resting potential. This spike then signals other
+neurons through its synapses.</p>
+"
         }
 
 //        Image {

@@ -1,6 +1,8 @@
-import QtQuick 2.0
+import QtQuick 2.6
 import QtQuick.Controls 1.3
 import QtMultimedia 5.4
+import QtQuick.Window 2.0
+
 import Neuronify 1.0
 import "../paths"
 import "../hud"
@@ -28,7 +30,6 @@ Node {
     fileName: "sensors/Retina.qml"
     square: true
 
-
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
     property VideoSurface videoSurface: null;
     property int fieldIndex: 0
@@ -40,7 +41,7 @@ Node {
 
     color: "#0088aa"
     width: 240
-    height: 180
+    height: 240
     canReceiveConnections: false
     controls: controlsComponent
 
@@ -96,21 +97,41 @@ Node {
 
     RetinaPainter {
         id: retinaPainter
-        retinaEngine: retinaEngine
+        property bool plotKernel: true
         anchors {
             fill: parent
             margins: 5
         }
-        property bool plotKernel: true
+
+        retinaEngine: retinaEngine
+
+        rotation: {
+            if(Qt.platform.os === "android") {
+                switch(Screen.primaryOrientation) {
+                case Qt.PortraitOrientation:
+                    return 90;
+                case Qt.LandscapeOrientation:
+                    return 0;
+                case Qt.InvertedPortraitOrientation:
+                    return 270;
+                case Qt.LandscapeOrientation:
+                    return 180;
+                }
+            }
+            return 0;
+        }
     }
 
     ResizeRectangle {
+        forceSquare: true
     }
 
     Connector {
         visible: root.selected
         curveColor: "#0088aa"
         connectorColor: "#0088aa"
+        initialPoint: Qt.point(root.width + 32, root.height + 32)
+        attachmentPoint: Qt.point(root.width, root.height)
     }
 
     Component {
