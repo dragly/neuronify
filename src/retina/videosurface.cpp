@@ -69,6 +69,8 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
     pixelFormat.append(QVideoFrame::Format_RGB24);
     pixelFormat.append(QVideoFrame::Format_RGB32);
     pixelFormat.append(QVideoFrame::Format_NV21);
+    pixelFormat.append(QVideoFrame::Format_ARGB32);
+
 
     return pixelFormat;
 }
