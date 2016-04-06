@@ -6,6 +6,14 @@ import "qrc:/qml/"
 import "qrc:/qml/controls"
 import "qrc:/qml/neurons"
 
+/*!
+\qmltype SynapticOutputControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for synaptic fire output (conductance) strength in units of Siemens.
+*/
+
+
 BoundSlider {
     property NeuronEngine engine
     target: engine

@@ -4,6 +4,15 @@ import Neuronify 1.0
 import "qrc:/qml/"
 import "qrc:/qml/controls"
 
+/*!
+\qmltype ResistanceControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for membrane resistance.
+*/
+
+
+
 BoundSlider {
     property PassiveCurrent current
     target: current

@@ -4,6 +4,14 @@ import Neuronify 1.0
 import "qrc:/qml/"
 import "qrc:/qml/controls"
 
+/*!
+\qmltype AdaptationTimeConstantControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for adaptation current time constant.
+*/
+
+
 BoundSlider {
     property AdaptationCurrent current
     target: current

@@ -6,6 +6,14 @@ import "qrc:/qml/"
 import "qrc:/qml/controls"
 import "qrc:/qml/neurons"
 
+/*!
+\qmltype SynapticTimeConstantControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for synaptic time constant.
+*/
+
+
 BoundSlider {
     property NeuronEngine engine
     target: engine

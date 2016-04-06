@@ -5,6 +5,14 @@ import QtGraphicalEffects 1.0
 
 import "qrc:/qml/style"
 
+/*!
+\qmltype BoundSlider
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Slider control
+*/
+
+
 Item {
     id: root
 

@@ -8,6 +8,15 @@ import "qrc:/qml/controls"
 import "qrc:/qml/neurons"
 import "qrc:/qml/style"
 
+/*!
+\qmltype LabelControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for neuron label
+*/
+
+
+
 Column {
     property Neuron neuron
     anchors {

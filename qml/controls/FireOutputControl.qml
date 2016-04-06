@@ -1,6 +1,15 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
 
+/*!
+\qmltype FireOutputControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for fire output (conductance) strength in units of Siemens.
+*/
+
+
+
 Column {
     id: root
     property QtObject target: null
