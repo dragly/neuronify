@@ -14,8 +14,8 @@ Item {
 
     property bool forceSquare: false
     
-    width: 64
-    height: 64
+    width: 96
+    height: 96
 
     Rectangle {
         anchors.centerIn: parent
