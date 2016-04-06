@@ -7,6 +7,14 @@ import "../style"
 
 import Neuronify 1.0
 
+/*!
+\qmltype Note
+\inqmlmodule Neuronify
+\ingroup neuronify-annotations
+\brief Annotate simulations with notes
+*/
+
+
 Node {
     id: noteRoot
 

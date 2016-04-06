@@ -6,6 +6,14 @@ import "qrc:/qml/"
 import "qrc:/qml/controls"
 import "qrc:/qml/neurons"
 
+/*!
+\qmltype ThresholdControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for firing threshold.
+*/
+
+
 BoundSlider {
     property NeuronEngine engine
     target: engine

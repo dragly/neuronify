@@ -6,6 +6,15 @@ import "qrc:/qml/"
 import "qrc:/qml/controls"
 import "qrc:/qml/neurons"
 
+/*!
+\qmltype CapacitanceControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for memebrane capacitance.
+*/
+
+
+
 BoundSlider {
     property NeuronEngine engine
     target: engine

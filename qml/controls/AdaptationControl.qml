@@ -3,6 +3,13 @@ import Neuronify 1.0
 
 import "qrc:/qml/"
 import "qrc:/qml/controls"
+/*!
+\qmltype AdaptationControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Controls for adaptation current.
+*/
+
 
 BoundSlider {
     property AdaptationCurrent current

@@ -8,6 +8,7 @@ import "qrc:/"
 import "qrc:/qml/"
 import "qrc:/qml/controls"
 
+
 Neuron {
     id: neuronRoot
 

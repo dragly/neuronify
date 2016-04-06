@@ -8,6 +8,15 @@ import Neuronify 1.0
 import "qrc:/qml"
 import "qrc:/qml/neurons"
 
+/*!
+\qmltype RestControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for resetting potential.
+*/
+
+
+
 Column {
     id: root
     property NeuronEngine engine: null

@@ -8,6 +8,15 @@ import "../tools"
 import "../controls"
 import ".."
 
+
+/*!
+\qmltype RasterPlot
+\inqmlmodule Neuronify
+\ingroup neuronify-meters
+\brief Shows firing times of neurons.
+*/
+
+
 Node {
     id: rasterRoot
 

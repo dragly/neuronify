@@ -6,6 +6,15 @@ import "qrc:/qml/"
 import "qrc:/qml/controls"
 import "qrc:/qml/neurons"
 
+/*!
+\qmltype InitialPotentialControl
+\inqmlmodule Neuronify
+\ingroup neuronify-controls
+\brief Control for initial potential of a cell right after firing.
+*/
+
+
+
 BoundSlider {
     property NeuronEngine engine
     target: engine
