@@ -97,35 +97,41 @@ Node {
 
     RetinaPainter {
         id: retinaPainter
-        property bool plotKernel: true
-        anchors {
-            fill: parent
-            margins: 5
-        }
-
-        retinaEngine: retinaEngine
-
-        transform: Rotation {
-            origin.x: retinaPainter.width * 0.5;
-            origin.y: retinaPainter.height * 0.5;
-            axis.x: 0;
-            axis.y: {
-                if(Qt.platform.os === "windows" || Qt.platform.os === "osx") {
-                    return 1;
-                }
-                return 0;
+        property list<Rotation> windowsTransforms: [
+            Rotation {
+                axis.x:1
+                axis.y:0
+                axis.z:0
+                origin.x: retinaPainter.width * 0.5
+                origin.y: retinaPainter.height * 0.5
+                angle: 180
+            },
+            Rotation {
+                axis.y:1
+                axis.x: 0
+                axis.z: 0
+                origin.x: retinaPainter.width * 0.5
+                origin.y: retinaPainter.height * 0.5
+                angle: 180}
+        ]
+        property list<Rotation> osxTransforms: [
+            Rotation {
+                axis.x: 0
+                axis.y: 1
+                axis.z: 0
+                origin.x: retinaPainter.width * 0.5
+                origin.y: retinaPainter.height * 0.5
+                angle: 180
             }
-            axis.z: {
-                if(Qt.platform.os === "android") {
-                    return 1;
-                }
-                return 0;
-            }
-
-            angle: {
-                if(Qt.platform.os === "windows" || Qt.platform.os === "osx") {
-                    return 180;
-                } else if(Qt.platform.os === "android") {
+        ]
+        property list<Rotation> androidTransforms: [
+            Rotation {
+                axis.x: 0
+                axis.y: 0
+                axis.z: 1
+                origin.x: retinaPainter.width * 0.5
+                origin.y: retinaPainter.height * 0.5
+                angle: {
                     switch(Screen.primaryOrientation) {
                     case Qt.PortraitOrientation:
                         return 90;
@@ -137,10 +143,21 @@ Node {
                         return 180;
                     }
                 }
-                return 0;
             }
+        ]
+        property bool plotKernel: true
+        anchors {
+            fill: parent
+            margins: 5
         }
 
+        retinaEngine: retinaEngine
+
+        transform: {
+            if(Qt.platform.os === "windows"){
+                return windowsTransforms;
+            }
+        }
     }
 
     ResizeRectangle {
