@@ -40,7 +40,7 @@ Node {
 
     color: "#0088aa"
     width: 240
-    height: 180
+    height: 240
     canReceiveConnections: false
     controls: controlsComponent
 
@@ -105,12 +105,15 @@ Node {
     }
 
     ResizeRectangle {
+        forceSquare: true
     }
 
     Connector {
         visible: root.selected
         curveColor: "#0088aa"
         connectorColor: "#0088aa"
+        initialPoint: Qt.point(root.width + 32, root.height + 32)
+        attachmentPoint: Qt.point(root.width, root.height)
     }
 
     Component {

@@ -37,7 +37,9 @@ Item {
         id: draggable
 
         Component.onCompleted: {
-            resetPosition()
+            resetPosition();
+            _parent.onWidthChanged.connect(resetPosition);
+            _parent.onHeightChanged.connect(resetPosition);
         }
 
         function resetPosition() {
