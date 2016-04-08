@@ -24,11 +24,11 @@ Node {
     id: root
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
-    readonly property bool inhibitory: root.engine.fireOutput < 0.0
+    // TODO fireoutput engine property
+    readonly property bool inhibitory: false
     property url imageSource: "qrc:/images/generators/poisson_generator_excitatory.png"
     property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
 
-    property alias fireOutput: engine.fireOutput
     property alias rate: engine.rate
 
     savedProperties: PropertyGroup {
@@ -46,10 +46,8 @@ Node {
     engine: NodeEngine {
         id: engine
         property real rate: 0.5e3
-        fireOutput: 100.0e-6
 
         savedProperties: PropertyGroup {
-            property alias fireOutput: engine.fireOutput
             property alias rate: engine.rate
         }
 
@@ -73,16 +71,6 @@ Node {
                 maximumValue: 1.0e3
                 unitScale: 1.0e3
                 unit: "/ms"
-            }
-            BoundSlider {
-                target: engine
-                property: "fireOutput"
-                minimumValue: -500.0e-6
-                maximumValue: 500.0e-6
-                unitScale: 1e-6
-                text: "Stimulation"
-                unit: "uS"
-                stepSize: 1.0e-6
             }
         }
 

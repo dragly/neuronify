@@ -21,7 +21,6 @@ Node {
     fileName: "neurons/Neuron.qml"
 
     readonly property real voltage: root.engine.voltage
-    readonly property bool inhibitory: root.engine.fireOutput < 0.0
 
     property url imageSource
     property url inhibitoryImageSource

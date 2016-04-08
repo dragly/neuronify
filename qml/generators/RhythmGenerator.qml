@@ -23,11 +23,11 @@ Node {
     id: root
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
-    readonly property bool inhibitory: root.engine.fireOutput < 0.0
+    // TODO fireoutput engine
+    readonly property bool inhibitory: false
     property url imageSource: "qrc:/images/generators/rhythm_generator_excitatory.png"
     property url inhibitoryImageSource: "qrc:/images/generators/rhythm_generator_inhibitory.png"
 
-    property alias fireOutput: engine.fireOutput
     property alias rate: engine.rate
 
     savedProperties: PropertyGroup {
@@ -44,12 +44,10 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        fireOutput: 500.0e-6
         property real rate: 0.5e3
         property real timeSinceFiring: 0.0
 
         savedProperties: PropertyGroup {
-            property alias fireOutput: engine.fireOutput
             property alias rate: engine.rate
         }
 

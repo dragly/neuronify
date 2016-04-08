@@ -19,7 +19,6 @@ Neuron {
         id: neuronEngine
         property real refractoryPeriod: 0.0e-3
         property real timeSinceFire: 99999.0
-        fireOutput: 300.0e-6
         PassiveCurrent {
             id: passiveCurrent
         }
@@ -47,6 +46,24 @@ Neuron {
                 info: neuronRoot.label
                 LabelControl {
                     neuron: neuronRoot
+                }
+            }
+            PropertiesItem {
+                text: "Inhibitory"
+                Item {
+                    Text{
+                        text: "Inhibitory: " + (!switchRoot.checked ? " Yes" : " No")
+                    }
+                    Switch{
+                        id: switchRoot
+                        checked: neuronRoot.inhibitory
+                    }
+
+                    Binding {
+                        target: neuronRoot
+                        property: "inhibitory"
+                        value: switchRoot.checked
+                    }
                 }
             }
             PropertiesItem {
@@ -91,13 +108,6 @@ Neuron {
                     engine: neuronEngine
                 }
                 RefractoryPeriodControl{
-                    engine: neuronEngine
-                }
-            }
-            PropertiesItem {
-                text: "Synaptic output"
-                info: "Gs: " + (neuronEngine.fireOutput * 1e6).toFixed(1) + " uS, "
-                SynapticOutputControl {
                     engine: neuronEngine
                 }
             }

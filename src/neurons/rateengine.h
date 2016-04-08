@@ -40,7 +40,7 @@ signals:
     void temporalResolutionChanged(double temporalResolution);
 
 protected:
-    virtual void receiveFireEvent(double fireOutput, NodeEngine *sender);
+    virtual void receiveFireEvent(NodeEngine *sender);
 
 private:
     void computeFiringRate();

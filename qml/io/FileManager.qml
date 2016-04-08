@@ -69,8 +69,24 @@ Item {
         }
 
         for(var i in edges) {
-            var edge = edges[i]
-            edgeList.push(edge.dump(i, graphEngine))
+            var edge = edges[i];
+
+            var edgeDump = objectify(edge);
+
+            var itemAEntityIndex = graphEngine.nodeIndex(edge.itemA)
+            if(itemAEntityIndex === -1) {
+                console.error("Could not find index of node " + edge.itemA + " in GraphEngine! Aborting dump!")
+                return ""
+            }
+            var itemBEntityIndex = graphEngine.nodeIndex(edge.itemB)
+            if(itemBEntityIndex === -1) {
+                console.error("Could not find index of node " + edge.itemB + " in GraphEngine! Aborting dump!")
+                return ""
+            }
+            edgeDump.from = itemAEntityIndex;
+            edgeDump.to = itemBEntityIndex;
+
+            edgeList.push(edgeDump);
         }
 
         var workspaceProperties = workspace.dump();

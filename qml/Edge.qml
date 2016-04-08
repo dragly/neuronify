@@ -3,13 +3,16 @@ import "paths"
 import "hud"
 import Neuronify 1.0
 
-Edge {
+EdgeBase {
     id: connectionRoot
     signal clicked(var connection)
 
-    property string objectName: "connection"
+    property string objectName: "edge"
+    property string filename: "Edge.qml"
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
+
+    //TODO should be removed
     property real conductance: 1.0
     property color color: valid ? itemA.color : "white"
     property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x + 10*curved: 0
@@ -19,10 +22,15 @@ Edge {
     property real cx: valid ? intersectX(): 0
     property real cy: valid ? intersectY(): 0
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
-    property var customDump
     property Component controls: Component {
         Item {}
     }
+
+    savedProperties: [
+        PropertyGroup {
+            property alias filename: connectionRoot.filename
+        }
+    ]
 
     function intersectX() {
         var x
@@ -113,27 +121,6 @@ Edge {
         return y
     }
 
-
-    function dump(index, graphEngine) {
-        if(customDump) {
-            return customDump(index, graphEngine)
-        }
-        var itemAEntityIndex = graphEngine.nodeIndex(itemA)
-        if(itemAEntityIndex === -1) {
-            console.error("Could not find index of node " + itemA + " in GraphEngine! Aborting dump!")
-            return ""
-        }
-        var itemBEntityIndex = graphEngine.nodeIndex(itemB)
-        if(itemBEntityIndex === -1) {
-            console.error("Could not find index of node " + itemB + " in GraphEngine! Aborting dump!")
-            return ""
-        }
-        return {
-            "from": itemAEntityIndex,
-            "to": itemBEntityIndex
-        }
-    }
-
     BezierCurve {
         id: sCurve
         color: connectionRoot._internalColor
@@ -200,7 +187,8 @@ Edge {
         width: 10
         height: width
 
-        radius: (itemA && itemA.engine) ? (itemA.engine.fireOutput > 0 ?  0 : width / 2.0) : width / 2.0;
+        // TODO update with new inhibitory setting on engine
+//        radius: (itemA && itemA.engine) ? (itemA.engine.fireOutput > 0 ?  0 : width / 2.0) : width / 2.0;
         rotation: angle + 45
         color: connectionRoot._internalColor
 

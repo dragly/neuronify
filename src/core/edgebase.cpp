@@ -1,5 +1,5 @@
-#include "edge.h"
-
+#include "edgebase.h"
+#include "edgeengine.h"
 #include "nodebase.h"
 
 /*!
@@ -16,28 +16,33 @@
  *
  */
 
-Edge::Edge(QQuickItem *parent)
-    : QQuickItem(parent)
+EdgeBase::EdgeBase(QQuickItem *parent)
+    : NeuronifyObject(parent)
 {
     m_curved = 0;
 }
 
-NodeBase *Edge::itemA() const
+NodeBase *EdgeBase::itemA() const
 {
     return m_itemA;
 }
 
-NodeBase *Edge::itemB() const
+NodeBase *EdgeBase::itemB() const
 {
     return m_itemB;
 }
 
-int Edge::curved() const
+int EdgeBase::curved() const
 {
     return m_curved;
 }
 
-void Edge::setItemA(NodeBase *arg)
+EdgeEngine *EdgeBase::engine() const
+{
+    return m_engine;
+}
+
+void EdgeBase::setItemA(NodeBase *arg)
 {
     if (m_itemA == arg)
         return;
@@ -56,7 +61,7 @@ void Edge::setItemA(NodeBase *arg)
     emit itemAChanged(arg);
 }
 
-void Edge::setItemB(NodeBase *arg)
+void EdgeBase::setItemB(NodeBase *arg)
 {
     if (m_itemB == arg)
         return;
@@ -75,12 +80,21 @@ void Edge::setItemB(NodeBase *arg)
     emit itemBChanged(arg);
 }
 
-void Edge::setCurved(int curved)
+void EdgeBase::setCurved(int curved)
 {
     if (m_curved == curved)
         return;
 
     m_curved = curved;
     emit curvedChanged(curved);
+}
+
+void EdgeBase::setEngine(EdgeEngine *engine)
+{
+    if (m_engine == engine)
+        return;
+
+    m_engine = engine;
+    emit engineChanged(engine);
 }
 

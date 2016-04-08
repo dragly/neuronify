@@ -43,6 +43,11 @@ void NodeBase::reset()
     }
 }
 
+bool NodeBase::inhibitory() const
+{
+    return m_inhibitory;
+}
+
 void NodeBase::setEngine(NodeEngine *arg)
 {
     if (m_engine == arg)
@@ -50,4 +55,13 @@ void NodeBase::setEngine(NodeEngine *arg)
 
     m_engine = arg;
     emit engineChanged(arg);
+}
+
+void NodeBase::setInhibitory(bool inhibitory)
+{
+    if (m_inhibitory == inhibitory)
+        return;
+
+    m_inhibitory = inhibitory;
+    emit inhibitoryChanged(inhibitory);
 }

@@ -15,7 +15,6 @@ HEADERS += \
     src/core/graphengine.h \
     src/core/nodebase.h \
     src/core/nodeengine.h \
-    src/core/edge.h \
     src/neurons/current.h \
     src/neurons/neuronengine.h \
     src/retina/androidmultimediautils.h \
@@ -33,7 +32,9 @@ HEADERS += \
     src/utility/mathhelper.h \
     src/core/neuronifyobject.h \
     src/io/propertygroup.h \
-    src/retina/kernels/rectangularkernelengine.h
+    src/retina/kernels/rectangularkernelengine.h \
+    src/core/edgebase.h \
+    src/core/edgeengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -41,7 +42,6 @@ SOURCES += \
     src/core/nodebase.cpp \
     src/core/nodeengine.cpp \
     src/core/graphengine.cpp \
-    src/core/edge.cpp \
     src/neurons/current.cpp \
     src/neurons/neuronengine.cpp \
     src/retina/retinaengine.cpp \
@@ -59,7 +59,9 @@ SOURCES += \
     src/utility/mathhelper.cpp \
     src/core/neuronifyobject.cpp \
     src/io/propertygroup.cpp \
-    src/retina/kernels/rectangularkernelengine.cpp
+    src/retina/kernels/rectangularkernelengine.cpp \
+    src/core/edgebase.cpp \
+    src/core/edgeengine.cpp
 
 
 RESOURCES += qml.qrc \

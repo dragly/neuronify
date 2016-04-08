@@ -1,8 +1,9 @@
 #include "graphengine.h"
 
 #include "nodebase.h"
-#include "edge.h"
+#include "edgebase.h"
 #include "nodeengine.h"
+#include "edgeengine.h"
 
 /*!
  * \class GraphEngine
@@ -33,9 +34,9 @@ QQmlListProperty<NodeBase> GraphEngine::nodes()
     return QQmlListProperty<NodeBase>(this, m_nodes);
 }
 
-QQmlListProperty<Edge> GraphEngine::edges()
+QQmlListProperty<EdgeBase> GraphEngine::edges()
 {
-    return QQmlListProperty<Edge>(this, m_edges);
+    return QQmlListProperty<EdgeBase>(this, m_edges);
 }
 
 int GraphEngine::nodeIndex(NodeBase *node) const
@@ -48,9 +49,9 @@ void GraphEngine::addNode(NodeBase *node)
     m_nodes.append(node);
 }
 
-void GraphEngine::addEdge(Edge *edge)
+void GraphEngine::addEdge(EdgeBase *edge)
 {
-    for (Edge *otherEdge : m_edges) {
+    for (EdgeBase *otherEdge : m_edges) {
         if (edge->itemA() == otherEdge->itemB() && edge->itemB() == otherEdge->itemA()){
             edge->setCurved(-1);
             otherEdge->setCurved(1);
@@ -65,21 +66,21 @@ void GraphEngine::addEdge(Edge *edge)
 void GraphEngine::removeNode(NodeBase *node)
 {
     m_nodes.removeAll(node);
-    QList<Edge*> toDelete;
-    for(Edge *edge : m_edges) {
+    QList<EdgeBase*> toDelete;
+    for(EdgeBase *edge : m_edges) {
         if(edge->itemA() == node || edge->itemB() == node) {
             toDelete.append(edge);
         }
     }
-    for(Edge *edge : toDelete) {
+    for(EdgeBase *edge : toDelete) {
         removeEdge(edge);
     }
     node->deleteLater();
 }
 
-void GraphEngine::removeEdge(Edge *edge)
+void GraphEngine::removeEdge(EdgeBase *edge)
 {
-    for (Edge *otherEdge : m_edges) {
+    for (EdgeBase *otherEdge : m_edges) {
         if (edge->itemA() == otherEdge->itemB() && edge->itemB() == otherEdge->itemA()){
             edge->setCurved(0);
             otherEdge->setCurved(0);
@@ -107,13 +108,21 @@ void GraphEngine::removeEdge(Edge *edge)
 
 void GraphEngine::step(double dt)
 {
+    // step all nodes
     for(NodeBase* node : m_nodes) {
         if(node->engine()) {
             node->engine()->step(dt, true);
         }
     }
 
-    for(Edge* edge : m_edges) {
+    for(EdgeBase* edge : m_edges) {
+        if(edge->engine()){
+            edge->engine()->step(dt, true);
+        }
+    }
+
+    //communicate events between nodes
+    for(EdgeBase* edge : m_edges) {
         if(!(edge->itemA()) || !(edge->itemB())) {
             continue;
         }
@@ -123,13 +132,31 @@ void GraphEngine::step(double dt)
             continue;
         }
         if(engineA->hasFired()) {
-            engineB->receiveFire(engineA->fireOutput(), engineA);
+            if(edge->engine()) {
+                edge->engine()->receiveFire(engineA);
+            }
+            engineB->receiveFire(engineA);
         }
+
+        double sign = 1.0;
+        if(edge->itemA()->inhibitory()) {
+            sign = -1.0;
+        }
+
+        if(edge->engine()) {
+            if(edge->engine()->currentOutput() != 0.0) {
+                engineB->receiveCurrent(sign * edge->engine()->currentOutput(), engineA);
+            }
+        }
+
+        //TODO: do we need this with the new synapses?
         if(engineA->currentOutput() != 0.0) {
-            engineB->receiveCurrent(engineA->currentOutput(), engineA);
+            engineB->receiveCurrent(sign * engineA->currentOutput(), engineA);
         }
     }
 
+    //finalize step
+    // TODO: remove this if not needed
     for(NodeBase* node : m_nodes) {
         if(node->engine()) {
             node->engine()->finalizeStep(dt);

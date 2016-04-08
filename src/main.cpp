@@ -1,7 +1,8 @@
 #include "core/nodebase.h"
 #include "core/nodeengine.h"
-#include "core/edge.h"
+#include "core/edgebase.h"
 #include "core/graphengine.h"
+#include "core/edgeengine.h"
 
 #include "retina/kernel.h"
 #include "retina/kernels/gaborkernelengine.h"
@@ -38,8 +39,9 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<NodeBase>("Neuronify", 1, 0, "NodeBase");
     qmlRegisterType<NodeEngine>("Neuronify", 1, 0, "NodeEngine");
-    qmlRegisterType<Edge>("Neuronify", 1, 0, "Edge");
+    qmlRegisterType<EdgeBase>("Neuronify", 1, 0, "EdgeBase");
     qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
+     qmlRegisterType<EdgeEngine>("Neuronify", 1, 0, "EdgeEngine");
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngineBase");
 

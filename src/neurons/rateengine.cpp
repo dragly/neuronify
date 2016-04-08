@@ -20,11 +20,9 @@ RateEngine::RateEngine(QQuickItem *parent)
 {
 }
 
-void RateEngine::receiveFireEvent(double fireOutput, NodeEngine *sender)
+void RateEngine::receiveFireEvent(NodeEngine *sender)
 {
     Q_UNUSED(sender);
-    Q_UNUSED(fireOutput);
-
     m_spikeTimes.push_back(m_time);
 }
 

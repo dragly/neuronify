@@ -34,6 +34,8 @@ NodeBase {
     property var dragProxy
     property string label: ""
     property string objectName: "entity"
+
+    // TODO rename to filename
     property string fileName: "Entity.qml"
     property real radius: width * 0.5
     property bool selected: false
@@ -55,16 +57,12 @@ NodeBase {
         property alias y: root.y
         property alias label: root.label
         property alias fileName: root.fileName
+        property alias inhibitory: root.inhibitory
     }
 
     onEngineChanged: {
         if(engine) {
             engine.fired.connect(root.fired)
-        }
-    }
-
-    engine: NodeEngine {
-        onReceivedFire: {
         }
     }
 

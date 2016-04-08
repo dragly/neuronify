@@ -20,6 +20,8 @@ public:
         return QQmlListProperty<PropertyGroup>(this, m_savedProperties);
     }
 
+    void addSavedPropertyGroup(PropertyGroup *propertyGroup);
+
 signals:
 
 public slots:

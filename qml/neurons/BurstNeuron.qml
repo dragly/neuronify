@@ -15,7 +15,6 @@ Neuron {
 
     engine: NeuronEngine {
         id: neuronEngine
-        fireOutput: 200.0e-6
         PassiveCurrent {
             id: passiveCurrent
         }
@@ -56,7 +55,6 @@ Neuron {
 
     savedProperties: PropertyGroup {
         property alias label: neuronRoot.label
-        property alias fireOutput: neuronEngine.fireOutput
 
         // Do we need to save these?
         property alias resistance: passiveCurrent.resistance

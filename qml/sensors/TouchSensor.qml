@@ -22,6 +22,8 @@ The input is used to generate a constant current injected into the attached
 neurons.
 */
 
+// TODO add custom synapse for TouchSensor
+
 Node {
     id: sensorRoot
     objectName: "touchSensor"
@@ -41,7 +43,6 @@ Node {
     color: sensorRoot.sensing ? "#80e5ff" : "#0088aa"
 
     engine: NodeEngine {
-        fireOutput: 1.0
         onStepped: {
             if(sensing) {
                 engine.fire()

@@ -224,11 +224,13 @@ Rectangle {
             var edgeProperties = data.edges[i];
             var from = parseInt(edgeProperties.from);
             var to = parseInt(edgeProperties.to);
+            var filename = edgeProperties.filename
+
             if(!createdNodes[from] || !createdNodes[to]) {
                 console.warn("WARNING: Cannot connect entities " + from + " and " + to + " while loading " + fileUrl);
                 continue;
             }
-            connectEntities(createdNodes[from], createdNodes[to]);
+            connectEntities(createdNodes[from], createdNodes[to], filename, edgeProperties);
         }
 
         if(data.workspace) {
@@ -491,12 +493,34 @@ Rectangle {
         return entity
     }
 
-    function createConnection(sourceObject, targetObject) {
-        var connectionComponent = Qt.createComponent("Connection.qml")
+    function createConnection(sourceObject, targetObject, filename, properties) {
+        if(!filename){
+            filename = "Edge.qml"
+        }
+
+        if(!properties){
+            properties = {}
+        }
+
+        properties.itemA = sourceObject;
+        properties.itemB = targetObject;
+
+        console.log("Properties: " + properties);
+        for(var i in properties) {
+            console.log("Property " + i + ": " + properties[i]);
+        }
+
+        var connectionComponent = Qt.createComponent(filename)
+
+        if (connectionComponent.status === Component.Error) {
+             console.log("Error loading component:", connectionComponent.errorString());
+        }
+
         var connection = connectionComponent.createObject(connectionLayer, {
                                                               itemA: sourceObject,
                                                               itemB: targetObject
                                                           })
+
         connection.clicked.connect(function(connection) {
             deselectAll();
             activeObject = connection;
@@ -506,7 +530,7 @@ Rectangle {
         return connection
     }
 
-    function connectEntities(itemA, itemB) {
+    function connectEntities(itemA, itemB, filename, properties) {
         if(itemA === itemB) {
             console.warn("connectEntities(): Cannot connect an item to itself.")
             return;
@@ -519,7 +543,7 @@ Rectangle {
             console.warn("connectEntities(): " + itemB.fileName + " cannot receive connections.")
             return;
         }
-        var connection = createConnection(itemA, itemB)
+        var connection = createConnection(itemA, itemB, filename, properties)
         graphEngine.addEdge(connection)
         return connection
     }

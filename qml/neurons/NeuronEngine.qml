@@ -5,7 +5,6 @@ import Neuronify 1.0
 NeuronEngineBase {
     id: engine
     savedProperties: PropertyGroup {
-        property alias fireOutput: engine.fireOutput
         property alias initialPotential: engine.initialPotential
         property alias restingPotential: engine.restingPotential
         property alias threshold: engine.threshold

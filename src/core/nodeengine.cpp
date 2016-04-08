@@ -25,20 +25,6 @@ NodeEngine::~NodeEngine()
 {
 }
 
-double NodeEngine::fireOutput() const
-{
-    return m_fireOutput;
-}
-
-void NodeEngine::setFireOutput(double arg)
-{
-    if (m_fireOutput == arg)
-        return;
-
-    m_fireOutput = arg;
-    emit fireOutputChanged(arg);
-}
-
 void NodeEngine::setCurrentOutput(double arg)
 {
     if (m_currentOutput == arg)
@@ -92,13 +78,13 @@ void NodeEngine::fire()
     emit fired();
 }
 
-void NodeEngine::receiveFire(double stimulation, NodeEngine *sender)
+void NodeEngine::receiveFire(NodeEngine *sender)
 {
     for(NodeEngine* child : findChildren<NodeEngine*>()) {
-        child->receiveFire(stimulation, sender);
+        child->receiveFire(sender);
     }
-    receiveFireEvent(stimulation, sender);
-    emit receivedFire(stimulation, sender);
+    receiveFireEvent(sender);
+    emit receivedFire(sender);
 }
 
 void NodeEngine::receiveCurrent(double current, NodeEngine *sender)
@@ -107,7 +93,7 @@ void NodeEngine::receiveCurrent(double current, NodeEngine *sender)
         child->receiveCurrent(current, sender);
     }
     receiveCurrentEvent(current, sender);
-    emit receivedFire(current, sender);
+    emit receivedCurrent(current, sender);
 }
 
 void NodeEngine::finalizeStep(double dt)
@@ -130,9 +116,8 @@ void NodeEngine::fireEvent()
 
 }
 
-void NodeEngine::receiveFireEvent(double fireOutput, NodeEngine *sender)
+void NodeEngine::receiveFireEvent(NodeEngine *sender)
 {
-    Q_UNUSED(fireOutput);
     Q_UNUSED(sender);
 }
 
@@ -149,5 +134,4 @@ void NodeEngine::finalizeStepEvent(double dt)
 
 void NodeEngine::resetEvent()
 {
-
 }

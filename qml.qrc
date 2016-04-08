@@ -2,7 +2,7 @@
     <qresource prefix="/">
         <file>qml/main.qml</file>
         <file>qml/Plot.qml</file>
-        <file>qml/Connection.qml</file>
+        <file>qml/Edge.qml</file>
         <file>qml/paths/BezierCurve.qml</file>
         <file>qml/paths/SCurve.qml</file>
         <file>qml/meters/Voltmeter.qml</file>
@@ -96,5 +96,6 @@
         <file>fonts/roboto/Roboto-Bold.ttf</file>
         <file>fonts/roboto/Roboto-Light.ttf</file>
         <file>fonts/roboto/Roboto-Regular.ttf</file>
+        <file>qml/synapses/CurrentSynapse.qml</file>
     </qresource>
 </RCC>

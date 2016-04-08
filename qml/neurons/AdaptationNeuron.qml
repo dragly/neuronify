@@ -56,7 +56,6 @@ Neuron {
 
     savedProperties: PropertyGroup {
         property alias label: neuronRoot.label
-        property alias fireOutput: neuronEngine.fireOutput
         property alias adaptation: adaptationCurrent.adaptation
         property alias timeConstant: adaptationCurrent.timeConstant
 
