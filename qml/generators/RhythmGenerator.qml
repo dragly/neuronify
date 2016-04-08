@@ -43,8 +43,8 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        property real rate: 0.5e3
-        property real timeSinceFiring: 0.0
+        property real rate
+        property real timeSinceFiring
 
         savedProperties: PropertyGroup {
             property alias rate: engine.rate
@@ -60,6 +60,14 @@ Node {
         }
 
         onFired:{
+            timeSinceFiring = 0.0
+        }
+
+        onResettedProperties: {
+            rate = 0.5e3
+        }
+
+        onResettedDynamics: {
             timeSinceFiring = 0.0
         }
     }

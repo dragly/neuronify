@@ -23,8 +23,16 @@ public:
     void addSavedPropertyGroup(PropertyGroup *propertyGroup);
 
 signals:
+    void resettedDynamics();
+    void resettedProperties();
 
 public slots:
+    void resetDynamics();
+    void resetProperties();
+
+protected:
+    virtual void resetDynamicsEvent();
+    virtual void resetPropertiesEvent();
 
 private:
     QList<PropertyGroup*> m_savedProperties;

@@ -12,9 +12,9 @@ Edge {
     engine: EdgeEngine {
         id: engine
 
-        property real current: 0.0
-        property real tau: 2e-3
-        property real maximumCurrent: 1e-9
+        property real current
+        property real tau
+        property real maximumCurrent
         savedProperties: [
             PropertyGroup {
                 property alias current: engine.current
@@ -30,6 +30,15 @@ Edge {
 
         onReceivedFire: {
             current += maximumCurrent;
+        }
+
+        onResettedDynamics: {
+            current = 0.0
+        }
+
+        onResettedProperties: {
+            tau = 2.5e-3
+            maximumCurrent = 1.0e-9
         }
     }
 

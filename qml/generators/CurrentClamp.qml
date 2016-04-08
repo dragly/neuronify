@@ -27,9 +27,11 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        currentOutput: 300e-12
         savedProperties: PropertyGroup {
             property alias currentOutput: engine.currentOutput
+        }
+        onResettedProperties: {
+            currentOutput = 300e-12
         }
     }
 

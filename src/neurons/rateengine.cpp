@@ -113,3 +113,15 @@ void RateEngine::setTemporalResolution(double temporalResolution)
     emit temporalResolutionChanged(temporalResolution);
 }
 
+void RateEngine::resetPropertiesEvent()
+{
+    setWindowDuration(100e-3);
+    setTemporalResolution(100e-3);
+}
+
+void RateEngine::resetDynamicsEvent()
+{
+    m_firingRate = 0.0;
+    m_spikeTimes.clear();
+}
+

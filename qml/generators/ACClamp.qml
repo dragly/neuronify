@@ -28,8 +28,8 @@ Node {
     engine: NodeEngine {
         id: engine
         property real time: 0
-        property real amplitude: 300e-12
-        property real frequency: 50.0
+        property real amplitude
+        property real frequency
         property real pi: 3.14159
         savedProperties: PropertyGroup {
             property alias amplitude: engine.amplitude
@@ -41,7 +41,10 @@ Node {
         onStepped: {
             time += dt
         }
-
+        onResettedProperties: {
+            amplitude = 300e-12
+            frequency = 50.0
+        }
     }
 
     controls: Component {

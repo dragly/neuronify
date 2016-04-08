@@ -1109,4 +1109,48 @@ Rectangle {
             deleteSelected()
         }
     }
+
+    Column {
+        anchors {
+            bottom: parent.bottom
+            left: parent.left
+        }
+
+        Button {
+            text: "Reset Dynamics"
+            onClicked: {
+                for(var i in graphEngine.nodes) {
+                    var entity = graphEngine.nodes[i];
+                    if(entity.engine) {
+                        entity.engine.resetDynamics();
+                    }
+                }
+                for(var i in graphEngine.edges) {
+                    var edge = graphEngine.edges[i];
+                    if(edge.engine) {
+                        edge.engine.resetDynamics();
+                    }
+                }
+            }
+        }
+
+        Button {
+            text: "Reset Properties"
+            onClicked: {
+                for(var i in graphEngine.nodes) {
+                    var entity = graphEngine.nodes[i];
+                    if(entity.engine) {
+                        entity.engine.resetProperties();
+                    }
+                }
+                for(var i in graphEngine.edges) {
+                    var edge = graphEngine.edges[i];
+                    if(edge.engine) {
+                        edge.engine.resetProperties();
+                    }
+                }
+            }
+        }
+
+    }
 }

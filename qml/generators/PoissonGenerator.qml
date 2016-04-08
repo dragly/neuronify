@@ -44,7 +44,7 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        property real rate: 0.5e3
+        property real rate
 
         savedProperties: PropertyGroup {
             property alias rate: engine.rate
@@ -56,6 +56,10 @@ Node {
                 fire()
                 overlayAnimation.restart()
             }
+        }
+
+        onResettedProperties: {
+            rate = 0.5e3
         }
     }
 

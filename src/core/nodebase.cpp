@@ -39,7 +39,7 @@ NodeEngine *NodeBase::engine() const
 void NodeBase::reset()
 {
     if(m_engine) {
-        m_engine->reset();
+        m_engine->resetDynamics();
     }
 }
 

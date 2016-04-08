@@ -95,3 +95,14 @@ void AdaptationCurrent::fireEvent()
     m_conductance += m_adaptation;
 }
 
+void AdaptationCurrent::resetPropertiesEvent()
+{
+    m_adaptation = 10.0e-9;
+    m_timeConstant = 1000.0e-3;
+}
+
+void AdaptationCurrent::resetDynamicsEvent()
+{
+    m_conductance = 0.0;
+}
+

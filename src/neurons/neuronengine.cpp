@@ -38,7 +38,7 @@ double NeuronEngine::voltage() const
 
 double NeuronEngine::restingPotential() const
 {
-    return m_membraneRestingPotential;
+    return m_restingPotential;
 }
 
 
@@ -57,9 +57,10 @@ double NeuronEngine::initialPotential() const
     return m_initialPotential;
 }
 
-void NeuronEngine::resetEvent()
+void NeuronEngine::resetDynamicsEvent()
 {
     setVoltage(m_initialPotential);
+    m_receivedCurrents = 0.0;
 }
 
 void NeuronEngine::setVoltage(double arg)
@@ -114,11 +115,20 @@ void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
     m_receivedCurrents += currentOutput;
 }
 
+void NeuronEngine::resetPropertiesEvent()
+{
+    qDebug() << "Resetting capacitance and stuff";
+    setRestingPotential(-70.0e-3);
+    setInitialPotential(-70.0e-3);
+    setThreshold(-55.0e-3);
+    setCapacitance(0.1e-9);
+}
+
 
 void NeuronEngine::setRestingPotential(double arg)
 {
-    if (m_membraneRestingPotential != arg) {
-        m_membraneRestingPotential = arg;
+    if (m_restingPotential != arg) {
+        m_restingPotential = arg;
         emit restingPotentialChanged(arg);
     }
 }

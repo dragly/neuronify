@@ -50,15 +50,16 @@ signals:
 
 protected:
     virtual void stepEvent(double dt, bool parentEnabled) override;
+    virtual void resetPropertiesEvent() override;
+    virtual void resetDynamicsEvent() override;
 
 private:
     VideoSurface * m_videoSurface = nullptr;
     Kernel * m_kernel = nullptr;
     QImage m_paintedImage;
 
-
     double m_firingRate = 0.0;
-    double m_sensitivity = 1000.0;
+    double m_sensitivity = 0.0;
 
     vector< vector <double>> m_stim;
     bool m_plotKernel;

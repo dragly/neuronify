@@ -113,18 +113,6 @@ Node {
         var firePlot = item.firePlot;
 
         var neuron = edge.itemB;
-        neuron.fired.connect(function() {
-            for(var i in voltmeterRoot.connectionPlots) {
-                var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var firePlot = connectionPlot.firePlot
-                var neuron2 = connectionPlot.connection.itemB
-                if(neuron2 === neuron) {
-                    firePlot.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
-                    firePlot.addPoint(time * timeFactor, neuron2.voltage * voltageFactor)
-                    firePlot.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
-                }
-            }
-        });
         console.log("item: " + item)
         item.label = Qt.binding(function(){
             console.log("neuron:" + neuron);
@@ -143,7 +131,23 @@ Node {
         }
 
         var newList = connectionPlots
-        newList.push({item: item, connection: edge, plot: plot, firePlot: firePlot})
+
+        var connectionPlot = {
+            item: item,
+            connection: edge,
+            plot: plot,
+            firePlot: firePlot,
+            neuron: neuron,
+            neuronFired: function() {
+                firePlot.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
+                firePlot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
+                firePlot.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
+            }
+        }
+
+        neuron.fired.connect(connectionPlot.neuronFired);
+
+        newList.push(connectionPlot);
         connectionPlots = newList
 
     }
@@ -153,8 +157,9 @@ Node {
             var connectionPlot = connectionPlots[i]
             var connectionOther = connectionPlot.connection
             if(connectionOther === edge) {
-                connectionPlot.item.destroy()
-                connectionPlots.splice(i, 1)
+                connectionPlot.neuron.fired.disconnect(connectionPlot.neuronFired);
+                connectionPlot.item.destroy();
+                connectionPlots.splice(i, 1);
                 break
             }
         }

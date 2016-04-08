@@ -31,11 +31,13 @@ public slots:
 protected:
     virtual void stepEvent(double dt, bool parentEnabled) override;
     virtual void fireEvent() override;
+    virtual void resetPropertiesEvent() override;
+    virtual void resetDynamicsEvent() override;
 
 private:
-    double m_adaptation = 10.0e-6;
+    double m_adaptation = 0.0;
     double m_conductance = 0.0;
-    double m_timeConstant = 1000.0e-3;
+    double m_timeConstant = 0.0;
 };
 
 #endif // ADAPTATIONCURRENT_H

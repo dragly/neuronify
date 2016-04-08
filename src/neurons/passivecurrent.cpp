@@ -52,3 +52,8 @@ void PassiveCurrent::stepEvent(double dt, bool parentEnabled)
     double I = -1.0 / m_resistance * (V - Em);
     setCurrent(I);
 }
+
+void PassiveCurrent::resetPropertiesEvent()
+{
+    setResistance(100.0e6);
+}

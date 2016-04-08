@@ -28,7 +28,6 @@ public:
 public slots:
     void setVoltage(double arg);
     void setRestingPotential(double arg);
-    void resetEvent();
     void setThreshold(double threshold);
     void setCapacitance(double capacitance);
     void setInitialPotential(double initialPotential);
@@ -45,15 +44,17 @@ protected:
     virtual void stepEvent(double dt, bool parentEnabled);
     virtual void fireEvent();
     virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender);
+    virtual void resetPropertiesEvent() override;
+    virtual void resetDynamicsEvent() override;
 
 private:
     void checkFire();
 
-    double m_voltage = -70.0e-3;
-    double m_membraneRestingPotential = -70.0e-3;
-    double m_initialPotential = -70.0e-3;
-    double m_threshold = -55.0e-3;
-    double m_capacitance = 0.1e-9;
+    double m_voltage = 0.0;
+    double m_restingPotential = 0.0;
+    double m_initialPotential = 0.0;
+    double m_threshold = 0.0;
+    double m_capacitance = 0.0;
     double m_receivedCurrents = 0.0;
 
 

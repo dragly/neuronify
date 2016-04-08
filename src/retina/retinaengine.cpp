@@ -88,8 +88,16 @@ void RetinaEngine::stepEvent(double dt, bool parentEnabled)
     if(shouldFire){
         fire();
     }
+}
 
+void RetinaEngine::resetPropertiesEvent()
+{
+    setSensitivity(1000.0);
+}
 
+void RetinaEngine::resetDynamicsEvent()
+{
+    m_firingRate = 0.0;
 }
 
 

@@ -59,6 +59,13 @@ NodeBase {
         property alias engine: root.engine
     }
 
+    Component.onCompleted: {
+        if(engine) {
+            engine.resetProperties();
+            engine.resetDynamics();
+        }
+    }
+
     onEngineChanged: {
         if(engine) {
             engine.fired.connect(root.fired)

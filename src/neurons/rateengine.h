@@ -39,6 +39,10 @@ signals:
     void neuronCountChanged(int neuronCount);
     void temporalResolutionChanged(double temporalResolution);
 
+protected:
+    virtual void resetPropertiesEvent() override;
+    virtual void resetDynamicsEvent() override;
+
 private:
     void computeFiringRate();
 

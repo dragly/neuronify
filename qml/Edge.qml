@@ -31,6 +31,11 @@ EdgeBase {
         }
     ]
 
+    Component.onCompleted: {
+        resetProperties();
+        resetDynamics();
+    }
+
     function intersectX() {
         var x
 

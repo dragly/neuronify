@@ -7,7 +7,7 @@ import "../hud"
 
 Edge {
     objectName: "ImmediateFireSynapse"
-    filename: "synapses/ImmediateFireSynapse.qml"
+    filename: "edges/ImmediateFireSynapse.qml"
 
     engine: EdgeEngine {
         id: engine

@@ -18,7 +18,6 @@
 NodeEngine::NodeEngine(QQuickItem *parent)
     : NeuronifyObject(parent)
 {
-    reset();
 }
 
 NodeEngine::~NodeEngine()
@@ -42,15 +41,6 @@ bool NodeEngine::hasFired()
 void NodeEngine::setHasFired(bool fired)
 {
     m_hasFired = fired;
-}
-
-void NodeEngine::reset()
-{
-    for(NodeEngine* child : findChildren<NodeEngine*>()) {
-        child->reset();
-    }
-    resetEvent();
-    emit resetted();
 }
 
 double NodeEngine::currentOutput() const
@@ -113,7 +103,6 @@ void NodeEngine::stepEvent(double dt, bool parentEnabled)
 
 void NodeEngine::fireEvent()
 {
-
 }
 
 void NodeEngine::receiveFireEvent(NodeEngine *sender)
@@ -132,6 +121,7 @@ void NodeEngine::finalizeStepEvent(double dt)
     Q_UNUSED(dt);
 }
 
-void NodeEngine::resetEvent()
+void NodeEngine::resetDynamicsEvent()
 {
+    m_hasFired = false;
 }

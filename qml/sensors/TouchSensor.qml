@@ -129,5 +129,11 @@ Node {
     MoveHandle {
     }
 
+    Keys.onPressed: {
+        if(event.key === Qt.Key_Space) {
+            sensorRoot.sensing = true;
+        }
+    }
+
 }
 

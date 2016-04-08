@@ -21,10 +21,11 @@ public slots:
     void setResistance(double arg);
 
 protected:
-    virtual void stepEvent(double dt, bool parentEnabled);
+    virtual void stepEvent(double dt, bool parentEnabled) override;
+    virtual void resetPropertiesEvent() override;
 
 private:
-    double m_resistance = 100.0e6;
+    double m_resistance = 0.0;
 };
 
 #endif // PASSIVECURRENT_H

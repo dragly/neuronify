@@ -28,17 +28,18 @@ Neuron {
             adaptation: 50.0e-6
             timeConstant: 300.0e-3
         }
-    }
 
+        savedProperties: PropertyGroup {
+            property alias adaptation: adaptationCurrent.adaptation
+            property alias timeConstant: adaptationCurrent.timeConstant
+        }
+    }
 
     controls: Component {
         PropertiesPage {
             property string title: "Adaptive neuron"
             LabelControl {
                 neuron: neuronRoot
-            }
-            SynapticOutputControl {
-                engine: neuronEngine
             }
             AdaptationControl{
                 current: adaptationCurrent
@@ -51,23 +52,6 @@ Neuron {
                 engine: neuronEngine
             }
         }
-    }
-
-
-    savedProperties: PropertyGroup {
-        property alias label: neuronRoot.label
-        property alias adaptation: adaptationCurrent.adaptation
-        property alias timeConstant: adaptationCurrent.timeConstant
-
-
-        // Do we need to save these?
-        property alias resistance: passiveCurrent.resistance
-        property alias capacitance: neuronEngine.capacitance
-        property alias restingPotential: neuronEngine.restingPotential
-        property alias initialPotential: neuronEngine.initialPotential
-        property alias threshold: neuronEngine.threshold
-        property alias synapticTimeConstant: neuronEngine.synapticTimeConstant
-        property alias synapticPotential: neuronEngine.synapticPotential
     }
 }
 

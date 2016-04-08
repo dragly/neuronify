@@ -41,3 +41,8 @@ void Current::setCurrent(double arg)
     emit currentChanged(arg);
 }
 
+void Current::resetPropertiesEvent()
+{
+    m_current = 0.0;
+}
+

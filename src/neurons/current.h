@@ -22,6 +22,7 @@ signals:
 
 public slots:
     void setCurrent(double arg);
+    virtual void resetPropertiesEvent() override;
 
 private:
     double m_current = 0.0;
