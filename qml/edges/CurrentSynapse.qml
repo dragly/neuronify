@@ -13,10 +13,8 @@ Edge {
         id: engine
 
         property real current: 0.0
-        property real tau: 1e-3
-        property real maximumCurrent: 60e-6
-        property real timeToFire: -1.0
-
+        property real tau: 2e-3
+        property real maximumCurrent: 1e-9
         savedProperties: [
             PropertyGroup {
                 property alias current: engine.current
@@ -28,14 +26,10 @@ Edge {
         onStepped:{
             current -= current/tau * dt;
             currentOutput = current;
-            if(timeToFire > 0.0 && timeToFire - dt < 0.0) {
-                current += maximumCurrent;
-            }
-            timeToFire -= dt;
         }
 
         onReceivedFire: {
-            timeToFire = 50e-3;
+            current += maximumCurrent;
         }
     }
 
@@ -52,11 +46,11 @@ Edge {
                 target: engine
                 property: "maximumCurrent"
                 text: "Maximum current"
-                unit: "µA"
-                minimumValue: 0e-6
-                maximumValue: 100e-6
-                unitScale: 1e-6
-                stepSize: 1e-7
+                unit: "nA"
+                minimumValue: 0e-9
+                maximumValue: 5e-9
+                unitScale: 1e-9
+                stepSize: 0.1e-9
                 precision: 1
             }
             BoundSlider {
@@ -65,7 +59,7 @@ Edge {
                 text: "Time constant"
                 unit: "ms"
                 minimumValue: 0.1e-3
-                maximumValue: 10e-3
+                maximumValue: 20e-3
                 unitScale: 1e-3
                 stepSize: 1e-4
                 precision: 2

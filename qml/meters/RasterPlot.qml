@@ -34,7 +34,7 @@ Node {
     property real maximumPointCount: 120
 
     objectName: "rasterplot"
-    fileName: "meters/RasterPlot.qml"
+    filename: "meters/RasterPlot.qml"
     square: true
 
     width: 320

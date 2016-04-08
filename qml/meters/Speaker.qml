@@ -26,7 +26,7 @@ Node {
     property alias source: soundBank.source
 
     objectName: "Speaker"
-    fileName: "meters/Speaker.qml"
+    filename: "meters/Speaker.qml"
 
     width: 64
     height: 64

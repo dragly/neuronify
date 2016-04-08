@@ -27,7 +27,7 @@ the camera.
 Node {
     id: root
     objectName: "retina"
-    fileName: "sensors/Retina.qml"
+    filename: "sensors/Retina.qml"
     square: true
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)

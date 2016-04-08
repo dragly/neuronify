@@ -28,7 +28,7 @@ neurons.
 Node {
     id: sensorRoot
     objectName: "touchSensor"
-    fileName: "sensors/TouchSensor.qml"
+    filename: "sensors/TouchSensor.qml"
     square: true
 
     property bool sensing: false

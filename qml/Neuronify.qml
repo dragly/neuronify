@@ -159,9 +159,9 @@ Rectangle {
 
         var data = JSON.parse(code);
 
-        if(data.fileFormatVersion < 2) {
+        if(data.fileFormatVersion < 3) {
             console.warn("The file " + fileUrl + " has format version " + data.fileFormatVersion + ". " +
-                         "We are now at version 2. Some data may be lost when you save it now, because it will be " +
+                         "We are now at version 3. Some data may be lost when you save it now, because it will be " +
                          "converted to the newest format.")
         }
 
@@ -189,48 +189,43 @@ Rectangle {
 
         for(var i in data.nodes) {
             var properties = data.nodes[i];
-            if(properties.isAlias && properties.isAlias === true) {
-                createdNodes.push({});
-                aliases.push({position: i, properties: properties});
-                continue;
+            var filename;
+
+            if(data.fileFormatVersion === 2) {
+                filename = properties.fileName;
+            } else {
+                filename = properties.filename;
             }
-            var entity = createEntity(properties.fileName, {}, false);
+
+            var entity = createEntity(filename, {}, false);
             if(!entity) {
-                console.warn("WARNING: Could not create entity of type " + properties.fileName + " while loading " + fileUrl);
+                console.warn("WARNING: Could not create entity of type " + filename + " while loading " + fileUrl);
                 continue;
             }
 
-            applyProperties(entity, properties);
+            if(data.fileFormatVersion === 2) {
+                applyProperties(entity, properties);
+            } else {
+                applyProperties(entity, properties.savedProperties);
+            }
+
             createdNodes.push(entity);
-        }
-
-        for(var i in aliases) {
-            var properties = aliases[i].properties;
-            var position = aliases[i].position;
-            var parent = createdNodes[properties.parent];
-            if(!parent) {
-                console.warn("ERROR: Could not find parent of alias during file load.");
-                continue;
-            }
-            var entity = parent.resolveAlias(properties.childIndex);
-            if(!entity) {
-                console.warn("ERROR: Could not resolve alias during file load.")
-                continue;
-            }
-            createdNodes[position] = entity;
         }
 
         for(var i in data.edges) {
             var edgeProperties = data.edges[i];
             var from = parseInt(edgeProperties.from);
             var to = parseInt(edgeProperties.to);
-            var filename = edgeProperties.filename
+            var filename = edgeProperties.filename;
 
             if(!createdNodes[from] || !createdNodes[to]) {
                 console.warn("WARNING: Cannot connect entities " + from + " and " + to + " while loading " + fileUrl);
                 continue;
             }
-            connectEntities(createdNodes[from], createdNodes[to], filename, edgeProperties);
+
+            var edge = connectEntities(createdNodes[from], createdNodes[to], filename, edgeProperties);
+            var savedProperties = edgeProperties.savedProperties;
+            applyProperties(edge, savedProperties);
         }
 
         if(data.workspace) {
@@ -503,16 +498,9 @@ Rectangle {
             return;
         }
         if(!itemB.canReceiveConnections) {
-            console.warn("connectEntities(): " + itemB.fileName + " cannot receive connections.")
+            console.warn("connectEntities(): " + itemB.filename + " cannot receive connections.")
             return;
         }
-
-        if(!properties){
-            properties = {}
-        }
-
-        properties.itemA = itemA;
-        properties.itemB = itemB;
 
         var connectionComponent;
         if(filename){
@@ -528,7 +516,7 @@ Rectangle {
              console.log("Error loading component:", connectionComponent.errorString());
         }
 
-        var connection = connectionComponent.createObject(connectionLayer, properties);
+        var connection = connectionComponent.createObject(connectionLayer, {itemA: itemA, itemB: itemB});
 
         connection.clicked.connect(function(connection) {
             deselectAll();

@@ -10,7 +10,7 @@ Item {
     property Simulation simulation: simulationLoader.item
     //    property string simulationSource
     property alias folder: simulationLoader.folder
-    signal loadSimulation(var fileName)
+    signal loadSimulation(var filename)
     signal readMore(var text)
 
     SimulationLoader {

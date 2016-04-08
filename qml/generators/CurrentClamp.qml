@@ -18,7 +18,7 @@ import "../controls"
 
 Node {
 
-    fileName: "generators/CurrentClamp.qml"
+    filename: "generators/CurrentClamp.qml"
 
     width: 64
     height: 64
@@ -27,7 +27,7 @@ Node {
 
     engine: NodeEngine {
         id: engine
-        currentOutput: 10e-6
+        currentOutput: 300e-12
         savedProperties: PropertyGroup {
             property alias currentOutput: engine.currentOutput
         }
@@ -40,12 +40,12 @@ Node {
                 target: engine
                 property: "currentOutput"
                 text: "Current output"
-                unit: "uA"
-                minimumValue: 0.0e-6
-                maximumValue: 40.0e-6
-                stepSize: 1e-8
-                unitScale: 1e-6
-                precision: 2
+                unit: "pA"
+                minimumValue: 0.0e-12
+                maximumValue: 1000e-12
+                stepSize: 1e-12
+                unitScale: 1e-12
+                precision: 1
             }
         }
     }

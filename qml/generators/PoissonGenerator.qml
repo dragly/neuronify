@@ -33,7 +33,7 @@ Node {
     property alias rate: engine.rate
 
     objectName: "poissonGenerator"
-    fileName: "generators/PoissonGenerator.qml"
+    filename: "generators/PoissonGenerator.qml"
 
     preferredEdge: CurrentSynapse {}
 

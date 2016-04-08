@@ -22,7 +22,7 @@ BoundSlider {
     text: "Refractory period"
     unit: "ms"
     minimumValue: 0.0e-3
-    maximumValue: 40e-3
+    maximumValue: 50e-3
     unitScale: 1e-3
     stepSize: 1e-3
     precision: 1

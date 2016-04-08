@@ -32,7 +32,7 @@ Node {
     property alias rate: engine.rate
 
     objectName: "rhythmGenerator"
-    fileName: "generators/RhythmGenerator.qml"
+    filename: "generators/RhythmGenerator.qml"
 
     preferredEdge: CurrentSynapse {}
 

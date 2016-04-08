@@ -9,7 +9,7 @@ Neuron {
     id: neuronRoot
 
     objectName: "BurstNeuron"
-    fileName: "neurons/BurstNeuron.qml"
+    filename: "neurons/BurstNeuron.qml"
     imageSource: "qrc:/images/neurons/burst.png"
     inhibitoryImageSource: "qrc:/images/neurons/burst_inhibitory.png"
 

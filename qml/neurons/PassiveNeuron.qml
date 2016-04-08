@@ -11,7 +11,7 @@ Neuron {
     id: neuronRoot
 
     objectName: "passiveNeuron"
-    fileName: "neurons/PassiveNeuron.qml"
+    filename: "neurons/PassiveNeuron.qml"
     imageSource: "qrc:/images/neurons/passive.png"
     inhibitoryImageSource: "qrc:/images/neurons/passive_inhibitory.png"
 

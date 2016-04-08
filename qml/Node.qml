@@ -34,9 +34,7 @@ NodeBase {
     property var dragProxy
     property string label: ""
     property string objectName: "entity"
-
-    // TODO rename to filename
-    property string fileName: "Entity.qml"
+    property string filename: "Entity.qml"
     property real radius: width * 0.5
     property bool selected: false
     property vector2d velocity
@@ -50,7 +48,6 @@ NodeBase {
     property bool square: false
     property var removableChildren: [] // used by nodes such as TouchSensor that has child nodes
     property bool canReceiveConnections: true
-    property bool isAlias: false
 
     property Component preferredEdge: Edge {}
 
@@ -58,7 +55,6 @@ NodeBase {
         property alias x: root.x
         property alias y: root.y
         property alias label: root.label
-        property alias fileName: root.fileName
         property alias inhibitory: root.inhibitory
         property alias engine: root.engine
     }

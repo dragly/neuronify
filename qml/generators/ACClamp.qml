@@ -18,7 +18,7 @@ import "../controls"
 
 Node {
 
-    fileName: "generators/ACClamp.qml"
+    filename: "generators/ACClamp.qml"
 
     width: 64
     height: 64
@@ -28,8 +28,8 @@ Node {
     engine: NodeEngine {
         id: engine
         property real time: 0
-        property real amplitude: 75.0e-6
-        property real frequency: 1.0
+        property real amplitude: 300e-12
+        property real frequency: 50.0
         property real pi: 3.14159
         savedProperties: PropertyGroup {
             property alias amplitude: engine.amplitude
@@ -50,12 +50,12 @@ Node {
             BoundSlider {
                 target: engine
                 property: "amplitude"
-                minimumValue: 0.0
-                maximumValue: 50.0e-6
-                unitScale: 1e-6
-                unit: "uA"
+                minimumValue: 0.0e-12
+                maximumValue: 1000e-12
+                unitScale: 1e-12
+                unit: "pA"
                 text: "Current amplitude"
-                stepSize: 1e-6
+                stepSize: 1e-12
             }
             BoundSlider {
                 target: engine

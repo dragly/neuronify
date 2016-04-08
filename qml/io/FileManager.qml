@@ -16,6 +16,13 @@ The read/write part is done in \l{FileIO}, while this object just treats the fil
 as a js string.
 */
 
+/*
+  File format version documentation:
+
+  2: v0.92
+  3: v0.93
+*/
+
 Item {
     signal loadState(var fileUrl)
 
@@ -66,20 +73,22 @@ Item {
         var counter = 0
         for(var i in nodes) {
             var node = nodes[i];
-            var dump = objectify(node);
-            if(!dump) {
+            var savedProperties = objectify(node);
+            if(!savedProperties) {
                 console.log("ERROR: Could not objectify node " + node + " number " + i);
             }
-            if(dump) {
-                nodeList.push(dump);
-            }
+            var nodeDump = {
+                filename: node.filename,
+                savedProperties: savedProperties
+            };
+            nodeList.push(nodeDump);
         }
 
         for(var i in edges) {
             var edge = edges[i];
 
-            var edgeDump = objectify(edge);
-            if(!edgeDump) {
+            var savedProperties = objectify(edge);
+            if(!savedProperties) {
                 console.log("ERROR: Could not objectify edge " + edge + " number " + i);
             }
 
@@ -93,16 +102,20 @@ Item {
                 console.error("Could not find index of node " + edge.itemB + " in GraphEngine! Aborting dump!")
                 return ""
             }
-            edgeDump.from = itemAEntityIndex;
-            edgeDump.to = itemBEntityIndex;
 
+            var edgeDump = {
+                filename: edge.filename,
+                from: itemAEntityIndex,
+                to: itemBEntityIndex,
+                savedProperties: savedProperties
+            }
             edgeList.push(edgeDump);
         }
 
         var workspaceProperties = workspace.dump();
 
         var result = {
-            fileFormatVersion: 2,
+            fileFormatVersion: 3,
             edges: edgeList,
             nodes: nodeList,
             workspace: workspaceProperties

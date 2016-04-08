@@ -11,7 +11,7 @@ Node {
 
     property string targetSimulation: ""
 
-    fileName: "annotations/NextTutorial.qml"
+    filename: "annotations/NextTutorial.qml"
     objectName: "NextTutorial"
     color: "#54B2FF"
 

@@ -22,7 +22,7 @@ as a function of time. Each neuron gets spesific color in the firing rate-meter 
 Node {
     id: ratePlotRoot
     objectName: "ratePlot"
-    fileName: "meters/RatePlot.qml"
+    filename: "meters/RatePlot.qml"
     square: true
 
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",

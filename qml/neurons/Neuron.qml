@@ -20,7 +20,7 @@ and define its own NeuronEngine.
 Node {
     id: root
     objectName: "neuron"
-    fileName: "neurons/Neuron.qml"
+    filename: "neurons/Neuron.qml"
 
     readonly property real voltage: root.engine.voltage
 

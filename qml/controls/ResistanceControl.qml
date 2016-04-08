@@ -17,11 +17,11 @@ BoundSlider {
     property PassiveCurrent current
     target: current
     property: "resistance"
-    minimumValue: 1e3
-    maximumValue: 100e3
-    unitScale: 1e3
-    stepSize: 1e3
+    minimumValue: 1e6
+    maximumValue: 1000e6
+    unitScale: 1e6
+    stepSize: 10e6
     precision: 1
     text: "Membrane resistance"
-    unit: "kΩ"
+    unit: "MΩ"
 }

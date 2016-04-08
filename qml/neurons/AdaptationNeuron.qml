@@ -14,7 +14,7 @@ Neuron {
 
 
     objectName: "adaptationNeuron"
-    fileName: "neurons/AdaptationNeuron.qml"
+    filename: "neurons/AdaptationNeuron.qml"
     imageSource: "qrc:/images/neurons/adaptive.png"
     inhibitoryImageSource: "qrc:/images/neurons/adaptive_inhibitory.png"
 

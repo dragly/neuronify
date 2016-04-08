@@ -21,7 +21,7 @@ Node {
     property string text: "Open properties to change this text"
 
     objectName: "note"
-    fileName: "annotations/Note.qml"
+    filename: "annotations/Note.qml"
     square: true
 
     canReceiveConnections: false

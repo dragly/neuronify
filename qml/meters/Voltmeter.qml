@@ -26,7 +26,7 @@ there is an associated \l{VoltmeterControls} item.
 Node {
     id: voltmeterRoot
     objectName: "voltmeter"
-    fileName: "meters/Voltmeter.qml"
+    filename: "meters/Voltmeter.qml"
     square: true
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
