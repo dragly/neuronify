@@ -37,8 +37,8 @@ Edge {
         }
 
         onResettedProperties: {
-            tau = 2.5e-3
-            maximumCurrent = 1.0e-9
+            tau = 0.3e-3
+            maximumCurrent = 10.0e-9
         }
     }
 
@@ -57,7 +57,7 @@ Edge {
                 text: "Maximum current"
                 unit: "nA"
                 minimumValue: 0e-9
-                maximumValue: 5e-9
+                maximumValue: 20e-9
                 unitScale: 1e-9
                 stepSize: 0.1e-9
                 precision: 1
@@ -68,7 +68,7 @@ Edge {
                 text: "Time constant"
                 unit: "ms"
                 minimumValue: 0.1e-3
-                maximumValue: 20e-3
+                maximumValue: 5e-3
                 unitScale: 1e-3
                 stepSize: 1e-4
                 precision: 2

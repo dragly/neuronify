@@ -66,7 +66,7 @@ Neuron {
                 text: "Inhibitory"
                 Item {
                     Text{
-                        text: "Inhibitory: " + (!switchRoot.checked ? " Yes" : " No")
+                        text: "Inhibitory: " + (switchRoot.checked ? " Yes" : " No")
                     }
                     Switch{
                         id: switchRoot

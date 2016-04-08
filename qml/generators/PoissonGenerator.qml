@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.0
+import QtQuick.Controls 1.4
 
 import Neuronify 1.0
 
@@ -25,8 +25,6 @@ Node {
     id: root
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
-    // TODO fireoutput engine property
-    readonly property bool inhibitory: false
     property url imageSource: "qrc:/images/generators/poisson_generator_excitatory.png"
     property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
 
@@ -75,8 +73,22 @@ Node {
                 unitScale: 1.0e3
                 unit: "/ms"
             }
-        }
+            Text{
+                text: "Inhibitory: " + (switchRoot.checked ? " Yes" : " No")
+            }
+            Switch{
+                id: switchRoot
+                checked: root.inhibitory
+            }
 
+            Binding {
+                target: root
+                property: "inhibitory"
+                value: switchRoot.checked
+            }
+
+
+        }
     }
 
     Image {
