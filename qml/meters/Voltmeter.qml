@@ -317,7 +317,7 @@ Node {
                     axisY: axisY
                     timeRange: voltmeterRoot.timeRange * timeFactor
                     color: chartItem.lineColor
-
+                    width: 3.0
                 }
 
                 Plot {
@@ -326,7 +326,7 @@ Node {
                     axisY: axisY
                     timeRange: series.timeRange
                     color: chartItem.lineColor
-
+                    width: 3.0
                 }
 
                 ValueAxis {
