@@ -25,8 +25,11 @@ Item {
     property alias control: controlObject
     property alias menu: menuObject
 
+    property alias meter: metersObject
+
     property alias color: colorsObject
     property alias border: borderObject
+
 
     QtObject {
         id: colorsObject
@@ -34,6 +37,20 @@ Item {
         property color foreground: "#deebf7"
         property alias border: borderObject.color
     }
+
+    QtObject {
+        id: metersObject
+        property color background: "#deebf7"
+        property color edge: border.color
+        property alias border: meterBorderObject
+    }
+
+    QtObject {
+        id: meterBorderObject
+        property color color: "#9ecae1"
+        property real width: 2.0
+    }
+
 
     QtObject {
         id: borderObject

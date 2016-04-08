@@ -120,7 +120,7 @@ Node {
     }
 
     Connector{
-        curveColor: "#0088aa"
+        color: "#0088aa"
         connectorColor: "#0088aa"
         visible: sensorRoot.selected
         z: -1

@@ -22,7 +22,7 @@ BoundSlider {
     text: "Capacitance"
     unit: "nF"
     minimumValue: 0.01e-9
-    maximumValue: 100e-9
+    maximumValue: 1e-9
     unitScale: 1e-9
     stepSize: 0.01e-9
     precision: 2

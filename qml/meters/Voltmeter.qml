@@ -73,7 +73,7 @@ Node {
     }
     width: 320
     height: 240
-    color: Style.color.foreground
+    color: Style.meter.background
 
     preferredEdge: MeterEdge {}
 
@@ -174,8 +174,8 @@ Node {
     Rectangle {
         anchors.fill: parent
         color: parent.color
-        border.color: Style.border.color
-        border.width: Style.border.width
+        border.color: Style.meter.border.color
+        border.width: Style.meter.border.width
         smooth: true
         antialiasing: true
     }
@@ -359,5 +359,8 @@ Node {
 
     ResizeRectangle {}
 
-    Connector {}
+    Connector {
+        color: Style.meter.border.color
+        visible: parent.selected || connectionPlots.length < 1
+    }
 }

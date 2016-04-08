@@ -185,7 +185,7 @@ Node {
 
     Connector {
         visible: root.selected
-        curveColor: "#0088aa"
+        color: "#0088aa"
         connectorColor: "#0088aa"
         initialPoint: Qt.point(root.width + 32, root.height + 32)
         attachmentPoint: Qt.point(root.width, root.height)

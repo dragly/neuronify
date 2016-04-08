@@ -18,7 +18,7 @@ BoundSlider {
     target: current
     property: "resistance"
     minimumValue: 1e6
-    maximumValue: 1000e6
+    maximumValue: 200e6
     unitScale: 1e6
     stepSize: 10e6
     precision: 1

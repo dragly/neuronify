@@ -109,6 +109,21 @@ Neuron {
                 ResistanceControl{
                     current: passiveCurrent
                 }
+
+                Text {
+                    property real timeConstant: neuronEngine.capacitance * passiveCurrent.resistance * 1e3
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    font: Style.control.font
+                    text: "With these properties, the time constant is " +
+                          timeConstant.toFixed(1) + " ms." +
+                          "For a neuron with surface area ... this is " +
+                          "equivalent to ..."
+                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                }
             }
             PropertiesItem {
                 text: "Synaptic input"

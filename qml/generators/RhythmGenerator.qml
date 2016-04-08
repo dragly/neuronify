@@ -135,7 +135,7 @@ Node {
 
     Connector {
         visible: root.selected
-        curveColor: inhibitory ? "#e41a1c" : "#6baed6"
+        color: inhibitory ? "#e41a1c" : "#6baed6"
         connectorColor: inhibitory ? "#e41a1c" : "#6baed6"
     }
 }

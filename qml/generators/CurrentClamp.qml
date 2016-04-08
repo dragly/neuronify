@@ -59,7 +59,7 @@ Node {
     }
 
     Connector {
-        curveColor: "#dd5000"
+        color: "#dd5000"
         connectorColor: "#dd5000"
 
     }

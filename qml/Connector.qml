@@ -14,8 +14,8 @@ Item {
     property alias connectorWidth: draggable.width
     property alias connectorHeight: draggable.height
 
-    property color curveColor: "#4292c6"
-    property color connectorColor: "#4292c6"
+    property color color: "pink"
+    property color connectorColor: color
 
     visible: _parent.selected
 
@@ -25,7 +25,7 @@ Item {
 
     SCurve {
         id: curve
-        color: curveColor
+        color: root.color
         parent: root.parent
         z: -1
         startPoint: root.attachmentPoint
