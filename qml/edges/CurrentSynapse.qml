@@ -59,7 +59,7 @@ Edge {
                 property: "tau"
                 text: "Time constant"
                 unit: "ms"
-                minimumValue: 0e-3
+                minimumValue: 0.1e-3
                 maximumValue: 10e-3
                 unitScale: 1e-3
                 stepSize: 1e-4
