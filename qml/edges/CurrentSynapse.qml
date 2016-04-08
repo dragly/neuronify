@@ -7,7 +7,7 @@ import "../hud"
 
 Edge {
     objectName: "CurrentSynapse"
-    filename: "synapses/CurrentSynapse.qml"
+    filename: "edges/CurrentSynapse.qml"
 
     engine: EdgeEngine {
         id: engine
@@ -15,6 +15,7 @@ Edge {
         property real current: 0.0
         property real tau: 1e-3
         property real maximumCurrent: 60e-6
+        property real timeToFire: -1.0
 
         savedProperties: [
             PropertyGroup {
@@ -25,12 +26,16 @@ Edge {
         ]
 
         onStepped:{
-            current -= current/tau * dt
-            currentOutput = current
+            current -= current/tau * dt;
+            currentOutput = current;
+            if(timeToFire > 0.0 && timeToFire - dt < 0.0) {
+                current += maximumCurrent;
+            }
+            timeToFire -= dt;
         }
 
         onReceivedFire: {
-            current += maximumCurrent;
+            timeToFire = 50e-3;
         }
     }
 

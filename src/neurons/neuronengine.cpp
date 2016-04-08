@@ -35,20 +35,12 @@ double NeuronEngine::voltage() const
     return m_voltage;
 }
 
-double NeuronEngine::synapticConductance() const
-{
-    return m_synapticConductance;
-}
 
 double NeuronEngine::restingPotential() const
 {
     return m_membraneRestingPotential;
 }
 
-double NeuronEngine::synapticPotential() const
-{
-    return m_synapticPotential;
-}
 
 double NeuronEngine::threshold() const
 {
@@ -65,11 +57,10 @@ double NeuronEngine::initialPotential() const
     return m_initialPotential;
 }
 
-double NeuronEngine::synapticTimeConstant() const
+void NeuronEngine::resetEvent()
 {
-    return m_synapticTimeConstant;
+    setVoltage(m_initialPotential);
 }
-
 
 void NeuronEngine::setVoltage(double arg)
 {
@@ -94,25 +85,17 @@ void NeuronEngine::stepEvent(double dt, bool parentEnabled)
         }
     }
 
-//    double gs = m_synapticConductance;
-//    double tau = m_synapticTimeConstant;
-//    double dgs = -gs / tau * dt;
+
 
     double V = m_voltage;
-    double Es = m_synapticPotential;
-//    double synapticCurrents = -gs * (V - Es);
-
-    //    double totalCurrent = synapticCurrents + otherCurrents + m_receivedCurrents;
     double totalCurrent = otherCurrents + m_receivedCurrents;
     double dV = totalCurrent / m_capacitance * dt;
     m_voltage += dV;
 
     m_voltage = min(max(m_voltage, -0.2), 0.2);
-//    m_synapticConductance = gs + dgs;
 
 
     emit voltageChanged(m_voltage);
-//    emit synapticConductanceChanged(m_synapticConductance);
 
     m_receivedCurrents = 0.0;
 }
@@ -120,7 +103,6 @@ void NeuronEngine::stepEvent(double dt, bool parentEnabled)
 void NeuronEngine::fireEvent()
 {
     setVoltage(m_initialPotential);
-    setSynapticConductance(0.0);
 }
 
 void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
@@ -132,23 +114,6 @@ void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
     m_receivedCurrents += currentOutput;
 }
 
-void NeuronEngine::receiveFireEvent(NodeEngine *sender)
-{
-    Q_UNUSED(sender);
-    if(!isEnabled()) {
-        return;
-    }
-    // TODO remove everything related to this, synapses take care of it now
-//    m_synapticConductance += stimulation;
-}
-
-void NeuronEngine::setSynapticConductance(double arg)
-{
-    if (m_synapticConductance != arg) {
-        m_synapticConductance = arg;
-        emit synapticConductanceChanged(arg);
-    }
-}
 
 void NeuronEngine::setRestingPotential(double arg)
 {
@@ -158,19 +123,6 @@ void NeuronEngine::setRestingPotential(double arg)
     }
 }
 
-void NeuronEngine::setSynapticPotential(double arg)
-{
-    if (m_synapticPotential != arg) {
-        m_synapticPotential = arg;
-        emit synapticPotentialChanged(arg);
-    }
-}
-
-void NeuronEngine::resetEvent()
-{
-    setVoltage(m_initialPotential);
-    setSynapticConductance(0.0);
-}
 
 void NeuronEngine::setThreshold(double threshold)
 {
@@ -199,14 +151,6 @@ void NeuronEngine::setInitialPotential(double postFirePotential)
     emit initialPotentialChanged(postFirePotential);
 }
 
-void NeuronEngine::setSynapticTimeConstant(double synapticTimeConstant)
-{
-    if (m_synapticTimeConstant == synapticTimeConstant)
-        return;
-
-    m_synapticTimeConstant = synapticTimeConstant;
-    emit synapticTimeConstantChanged(synapticTimeConstant);
-}
 
 void NeuronEngine::checkFire()
 {

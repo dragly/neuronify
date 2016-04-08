@@ -112,15 +112,8 @@ Neuron {
             }
             PropertiesItem {
                 text: "Synaptic input"
-                info: "Es: " + (neuronEngine.synapticPotential * 1e3).toFixed(1) + " mV, " +
-                      "Ts: " + (neuronEngine.synapticTimeConstant* 1e3).toFixed(1) + " ms, "+
-                      "Tr: " + (neuronEngine.refractoryPeriod * 1e3).toFixed(1) + " ms, "
-                SynapticPotentialControl{
-                    engine: neuronEngine
-                }
-                SynapticTimeConstantControl{
-                    engine: neuronEngine
-                }
+                info: "Tr: " + (neuronEngine.refractoryPeriod * 1e3).toFixed(1) + " ms, "
+
                 RefractoryPeriodControl{
                     engine: neuronEngine
                 }

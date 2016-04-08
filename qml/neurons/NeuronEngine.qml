@@ -11,9 +11,6 @@ NeuronEngineBase {
         property alias threshold: engine.threshold
         property alias voltage: engine.voltage
         property alias capacitance: engine.capacitance
-        property alias synapticConductance: engine.synapticConductance
-        property alias synapticTimeConstant: engine.synapticTimeConstant
-        property alias synapticPotential: engine.synapticPotential
         property alias fireOutput: engine.fakeFireOutput
     }
 }

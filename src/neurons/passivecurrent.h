@@ -24,7 +24,7 @@ protected:
     virtual void stepEvent(double dt, bool parentEnabled);
 
 private:
-    double m_resistance = 10.0e3;
+    double m_resistance = 100.0e6;
 };
 
 #endif // PASSIVECURRENT_H
