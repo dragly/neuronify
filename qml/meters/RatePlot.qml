@@ -1,12 +1,13 @@
 import QtQuick 2.0
-import "../paths"
-import "../hud"
-import "../tools"
+import QtCharts 2.1
+
+import Neuronify 1.0
 import ".."
 import "../controls"
-
-import QtCharts 2.1
-import Neuronify 1.0
+import "../edges"
+import "../hud"
+import "../paths"
+import "../tools"
 
 /*!
 \qmltype RatePlot
@@ -56,6 +57,9 @@ Node {
     property real time: 0.0
     property real realTime: 0.0
 
+    preferredEdge: MeterEdge {}
+
+    canReceiveConnections: false
 
     controls: Component {
         id: meterContols
@@ -188,4 +192,6 @@ Node {
     }
 
     ResizeRectangle {}
+
+    Connector {}
 }

@@ -50,12 +50,6 @@ Node {
         }
     }
 
-
-
-    savedProperties: PropertyGroup {
-        property alias engine: engine
-    }
-
     Image {
         anchors.fill: parent
         fillMode: Image.PreserveAspectFit

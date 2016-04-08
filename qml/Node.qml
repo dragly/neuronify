@@ -52,12 +52,15 @@ NodeBase {
     property bool canReceiveConnections: true
     property bool isAlias: false
 
+    property Component preferredEdge: Edge {}
+
     savedProperties: PropertyGroup {
         property alias x: root.x
         property alias y: root.y
         property alias label: root.label
         property alias fileName: root.fileName
         property alias inhibitory: root.inhibitory
+        property alias engine: root.engine
     }
 
     onEngineChanged: {

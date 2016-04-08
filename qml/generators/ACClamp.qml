@@ -44,10 +44,6 @@ Node {
 
     }
 
-    savedProperties: PropertyGroup {
-        property alias engine: engine
-    }
-
     controls: Component {
         PropertiesPage {
             title: "AC clamp"

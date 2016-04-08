@@ -3,10 +3,11 @@ import QtQuick.Controls 1.0
 
 import Neuronify 1.0
 
-import "../paths"
-import "../hud"
-import "../controls"
 import ".."
+import "../controls"
+import "../edges"
+import "../hud"
+import "../paths"
 
 /*!
     \qmltype RhythmGenerator
@@ -30,15 +31,13 @@ Node {
 
     property alias rate: engine.rate
 
-    savedProperties: PropertyGroup {
-        property alias engine: engine
-    }
-
     objectName: "rhythmGenerator"
     fileName: "generators/RhythmGenerator.qml"
 
-    width: 62
-    height: 62
+    preferredEdge: CurrentSynapse {}
+
+    width: 64
+    height: 64
     color: inhibitory ? "#e41a1c" : "#6baed6"
     canReceiveConnections: false
 
@@ -79,16 +78,6 @@ Node {
                 stepSize: 1.0e1
                 precision: 2
 
-            }
-            BoundSlider {
-                target: engine
-                property: "fireOutput"
-                minimumValue: -500.0e-6
-                maximumValue: 500.0e-6
-                unitScale: 1e-6
-                text: "Stimulation"
-                unit: "uS"
-                stepSize: 1.0e-6
             }
         }
 

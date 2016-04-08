@@ -2,11 +2,12 @@ import QtQuick 2.5
 import QtCharts 2.1
 import Neuronify 1.0
 
-import "../paths"
-import "../hud"
-import "../tools"
-import "../controls"
 import ".."
+import "../controls"
+import "../edges"
+import "../hud"
+import "../paths"
+import "../tools"
 
 
 /*!
@@ -36,9 +37,13 @@ Node {
     fileName: "meters/RasterPlot.qml"
     square: true
 
-    width: 180
-    height: 120
+    width: 320
+    height: 240
     color: "#deebf7"
+
+    canReceiveConnections: false
+
+    preferredEdge: MeterEdge {}
 
     savedProperties: PropertyGroup {
         property alias width: rasterRoot.width
@@ -100,7 +105,7 @@ Node {
     }
 
     onEdgeAdded: {
-        var neuron = edge.itemA
+        var neuron = edge.itemB
         var newList = neurons
         neurons.push(neuron)
         neuron.onLabelChanged.connect(refreshCategories)
@@ -110,7 +115,7 @@ Node {
     }
 
     onEdgeRemoved: {
-        var neuron = edge.itemA
+        var neuron = edge.itemB
         console.log(neuron)
         var newList = neurons
         var index = newList.indexOf(neuron)
@@ -184,4 +189,6 @@ Node {
     }
 
     ResizeRectangle {}
+
+    Connector {}
 }

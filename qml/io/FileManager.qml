@@ -32,6 +32,10 @@ Item {
     }
 
     function objectify(obj) {
+        if(!obj) {
+            return undefined;
+        }
+
         if(obj.isAlias) {
             return obj.aliasInfo();
         }
@@ -63,6 +67,9 @@ Item {
         for(var i in nodes) {
             var node = nodes[i];
             var dump = objectify(node);
+            if(!dump) {
+                console.log("ERROR: Could not objectify node " + node + " number " + i);
+            }
             if(dump) {
                 nodeList.push(dump);
             }
@@ -72,6 +79,9 @@ Item {
             var edge = edges[i];
 
             var edgeDump = objectify(edge);
+            if(!edgeDump) {
+                console.log("ERROR: Could not objectify edge " + edge + " number " + i);
+            }
 
             var itemAEntityIndex = graphEngine.nodeIndex(edge.itemA)
             if(itemAEntityIndex === -1) {

@@ -15,6 +15,20 @@ Neuron {
     imageSource: "qrc:/images/neurons/passive.png"
     inhibitoryImageSource: "qrc:/images/neurons/passive_inhibitory.png"
 
+    property bool fakeInhibitory: neuronEngine.fakeFireOutput < 0
+
+    onFakeInhibitoryChanged: {
+        if(fakeInhibitory) {
+            neuronRoot.inhibitory = true;
+        }
+    }
+
+    savedProperties: PropertyGroup {
+        property alias label: neuronRoot.label
+        property alias resistance: passiveCurrent.resistance
+        property alias refractoryPeriod: neuronEngine.refractoryPeriod
+    }
+
     engine: NeuronEngine {
         id: neuronEngine
         property real refractoryPeriod: 0.0e-3
@@ -118,12 +132,6 @@ Neuron {
                 }
             }
         }
-    }
-
-    savedProperties: PropertyGroup {
-        property alias label: neuronRoot.label
-        property alias resistance: passiveCurrent.resistance
-        property alias refractoryPeriod: neuronEngine.refractoryPeriod
     }
 
 }

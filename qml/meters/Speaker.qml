@@ -1,12 +1,14 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
 
+import QtQuick.Controls.Styles 1.0
+
 import Neuronify 1.0
 
 import ".."
 import "../controls"
-import "qrc:/qml/style"
-import QtQuick.Controls.Styles 1.0
+import "../edges"
+import "../style"
 
 /*!
 \qmltype Speaker
@@ -26,8 +28,12 @@ Node {
     objectName: "Speaker"
     fileName: "meters/Speaker.qml"
 
-    width: 62
-    height: 62
+    width: 64
+    height: 64
+
+    preferredEdge: MeterEdge {}
+
+    canReceiveConnections: false
 
     engine: NodeEngine {
         onReceivedFire: {
@@ -82,8 +88,8 @@ Node {
                     for (var i in speaker.simulator.graphEngine.nodes){
                         var itemB = graphEngine.nodes[i]
                         if (itemB.objectName.indexOf("neuron") + itemB.objectName.indexOf("Neuron") != -2){
-                            if (!speaker.simulator.connectionExists(itemB, itemA)){
-                                speaker.simulator.connectEntities(itemB, itemA)
+                            if (!speaker.simulator.connectionExists(itemA, itemB)){
+                                speaker.simulator.connectEntities(itemA, itemB)
                             }
                         }
                     }
@@ -155,5 +161,7 @@ Node {
     }
 
 
+
+    Connector {}
 }
 

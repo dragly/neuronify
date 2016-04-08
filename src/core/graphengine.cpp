@@ -58,6 +58,13 @@ void GraphEngine::addEdge(EdgeBase *edge)
         }
     }
 
+    if(edge->itemA()) {
+        edge->itemA()->edgeAdded(edge);
+    }
+    if(edge->itemB()) {
+        edge->itemB()->edgeAdded(edge);
+    }
+
     m_edges.append(edge);
 
 

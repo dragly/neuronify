@@ -53,7 +53,6 @@
         <file>qml/hud/SensorsList.qml</file>
         <file>qml/controls/BoundSlider.qml</file>
         <file>qml/generators/ACClamp.qml</file>
-        <file>qml/controls/FireOutputControl.qml</file>
         <file>qml/SoundBank.qml</file>
         <file>qml/meters/Speaker.qml</file>
         <file>qml/neurons/BurstInhibitoryNeuron.qml</file>
@@ -74,7 +73,6 @@
         <file>qml/io/CustomFileIcon.qml</file>
         <file>qml/menus/mainmenu/SaveView.qml</file>
         <file>qml/controls/ResistanceControl.qml</file>
-        <file>qml/controls/SynapticOutputControl.qml</file>
         <file>qml/controls/ThresholdControl.qml</file>
         <file>qml/controls/RestingPotentialControl.qml</file>
         <file>qml/controls/InitialPotentialControl.qml</file>
@@ -96,6 +94,8 @@
         <file>fonts/roboto/Roboto-Bold.ttf</file>
         <file>fonts/roboto/Roboto-Light.ttf</file>
         <file>fonts/roboto/Roboto-Regular.ttf</file>
-        <file>qml/synapses/CurrentSynapse.qml</file>
+        <file>qml/edges/ImmediateFireSynapse.qml</file>
+        <file>qml/edges/CurrentSynapse.qml</file>
+        <file>qml/edges/MeterEdge.qml</file>
     </qresource>
 </RCC>

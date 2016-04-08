@@ -493,43 +493,6 @@ Rectangle {
         return entity
     }
 
-    function createConnection(sourceObject, targetObject, filename, properties) {
-        if(!filename){
-            filename = "Edge.qml"
-        }
-
-        if(!properties){
-            properties = {}
-        }
-
-        properties.itemA = sourceObject;
-        properties.itemB = targetObject;
-
-        console.log("Properties: " + properties);
-        for(var i in properties) {
-            console.log("Property " + i + ": " + properties[i]);
-        }
-
-        var connectionComponent = Qt.createComponent(filename)
-
-        if (connectionComponent.status === Component.Error) {
-             console.log("Error loading component:", connectionComponent.errorString());
-        }
-
-        var connection = connectionComponent.createObject(connectionLayer, {
-                                                              itemA: sourceObject,
-                                                              itemB: targetObject
-                                                          })
-
-        connection.clicked.connect(function(connection) {
-            deselectAll();
-            activeObject = connection;
-            connection.selected = true;
-        });
-        addToUndoList()
-        return connection
-    }
-
     function connectEntities(itemA, itemB, filename, properties) {
         if(itemA === itemB) {
             console.warn("connectEntities(): Cannot connect an item to itself.")
@@ -543,7 +506,36 @@ Rectangle {
             console.warn("connectEntities(): " + itemB.fileName + " cannot receive connections.")
             return;
         }
-        var connection = createConnection(itemA, itemB, filename, properties)
+
+        if(!properties){
+            properties = {}
+        }
+
+        properties.itemA = itemA;
+        properties.itemB = itemB;
+
+        var connectionComponent;
+        if(filename){
+            connectionComponent = Qt.createComponent(filename);
+        } else if(itemA.preferredEdge) {
+            connectionComponent = itemA.preferredEdge;
+        } else {
+            console.warn("WARNING: connectEntities(): Neither filename or preferredEdge specified. This should never happen.");
+            connectionComponent = Qt.createComponent("Edge.qml");
+        }
+
+        if (connectionComponent.status === Component.Error) {
+             console.log("Error loading component:", connectionComponent.errorString());
+        }
+
+        var connection = connectionComponent.createObject(connectionLayer, properties);
+
+        connection.clicked.connect(function(connection) {
+            deselectAll();
+            activeObject = connection;
+            connection.selected = true;
+        });
+        addToUndoList()
         graphEngine.addEdge(connection)
         return connection
     }

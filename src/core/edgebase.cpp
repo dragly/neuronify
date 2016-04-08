@@ -54,10 +54,6 @@ void EdgeBase::setItemA(NodeBase *arg)
 
     m_itemA = arg;
 
-    if(m_itemA) {
-        emit m_itemA->edgeAdded(this);
-    }
-
     emit itemAChanged(arg);
 }
 
@@ -72,10 +68,6 @@ void EdgeBase::setItemB(NodeBase *arg)
     }
 
     m_itemB = arg;
-
-    if(m_itemB) {
-        emit m_itemB->edgeAdded(this);
-    }
 
     emit itemBChanged(arg);
 }

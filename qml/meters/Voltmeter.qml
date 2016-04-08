@@ -1,14 +1,16 @@
 import QtQuick 2.0
-import "qrc:/qml/"
-import "qrc:/qml/hud"
-import "qrc:/qml/paths"
-import "qrc:/qml/tools"
-import "qrc:/qml/style"
 
 import QtQuick.Layouts 1.1
 import QtCharts 2.1
 
 import Neuronify 1.0
+
+import ".."
+import "../edges"
+import "../hud"
+import "../paths"
+import "../tools"
+import "../style"
 
 /*!
 \qmltype Voltmeter
@@ -70,8 +72,12 @@ Node {
         }
     }
     width: 320
-    height: 224
+    height: 240
     color: Style.color.foreground
+
+    preferredEdge: MeterEdge {}
+
+    canReceiveConnections: false
 
     engine: NodeEngine {
         onStepped: {
@@ -81,7 +87,7 @@ Node {
                 for(var i in voltmeterRoot.connectionPlots) {
                     var connectionPlot = voltmeterRoot.connectionPlots[i]
                     var plot = connectionPlot.plot
-                    var neuron = connectionPlot.connection.itemA
+                    var neuron = connectionPlot.connection.itemB
                     if(neuron) {
                         if(neuron.voltage) {
                             plot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
@@ -95,7 +101,7 @@ Node {
             for(var i in voltmeterRoot.connectionPlots) {
                 var connectionPlot = voltmeterRoot.connectionPlots[i]
                 var firePlot = connectionPlot.firePlot
-                var neuron = connectionPlot.connection.itemA
+                var neuron = connectionPlot.connection.itemB
                 if(neuron.engine && neuron.engine === sender) {
                     firePlot.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
                     firePlot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
@@ -117,9 +123,20 @@ Node {
         var item = chartViewComponent.createObject(chartContainer);
         var plot = item.plot;
         var firePlot = item.firePlot;
-        var neuron = edge.itemA;
-        item.label = Qt.binding(function(){return neuron.label});
-        item.lineColor = Qt.binding(function(){return neuron.color});
+        console.log("edge: " + edge);
+        for(var i in edge) {
+            console.log(i + ": " + edge[i]);
+        }
+
+        var neuron = edge.itemB;
+        console.log("item: " + item)
+        item.label = Qt.binding(function(){
+            console.log("neuron:" + neuron);
+            return neuron.label;
+        });
+        item.lineColor = Qt.binding(function(){
+            return neuron.color;
+        });
         item.showAxis = true
         item.showAxisLabel = true
 
@@ -340,4 +357,6 @@ Node {
     }
 
     ResizeRectangle {}
+
+    Connector {}
 }

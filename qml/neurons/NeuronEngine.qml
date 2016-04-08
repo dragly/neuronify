@@ -4,6 +4,7 @@ import Neuronify 1.0
 
 NeuronEngineBase {
     id: engine
+    property real fakeFireOutput: 0.0
     savedProperties: PropertyGroup {
         property alias initialPotential: engine.initialPotential
         property alias restingPotential: engine.restingPotential
@@ -13,5 +14,6 @@ NeuronEngineBase {
         property alias synapticConductance: engine.synapticConductance
         property alias synapticTimeConstant: engine.synapticTimeConstant
         property alias synapticPotential: engine.synapticPotential
+        property alias fireOutput: engine.fakeFireOutput
     }
 }

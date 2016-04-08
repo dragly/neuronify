@@ -11,9 +11,6 @@ EdgeBase {
     property string filename: "Edge.qml"
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
-
-    //TODO should be removed
-    property real conductance: 1.0
     property color color: valid ? itemA.color : "white"
     property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x + 10*curved: 0
     property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y + 10*curved: 0
@@ -29,6 +26,7 @@ EdgeBase {
     savedProperties: [
         PropertyGroup {
             property alias filename: connectionRoot.filename
+            property alias engine: connectionRoot.engine
         }
     ]
 

@@ -4,6 +4,7 @@ import Neuronify 1.0
 import QtGraphicalEffects 1.0
 import ".."
 import "../controls"
+import "../edges"
 import "../hud"
 import "../paths"
 import "../tools"
@@ -41,6 +42,8 @@ Node {
     width: 100
     height: 100
     color: sensorRoot.sensing ? "#80e5ff" : "#0088aa"
+
+    preferredEdge: ImmediateFireSynapse {}
 
     engine: NodeEngine {
         onStepped: {

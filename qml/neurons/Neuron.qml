@@ -1,7 +1,9 @@
 import QtQuick 2.0
 import ".."
-import "../paths"
+import "../edges"
 import "../hud"
+import "../paths"
+
 import Neuronify 1.0
 import QtQuick.Controls 1.3
 import QtQuick.Particles 2.0
@@ -31,12 +33,10 @@ Node {
     height: width
     color: inhibitory ? "#e41a1c" : "#6baed6"
 
+    preferredEdge: CurrentSynapse {}
+
     onFired: {
         fireAnimation.restart()
-    }
-
-    savedProperties: PropertyGroup {
-        property alias engine: root.engine
     }
 
     Image {
