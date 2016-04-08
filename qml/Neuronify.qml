@@ -383,7 +383,7 @@ Rectangle {
             console.log("Deleting " + node);
             deleteNode(node);
         }
-        if(activeObject && activeObject.objectName === "connection") {
+        if(activeObject && activeObject.isEdge) {
             deleteEdge(activeObject);
         }
         deselectAll()

@@ -35,12 +35,6 @@ Node {
 
     canReceiveConnections: false
 
-    engine: NodeEngine {
-        onReceivedFire: {
-            soundBank.play()
-        }
-    }
-
     controls: Component {
         PropertiesPage {
             property string title: "Speaker"
@@ -125,6 +119,13 @@ Node {
 
     savedProperties: PropertyGroup {
         property alias source: speaker.source
+    }
+
+    onEdgeAdded: {
+        var neuron = edge.itemB;
+        neuron.fired.connect(function() {
+            soundBank.play()
+        });
     }
 
     Image {

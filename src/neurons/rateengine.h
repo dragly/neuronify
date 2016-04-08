@@ -27,10 +27,10 @@ public:
     double temporalResolution() const;
 
 public slots:
+    void addFireEvent();
     void setFiringRate(double firingRate);
     void setWindowDuration(double windowDuration);
     void setNeuronCount(int neuronCount);
-    
     void setTemporalResolution(double temporalResolution);
 
 signals:
@@ -38,9 +38,6 @@ signals:
     void windowDurationChanged(double windowDuration);
     void neuronCountChanged(int neuronCount);
     void temporalResolutionChanged(double temporalResolution);
-
-protected:
-    virtual void receiveFireEvent(NodeEngine *sender);
 
 private:
     void computeFiringRate();

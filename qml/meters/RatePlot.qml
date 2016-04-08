@@ -96,8 +96,9 @@ Node {
         }
     }
 
-    width: 240
-    height: 180
+    width: 320
+    height: 240
+
     color: "#deebf7"
 
     engine: RateEngine {
@@ -127,6 +128,8 @@ Node {
 
     onEdgeAdded: {
         rateEngine.neuronCount +=1
+        var neuron = edge.itemB;
+        neuron.fired.connect(engine.addFireEvent);
     }
 
     onEdgeRemoved: {

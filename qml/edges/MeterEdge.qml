@@ -8,5 +8,5 @@ Edge {
     objectName: "MeterEdge"
     filename: "edges/MeterEdge.qml"
 
-    _internalColor: "green"
+    color: "green"
 }

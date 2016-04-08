@@ -20,12 +20,6 @@ RateEngine::RateEngine(QQuickItem *parent)
 {
 }
 
-void RateEngine::receiveFireEvent(NodeEngine *sender)
-{
-    Q_UNUSED(sender);
-    m_spikeTimes.push_back(m_time);
-}
-
 void RateEngine::computeFiringRate()
 {
     double value = 0.0;
@@ -76,6 +70,11 @@ int RateEngine::neuronCount() const
 double RateEngine::temporalResolution() const
 {
     return m_temporalResolution;
+}
+
+void RateEngine::addFireEvent()
+{
+    m_spikeTimes.push_back(m_time);
 }
 
 void RateEngine::setFiringRate(double firingRate)

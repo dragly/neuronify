@@ -22,7 +22,7 @@ Node {
     id: rasterRoot
 
     property real time: 0.0
-    property real timeRange: 10.0e-3
+    property real timeRange: 100.0e-3
     property real timeScale: 1e-3
     property bool showLegend: true
 
@@ -60,16 +60,6 @@ Node {
             }
             realTime += dt
         }
-
-
-        onReceivedFire: {
-            for(var i in neurons) {
-                var neuron = neurons[i]
-                if(neuron.engine === sender) {
-                    scroller.append(time / timeScale, parseFloat(i) + 1.0)
-                }
-            }
-        }
     }
 
     controls: Component {
@@ -82,8 +72,8 @@ Node {
                 unit: "ms"
                 unitScale: 1e-3
                 minimumValue: 1.0e-3
-                maximumValue: 100.0e-3
-                stepSize: 1.0e-3
+                maximumValue: 1000.0e-3
+                stepSize: 10.0e-3
             }
         }
     }
@@ -109,6 +99,14 @@ Node {
         var newList = neurons
         neurons.push(neuron)
         neuron.onLabelChanged.connect(refreshCategories)
+        neuron.fired.connect(function() {
+            for(var i in neurons) {
+                var neuron2 = neurons[i]
+                if(neuron2 === neuron) {
+                    scroller.append(time / timeScale, parseFloat(i) + 1.0)
+                }
+            }
+        });
         neurons = newList
 
         refreshCategories()
@@ -184,7 +182,7 @@ Node {
         ChartScroller {
             id: scroller
             series: scatterSeries
-            timeRange: 100.0
+            timeRange: rasterRoot.timeRange / rasterRoot.timeScale
         }
     }
 

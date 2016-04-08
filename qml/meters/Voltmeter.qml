@@ -97,18 +97,6 @@ Node {
             }
             realTime += dt
         }
-        onReceivedFire: {
-            for(var i in voltmeterRoot.connectionPlots) {
-                var connectionPlot = voltmeterRoot.connectionPlots[i]
-                var firePlot = connectionPlot.firePlot
-                var neuron = connectionPlot.connection.itemB
-                if(neuron.engine && neuron.engine === sender) {
-                    firePlot.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
-                    firePlot.addPoint(time * timeFactor, neuron.voltage * voltageFactor)
-                    firePlot.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
-                }
-            }
-        }
     }
 
     savedProperties: PropertyGroup {
@@ -123,12 +111,20 @@ Node {
         var item = chartViewComponent.createObject(chartContainer);
         var plot = item.plot;
         var firePlot = item.firePlot;
-        console.log("edge: " + edge);
-        for(var i in edge) {
-            console.log(i + ": " + edge[i]);
-        }
 
         var neuron = edge.itemB;
+        neuron.fired.connect(function() {
+            for(var i in voltmeterRoot.connectionPlots) {
+                var connectionPlot = voltmeterRoot.connectionPlots[i]
+                var firePlot = connectionPlot.firePlot
+                var neuron2 = connectionPlot.connection.itemB
+                if(neuron2 === neuron) {
+                    firePlot.addPoint(time * timeFactor - 1e-1, 1000e-3 * voltageFactor)
+                    firePlot.addPoint(time * timeFactor, neuron2.voltage * voltageFactor)
+                    firePlot.addPoint(time * timeFactor + 1e-1, 1000e-3 * voltageFactor)
+                }
+            }
+        });
         console.log("item: " + item)
         item.label = Qt.binding(function(){
             console.log("neuron:" + neuron);

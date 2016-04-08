@@ -8,6 +8,7 @@ EdgeBase {
     signal clicked(var connection)
 
     property string objectName: "edge"
+    property bool isEdge: true
     property string filename: "Edge.qml"
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
