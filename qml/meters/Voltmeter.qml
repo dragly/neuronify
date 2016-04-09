@@ -120,6 +120,7 @@ Node {
         });
         item.lineColor = Qt.binding(function(){
             return neuron.color;
+//            return "#CEB6EE"
         });
         item.showAxis = true
         item.showAxisLabel = true
@@ -322,7 +323,7 @@ Node {
                     axisY: axisY
                     timeRange: voltmeterRoot.timeRange * timeFactor
                     color: chartItem.lineColor
-                    width: 3.0
+                    width: 2.0
                 }
 
                 Plot {
@@ -331,7 +332,7 @@ Node {
                     axisY: axisY
                     timeRange: series.timeRange
                     color: chartItem.lineColor
-                    width: 3.0
+                    width: 2.0
                 }
 
                 ValueAxis {

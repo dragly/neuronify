@@ -95,5 +95,6 @@
         <file>qml/edges/ImmediateFireSynapse.qml</file>
         <file>qml/edges/CurrentSynapse.qml</file>
         <file>qml/edges/MeterEdge.qml</file>
+        <file>qml/controls/SwitchControl.qml</file>
     </qresource>
 </RCC>

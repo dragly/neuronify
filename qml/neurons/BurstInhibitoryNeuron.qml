@@ -4,5 +4,7 @@ import Neuronify 1.0
 import ".."
 
 BurstNeuron {
+inhibitory: true
 }
+
 

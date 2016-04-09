@@ -41,6 +41,14 @@ Neuron {
             LabelControl {
                 neuron: neuronRoot
             }
+            SwitchControl{
+                id: switchControl
+                target: neuronRoot
+                property: "inhibitory"
+                checkedText: "Inhibitory"
+                uncheckedText: "Excitatory"
+
+            }
             AdaptationControl{
                 current: adaptationCurrent
             }

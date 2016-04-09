@@ -73,20 +73,15 @@ Node {
                 unitScale: 1.0e3
                 unit: "/ms"
             }
-            Text{
-                text: "Inhibitory: " + (switchRoot.checked ? " Yes" : " No")
-            }
-            Switch{
-                id: switchRoot
-                checked: root.inhibitory
-            }
 
-            Binding {
+            SwitchControl{
+                id: switchControl
                 target: root
                 property: "inhibitory"
-                value: switchRoot.checked
-            }
+                checkedText: "Inhibitory"
+                uncheckedText: "Excitatory"
 
+            }
 
         }
     }

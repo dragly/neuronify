@@ -4,6 +4,7 @@ import Neuronify 1.0
 import ".."
 
 AdaptationNeuron {
+    inhibitory: true
 }
 
 

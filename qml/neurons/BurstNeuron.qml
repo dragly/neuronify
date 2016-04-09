@@ -42,6 +42,15 @@ Neuron {
             LabelControl {
                 neuron: neuronRoot
             }
+
+            SwitchControl{
+                id: switchControl
+                target: neuronRoot
+                property: "inhibitory"
+                checkedText: "Inhibitory"
+                uncheckedText: "Excitatory"
+
+            }
             spacing: 10
             RestPotentialControl{
                 engine: neuronEngine

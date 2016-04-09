@@ -1,3 +1,4 @@
 PassiveNeuron {
+    inhibitory: true
 }
 

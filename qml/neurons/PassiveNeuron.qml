@@ -63,22 +63,16 @@ Neuron {
                 }
             }
             PropertiesItem {
-                text: "Inhibitory"
-                Item {
-                    Text{
-                        text: "Inhibitory: " + (switchRoot.checked ? " Yes" : " No")
-                    }
-                    Switch{
-                        id: switchRoot
-                        checked: neuronRoot.inhibitory
-                    }
+                text: "Synapse"
+                SwitchControl{
+                    id: switchControl
+                    target: neuronRoot
+                    property: "inhibitory"
+                    checkedText: "Inhibitory"
+                    uncheckedText: "Excitatory"
 
-                    Binding {
-                        target: neuronRoot
-                        property: "inhibitory"
-                        value: switchRoot.checked
-                    }
                 }
+
             }
             PropertiesItem {
                 text: "Potentials"
