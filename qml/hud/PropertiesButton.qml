@@ -30,6 +30,7 @@ Item {
 
     MouseArea {
         anchors.fill: parent
+        enabled: revealed
         onClicked: {
             root.clicked()
         }

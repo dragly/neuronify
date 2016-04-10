@@ -833,7 +833,23 @@ Rectangle {
         }
     }
 
+    Rectangle {
+        anchors {
+            right: parent.right
+            left: buttonColumn.left
+            top: parent.top
+            bottom: parent.bottom
+        }
+
+        color: Qt.rgba(1.0, 1.0, 1.0, 0.8);
+
+        MouseArea {
+            anchors.fill: parent
+        }
+    }
+
     Column {
+        id: buttonColumn
         anchors {
             right: parent.right
             top: parent.top
