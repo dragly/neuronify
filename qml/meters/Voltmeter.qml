@@ -60,6 +60,7 @@ Node {
 
     property real time: 0.0
     property real realTime: 0.0
+    property int numberOfEdges: 0
 
     controls: Component {
         MeterControls {
@@ -108,6 +109,7 @@ Node {
 
 
     onEdgeAdded: {
+        numberOfEdges +=1
         var item = chartViewComponent.createObject(chartContainer);
         var plot = item.plot;
         var firePlot = item.firePlot;
@@ -154,6 +156,7 @@ Node {
     }
 
     onEdgeRemoved: {
+        numberOfEdges -=1
         for(var i in connectionPlots) {
             var connectionPlot = connectionPlots[i]
             var connectionOther = connectionPlot.connection
@@ -362,6 +365,6 @@ Node {
 
     Connector {
         color: Style.meter.border.color
-        visible: parent.selected || connectionPlots.length < 1
+        visible: parent.selected || numberOfEdges < 1
     }
 }

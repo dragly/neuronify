@@ -24,6 +24,7 @@ the associated controls Component.
 Node {
     id: speaker
     property alias source: soundBank.source
+    property int numberOfEdges: 0
 
     objectName: "Speaker"
     filename: "meters/Speaker.qml"
@@ -122,10 +123,15 @@ Node {
     }
 
     onEdgeAdded: {
+        numberOfEdges +=1
         var neuron = edge.itemB;
         neuron.fired.connect(function() {
             soundBank.play()
         });
+    }
+
+    onEdgeRemoved: {
+        numberOfEdges -=1
     }
 
     Image {
@@ -163,6 +169,9 @@ Node {
 
 
 
-    Connector {}
+    Connector {
+        color: Style.meter.border.color
+        visible: parent.selected || numberOfEdges < 1
+    }
 }
 
