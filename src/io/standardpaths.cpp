@@ -1,6 +1,7 @@
 #include "standardpaths.h"
 
 #include <QDebug>
+#include <QQmlFile>
 
 StandardPaths::StandardPaths(QObject *parent)
     : QObject(parent)
@@ -33,4 +34,16 @@ QObject* StandardPaths::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine)
     Q_UNUSED(scriptEngine);
 
     return new StandardPaths;
+}
+
+/*!
+ * \brief StandardPaths::originalSimulationLocation is a developer helper function to get
+ * the original simulation file to easily save modified simulations to Neuronify's sources.
+ * \param fileUrl
+ * \return
+ */
+QUrl StandardPaths::originalSimulationLocation(QUrl fileUrl) {
+    QString fileName = QQmlFile::urlToLocalFileOrQrc(fileUrl);
+    fileName.replace(":/", "/");
+    return QUrl::fromLocalFile("../neuronify" + fileName);
 }

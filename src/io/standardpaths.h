@@ -38,11 +38,9 @@ public:
     Q_INVOKABLE static QUrl writableLocation(StandardLocation location, const QString &filename);
     Q_INVOKABLE static QUrl locate(StandardLocation location, const QString &filename);
     Q_INVOKABLE static QString toLocalFile(QUrl url);
+    Q_INVOKABLE static QUrl originalSimulationLocation(QUrl fileUrl);
 
     static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
-signals:
-
-public slots:
 };
 
 #endif // STANDARDPATHS_H

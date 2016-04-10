@@ -48,6 +48,7 @@ Rectangle {
     property bool snappingEnabled: false
     property real snapGridSize: snappingEnabled ? 32.0 : 1.0
     property alias playbackSpeed: playbackControls.playbackSpeed
+    property url currentSimulationUrl
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -140,6 +141,8 @@ Rectangle {
     }
 
     function loadSimulation(fileUrl) {
+        currentSimulationUrl = fileUrl;
+
         firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
         console.log("Load state called")
 
@@ -1169,6 +1172,14 @@ Rectangle {
                         edge.engine.resetProperties();
                     }
                 }
+            }
+        }
+
+        Button {
+            text: "Save to opened"
+            property url temp
+            onClicked: {
+                saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
             }
         }
 
