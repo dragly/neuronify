@@ -110,7 +110,6 @@ Rectangle {
 
         for(var i in properties) {
             var prop = properties[i];
-            //            console.log("Setting " + i + ": " + prop)
             if(!object.hasOwnProperty("savedProperties")) {
                 console.warn("WARNING: Object " + object + " is missing savedProperties property.");
                 continue;

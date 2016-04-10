@@ -12,24 +12,29 @@ Edge {
     engine: EdgeEngine {
         id: engine
 
-        property real linear
-        property real exponential
-
-        property real current
+        property bool alphaFunction
         property real tau
         property real maximumCurrent
-        property real time
         property real delay: 0.0
 
-        property bool alphaFunction: false
+        property real time
+        property real linear
+        property real exponential
 
         property var triggers: []
 
         savedProperties: [
             PropertyGroup {
-                property alias current: engine.current
+                // properties
                 property alias tau: engine.tau
                 property alias maximumCurrent: engine.maximumCurrent
+                property alias delay: engine.delay
+                property alias alphaFunction: engine.alphaFunction
+
+                // dynamics
+                property alias linear: engine.linear
+                property alias exponential: engine.exponential
+                property alias triggers: engine.triggers
             }
         ]
 
@@ -42,17 +47,29 @@ Edge {
             }
         }
 
+        onResettedDynamics: {
+            linear = 0.0;
+            exponential = 0.0;
+            triggers.length = 0;
+        }
+
+        onResettedProperties: {
+            tau = 2.0e-3
+            maximumCurrent = 2.0e-9
+            delay = 5.0e-3
+            alphaFunction = false;
+        }
+
         onStepped:{
-            currentOutput = current;
+            if(alphaFunction) {
+                currentOutput = maximumCurrent * linear * exponential;
+            } else {
+                currentOutput = maximumCurrent * exponential;
+            }
             if(alphaFunction) {
                 linear = linear + dt / tau;
             }
             exponential = exponential - exponential * dt / tau;
-            if(alphaFunction) {
-                current = maximumCurrent * linear * exponential;
-            } else {
-                current = maximumCurrent * exponential;
-            }
             if(triggers.length > 0) {
                 if(triggers[0] < time) {
                     trigger();
@@ -70,16 +87,6 @@ Edge {
             } else {
                 trigger();
             }
-        }
-
-        onResettedDynamics: {
-            current = 0.0
-        }
-
-        onResettedProperties: {
-            tau = 2.0e-3
-            maximumCurrent = 3.0e-9
-            delay = 5.0e-3
         }
     }
 

@@ -25,17 +25,22 @@ Neuron {
 
     savedProperties: PropertyGroup {
         property alias label: neuronRoot.label
-        property alias resistance: passiveCurrent.resistance
-        property alias refractoryPeriod: neuronEngine.refractoryPeriod
     }
 
     engine: NeuronEngine {
         id: neuronEngine
-        property real refractoryPeriod: 0.0e-3
-        property real timeSinceFire: 99999.0
-        PassiveCurrent {
-            id: passiveCurrent
+        property real refractoryPeriod
+        property real timeSinceFire: 1.0 / 0.0 // infinity
+
+        savedProperties: PropertyGroup {
+            property alias refractoryPeriod: neuronEngine.refractoryPeriod
+            property alias resistance: passiveCurrent.resistance
         }
+
+        onResettedProperties: {
+            refractoryPeriod = 2.0e-3;
+        }
+
         onStepped: {
             if(timeSinceFire < refractoryPeriod) {
                 neuronEngine.enabled = false
@@ -47,6 +52,10 @@ Neuron {
 
         onFired: {
             timeSinceFire = 0.0
+        }
+
+        PassiveCurrent {
+            id: passiveCurrent
         }
     }
 
