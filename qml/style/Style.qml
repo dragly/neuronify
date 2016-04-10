@@ -30,6 +30,7 @@ Item {
     property alias color: colorsObject
     property alias border: borderObject
 
+    property real playbackSpeed
 
     QtObject {
         id: colorsObject
