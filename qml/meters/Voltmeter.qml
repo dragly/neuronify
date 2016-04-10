@@ -115,9 +115,7 @@ Node {
         var firePlot = item.firePlot;
 
         var neuron = edge.itemB;
-        console.log("item: " + item)
         item.label = Qt.binding(function(){
-            console.log("neuron:" + neuron);
             return neuron.label;
         });
         item.lineColor = Qt.binding(function(){

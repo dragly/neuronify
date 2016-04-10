@@ -23,6 +23,8 @@ EdgeBase {
     property Component controls: Component {
         Item {}
     }
+    readonly property alias startPoint: sCurve.startPoint
+    readonly property alias endPoint: sCurve.endPoint
 
     savedProperties: [
         PropertyGroup {
@@ -188,7 +190,7 @@ EdgeBase {
         id: connectionSpot
         x: cx - width / 2
         y: cy - height / 2
-        width: 10
+        width: 12
         height: width
 
         // TODO update with new inhibitory setting on engine

@@ -70,6 +70,7 @@ Rectangle {
         console.log("Neuronify.qml load completed " + Date.now());
         Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
         firstLoadTimer.start();
+        Style.playbackSpeed = root.playbackSpeed;
     }
 
     function firstLoad() {
@@ -84,6 +85,10 @@ Rectangle {
 
     Component.onDestruction: {
         saveState(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
+    }
+
+    onPlaybackSpeedChanged: {
+        Style.playbackSpeed = root.playbackSpeed;
     }
 
     function deleteFromList(list, item) {

@@ -4,8 +4,13 @@ import Neuronify 1.0
 import ".."
 import "../controls"
 import "../hud"
+import "../style"
 
 Edge {
+    id: root
+
+    property real timeStep
+
     objectName: "CurrentSynapse"
     filename: "edges/CurrentSynapse.qml"
 
@@ -61,6 +66,7 @@ Edge {
         }
 
         onStepped:{
+            root.timeStep = dt;
             if(alphaFunction) {
                 currentOutput = maximumCurrent * linear * exponential;
             } else {
@@ -73,15 +79,14 @@ Edge {
             if(triggers.length > 0) {
                 if(triggers[0] < time) {
                     trigger();
-                    var newTriggers = triggers;
-                    newTriggers.shift();
-                    triggers = newTriggers;
+                    triggers.shift();
                 }
             }
             time += dt;
         }
 
         onReceivedFire: {
+            signalAnimation.restart();
             if(delay > 0.0) {
                 triggers.push(time + delay);
             } else {
@@ -105,7 +110,7 @@ Edge {
                 text: "Maximum current"
                 unit: "nA"
                 minimumValue: 0e-9
-                maximumValue: 50e-9
+                maximumValue: 10e-9
                 unitScale: 1e-9
                 stepSize: 0.1e-9
                 precision: 1
@@ -115,11 +120,49 @@ Edge {
                 property: "tau"
                 text: "Time constant"
                 unit: "ms"
-                minimumValue: 0.01e-3
-                maximumValue: 1.0e-3
+                minimumValue: 0.1e-3
+                maximumValue: 6.0e-3
                 unitScale: 1e-3
                 stepSize: 1e-4
                 precision: 2
+            }
+        }
+    }
+
+    Rectangle {
+        id: signalRectangle
+
+        width: 12
+        height: width
+        color: root.color
+        radius: width * 0.5
+
+        SequentialAnimation {
+            id: signalAnimation
+            property real duration: {
+                if(engine.delay > 0 && root.timeStep > 0) {
+                    return Math.max(200, engine.delay / (root.timeStep * Style.playbackSpeed) * 16);
+                } else {
+                    return 200;
+                }
+            }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: signalRectangle
+                    property: "x"
+                    from: root.startPoint.x - signalRectangle.radius
+                    to: root.endPoint.x - signalRectangle.radius
+                    duration: signalAnimation.duration
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation {
+                    target: signalRectangle
+                    property: "y"
+                    from: root.startPoint.y - signalRectangle.radius
+                    to: root.endPoint.y - signalRectangle.radius
+                    duration: signalAnimation.duration
+                    easing.type: Easing.OutQuad
+                }
             }
         }
     }
