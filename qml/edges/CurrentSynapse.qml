@@ -60,7 +60,7 @@ Edge {
 
         onResettedProperties: {
             tau = 2.0e-3
-            maximumCurrent = 2.0e-9
+            maximumCurrent = 3.0e-9
             delay = 5.0e-3
             alphaFunction = false;
         }
@@ -126,6 +126,17 @@ Edge {
                 stepSize: 1e-4
                 precision: 2
             }
+            BoundSlider {
+                target: engine
+                property: "delay"
+                text: "Delay"
+                unit: "ms"
+                minimumValue: 0.0e-3
+                maximumValue: 30.0e-3
+                unitScale: 1e-3
+                stepSize: 1e-4
+                precision: 1
+            }
         }
     }
 
@@ -146,6 +157,13 @@ Edge {
                     return 200;
                 }
             }
+            NumberAnimation {
+                target: signalRectangle
+                property: "opacity"
+                duration: 0
+                from: 0
+                to: 1
+            }
             ParallelAnimation {
                 NumberAnimation {
                     target: signalRectangle
@@ -163,6 +181,13 @@ Edge {
                     duration: signalAnimation.duration
                     easing.type: Easing.OutQuad
                 }
+            }
+            NumberAnimation {
+                target: signalRectangle
+                property: "opacity"
+                duration: 0
+                from: 1
+                to: 0
             }
         }
     }

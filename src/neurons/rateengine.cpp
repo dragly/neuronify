@@ -115,8 +115,8 @@ void RateEngine::setTemporalResolution(double temporalResolution)
 
 void RateEngine::resetPropertiesEvent()
 {
-    setWindowDuration(100e-3);
-    setTemporalResolution(100e-3);
+    setWindowDuration(300e-3);
+    setTemporalResolution(200e-3);
 }
 
 void RateEngine::resetDynamicsEvent()

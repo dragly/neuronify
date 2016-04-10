@@ -20,19 +20,23 @@ Neuron {
             id: passiveCurrent
         }
         Current {
-            property real boost: 0.0
+            property real boost
+            property real maximumBoost: 1.0e-9
             onFired: {
-                if(boost < 1.0e-9) {
-                    boost = 200.0e-6
+                if(boost < 1.0e-12) {
+                    boost = 1.2e-9
                 }
             }
             onStepped: {
                 if(boost > 0.0) {
-                    boost = boost - 1000.0e-6*dt
+                    boost = boost - 6.0*maximumBoost*dt
                 } else {
                     boost = 0.0
                 }
-                current = -boost * (neuronEngine.voltage - 60.0e-3)
+                current = boost
+            }
+            onResettedDynamics: {
+                boost = 0.0;
             }
         }
     }

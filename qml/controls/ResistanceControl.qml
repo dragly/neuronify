@@ -20,7 +20,7 @@ BoundSlider {
     minimumValue: 1e6
     maximumValue: 200e6
     unitScale: 1e6
-    stepSize: 10e6
+    stepSize: 1e6
     precision: 1
     text: "Membrane resistance"
     unit: "MΩ"

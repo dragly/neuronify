@@ -42,11 +42,11 @@ Node {
                 target: engine
                 property: "currentOutput"
                 text: "Current output"
-                unit: "pA"
-                minimumValue: 0.0e-12
-                maximumValue: 1000e-12
-                stepSize: 1e-12
-                unitScale: 1e-12
+                unit: "nA"
+                minimumValue: 0.0e-9
+                maximumValue: 3.0e-9
+                stepSize: 0.01e-9
+                unitScale: 1e-9
                 precision: 1
             }
         }

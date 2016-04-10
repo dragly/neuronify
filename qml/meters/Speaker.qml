@@ -24,6 +24,7 @@ the associated controls Component.
 Node {
     id: speaker
     property alias source: soundBank.source
+    property var neuronBindings: []
 
     objectName: "Speaker"
     filename: "meters/Speaker.qml"
@@ -123,9 +124,28 @@ Node {
 
     onEdgeAdded: {
         var neuron = edge.itemB;
-        neuron.fired.connect(function() {
-            soundBank.play()
-        });
+        var binding = {
+            neuron: neuron,
+            playSound: function() {
+                soundBank.play();
+            }
+        }
+        neuron.fired.connect(binding.playSound);
+        neuronBindings.push(binding);
+    }
+
+    onEdgeRemoved: {
+        var neuron = edge.itemB;
+        var newList = [];
+        for(var i in neuronBindings) {
+            var binding = neuronBindings[i];
+            if(binding.neuron !== neuron) {
+                newList.push(binding);
+            } else {
+                binding.neuron.fired.disconnect(binding.playSound);
+            }
+        }
+        neuronBindings = newList;
     }
 
     Image {

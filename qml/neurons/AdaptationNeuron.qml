@@ -27,7 +27,6 @@ Neuron {
         AdaptationCurrent {
             id: adaptationCurrent
         }
-
         savedProperties: PropertyGroup {
             property alias adaptation: adaptationCurrent.adaptation
             property alias timeConstant: adaptationCurrent.timeConstant
