@@ -25,6 +25,7 @@ Node {
     id: speaker
     property alias source: soundBank.source
     property var neuronBindings: []
+    property int numberOfEdges: 0
 
     objectName: "Speaker"
     filename: "meters/Speaker.qml"
@@ -123,6 +124,7 @@ Node {
     }
 
     onEdgeAdded: {
+        numberOfEdges +=1
         var neuron = edge.itemB;
         var binding = {
             neuron: neuron,
@@ -146,6 +148,7 @@ Node {
             }
         }
         neuronBindings = newList;
+        numberOfEdges -=1
     }
 
     Image {
@@ -183,6 +186,9 @@ Node {
 
 
 
-    Connector {}
+    Connector {
+        color: Style.meter.border.color
+        visible: parent.selected || numberOfEdges < 1
+    }
 }
 

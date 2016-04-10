@@ -8,7 +8,7 @@ import "../edges"
 import "../hud"
 import "../paths"
 import "../tools"
-
+import "../style"
 
 /*!
 \qmltype RasterPlot
@@ -32,6 +32,8 @@ Node {
     property real timeSinceLastUpdate: 0
     property real lastUpdateTime: 0
     property real maximumPointCount: 120
+    property int numberOfEdges: 0
+
 
     objectName: "rasterplot"
     filename: "meters/RasterPlot.qml"
@@ -95,6 +97,7 @@ Node {
     }
 
     onEdgeAdded: {
+        numberOfEdges +=1
         var neuron = edge.itemB
         var newList = neurons
         neurons.push(neuron)
@@ -113,6 +116,7 @@ Node {
     }
 
     onEdgeRemoved: {
+        numberOfEdges -=1
         var neuron = edge.itemB
         console.log(neuron)
         var newList = neurons
@@ -131,8 +135,8 @@ Node {
     Rectangle {
         anchors.fill: parent
         color: parent.color
-        border.color: "#9ecae1"
-        border.width: 1.0
+        border.color: Style.meter.border.color
+        border.width: Style.meter.border.width
         smooth: true
         antialiasing: true
     }
@@ -188,5 +192,8 @@ Node {
 
     ResizeRectangle {}
 
-    Connector {}
+    Connector {
+        color: Style.meter.border.color
+        visible: parent.selected ||  numberOfEdges < 1
+    }
 }
