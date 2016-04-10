@@ -62,36 +62,7 @@ Neuron {
                     neuron: neuronRoot
                 }
             }
-            PropertiesItem {
-                text: "Synapse"
-                SwitchControl{
-                    id: switchControl
-                    target: neuronRoot
-                    property: "inhibitory"
-                    checkedText: "Inhibitory"
-                    uncheckedText: "Excitatory"
 
-                }
-
-            }
-            PropertiesItem {
-                text: "Potentials"
-                info: "Vr: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
-                      "Vi: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
-                      "Vt: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
-                RestingPotentialControl{
-                    id: restingPotentialControl
-                    engine: neuronEngine
-                }
-
-                InitialPotentialControl{
-                    engine: neuronEngine
-                }
-
-                ThresholdControl{
-                    engine: neuronEngine
-                }
-            }
             PropertiesItem {
                 text: "Membrane"
                 info: "C: " + (neuronEngine.capacitance * 1e9).toFixed(1) + " nF, " +
@@ -119,14 +90,47 @@ Neuron {
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
             }
+
             PropertiesItem {
-                text: "Synaptic input"
-                info: "Tr: " + (neuronEngine.refractoryPeriod * 1e3).toFixed(1) + " ms, "
+                text: "Potentials"
+                info: "Vr: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
+                      "Vi: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
+                      "Vt: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
+                RestingPotentialControl{
+                    id: restingPotentialControl
+                    engine: neuronEngine
+                }
+
+                InitialPotentialControl{
+                    engine: neuronEngine
+                }
+
+                ThresholdControl{
+                    engine: neuronEngine
+                }
+            }
+
+            PropertiesItem {
+                text: "Synapse"
+                info: (switchControl.isChecked ?
+                           switchControl.checkedText : switchControl.uncheckedText)
+                      + " , " + "τr: "
+                      + (neuronEngine.refractoryPeriod * 1e3).toFixed(1) + " ms, "
+                SwitchControl{
+                    id: switchControl
+                    target: neuronRoot
+                    property: "inhibitory"
+                    checkedText: "Inhibitory"
+                    uncheckedText: "Excitatory"
+
+                }
 
                 RefractoryPeriodControl{
                     engine: neuronEngine
                 }
+
             }
+
             PropertiesItem {
                 text: "Reset"
                 RestPotentialControl{

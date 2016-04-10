@@ -59,6 +59,7 @@ Neuron {
             RestPotentialControl{
                 engine: neuronEngine
             }
+
         }
     }
 }
