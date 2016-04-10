@@ -117,7 +117,6 @@ void NeuronEngine::receiveCurrentEvent(double currentOutput, NodeEngine *sender)
 
 void NeuronEngine::resetPropertiesEvent()
 {
-    qDebug() << "Resetting capacitance and stuff";
     setRestingPotential(-70.0e-3);
     setInitialPotential(-70.0e-3);
     setThreshold(-55.0e-3);

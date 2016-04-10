@@ -153,7 +153,7 @@ Edge {
                     from: root.startPoint.x - signalRectangle.radius
                     to: root.endPoint.x - signalRectangle.radius
                     duration: signalAnimation.duration
-                    easing.type: Easing.InOutQuad
+                    easing.type: Easing.OutQuad
                 }
                 NumberAnimation {
                     target: signalRectangle
@@ -161,7 +161,7 @@ Edge {
                     from: root.startPoint.y - signalRectangle.radius
                     to: root.endPoint.y - signalRectangle.radius
                     duration: signalAnimation.duration
-                    easing.type: Easing.InOutQuad
+                    easing.type: Easing.OutQuad
                 }
             }
         }
