@@ -8,6 +8,7 @@ ApplicationWindow {
 
     property real startupTime: 0
 
+//    visibility: ApplicationWindow.FullScreen
     visible: true
     width: 1136
     height: 640

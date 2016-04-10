@@ -26,8 +26,6 @@ Neuron {
         }
         AdaptationCurrent {
             id: adaptationCurrent
-            adaptation: 50.0e-6
-            timeConstant: 300.0e-3
         }
 
         savedProperties: PropertyGroup {

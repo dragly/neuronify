@@ -121,7 +121,7 @@ void NeuronEngine::resetPropertiesEvent()
     setRestingPotential(-70.0e-3);
     setInitialPotential(-70.0e-3);
     setThreshold(-55.0e-3);
-    setCapacitance(0.1e-9);
+    setCapacitance(0.2e-9);
 }
 
 

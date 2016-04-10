@@ -97,8 +97,8 @@ void AdaptationCurrent::fireEvent()
 
 void AdaptationCurrent::resetPropertiesEvent()
 {
-    m_adaptation = 5.0e-9;
-    m_timeConstant = 100.0e-3;
+    m_adaptation = 10.0e-9;
+    m_timeConstant = 500.0e-3;
 }
 
 void AdaptationCurrent::resetDynamicsEvent()
