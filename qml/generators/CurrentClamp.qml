@@ -47,7 +47,7 @@ Node {
                 maximumValue: 3.0e-9
                 stepSize: 0.01e-9
                 unitScale: 1e-9
-                precision: 1
+                precision: 2
             }
         }
     }
