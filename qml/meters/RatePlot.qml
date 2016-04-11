@@ -109,7 +109,10 @@ Node {
                 time = realTime
                 lastUpdateTime = realTime
 //                console.log(time * timeFactor +"    " + rateEngine.firingRate)
-                series1.addPoint(time * timeFactor, rateEngine.firingRate)
+
+                if(rateEngine.neuronCount > 0){
+                    series1.addPoint(time * timeFactor, rateEngine.firingRate)
+                }
             }
 
             realTime += dt
@@ -134,6 +137,8 @@ Node {
     }
 
     onEdgeRemoved: {
+        var neuron = edge.itemB;
+        neuron.fired.disconnect(engine.addFireEvent);
         rateEngine.neuronCount -=1
     }
 
