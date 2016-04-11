@@ -194,7 +194,7 @@ EdgeBase {
         height: width
 
         // TODO update with new inhibitory setting on engine
-//        radius: (itemA && itemA.engine) ? (itemA.engine.fireOutput > 0 ?  0 : width / 2.0) : width / 2.0;
+        radius: (itemA && itemA.inhibitory) ? width / 2.0 : 0
         rotation: angle + 45
         color: connectionRoot._internalColor
 
