@@ -24,23 +24,16 @@ Column {
     width: parent.width
 
     Button {
-        text: "Reset potential"
+        text: "Reset dynamics"
         onClicked: {
-            engine.reset()
+            engine.resetDynamics()
         }
     }
 
-    spacing: 5
-
     Button {
-        text: "Reset all neurons"
+        text: "Reset properties"
         onClicked: {
-            for (var i in graphEngine.nodes){
-                if (graphEngine.nodes[i].isNeuron) {
-                    graphEngine.nodes[i].engine.reset()
-                }
-
-            }
+            engine.resetProperties()
         }
     }
 }

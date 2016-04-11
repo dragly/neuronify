@@ -8,13 +8,8 @@ Item {
 
     signal clicked
 
-    property bool revealed: false
+    property bool revealed: true
 
-//    anchors {
-//        right: parent.right
-//        bottom: parent.bottom
-//        rightMargin: -width
-//    }
     opacity: 0
     width: Style.touchableSize * 1.5
     height: width
