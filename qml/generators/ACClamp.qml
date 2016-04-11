@@ -17,7 +17,7 @@ import "../controls"
 */
 
 Node {
-
+    id: acRoot
     filename: "generators/ACClamp.qml"
 
     width: 64
@@ -69,6 +69,15 @@ Node {
                 unit: "Hz"
                 text: "Current frequency"
                 stepSize: 1.
+            }
+
+            ConnectMultipleControl {
+                toEnabled: false
+                node: acRoot
+            }
+
+            ResetControl {
+                engine: acRoot.engine
             }
         }
     }

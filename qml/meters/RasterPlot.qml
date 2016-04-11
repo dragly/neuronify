@@ -76,6 +76,15 @@ Node {
                 minimumValue: 1.0e-3
                 maximumValue: 1000.0e-3
                 stepSize: 10.0e-3
+
+                ConnectMultipleControl {
+                    toEnabled: false
+                    node: rasterRoot
+                }
+
+                ResetControl {
+                    engine: rasterRoot.engine
+                }
             }
         }
     }

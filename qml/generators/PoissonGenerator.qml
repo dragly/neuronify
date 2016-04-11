@@ -83,6 +83,14 @@ Node {
 
             }
 
+            ConnectMultipleControl {
+                toEnabled: false
+                node: root
+            }
+
+            ResetControl {
+                engine: root.engine
+            }
         }
     }
 

@@ -77,21 +77,6 @@ Node {
                 property: "muted"
                 value: mutedCheckBox.checked
             }
-            Button {
-                text: "Connect to all neurons"
-                onClicked: {
-                    var itemA = speaker
-                    for (var i in speaker.simulator.graphEngine.nodes){
-                        var itemB = graphEngine.nodes[i]
-                        if (itemB.objectName.indexOf("neuron") + itemB.objectName.indexOf("Neuron") != -2){
-                            if (!speaker.simulator.connectionExists(itemA, itemB)){
-                                speaker.simulator.connectEntities(itemA, itemB)
-                            }
-                        }
-                    }
-                }
-            }
-
             ExclusiveGroup { id: soundGroup }
             Repeater {
                 id: repeater
@@ -115,6 +100,11 @@ Node {
                         }
                     }
                 }
+            }
+
+            ConnectMultipleControl {
+                toEnabled: false
+                node: speaker
             }
         }
     }

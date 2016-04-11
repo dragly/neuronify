@@ -17,7 +17,7 @@ import "../controls"
 */
 
 Node {
-
+    id: currentClampRoot
     filename: "generators/CurrentClamp.qml"
 
     width: 64
@@ -48,6 +48,15 @@ Node {
                 stepSize: 0.01e-9
                 unitScale: 1e-9
                 precision: 2
+            }
+
+            ConnectMultipleControl {
+                toEnabled: false
+                node: currentClampRoot
+            }
+
+            ResetControl {
+                engine: currentClampRoot.engine
             }
         }
     }

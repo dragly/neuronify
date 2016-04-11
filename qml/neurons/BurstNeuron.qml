@@ -1,9 +1,8 @@
 import QtQuick 2.0
 import Neuronify 1.0
 
-import "qrc:/"
-import "qrc:/qml/"
-import "qrc:/qml/controls"
+import ".."
+import "../controls"
 import "../style"
 
 Neuron {
@@ -85,8 +84,12 @@ Neuron {
                       0
                       + " ms, "
             }
-            spacing: 10
-            RestPotentialControl{
+
+            ConnectMultipleControl {
+                node: neuronRoot
+            }
+
+            ResetControl {
                 engine: neuronEngine
             }
         }

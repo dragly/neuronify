@@ -2,9 +2,11 @@ import QtQuick 2.0
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 
-import "qrc:/qml"
-import "qrc:/qml/controls"
-import "qrc:/qml/style"
+import Neuronify 1.0
+
+import ".."
+import "../controls"
+import "../style"
 
 /*!
     \qmltype MeterControls
@@ -22,7 +24,8 @@ import "qrc:/qml/style"
 
 PropertiesPage {
     id: meterControlsRoot
-    property Item meter: null
+    property NodeEngine engine
+    property Item meter
     property double sliderMinimum: -250
     property double sliderMaximum: 250
     property string unit: ""
@@ -53,6 +56,15 @@ PropertiesPage {
         unit: meterControlsRoot.unit
         minimumValue: meterControlsRoot.sliderMinimum
         maximumValue: meterControlsRoot.sliderMaximum
+    }
+
+    ConnectMultipleControl {
+        toEnabled: false
+        node: meter
+    }
+
+    ResetControl {
+        engine: meterControlsRoot.engine
     }
 }
 

@@ -28,6 +28,8 @@ NodeBase {
     signal dragStarted(var entity)
     signal dragEnded(var entity)
     signal droppedConnector(var poissonGenerator, var connector)
+    signal startConnectMultipleToThis
+    signal startConnectMultipleFromThis
     signal fired
 
     property real snapGridSize: 1.0

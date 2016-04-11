@@ -17,6 +17,7 @@ import "qrc:/qml/tools"
 Rectangle {
 
     signal doneClicked
+    property bool fromThis: false
 
     anchors {
         top: parent.top
@@ -24,10 +25,15 @@ Rectangle {
         right: parent.right
     }
     height: Style.touchableSize * 1.5
+    color: "yellow"
     
     Text {
         anchors.centerIn: parent
-        text: "Connection mode: Select other items to connect them."
+        horizontalAlignment: Text.AlignHCenter
+        font: Style.control.font
+        text: "Connection mode\nClicking other items connects them\n" +
+              (fromThis ? "from" : "to") +
+              " the currently selected."
     }
     
     Rectangle {
@@ -36,10 +42,15 @@ Rectangle {
             right: parent.right
             rightMargin: Style.margin
         }
-        width: doneText.width
+        width: Math.max(Style.touchableSize, doneText.width)
         height: Style.touchableSize
         Text {
             id: doneText
+            anchors {
+                verticalCenter: parent.verticalCenter
+                horizontalCenter: parent.horizontalCenter
+            }
+            font: Style.control.font
             text: "Done"
         }
         MouseArea {

@@ -140,11 +140,12 @@ Neuron {
 
             }
 
-            PropertiesItem {
-                text: "Reset"
-                RestPotentialControl{
-                    engine: neuronEngine
-                }
+            ConnectMultipleControl {
+                node: neuronRoot
+            }
+
+            ResetControl {
+                engine: neuronEngine
             }
         }
     }

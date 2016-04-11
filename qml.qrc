@@ -67,7 +67,6 @@
         <file>qml/meters/RatePlot.qml</file>
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
-        <file>qml/controls/RestPotentialControl.qml</file>
         <file>qml/neurons/NeuronEngine.qml</file>
         <file>qml/hud/PlaybackButton.qml</file>
         <file>qml/io/CustomFileIcon.qml</file>
@@ -96,5 +95,7 @@
         <file>qml/edges/CurrentSynapse.qml</file>
         <file>qml/edges/MeterEdge.qml</file>
         <file>qml/controls/SwitchControl.qml</file>
+        <file>qml/controls/ConnectMultipleControl.qml</file>
+        <file>qml/controls/ResetControl.qml</file>
     </qresource>
 </RCC>

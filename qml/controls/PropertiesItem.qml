@@ -8,14 +8,12 @@ import "qrc:/qml/"
 import "qrc:/qml/controls"
 import "qrc:/qml/style"
 
-
-
 Item {
     id: root
     property string text: ""
     property string info: ""
     default property alias components: propertiesPage.children
-    property StackView stackView: parent.stackView
+    property StackView stackView: parent && parent.stackView ? parent.stackView : null
 
     width: parent.width
     height: Style.control.fontMetrics.height * 2.2

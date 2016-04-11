@@ -65,11 +65,11 @@ Node {
     controls: Component {
         MeterControls {
             meter: voltmeterRoot
+            engine: voltmeterEngine
             sliderMinimum: -250
             sliderMaximum: 250
             unit: "mV"
             meterType: "Voltmeter"
-
         }
     }
     width: 320
@@ -81,6 +81,7 @@ Node {
     canReceiveConnections: false
 
     engine: NodeEngine {
+        id: voltmeterEngine
         onStepped: {
             if((realTime - lastUpdateTime) > timeRange / maximumPointCount) {
                 time = realTime

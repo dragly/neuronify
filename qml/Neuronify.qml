@@ -424,8 +424,10 @@ Rectangle {
             selectedEntities = selectedList
 
             activeObject = entity
-        } else if (clickMode === "connection") {
-            connectEntities(activeObject, entity)
+        } else if (clickMode === "connectMultipleFromThis") {
+            connectEntities(activeObject, entity);
+        } else if (clickMode === "connectMultipleToThis") {
+            connectEntities(entity, activeObject);
         }
     }
 
@@ -466,15 +468,17 @@ Rectangle {
         entity.clicked.connect(clickedEntity)
         entity.clicked.connect(raiseToTop)
         entity.dragStarted.connect(raiseToTop)
-
+        entity.startConnectMultipleFromThis.connect(function() {
+            clickMode = "connectMultipleFromThis";
+        });
+        entity.startConnectMultipleToThis.connect(function() {
+            clickMode = "connectMultipleToThis";
+        });
         entity.dragStarted.connect(function(entity) {
             draggedEntity = entity;
         });
         entity.dragEnded.connect(function(entity) {
             draggedEntity = undefined;
-        });
-        entity.clickedConnector.connect(function() {
-            clickMode = "connection";
         });
         entity.droppedConnector.connect(function(itemA, connector) {
             var targetEntity = itemUnderConnector(itemA, connector)
@@ -1011,7 +1015,8 @@ Rectangle {
     }
 
     ConnectionMenu {
-        visible: clickMode === "connection"
+        visible: clickMode === "connectMultipleToThis" || clickMode === "connectMultipleFromThis"
+        fromThis: clickMode === "connectMultipleFromThis"
         onDoneClicked: {
             clickMode = "selection"
         }

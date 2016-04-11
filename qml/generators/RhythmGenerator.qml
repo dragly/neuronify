@@ -94,6 +94,15 @@ Node {
                 uncheckedText: "Excitatory"
 
             }
+
+            ConnectMultipleControl {
+                toEnabled: false
+                node: root
+            }
+
+            ResetControl {
+                engine: root.engine
+            }
         }
 
     }
