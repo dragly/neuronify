@@ -1,8 +1,10 @@
 import QtQuick 2.5
 import QtQuick.Controls 1.1
-import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.0
+import QtQuick.Layouts 1.1
+import QtQuick.Particles 2.0
 import QtQuick.Window 2.1
+
 import QtCharts 2.1
 import QtMultimedia 5.5
 import Qt.labs.settings 1.0
@@ -530,6 +532,7 @@ Rectangle {
 
         var connection = connectionComponent.createObject(connectionLayer, {itemA: itemA, itemB: itemB});
 
+        connection.particleSystem = particleSystem;
         connection.clicked.connect(function(connection) {
             deselectAll();
             activeObject = connection;
@@ -783,6 +786,10 @@ Rectangle {
             scale: 1.0
             transformOrigin: Item.TopLeft
 
+            onScaleChanged: {
+                Style.workspaceScale = scale;
+            }
+
             Item {
                 id: dragProxy
 
@@ -831,6 +838,15 @@ Rectangle {
             Item {
                 id: connectionLayer
                 anchors.fill: parent
+            }
+
+            ParticleSystem {
+                id: particleSystem
+            }
+
+            ImageParticle {
+                system: particleSystem
+                source: "qrc:///images/particles/particle.png"
             }
 
             Item {

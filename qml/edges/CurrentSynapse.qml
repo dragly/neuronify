@@ -1,4 +1,6 @@
 import QtQuick 2.0
+import QtQuick.Particles 2.0
+
 import Neuronify 1.0
 
 import ".."
@@ -86,7 +88,7 @@ Edge {
         }
 
         onReceivedFire: {
-            signalAnimation.restart();
+            emitter.burst(1);
             if(delay > 0.0) {
                 triggers.push(time + delay);
             } else {
@@ -140,55 +142,37 @@ Edge {
         }
     }
 
-    Rectangle {
-        id: signalRectangle
-
-        width: 12
-        height: width
-        color: root.color
-        radius: width * 0.5
-
-        SequentialAnimation {
-            id: signalAnimation
-            property real duration: {
-                if(engine.delay > 0 && root.timeStep > 0) {
-                    return Math.max(200, engine.delay / (root.timeStep * Style.playbackSpeed) * 16);
-                } else {
-                    return 200;
-                }
+    Emitter {
+        id: emitter
+        property real duration: {
+            var result = 0.0;
+            if(engine.delay > 0 && root.timeStep > 0) {
+                return Math.max(1, engine.delay / (root.timeStep * Style.playbackSpeed) * 16);
+            } else {
+                result = 1;
             }
-            NumberAnimation {
-                target: signalRectangle
-                property: "opacity"
-                duration: 0
-                from: 0
-                to: 1
-            }
-            ParallelAnimation {
-                NumberAnimation {
-                    target: signalRectangle
-                    property: "x"
-                    from: root.startPoint.x - signalRectangle.radius
-                    to: root.endPoint.x - signalRectangle.radius
-                    duration: signalAnimation.duration
-                    easing.type: Easing.OutQuad
-                }
-                NumberAnimation {
-                    target: signalRectangle
-                    property: "y"
-                    from: root.startPoint.y - signalRectangle.radius
-                    to: root.endPoint.y - signalRectangle.radius
-                    duration: signalAnimation.duration
-                    easing.type: Easing.OutQuad
-                }
-            }
-            NumberAnimation {
-                target: signalRectangle
-                property: "opacity"
-                duration: 0
-                from: 1
-                to: 0
-            }
+            return result;
         }
+        system: particleSystem
+        x: root.startPoint.x
+        y: root.startPoint.y
+        emitRate: 0.0
+        lifeSpan: duration
+        velocity: PointDirection {
+            x: (root.endPoint.x - root.startPoint.x) / emitter.duration * 1000;
+            y: (root.endPoint.y - root.startPoint.y) / emitter.duration * 1000;
+        }
+        size: 24 * Style.workspaceScale
+    }
+
+    Age {
+        id: ageAffector
+        x: root.endPoint.x - width * 0.5
+        y: root.endPoint.y - width * 0.5
+        system: root.particleSystem
+        width: 8
+        height: 8
+        shape: EllipseShape {}
+        lifeLeft: 0.0
     }
 }

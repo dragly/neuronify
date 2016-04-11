@@ -31,6 +31,7 @@ Item {
     property alias border: borderObject
 
     property real playbackSpeed
+    property real workspaceScale
 
     QtObject {
         id: colorsObject

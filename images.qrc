@@ -64,5 +64,6 @@
         <file>images/generators/rhythm_generator.png</file>
         <file>images/generators/rhythm_generator_excitatory.png</file>
         <file>images/generators/rhythm_generator_inhibitory.png</file>
+        <file>images/particles/particle.png</file>
     </qresource>
 </RCC>

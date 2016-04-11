@@ -1,12 +1,16 @@
 import QtQuick 2.0
+import QtQuick.Particles 2.0
+
+import Neuronify 1.0
+
 import "paths"
 import "hud"
-import Neuronify 1.0
 
 EdgeBase {
     id: connectionRoot
     signal clicked(var connection)
 
+    property ParticleSystem particleSystem
     property string objectName: "edge"
     property bool isEdge: true
     property string filename: "Edge.qml"
@@ -193,7 +197,6 @@ EdgeBase {
         width: 12
         height: width
 
-        // TODO update with new inhibitory setting on engine
         radius: (itemA && itemA.inhibitory) ? width / 2.0 : 0
         rotation: angle + 45
         color: connectionRoot._internalColor
