@@ -44,7 +44,7 @@ Node {
                 text: "Current output"
                 unit: "nA"
                 minimumValue: 0.0e-9
-                maximumValue: 3.0e-9
+                maximumValue: 30.0e-9
                 stepSize: 0.01e-9
                 unitScale: 1e-9
                 precision: 2
