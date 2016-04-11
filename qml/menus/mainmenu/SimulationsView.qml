@@ -57,9 +57,9 @@ MainMenuPage {
                     {
                         name: "Mix",
                         simulations: [
+                            "qrc:/simulations/generators",
                             "qrc:/simulations/mix/rythm_transformation",
                             "qrc:/simulations/mix/prolonged_activity",
-                            "qrc:/simulations/mix/two_neuron_oscillator",
 
                         ]
                     },

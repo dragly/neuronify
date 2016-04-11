@@ -51,5 +51,8 @@
         <file>simulations/sterratt/refractory_period/refractory_period.nfy</file>
         <file>simulations/sterratt/refractory_period/refractory_period.png</file>
         <file>simulations/sterratt/refractory_period/refractory_period.qml</file>
+        <file>simulations/generators/generators.png</file>
+        <file>simulations/generators/generators.qml</file>
+        <file>simulations/generators/generators.nfy</file>
     </qresource>
 </RCC>
