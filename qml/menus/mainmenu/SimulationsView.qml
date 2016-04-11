@@ -48,7 +48,6 @@ MainMenuPage {
                     {
                         name: "Inhibition",
                         simulations: [
-                            "qrc:/simulations/inhibition/types_of_inhibition",
                             "qrc:/simulations/inhibition/lateral_inhibition",
                             "qrc:/simulations/inhibition/recurrent_inhibition",
                             "qrc:/simulations/inhibition/reciprocal_inhibition",
