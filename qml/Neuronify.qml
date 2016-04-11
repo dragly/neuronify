@@ -49,6 +49,7 @@ Rectangle {
     property real snapGridSize: snappingEnabled ? 32.0 : 1.0
     property alias playbackSpeed: playbackControls.playbackSpeed
     property url currentSimulationUrl
+    property bool advanced: false
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -70,7 +71,7 @@ Rectangle {
     Component.onCompleted: {
         console.log("Neuronify.qml load completed " + Date.now());
         Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
-        firstLoadTimer.start();
+                firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed;
     }
 
@@ -520,7 +521,7 @@ Rectangle {
         }
 
         if (connectionComponent.status === Component.Error) {
-             console.log("Error loading component:", connectionComponent.errorString());
+            console.log("Error loading component:", connectionComponent.errorString());
         }
 
         var connection = connectionComponent.createObject(connectionLayer, {itemA: itemA, itemB: itemB});
@@ -648,7 +649,6 @@ Rectangle {
                 }
 
                 onClicked: {
-                    propertiesPanel.revealed = false;
                     deselectAll();
                     selectedEntities = [];
                 }
@@ -886,7 +886,7 @@ Rectangle {
         }
 
         PropertiesButton {
-            revealed: activeObject ? true : false
+//            revealed: activeObject ? true : false
             onClicked: {
                 propertiesPanel.revealed = !propertiesPanel.revealed
             }
@@ -945,8 +945,69 @@ Rectangle {
 
     PropertiesPanel {
         id: propertiesPanel
+
+        advanced: root.advanced
+        snappingEnabled: root.snappingEnabled
         activeObject: root.activeObject
         workspace: workspace
+
+        onResetDynamics: {
+            for(var i in graphEngine.nodes) {
+                var entity = graphEngine.nodes[i];
+                if(entity.engine) {
+                    entity.engine.resetDynamics();
+                }
+            }
+            for(var i in graphEngine.edges) {
+                var edge = graphEngine.edges[i];
+                if(edge.engine) {
+                    edge.engine.resetDynamics();
+                }
+            }
+        }
+
+        onResetProperties: {
+            for(var i in graphEngine.nodes) {
+                var entity = graphEngine.nodes[i];
+                if(entity.engine) {
+                    entity.engine.resetProperties();
+                }
+            }
+            for(var i in graphEngine.edges) {
+                var edge = graphEngine.edges[i];
+                if(edge.engine) {
+                    edge.engine.resetProperties();
+                }
+            }
+        }
+
+        onSaveToOpened: {
+            saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
+        }
+
+        Binding {
+            target: root
+            property: "advanced"
+            value: propertiesPanel.advanced
+        }
+
+        Binding {
+            target: propertiesPanel
+            property: "advanced"
+            value: root.advanced
+        }
+
+        Binding {
+            target: root
+            property: "snappingEnabled"
+            value: propertiesPanel.snappingEnabled
+        }
+
+        Binding {
+            target: propertiesPanel
+            property: "snappingEnabled"
+            value: root.snappingEnabled
+        }
     }
 
     ConnectionMenu {
@@ -1102,6 +1163,7 @@ Rectangle {
 
     Settings {
         property alias snappingEnabled: root.snappingEnabled
+        property alias advanced: root.advanced
     }
 
     Timer {
@@ -1118,6 +1180,11 @@ Rectangle {
         onActivated: root.snappingEnabled = !root.snappingEnabled
     }
 
+    Shortcut {
+        sequence: "Ctrl+Shift+Alt+A"
+        onActivated: root.advanced = !root.advanced
+    }
+
     Keys.onPressed: {
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
             selectAll()
@@ -1131,57 +1198,5 @@ Rectangle {
         if(event.key === Qt.Key_Delete) {
             deleteSelected()
         }
-    }
-
-    Column {
-        anchors {
-            bottom: parent.bottom
-            left: parent.left
-        }
-
-        Button {
-            text: "Reset Dynamics"
-            onClicked: {
-                for(var i in graphEngine.nodes) {
-                    var entity = graphEngine.nodes[i];
-                    if(entity.engine) {
-                        entity.engine.resetDynamics();
-                    }
-                }
-                for(var i in graphEngine.edges) {
-                    var edge = graphEngine.edges[i];
-                    if(edge.engine) {
-                        edge.engine.resetDynamics();
-                    }
-                }
-            }
-        }
-
-        Button {
-            text: "Reset Properties"
-            onClicked: {
-                for(var i in graphEngine.nodes) {
-                    var entity = graphEngine.nodes[i];
-                    if(entity.engine) {
-                        entity.engine.resetProperties();
-                    }
-                }
-                for(var i in graphEngine.edges) {
-                    var edge = graphEngine.edges[i];
-                    if(edge.engine) {
-                        edge.engine.resetProperties();
-                    }
-                }
-            }
-        }
-
-        Button {
-            text: "Save to opened"
-            property url temp
-            onClicked: {
-                saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
-            }
-        }
-
     }
 }

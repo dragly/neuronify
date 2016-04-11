@@ -1,21 +1,36 @@
 import QtQuick 2.6
 import QtQuick.Controls 1.4
+import QtQuick.Dialogs 1.2
 
+import "../controls"
+import "../hud"
 import "../style"
 
 Item {
     id: root
 
+    signal resetDynamics
+    signal resetProperties
+    signal saveToOpened
+
     property var workspace
     property Item activeObject: null
     property bool revealed: false
+    property bool advanced
+    property bool snappingEnabled
 
     anchors.fill: parent
+
+    Component.onCompleted: {
+        stackView.push(simulationComponent);
+    }
 
     onActiveObjectChanged: {
         stackView.clear()
         if(activeObject && activeObject.controls) {
             stackView.push(activeObject.controls)
+        } else {
+            stackView.push(simulationComponent);
         }
     }
 
@@ -40,7 +55,6 @@ Item {
                 return parent.width * 0.25;
             }
         }
-//        width: parent.width * 0.5
 
         border.color: "#9ecae1"
         border.width: 1.0
@@ -92,14 +106,7 @@ Item {
                             when: stackView.depth > 1 ? 0 : -width
                             PropertyChanges {
                                 target: backButton
-                                anchors.leftMargin: -backButton.width
-                            }
-                        },
-                        State {
-                            when: !stackView.currentItem || !stackView.currentItem.title || stackView.currentItem.title === ""
-                            PropertyChanges {
-                                target: backButton
-                                anchors.topMargin: -backButton.height
+                                rotation: 180
                             }
                         }
 
@@ -107,7 +114,7 @@ Item {
                     transitions: [
                         Transition {
                             NumberAnimation {
-                                properties: "anchors.leftMargin, anchors.topMargin"
+                                properties: "rotation"
                                 duration: 400
                                 easing.type: Easing.InOutQuad
                             }
@@ -143,7 +150,11 @@ Item {
                     }
 
                     onClicked: {
-                        stackView.pop()
+                        if(stackView.depth > 1) {
+                            stackView.pop();
+                        } else {
+                            root.revealed = false;
+                        }
                     }
                 }
             }
@@ -177,6 +188,71 @@ Item {
                 property: "anchors.rightMargin"
                 duration: 400
                 easing.type: Easing.InOutCubic
+            }
+        }
+    }
+
+    Component {
+        id: simulationComponent
+        PropertiesPage {
+            id: simulatonPage
+            property bool advanced: root.advanced
+            title: "Simulation properties"
+            Button {
+                text: "Reset all dynamics"
+                onClicked: {
+                    root.resetDynamics();
+                }
+            }
+            Button {
+                text: "Reset all properties"
+                onClicked: {
+                    resetDialog.open();
+                }
+                MessageDialog {
+                    id: resetDialog
+                    text: "This will reset all properties for all items. Are you sure?"
+                    standardButtons: StandardButton.Ok | StandardButton.Cancel
+                    onAccepted: {
+                        root.resetProperties();
+                    }
+                }
+            }
+            CheckBox {
+                id: snapCheckBox
+                text: "Snap to grid"
+                checked: root.snappingEnabled
+                Binding {
+                    target: root
+                    property: "snappingEnabled"
+                    value: snapCheckBox.checked
+                }
+                Binding {
+                    target: snapCheckBox
+                    property: "checked"
+                    value: root.snappingEnabled
+                }
+            }
+            CheckBox {
+                id: advancedCheckBox
+                text: "Show advanced features"
+                Binding {
+                    target: advancedCheckBox
+                    property: "checked"
+                    value: root.advanced
+                }
+                Binding {
+                    target: root
+                    property: "advanced"
+                    value: advancedCheckBox.checked
+                }
+            }
+            Button {
+                visible: simulatonPage.advanced
+                text: "Save to opened"
+                onClicked: {
+                    root.saveToOpened();
+                }
             }
         }
     }
