@@ -197,7 +197,7 @@ Item {
         PropertiesPage {
             id: simulatonPage
             property bool advanced: root.advanced
-            title: "Simulation properties"
+            title: "Simulation"
             Button {
                 text: "Reset all dynamics"
                 onClicked: {
