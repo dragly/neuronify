@@ -93,7 +93,7 @@ void NeuronEngine::stepEvent(double dt, bool parentEnabled)
     double dV = totalCurrent / m_capacitance * dt;
     m_voltage += dV;
 
-    m_voltage = min(max(m_voltage, -0.2), 0.2);
+    m_voltage = max(-90e-3, min(60e-3, m_voltage));
 
 
     emit voltageChanged(m_voltage);
