@@ -53,12 +53,9 @@ Node {
             var shouldFire = (timeSinceFiring > 1./rate);
             if(shouldFire) {
                 fire()
+                timeSinceFiring = 0.0
                 overlayAnimation.restart()
             }
-        }
-
-        onFired:{
-            timeSinceFiring = 0.0
         }
 
         onResettedProperties: {
