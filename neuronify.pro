@@ -85,6 +85,7 @@ DISTFILES += \
     android/gradlew \
     android/src/org/cinpla/neuronify/AlwaysOnActivity.java \
     qml/sensors/singletons/qmldir \
-    COPYING.md
+    COPYING.md \
+    snapcraft.yaml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android

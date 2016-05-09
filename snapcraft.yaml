@@ -1,0 +1,45 @@
+name: neuronify
+version: 0.93
+summary: Neuronify is a neural network simulator
+description: The simulator is built using the integrate-and-fire model.
+
+build-packages:
+  - cmake
+  - gettext
+  - intltool
+  - ubuntu-touch-sounds
+  - suru-icon-theme
+  - qml-module-qttest
+  - qml-module-qtsysteminfo
+  - qml-module-qt-labs-settings
+  - qtdeclarative5-u1db1.0
+  - qtdeclarative5-qtmultimedia-plugin
+  - qtdeclarative5-qtpositioning-plugin
+  - qtdeclarative5-ubuntu-content1
+  - qt5-default
+  - qtbase5-dev
+  - qtdeclarative5-dev
+  - qtdeclarative5-dev-tools
+  - qtdeclarative5-folderlistmodel-plugin
+  - qtdeclarative5-ubuntu-ui-toolkit-plugin
+  - xvfb
+
+apps:
+    neuronify:
+        command: bin/neuronify.sh
+        plugs: [unity7, opengl]
+
+parts:
+    neuronify-launcher:
+        plugin: copy
+        files: {neuronify.sh: bin/neuronify.sh}
+        source: .
+    neuronify:
+        plugin: qmake
+        projectfile: neuronify.pro
+        source: .
+        stage-packages:
+            - ubuntu-sdk-libs
+            - qtubuntu-desktop
+            - qml-module-qtsysteminfo
+            - xkb-data
