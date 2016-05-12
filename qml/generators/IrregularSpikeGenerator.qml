@@ -25,8 +25,8 @@ Node {
     id: root
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
-    property url imageSource: "qrc:/images/generators/irregularSpike_generator_excitatory.png"
-    property url inhibitoryImageSource: "qrc:/images/generators/irregularSpike_generator_inhibitory.png"
+    property url imageSource: "qrc:/images/generators/irregular_spike_generator_excitatory.png"
+    property url inhibitoryImageSource: "qrc:/images/generators/irregular_spike_generator_inhibitory.png"
 
     property alias rate: engine.rate
 

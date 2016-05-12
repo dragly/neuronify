@@ -61,9 +61,9 @@
         <file>images/tools/done.png</file>
         <file>images/annotate/next.png</file>
         <file>images/sensors/touch_sensor_overlay.png</file>
-        <file>images/generators/rhythm_generator.png</file>
-        <file>images/generators/rhythm_generator_excitatory.png</file>
-        <file>images/generators/rhythm_generator_inhibitory.png</file>
+        <file>images/generators/regular_spike_generator.png</file>
+        <file>images/generators/regular_spike_generator_excitatory.png</file>
+        <file>images/generators/regular_spike_generator_inhibitory.png</file>
         <file>images/particles/particle.png</file>
     </qresource>
 </RCC>

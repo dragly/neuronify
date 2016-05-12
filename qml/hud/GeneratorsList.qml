@@ -17,15 +17,15 @@ ListModel {
 
     ListElement {
         name: "Irregular spike generator"
-        description: "Generates randomly distributed spikes with a given firing rate."
+        description: "Generates randomly distributed spikes with a given average firing rate."
         source: "../generators/IrregularSpikeGenerator.qml"
         imageSource: "qrc:/images/generators/irregular_spike_generator.png"
     }
 
     ListElement {
-        name: "Rhythm generator"
-        description: "Generates rhytmic spikes with a given firing rate."
-        source: "../generators/RhythmGenerator.qml"
-        imageSource: "qrc:/images/generators/rhythm_generator.png"
+        name: "Regular spike generator"
+        description: "Generates spikes with a constant given firing rate."
+        source: "../generators/RegularSpikeGenerator.qml"
+        imageSource: "qrc:/images/generators/regular_spike_generator.png"
     }
 }

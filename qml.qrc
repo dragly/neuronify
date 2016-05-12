@@ -87,7 +87,7 @@
         <file>qml/tools/MoveHandle.qml</file>
         <file>qml/menus/mainmenu/MainMenuPage.qml</file>
         <file>images/tools/back.png</file>
-        <file>qml/generators/RhythmGenerator.qml</file>
+        <file>qml/generators/RegularSpikeGenerator.qml</file>
         <file>fonts/roboto/Roboto-Bold.ttf</file>
         <file>fonts/roboto/Roboto-Light.ttf</file>
         <file>fonts/roboto/Roboto-Regular.ttf</file>
