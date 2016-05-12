@@ -20,8 +20,8 @@
         <file>images/neurons/blank_inhibitory.png</file>
         <file>images/neurons/burst.png</file>
         <file>images/neurons/burst_inhibitory.png</file>
-        <file>images/neurons/passive.png</file>
-        <file>images/neurons/passive_inhibitory.png</file>
+        <file>images/neurons/leaky.png</file>
+        <file>images/neurons/leaky_inhibitory.png</file>
         <file>images/sensors/eye.png</file>
         <file>images/sensors/touch_sensor.png</file>
         <file>images/categories/sensors.png</file>

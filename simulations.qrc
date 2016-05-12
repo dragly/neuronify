@@ -18,9 +18,9 @@
         <file>simulations/neurons/burst/burst.nfy</file>
         <file>simulations/neurons/burst/burst.png</file>
         <file>simulations/neurons/burst/burst.qml</file>
-        <file>simulations/neurons/passive/passive.nfy</file>
-        <file>simulations/neurons/passive/passive.png</file>
-        <file>simulations/neurons/passive/passive.qml</file>
+        <file>simulations/neurons/leaky/leaky.nfy</file>
+        <file>simulations/neurons/leaky/leaky.png</file>
+        <file>simulations/neurons/leaky/leaky.qml</file>
         <file>simulations/neurons/adaptation/adaptation.nfy</file>
         <file>simulations/neurons/adaptation/adaptation.png</file>
         <file>simulations/neurons/adaptation/adaptation.qml</file>

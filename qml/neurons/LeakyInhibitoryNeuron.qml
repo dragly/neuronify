@@ -1,4 +1,4 @@
-PassiveNeuron {
+LeakyNeuron {
     inhibitory: true
 }
 

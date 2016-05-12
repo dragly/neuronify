@@ -14,7 +14,7 @@ import "qrc:/qml/controls"
 
 
 BoundSlider {
-    property PassiveCurrent current
+    property LeakCurrent current
     target: current
     property: "resistance"
     minimumValue: 1e6

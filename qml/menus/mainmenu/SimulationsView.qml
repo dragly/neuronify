@@ -39,7 +39,7 @@ MainMenuPage {
                     {
                         name: "Neurons",
                         simulations: [
-                            "qrc:/simulations/neurons/passive",
+                            "qrc:/simulations/neurons/leaky",
                             "qrc:/simulations/neurons/inhibitory",
                             "qrc:/simulations/neurons/burst",
                             "qrc:/simulations/neurons/adaptation",

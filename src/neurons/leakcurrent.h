@@ -3,14 +3,14 @@
 
 #include "current.h"
 
-class PassiveCurrent : public Current
+class LeakCurrent : public Current
 {
     Q_OBJECT
     Q_PROPERTY(double resistance READ resistance WRITE setResistance NOTIFY resistanceChanged)
 
 public:
-    explicit PassiveCurrent(QQuickItem *parent = 0);
-    ~PassiveCurrent();
+    explicit LeakCurrent(QQuickItem *parent = 0);
+    ~LeakCurrent();
 
     double resistance() const;
 

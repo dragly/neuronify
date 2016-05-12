@@ -2,10 +2,10 @@ import QtQuick 2.0
 
 ListModel {
     ListElement {
-        name: "Passive neuron"
-        description: "Neuron with only passive currents."
-        source: "../neurons/PassiveNeuron.qml"
-        imageSource: "qrc:/images/neurons/passive.png"
+        name: "Leaky neuron"
+        description: "Neuron with only leaky currents."
+        source: "../neurons/LeakyNeuron.qml"
+        imageSource: "qrc:/images/neurons/leaky.png"
     }
     ListElement {
         name: "Bursting neuron"
@@ -15,7 +15,7 @@ ListModel {
     }
     ListElement {
         name: "Adaptation neuron"
-        description: "Passive currents and adaptation on firing."
+        description: "Leaky currents and adaptation on firing."
         source: "../neurons/AdaptationNeuron.qml"
         imageSource: "qrc:/images/neurons/adaptive.png"
     }

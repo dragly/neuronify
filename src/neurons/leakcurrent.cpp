@@ -1,32 +1,32 @@
-#include "passivecurrent.h"
+#include "leakcurrent.h"
 
 #include "neuronengine.h"
 
 /*!
- * \class PassiveCurrent
+ * \class LeakCurrent
  * \inmodule Neuronify
  * \ingroup neuronify-neurons
- * \brief The PassiveCurrent class defines a current that drives the
+ * \brief The LeakCurrent class defines a current that drives the
  * \l NeuronEngine towards the defined resting membrane potential.
  */
 
-PassiveCurrent::PassiveCurrent(QQuickItem *parent)
+LeakCurrent::LeakCurrent(QQuickItem *parent)
     : Current(parent)
 {
 
 }
 
-PassiveCurrent::~PassiveCurrent()
+LeakCurrent::~LeakCurrent()
 {
 
 }
 
-double PassiveCurrent::resistance() const
+double LeakCurrent::resistance() const
 {
     return m_resistance;
 }
 
-void PassiveCurrent::setResistance(double arg)
+void LeakCurrent::setResistance(double arg)
 {
     if (m_resistance == arg)
         return;
@@ -35,7 +35,7 @@ void PassiveCurrent::setResistance(double arg)
     emit resistanceChanged(arg);
 }
 
-void PassiveCurrent::stepEvent(double dt, bool parentEnabled)
+void LeakCurrent::stepEvent(double dt, bool parentEnabled)
 {
     Q_UNUSED(dt);
     if(!parentEnabled) {
@@ -53,7 +53,7 @@ void PassiveCurrent::stepEvent(double dt, bool parentEnabled)
     setCurrent(I);
 }
 
-void PassiveCurrent::resetPropertiesEvent()
+void LeakCurrent::resetPropertiesEvent()
 {
     setResistance(100.0e6);
 }

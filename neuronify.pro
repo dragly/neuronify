@@ -21,7 +21,7 @@ HEADERS += \
     src/retina/retinaengine.h \
     src/retina/retinapainter.h \
     src/retina/videosurface.h \
-    src/neurons/passivecurrent.h \
+    src/neurons/leakcurrent.h \
     src/neurons/adaptationcurrent.h \
     src/retina/kernel.h \
     src/retina/kernels/gaborkernelengine.h \
@@ -49,7 +49,7 @@ SOURCES += \
     src/retina/videosurface.cpp \
     src/retina/androidmultimediautils.cpp \
     src/neurons/adaptationcurrent.cpp \
-    src/neurons/passivecurrent.cpp \
+    src/neurons/leakcurrent.cpp \
     src/retina/kernel.cpp \
     src/retina/kernels/gaborkernelengine.cpp \
     src/retina/kernels/abstractkernelengine.cpp \
