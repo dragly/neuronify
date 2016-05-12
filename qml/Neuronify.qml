@@ -176,8 +176,13 @@ Rectangle {
         }
 
         if(data.fileFormatVersion <= 3) {
-            // PassiveNeuron was renamed to LeakyNeuron in the transition from version 3 to 4
-            code = code.replace("PassiveNeuron", "LeakyNeuron");
+            console.log("Replacing PassiveNeuron with LeakyNeuron due to file format change in 3 to 4.")
+            for(var i in data.nodes) {
+                var node = data.nodes[i];
+                if(node.filename && node.filename === "neurons/PassiveNeuron.qml") {
+                    node.filename = "neurons/LeakyNeuron.qml";
+                }
+            }
         }
 
         var createdNodes = [];
