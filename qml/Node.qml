@@ -27,7 +27,7 @@ NodeBase {
     signal clickedConnector(var entity, var mouse)
     signal dragStarted(var entity)
     signal dragEnded(var entity)
-    signal droppedConnector(var poissonGenerator, var connector)
+    signal droppedConnector(var irregularSpikeGenerator, var connector)
     signal startConnectMultipleToThis
     signal startConnectMultipleFromThis
     signal fired

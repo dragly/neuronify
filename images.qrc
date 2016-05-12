@@ -12,7 +12,7 @@
         <file>images/categories/meters.png</file>
         <file>images/categories/neuron.png</file>
         <file>images/generators/current_clamp.png</file>
-        <file>images/generators/poisson_generator.png</file>
+        <file>images/generators/irregular_spike_generator.png</file>
         <file>images/meters/voltmeter.png</file>
         <file>images/neurons/adaptive.png</file>
         <file>images/neurons/adaptive_inhibitory.png</file>
@@ -28,11 +28,11 @@
         <file>images/generators/generator_overlay.png</file>
         <file>images/meters/speaker.png</file>
         <file>images/generators/ac_clamp.png</file>
-        <file>images/generators/poisson_generator_inhibitory.png</file>
+        <file>images/generators/irregular_spike_generator_inhibitory.png</file>
         <file>images/categories/annotate.png</file>
         <file>images/annotate/annotate.png</file>
         <file>images/meters/spikemeter.png</file>
-        <file>images/generators/poisson_generator_excitatory.png</file>
+        <file>images/generators/irregular_spike_generator_excitatory.png</file>
         <file>images/meters/ratePlot.png</file>
         <file>images/sensors/kernels/offLeft.png</file>
         <file>images/sensors/kernels/offTop.png</file>

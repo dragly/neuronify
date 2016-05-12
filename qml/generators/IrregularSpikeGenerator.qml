@@ -10,13 +10,13 @@ import "../hud"
 import "../paths"
 
 /*!
-    \qmltype PoissonGenerator
+    \qmltype IrregularSpikeGenerator
     \inqmlmodule Neuronify
     \ingroup neuronify-generators
     \brief An spike generator which can supply input spikes to neurons.
 
-    The Poisson generator can be connected to neurons, and will then supply the neurons with spikes
-    generated from a poisson process.
+    The IrregularSpike generator can be connected to neurons, and will then supply the neurons with spikes
+    generated from a irregularSpike process.
     The generator has a control panel where you can adjust the firing rate and stimulation output, as
     well as whether or not the generated spikes are inhibitory or excitatory.
 */
@@ -25,13 +25,13 @@ Node {
     id: root
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
-    property url imageSource: "qrc:/images/generators/poisson_generator_excitatory.png"
-    property url inhibitoryImageSource: "qrc:/images/generators/poisson_generator_inhibitory.png"
+    property url imageSource: "qrc:/images/generators/irregularSpike_generator_excitatory.png"
+    property url inhibitoryImageSource: "qrc:/images/generators/irregularSpike_generator_inhibitory.png"
 
     property alias rate: engine.rate
 
-    objectName: "poissonGenerator"
-    filename: "generators/PoissonGenerator.qml"
+    objectName: "irregularSpikeGenerator"
+    filename: "generators/IrregularSpikeGenerator.qml"
 
     preferredEdge: CurrentSynapse {}
 
@@ -63,7 +63,7 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "Poisson generator"
+            title: "IrregularSpike generator"
             BoundSlider {
                 target: engine
                 property: "rate"
