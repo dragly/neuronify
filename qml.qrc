@@ -39,10 +39,10 @@
         <file>qml/hud/CreationMenuButton.qml</file>
         <file>qml/hud/DeleteButton.qml</file>
         <file>qml/hud/PropertiesButton.qml</file>
-        <file>qml/neurons/PassiveNeuron.qml</file>
+        <file>qml/neurons/LeakyNeuron.qml</file>
         <file>qml/neurons/BurstNeuron.qml</file>
         <file>qml/hud/CreationList.qml</file>
-        <file>qml/neurons/PassiveInhibitoryNeuron.qml</file>
+        <file>qml/neurons/LeakyInhibitoryNeuron.qml</file>
         <file>qml/hud/NeuronList.qml</file>
         <file>qml/hud/InhibitoryNeuronList.qml</file>
         <file>qml/hud/MetersList.qml</file>

@@ -10,10 +10,10 @@ import "../style"
 Neuron {
     id: neuronRoot
 
-    objectName: "passiveNeuron"
-    filename: "neurons/PassiveNeuron.qml"
-    imageSource: "qrc:/images/neurons/passive.png"
-    inhibitoryImageSource: "qrc:/images/neurons/passive_inhibitory.png"
+    objectName: "leakyNeuron"
+    filename: "neurons/LeakyNeuron.qml"
+    imageSource: "qrc:/images/neurons/leaky.png"
+    inhibitoryImageSource: "qrc:/images/neurons/leaky_inhibitory.png"
 
     property bool fakeInhibitory: neuronEngine.fakeFireOutput < 0
 
@@ -34,7 +34,7 @@ Neuron {
 
         savedProperties: PropertyGroup {
             property alias refractoryPeriod: neuronEngine.refractoryPeriod
-            property alias resistance: passiveCurrent.resistance
+            property alias resistance: leakyCurrent.resistance
         }
 
         onResettedProperties: {
@@ -54,14 +54,14 @@ Neuron {
             timeSinceFire = 0.0
         }
 
-        PassiveCurrent {
-            id: passiveCurrent
+        LeakCurrent {
+            id: leakyCurrent
         }
     }
 
     controls: Component {
         PropertiesPage {
-            property string title: "Passive neuron"
+            property string title: "Leaky neuron"
             property StackView stackView: Stack.view
             spacing: 0
             PropertiesItem {
@@ -75,17 +75,17 @@ Neuron {
             PropertiesItem {
                 text: "Membrane"
                 info: "C: " + (neuronEngine.capacitance * 1e9).toFixed(1) + " nF, " +
-                      "R: " + (passiveCurrent.resistance * 1e-3).toFixed(1) + " kΩ, "
+                      "R: " + (leakyCurrent.resistance * 1e-3).toFixed(1) + " kΩ, "
                 CapacitanceControl{
                     engine: neuronEngine
                 }
 
                 ResistanceControl{
-                    current: passiveCurrent
+                    current: leakyCurrent
                 }
 
                 Text {
-                    property real timeConstant: neuronEngine.capacitance * passiveCurrent.resistance * 1e3
+                    property real timeConstant: neuronEngine.capacitance * leakyCurrent.resistance * 1e3
                     anchors {
                         left: parent.left
                         right: parent.right

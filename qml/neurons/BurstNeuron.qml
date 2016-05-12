@@ -15,8 +15,8 @@ Neuron {
 
     engine: NeuronEngine {
         id: neuronEngine
-        PassiveCurrent {
-            id: passiveCurrent
+        LeakCurrent {
+            id: leakCurrent
         }
         Current {
             property real boost
@@ -78,7 +78,7 @@ Neuron {
                       (neuronEngine.capacitance * 1e9).toFixed(1)
                       + " nF, " +
                       "R: " +
-                      (passiveCurrent.resistance * 1e-3).toFixed(1)
+                      (leakCurrent.resistance * 1e-3).toFixed(1)
                       + " kΩ, \n" +
                       "τr: "+
                       0

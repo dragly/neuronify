@@ -115,7 +115,7 @@ Item {
         var workspaceProperties = workspace.dump();
 
         var result = {
-            fileFormatVersion: 3,
+            fileFormatVersion: 4,
             edges: edgeList,
             nodes: nodeList,
             workspace: workspaceProperties

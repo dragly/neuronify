@@ -22,7 +22,7 @@ using namespace std;
  * \l Current object, the Current::current() function is called to obtain
  * the current value of the given current.
  * The \l Current class can be subclassed in C++ or QML to define different
- * types of currents, such as \l PassiveCurrent and \l AdaptationCurrent.
+ * types of currents, such as \l LeakCurrent and \l AdaptationCurrent.
  */
 
 NeuronEngine::NeuronEngine(QQuickItem *parent)

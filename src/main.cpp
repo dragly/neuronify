@@ -16,7 +16,7 @@
 #include "neurons/neuronengine.h"
 #include "neurons/rateengine.h"
 #include "neurons/current.h"
-#include "neurons/passivecurrent.h"
+#include "neurons/leakcurrent.h"
 #include "neurons/adaptationcurrent.h"
 
 #include "io/fileio.h"
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<VideoSurface>("Neuronify", 1, 0, "VideoSurface");
 
     qmlRegisterType<Current>("Neuronify", 1, 0, "Current");
-    qmlRegisterType<PassiveCurrent>("Neuronify", 1, 0, "PassiveCurrent");
+    qmlRegisterType<LeakCurrent>("Neuronify", 1, 0, "LeakCurrent");
     qmlRegisterType<AdaptationCurrent>("Neuronify", 1, 0, "AdaptationCurrent");
 
     qmlRegisterType<RateEngine>("Neuronify", 1, 0, "RateEngine");

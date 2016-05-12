@@ -169,10 +169,20 @@ Rectangle {
 
         var data = JSON.parse(code);
 
-        if(data.fileFormatVersion < 3) {
+        if(data.fileFormatVersion < 4) {
             console.warn("The file " + fileUrl + " has format version " + data.fileFormatVersion + ". " +
                          "We are now at version 3. Some data may be lost when you save it now, because it will be " +
                          "converted to the newest format.")
+        }
+
+        if(data.fileFormatVersion <= 3) {
+            console.log("Replacing PassiveNeuron with LeakyNeuron due to file format change in 3 to 4.")
+            for(var i in data.nodes) {
+                var node = data.nodes[i];
+                if(node.filename && node.filename === "neurons/PassiveNeuron.qml") {
+                    node.filename = "neurons/LeakyNeuron.qml";
+                }
+            }
         }
 
         var createdNodes = [];
