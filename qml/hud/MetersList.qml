@@ -20,9 +20,9 @@ ListModel {
         imageSource: "qrc:/images/meters/ratePlot.png"
     }
     ListElement {
-        name: "Speaker"
-        description: "Plays a sound when a connected object fires."
-        source: "../meters/Speaker.qml"
-        imageSource: "qrc:/images/meters/speaker.png"
+        name: "Loudspeaker"
+        description: "Plays a sound when a connected neuron fires"
+        source: "../meters/Loudspeaker.qml"
+        imageSource: "qrc:/images/meters/loudspeaker.png"
     }
 }

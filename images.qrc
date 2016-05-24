@@ -26,7 +26,6 @@
         <file>images/sensors/touch_sensor.png</file>
         <file>images/categories/sensors.png</file>
         <file>images/generators/generator_overlay.png</file>
-        <file>images/meters/speaker.png</file>
         <file>images/generators/ac_clamp.png</file>
         <file>images/generators/irregular_spike_generator_inhibitory.png</file>
         <file>images/categories/annotate.png</file>
@@ -65,5 +64,6 @@
         <file>images/generators/regular_spike_generator_excitatory.png</file>
         <file>images/generators/regular_spike_generator_inhibitory.png</file>
         <file>images/particles/particle.png</file>
+        <file>images/meters/loudspeaker.png</file>
     </qresource>
 </RCC>

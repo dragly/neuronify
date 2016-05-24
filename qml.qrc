@@ -54,7 +54,6 @@
         <file>qml/controls/BoundSlider.qml</file>
         <file>qml/generators/ACClamp.qml</file>
         <file>qml/SoundBank.qml</file>
-        <file>qml/meters/Speaker.qml</file>
         <file>qml/neurons/BurstInhibitoryNeuron.qml</file>
         <file>qml/neurons/AdaptationInhibitoryNeuron.qml</file>
         <file>qml/ResizeRectangle.qml</file>
@@ -97,5 +96,6 @@
         <file>qml/controls/SwitchControl.qml</file>
         <file>qml/controls/ConnectMultipleControl.qml</file>
         <file>qml/controls/ResetControl.qml</file>
+        <file>qml/meters/Loudspeaker.qml</file>
     </qresource>
 </RCC>
