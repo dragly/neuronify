@@ -2,13 +2,55 @@ import QtQuick 2.0
 import QtQuick.Layouts 1.1
 import QtQuick.Controls 1.2
 
-import "qrc:/qml/style"
+import "../style"
 
 Rectangle {
     id: playbackRoot
 
     property real playbackSpeed: 1.0
     property bool revealed
+
+    function revealTemporarily() {
+        if(!revealed) {
+            revealed = true
+            playbackControlsAutoHideTimer.restart()
+        }
+    }
+
+    function revealPermanently() {
+        playbackControlsAutoHideTimer.stop()
+        revealed = true
+    }
+
+    function toggleRevealPermanently() {
+        playbackControlsAutoHideTimer.stop()
+        revealed = !revealed
+    }
+
+    function toggleSpeed(eventKey) {
+        switch(eventKey) {
+        case Qt.Key_0:
+            playbackControls.currentIndex = 0
+            revealTemporarily()
+            break
+        case Qt.Key_1:
+            playbackControls.currentIndex = 1
+            revealTemporarily()
+            break
+        case Qt.Key_2:
+            playbackControls.currentIndex = 2
+            revealTemporarily()
+            break
+        case Qt.Key_3:
+            playbackControls.currentIndex = 3
+            revealTemporarily()
+            break
+        case Qt.Key_4:
+            playbackControls.currentIndex = 4
+            revealTemporarily()
+            break
+        }
+    }
 
     anchors {
         bottom: parent.bottom
@@ -32,6 +74,11 @@ Rectangle {
             centerIn: parent
         }
         height: Style.touchableSize
+
+        onCurrentIndexChanged: {
+            playbackSpeed = playbackSpeedModel.get(playbackControls.currentIndex).value
+        }
+
         Repeater {
             anchors {
                 fill: parent
@@ -76,7 +123,6 @@ Rectangle {
                     anchors.fill: parent
                     onClicked: {
                         playbackControls.currentIndex = index
-                        playbackSpeed = playbackSpeedModel.get(playbackControls.currentIndex).value
                     }
                 }
             }
@@ -118,4 +164,23 @@ Rectangle {
             }
         }
     ]
+
+    MouseArea {
+        anchors.fill: parent
+        enabled: playbackControlsAutoHideTimer.running
+        propagateComposedEvents: true
+        onClicked: {
+            revealPermanently()
+            mouse.accepted = false
+        }
+    }
+
+    Timer {
+        id: playbackControlsAutoHideTimer
+        running: root.running
+        interval: 2000
+        onTriggered: {
+            revealed = false
+        }
+    }
 }

@@ -151,8 +151,7 @@ Rectangle {
 
         pinchArea.scaleSetByDoubleClick = false;
 
-        playbackControls.revealed = true;
-        playbackControlsAutoHideTimer.restart();
+        playbackControls.revealTemporarily()
 
         undoList.length = 0;
 
@@ -169,17 +168,20 @@ Rectangle {
 
         var data = JSON.parse(code);
 
-        if(data.fileFormatVersion < 4) {
+        var expectedFileFormatVersion = 4
+
+        if(data.fileFormatVersion < expectedFileFormatVersion) {
             console.warn("The file " + fileUrl + " has format version " + data.fileFormatVersion + ". " +
-                         "We are now at version 3. Some data may be lost when you save it now, because it will be " +
+                         "We are now at version " + expectedFileFormatVersion + ". " +
+                         "Some data may be lost when you save it now, because the file will be " +
                          "converted to the newest format.")
         }
 
         if(data.fileFormatVersion <= 3) {
-            console.log("Replacing PassiveNeuron with LeakyNeuron due to file format change in 3 to 4.")
             for(var i in data.nodes) {
                 var node = data.nodes[i];
                 if(node.filename && node.filename === "neurons/PassiveNeuron.qml") {
+                    console.log("Replacing PassiveNeuron with LeakyNeuron due to file format change in 3 to 4.")
                     node.filename = "neurons/LeakyNeuron.qml";
                 }
             }
@@ -910,8 +912,7 @@ Rectangle {
         PlaybackButton {
             id: playbackButton
             onClicked: {
-                playbackControlsAutoHideTimer.stop()
-                playbackControls.revealed = !playbackControls.revealed
+                playbackControls.toggleRevealPermanently()
             }
         }
 
@@ -937,23 +938,6 @@ Rectangle {
     PlaybackControls {
         id: playbackControls
         revealed: true
-        MouseArea {
-            anchors.fill: parent
-            enabled: playbackControlsAutoHideTimer.running
-            propagateComposedEvents: true
-            onClicked: {
-                playbackControlsAutoHideTimer.stop()
-                mouse.accepted = false
-            }
-        }
-        Timer {
-            id: playbackControlsAutoHideTimer
-            running: root.running
-            interval: 2000
-            onTriggered: {
-                playbackControls.revealed = false
-            }
-        }
     }
 
     CreationMenu {
@@ -1228,6 +1212,9 @@ Rectangle {
         }
         if(event.key === Qt.Key_Delete) {
             deleteSelected()
+        }
+        if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
+            playbackControls.toggleSpeed(event.key)
         }
     }
 }
