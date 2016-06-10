@@ -163,7 +163,7 @@ Node {
 
         ScatterSeries {
             id: scatterSeries
-            useOpenGL: true
+            useOpenGL: false // TODO use OpenGL once points are bigger again
             borderWidth: 0.2
             markerSize: 8.0
             axisX: ValueAxis {
