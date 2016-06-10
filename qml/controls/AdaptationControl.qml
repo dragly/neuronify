@@ -16,7 +16,7 @@ BoundSlider {
     target: current
     property: "adaptation"
     minimumValue: 0.0e-9
-    maximumValue: 10e-9
+    maximumValue: 100e-9
     unitScale: 1e-9
     stepSize: 1e-10
     precision: 1
