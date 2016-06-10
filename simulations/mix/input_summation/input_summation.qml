@@ -2,7 +2,7 @@ import QtQuick 2.0
 import "qrc:/qml"
 
 Simulation {
-    name: "Two Neuron Oscillator"
-    description: "A two-neuron oscillator using reciprocal inhibition. The neurons are modeled as leaky integrate-and-fire units that generates post-inhibitory rebound."
+    name: "Input summation"
+    description: ""
 }
 

@@ -57,6 +57,7 @@ MainMenuPage {
                         name: "Mix",
                         simulations: [
                             "qrc:/simulations/generators",
+                            "qrc:/simulations/mix/input_summation",
                             "qrc:/simulations/mix/rythm_transformation",
                             "qrc:/simulations/mix/prolonged_activity",
 
