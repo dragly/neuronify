@@ -19,7 +19,7 @@ BoundSlider {
     property NeuronEngine engine
     target: engine
     property: "initialPotential"
-    text: "Reset potential"
+    text: "Reset membrane potential"
     unit: "mV"
     minimumValue: -100e-3
     maximumValue: 50e-3

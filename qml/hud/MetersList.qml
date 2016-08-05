@@ -3,7 +3,7 @@ import QtQuick 2.0
 ListModel {
     ListElement {
         name: "Voltmeter"
-        description: "Measures the voltage of neurons."
+        description: "Measures the membrane potential of neurons"
         source: "../meters/Voltmeter.qml"
         imageSource: "qrc:/images/meters/voltmeter.png"
     }

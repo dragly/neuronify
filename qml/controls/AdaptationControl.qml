@@ -20,6 +20,6 @@ BoundSlider {
     unitScale: 1e-9
     stepSize: 1e-10
     precision: 1
-    text: "Adaptation"
+    text: "Adaptation conductance"
     unit: "nS"
 }
