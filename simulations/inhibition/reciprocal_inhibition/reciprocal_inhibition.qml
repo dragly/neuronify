@@ -3,6 +3,6 @@ import "qrc:/qml"
 
 
 Simulation {
-    name: "Reciprocal inhibtion"
+    name: "Reciprocal Inhibition"
     description: ""
 }
