@@ -15,6 +15,7 @@ import "qrc:/qml/neurons"
 
 
 
+
 BoundSlider {
     property NeuronEngine engine
     target: engine
