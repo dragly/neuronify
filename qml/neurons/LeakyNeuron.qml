@@ -93,9 +93,9 @@ Neuron {
 
                     font: Style.control.font
                     text: "With these properties, the time constant is " +
-                          timeConstant.toFixed(1) + " ms." +
-                          "For a neuron with surface area ... this is " +
-                          "equivalent to ..."
+                          timeConstant.toFixed(1) + " ms."
+//                          "For a neuron with surface area ... this is " +
+//                          "equivalent to ..."
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
             }
@@ -136,6 +136,19 @@ Neuron {
 
                 RefractoryPeriodControl{
                     engine: neuronEngine
+                }
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    font: Style.control.font
+                    text: "The synaptic weights can be changed by selecting " +
+                          "the synapses. "+
+                          "Just touch the lines connecting the neurons."
+                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
 
             }
