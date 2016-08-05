@@ -25,6 +25,7 @@ ApplicationWindow {
         property alias height: applicationWindow1.height
         property alias x: applicationWindow1.x
         property alias y: applicationWindow1.y
+        property alias firstRun: neuronify.firstRun
     }
 
     FontLoader {
@@ -40,6 +41,7 @@ ApplicationWindow {
     }
 
     Neuronify {
+        id: neuronify
         anchors.fill: parent
     }
 }

@@ -52,6 +52,7 @@ Rectangle {
     property alias playbackSpeed: playbackControls.playbackSpeed
     property url currentSimulationUrl
     property bool advanced: false
+    property bool firstRun: true
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -74,7 +75,7 @@ Rectangle {
         console.log("Neuronify.qml load completed " + Date.now());
         Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
                 firstLoadTimer.start();
-        Style.playbackSpeed = root.playbackSpeed;
+        Style.playbackSpeed = root.playbackSpeed
     }
 
     function firstLoad() {
@@ -1184,7 +1185,7 @@ Rectangle {
     Timer {
         // this is needed because workspaceFlickable doesn't have width at onCompleted
         id: firstLoadTimer
-        interval: 500
+        interval: 200
         onTriggered: {
             root.firstLoad();
         }
