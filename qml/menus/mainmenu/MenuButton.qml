@@ -7,7 +7,7 @@ Item {
     property alias text: buttonText.text
     property real maximumRotation: Math.random() * 5 + 5
 
-    height: Style.touchableSize
+    height: Style.touchableSize * 0.9
 
     smooth: true
 

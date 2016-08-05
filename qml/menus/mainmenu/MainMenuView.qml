@@ -33,7 +33,7 @@ MainMenuPage {
                     leftMargin: 0.1 * parent.width
                     rightMargin: 0.1 * parent.width
                 }
-                spacing: mainMenuView.width * 0.02
+                spacing: mainMenuView.width * 0.01
 
                 MenuButton {
                     width: parent.width
@@ -45,6 +45,13 @@ MainMenuPage {
                 MenuButton {
                     width: parent.width
                     text: "New"
+                    onClicked: {
+                        newSimulationClicked()
+                    }
+                }
+                MenuButton {
+                    width: parent.width
+                    text: "Examples"
                     onClicked: {
                         simulationsClicked()
                     }
