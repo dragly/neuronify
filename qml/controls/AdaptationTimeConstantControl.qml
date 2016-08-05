@@ -18,7 +18,7 @@ BoundSlider {
     minimumValue: 0.0
     maximumValue: 600.0e-3
     property: "timeConstant"
-    text: "Time constant"
+    text: "Adaptation time constant"
     unit: "ms"
     unitScale: 1e-3
     stepSize: 1e-4

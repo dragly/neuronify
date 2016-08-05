@@ -47,7 +47,7 @@ behavioral changes in important networks.</p>
 Most students won't get the opportunity to create their own neural simulator.
 With Neuronify, these students are still able to build up their intuition by
 experimenting with neural phenomena.</p>
-<p>Neuronify is based on an integrate-and-fire model of neurons. This is one of the
+<p>Neuronify is based on the integrate-and-fire model of neurons. This is one of the
 simplest models of neurons that exist. It focuses on the spike timing of a neuron and
 ignores the details of the action potential dynamics. These neurons are modelled as
 simple RC circuits. When the membrane potential is above a certain threshold, a spike is
