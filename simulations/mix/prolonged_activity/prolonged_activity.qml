@@ -3,6 +3,6 @@ import "qrc:/qml"
 
 
 Simulation {
-    name: "Prolonged Activity"
+    name: "Transient Activity"
     description: ""
 }

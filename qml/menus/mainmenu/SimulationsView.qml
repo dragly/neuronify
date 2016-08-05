@@ -41,12 +41,12 @@ MainMenuPage {
                         simulations: [
                             "qrc:/simulations/neurons/leaky",
                             "qrc:/simulations/neurons/inhibitory",
-                            "qrc:/simulations/neurons/burst",
+//                            "qrc:/simulations/neurons/burst",
                             "qrc:/simulations/neurons/adaptation",
                         ]
                     },
                     {
-                        name: "Inhibition",
+                        name: "Inhibitory circuit effects",
                         simulations: [
                             "qrc:/simulations/inhibition/lateral_inhibition",
                             "qrc:/simulations/inhibition/recurrent_inhibition",
@@ -54,7 +54,7 @@ MainMenuPage {
                         ]
                     },
                     {
-                        name: "Mix",
+                        name: "Miscellaneous",
                         simulations: [
                             "qrc:/simulations/generators",
                             "qrc:/simulations/mix/input_summation",
