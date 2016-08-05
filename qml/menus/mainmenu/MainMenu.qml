@@ -18,8 +18,10 @@ Item {
     signal saveSimulationRequested
     signal loadSimulationRequested
 
-    property bool revealed: true
+    property bool revealed: false
     property var blurSource: null
+
+    state: revealed ? "revealed" : "hidden"
 
     width: 100
     height: 62
@@ -223,7 +225,7 @@ Item {
 
     states: [
         State {
-            when: !mainMenuRoot.revealed
+            name: "hidden"
             PropertyChanges {
                 target: menuRectangle
                 opacity: 0.0
@@ -233,6 +235,9 @@ Item {
                 target: background
                 opacity: 0.0
             }
+        },
+        State {
+            name: "revealed"
         }
     ]
 
