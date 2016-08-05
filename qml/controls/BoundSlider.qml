@@ -29,6 +29,12 @@ Item {
 
     property bool anyFocus: focus || textInput.focus
 
+    QtObject {
+        id: scaled
+        property real minimumValue: root.minimumValue / root.unitScale
+        property real maximumValue: root.maximumValue / root.unitScale
+    }
+
     focus: false
 
     state: "edit"
@@ -113,6 +119,30 @@ Item {
             }
             text: sliderMouseArea.scaledValue.toLocaleString(Qt.locale("en_US"), "f", root.precision) + " " + root.unit
             font: Style.control.font
+        }
+
+        Text {
+            id: rangeText
+            anchors {
+                right: doneButton.left
+                verticalCenter: parent.verticalCenter
+            }
+            visible: false
+
+            color: "#aaa"
+            font: fullText.font
+
+            text: scaled.minimumValue.toLocaleString(Qt.locale("en_US"), "f", root.precision) +
+                  " to " +
+                  scaled.maximumValue.toLocaleString(Qt.locale("en_US"), "f", root.precision) +
+                  " " +
+                  unit
+        }
+
+        Rectangle {
+            anchors.fill: textInput
+            visible: textInput.visible
+            color: backgroundRectangle.color
         }
 
         TextInput {
@@ -255,6 +285,10 @@ Item {
                 target: textInput
                 visible: true
                 focus: true
+            }
+            PropertyChanges {
+                target: rangeText
+                visible: true
             }
             PropertyChanges {
                 target: backgroundRectangle
