@@ -16,6 +16,7 @@ MainMenuPage {
     width: 200
     height: 100
 
+
     GridLayout {
         anchors.fill: parent
         columns: mainMenuView.width > mainMenuView.height ? 2 : 1
@@ -86,6 +87,22 @@ MainMenuPage {
             height: 1
             Layout.fillHeight: true
             Layout.fillWidth: true
+
+            Text {
+                id: title
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                    bottomMargin: 0.2 * parent.width
+                }
+                horizontalAlignment: Text.AlignHCenter
+                text: "Neuronify (v0.94)"
+                font: Style.font
+                scale: 1.5
+                color: "#777"
+            }
+
             Text {
                 id: landscapeText
                 anchors {
