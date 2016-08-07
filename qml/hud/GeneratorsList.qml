@@ -28,4 +28,18 @@ ListModel {
         source: "../generators/RegularSpikeGenerator.qml"
         imageSource: "qrc:/images/generators/regular_spike_generator.png"
     }
+
+    ListElement {
+        name: "Visual input"
+        description: "Generates spikes based on visual input"
+        source: "../sensors/Retina.qml"
+        imageSource: "qrc:/images/generators/eye.png"
+    }
+
+    ListElement {
+        name: "Touch sensor"
+        description: "Generates spikes in neurons it is connected to based on touch"
+        source: "../sensors/TouchSensor.qml"
+        imageSource: "qrc:/images/generators/touch_sensor.png"
+    }
 }
