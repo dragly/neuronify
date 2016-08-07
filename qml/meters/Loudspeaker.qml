@@ -27,8 +27,8 @@ Node {
     property var neuronBindings: []
     property int numberOfEdges: 0
 
-    objectName: "Speaker"
-    filename: "meters/Speaker.qml"
+    objectName: "Loudspeaker"
+    filename: "meters/Loudspeaker.qml"
 
     width: 64
     height: 64
@@ -146,7 +146,7 @@ Node {
         fillMode: Image.PreserveAspectFit
         antialiasing: true
         smooth: true
-        source: "qrc:/images/meters/speaker.png"
+        source: "qrc:/images/meters/loudspeaker.png"
     }
 
     ListModel {
