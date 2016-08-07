@@ -29,7 +29,7 @@ Node {
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
     property int currentSeries: 0
-    property string title: "Hz"
+    property string title: "s⁻¹"
 
     property real timeFactor: 1000
     property real rateFactor: 1000.
@@ -68,7 +68,7 @@ Node {
             meter: ratePlotRoot
             sliderMinimum: 0
             sliderMaximum: 2500
-            unit: "Hz"
+            unit: "s⁻¹"
             meterType: "Firing rate"
 
             BoundSlider {
@@ -195,7 +195,7 @@ Node {
             gridVisible: false
             labelFormat: "%.0f"
             labelsFont.pixelSize: 14
-            titleText: ratePlotRoot.showLegend ? "f [Hz]" : ""
+            titleText: ratePlotRoot.showLegend ? "f [s⁻¹]" : ""
             titleFont.weight: Font.Normal
             titleFont.pixelSize: 14
         }
