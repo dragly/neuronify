@@ -43,10 +43,10 @@ Item {
             imageSource: "qrc:/images/categories/generators.png"
         }
 
-        ListElement  {
-            listSource: "SensorsList.qml"
-            imageSource: "qrc:/images/categories/sensors.png"
-        }
+//        ListElement  {
+//            listSource: "SensorsList.qml"
+//            imageSource: "qrc:/images/categories/sensors.png"
+//        }
         ListElement  {
             listSource: "AnnotationsList.qml"
             imageSource: "qrc:/images/categories/annotate.png"

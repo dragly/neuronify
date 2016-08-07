@@ -65,5 +65,7 @@
         <file>images/generators/regular_spike_generator_inhibitory.png</file>
         <file>images/particles/particle.png</file>
         <file>images/meters/loudspeaker.png</file>
+        <file>images/generators/eye.png</file>
+        <file>images/generators/touch_sensor.png</file>
     </qresource>
 </RCC>
