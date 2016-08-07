@@ -8,9 +8,9 @@ ListModel {
         imageSource: "qrc:/images/meters/voltmeter.png"
     }
     ListElement {
-        name: "Raster plot"
+        name: "Spike detector"
         description: "Shows firing times of neurons"
-        source: "../meters/RasterPlot.qml"
+        source: "../meters/SpikeDetector.qml"
         imageSource: "qrc:/images/meters/spikemeter.png"
     }
     ListElement {
