@@ -87,8 +87,7 @@ MainMenuPage {
                             width: categories.width
                             height: simulationsRow.height
                             Flickable {
-                                width: categories.width
-                                height: simulationsRow.height
+                                anchors.fill: parent
                                 contentHeight: height
                                 contentWidth: simulationsRow.width
                                 flickableDirection: Flickable.HorizontalFlick
