@@ -12,7 +12,6 @@ notifications:
     rooms:
         secure: kuyFzncY4kcv2ZAyHg6jYL7ASfKMirXSTRr8OVsFBh6exTvItqkFmzcgxhke9Foqp2KJuKOSg8qf2pP2mpW/JznssDJLrcUxbCGakt3BYLXtuE3ZD+3SVwvjBPkBJncG5knEayMW0TCBWI+FZBnzH66RwP2iQRVGkXJX4skVOSM=
 before_install:
-- crashmenow
 - docker build -t ovilab/neuronify -f .docker/Dockerfile .
 script:
 - docker run ovilab/neuronify bash -c "/opt/qt57/bin/qmake neuronify.pro && make
