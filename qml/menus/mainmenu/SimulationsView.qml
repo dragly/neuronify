@@ -83,62 +83,65 @@ MainMenuPage {
                             font: Style.button.font
                             color: Style.button.color
                         }
-                        Flickable {
+                        ScrollView{
                             width: categories.width
                             height: simulationsRow.height
-                            contentHeight: height
-                            contentWidth: simulationsRow.width
-                            flickableDirection: Flickable.HorizontalFlick
-                            Row {
-                                id: simulationsRow
-                                spacing: Style.baseMargin * 0.5
-                                Repeater {
-                                    model: modelData.simulations
-                                    Item {
-                                        width: simulationColumn.width
-                                        height: simulationColumn.height
-                                        SimulationLoader {
-                                            id: loader
-                                            folder: modelData
-                                        }
-                                        Column {
-                                            id: simulationColumn
-                                            Image {
-                                                id: simulationImage
-                                                property int simulationsCount: simulationsViewRoot.width / (Style.touchableSize * 2.5 + Style.baseMargin)
+                            Flickable {
+                                anchors.fill: parent
+                                contentHeight: height
+                                contentWidth: simulationsRow.width
+                                flickableDirection: Flickable.HorizontalFlick
+                                Row {
+                                    id: simulationsRow
+                                    spacing: Style.baseMargin * 0.5
+                                    Repeater {
+                                        model: modelData.simulations
+                                        Item {
+                                            width: simulationColumn.width
+                                            height: simulationColumn.height
+                                            SimulationLoader {
+                                                id: loader
+                                                folder: modelData
+                                            }
+                                            Column {
+                                                id: simulationColumn
+                                                Image {
+                                                    id: simulationImage
+                                                    property int simulationsCount: simulationsViewRoot.width / (Style.touchableSize * 2.5 + Style.baseMargin)
 
-                                                width: (simulationsViewRoot.width - Style.baseMargin) / (simulationsCount + 0.3) - simulationsRow.spacing
-                                                height: width
+                                                    width: (simulationsViewRoot.width - Style.baseMargin) / (simulationsCount + 0.3) - simulationsRow.spacing
+                                                    height: width
 
-                                                source: loader.item ? loader.item.screenshotSource : ""
-                                                smooth: true
-                                                antialiasing: true
-                                                fillMode: Image.PreserveAspectCrop
-                                                asynchronous: true
+                                                    source: loader.item ? loader.item.screenshotSource : ""
+                                                    smooth: true
+                                                    antialiasing: true
+                                                    fillMode: Image.PreserveAspectCrop
+                                                    asynchronous: true
 
-                                                Rectangle {
-                                                    color: "transparent"
-                                                    width: parent.width
-                                                    height: parent.height
-                                                    border.color: Style.border.color
-                                                    border.width: Style.border.width
+                                                    Rectangle {
+                                                        color: "transparent"
+                                                        width: parent.width
+                                                        height: parent.height
+                                                        border.color: Style.border.color
+                                                        border.width: Style.border.width
+                                                    }
+                                                }
+                                                Text {
+                                                    id: title
+                                                    font: Style.text.font
+                                                    color: Style.text.color
+                                                    text: loader.item ? loader.item.name : "N/A"
+                                                    width: simulationImage.width
+                                                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                                                    horizontalAlignment: Text.AlignHCenter
+
                                                 }
                                             }
-                                            Text {
-                                                id: title
-                                                font: Style.text.font
-                                                color: Style.text.color
-                                                text: loader.item ? loader.item.name : "N/A"
-                                                width: simulationImage.width
-                                                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                                                horizontalAlignment: Text.AlignHCenter
-
-                                            }
-                                        }
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            onClicked: {
-                                                simulationClicked(loader.item.stateSource)
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    simulationClicked(loader.item.stateSource)
+                                                }
                                             }
                                         }
                                     }

@@ -31,6 +31,7 @@ Node {
     filename: "sensors/TouchSensor.qml"
     square: true
 
+
     property bool sensing: false
     property real sensingCurrentOutput: 100
 
@@ -41,7 +42,7 @@ Node {
 
     width: 100
     height: 100
-    color: sensorRoot.sensing ? "#80e5ff" : "#0088aa"
+    color: sensorRoot.sensing ? "#80e5ff" : "#dd5900"
 
     preferredEdge: ImmediateFireSynapse {}
 
@@ -74,7 +75,7 @@ Node {
         id: touchImage
         anchors.fill: parent
         fillMode: Image.PreserveAspectFit
-        source: "qrc:/images/sensors/touch_sensor.png"
+        source: "qrc:/images/generators/touch_sensor.png"
     }
 
 
@@ -120,8 +121,8 @@ Node {
     }
 
     Connector{
-        color: "#0088aa"
-        connectorColor: "#0088aa"
+        color: "#dd5000"
+        connectorColor: "#dd5000"
         visible: sensorRoot.selected
         z: -1
     }

@@ -10,7 +10,7 @@ ListModel {
 
     ListElement {
         name: "Touch sensor"
-        description: "Gives a current output based on touch"
+        description: "Generates spikes in neurons it is connected to based on touch"
         source: "../sensors/TouchSensor.qml"
         imageSource: "qrc:/images/sensors/touch_sensor.png"
     }

@@ -11,7 +11,7 @@ import "../tools"
 import "../style"
 
 /*!
-\qmltype RasterPlot
+\qmltype SpikeDetector
 \inqmlmodule Neuronify
 \ingroup neuronify-meters
 \brief Shows firing times of neurons.
@@ -35,8 +35,8 @@ Node {
     property int numberOfEdges: 0
 
 
-    objectName: "rasterplot"
-    filename: "meters/RasterPlot.qml"
+    objectName: "spikeDetector"
+    filename: "meters/SpikeDetector.qml"
     square: true
 
     width: 320
@@ -65,8 +65,8 @@ Node {
     }
 
     controls: Component {
-       PropertiesPage {
-           property string title: "Raster plot"
+        PropertiesPage {
+            property string title: "Spike detector"
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"
@@ -76,15 +76,15 @@ Node {
                 minimumValue: 1.0e-3
                 maximumValue: 1000.0e-3
                 stepSize: 10.0e-3
+            }
 
-                ConnectMultipleControl {
-                    toEnabled: false
-                    node: rasterRoot
-                }
+            ConnectMultipleControl {
+                toEnabled: false
+                node: rasterRoot
+            }
 
-                ResetControl {
-                    engine: rasterRoot.engine
-                }
+            ResetControl {
+                engine: rasterRoot.engine
             }
         }
     }

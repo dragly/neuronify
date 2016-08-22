@@ -39,7 +39,7 @@ Node {
     property alias plotKernel: retinaEngine.plotKernel
 
 
-    color: "#0088aa"
+    color: "#dd5000"
     width: 240
     height: 240
     canReceiveConnections: false
@@ -88,11 +88,11 @@ Node {
     }
 
     Rectangle {
-        color: "#0088aa"
+        color: "#ffcc00"
         anchors.fill: parent
         radius: 5
         border.width: 0.0
-        border.color: "#80e5ff"
+        border.color: "#ffcc00"
     }
 
     RetinaPainter {
@@ -185,8 +185,8 @@ Node {
 
     Connector {
         visible: root.selected
-        color: "#0088aa"
-        connectorColor: "#0088aa"
+        color: "#dd5000"
+        connectorColor: "#dd5000"
         initialPoint: Qt.point(root.width + 32, root.height + 32)
         attachmentPoint: Qt.point(root.width, root.height)
     }

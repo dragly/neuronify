@@ -62,7 +62,7 @@
         <file>qml/sensors/kernels/GaborKernel.qml</file>
         <file>qml/sensors/kernels/RectangularKernel.qml</file>
         <file>qml/sensors/kernels/DogKernel.qml</file>
-        <file>qml/meters/RasterPlot.qml</file>
+        <file>qml/meters/SpikeDetector.qml</file>
         <file>qml/meters/RatePlot.qml</file>
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
