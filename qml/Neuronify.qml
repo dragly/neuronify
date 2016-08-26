@@ -598,7 +598,13 @@ Rectangle {
     Item {
         id: workspaceFlickable
 
-        anchors.fill: parent
+        anchors {
+            top: parent.top
+            bottom: parent.bottom
+            left: parent.left
+            leftMargin: -propertiesPanel.offset * 0.33
+        }
+        width: parent.width
 
         PinchArea {
             id: pinchArea
@@ -744,6 +750,12 @@ Rectangle {
         Item {
             id: workspace
 
+            width: 3840
+            height: 2160
+
+            scale: 1.0
+            transformOrigin: Item.TopLeft
+
             function dump() {
                 var mappedRectangle = viewport.mapToItem(workspace, 0, 0,
                                                          workspaceFlickable.width, workspaceFlickable.height)
@@ -793,12 +805,6 @@ Rectangle {
                     workspace.y = newPosition.y;
                 }
             }
-
-            width: 3840
-            height: 2160
-
-            scale: 1.0
-            transformOrigin: Item.TopLeft
 
             onScaleChanged: {
                 Style.workspaceScale = scale;
