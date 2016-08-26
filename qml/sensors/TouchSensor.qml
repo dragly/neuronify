@@ -58,7 +58,7 @@ Node {
 
     controls: Component {
         PropertiesPage {
-             property string title: "Touch sensor"
+             property string title: "Touch activator"
 
         }
     }
