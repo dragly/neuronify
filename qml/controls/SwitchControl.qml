@@ -19,43 +19,46 @@ Item {
 
     property QtObject target: null
     property string property: ""
-    property bool isChecked: switchRoot.checked
+    property alias checked: switchRoot.checked
     property string checkedText: "checked"
     property string uncheckedText: "unchecked"
 
     width: parent.width
     height: Style.control.fontMetrics.height * 2
 
+    Text {
+        anchors {
+            left: parent.left
+            right: switchRoot.left
+            verticalCenter: parent.verticalCenter
+        }
+        text: switchRoot.checked ? checkedText : uncheckedText
+    }
+
     Switch{
         id: switchRoot
+
+        width: parent.width * 0.2
+        height: parent.height * 0.8
+
         checked: root.target[root.property]
+        anchors {
+            right: parent.right
+            verticalCenter: parent.verticalCenter
+        }
 
         style: SwitchStyle {
             groove: Rectangle {
-                Text{
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin:parent.radius
-                    text: checkedText
-                }
-                Text{
-                    anchors{
-                        right: parent.right
-                        verticalCenter: parent.verticalCenter
-                        rightMargin: parent.radius
-                    }
-                    text: uncheckedText
-                }
-                implicitWidth: root.width
-                implicitHeight: root.height
+                implicitWidth: switchRoot.width
+                implicitHeight: switchRoot.height
                 radius: height/2
                 color: Style.color.background
                 border.color: "#9ecae1"
                 border.width: Style.border.width
             }
             handle: Rectangle {
-                implicitWidth:  root.width * 0.5
-                implicitHeight: root.height
+                implicitWidth:  switchRoot.width * 0.5
+                implicitHeight: switchRoot.height
                 radius: height/2
                 color: "#9ecae1"
                 border.color: "#9ecae1"
