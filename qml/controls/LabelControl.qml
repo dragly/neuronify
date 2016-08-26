@@ -23,7 +23,7 @@ Column {
         left: parent.left
         right: parent.right
     }
-    Text {
+    Label {
         text: "Label text:"
         font: Style.control.font
         color: Style.text.color
