@@ -80,28 +80,6 @@ Item {
         }
     }
 
-    Image {
-        id: backButton
-        anchors {
-            right: creationColumn.right
-            top: creationColumn.top
-            topMargin: Style.margin
-        }
-        width: Style.touchableSize
-        height: width
-
-        source: "qrc:/images/tools/back.png"
-
-        rotation: 180
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                root.revealed = false
-            }
-        }
-    }
-
     Item {
         id: creationColumn
 
@@ -262,6 +240,28 @@ Item {
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
                 text: item ? "<b>" + item.name + "</b> - " + item.description : ""
+            }
+        }
+
+        Image {
+            id: backButton
+            anchors {
+                right: creationColumn.right
+                top: creationColumn.top
+                topMargin: Style.margin
+            }
+            width: Style.touchableSize
+            height: width
+
+            source: "qrc:/images/tools/back.png"
+
+            rotation: 180
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    root.revealed = false
+                }
             }
         }
 
