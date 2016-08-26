@@ -80,8 +80,8 @@ Item {
             }
             gradient: Gradient {
                 id: grad
-                GradientStop { position: 0.0; color: Style.color.foreground }
-                GradientStop { position: 1.0; color: Style.color.border }
+                GradientStop { position: 0.0; color: root.enabled ? Style.color.foreground : "#bbb" }
+                GradientStop { position: 1.0; color: root.enabled ? Style.color.border : "#ddd" }
             }
             width: parent.width * sliderMouseArea.fraction
             color: "lightgrey" // Style.color.foreground
@@ -108,6 +108,7 @@ Item {
             }
             text: root.text
             font: Style.control.font
+            color: root.enabled ? Style.control.color : "#555"
         }
 
         Text {
@@ -119,6 +120,7 @@ Item {
             }
             text: sliderMouseArea.scaledValue.toLocaleString(Qt.locale("en_US"), "f", root.precision) + " " + root.unit
             font: Style.control.font
+            color: root.enabled ? Style.control.color : "#555"
         }
 
         Text {
@@ -197,7 +199,7 @@ Item {
             anchors.fill: parent
             radius: parent.radius
             border.width: Style.border.width
-            border.color: Style.border.color
+            border.color: root.enabled ? Style.border.color : "#ddd"
         }
 
         MouseArea {
