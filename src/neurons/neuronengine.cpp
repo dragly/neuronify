@@ -57,6 +57,21 @@ double NeuronEngine::initialPotential() const
     return m_initialPotential;
 }
 
+double NeuronEngine::minimumVoltage() const
+{
+    return m_minimumVoltage;
+}
+
+double NeuronEngine::maximumVoltage() const
+{
+    return m_maximumVoltage;
+}
+
+bool NeuronEngine::isVoltageClamped() const
+{
+    return m_voltageClamped;
+}
+
 void NeuronEngine::resetDynamicsEvent()
 {
     setVoltage(m_initialPotential);
@@ -93,7 +108,9 @@ void NeuronEngine::stepEvent(double dt, bool parentEnabled)
     double dV = totalCurrent / m_capacitance * dt;
     m_voltage += dV;
 
-    m_voltage = max(-90e-3, min(60e-3, m_voltage));
+    if(m_voltageClamped) {
+        m_voltage = max(m_minimumVoltage, min(m_maximumVoltage, m_voltage));
+    }
 
 
     emit voltageChanged(m_voltage);
@@ -158,6 +175,33 @@ void NeuronEngine::setInitialPotential(double postFirePotential)
 
     m_initialPotential = postFirePotential;
     emit initialPotentialChanged(postFirePotential);
+}
+
+void NeuronEngine::setMinimumVoltage(double minimumVoltage)
+{
+    if (m_minimumVoltage == minimumVoltage)
+        return;
+
+    m_minimumVoltage = minimumVoltage;
+    emit minimumVoltageChanged(minimumVoltage);
+}
+
+void NeuronEngine::setMaximumVoltage(double maximumVoltage)
+{
+    if (m_maximumVoltage == maximumVoltage)
+        return;
+
+    m_maximumVoltage = maximumVoltage;
+    emit maximumVoltageChanged(maximumVoltage);
+}
+
+void NeuronEngine::setVoltageClamped(bool voltageClamped)
+{
+    if (m_voltageClamped == voltageClamped)
+        return;
+
+    m_voltageClamped = voltageClamped;
+    emit voltageClampedChanged(voltageClamped);
 }
 
 

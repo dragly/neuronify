@@ -12,5 +12,8 @@ NeuronEngineBase {
         property alias voltage: engine.voltage
         property alias capacitance: engine.capacitance
         property alias fireOutput: engine.fakeFireOutput
+        property alias voltageClamped: engine.voltageClamped
+        property alias minimumVoltage: engine.minimumVoltage
+        property alias maximumVoltage: engine.maximumVoltage
     }
 }

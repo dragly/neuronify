@@ -130,7 +130,7 @@ Item {
             id: controlTextProxy
             color: "#222"
             font.family: "Roboto"
-            font.pixelSize: Math.min(root.windowHeight * 0.042, defaultMetrics.font.pixelSize)
+            font.pixelSize: defaultMetrics.font.pixelSize
         }
         Text {
             id: controlSubTextProxy
