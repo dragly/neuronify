@@ -84,6 +84,34 @@ Neuron {
                     current: leakyCurrent
                 }
 
+                SwitchControl{
+                    id: voltageClampedSwitch
+                    target: neuronEngine
+                    property: "voltageClamped"
+                    checkedText: "Clamp voltage"
+                    uncheckedText: "Don't clamp voltage"
+                }
+
+                BoundSlider {
+                    enabled: voltageClampedSwitch.checked
+                    text: "Minimum voltage"
+                    unit: "mV"
+                    minimumValue: -200.0
+                    maximumValue: 200.0
+                    target: neuronEngine
+                    property: "minimumVoltage"
+                }
+
+                BoundSlider {
+                    enabled: voltageClampedSwitch.checked
+                    text: "Maximum voltage"
+                    unit: "mV"
+                    minimumValue: -200.0
+                    maximumValue: 200.0
+                    target: neuronEngine
+                    property: "maximumVoltage"
+                }
+
                 Text {
                     property real timeConstant: neuronEngine.capacitance * leakyCurrent.resistance * 1e3
                     anchors {
@@ -121,7 +149,7 @@ Neuron {
 
             PropertiesItem {
                 text: "Synapse"
-                info: (switchControl.isChecked ?
+                info: (switchControl.checked ?
                            switchControl.checkedText : switchControl.uncheckedText)
                       + " , " + "τr: "
                       + (neuronEngine.refractoryPeriod * 1e3).toFixed(1) + " ms, "
