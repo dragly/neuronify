@@ -97,7 +97,7 @@ MainMenuPage {
                     bottomMargin: 0.2 * parent.width
                 }
                 horizontalAlignment: Text.AlignHCenter
-                text: "Neuronify (v0.94)"
+                text: "Neuronify"
                 font: Style.font
                 scale: 1.5
                 color: "#777"
