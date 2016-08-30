@@ -67,8 +67,8 @@ private:
     double m_threshold = 0.0;
     double m_capacitance = 0.0;
     double m_receivedCurrents = 0.0;
-    double m_minimumVoltage = -90.0; // mV
-    double m_maximumVoltage = 60.0; // mV
+    double m_minimumVoltage = -90.0e-3; // mV
+    double m_maximumVoltage = 60.0e-3; // mV
     bool m_voltageClamped = true;
 };
 
