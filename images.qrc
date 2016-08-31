@@ -67,5 +67,8 @@
         <file>images/meters/loudspeaker.png</file>
         <file>images/generators/eye.png</file>
         <file>images/generators/touch_sensor.png</file>
+        <file>qml/store/StoreFrontPage.qml</file>
+        <file>qml/store/StoreItem.qml</file>
+        <file>images/store/ic_search_black_48dp.png</file>
     </qresource>
 </RCC>

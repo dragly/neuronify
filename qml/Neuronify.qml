@@ -67,6 +67,9 @@ Rectangle {
         }
     }
 
+    width: 1280
+    height: 900
+
     color: "#f7fbff"
     antialiasing: true
     smooth: true

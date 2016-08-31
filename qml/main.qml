@@ -4,6 +4,8 @@ import QtQuick.Controls 2.0 as QQC2
 import QtQuick.Layouts 1.0
 import Qt.labs.settings 1.0
 
+import "store"
+
 QQC2.ApplicationWindow {
     id: applicationWindow1
 
@@ -20,14 +22,14 @@ QQC2.ApplicationWindow {
         startupTime = Date.now();
     }
 
-    Settings {
-        id: settings
-        property alias width: applicationWindow1.width
-        property alias height: applicationWindow1.height
-        property alias x: applicationWindow1.x
-        property alias y: applicationWindow1.y
-        property alias firstRun: neuronify.firstRun
-    }
+//    Settings {
+//        id: settings
+//        property alias width: applicationWindow1.width
+//        property alias height: applicationWindow1.height
+//        property alias x: applicationWindow1.x
+//        property alias y: applicationWindow1.y
+//        property alias firstRun: neuronify.firstRun
+//    }
 
     FontLoader {
         source: "qrc:/fonts/roboto/Roboto-Regular.ttf"
@@ -41,8 +43,12 @@ QQC2.ApplicationWindow {
         source: "qrc:/fonts/roboto/Roboto-Bold.ttf"
     }
 
-    Neuronify {
-        id: neuronify
+//    Neuronify {
+//        id: neuronify
+//        anchors.fill: parent
+//    }
+
+    Store {
         anchors.fill: parent
     }
 }
