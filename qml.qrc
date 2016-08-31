@@ -97,5 +97,12 @@
         <file>qml/controls/ConnectMultipleControl.qml</file>
         <file>qml/controls/ResetControl.qml</file>
         <file>qml/meters/Loudspeaker.qml</file>
+        <file>qml/store/Store.qml</file>
+        <file>qml/store/StoreFrontPage.qml</file>
+        <file>qml/store/StoreItem.qml</file>
+        <file>qml/main_preview.qml</file>
+    </qresource>
+    <qresource prefix="/teste">
+        <file>images/store/ic_search_black_48dp.png</file>
     </qresource>
 </RCC>

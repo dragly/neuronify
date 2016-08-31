@@ -28,6 +28,9 @@
 #include <QTextStream>
 #include <QtQml>
 #include <QQmlContext>
+#include <QQuickView>
+
+#include "qmlpreviewer.h"
 
 int main(int argc, char *argv[])
 {
@@ -66,18 +69,23 @@ int main(int argc, char *argv[])
     qmlRegisterType<RateEngine>("Neuronify", 1, 0, "RateEngine");
     qmlRegisterType<PropertyGroup>("Neuronify", 1, 0, "PropertyGroup");
 
+
     QApplication app(argc, argv);
     app.setOrganizationName("Ovilab");
     app.setOrganizationDomain("net");
     app.setApplicationName("Neuronify");
 
-    qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
-    QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
+    QmlPreviewer previewer(app);
+    if(true) {
+        previewer.show();
+    } else {
+        qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
+        QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
 
-    QQmlApplicationEngine engine;
-    engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
-    QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
-    qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
-
+        QQmlApplicationEngine engine;
+        engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
+        QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
+        qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
+    }
     return app.exec();
 }
