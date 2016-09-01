@@ -93,22 +93,22 @@ Item {
                     model: ListModel {
                         ListElement {
                             name: "Simulations"
-                            colorCode: "#D13F32"
+                            colorCode: "#ed6a5a"
                         }
 
                         ListElement {
                             name: "Neurons"
-                            colorCode: "#1D7872"
+                            colorCode: "#63b4d1"
                         }
 
                         ListElement {
                             name: "Items"
-                            colorCode: "#71B095"
+                            colorCode: "#f4f1bb"
                         }
 
                         ListElement {
                             name: "Plugins"
-                            colorCode: "#1A212C"
+                            colorCode: "#9bc1bc"
                         }
                     }
                     delegate: Rectangle {
