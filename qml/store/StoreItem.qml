@@ -29,7 +29,7 @@ Item {
         id: titleText
         y: 361
         height: 34
-        text: qsTr("Some item")
+        text: qsTr("Some items")
         anchors.bottom: descriptionText.top
         anchors.bottomMargin: 8
         anchors.right: parent.right
