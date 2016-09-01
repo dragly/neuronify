@@ -103,5 +103,6 @@
         <file>qml/main_preview.qml</file>
         <file>QmlPreviewerDialog.qml</file>
         <file>QmlPreviewerButton.qml</file>
+        <file>qtquickcontrols2.conf</file>
     </qresource>
 </RCC>

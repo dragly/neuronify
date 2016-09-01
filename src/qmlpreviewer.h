@@ -17,7 +17,7 @@ signals:
 public slots:
     void reload(QString path);
     void show();
-    void handleDialogStart(QUrl projectPath, QUrl filePath);
+    void handleDialogStart(QVariant qrcPaths, QUrl filePath);
 private:
     QFileSystemWatcher m_watcher;
     QQuickView m_view;
@@ -25,7 +25,9 @@ private:
     QString m_projectPath;
     QString m_filePath;
     QString m_binPath;
+    QVariantList m_qrcPaths;
     QObject *m_object = nullptr;
+    QString m_prefix = "/qtqmlpreview";
 };
 
 #endif // QMLPREVIEWER_H

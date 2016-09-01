@@ -4,25 +4,51 @@ import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.2
 import Qt.labs.settings 1.0
 
-Item {
+Rectangle {
     id: root
 
-    signal start(url projectPath, url filePath)
+    signal start(var qrcPaths, url filePath)
 
     property url projectPath
+    property var qrcPaths: []
+    property string qrcPathsStringified
     property url filePath
     property url source
 
-    property string fileBaseName: {
-        var split = filePath.toString().split("/")
+    function baseName(file) {
+        var split = file.toString().split("/")
         return split[split.length - 1]
+    }
+
+    function cleanPath(path) {
+        return path.toString().replace(/^file:\/\//, "")
     }
 
     width: 1600
     height: 900
+    color: colorDialog.color
 
     Component.onCompleted: {
         requestStart()
+    }
+
+    onQrcPathsStringifiedChanged: {
+        var paths = JSON.parse(qrcPathsStringified)
+        var newPaths = []
+        for(var i in paths) {
+            newPaths.push(Qt.resolvedUrl(paths[i]))
+        }
+        qrcPaths = newPaths
+        console.log("Parsed as", qrcPaths)
+    }
+
+    onQrcPathsChanged: {
+        var stringPaths = []
+        for(var i in qrcPaths) {
+            stringPaths.push(qrcPaths[i].toString())
+        }
+        qrcPathsStringified = JSON.stringify(stringPaths)
+        console.log("Stringified as", qrcPathsStringified)
     }
 
     onFilePathChanged: {
@@ -41,17 +67,21 @@ Item {
 
     function requestStart() {
         if(filePath.toString().length > 0 && projectPath.toString().length > 0) {
-            start(projectPath, filePath)
+            start(qrcPaths, filePath)
         }
     }
 
     Settings {
-        property alias qmlPreviewerProjectPath: root.projectPath
-        property alias qmlPreviewerFilePath: root.filePath
+        property alias projectPath: root.projectPath
+        property alias filePath: root.filePath
+        property alias qrcPaths: root.qrcPathsStringified
+        property alias backgroundColor: colorDialog.color
+
+        category: "qmlPreviewer"
     }
 
-    Column {
-        id: column
+    Pane {
+        id: pane
         anchors {
             left: parent.left
             top: parent.top
@@ -59,39 +89,114 @@ Item {
         }
 
         width: 300
-        spacing: 16
 
-        QmlPreviewerButton {
-            text: "Select project path"
-            subtext: projectPath.toString()
+        Column {
+            id: column
+            spacing: 16
 
-            onClicked: folderDialog.open()
-        }
+            anchors.fill: parent
 
-        QmlPreviewerButton {
-            text: "Select file to preview"
-            subtext: fileBaseName
+            Button {
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                }
 
-            onClicked: fileDialog.open()
-        }
+                text: "Select project path"
+                onClicked: folderDialog.open()
+            }
 
-        QmlPreviewerButton {
-            text: "Refresh"
-            onClicked: requestStart()
+            Label {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+
+                text: cleanPath(projectPath)
+            }
+
+            Button {
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                }
+                text: "Select file to preview"
+                onClicked: fileDialog.open()
+            }
+
+            Label {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+
+                text: cleanPath(filePath)
+            }
+
+            Button {
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                }
+
+                text: "Add QRC files"
+                onClicked: qrcDialog.open()
+            }
+
+            ListView {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+
+                height: 300
+
+                model: root.qrcPaths
+                delegate: ItemDelegate {
+                    text: baseName(modelData)
+                    onClicked: {
+                        var paths = root.qrcPaths
+                        paths.splice(index, 1)
+                        root.qrcPaths = paths
+                    }
+                }
+            }
+
+            Button {
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                }
+                text: "Select background color"
+
+                onClicked: colorDialog.open()
+            }
+
+            Button {
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                }
+                text: "Refresh"
+
+                onClicked: requestStart()
+            }
         }
     }
 
-    Rectangle {
+    Item {
         anchors {
             top: parent.top
             bottom: parent.bottom
-            left: column.right
+            left: pane.right
             right: parent.right
         }
         Loader {
             id: loader
-            anchors.fill: parent
+            anchors.centerIn: parent
         }
+    }
+
+    ColorDialog {
+        id: colorDialog
+        color: "white"
     }
 
     FileDialog {
@@ -101,6 +206,19 @@ Item {
 
         onAccepted: {
             projectPath = folder
+        }
+    }
+
+    FileDialog {
+        id: qrcDialog
+
+        nameFilters: "*.qrc"
+
+        onAccepted: {
+            var paths = root.qrcPaths
+            paths.push(fileUrl)
+            console.log("Set new paths", paths)
+            root.qrcPaths = paths
         }
     }
 
