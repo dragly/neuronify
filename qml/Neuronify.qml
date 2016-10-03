@@ -488,10 +488,12 @@ Rectangle {
         entity.clicked.connect(raiseToTop)
         entity.dragStarted.connect(raiseToTop)
         entity.startConnectMultipleFromThis.connect(function() {
-            clickMode = "connectMultipleFromThis";
+            clickMode = "connectMultipleFromThis"
+            propertiesPanel.close()
         });
         entity.startConnectMultipleToThis.connect(function() {
-            clickMode = "connectMultipleToThis";
+            clickMode = "connectMultipleToThis"
+            propertiesPanel.close()
         });
         entity.dragStarted.connect(function(entity) {
             draggedEntity = entity;

@@ -25,6 +25,10 @@ Item {
         revealed = true
     }
 
+    function close() {
+        revealed = false
+    }
+
     anchors.fill: parent
 
     Component.onCompleted: {
