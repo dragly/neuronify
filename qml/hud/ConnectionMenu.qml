@@ -24,24 +24,36 @@ Rectangle {
         left: parent.left
         right: parent.right
     }
-    height: Style.touchableSize * 1.5
-    color: "yellow"
+    height: Math.max(connectionText.height * 1.2, Style.touchableSize + 2 * Style.margin)
+    color: "#f7fbff"
+    border.color: "#9ecae1"
+    border.width: 1.0
     
     Text {
-        anchors.centerIn: parent
+        id: connectionText
+        anchors {
+            left: parent.left
+            right: button.left
+            margins: Style.margin
+            verticalCenter: parent.verticalCenter
+        }
         horizontalAlignment: Text.AlignHCenter
-        font: Style.control.font
-        text: "Connection mode\nClicking other items connects them\n" +
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+        font: Style.font
+        text: "Touch other items to create a connection " +
               (fromThis ? "from" : "to") +
-              " the currently selected."
+              " the selected item."
     }
     
     Rectangle {
+        id: button
         anchors {
-            verticalCenter: parent.verticalCenter
+            top: parent.top
+            bottom: parent.bottom
             right: parent.right
-            rightMargin: Style.margin
+            margins: Style.margin
         }
+        color: "#dee"
         width: Math.max(Style.touchableSize, doneText.width)
         height: Style.touchableSize
         Text {
@@ -50,7 +62,7 @@ Rectangle {
                 verticalCenter: parent.verticalCenter
                 horizontalCenter: parent.horizontalCenter
             }
-            font: Style.control.font
+            font: Style.font
             text: "Done"
         }
         MouseArea {
