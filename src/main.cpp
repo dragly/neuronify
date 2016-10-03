@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
     QmlPreviewer previewer(app);
     QQmlApplicationEngine engine;
-    if(argc > 1) {
+    if(argc > 2) {
         previewer.show();
     } else {
         qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
