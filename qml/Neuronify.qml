@@ -930,9 +930,7 @@ Rectangle {
         }
 
         PropertiesButton {
-//            revealed: activeObject ? true : false
             onClicked: {
-//                propertiesPanel.revealed = !propertiesPanel.revealed
                 propertiesPanel.open()
             }
         }
@@ -978,6 +976,12 @@ Rectangle {
         snappingEnabled: root.snappingEnabled
         activeObject: root.activeObject
         workspace: workspace
+
+        onRevealedChanged: {
+            if(revealed) {
+                clickMode = "selection"
+            }
+        }
 
         onResetDynamics: {
             for(var i in graphEngine.nodes) {
