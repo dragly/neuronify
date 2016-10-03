@@ -1222,7 +1222,7 @@ Rectangle {
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
             clipboard.pasteNeurons()
         }
-        if(event.key === Qt.Key_Delete) {
+        if(event.key === Qt.Key_Delete || (Qt.platform.os === "osx" && event.key === Qt.Key_Backspace) ) {
             deleteSelected()
         }
         if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
