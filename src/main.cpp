@@ -76,13 +76,14 @@ int main(int argc, char *argv[])
     app.setApplicationName("Neuronify");
 
     QmlPreviewer previewer(app);
-    if(true) {
+    QQmlApplicationEngine engine;
+
+    if(argc > 1) {
         previewer.show();
     } else {
         qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
         QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
 
-        QQmlApplicationEngine engine;
         engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
         QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
         qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;

@@ -43,12 +43,12 @@ QQC2.ApplicationWindow {
         source: "qrc:/fonts/roboto/Roboto-Bold.ttf"
     }
 
-//    Neuronify {
-//        id: neuronify
-//        anchors.fill: parent
-//    }
-
-    Store {
+    Neuronify {
+        id: neuronify
         anchors.fill: parent
     }
+
+//    Store {
+//        anchors.fill: parent
+//    }
 }

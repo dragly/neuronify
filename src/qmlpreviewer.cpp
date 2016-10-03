@@ -11,24 +11,11 @@
 
 QmlPreviewer::QmlPreviewer(QApplication &app)
 {
-//    QStringList args = app.arguments();
-//    if(args.count() < 4) {
-//        qFatal("ERROR: Not enough arguments");
-//    }
-//    m_projectPath = args[1];
-//    m_filePath = args[2];
-
     connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &QmlPreviewer::reload);
 }
 
 void QmlPreviewer::reload(QString path)
 {
-//    if(m_projectPath.isEmpty() || m_filePath.isEmpty()) {
-
-//        QObject *item = m_view.rootObject();
-//        connect(item, SIGNAL(start(QUrl, QUrl)), this, SLOT(handleDialogStart(QUrl,QUrl)));
-//        return;
-//    }
 
     m_view.engine()->clearComponentCache();
 
@@ -58,36 +45,16 @@ void QmlPreviewer::reload(QString path)
 
     QMetaObject::invokeMethod(m_rootItem, "reload");
 
-//    QFile file(m_filePath);
-//    file.open(QFile::ReadOnly);
-//    QVariant contents = file.readAll();
-//    file.close();
-
-//    QString filePathClipped = m_filePath;
-//    filePathClipped.replace(QRegularExpression(QString("^") + m_projectPath), "");
-
-//    QUrl url("qrc:///" + prefix + "/" + filePathClipped);
-//    m_view.setSource(QUrl());
-//    m_view.engine()->clearComponentCache();
-//    m_view.setSource(url);
-//    QQmlComponent component(m_view.engine());
-//    component.setData(contents.toByteArray(), url);
-//    if(m_object) {
-//        m_object->deleteLater();
-//    }
-//    m_object = component.create();
-//    m_view.setContent(url, &component, m_object);
-
     if(!path.isEmpty()) {
         m_watcher.addPath(path);
     }
 }
 
-void QmlPreviewer::handleDialogStart(QVariant qrcPaths, QUrl filePath)
+void QmlPreviewer::handleDialogStart(QUrl projectPath, QUrl filePath, QVariant qrcPaths)
 {
-    qDebug() << "Handle dialog start";
+    qDebug() << "Handle dialog start" << projectPath << filePath << qrcPaths;
 
-//    m_projectPath = projectPath.toLocalFile();
+    m_projectPath = projectPath;
 
     for(auto qrcPath : m_qrcPaths) {
         QVariantMap map = qrcPath.toMap();
@@ -106,13 +73,15 @@ void QmlPreviewer::handleDialogStart(QVariant qrcPaths, QUrl filePath)
             {"hash", hash}
         };
         m_qrcPaths.append(map);
-        m_projectPath = path.toString();
     }
     m_filePath = filePath.toLocalFile();
 
-    QDirIterator it(m_projectPath, QStringList() << "*", QDir::Files, QDirIterator::Subdirectories);
+    qDebug() << "Debug:" << m_projectPath.toLocalFile();
+
+    QDirIterator it(m_projectPath.toLocalFile(), QStringList() << "*", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString next = it.next();
+        qDebug() << "Watching" << next;
         m_watcher.addPath(next);
     }
 
@@ -122,9 +91,9 @@ void QmlPreviewer::handleDialogStart(QVariant qrcPaths, QUrl filePath)
 void QmlPreviewer::show()
 {
     m_view.setSource(QUrl("qrc:///QmlPreviewerDialog.qml"));
-    m_view.setResizeMode(QQuickView::SizeViewToRootObject);
+    m_view.setResizeMode(QQuickView::SizeRootObjectToView);
     m_view.show();
 
     m_rootItem = m_view.rootObject();
-    connect(m_rootItem, SIGNAL(start(QVariant, QUrl)), this, SLOT(handleDialogStart(QVariant, QUrl)));
+    connect(m_rootItem, SIGNAL(start(QUrl, QUrl, QVariant)), this, SLOT(handleDialogStart(QUrl, QUrl, QVariant)));
 }

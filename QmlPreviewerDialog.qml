@@ -7,7 +7,7 @@ import Qt.labs.settings 1.0
 Rectangle {
     id: root
 
-    signal start(var qrcPaths, url filePath)
+    signal start(url projectPath, url filePath, var qrcPaths)
 
     property url projectPath
     property var qrcPaths: []
@@ -67,7 +67,7 @@ Rectangle {
 
     function requestStart() {
         if(filePath.toString().length > 0 && projectPath.toString().length > 0) {
-            start(qrcPaths, filePath)
+            start(projectPath, filePath, qrcPaths)
         }
     }
 
@@ -178,6 +178,12 @@ Rectangle {
 
                 onClicked: requestStart()
             }
+
+            CheckBox {
+                id: resizeCheckbox
+
+                text: "Resize to view"
+            }
         }
     }
 
@@ -190,7 +196,12 @@ Rectangle {
         }
         Loader {
             id: loader
-            anchors.centerIn: parent
+            anchors {
+                centerIn: resizeCheckbox.checked ? undefined : parent
+                fill: resizeCheckbox.checked ? parent : undefined
+            }
+//            width: item ? item.width : 400
+//            height: item ? item.height : 400
         }
     }
 

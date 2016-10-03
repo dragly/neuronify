@@ -17,12 +17,12 @@ signals:
 public slots:
     void reload(QString path);
     void show();
-    void handleDialogStart(QVariant qrcPaths, QUrl filePath);
+    void handleDialogStart(QUrl projectPath, QUrl filePath, QVariant qrcPaths);
 private:
     QFileSystemWatcher m_watcher;
     QQuickView m_view;
     QQuickItem *m_rootItem = nullptr;
-    QString m_projectPath;
+    QUrl m_projectPath;
     QString m_filePath;
     QString m_binPath;
     QVariantList m_qrcPaths;
