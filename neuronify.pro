@@ -88,7 +88,8 @@ DISTFILES += \
     android/src/org/cinpla/neuronify/AlwaysOnActivity.java \
     qml/sensors/singletons/qmldir \
     COPYING.md \
-    snapcraft.yaml
+    snapcraft.yaml \
+    ios/iOS.plist
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
@@ -98,4 +99,12 @@ exists(libs/CuteVersioning/CuteVersioning.pri) {
     include(libs/CuteVersioning/CuteVersioning.pri)
 } else {
     error("Could not find CuteVersioning. Try running 'git submodule update --init --recursive' in Neuronify's root directory.")
+}
+
+ios {
+    QMAKE_INFO_PLIST = ios/iOS.plist
+    ios_icon.files = $$files($$PWD/ios/icon/*.png)
+    QMAKE_BUNDLE_DATA += ios_icon
+    app_launch_images.files = $$PWD/ios/launch/Launch.xib
+    QMAKE_BUNDLE_DATA += app_launch_images
 }
