@@ -1,0 +1,3 @@
+[submodule "libs/CuteVersioning"]
+	path = libs/CuteVersioning
+	url = https://github.com/ovilab/CuteVersioning.git

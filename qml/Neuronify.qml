@@ -11,6 +11,7 @@ import QtMultimedia 5.5
 import Qt.labs.settings 1.0
 
 import Neuronify 1.0
+import CuteVersioning 1.0
 
 import "qrc:/qml/hud"
 import "qrc:/qml/menus/mainmenu"

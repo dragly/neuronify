@@ -91,3 +91,6 @@ DISTFILES += \
     snapcraft.yaml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+
+GIT_DIR=$$PWD/.git
+include(libs/CuteVersioning/CuteVersioning.pri)
