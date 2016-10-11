@@ -1,6 +1,8 @@
 import QtQuick 2.6
 import QtQuick.Controls 1.4
 
+import CuteVersioning 1.0
+
 import "../../style"
 import "../"
 
@@ -53,24 +55,9 @@ ignores the details of the action potential dynamics. These neurons are modelled
 simple RC circuits. When the membrane potential is above a certain threshold, a spike is
 generated and the voltage is reset to its resting potential. This spike then signals other
 neurons through its synapses.</p>
+<p>Version: " + Version.description + (Version.dirty ? "*" : "") + "</p>
 "
         }
-
-//        Image {
-//            id: image
-//            anchors {
-//                top: aboutText.bottom
-//                horizontalCenter: parent.horizontalCenter
-//            }
-
-//            asynchronous: true
-//            width: Style.size * 48
-//            height: Style.size * 24
-//            fillMode: Image.PreserveAspectFit
-//            smooth: true
-//            source: "qrc:/images/logo.png"
-//        }
-
     }
 }
 

@@ -1,3 +1,5 @@
+#include <CuteVersioning>
+
 #include "core/nodebase.h"
 #include "core/nodeengine.h"
 #include "core/edgebase.h"
@@ -37,6 +39,8 @@ int main(int argc, char *argv[])
     qint64 startupTime = QDateTime::currentMSecsSinceEpoch();
     qDebug() << "Neuronify started at" << startupTime;
 
+    CuteVersioning::init();
+
     qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
     qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
 
@@ -44,7 +48,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<NodeEngine>("Neuronify", 1, 0, "NodeEngine");
     qmlRegisterType<EdgeBase>("Neuronify", 1, 0, "EdgeBase");
     qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
-     qmlRegisterType<EdgeEngine>("Neuronify", 1, 0, "EdgeEngine");
+    qmlRegisterType<EdgeEngine>("Neuronify", 1, 0, "EdgeEngine");
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngineBase");
 

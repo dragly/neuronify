@@ -3,6 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Controls 2.0 as QQC2
 import QtQuick.Layouts 1.0
 import Qt.labs.settings 1.0
+import CuteVersioning 1.0
 
 import "store"
 
@@ -15,7 +16,7 @@ QQC2.ApplicationWindow {
     visible: true
     width: 1136
     height: 640
-    title: qsTr("Neuronify")
+    title: qsTr("Neuronify " + Version.latestTag)
 
     Component.onCompleted: {
         console.log("ApplicationWindow load completed " + Date.now());
