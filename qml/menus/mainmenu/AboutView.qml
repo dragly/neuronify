@@ -55,7 +55,7 @@ ignores the details of the action potential dynamics. These neurons are modelled
 simple RC circuits. When the membrane potential is above a certain threshold, a spike is
 generated and the voltage is reset to its resting potential. This spike then signals other
 neurons through its synapses.</p>
-<p>Version: " + Version.description + (Version.dirty ? "*" : "") + "</p>
+<p>Version: " + Version.identifier + (Version.dirty ? "*" : "") + "</p>
 "
         }
     }
