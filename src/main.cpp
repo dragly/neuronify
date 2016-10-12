@@ -1,4 +1,4 @@
-#include <CuteVersioning>
+#include <CuteVersioning/CuteVersioning>
 
 #include "core/nodebase.h"
 #include "core/nodeengine.h"
@@ -37,7 +37,7 @@
 int main(int argc, char *argv[])
 {
     qint64 startupTime = QDateTime::currentMSecsSinceEpoch();
-    qDebug() << "Neuronify started at" << startupTime;
+    qDebug() << "Neuronify version" << CuteVersioning::identifier << "started at" << startupTime;
 
     CuteVersioning::init();
 
