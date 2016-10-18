@@ -41,7 +41,7 @@ Node {
     readonly property real instantRate: retinaEngine.instantRate
     property bool negativeRate: instantRate < 0
 
-
+    property bool isCameraAvailable: QtMultimedia.availableCameras.length > 0
 
     preferredEdge: CurrentSynapse {}
     color: "#dd5000"
@@ -99,8 +99,23 @@ Node {
         radius: 5
         border.width: 5.0
         border.color: "#ffcc00"
-    }
+        Text {
+            anchors.centerIn: parent
 
+            font: Style.control.font
+            color: Style.text.color
+            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            clip: true
+            text: ""
+            Component.onCompleted:
+            {
+                if(!isCameraAvailable){
+                    text= "No available camera"
+                }
+
+            }
+        }
+    }
 
 
 
@@ -129,17 +144,17 @@ Node {
     }
 
 
-//    Rectangle {
-//        id: zeroMark
-//        anchors {
-//            centerIn: rateBarBackground
-//        }
-//        radius: 5
-//        color: "#e41a1c"
-//        height: rateBar.height
-//        width: rateBarBackground.width * 0.02
-//        opacity: 1.0
-//    }
+    //    Rectangle {
+    //        id: zeroMark
+    //        anchors {
+    //            centerIn: rateBarBackground
+    //        }
+    //        radius: 5
+    //        color: "#e41a1c"
+    //        height: rateBar.height
+    //        width: rateBarBackground.width * 0.02
+    //        opacity: 1.0
+    //    }
 
     onNegativeRateChanged: {
         if(negativeRate){
