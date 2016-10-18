@@ -57,5 +57,8 @@
         <file>simulations/mix/input_summation/input_summation.nfy</file>
         <file>simulations/mix/input_summation/input_summation.png</file>
         <file>simulations/mix/input_summation/input_summation.qml</file>
+        <file>simulations/visualInput/visualInput.nfy</file>
+        <file>simulations/visualInput/visualInput.png</file>
+        <file>simulations/visualInput/visualInput.qml</file>
     </qresource>
 </RCC>

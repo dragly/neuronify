@@ -65,6 +65,7 @@ MainMenuPage {
                                 "qrc:/simulations/mix/input_summation",
                                 "qrc:/simulations/mix/rythm_transformation",
                                 "qrc:/simulations/mix/prolonged_activity",
+                                "qrc:/simulations/visualInput",
 
                             ]
                         },
