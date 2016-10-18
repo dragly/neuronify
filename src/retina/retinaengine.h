@@ -20,6 +20,8 @@ class RetinaEngine : public NodeEngine
     Q_PROPERTY(bool plotKernel READ plotKernel WRITE setPlotKernel NOTIFY plotKernelChanged)
     Q_PROPERTY(double sensitivity READ sensitivity WRITE setSensitivity NOTIFY sensitivityChanged)
 
+    Q_PROPERTY(double instantRate READ instantRate NOTIFY instantRateChanged)
+
 public:
     RetinaEngine();
     ~RetinaEngine();
@@ -34,12 +36,13 @@ public:
     double sensitivity() const;
 
 
+    double instantRate() const;
+
 public slots:
     void receivedImage();
     void setVideoSurface(VideoSurface * videoSurface);
     void setKernel(Kernel * kernel);
     void setPlotKernel(bool plotKernel);
-
     void setSensitivity(double sensitivity);
 
 signals:
@@ -47,6 +50,8 @@ signals:
     void kernelChanged(Kernel * kernel);
     void plotKernelChanged(bool plotKernel);
     void sensitivityChanged(double sensitivity);
+
+    void instantRateChanged(double instantRate);
 
 protected:
     virtual void stepEvent(double dt, bool parentEnabled) override;
@@ -63,6 +68,7 @@ private:
 
     vector< vector <double>> m_stim;
     bool m_plotKernel;
+    double m_instantRate;
 };
 
 

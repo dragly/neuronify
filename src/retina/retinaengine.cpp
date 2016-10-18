@@ -84,6 +84,9 @@ void RetinaEngine::stepEvent(double dt, bool parentEnabled)
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0,1);
 
+    m_instantRate =  m_firingRate;
+    emit instantRateChanged(m_instantRate);
+
     double shouldFire = (dis(gen) < m_sensitivity * m_firingRate * dt);
     if(shouldFire){
         fire();
@@ -169,6 +172,11 @@ bool RetinaEngine::plotKernel() const
 double RetinaEngine::sensitivity() const
 {
     return m_sensitivity;
+}
+
+double RetinaEngine::instantRate() const
+{
+    return m_instantRate;
 }
 
 VideoSurface *RetinaEngine::videoSurface() const
