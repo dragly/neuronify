@@ -111,6 +111,7 @@ Node {
             {
                 if(!isCameraAvailable){
                     text= "No available camera"
+                    retinaEngine.plotKernel = false
                 }
 
             }
