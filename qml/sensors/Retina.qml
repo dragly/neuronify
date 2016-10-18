@@ -38,6 +38,10 @@ Node {
     property string kernelType: "kernels/GaborKernel.qml"
     property alias sensitivity: retinaEngine.sensitivity
     property alias plotKernel: retinaEngine.plotKernel
+    readonly property real instantRate: retinaEngine.instantRate
+    property bool negativeRate: instantRate < 0
+
+
 
     preferredEdge: CurrentSynapse {}
     color: "#dd5000"
@@ -89,12 +93,67 @@ Node {
     }
 
     Rectangle {
+        id: backgroundRect
         color: "#ffcc00"
         anchors.fill: parent
         radius: 5
-        border.width: 0.0
+        border.width: 5.0
         border.color: "#ffcc00"
     }
+
+
+
+
+    Rectangle {
+        id: rateBarBackground
+        anchors {
+            top: backgroundRect.bottom
+        }
+        radius: 5
+        border.width: 10.0
+        border.color: "#ffcc00"
+        color: "#ffcc00"
+        height: parent.height * 0.1
+        width: parent.width
+    }
+
+    Rectangle {
+        id: rateBar
+        anchors {
+            verticalCenter:  rateBarBackground.verticalCenter
+        }
+        radius: rateBarBackground.radius
+        color: "#ffcc00"
+        height: parent.height * 0.08
+        width: parent.width * Math.min(Math.abs(instantRate), 0.49)
+    }
+
+
+//    Rectangle {
+//        id: zeroMark
+//        anchors {
+//            centerIn: rateBarBackground
+//        }
+//        radius: 5
+//        color: "#e41a1c"
+//        height: rateBar.height
+//        width: rateBarBackground.width * 0.02
+//        opacity: 1.0
+//    }
+
+    onNegativeRateChanged: {
+        if(negativeRate){
+            rateBar.anchors.right =  rateBarBackground.horizontalCenter
+            rateBar.anchors.left =  undefined
+            rateBar.color =  Qt.rgba(0.5, 0.5, 0.5);
+        }else{
+            rateBar.anchors.left =  rateBarBackground.horizontalCenter
+            rateBar.anchors.right =  undefined
+            rateBar.color =  "#dd5000";
+        }
+
+    }
+
 
     RetinaPainter {
         id: retinaPainter
