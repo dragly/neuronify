@@ -13,6 +13,7 @@ import "../hud"
 import "../controls"
 import ".."
 import "qrc:/qml/style"
+import "../edges"
 
 
 /*!
@@ -38,7 +39,7 @@ Node {
     property alias sensitivity: retinaEngine.sensitivity
     property alias plotKernel: retinaEngine.plotKernel
 
-
+    preferredEdge: CurrentSynapse {}
     color: "#dd5000"
     width: 240
     height: 240
