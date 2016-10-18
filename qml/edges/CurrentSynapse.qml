@@ -88,7 +88,7 @@ Edge {
         }
 
         onReceivedFire: {
-            emitter.burst(1);
+//            emitter.burst(1);
             if(delay > 0.0) {
                 triggers.push(time + delay);
             } else {
@@ -142,37 +142,37 @@ Edge {
         }
     }
 
-    Emitter {
-        id: emitter
-        property real duration: {
-            var result = 0.0;
-            if(engine.delay > 0 && root.timeStep > 0) {
-                return Math.max(1, engine.delay / (root.timeStep * Style.playbackSpeed) * 16);
-            } else {
-                result = 1;
-            }
-            return result;
-        }
-        system: particleSystem
-        x: root.startPoint.x
-        y: root.startPoint.y
-        emitRate: 0.0
-        lifeSpan: duration
-        velocity: PointDirection {
-            x: (root.endPoint.x - root.startPoint.x) / emitter.duration * 1000;
-            y: (root.endPoint.y - root.startPoint.y) / emitter.duration * 1000;
-        }
-        size: 24 * Style.workspaceScale
-    }
+//    Emitter {
+//        id: emitter
+//        property real duration: {
+//            var result = 0.0;
+//            if(engine.delay > 0 && root.timeStep > 0) {
+//                return Math.max(1, engine.delay / (root.timeStep * Style.playbackSpeed) * 16);
+//            } else {
+//                result = 1;
+//            }
+//            return result;
+//        }
+//        system: particleSystem
+//        x: root.startPoint.x
+//        y: root.startPoint.y
+//        emitRate: 0.0
+//        lifeSpan: duration
+//        velocity: PointDirection {
+//            x: (root.endPoint.x - root.startPoint.x) / emitter.duration * 1000;
+//            y: (root.endPoint.y - root.startPoint.y) / emitter.duration * 1000;
+//        }
+//        size: 24 * Style.workspaceScale
+//    }
 
-    Age {
-        id: ageAffector
-        x: root.endPoint.x - width * 0.5
-        y: root.endPoint.y - width * 0.5
-        system: root.particleSystem
-        width: 8
-        height: 8
-        shape: EllipseShape {}
-        lifeLeft: 0.0
-    }
+//    Age {
+//        id: ageAffector
+//        x: root.endPoint.x - width * 0.5
+//        y: root.endPoint.y - width * 0.5
+//        system: root.particleSystem
+//        width: 8
+//        height: 8
+//        shape: EllipseShape {}
+//        lifeLeft: 0.0
+//    }
 }
