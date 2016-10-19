@@ -92,5 +92,9 @@ DISTFILES += \
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
-GIT_DIR=$$PWD/.git
-include(libs/CuteVersioning/CuteVersioning.pri)
+exists(libs/CuteVersioning/CuteVersioning.pri) {
+    GIT_DIR=$$PWD/.git
+    include(libs/CuteVersioning/CuteVersioning.pri)
+} else {
+    error("Could not find CuteVersioning. Try running 'git submodule update --init --recursive' in Neuronify's root directory.")
+}
