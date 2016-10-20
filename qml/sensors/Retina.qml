@@ -41,7 +41,7 @@ Node {
     readonly property real instantRate: retinaEngine.instantRate
     property bool negativeRate: instantRate < 0
 
-    property bool isCameraAvailable: QtMultimedia.availableCameras.length > 0
+    property bool cameraAvailable: QtMultimedia.availableCameras.length > 0
 
     preferredEdge: CurrentSynapse {}
     color: "#dd5000"
@@ -54,7 +54,7 @@ Node {
         id: retinaEngine
         kernel: kernel
         videoSurface: root.videoSurface
-        plotKernel: true
+        plotKernel: cameraAvailable
     }
 
     savedProperties: [
@@ -99,23 +99,6 @@ Node {
         radius: 5
         border.width: 5.0
         border.color: "#ffcc00"
-        Text {
-            anchors.centerIn: parent
-
-            font: Style.control.font
-            color: Style.text.color
-            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-            clip: true
-            text: ""
-            Component.onCompleted:
-            {
-                if(!isCameraAvailable){
-                    text= "No available camera"
-                    retinaEngine.plotKernel = false
-                }
-
-            }
-        }
     }
 
 
@@ -411,8 +394,23 @@ Node {
 
     }
 
+    Rectangle {
+        anchors {
+            fill: cameraMissingText
+            margins: -8
+        }
+        visible: cameraMissingText.visible
+    }
 
-
+    Text {
+        id: cameraMissingText
+        anchors.centerIn: parent
+        visible: !cameraAvailable
+        font.pixelSize: 20
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+        clip: true
+        text: "No camera found"
+    }
 }
 
 
