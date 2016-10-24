@@ -31,8 +31,10 @@
 #include <QtQml>
 #include <QQmlContext>
 #include <QQuickView>
-
+#include <QDebug>
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
 #include "qmlpreviewer.h"
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -78,11 +80,17 @@ int main(int argc, char *argv[])
     app.setOrganizationName("Ovilab");
     app.setOrganizationDomain("net");
     app.setApplicationName("Neuronify");
-
-    QmlPreviewer previewer(app);
     QQmlApplicationEngine engine;
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
+    QmlPreviewer previewer(app);
+#endif
+
     if(argc > 2) {
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
         previewer.show();
+#else
+        qFatal("Preview not supported on Android / iOS");
+#endif
     } else {
         qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
         QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");

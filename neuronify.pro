@@ -34,8 +34,7 @@ HEADERS += \
     src/io/propertygroup.h \
     src/retina/kernels/rectangularkernelengine.h \
     src/core/edgebase.h \
-    src/core/edgeengine.h \
-    src/qmlpreviewer.h
+    src/core/edgeengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -63,7 +62,11 @@ SOURCES += \
     src/retina/kernels/rectangularkernelengine.cpp \
     src/core/edgebase.cpp \
     src/core/edgeengine.cpp \
-    src/qmlpreviewer.cpp
+
+!ios : !android {
+    SOURCES += src/qmlpreviewer.cpp
+    HEADERS += src/qmlpreviewer.h
+}
 
 
 RESOURCES += qml.qrc \
