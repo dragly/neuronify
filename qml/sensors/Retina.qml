@@ -171,7 +171,8 @@ Node {
                 axis.z: 0
                 origin.x: retinaPainter.width * 0.5
                 origin.y: retinaPainter.height * 0.5
-                angle: 180}
+                angle: 180
+            }
         ]
         property list<Rotation> osxTransforms: [
             Rotation {
@@ -181,6 +182,27 @@ Node {
                 origin.x: retinaPainter.width * 0.5
                 origin.y: retinaPainter.height * 0.5
                 angle: 180
+            }
+        ]
+        property list<Rotation> iosTransforms: [
+            Rotation {
+                axis.x: 0
+                axis.y: 0
+                axis.z: 1
+                origin.x: retinaPainter.width * 0.5
+                origin.y: retinaPainter.height * 0.5
+                angle: {
+                    switch(Screen.primaryOrientation) {
+                    case Qt.PortraitOrientation:
+                        return 90;
+                    case Qt.LandscapeOrientation:
+                        return 0;
+                    case Qt.InvertedPortraitOrientation:
+                        return 270;
+                    case Qt.LandscapeOrientation:
+                        return 180;
+                    }
+                }
             }
         ]
         property list<Rotation> linuxTransforms: [
@@ -233,6 +255,8 @@ Node {
                 return linuxTransforms;
             case "android":
                 return androidTransforms;
+            case "ios":
+                return iosTransforms;
             }
             return noTransforms;
         }
@@ -388,10 +412,7 @@ Node {
                 }
                 sourceComponent: (kernelLoader.item && kernelLoader.item.controls) ? kernelLoader.item.controls : undefined
             }
-
         }
-
-
     }
 
     Rectangle {
