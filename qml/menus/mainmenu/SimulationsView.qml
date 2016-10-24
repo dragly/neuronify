@@ -42,30 +42,28 @@ MainMenuPage {
                             ]
                         },
                         {
-                            name: "Neurons",
+                            name: "Neuronify Items",
                             simulations: [
-                                "qrc:/simulations/neurons/leaky",
-                                "qrc:/simulations/neurons/inhibitory",
-    //                            "qrc:/simulations/neurons/burst",
-                                "qrc:/simulations/neurons/adaptation",
-                            ]
-                        },
-                        {
-                            name: "Inhibitory circuit effects",
-                            simulations: [
-                                "qrc:/simulations/inhibition/lateral_inhibition",
-                                "qrc:/simulations/inhibition/recurrent_inhibition",
-                                "qrc:/simulations/inhibition/reciprocal_inhibition",
+                                "qrc:/simulations/items/neurons/leaky",
+                                "qrc:/simulations/items/neurons/inhibitory",
+    //                            "qrc:/simulations/items/neurons/burst",
+                                "qrc:/simulations/items/neurons/adaptation",
+                                "qrc:/simulations/items/visualInput",
+                                "qrc:/simulations/items/generators",
                             ]
                         },
                         {
                             name: "Miscellaneous",
                             simulations: [
-                                "qrc:/simulations/generators",
+                                "qrc:/simulations/mix/lateral_inhibition",
+                                "qrc:/simulations/mix/recurrent_inhibition",
+                                "qrc:/simulations/mix/reciprocal_inhibition",
+                                "qrc:/simulations/mix/disinhibition",
+                                "qrc:/simulations/mix/lateral_inhibition_1",
+                                "qrc:/simulations/mix/lateral_inhibition_2",
                                 "qrc:/simulations/mix/input_summation",
                                 "qrc:/simulations/mix/rythm_transformation",
                                 "qrc:/simulations/mix/prolonged_activity",
-                                "qrc:/simulations/visualInput",
 
                             ]
                         },
