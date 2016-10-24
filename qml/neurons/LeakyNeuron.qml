@@ -130,8 +130,8 @@ Neuron {
 
             PropertiesItem {
                 text: "Potentials"
-                info: "Vr: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
-                      "Vi: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
+                info: "Vm: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
+                      "Vr: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
                       "Vt: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
                 RestingPotentialControl{
                     id: restingPotentialControl
