@@ -1240,7 +1240,6 @@ Rectangle {
     }
 
     Keys.onPressed: {
-        console.log("Do I ever catch these")
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
             selectAll()
         }
