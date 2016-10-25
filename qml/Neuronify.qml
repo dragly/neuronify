@@ -968,6 +968,7 @@ Rectangle {
         onDeleteEverything: {
             root.deleteEverything()
         }
+
     }
 
     PropertiesPanel {
@@ -1055,6 +1056,8 @@ Rectangle {
         id: mainMenu
 
         property bool wasRunning: true
+
+        focus: true
 
         anchors.fill: parent
         blurSource: workspaceFlickable
@@ -1219,21 +1222,22 @@ Rectangle {
         onActivated: root.advanced = !root.advanced
     }
 
-    Keys.onPressed: {
-        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
-            selectAll()
-        }
-        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
-            clipboard.copyNeurons()
-        }
-        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
-            clipboard.pasteNeurons()
-        }
-        if(event.key === Qt.Key_Delete || (Qt.platform.os === "osx" && event.key === Qt.Key_Backspace) ) {
-            deleteSelected()
-        }
-        if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
-            playbackControls.toggleSpeed(event.key)
-        }
-    }
+//    Keys.onPressed: {
+//        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
+//            selectAll()
+//        }
+//        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
+//            clipboard.copyNeurons()
+//        }
+//        if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
+//            clipboard.pasteNeurons()
+//        }
+//        if(event.key === Qt.Key_Delete || (Qt.platform.os === "osx" && event.key === Qt.Key_Backspace) ) {
+//            deleteSelected()
+//        }
+//        if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
+//            playbackControls.toggleSpeed(event.key)
+//        }
+//   }
+
 }

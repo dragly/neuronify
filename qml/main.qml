@@ -48,4 +48,10 @@ QQC2.ApplicationWindow {
         id: neuronify
         anchors.fill: parent
     }
+
+    onClosing: {
+        if (Qt.platform.os === "android"){
+            close.accepted = false
+        }
+    }
 }
