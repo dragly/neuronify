@@ -23,7 +23,6 @@ Item {
 
         if (revealed) {
             focus = true
-            forceActiveFocus()
         }
          else {
             focus = false
