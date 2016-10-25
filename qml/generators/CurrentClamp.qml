@@ -31,7 +31,7 @@ Node {
             property alias currentOutput: engine.currentOutput
         }
         onResettedProperties: {
-            currentOutput = 300e-12
+            currentOutput = 2e-9
         }
     }
 
