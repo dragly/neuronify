@@ -277,7 +277,6 @@ Item {
 
 
     Keys.onPressed: {
-        console.log("here?")
         if(event.key === Qt.Key_Back || event.key === Qt.Key_Escape) {
             if(stackView.depth > 1){
                 stackView.pop();
