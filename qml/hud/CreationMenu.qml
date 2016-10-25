@@ -20,6 +20,13 @@ Item {
 
     onRevealedChanged: {
         itemListView.currentIndex = 0
+
+        if (revealed) {
+            focus = true
+        }
+         else {
+            focus = false
+        }
     }
 
     ListModel {
@@ -278,6 +285,13 @@ Item {
                 duration: 400
                 easing.type: Easing.InOutQuad
             }
+        }
+    }
+
+    Keys.onPressed: {
+        if(event.key === Qt.Key_Back || event.key === Qt.Key_Escape) {
+            revealed = false
+            event.accepted = true
         }
     }
 }

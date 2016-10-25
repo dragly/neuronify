@@ -81,6 +81,8 @@ Rectangle {
         Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
                 firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed
+        focus: true
+//        forceActiveFocus()
     }
 
     function firstLoad() {
@@ -958,6 +960,14 @@ Rectangle {
 
         blurSource: workspaceFlickable
 
+        onRevealedChanged: {
+            if(revealed) {
+                root.focus = false
+            } else {
+                root.focus = true
+            }
+        }
+
         onDroppedEntity: {
             var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
             properties.x = workspacePosition.x
@@ -968,6 +978,7 @@ Rectangle {
         onDeleteEverything: {
             root.deleteEverything()
         }
+
     }
 
     PropertiesPanel {
@@ -980,7 +991,11 @@ Rectangle {
 
         onRevealedChanged: {
             if(revealed) {
+//                root.focus = false
                 clickMode = "selection"
+
+            } else {
+                root.focus = true
             }
         }
 
@@ -1056,12 +1071,17 @@ Rectangle {
 
         property bool wasRunning: true
 
+        focus: true
+
         anchors.fill: parent
         blurSource: workspaceFlickable
 
         onRevealedChanged: {
             if(revealed) {
                 wasRunning = root.running
+                root.focus = false
+            } else {
+                root.focus = true
             }
         }
 
@@ -1235,5 +1255,6 @@ Rectangle {
         if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
             playbackControls.toggleSpeed(event.key)
         }
-    }
+   }
+
 }

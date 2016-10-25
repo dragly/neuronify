@@ -26,6 +26,15 @@ Item {
     width: 100
     height: 62
 
+    onRevealedChanged: {
+        if (revealed) {
+            focus = true
+        }
+        else {
+            focus = false
+        }
+    }
+
     MouseArea {
         enabled: mainMenuRoot.revealed
         anchors.fill: parent
@@ -48,6 +57,7 @@ Item {
         id: menuRectangle
         enabled: mainMenuRoot.revealed
         anchors.fill: parent
+
 
         Image {
             id: backButton
@@ -94,6 +104,7 @@ Item {
             text: stackView.currentItem ? stackView.currentItem.title : ""
         }
 
+
         StackView {
             id: stackView
             anchors {
@@ -102,6 +113,9 @@ Item {
                 right: parent.right
                 bottom: parent.bottom
             }
+
+
+
             clip: true
             initialItem: mainMenuView
             delegate: StackViewDelegate {
@@ -144,6 +158,8 @@ Item {
             }
         }
     }
+
+
 
     Component {
         id: mainMenuView
@@ -258,5 +274,19 @@ Item {
             }
         }
     ]
+
+
+    Keys.onPressed: {
+        if(event.key === Qt.Key_Back || event.key === Qt.Key_Escape) {
+            if(stackView.depth > 1){
+                stackView.pop();
+            } else {
+                revealed = false
+            }
+
+        }
+        event.accepted = true
+    }
+
 }
 
