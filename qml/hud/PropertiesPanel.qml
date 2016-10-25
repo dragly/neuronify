@@ -277,13 +277,13 @@ Item {
     }
 
     Keys.onPressed: {
-        console.log("caught button press PROPERTIES")
         if(event.key === Qt.Key_Back || event.key === Qt.Key_Escape) {
             if(stackView.depth > 1){
                 stackView.pop();
             } else {
                 revealed = false
             }
+            event.accepted = true
         }
     }
 }
