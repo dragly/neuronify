@@ -84,7 +84,7 @@ MainMenuPage {
                         }
                         ScrollView{
                             width: categories.width
-                            height: simulationsRow.height
+                            height: simulationsRow.height + Style.baseMargin
                             Flickable {
                                 anchors.fill: parent
                                 contentHeight: height
