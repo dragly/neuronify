@@ -63,10 +63,10 @@ Neuron {
                 id: subText
                 font: Style.control.subText.font
                 color: Style.control.subText.color
-                text: "Vr: " +
+                text: "Vm: " +
                       (neuronEngine.restingPotential * 1e3).toFixed(1)
                       + " mV, " +
-                      "Vi: " +
+                      "Vr: " +
                       (neuronEngine.initialPotential * 1e3).toFixed(1)
                       + " mV, " +
                       "Vt: " +
