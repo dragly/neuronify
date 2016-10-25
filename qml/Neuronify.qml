@@ -81,6 +81,8 @@ Rectangle {
         Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
                 firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed
+        focus: true
+//        forceActiveFocus()
     }
 
     function firstLoad() {
@@ -958,6 +960,14 @@ Rectangle {
 
         blurSource: workspaceFlickable
 
+        onRevealedChanged: {
+            if(revealed) {
+                root.focus = false
+            } else {
+                root.focus = true
+            }
+        }
+
         onDroppedEntity: {
             var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
             properties.x = workspacePosition.x
@@ -981,7 +991,11 @@ Rectangle {
 
         onRevealedChanged: {
             if(revealed) {
+//                root.focus = false
                 clickMode = "selection"
+
+            } else {
+                root.focus = true
             }
         }
 
@@ -1065,6 +1079,9 @@ Rectangle {
         onRevealedChanged: {
             if(revealed) {
                 wasRunning = root.running
+                root.focus = false
+            } else {
+                root.focus = true
             }
         }
 
@@ -1223,6 +1240,7 @@ Rectangle {
     }
 
     Keys.onPressed: {
+        console.log("Do I ever catch these")
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
             selectAll()
         }

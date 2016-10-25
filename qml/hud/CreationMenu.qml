@@ -22,8 +22,10 @@ Item {
         itemListView.currentIndex = 0
 
         if (revealed) {
+            focus = true
             forceActiveFocus()
-        } else {
+        }
+         else {
             focus = false
         }
     }
@@ -288,6 +290,8 @@ Item {
     }
 
     Keys.onPressed: {
+        console.log("caught button press CREATION")
+
         if(event.key === Qt.Key_Back || event.key === Qt.Key_Escape) {
             revealed = false
         }
