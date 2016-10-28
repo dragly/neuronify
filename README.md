@@ -33,6 +33,7 @@ Visual neuron simulator using integrate-and-fire neurons.
 
 5. Note that the names of the folders may vary if you have a different Qt version. These above are the folders for Qt 5.4 and Visual Studio 2013.
 5. Use cd to navigate to the build folder, above the release and debug folders.
+5. Delete everything except neuronify.exe inside the release folder.
 6. Run the following command to let Qt help you with deployment:
 
     windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -opengl -quickparticles -quickwidgets -qmldir ../neuronify release
