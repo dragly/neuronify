@@ -35,7 +35,7 @@ Visual neuron simulator using integrate-and-fire neurons.
 5. Use cd to navigate to the build folder, above the release and debug folders.
 6. Run the following command to let Qt help you with deployment:
 
-    windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -declarative -opengl -quickparticles -quickwidgets -qmldir ../neuronify release
+    windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -opengl -quickparticles -quickwidgets -qmldir ../neuronify release
 
 7. Next, you will need to copy the following files to your build folder manually:
     - if you are using MinGW:
