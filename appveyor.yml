@@ -1,0 +1,6 @@
+install:
+  - set QTDIR=C:\Qt\5.7\msvc2013_64
+  - set PATH=%PATH%;%QTDIR%\bin
+build_script:
+  - qmake neuronify.pro
+  - jom.exe
