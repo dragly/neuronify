@@ -38,19 +38,20 @@ Visual neuron simulator using integrate-and-fire neurons.
 
     windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -opengl -quickparticles -quickwidgets -qmldir ../neuronify release
 
+7. Copy all folders in C:\Qt\5.7\qml into the app folder. These are not all necessary, but the deploy tool doesn't catch all, and if any are missing, the app won't start.
 7. Next, you will need to copy the following files to your build folder manually:
     - if you are using MinGW:
 
-        C:\Windows\SysWOW64\msvcp120.dll
-        C:\Windows\SysWOW64\msvcr120.dll
-        C:\Qt\5.4\mingw491_32\bin\libgcc_s_dw2-1.dll
-        C:\Qt\5.4\mingw491_32\bin\libstdc++-6.dll
-        C:\Qt\5.4\mingw491_32\bin\libwinpthread-1.dll
+        - C:\Windows\SysWOW64\msvcp120.dll
+        - C:\Windows\SysWOW64\msvcr120.dll
+        - C:\Qt\5.4\mingw491_32\bin\libgcc_s_dw2-1.dll
+        - C:\Qt\5.4\mingw491_32\bin\libstdc++-6.dll
+        - C:\Qt\5.4\mingw491_32\bin\libwinpthread-1.dll
 
     - if you are using MSVC:
-
-        C:\Windows\SysWOW64\msvcp120.dll
-        C:\Windows\SysWOW64\msvcr120.dll
+        - from C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x64\Microsoft.VC120.CRT:
+        - msvcp120.dll 
+        - msvcr120.dll      
 
 8. Zip the whole folder, and you should be good to go
 9. Note that these are the files you need to copy if you are using Qt 5.4 and Visual Studio 2013. If you are using a newer version, you may want to use a newer set of files. Please refer to the documentation for more information:
