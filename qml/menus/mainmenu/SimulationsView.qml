@@ -46,7 +46,6 @@ MainMenuPage {
                             simulations: [
                                 "qrc:/simulations/items/neurons/leaky",
                                 "qrc:/simulations/items/neurons/inhibitory",
-    //                            "qrc:/simulations/items/neurons/burst",
                                 "qrc:/simulations/items/neurons/adaptation",
                                 "qrc:/simulations/items/visualInput",
                                 "qrc:/simulations/items/generators",
@@ -59,17 +58,16 @@ MainMenuPage {
                                 "qrc:/simulations/mix/recurrent_inhibition",
                                 "qrc:/simulations/mix/reciprocal_inhibition",
                                 "qrc:/simulations/mix/disinhibition",
-                                "qrc:/simulations/mix/lateral_inhibition_1",
-                                "qrc:/simulations/mix/lateral_inhibition_2",
-                                "qrc:/simulations/mix/input_summation",
                                 "qrc:/simulations/mix/rythm_transformation",
                                 "qrc:/simulations/mix/prolonged_activity",
-
                             ]
                         },
                         {
                             name: "Textbook Examples",
                             simulations: [
+                                "qrc:/simulations/mix/lateral_inhibition_1",
+                                "qrc:/simulations/mix/lateral_inhibition_2",
+                                "qrc:/simulations/mix/input_summation",
                                 "qrc:/simulations/sterratt/if_response",
                                 "qrc:/simulations/sterratt/refractory_period",
                             ]
