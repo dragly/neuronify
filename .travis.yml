@@ -1,15 +1,24 @@
 language: cpp
-os:
-- linux
-compiler:
-- gcc
-sudo: required
-services: docker
-before_install:
-- docker build -t ovilab/neuronify -f .docker/Dockerfile .
-script:
-- docker run ovilab/neuronify bash -c "/opt/qt57/bin/qmake neuronify.pro && make
-  -j8"
 branches:
   except:
     - appveyor
+matrix:
+    include:
+        - os: osx
+          before_install:
+              - brew update
+              - brew install qt5
+              - brew link --force qt5
+        - os: linux
+          dist: trusty
+          sudo: required
+          before_install:
+              - sudo apt-add-repository -y ppa:beineri/opt-qt57-precise
+              - sudo apt-get -qq update
+              - sudo apt-get -qq install qt573d qt57charts-no-lgpl qt57datavis-no-lgpl qt57declarative qt57svg
+              - export PATH=$PATH:/opt/qt57/bin
+install:
+    - qmake
+    - make
+script:
+    - echo "Finished"
