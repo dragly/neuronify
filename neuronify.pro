@@ -113,3 +113,12 @@ ios {
     app_launch_images.files = $$PWD/ios/launch/Launch.xib
     QMAKE_BUNDLE_DATA += app_launch_images
 }
+
+WINRT_MANIFEST.name = Neuronify
+WINRT_MANIFEST.publisher = Ovilab
+WINRT_MANIFEST.version = 0.94.0.0
+WINRT_MANIFEST.description = Educational neural network app
+WINRT_MANIFEST.capabilities += codeGeneration
+WINRT_MANIFEST.logo_small=winrt/logo_44x44.png
+WINRT_MANIFEST.logo_large=winrt/logo_150x150.png
+WINRT_MANIFEST.logo_splash=winrt/logo_620x300.png
