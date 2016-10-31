@@ -54,6 +54,7 @@ Rectangle {
     property url currentSimulationUrl
     property bool advanced: false
     property bool firstRun: true
+    property int latestZ: 0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -81,7 +82,7 @@ Rectangle {
                 firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed
         focus: true
-//        forceActiveFocus()
+        //        forceActiveFocus()
     }
 
     function firstLoad() {
@@ -558,7 +559,11 @@ Rectangle {
             deselectAll();
             activeObject = connection;
             connection.selected = true;
+            latestZ-=1
+            connection.z = latestZ
         });
+        latestZ-=1
+        connection.z = latestZ
         addToUndoList()
         graphEngine.addEdge(connection)
         return connection
@@ -990,7 +995,7 @@ Rectangle {
 
         onRevealedChanged: {
             if(revealed) {
-//                root.focus = false
+                //                root.focus = false
                 clickMode = "selection"
 
             } else {
@@ -1254,6 +1259,6 @@ Rectangle {
         if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
             playbackControls.toggleSpeed(event.key)
         }
-   }
+    }
 
 }

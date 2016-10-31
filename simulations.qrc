@@ -69,5 +69,8 @@
         <file>simulations/mix/lateral_inhibition_1/lateral_inhibition_1.qml</file>
         <file>simulations/mix/lateral_inhibition_2/lateral_inhibition_2.qml</file>
         <file>simulations/mix/disinhibition/disinhibition.qml</file>
+        <file>simulations/items/frPlot/frPlot.qml</file>
+        <file>simulations/items/frPlot/frPlot.png</file>
+        <file>simulations/items/frPlot/frPlot.nfy</file>
     </qresource>
 </RCC>

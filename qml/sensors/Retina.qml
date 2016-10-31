@@ -277,7 +277,7 @@ Node {
     Component {
         id: controlsComponent
         PropertiesPage {
-            property string title: "Retina"
+            property string title: "Visual input"
             Component.onCompleted: {
                 for(var i = 0; i < fieldTypes.count; i++) {
                     var item = fieldTypes.get(i)

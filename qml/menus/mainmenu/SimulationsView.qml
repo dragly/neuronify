@@ -22,7 +22,7 @@ MainMenuPage {
             }
 
             contentWidth: width
-            contentHeight: categories.height
+            contentHeight: categories.height+100
             flickableDirection: Flickable.VerticalFlick
             Column {
                 id: categories
@@ -49,6 +49,8 @@ MainMenuPage {
                                 "qrc:/simulations/items/neurons/adaptation",
                                 "qrc:/simulations/items/visualInput",
                                 "qrc:/simulations/items/generators",
+                                "qrc:/simulations/items/frPlot",
+
                             ]
                         },
                         {
