@@ -52,9 +52,9 @@ signals:
     void voltageClampedChanged(bool voltageClamped);
 
 protected:
-    virtual void stepEvent(double dt, bool parentEnabled);
-    virtual void fireEvent();
-    virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender);
+    virtual void stepEvent(double dt, bool parentEnabled) override;
+    virtual void fireEvent() override;
+    virtual void receiveCurrentEvent(double currentOutput, NodeEngine *sender) override;
     virtual void resetPropertiesEvent() override;
     virtual void resetDynamicsEvent() override;
 

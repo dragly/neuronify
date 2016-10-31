@@ -1,0 +1,26 @@
+install:
+  - set QTDIR=C:\Qt\5.7\msvc2013_64
+  - set PATH=%PATH%;%QTDIR%\bin
+  - call "%VS120COMNTOOLS%\..\..\VC\vcvarsall.bat" x86_amd64
+build_script:
+  - git submodule update --init --recursive
+  - qmake neuronify.pro
+  - nmake
+  - nmake clean
+  - xcopy /s "%QTDIR%\qml" release
+  - xcopy /s "%VS120COMNTOOLS%\..\..\VC\redist\x64\Microsoft.VC120.CRT" release
+  - windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -opengl -quickparticles -quickwidgets -qmldir . release
+artifacts:
+  - path: release
+    name: windows-release
+    type: zip
+deploy:
+  description: 'Automated Windows build'
+  provider: GitHub
+  auth_token:
+    secure: 6LmZ/bebQkiHy0uDmhrqvG/0LEQOTaAgHARYLmdjPEpyuPhBDIOrhPn+vArd01Kv
+  artifact: /.*\.zip/
+  draft: false
+  prerelease: true
+  on:
+    appveyor_repo_tag: true

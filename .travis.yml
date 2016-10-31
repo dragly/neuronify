@@ -1,18 +1,48 @@
 language: cpp
-os:
-- linux
-compiler:
-- gcc
-sudo: required
-services: docker
-notifications:
-  slack:
-    on_success: change
-    on_failure: always
-    rooms:
-        secure: kuyFzncY4kcv2ZAyHg6jYL7ASfKMirXSTRr8OVsFBh6exTvItqkFmzcgxhke9Foqp2KJuKOSg8qf2pP2mpW/JznssDJLrcUxbCGakt3BYLXtuE3ZD+3SVwvjBPkBJncG5knEayMW0TCBWI+FZBnzH66RwP2iQRVGkXJX4skVOSM=
-before_install:
-- docker build -t ovilab/neuronify -f .docker/Dockerfile .
+branches:
+  except:
+  - appveyor
+matrix:
+  include:
+  - os: osx
+    before_install:
+      - brew update
+      - brew install p7zip
+      - bash .travis/qt5-mac.sh $(pwd) extra-charts 3d base declarative graphicaleffects imageformats macextras multimedia quickcontrols quickcontrols2 sensors svg tools translations xmlpatterns
+      - export PATH=$(pwd)/5.7/clang_64/bin:$PATH
+    before_deploy:
+      - git clone https://github.com/iltommi/macdeployqtfix.git
+      - python macdeployqtfix/macdeployqtfix.py neuronify.app/Contents/MacOS/neuronify /usr/local
+      - macdeployqt neuronify.app -qmldir=. -dmg
+    deploy:
+      skip_cleanup: true
+      provider: releases
+      file: neuronify.dmg
+      on:
+        tags: true
+      api_key:
+        secure: WJ9YTjPf8GWZ4PmdVoPubtL0CBU+cAIIMFjTpeOKwOLX1vH3zFkdwAz1nbY28CWWhm+YQwWVWwByZOI9hePsf5t6wtkWfJB4wzgrKEcIyKHMHmjaMYc+fp6V//3f7Z4Kc6vYn7wNNy1i9zgA8VVr2A4u8Rf1i7Euio4SLpey17w=
+  - os: linux
+    dist: trusty
+    sudo: required
+    before_install:
+    - sudo apt-add-repository -y ppa:beineri/opt-qt57-trusty
+    - sudo apt-get -qq update
+    - sudo apt-get -qq install qt573d qt57charts-no-lgpl qt57datavis-no-lgpl qt57declarative
+      qt57svg
+    - export PATH=/opt/qt57/bin:$PATH
+    before_deploy:
+      - tar -czvf neuronify.tar.gz neuronify
+    deploy:
+      skip_cleanup: true
+      provider: releases
+      file: neuronify.tar.gz
+      on:
+        tags: true
+      api_key:
+        secure: WJ9YTjPf8GWZ4PmdVoPubtL0CBU+cAIIMFjTpeOKwOLX1vH3zFkdwAz1nbY28CWWhm+YQwWVWwByZOI9hePsf5t6wtkWfJB4wzgrKEcIyKHMHmjaMYc+fp6V//3f7Z4Kc6vYn7wNNy1i9zgA8VVr2A4u8Rf1i7Euio4SLpey17w=
+install:
+- qmake
+- make
 script:
-- docker run ovilab/neuronify bash -c "/opt/qt57/bin/qmake neuronify.pro && make
-  -j8"
+- echo "Finished"
