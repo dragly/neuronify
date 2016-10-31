@@ -22,7 +22,7 @@ MainMenuPage {
             }
 
             contentWidth: width
-            contentHeight: categories.height
+            contentHeight: categories.height+100
             flickableDirection: Flickable.VerticalFlick
             Column {
                 id: categories
