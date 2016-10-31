@@ -17,7 +17,7 @@ QmlPreviewer::QmlPreviewer(QApplication &app)
 //    }
 //    m_projectPath = args[1];
 //    m_filePath = args[2];
-
+    Q_UNUSED(app)
     connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &QmlPreviewer::reload);
 }
 

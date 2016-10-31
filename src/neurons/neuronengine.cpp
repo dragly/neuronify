@@ -103,7 +103,6 @@ void NeuronEngine::stepEvent(double dt, bool parentEnabled)
 
 
 
-    double V = m_voltage;
     double totalCurrent = otherCurrents + m_receivedCurrents;
     double dV = totalCurrent / m_capacitance * dt;
     m_voltage += dV;
