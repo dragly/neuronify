@@ -1,13 +1,12 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
-import QtQuick.Controls 2.0 as QQC2
 import QtQuick.Layouts 1.0
 import Qt.labs.settings 1.0
 import CuteVersioning 1.0
 
 import "store"
 
-QQC2.ApplicationWindow {
+ApplicationWindow {
     id: applicationWindow1
 
     property real startupTime: 0

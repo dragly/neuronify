@@ -1,6 +1,5 @@
 import QtQuick 2.5
 import QtQuick.Controls 1.1
-import QtQuick.Controls 2.0 as QQC2
 import QtQuick.Dialogs 1.0
 import QtQuick.Layouts 1.1
 import QtQuick.Particles 2.0
