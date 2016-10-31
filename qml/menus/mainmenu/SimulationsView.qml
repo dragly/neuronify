@@ -50,6 +50,8 @@ MainMenuPage {
                                 "qrc:/simulations/items/neurons/adaptation",
                                 "qrc:/simulations/items/visualInput",
                                 "qrc:/simulations/items/generators",
+                                "qrc:/simulations/items/frPlot",
+
                             ]
                         },
                         {
