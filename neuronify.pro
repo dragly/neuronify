@@ -63,7 +63,7 @@ SOURCES += \
     src/core/edgebase.cpp \
     src/core/edgeengine.cpp \
 
-!ios : !android {
+!ios : !android : !winrt {
     SOURCES += src/qmlpreviewer.cpp
     HEADERS += src/qmlpreviewer.h
 }

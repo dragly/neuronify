@@ -43,8 +43,8 @@
 				<string>AppIcon72x72@2x~ipad.png</string>
 				<string>AppIcon76x76~ipad.png</string>
 				<string>AppIcon76x76@2x~ipad.png</string>
-                                <string>AppIcon167x167~ipad.png</string>
-                                <string>AppIcon167x167@2x~ipad.png</string>
+				<string>AppIcon167x167~ipad.png</string>
+				<string>AppIcon167x167@2x~ipad.png</string>
 			</array>
 		</dict>
 	</dict>
@@ -57,11 +57,11 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.94</string>
+	<string>0.94.7</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>7</string>
+	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

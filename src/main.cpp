@@ -32,7 +32,7 @@
 #include <QQmlContext>
 #include <QQuickView>
 #include <QDebug>
-#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID) && !defined(Q_OS_WINRT)
 #include "qmlpreviewer.h"
 #endif
 
@@ -81,12 +81,12 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("net");
     app.setApplicationName("Neuronify");
     QQmlApplicationEngine engine;
-#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID) && !defined(Q_OS_WINRT)
     QmlPreviewer previewer(app);
 #endif
 
     if(argc > 2) {
-#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID) && !defined(Q_OS_WINRT)
         previewer.show();
 #else
         qFatal("Preview not supported on Android / iOS");
@@ -96,8 +96,10 @@ int main(int argc, char *argv[])
         QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
 
         engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
-        QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
-        qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
+        if(engine.rootObjects().size() > 0) {
+            QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
+            qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
+        }
     }
     return app.exec();
 }

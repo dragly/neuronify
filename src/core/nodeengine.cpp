@@ -99,6 +99,7 @@ void NodeEngine::finalizeStep(double dt)
 void NodeEngine::stepEvent(double dt, bool parentEnabled)
 {
     Q_UNUSED(dt);
+    Q_UNUSED(parentEnabled)
 }
 
 void NodeEngine::fireEvent()
