@@ -1,25 +1,16 @@
 #!/bin/sh -e
 
-if [ -z "$SNAPCRAFT_SECRET" ]; then
+if [ -z "$SNAPCRAFT_CONFIG" ]; then
     exit 0
 fi
 
-mkdir -p ".encrypted"
-if [ ! -e ".encrypted/snapcraft.cfg.enc" ]; then
-    echo "Seeding a new macaroon."
-    echo "$SNAPCRAFT_CONFIG" > ".encrypted/snapcraft.cfg.enc"
-fi
-
 mkdir -p "$HOME/.config/snapcraft"
-openssl enc -aes-256-cbc -base64 -pass env:SNAPCRAFT_SECRET -d -in ".encrypted/snapcraft.cfg.enc" -out "$HOME/.config/snapcraft/snapcraft.cfg"
+echo $SNAPCRAFT_CONFIG > "$HOME/.config/snapcraft/snapcraft.cfg"
 
 if docker run -v $HOME:/root -v $(pwd):/cwd snapcore/snapcraft sh -c 'cd /cwd/.snapcraft; snapcraft'; then
 #    if [ "${TRAVIS_BRANCH}" = "edge" ]; then
-    docker run -v $HOME:/root -v $(pwd):/cwd snapcore/snapcraft sh -c "cd /cwd/.snapcraft; ls; snapcraft push *.snap --release edge"
+    docker run -v $HOME:/root -v $(pwd):/cwd snapcore/snapcraft sh -c "cd /cwd/.snapcraft; snapcraft push *.snap --release edge"
 #    elif [ "${TRAVIS_BRANCH}" = "master" ]; then
 #        docker run -v $HOME:/root -v $(pwd):/cwd snapcore/snapcraft sh -c "cd /cwd; snapcraft push *.snap --release stable"
 #    fi
 fi
-
-openssl enc -aes-256-cbc -base64 -pass env:SNAPCRAFT_SECRET -out ".encrypted/snapcraft.cfg.enc" < "$HOME/.config/snapcraft/snapcraft.cfg"
-rm -f "$HOME/.config/snapcraft/snapcraft.cfg"
