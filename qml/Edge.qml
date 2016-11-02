@@ -17,10 +17,10 @@ EdgeBase {
     property bool selected: false
     property bool valid: (itemA && itemB) ? true : false
     property color color: valid ? itemA.color : "white"
-    property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x + 10*curved: 0
-    property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y + 10*curved: 0
+    property real diffx: valid ? itemA.connectionPoint.x - itemB.connectionPoint.x : 0
+    property real diffy: valid ? itemA.connectionPoint.y - itemB.connectionPoint.y : 0
     property real length: Math.sqrt(diffx*diffx + diffy*diffy)
-    property real angle: Math.atan(diffy/diffx)*180/Math.PI
+    property real angle: Math.atan2(diffy, diffx)*180/Math.PI
     property real cx: valid ? intersectX(): 0
     property real cy: valid ? intersectY(): 0
     property color _internalColor: connectionRoot.selected ? "#08306b" : connectionRoot.color
@@ -50,7 +50,8 @@ EdgeBase {
 
 
         if (!itemB.square) {
-            return itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length
+            var offset = curved ? 10 * Math.cos((angle + 90) * Math.PI / 180) : 0.0
+            return itemB.connectionPoint.x + (connectionSpot.width + itemB.radius) * diffx / length + offset
         }
 
         if (diffx <= 0 && diffy >= 0) {
@@ -93,7 +94,8 @@ EdgeBase {
         var dy = Math.abs(diffy)
 
         if (!itemB.square) {
-            return itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length
+            var offset = curved ? 10 * Math.sin((angle + 90) * Math.PI / 180) : 0.0
+            return itemB.connectionPoint.y + (connectionSpot.width + itemB.radius) * diffy / length + offset
         }
 
 
@@ -131,6 +133,33 @@ EdgeBase {
         return y
     }
 
+    Item {
+        property real offsetFactor: curved ? 1.8 : 1.0
+        property real xOffset: height / 2 * Math.sin(rotation * Math.PI / 180)
+        property real yOffset: height / 2 * Math.cos(rotation * Math.PI / 180)
+
+        x: sCurve.startPoint.x + offsetFactor * xOffset
+        y: sCurve.startPoint.y - offsetFactor * yOffset
+
+        transformOrigin: Item.TopLeft
+
+        width: Qt.vector2d(sCurve.endPoint.x - sCurve.startPoint.x,
+                           sCurve.endPoint.y - sCurve.startPoint.y).length()
+        height: 40
+
+        rotation: Math.atan2(sCurve.endPoint.y - sCurve.startPoint.y,
+                             sCurve.endPoint.x - sCurve.startPoint.x) / Math.PI * 180
+
+        MouseArea {
+            anchors.fill: parent
+            propagateComposedEvents: true
+
+            onClicked: {
+                connectionRoot.clicked(connectionRoot)
+            }
+        }
+    }
+
     BezierCurve {
         id: sCurve
         color: connectionRoot._internalColor
@@ -147,7 +176,7 @@ EdgeBase {
             var x_0 = startPoint.x + dx/2.
 
 
-            var x = curved*length*Math.cos((angle + 90) * Math.PI / 180)
+            var x = curved ? length*Math.cos((angle + 90) * Math.PI / 180) : 0.0
 
             return x_0 + x
         }
@@ -157,36 +186,9 @@ EdgeBase {
             var length = 20
 
             var y_0 = startPoint.y + dy/2.
-            var y = curved*length*Math.sin((angle + 90) * Math.PI / 180)
+            var y = curved ? length*Math.sin((angle + 90) * Math.PI / 180) : 0.0
 
             return y_0 + y
-        }
-    }
-
-    Item {
-        x: sCurve.startPoint.x + height / 2 * Math.sin(rotation * Math.PI / 180)
-        y: sCurve.startPoint.y - height / 2 * Math.cos(rotation * Math.PI / 180)
-
-        transformOrigin: Item.TopLeft
-
-        width: Qt.vector2d(sCurve.endPoint.x - sCurve.startPoint.x,
-                           sCurve.endPoint.y - sCurve.startPoint.y).length()
-        height: 40
-
-        rotation: Math.atan2(sCurve.endPoint.y - sCurve.startPoint.y,
-                             sCurve.endPoint.x - sCurve.startPoint.x) / Math.PI * 180
-
-        MouseArea {
-            anchors.fill: parent
-            propagateComposedEvents: true
-
-            onClicked: {
-                if(connectionRoot.selected) {
-                    mouse.accepted = false
-                }
-
-                connectionRoot.clicked(connectionRoot)
-            }
         }
     }
 
