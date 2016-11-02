@@ -26,19 +26,10 @@ matrix:
     dist: trusty
     sudo: required
     services: docker
-    before_install:
-    - sudo apt-add-repository -y ppa:beineri/opt-qt57-trusty
-    - sudo apt-get -qq update
-    - sudo apt-get -qq install qt573d qt57charts-no-lgpl qt57datavis-no-lgpl qt57declarative qt57svg
-    - export PATH=/opt/qt57/bin:$PATH
     before_deploy:
-    - cp neuronify .snapcraft/
-    - cp -r /opt/qt57/lib .snapcraft/
-    - cp -r /opt/qt57/qml .snapcraft/
-    - cp -r /opt/qt57/plugins .snapcraft/
-    - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/.snapcraft && snapcraft"
-    - sudo chown -R $USER:$USER .snapcraft
-    - ls -l .snapcraft
+    - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/ && snapcraft"
+    - sudo chown -R $USER:$USER neuronify*.snap
+    - ls -l .
     deploy:
       skip_cleanup: true
       provider: releases
