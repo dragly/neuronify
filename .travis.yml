@@ -44,10 +44,8 @@ matrix:
       provider: releases
       file: .snapcraft/neuronify*.snap
       file_glob: true
-      #on:
-        #tags: true
       on:
-        branch: travistest
+        tags: true
       api_key:
         secure: WJ9YTjPf8GWZ4PmdVoPubtL0CBU+cAIIMFjTpeOKwOLX1vH3zFkdwAz1nbY28CWWhm+YQwWVWwByZOI9hePsf5t6wtkWfJB4wzgrKEcIyKHMHmjaMYc+fp6V//3f7Z4Kc6vYn7wNNy1i9zgA8VVr2A4u8Rf1i7Euio4SLpey17w=
 install:
