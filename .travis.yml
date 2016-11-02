@@ -25,24 +25,40 @@ matrix:
   - os: linux
     dist: trusty
     sudo: required
-    before_install:
-    - sudo apt-add-repository -y ppa:beineri/opt-qt57-trusty
-    - sudo apt-get -qq update
-    - sudo apt-get -qq install qt573d qt57charts-no-lgpl qt57datavis-no-lgpl qt57declarative
-      qt57svg
-    - export PATH=/opt/qt57/bin:$PATH
+    services: docker
+    #before_install:
+    #- sudo apt-add-repository -y ppa:beineri/opt-qt57-trusty
+    #- sudo apt-get -qq update
+    #- sudo apt-get -qq install qt573d qt57charts-no-lgpl qt57datavis-no-lgpl qt57declarative
+      #qt57svg
+    #- export PATH=/opt/qt57/bin:$PATH
     before_deploy:
-      - tar -czvf neuronify.tar.gz neuronify
+    - mkdir output
+    #- cp neuronify .snapcraft/
+    #- cp -r /opt/qt57/lib .snapcraft/
+    #- cp -r /opt/qt57/qml .snapcraft/
+    #- cp -r /opt/qt57/plugins .snapcraft/
+    - touch .snapcraft/neuronify
+    - mkdir .snapcraft/lib
+    - mkdir .snapcraft/qml
+    - mkdir .snapcraft/plugins
+    - docker build -t ovilab/neuronify -f .docker/Dockerfile .
+    - docker run -v $(pwd)/output:/app/output ovilab/neuronify  bash -c "cd .snapcraft && snapcraft snap && mv neuronify*.snap ../output/"
+    - sudo chown -R $USER:$USER output
+    - ls -l output
     deploy:
       skip_cleanup: true
       provider: releases
-      file: neuronify.tar.gz
+      file: neuronify.snap
+      #on:
+        #tags: true
       on:
-        tags: true
+        branch: travistest
       api_key:
         secure: WJ9YTjPf8GWZ4PmdVoPubtL0CBU+cAIIMFjTpeOKwOLX1vH3zFkdwAz1nbY28CWWhm+YQwWVWwByZOI9hePsf5t6wtkWfJB4wzgrKEcIyKHMHmjaMYc+fp6V//3f7Z4Kc6vYn7wNNy1i9zgA8VVr2A4u8Rf1i7Euio4SLpey17w=
 install:
-- qmake
-- make
+- echo "Testing"
+#- qmake
+#- make
 script:
 - echo "Finished"
