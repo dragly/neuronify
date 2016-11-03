@@ -96,7 +96,6 @@ DISTFILES += \
     .travis/qt5-mac.sh \
     .travis.sh
 
-CUTEVERSIONING_REPLACE_ANDROID_VERSION_NAME = true
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
 exists(libs/CuteVersioning/CuteVersioning.pri) {
