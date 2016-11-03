@@ -1,6 +1,6 @@
 install:
   - set QTDIR=C:\Qt\5.7\msvc2013_64
-  - set PATH=%PATH%;%QTDIR%\bin
+  - set PATH=%PATH%;%QTDIR%\bin;C:\Qt\QtIFW2.0.1\bin
   - call "%VS120COMNTOOLS%\..\..\VC\vcvarsall.bat" x86_amd64
 build_script:
   - git submodule update --init --recursive
@@ -10,16 +10,18 @@ build_script:
   - xcopy /s "%QTDIR%\qml" release
   - xcopy /s "%VS120COMNTOOLS%\..\..\VC\redist\x64\Microsoft.VC120.CRT" release
   - windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -opengl -quickparticles -quickwidgets -qmldir . release
+  - mv release installer/packages/net.ovilab.neuronify/data
+  - binarycreator.exe -c installer/config/config.xml -p installer/packages neuronify-windows-installer
 artifacts:
-  - path: release
-    name: neuronify-windows
-    type: zip
+  - path: neuronify-windows-installer.exe
+    name: neuronify-windows-installer
+    type: File
 deploy:
   description: 'Automated Windows build'
   provider: GitHub
   auth_token:
     secure: 6LmZ/bebQkiHy0uDmhrqvG/0LEQOTaAgHARYLmdjPEpyuPhBDIOrhPn+vArd01Kv
-  artifact: /.*\.zip/
+  artifact: /.*\.exe/
   draft: false
   prerelease: true
   on:

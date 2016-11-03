@@ -96,7 +96,15 @@ DISTFILES += \
     .travis/qt5-mac.sh \
     .travis.sh \
     .snapcraft/snapcraft.yaml \
-    .snapcraft/parts/plugins/x-qt57.py
+    .snapcraft/parts/plugins/x-qt57.py \
+    installer/config.xml \
+    installer/meta/package.xml \
+    installer/meta/license.txt \
+    installer/config/config.xml \
+    installer/packages/net.ovilab.neuronify/meta/package.xml \
+    installer/packages/net.ovilab.neuronify/meta/license.txt \
+    installer/packages/net.ovilab.neuronify/meta/installscript.qs \
+    appveyor.yml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
