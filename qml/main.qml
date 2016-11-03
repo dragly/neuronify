@@ -1,5 +1,5 @@
 import QtQuick 2.2
-import QtQuick.Controls 1.1
+import QtQuick.Controls 1.4
 import QtQuick.Layouts 1.0
 import Qt.labs.settings 1.0
 import CuteVersioning 1.0
