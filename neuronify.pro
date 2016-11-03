@@ -94,7 +94,9 @@ DISTFILES += \
     snapcraft.yaml \
     ios/iOS.plist \
     .travis/qt5-mac.sh \
-    .travis.sh
+    .travis.sh \
+    .snapcraft/snapcraft.yaml \
+    .snapcraft/parts/plugins/x-qt57.py
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
@@ -117,7 +119,7 @@ ios {
 WINRT_MANIFEST.name = Neuronify
 WINRT_MANIFEST.background = $${LITERAL_HASH}399cdd
 WINRT_MANIFEST.publisher = Ovilab
-WINRT_MANIFEST.version = 0.94.0.0
+WINRT_MANIFEST.version = 1.0.0.0
 WINRT_MANIFEST.description = Educational neural network app
 WINRT_MANIFEST.capabilities += codeGeneration
 WINRT_MANIFEST.logo_small=winrt/logo_44x44.png
