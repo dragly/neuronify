@@ -14,6 +14,9 @@ matrix:
       - git clone https://github.com/iltommi/macdeployqtfix.git
       - python macdeployqtfix/macdeployqtfix.py neuronify.app/Contents/MacOS/neuronify /usr/local
       - macdeployqt neuronify.app -qmldir=. -dmg
+    install:
+      - qmake
+      - make
     deploy:
       skip_cleanup: true
       provider: releases
@@ -26,9 +29,11 @@ matrix:
     dist: trusty
     sudo: required
     services: docker
+    install:
+    - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/ && .travis/ubuntu.sh"
     before_deploy:
-    - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/ && snapcraft"
-    - sudo chown -R $USER:$USER neuronify*.snap
+    - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/.snapcraft && snapcraft"
+    - sudo chown -R $USER:$USER .snapcraft/neuronify*.snap
     - ls -l .
     deploy:
       skip_cleanup: true
@@ -39,8 +44,5 @@ matrix:
         tags: true
       api_key:
         secure: WJ9YTjPf8GWZ4PmdVoPubtL0CBU+cAIIMFjTpeOKwOLX1vH3zFkdwAz1nbY28CWWhm+YQwWVWwByZOI9hePsf5t6wtkWfJB4wzgrKEcIyKHMHmjaMYc+fp6V//3f7Z4Kc6vYn7wNNy1i9zgA8VVr2A4u8Rf1i7Euio4SLpey17w=
-install:
-- qmake
-- make
 script:
 - echo "Finished"
