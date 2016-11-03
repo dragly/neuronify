@@ -674,7 +674,7 @@ Rectangle {
                 anchors.fill: parent
 
                 propagateComposedEvents: true
-                drag.target: workspace
+                drag.target: scaleAnimation.running ? undefined : workspace
 
                 onWheel: {
                     if(wheel.modifiers & Qt.ControlModifier) {
