@@ -17,12 +17,15 @@ artifacts:
   - path: neuronify-windows-installer.exe
     name: neuronify-windows-installer
     type: File
+  - path: installer\packages\net.ovilab.neuronify\data
+    name: neuronify-windows
+    type: zip
 deploy:
   description: 'Automated Windows build'
   provider: GitHub
   auth_token:
     secure: 6LmZ/bebQkiHy0uDmhrqvG/0LEQOTaAgHARYLmdjPEpyuPhBDIOrhPn+vArd01Kv
-  artifact: /.*\.exe/
+  artifact: /.*\.(exe|zip)/
   draft: false
   prerelease: true
   on:
