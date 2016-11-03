@@ -7,10 +7,11 @@ build_script:
   - qmake neuronify.pro
   - nmake
   - nmake clean
-  - xcopy /s "%QTDIR%\qml" release
-  - xcopy /s "%VS120COMNTOOLS%\..\..\VC\redist\x64\Microsoft.VC120.CRT" release
-  - windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -opengl -quickparticles -quickwidgets -qmldir . release
-  - mv release installer/packages/net.ovilab.neuronify/data
+  - set INSTALLER_DIR=installer\packages\net.ovilab.neuronify\data
+  - xcopy /s "release" "%INSTALLER_DIR%"
+  - xcopy /s "%QTDIR%\qml" "%INSTALLER_DIR%"
+  - xcopy /s "%VS120COMNTOOLS%\..\..\VC\redist\x64\Microsoft.VC120.CRT" "%INSTALLER_DIR%"
+  - windeployqt.exe -quick -quickwidgets -multimediaquick -multimedia -opengl -quickparticles -quickwidgets -qmldir . "%INSTALLER_DIR%"
   - binarycreator.exe -c installer/config/config.xml -p installer/packages neuronify-windows-installer
 artifacts:
   - path: neuronify-windows-installer.exe
