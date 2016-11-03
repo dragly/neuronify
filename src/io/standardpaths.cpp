@@ -45,5 +45,5 @@ QObject* StandardPaths::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine)
 QUrl StandardPaths::originalSimulationLocation(QUrl fileUrl) {
     QString fileName = QQmlFile::urlToLocalFileOrQrc(fileUrl);
     fileName.replace(":/", "/");
-    return QUrl::fromLocalFile("../neuronify" + fileName);
+    return QUrl::fromLocalFile("/home/svenni/Sync/projects/neuronify/neuronify" + fileName);
 }

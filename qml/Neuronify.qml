@@ -111,6 +111,7 @@ Rectangle {
     }
 
     function saveState(fileUrl) {
+        console.log("Saving state to", fileUrl)
         fileManager.saveState(fileUrl)
     }
 
@@ -1034,7 +1035,21 @@ Rectangle {
         }
 
         onSaveToOpened: {
-            saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
+            propertiesPanel.revealed = false
+            saveTimer.start(1000)
+        }
+
+        Timer {
+            id: saveTimer
+            onTriggered: {
+                saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
+                var imageUrl = StandardPaths.toLocalFile(StandardPaths.originalSimulationLocation(currentSimulationUrl)).replace(".nfy", ".png")
+
+                workspaceFlickable.grabToImage(function(result) {
+                    console.log("Saving image to " + imageUrl);
+                    result.saveToFile(imageUrl);
+                }, Qt.size(workspaceFlickable.width, workspaceFlickable.height));
+            }
         }
 
         Binding {
