@@ -605,7 +605,13 @@ Rectangle {
 
     Item {
         id: viewport
-        anchors.fill: parent
+        anchors {
+            top: parent.top
+            bottom: parent.bottom
+            left: parent.left
+            leftMargin: -propertiesPanel.offset * 0.33
+        }
+        width: parent.width
     }
 
     Item {
