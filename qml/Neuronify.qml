@@ -1054,7 +1054,7 @@ Rectangle {
                 workspaceFlickable.grabToImage(function(result) {
                     console.log("Saving image to " + imageUrl);
                     result.saveToFile(imageUrl);
-                }, Qt.size(workspaceFlickable.width, workspaceFlickable.height));
+                }, Qt.size(workspaceFlickable.width / 3.0, workspaceFlickable.height / 3.0));
             }
         }
 
