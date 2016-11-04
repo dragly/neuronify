@@ -28,6 +28,7 @@ NodeBase {
     signal dragStarted(var entity)
     signal dragEnded(var entity)
     signal droppedConnector(var irregularSpikeGenerator, var connector)
+    signal receivedDrop(var from)
     signal startConnectMultipleToThis
     signal startConnectMultipleFromThis
     signal fired
@@ -145,7 +146,6 @@ NodeBase {
         onDoubleClicked: {
             mouse.accepted = false;
         }
-
     }
 }
 

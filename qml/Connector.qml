@@ -11,70 +11,70 @@ Item {
     property point initialPoint: Qt.point(parent.width, parent.height)
     property point offset: Qt.point(0.0, 0.0)
 
-    property alias connectorWidth: draggable.width
-    property alias connectorHeight: draggable.height
+    property alias connectorWidth: connectorCircle.width
+    property alias connectorHeight: connectorCircle.height
 
     property color color: "pink"
     property color connectorColor: color
 
     visible: _parent.selected
 
-    onDropped: {
-        root.parent.droppedConnector(root.parent, draggable)
-    }
-
     SCurve {
         id: curve
+
         color: root.color
         parent: root.parent
         z: -1
         startPoint: root.attachmentPoint
-        endPoint: Qt.point(draggable.x + draggable.width / 2, draggable.y + draggable.width / 2)
+        endPoint: {
+            if(connectorMouseArea.drag.active) {
+                return Qt.point(connectorCircle.x + connectorCircle.width / 2, connectorCircle.y + connectorCircle.height / 2)
+            } else {
+                return Qt.point(root.initialPoint.x + connectorMouseArea.width / 2, root.initialPoint.y + connectorMouseArea.height / 2)
+            }
+        }
         visible: root.visible
     }
 
-    Item {
-        id: draggable
 
-        Component.onCompleted: {
-            resetPosition();
-            _parent.onWidthChanged.connect(resetPosition);
-            _parent.onHeightChanged.connect(resetPosition);
-        }
-
-        function resetPosition() {
-            draggable.x = root.initialPoint.x
-            draggable.y = root.initialPoint.y
-        }
-
+    MouseArea {
+        id: connectorMouseArea
+        x: root.initialPoint.x
+        y: root.initialPoint.y
         width: 64
         height: width
+        drag.target: connectorCircle
+        onClicked: {
+            root.parent.clickedConnector(parent, mouse)
+        }
+        onReleased: {
+            connectorCircle.Drag.drop()
+        }
 
         Rectangle {
             id: connectorCircle
-            anchors {
-                centerIn: parent
-            }
-            width: parent.width * 0.4
+
+            property Node node: root._parent
+
+            width: 32
             height: width
+            anchors {
+                verticalCenter: parent.verticalCenter
+                horizontalCenter: parent.horizontalCenter
+            }
+            Drag.keys: ["connector"]
+            Drag.active: connectorMouseArea.drag.active
+            Drag.hotSpot.x: width / 2
+            Drag.hotSpot.y: height / 2
             color: connectorColor
             border.color: "#f7fbff"
             border.width: 1.0
             radius: width
-        }
 
-        MouseArea {
-            id: connectorMouseArea
-            anchors.fill: parent
-            drag.target: parent
-            onClicked: {
-                root.parent.clickedConnector(parent, mouse)
-            }
-            onReleased: {
-                if(drag.active) {
-                    root.dropped(draggable)
-                }
-                draggable.resetPosition()
+            states: State {
+                when: connectorMouseArea.drag.active
+                AnchorChanges { target: connectorCircle; anchors.verticalCenter: undefined; anchors.horizontalCenter: undefined }
+                ParentChange { target: connectorCircle; parent: root }
             }
         }
     }

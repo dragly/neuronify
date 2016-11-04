@@ -381,7 +381,7 @@ Rectangle {
     }
 
     function deleteNode(node) {
-        console.log("Delete node");
+        console.log("Deleting node", node);
         if(selectedEntities.indexOf(node) !== -1) {
             deselectAll();
         }
@@ -395,7 +395,7 @@ Rectangle {
     }
 
     function deleteEdge(edge) {
-        console.log("Delete edge");
+        console.log("Deleting edge", edge);
         graphEngine.removeEdge(edge);
     }
 
@@ -406,7 +406,6 @@ Rectangle {
         }
         for(var i in toDelete) {
             var node = toDelete[i]
-            console.log("Deleting " + node);
             deleteNode(node);
         }
         if(activeObject && activeObject.isEdge) {
@@ -505,11 +504,8 @@ Rectangle {
         entity.dragEnded.connect(function(entity) {
             draggedEntity = undefined;
         });
-        entity.droppedConnector.connect(function(itemA, connector) {
-            var targetEntity = itemUnderConnector(itemA, connector)
-            if(targetEntity) {
-                connectEntities(itemA, targetEntity)
-            }
+        entity.receivedDrop.connect(function(from) {
+            connectEntities(from, entity)
         })
 
         // retina specific
