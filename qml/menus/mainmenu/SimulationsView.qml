@@ -114,7 +114,6 @@ MainMenuPage {
                                                     source: loader.item ? loader.item.screenshotSource : ""
                                                     smooth: true
                                                     antialiasing: true
-                                                    mipmap: true
                                                     fillMode: Image.PreserveAspectCrop
                                                     asynchronous: true
 
