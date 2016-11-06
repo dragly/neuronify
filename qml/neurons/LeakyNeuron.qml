@@ -88,8 +88,8 @@ Neuron {
                     id: voltageClampedSwitch
                     target: neuronEngine
                     property: "voltageClamped"
-                    checkedText: "Clamp voltage"
-                    uncheckedText: "Don't clamp voltage"
+                    checkedText: "Limit voltage"
+                    uncheckedText: "Don't limit voltage"
                 }
 
                 BoundSlider {
