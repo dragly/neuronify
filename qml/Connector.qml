@@ -56,7 +56,7 @@ Item {
 
             property Node node: root._parent
 
-            width: 32
+            width: 24
             height: width
             anchors {
                 verticalCenter: parent.verticalCenter
