@@ -40,7 +40,6 @@ matrix:
       provider: releases
       file: .snapcraft/neuronify*.snap
       file_glob: true
-      overwrite: true
       on:
         tags: true
       api_key:
