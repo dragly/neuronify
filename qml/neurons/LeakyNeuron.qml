@@ -96,8 +96,9 @@ Neuron {
                     enabled: voltageClampedSwitch.checked
                     text: "Minimum voltage"
                     unit: "mV"
-                    minimumValue: -200.0
-                    maximumValue: 200.0
+                    unitScale: 1e-3
+                    minimumValue: -200.0e-3
+                    maximumValue: 200.0e-3
                     target: neuronEngine
                     property: "minimumVoltage"
                 }
@@ -106,8 +107,9 @@ Neuron {
                     enabled: voltageClampedSwitch.checked
                     text: "Maximum voltage"
                     unit: "mV"
-                    minimumValue: -200.0
-                    maximumValue: 200.0
+                    unitScale: 1e-3
+                    minimumValue: -200.0e-3
+                    maximumValue: 200.0e-3
                     target: neuronEngine
                     property: "maximumVoltage"
                 }
