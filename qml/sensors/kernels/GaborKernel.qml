@@ -14,11 +14,11 @@ GaborKernelEngine{
                 property: "theta"
                 minimumValue: 0.0
                 maximumValue: Math.PI
-                unitScale: Math.PI
+                unitScale: Math.PI/180
                 stepSize: Math.PI/8
                 precision: 1
                 text: "Orientation"
-                unit: "π"
+                unit: "degrees"
             }
 
         }
