@@ -16,7 +16,7 @@ Item {
     property StackView stackView: parent && parent.stackView ? parent.stackView : null
 
     width: parent.width
-    height: Style.control.fontMetrics.height * 2.2
+    height: Style.control.fontMetrics.height * 2.8
 
     PropertiesPage {
         id: propertiesPage
@@ -55,9 +55,10 @@ Item {
         }
         Text {
             id: subText
-            text: root.info
             font: Style.control.subText.font
             color: Style.control.subText.color
+            textFormat: Text.RichText
+            text: root.info
         }
     }
 

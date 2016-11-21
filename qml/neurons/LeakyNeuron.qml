@@ -74,8 +74,8 @@ Neuron {
 
             PropertiesItem {
                 text: "Membrane"
-                info: "C: " + (neuronEngine.capacitance * 1e9).toFixed(1) + " nF, " +
-                      "R: " + (leakyCurrent.resistance * 1e-3).toFixed(1) + " kΩ, "
+                info: "C<sub>m</sub>: " + (neuronEngine.capacitance * 1e9).toFixed(1) + " nF, " +
+                      "R<sub>m</sub>: " + (leakyCurrent.resistance * 1e-3).toFixed(1) + " kΩ, "
                 CapacitanceControl{
                     engine: neuronEngine
                 }
@@ -132,9 +132,9 @@ Neuron {
 
             PropertiesItem {
                 text: "Potentials"
-                info: "Vm: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
-                      "Vr: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
-                      "Vt: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
+                info: "V<sub>r</sub>: " + (neuronEngine.restingPotential * 1e3).toFixed(1) + " mV, " +
+                      "V<sub>reset</sub>: " + (neuronEngine.initialPotential * 1e3).toFixed(1) + " mV, " +
+                      "V<sub>thres</sub>: " + (neuronEngine.threshold * 1e3).toFixed(1) + " mV "
                 RestingPotentialControl{
                     id: restingPotentialControl
                     engine: neuronEngine
@@ -153,7 +153,7 @@ Neuron {
                 text: "Synapse"
                 info: (switchControl.checked ?
                            switchControl.checkedText : switchControl.uncheckedText)
-                      + " , " + "τr: "
+                      + " , " + "τ<sub>r</sub>: "
                       + (neuronEngine.refractoryPeriod * 1e3).toFixed(1) + " ms, "
                 SwitchControl{
                     id: switchControl
