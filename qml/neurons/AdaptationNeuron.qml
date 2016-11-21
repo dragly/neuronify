@@ -63,22 +63,23 @@ Neuron {
                 id: subText
                 font: Style.control.subText.font
                 color: Style.control.subText.color
-                text: "Vm: " +
+                textFormat: Text.RichText
+                text: "V<sub>m</sub>: " +
                       (neuronEngine.restingPotential * 1e3).toFixed(1)
                       + " mV, " +
-                      "Vr: " +
+                      "V<sub>m</sub>: " +
                       (neuronEngine.initialPotential * 1e3).toFixed(1)
                       + " mV, " +
-                      "Vt: " +
+                      "V<sub>thres</sub>: " +
                       (neuronEngine.threshold * 1e3).toFixed(1)
-                      + " mV \n" +
-                      "C: " +
+                      + " mV<br>" +
+                      "C<sub>m</sub>: " +
                       (neuronEngine.capacitance * 1e9).toFixed(1)
                       + " nF, " +
-                      "R: " +
+                      "R<sub>m</sub>: " +
                       (leakCurrent.resistance * 1e-3).toFixed(1)
-                      + " kΩ, \n" +
-                      "τr: "+
+                      + " kΩ,<br>" +
+                      "τ<sub>r</sub>: "+
                       0
                       + " ms, "
             }

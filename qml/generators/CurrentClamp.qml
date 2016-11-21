@@ -37,7 +37,7 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "Current clamp"
+            title: "DC current source"
             BoundSlider {
                 target: engine
                 property: "currentOutput"
