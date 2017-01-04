@@ -80,7 +80,7 @@ Rectangle {
         category: "qmlPreviewer"
     }
 
-    Pane {
+    Item {
         id: pane
         anchors {
             left: parent.left
@@ -151,13 +151,22 @@ Rectangle {
                 height: 300
 
                 model: root.qrcPaths
-                delegate: ItemDelegate {
-                    text: baseName(modelData)
-                    onClicked: {
-                        var paths = root.qrcPaths
-                        paths.splice(index, 1)
-                        root.qrcPaths = paths
+                delegate: Rectangle {
+                    width: parent.width
+                    height: 64
+                    Text {
+                        anchors.centerIn: parent
+                        text: baseName(modelData)
                     }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            var paths = root.qrcPaths
+                            paths.splice(index, 1)
+                            root.qrcPaths = paths
+                        }
+                    }
+
                 }
             }
 

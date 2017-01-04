@@ -86,7 +86,7 @@ void QmlPreviewer::handleDialogStart(QVariant qrcPaths, QUrl filePath)
 
 void QmlPreviewer::show()
 {
-    m_view.setSource(QUrl("qrc:///QmlPreviewerDialog.qml"));
+    m_view.setSource(QUrl("qrc:///QmlPreviewer/QmlPreviewerDialog.qml"));
     m_view.setResizeMode(QQuickView::SizeViewToRootObject);
     m_view.show();
 

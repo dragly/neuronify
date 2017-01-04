@@ -63,11 +63,6 @@ SOURCES += \
     src/core/edgebase.cpp \
     src/core/edgeengine.cpp \
 
-!ios : !android : !winrt {
-    SOURCES += src/qmlpreviewer.cpp
-    HEADERS += src/qmlpreviewer.h
-}
-
 
 RESOURCES += qml.qrc \
     images.qrc \
@@ -116,6 +111,8 @@ exists(libs/CuteVersioning/CuteVersioning.pri) {
 } else {
     error("Could not find CuteVersioning. Try running 'git submodule update --init --recursive' in Neuronify's root directory.")
 }
+
+include(libs/QmlPreviewer/qmlpreviewer.pri)
 
 ios {
     QMAKE_INFO_PLIST = ios/iOS.plist
