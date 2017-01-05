@@ -1,8 +1,10 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.0
 import QtQuick.Layouts 1.1
 import QtQuick.Dialogs 1.2
 import Qt.labs.settings 1.0
+import QtQuick.XmlListModel 2.0
+import Qt.labs.folderlistmodel 2.1
 
 Rectangle {
     id: root
@@ -26,10 +28,9 @@ Rectangle {
 
     width: 1600
     height: 900
-    color: colorDialog.color
 
     Component.onCompleted: {
-        requestStart()
+        refresh()
     }
 
     onQrcPathsStringifiedChanged: {
@@ -52,17 +53,29 @@ Rectangle {
     }
 
     onFilePathChanged: {
-        requestStart()
+        refresh()
     }
 
     onProjectPathChanged: {
+        refresh()
+    }
+
+    function refresh() {
         requestStart()
+        folderListModel.folder = ""
+        var rootPath = "qrc:/qtqmlpreview"
+        console.log("WOOP", folderListModel.folder == "", folderListModel.folder, folderListModel.rootFolder)
+//        if(folderListModel.folder.toString().substring(0, rootPath.length) != rootPath) {
+            folderListModel.folder = rootPath
+//            folderListModel.rootFolder = rootPath
+//        }
     }
 
     function reload() {
         loader.source = ""
-        var clippedName = filePath.toString().replace(projectPath.toString(), "")
-        loader.source = "qrc:///qtqmlpreview/" + clippedName
+//        var clippedName = filePath.toString().replace(projectPath.toString(), "")
+//        loader.source = "qrc:///qtqmlpreview/" + clippedName
+        loader.source = filePath.toString().replace("file:", "qrc")
     }
 
     function requestStart() {
@@ -76,11 +89,15 @@ Rectangle {
         property alias filePath: root.filePath
         property alias qrcPaths: root.qrcPathsStringified
         property alias backgroundColor: colorDialog.color
+        property alias canvasX: canvas.x
+        property alias canvasY: canvas.y
+        property alias canvasWidth: canvas.width
+        property alias canvasHeight: canvas.height
 
         category: "qmlPreviewer"
     }
 
-    Item {
+    Pane {
         id: pane
         anchors {
             left: parent.left
@@ -90,116 +107,162 @@ Rectangle {
 
         width: 300
 
-        Column {
-            id: column
-            spacing: 16
-
+        Flickable {
             anchors.fill: parent
+            contentHeight: column.height
 
-            Button {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                }
+            Column {
+                id: column
+                spacing: 16
 
-                text: "Select project path"
-                onClicked: folderDialog.open()
-            }
-
-            Label {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-
-                text: cleanPath(projectPath)
-            }
-
-            Button {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                }
-                text: "Select file to preview"
-                onClicked: fileDialog.open()
-            }
-
-            Label {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-
-                text: cleanPath(filePath)
-            }
-
-            Button {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                }
-
-                text: "Add QRC files"
-                onClicked: qrcDialog.open()
-            }
-
-            ListView {
                 anchors {
                     left: parent.left
                     right: parent.right
                 }
 
-                height: 300
+                Label {
+                    text: "QRC files"
+                }
 
-                model: root.qrcPaths
-                delegate: Rectangle {
-                    width: parent.width
-                    height: 64
-                    Text {
-                        anchors.centerIn: parent
-                        text: baseName(modelData)
+                ListView {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
                     }
-                    MouseArea {
-                        anchors.fill: parent
+
+                    height: 300
+
+                    model: root.qrcPaths
+                    delegate: ItemDelegate {
+                        text: baseName(modelData)
                         onClicked: {
                             var paths = root.qrcPaths
                             paths.splice(index, 1)
                             root.qrcPaths = paths
                         }
                     }
-
                 }
-            }
 
-            Button {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
+                Button {
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                    }
+
+                    text: "Add .qrc"
+                    onClicked: qrcDialog.open()
                 }
-                text: "Select background color"
 
-                onClicked: colorDialog.open()
-            }
+                Column {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
 
-            Button {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
+//                    visible: folderListModel.folder != ""
+
+                    Label {
+                        anchors {
+                            horizontalCenter: parent.horizontalCenter
+                        }
+                        text: "Select file to preview"
+                    }
+
+                    Button {
+                        text: "Up"
+    //                    enabled: folderListModel.folder != "file::/qtqmlpreview/"
+                        onClicked: {
+                            folderListModel.folder = folderListModel.parentFolder
+                        }
+                    }
+
+                    ListView {
+                        id: fileView
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                        }
+                        height: 300
+                        clip: true
+
+                        model: FolderListModel {
+                            id: folderListModel
+                            showDirsFirst: true
+                            showHidden: true
+                            folder: ""
+                            rootFolder: "qrc:/"
+                            onFolderChanged: {
+                                console.log("Current folder:", folder)
+                            }
+                        }
+                        delegate: ItemDelegate {
+                            text: fileName
+                            highlighted: ListView.isCurrentItem
+                            onClicked: {
+                                if(fileIsDir) {
+                                    folderListModel.folder = fileURL
+                                } else {
+                                    fileView.currentIndex = index
+                                    console.log("File URL", fileURL, filePath)
+                                    root.filePath = filePath.replace(":/", "qrc:/")
+                                }
+                            }
+                        }
+                    }
                 }
-                text: "Refresh"
 
-                onClicked: requestStart()
+                Button {
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                    }
+                    text: "Select background color"
+
+                    onClicked: colorDialog.open()
+                }
+
+                Button {
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                    }
+                    text: "Refresh"
+
+                    onClicked: {
+                        refresh()
+                    }
+                }
             }
         }
     }
 
-    Item {
+    Pane {
         anchors {
             top: parent.top
             bottom: parent.bottom
             left: pane.right
             right: parent.right
         }
-        Loader {
-            id: loader
-            anchors.centerIn: parent
+        Rectangle {
+            id: canvas
+            width: 640
+            height: 480
+            color: colorDialog.color
+
+            MouseArea {
+                anchors.fill: parent
+                drag.target: parent
+            }
+
+            ResizeRectangle {
+                target: parent
+            }
+
+            Loader {
+                id: loader
+                anchors {
+                    fill: parent
+                    margins: 24
+                }
+                clip: true
+            }
         }
     }
 
