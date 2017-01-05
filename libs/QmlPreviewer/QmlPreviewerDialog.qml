@@ -79,9 +79,7 @@ Rectangle {
     }
 
     function requestStart() {
-        if(filePath.toString().length > 0 && projectPath.toString().length > 0) {
-            start(qrcPaths, filePath)
-        }
+        start(qrcPaths, filePath)
     }
 
     Settings {
