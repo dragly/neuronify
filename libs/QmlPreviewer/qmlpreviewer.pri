@@ -1,6 +1,12 @@
-SOURCES += $$PWD/qmlpreviewer.cpp
-HEADERS += $$PWD/qmlpreviewer.h \
-    $$PWD/QmlPreviewer
+HEADERS += $$PWD/QmlPreviewer
+
+ios|android|winrt {
+    HEADERS += $$PWD/qmlpreviewer_stub.h
+} else {
+    HEADERS += $$PWD/qmlpreviewer.h
+    SOURCES += $$PWD/qmlpreviewer.cpp
+}
+
 INCLUDEPATH += $$PWD
 RESOURCES += \
     $$PWD/qmlpreviewer.qrc
