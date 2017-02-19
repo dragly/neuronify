@@ -36,19 +36,12 @@ matrix:
     - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/ && .travis/ubuntu.sh"
     after_success:
     - openssl aes-256-cbc -K $encrypted_8bc7dae8784d_key -iv $encrypted_8bc7dae8784d_iv
-      -in .snapcraft/travis_snapcraft.cfg -out .snapcraft/snapcraft.cfg -d
-    before_deploy:
-    - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/.snapcraft &&
-      snapcraft"
-    - sudo chown -R $USER:$USER .snapcraft/neuronify*.snap
-    - ls -l .
+      -in .snapcraft/.snapcraft/travis_snapcraft.cfg -out .snapcraft/.snapcraft/snapcraft.cfg -d
     deploy:
       'on':
         branch: dev
       provider: script
-      script: docker run -v $(pwd):$(pwd) -t ubuntu:xenial sh -c "apt update -qq && apt
-        install snapcraft -y && cd $(pwd) && snapcraft && snapcraft push *.snap --release
-        edge"
+      script: docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/.snapcraft && snapcraft && snapcraft push *.snap --release edge"
       skip_cleanup: true
 script:
 - echo "Finished"
