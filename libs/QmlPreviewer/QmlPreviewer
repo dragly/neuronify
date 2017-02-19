@@ -6,25 +6,9 @@
 #include "qmlpreviewer.h"
 
 #else
-#include <QObject>
-#include <QVariant>
-#include <QDebug>
 
-class QmlPreviewer : public QObject
-{
-    Q_OBJECT
-public:
-    explicit QmlPreviewer(QApplication &app);
+#include "qmlpreviewer_stub.h"
 
-signals:
-
-public slots:
-    void reload(QString path) {}
-    void show() {
-        qFatal("Preview not supported on Android / iOS");
-    }
-    void handleDialogStart(QVariant qrcPaths, QUrl filePath) {}
-};
 #endif
 
 #endif // QMLPREVIEWER_INCLUDE_H
