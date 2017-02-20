@@ -88,7 +88,10 @@ Edge {
         }
 
         onReceivedFire: {
-//            emitter.burst(1);
+            if(root.playbackSpeed < 4) {
+                signalComponent.createObject(root, {delay: delay})
+            }
+
             if(delay > 0.0) {
                 triggers.push(time + delay);
             } else {
@@ -142,37 +145,36 @@ Edge {
         }
     }
 
-//    Emitter {
-//        id: emitter
-//        property real duration: {
-//            var result = 0.0;
-//            if(engine.delay > 0 && root.timeStep > 0) {
-//                return Math.max(1, engine.delay / (root.timeStep * Style.playbackSpeed) * 16);
-//            } else {
-//                result = 1;
-//            }
-//            return result;
-//        }
-//        system: particleSystem
-//        x: root.startPoint.x
-//        y: root.startPoint.y
-//        emitRate: 0.0
-//        lifeSpan: duration
-//        velocity: PointDirection {
-//            x: (root.endPoint.x - root.startPoint.x) / emitter.duration * 1000;
-//            y: (root.endPoint.y - root.startPoint.y) / emitter.duration * 1000;
-//        }
-//        size: 24 * Style.workspaceScale
-//    }
+    Component {
+        id: signalComponent
+        Image {
+            id: signalRectangle
+            property real delay: 0.0
+            property real fraction: 0.0
+            property real previousTime: Date.now()
 
-//    Age {
-//        id: ageAffector
-//        x: root.endPoint.x - width * 0.5
-//        y: root.endPoint.y - width * 0.5
-//        system: root.particleSystem
-//        width: 8
-//        height: 8
-//        shape: EllipseShape {}
-//        lifeLeft: 0.0
-//    }
+            width: 36
+            height: width
+            source: "qrc:///images/particles/particle.png"
+
+            x: root.startPoint.x + (root.endPoint.x - root.startPoint.x) * fraction - width / 2
+            y: root.startPoint.y + (root.endPoint.y - root.startPoint.y) * fraction - height / 2
+
+            opacity: Math.min(1.0, 3 * (1.0 - fraction))
+
+            Connections {
+                target: engine
+                onStepped: {
+                    var duration = Math.max(0.0000001, delay / (root.timeStep * root.playbackSpeed) * 16)
+                    var currentTime = Date.now()
+                    var delta = currentTime - previousTime
+                    signalRectangle.fraction += delta / duration
+                    previousTime = currentTime
+                    if(fraction > 1.0) {
+                        signalRectangle.destroy()
+                    }
+                }
+            }
+        }
+    }
 }

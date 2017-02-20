@@ -11,6 +11,7 @@ EdgeBase {
     signal clicked(var connection)
 
     property ParticleSystem particleSystem
+    property real playbackSpeed
     property string objectName: "edge"
     property bool isEdge: true
     property string filename: "Edge.qml"
