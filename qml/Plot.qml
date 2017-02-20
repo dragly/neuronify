@@ -10,7 +10,7 @@ LineSeries {
     }
 
     pointsVisible: false
-    visible: false
+//    visible: false
     useOpenGL: true
 
     ChartScroller {
