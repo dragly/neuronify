@@ -33,6 +33,10 @@ MainMenuPage {
         Text {
             id: aboutText
 
+            onLinkActivated: {
+                Qt.openUrlExternally(link)
+            }
+
             width: aboutFlickable.width * 0.95
 
             font: Style.menu.text.font
@@ -56,7 +60,13 @@ simple RC circuits. When the membrane potential is above a certain threshold, a 
 generated and the voltage is reset to its resting potential. This spike then signals other
 neurons through its synapses.</p>
 <p>Version: " + Version.identifier + (Version.dirty ? "*" : "") + "</p>
+<p><a href='http://ovilab.net/privacy/'>Privacy policy</a></p>
 "
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                acceptedButtons: Qt.NoButton
+            }
         }
     }
 }

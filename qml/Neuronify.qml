@@ -552,6 +552,9 @@ Rectangle {
         var connection = connectionComponent.createObject(connectionLayer, {itemA: itemA, itemB: itemB});
 
         connection.particleSystem = particleSystem;
+        connection.playbackSpeed = Qt.binding(function() {
+            return root.playbackSpeed
+        })
         connection.clicked.connect(function(connection) {
             deselectAll();
             activeObject = connection;
