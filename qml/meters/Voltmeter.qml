@@ -177,8 +177,8 @@ Node {
     Rectangle {
         anchors.fill: parent
         color: parent.color
-        border.color: Style.meter.border.color
-        border.width: Style.meter.border.width
+//        border.color: Style.meter.border.color
+//        border.width: Style.meter.border.width
         smooth: true
         antialiasing: true
     }

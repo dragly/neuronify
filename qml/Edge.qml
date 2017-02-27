@@ -10,7 +10,6 @@ EdgeBase {
     id: connectionRoot
     signal clicked(var connection)
 
-    property ParticleSystem particleSystem
     property real playbackSpeed
     property string objectName: "edge"
     property bool isEdge: true

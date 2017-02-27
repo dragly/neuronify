@@ -11,6 +11,7 @@ import Qt.labs.settings 1.0
 
 import Neuronify 1.0
 import CuteVersioning 1.0
+import QtGraphicalEffects 1.0
 
 import "qrc:/qml/hud"
 import "qrc:/qml/menus/mainmenu"
@@ -551,7 +552,6 @@ Rectangle {
 
         var connection = connectionComponent.createObject(connectionLayer, {itemA: itemA, itemB: itemB});
 
-        connection.particleSystem = particleSystem;
         connection.playbackSpeed = Qt.binding(function() {
             return root.playbackSpeed
         })
@@ -878,18 +878,26 @@ Rectangle {
                 anchors.fill: parent
             }
 
-            ParticleSystem {
-                id: particleSystem
-            }
-
-            ImageParticle {
-                system: particleSystem
-                source: "qrc:///images/particles/particle.png"
-            }
-
             Item {
                 id: neuronLayer
                 anchors.fill: parent
+            }
+
+            ShaderEffectSource {
+                sourceItem: neuronLayer
+                sourceRect: Qt.rect(-viewport.x, -viewport.y,
+                                    viewport.width, viewport.height)
+            }
+
+            DropShadow {
+                visible: Qt.platform.os == "linux"
+                anchors.fill: neuronLayer
+                source: neuronLayer
+                horizontalOffset: 1
+                verticalOffset: 4
+                radius: 6.0
+                samples: 17
+                color: Qt.rgba(0, 0, 0, 0.2)
             }
         }
     }

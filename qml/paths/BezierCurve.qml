@@ -4,7 +4,7 @@ Canvas {
     id:canvas
 
     property color color: "cyan"
-    property real lineWidth: 2.5
+    property real lineWidth: 3.0
     property point startPoint: Qt.point(0,0)
     property point controlPoint1: Qt.point(0,40)
     property point controlPoint2: Qt.point(200,100)
