@@ -79,7 +79,7 @@ void QmlPreviewer::setQrcPaths(QVariant qrcPaths)
     m_qrcPaths.clear();
     QString proPaths = QMLPREVIEWER_RESOURCES;
     for(const QString &path : proPaths.split(" ")) {
-        if(path != "__end__" && !path.endsWith("qmlpreviewer.qrc")) {
+        if(!path.endsWith("qmlpreviewer.qrc")) {
             qDebug() << "Propath" << path;
             paths.append(QUrl::fromLocalFile(path));
         }
