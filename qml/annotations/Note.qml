@@ -74,11 +74,18 @@ Node {
     }
 
     Rectangle {
+        id: background
         anchors.fill: parent
         color: parent.color
         border.color: Style.meter.border.color
         border.width: Style.meter.border.width
+        antialiasing: true
     }
+
+//    ItemShadow {
+//        source: background
+//        anchors.fill: background
+//    }
 
     Text {
         anchors.fill: parent

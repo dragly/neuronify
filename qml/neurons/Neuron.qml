@@ -29,7 +29,7 @@ Node {
     property bool isNeuron: true
 
     radius: width / 2
-    width: 64
+    width: 72
     height: width
     color: inhibitory ? "#e41a1c" : "#6baed6"
 
@@ -40,7 +40,9 @@ Node {
     }
 
     Image {
-        anchors.fill: parent
+        anchors.centerIn: parent
+        width: 96
+        height: width
         source: inhibitory ? inhibitoryImageSource : imageSource
         fillMode: Image.PreserveAspectFit
         smooth: true

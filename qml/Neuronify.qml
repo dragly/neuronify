@@ -623,6 +623,7 @@ Rectangle {
             leftMargin: -propertiesPanel.offset * 0.33
         }
         width: parent.width
+        antialiasing: true
 
         PinchArea {
             id: pinchArea
@@ -889,16 +890,16 @@ Rectangle {
                                     viewport.width, viewport.height)
             }
 
-            DropShadow {
-                visible: Qt.platform.os == "linux"
-                anchors.fill: neuronLayer
-                source: neuronLayer
-                horizontalOffset: 1
-                verticalOffset: 4
-                radius: 6.0
-                samples: 17
-                color: Qt.rgba(0, 0, 0, 0.2)
-            }
+//            DropShadow {
+//                visible: Qt.platform.os == "linux"
+//                anchors.fill: neuronLayer
+//                source: neuronLayer
+//                horizontalOffset: 1
+//                verticalOffset: 4
+//                radius: 6.0
+//                samples: 17
+//                color: Qt.rgba(0, 0, 0, 0.2)
+//            }
         }
     }
 

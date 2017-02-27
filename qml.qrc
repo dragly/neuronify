@@ -104,5 +104,6 @@
         <file>qtquickcontrols2.conf</file>
         <file>qml/store/StoreShadow.qml</file>
         <file>qml/store/StoreSimulation.qml</file>
+        <file>qml/ItemShadow.qml</file>
     </qresource>
 </RCC>
