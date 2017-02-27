@@ -31,7 +31,7 @@ Node {
     radius: width / 2
     width: 72
     height: width
-    color: inhibitory ? "#e41a1c" : "#6baed6"
+    color: inhibitory ? "#d66b88" : "#6baed6"
 
     preferredEdge: CurrentSynapse {}
 

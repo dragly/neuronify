@@ -50,7 +50,7 @@ Item {
     QtObject {
         id: meterBorderObject
         property color color: "#9ecae1"
-        property real width: 2.0
+        property real width: 3.0
     }
 
 
