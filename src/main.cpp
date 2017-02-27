@@ -78,20 +78,20 @@ int main(int argc, char *argv[])
     app.setOrganizationName("Ovilab");
     app.setOrganizationDomain("net");
     app.setApplicationName("Neuronify");
-    QQmlApplicationEngine engine;
+
     QmlPreviewer previewer(app);
+    if(previewer.show()) {
+        return previewer.exec();
+    }
 
-    if(argc > 2) {
-        previewer.show();
-    } else {
-        qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
-        QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
+    QQmlApplicationEngine engine;
+    qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
+    QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
 
-        engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
-        if(engine.rootObjects().size() > 0) {
-            QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
-            qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
-        }
+    engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
+    if(engine.rootObjects().size() > 0) {
+        QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
+        qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
     }
     return app.exec();
 }
