@@ -17,6 +17,7 @@ Item {
             leftMargin: -width / 2
             topMargin: -height / 2
         }
+        cursorShape: Qt.SizeFDiagCursor
         xFactor: 1.0
         yFactor: 1.0
         widthFactor: -1.0
@@ -33,6 +34,7 @@ Item {
             leftMargin: -width / 2
             bottomMargin: -height / 2
         }
+        cursorShape: Qt.SizeBDiagCursor
         xFactor: 1.0
         yFactor: 0.0
         widthFactor: -1.0
@@ -48,6 +50,7 @@ Item {
             rightMargin: -width / 2
             topMargin: -height / 2
         }
+        cursorShape: Qt.SizeBDiagCursor
         target: resizeRectangle.target
         xFactor: 0.0
         yFactor: 1.0
@@ -64,6 +67,7 @@ Item {
             rightMargin: -width / 2
             bottomMargin: -height / 2
         }
+        cursorShape: Qt.SizeFDiagCursor
         target: resizeRectangle.target
         xFactor: 0.0
         yFactor: 0.0

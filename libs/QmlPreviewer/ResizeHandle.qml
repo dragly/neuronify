@@ -12,18 +12,19 @@ Item {
     property real heightFactor: 0.0
 
     property bool forceSquare: false
+    property alias cursorShape: mouseArea.cursorShape
     
-    width: 96
-    height: 96
+    width: 48
+    height: 48
 
-    Rectangle {
-        anchors.centerIn: parent
-        width: parent.width * 0.5
-        height: width
-        color: "blue"
-        opacity: 0.4
-        radius: width * 0.5
-    }
+//    Rectangle {
+//        anchors.centerIn: parent
+//        width: parent.width
+//        height: width
+//        color: "blue"
+//        opacity: 0.4
+////        radius: width * 0.5
+//    }
     
     MouseArea {
         id: mouseArea
@@ -49,7 +50,6 @@ Item {
             var newWidth = target.width + widthFactor * deltaX;
             if(newWidth > 32) {
                 target.width = newWidth;
-                console.log("widths", target.width, newWidth)
             }
             if(forceSquare && !biggestIsX) {
                 previousPosition.y -= deltaY;

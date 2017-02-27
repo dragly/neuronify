@@ -5,29 +5,27 @@
 #include <QObject>
 #include <QQuickItem>
 #include <QQuickView>
+#include <QGuiApplication>
 
 class QmlPreviewer : public QObject
 {
     Q_OBJECT
 public:
-    explicit QmlPreviewer(QApplication &app);
-
-signals:
-
+    explicit QmlPreviewer(QGuiApplication &app);
+    bool show();
+    int exec();
 public slots:
     void reload();
-    void show();
-    void handleDialogStart(QVariant qrcPaths, QUrl filePath);
+    void setQrcPaths(QVariant qrcPaths);
 private:
     QFileSystemWatcher m_watcher;
     QQuickView m_view;
     QQuickItem *m_rootItem = nullptr;
-//    QString m_projectPath;
-    QString m_filePath;
     QString m_binPath;
     QVariantList m_qrcPaths;
     QObject *m_object = nullptr;
     QString m_prefix = "/qtqmlpreview";
+    QGuiApplication &m_app;
 };
 
 #endif // QMLPREVIEWER_H

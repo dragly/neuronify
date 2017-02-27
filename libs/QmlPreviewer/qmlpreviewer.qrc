@@ -1,8 +1,9 @@
 <RCC>
     <qresource prefix="/QmlPreviewer">
-        <file>QmlPreviewerButton.qml</file>
         <file>QmlPreviewerDialog.qml</file>
         <file>ResizeHandle.qml</file>
         <file>ResizeRectangle.qml</file>
+        <file>images/ic_folder_black_24px.svg</file>
+        <file>images/ic_insert_drive_file_black_24px.svg</file>
     </qresource>
 </RCC>

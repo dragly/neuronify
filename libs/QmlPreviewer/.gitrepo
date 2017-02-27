@@ -6,6 +6,6 @@
 [subrepo]
 	remote = git@github.com:ovilab/QmlPreviewer.git
 	branch = dev
-	commit = c8d06773f8749e24fac297df99cca391711d73c2
-	parent = 3c9912e9a91136fd0ea5a33edbd8913808126a68
+	commit = db7ace19e7096c941a131f3865139900a659237f
+	parent = 14220e498dfac450523067f68e592c300707e3b3
 	cmdver = 0.3.0
