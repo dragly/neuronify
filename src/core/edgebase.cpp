@@ -19,7 +19,6 @@
 EdgeBase::EdgeBase(QQuickItem *parent)
     : NeuronifyObject(parent)
 {
-    m_curved = 0;
 }
 
 NodeBase *EdgeBase::itemA() const
@@ -32,7 +31,7 @@ NodeBase *EdgeBase::itemB() const
     return m_itemB;
 }
 
-int EdgeBase::curved() const
+bool EdgeBase::curved() const
 {
     return m_curved;
 }
@@ -72,7 +71,7 @@ void EdgeBase::setItemB(NodeBase *arg)
     emit itemBChanged(arg);
 }
 
-void EdgeBase::setCurved(int curved)
+void EdgeBase::setCurved(bool curved)
 {
     if (m_curved == curved)
         return;

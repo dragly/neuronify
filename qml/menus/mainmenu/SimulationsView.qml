@@ -22,7 +22,7 @@ MainMenuPage {
             }
 
             contentWidth: width
-            contentHeight: categories.height
+            contentHeight: categories.height+100
             flickableDirection: Flickable.VerticalFlick
             Column {
                 id: categories
@@ -42,35 +42,34 @@ MainMenuPage {
                             ]
                         },
                         {
-                            name: "Neurons",
+                            name: "Neuronify Items",
                             simulations: [
-                                "qrc:/simulations/neurons/leaky",
-                                "qrc:/simulations/neurons/inhibitory",
-    //                            "qrc:/simulations/neurons/burst",
-                                "qrc:/simulations/neurons/adaptation",
-                            ]
-                        },
-                        {
-                            name: "Inhibitory circuit effects",
-                            simulations: [
-                                "qrc:/simulations/inhibition/lateral_inhibition",
-                                "qrc:/simulations/inhibition/recurrent_inhibition",
-                                "qrc:/simulations/inhibition/reciprocal_inhibition",
+                                "qrc:/simulations/items/neurons/leaky",
+                                "qrc:/simulations/items/neurons/inhibitory",
+                                "qrc:/simulations/items/neurons/adaptation",
+                                "qrc:/simulations/items/visualInput",
+                                "qrc:/simulations/items/generators",
+                                "qrc:/simulations/items/frPlot",
+
                             ]
                         },
                         {
                             name: "Miscellaneous",
                             simulations: [
-                                "qrc:/simulations/generators",
-                                "qrc:/simulations/mix/input_summation",
+                                "qrc:/simulations/mix/lateral_inhibition",
+                                "qrc:/simulations/mix/recurrent_inhibition",
+                                "qrc:/simulations/mix/reciprocal_inhibition",
+                                "qrc:/simulations/mix/disinhibition",
                                 "qrc:/simulations/mix/rythm_transformation",
                                 "qrc:/simulations/mix/prolonged_activity",
-
                             ]
                         },
                         {
                             name: "Textbook Examples",
                             simulations: [
+                                "qrc:/simulations/mix/lateral_inhibition_1",
+                                "qrc:/simulations/mix/lateral_inhibition_2",
+                                "qrc:/simulations/mix/input_summation",
                                 "qrc:/simulations/sterratt/if_response",
                                 "qrc:/simulations/sterratt/refractory_period",
                             ]
@@ -85,7 +84,7 @@ MainMenuPage {
                         }
                         ScrollView{
                             width: categories.width
-                            height: simulationsRow.height
+                            height: simulationsRow.height + Style.baseMargin
                             Flickable {
                                 anchors.fill: parent
                                 contentHeight: height

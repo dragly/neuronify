@@ -24,7 +24,7 @@ Rectangle {
     
     MouseArea {
         anchors.fill: parent
-        drag.target: handle.parent
+        drag.target: handle.parent.dragProxy
         onPressed: {
             handle.parent.dragging = true
             handle.parent.dragStarted(handle.parent)

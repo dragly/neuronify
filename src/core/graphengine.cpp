@@ -53,8 +53,8 @@ void GraphEngine::addEdge(EdgeBase *edge)
 {
     for (EdgeBase *otherEdge : m_edges) {
         if (edge->itemA() == otherEdge->itemB() && edge->itemB() == otherEdge->itemA()){
-            edge->setCurved(-1);
-            otherEdge->setCurved(1);
+            edge->setCurved(true);
+            otherEdge->setCurved(true);
         }
     }
 

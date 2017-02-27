@@ -341,10 +341,14 @@ Node {
                     id: axisX
                     min: voltmeterRoot.minimumTime
                     max: voltmeterRoot.maximumTime
-                    tickCount: 2 // IMPORTANT: Needs to be low because something gets recalculated everytime min/max changes and tickCount depends on this
+                    tickCount: 2 // IMPORTANT: Needs to be low because something gets
+                    // recalculated everytime min/max changes and tickCount depends on this
                     gridVisible: false
                     labelsVisible: false
                     lineVisible: showAxis
+                    visible: false // IMPORTANT: Due to a bug in Qt Charts/Qt Graphics View,
+                    // performance is degraded with time when text changes
+                    // https://bugreports.qt.io/browse/QTBUG-59040
                 }
 
                 ValueAxis {

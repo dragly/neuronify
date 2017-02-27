@@ -95,8 +95,69 @@ Node {
         }
     }
 
+    Rectangle {
+        id: dropIndicator
+        anchors.centerIn: parent
+        radius: width * 0.5
+        color: "transparent"
+        border.color: Qt.lighter(root.color, 1.0)
+        border.width: 2.0
+
+        width: 1.0
+        height: width
+        visible: false
+
+        SequentialAnimation {
+            id: dropAnimation
+            running: false
+            loops: Animation.Infinite
+            NumberAnimation {
+                target: dropIndicator
+                property: "width"
+                from: root.width
+                to: root.width * 2
+                duration: 300
+                easing.type: Easing.OutQuad
+            }
+            NumberAnimation {
+                target: dropIndicator
+                property: "width"
+                from: root.width * 2
+                to: root.width
+                duration: 800
+                easing.type: Easing.OutQuad
+            }
+        }
+
+        states: [
+            State {
+                when: dropArea.containsDrag && dropArea.drag.source.node !== root
+                PropertyChanges {
+                    target: dropIndicator
+                    visible: true
+                }
+                PropertyChanges {
+                    target: dropAnimation
+                    running: true
+                }
+            }
+        ]
+    }
+
     Connector {
         color: inhibitory ? "#e41a1c" : "#6baed6"
         connectorColor: inhibitory ? "#e41a1c" : "#6baed6"
+    }
+
+    DropArea {
+        id: dropArea
+        anchors {
+            fill: parent
+            margins: -16
+        }
+        keys: [ "connector" ]
+        onDropped: {
+            receivedDrop(drop.source.node)
+        }
     }
 }

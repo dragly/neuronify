@@ -15,7 +15,7 @@ class EdgeBase : public NeuronifyObject
     Q_PROPERTY(NodeBase* itemA READ itemA WRITE setItemA NOTIFY itemAChanged)
     Q_PROPERTY(NodeBase* itemB READ itemB WRITE setItemB NOTIFY itemBChanged)
     Q_PROPERTY(EdgeEngine* engine READ engine WRITE setEngine NOTIFY engineChanged)
-    Q_PROPERTY(int curved READ curved WRITE setCurved NOTIFY curvedChanged)
+    Q_PROPERTY(bool curved READ curved WRITE setCurved NOTIFY curvedChanged)
 
 public:
     explicit EdgeBase(QQuickItem *parent = 0);
@@ -23,7 +23,7 @@ public:
     NodeBase* itemA() const;
     NodeBase* itemB() const;
 
-    int curved() const;
+    bool curved() const;
 
     EdgeEngine* engine() const;
 
@@ -36,13 +36,13 @@ signals:
 public slots:
     void setItemA(NodeBase* arg);
     void setItemB(NodeBase* arg);
-    void setCurved(int curved);  
+    void setCurved(bool curved);
     void setEngine(EdgeEngine* engine);
 
 private:
     QPointer<NodeBase> m_itemA;
     QPointer<NodeBase> m_itemB;
-    int m_curved;
+    bool m_curved = false;
     EdgeEngine* m_engine = nullptr;
 
     friend class GraphEngine;

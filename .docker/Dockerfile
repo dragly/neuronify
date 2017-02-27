@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM snapcore/snapcraft
 
 RUN apt-get -qq update
 RUN apt-get install -qq sudo
@@ -19,10 +19,3 @@ RUN sudo apt-get -qq install mesa-common-dev\
     libboost-dev\
     libarmadillo-dev\
     catch
-
-# needed by deploy
-RUN sudo apt-get -qq install snapcraft
-
-WORKDIR /app
-
-ADD . /app/

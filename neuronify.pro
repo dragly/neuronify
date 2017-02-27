@@ -34,8 +34,7 @@ HEADERS += \
     src/io/propertygroup.h \
     src/retina/kernels/rectangularkernelengine.h \
     src/core/edgebase.h \
-    src/core/edgeengine.h \
-    src/qmlpreviewer.h
+    src/core/edgeengine.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -63,7 +62,6 @@ SOURCES += \
     src/retina/kernels/rectangularkernelengine.cpp \
     src/core/edgebase.cpp \
     src/core/edgeengine.cpp \
-    src/qmlpreviewer.cpp
 
 
 RESOURCES += qml.qrc \
@@ -88,6 +86,50 @@ DISTFILES += \
     android/src/org/cinpla/neuronify/AlwaysOnActivity.java \
     qml/sensors/singletons/qmldir \
     COPYING.md \
-    snapcraft.yaml
+    snapcraft.yaml \
+    ios/iOS.plist \
+    .travis/qt5-mac.sh \
+    .travis.sh \
+    .snapcraft/snapcraft.yaml \
+    .snapcraft/parts/plugins/x-qt57.py \
+    installer/config.xml \
+    installer/meta/package.xml \
+    installer/meta/license.txt \
+    installer/config/config.xml \
+    installer/packages/net.ovilab.neuronify/meta/package.xml \
+    installer/packages/net.ovilab.neuronify/meta/license.txt \
+    installer/packages/net.ovilab.neuronify/meta/installscript.qs \
+    appveyor.yml \
+    installer/packages/net.ovilab.neuronify/data/README.txt \
+    .travis.yml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+
+exists(libs/CuteVersioning/CuteVersioning.pri) {
+    CUTEVERSIONING_GIT_DIR=$$PWD/.git
+    CUTEVERSIONING_GIT_WORK_TREE=$$PWD
+    include(libs/CuteVersioning/CuteVersioning.pri)
+} else {
+    error("Could not find CuteVersioning. Try running 'git submodule update --init --recursive' in Neuronify's root directory.")
+}
+
+include(libs/QmlPreviewer/qmlpreviewer.pri)
+
+ios {
+    QMAKE_INFO_PLIST = ios/iOS.plist
+    ios_icon.files = $$files($$PWD/ios/icon/*.png)
+    QMAKE_BUNDLE_DATA += ios_icon
+    app_launch_images.files = $$PWD/ios/launch/Launch.xib
+    QMAKE_BUNDLE_DATA += app_launch_images
+}
+
+WINRT_MANIFEST.name = Neuronify
+WINRT_MANIFEST.background = $${LITERAL_HASH}399cdd
+WINRT_MANIFEST.publisher = Ovilab
+WINRT_MANIFEST.version = 1.0.0.0
+WINRT_MANIFEST.description = Educational neural network app
+WINRT_MANIFEST.capabilities += codeGeneration
+WINRT_MANIFEST.logo_small=winrt/logo_44x44.png
+WINRT_MANIFEST.logo_large=winrt/logo_150x150.png
+WINRT_MANIFEST.logo_store=winrt/logo_50x50.png
+WINRT_MANIFEST.logo_splash=winrt/logo_620x300.png

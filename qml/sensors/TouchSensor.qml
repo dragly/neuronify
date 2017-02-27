@@ -88,14 +88,6 @@ Node {
             sensorRoot.sensing = true
             sensorRoot.clicked(sensorRoot, mouse)
         }
-
-        onReleased: {
-            sensorRoot.sensing = false
-        }
-
-        onExited: {
-            sensorRoot.sensing =  false
-        }
     }
 
 

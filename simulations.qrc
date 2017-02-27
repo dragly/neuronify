@@ -15,30 +15,30 @@
         <file>simulations/tutorial/tutorial_3_creation/tutorial_3_creation.nfy</file>
         <file>simulations/tutorial/tutorial_3_creation/tutorial_3_creation.png</file>
         <file>simulations/tutorial/tutorial_3_creation/tutorial_3_creation.qml</file>
-        <file>simulations/neurons/burst/burst.nfy</file>
-        <file>simulations/neurons/burst/burst.png</file>
-        <file>simulations/neurons/burst/burst.qml</file>
-        <file>simulations/neurons/leaky/leaky.nfy</file>
-        <file>simulations/neurons/leaky/leaky.png</file>
-        <file>simulations/neurons/leaky/leaky.qml</file>
-        <file>simulations/neurons/adaptation/adaptation.nfy</file>
-        <file>simulations/neurons/adaptation/adaptation.png</file>
-        <file>simulations/neurons/adaptation/adaptation.qml</file>
-        <file>simulations/neurons/inhibitory/inhibitory.nfy</file>
-        <file>simulations/neurons/inhibitory/inhibitory.png</file>
-        <file>simulations/neurons/inhibitory/inhibitory.qml</file>
-        <file>simulations/inhibition/types_of_inhibition/types_of_inhibition.nfy</file>
-        <file>simulations/inhibition/types_of_inhibition/types_of_inhibition.png</file>
-        <file>simulations/inhibition/types_of_inhibition/types_of_inhibition.qml</file>
-        <file>simulations/inhibition/lateral_inhibition/lateral_inhibition.nfy</file>
-        <file>simulations/inhibition/lateral_inhibition/lateral_inhibition.png</file>
-        <file>simulations/inhibition/lateral_inhibition/lateral_inhibition.qml</file>
-        <file>simulations/inhibition/reciprocal_inhibition/reciprocal_inhibition.nfy</file>
-        <file>simulations/inhibition/reciprocal_inhibition/reciprocal_inhibition.png</file>
-        <file>simulations/inhibition/reciprocal_inhibition/reciprocal_inhibition.qml</file>
-        <file>simulations/inhibition/recurrent_inhibition/recurrent_inhibition.nfy</file>
-        <file>simulations/inhibition/recurrent_inhibition/recurrent_inhibition.png</file>
-        <file>simulations/inhibition/recurrent_inhibition/recurrent_inhibition.qml</file>
+        <file>simulations/items/neurons/burst/burst.nfy</file>
+        <file>simulations/items/neurons/burst/burst.png</file>
+        <file>simulations/items/neurons/burst/burst.qml</file>
+        <file>simulations/items/neurons/leaky/leaky.nfy</file>
+        <file>simulations/items/neurons/leaky/leaky.png</file>
+        <file>simulations/items/neurons/leaky/leaky.qml</file>
+        <file>simulations/items/neurons/adaptation/adaptation.nfy</file>
+        <file>simulations/items/neurons/adaptation/adaptation.png</file>
+        <file>simulations/items/neurons/adaptation/adaptation.qml</file>
+        <file>simulations/items/neurons/inhibitory/inhibitory.nfy</file>
+        <file>simulations/items/neurons/inhibitory/inhibitory.png</file>
+        <file>simulations/items/neurons/inhibitory/inhibitory.qml</file>
+        <file>simulations/mix/types_of_inhibition/types_of_inhibition.nfy</file>
+        <file>simulations/mix/types_of_inhibition/types_of_inhibition.png</file>
+        <file>simulations/mix/types_of_inhibition/types_of_inhibition.qml</file>
+        <file>simulations/mix/lateral_inhibition/lateral_inhibition.nfy</file>
+        <file>simulations/mix/lateral_inhibition/lateral_inhibition.png</file>
+        <file>simulations/mix/lateral_inhibition/lateral_inhibition.qml</file>
+        <file>simulations/mix/reciprocal_inhibition/reciprocal_inhibition.nfy</file>
+        <file>simulations/mix/reciprocal_inhibition/reciprocal_inhibition.png</file>
+        <file>simulations/mix/reciprocal_inhibition/reciprocal_inhibition.qml</file>
+        <file>simulations/mix/recurrent_inhibition/recurrent_inhibition.nfy</file>
+        <file>simulations/mix/recurrent_inhibition/recurrent_inhibition.png</file>
+        <file>simulations/mix/recurrent_inhibition/recurrent_inhibition.qml</file>
         <file>simulations/mix/rythm_transformation/rythm_transformation.nfy</file>
         <file>simulations/mix/rythm_transformation/rythm_transformation.png</file>
         <file>simulations/mix/rythm_transformation/rythm_transformation.qml</file>
@@ -51,11 +51,26 @@
         <file>simulations/sterratt/refractory_period/refractory_period.nfy</file>
         <file>simulations/sterratt/refractory_period/refractory_period.png</file>
         <file>simulations/sterratt/refractory_period/refractory_period.qml</file>
-        <file>simulations/generators/generators.png</file>
-        <file>simulations/generators/generators.qml</file>
-        <file>simulations/generators/generators.nfy</file>
+        <file>simulations/items/generators/generators.png</file>
+        <file>simulations/items/generators/generators.qml</file>
+        <file>simulations/items/generators/generators.nfy</file>
         <file>simulations/mix/input_summation/input_summation.nfy</file>
         <file>simulations/mix/input_summation/input_summation.png</file>
         <file>simulations/mix/input_summation/input_summation.qml</file>
+        <file>simulations/items/visualInput/visualInput.nfy</file>
+        <file>simulations/items/visualInput/visualInput.png</file>
+        <file>simulations/items/visualInput/visualInput.qml</file>
+        <file>simulations/mix/disinhibition/disinhibition.png</file>
+        <file>simulations/mix/disinhibition/disinhibition.nfy</file>
+        <file>simulations/mix/lateral_inhibition_1/lateral_inhibition_1.png</file>
+        <file>simulations/mix/lateral_inhibition_1/lateral_inhibition_1.nfy</file>
+        <file>simulations/mix/lateral_inhibition_2/lateral_inhibition_2.png</file>
+        <file>simulations/mix/lateral_inhibition_2/lateral_inhibition_2.nfy</file>
+        <file>simulations/mix/lateral_inhibition_1/lateral_inhibition_1.qml</file>
+        <file>simulations/mix/lateral_inhibition_2/lateral_inhibition_2.qml</file>
+        <file>simulations/mix/disinhibition/disinhibition.qml</file>
+        <file>simulations/items/frPlot/frPlot.qml</file>
+        <file>simulations/items/frPlot/frPlot.png</file>
+        <file>simulations/items/frPlot/frPlot.nfy</file>
     </qresource>
 </RCC>

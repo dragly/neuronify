@@ -14,7 +14,8 @@ double EdgeEngine::currentOutput() const
 
 void EdgeEngine::stepEvent(double dt, bool parentEnabled)
 {
-
+    Q_UNUSED(dt)
+    Q_UNUSED(parentEnabled)
 }
 
 void EdgeEngine::receiveFireEvent(NodeEngine *sender)

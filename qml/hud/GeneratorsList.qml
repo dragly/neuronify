@@ -3,14 +3,14 @@ import QtQuick 2.0
 ListModel {
     ListElement {
         name: "DC current source"
-        description: "Generates constant current clamped to neurons"
+        description: "Generates a constant current that can be injected into neurons"
         source: "../generators/CurrentClamp.qml"
         imageSource: "qrc:/images/generators/current_clamp.png"
     }
 
     ListElement {
         name: "AC current source"
-        description: "Generates alternating current clamped to neurons"
+        description: "Generates alternating current that can be injected into neurons"
         source: "../generators/ACClamp.qml"
         imageSource: "qrc:/images/generators/ac_clamp.png"
     }

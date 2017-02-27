@@ -136,7 +136,7 @@ Item {
             id: controlSubTextProxy
             color: "#999"
             font.family: "Roboto"
-            font.pixelSize: controlObject.font.pixelSize * 0.8
+            font.pixelSize: controlObject.font.pixelSize * 1.0
         }
         Text {
             id: controlHeadingProxy
@@ -184,7 +184,7 @@ Item {
                 device = "phone"
             }
         } else {
-            device = "dekstop";
+            device = "desktop";
             var base = Math.min(root.windowWidth, root.windowHeight);
             size = base * 0.02;
         }

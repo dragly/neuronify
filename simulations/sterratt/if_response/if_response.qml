@@ -2,7 +2,7 @@ import QtQuick 2.0
 import "qrc:/qml"
 
 Simulation {
-    name: " Response of leaky integrate-and-fire neruons"
-    description: "Response of integrate-and-fire neruons\"."
+    name: "Spike threshold"
+    description: "Response of integrate-and-fire neurons."
 }
 

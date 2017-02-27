@@ -28,6 +28,7 @@ NodeBase {
     signal dragStarted(var entity)
     signal dragEnded(var entity)
     signal droppedConnector(var irregularSpikeGenerator, var connector)
+    signal receivedDrop(var from)
     signal startConnectMultipleToThis
     signal startConnectMultipleFromThis
     signal fired
@@ -77,36 +78,6 @@ NodeBase {
     function resolveAlias(index) {
         return undefined;
     }
-
-//    function _basicSelfDump() {
-//        var outputString = "";
-//        var entityData = {};
-
-//        for(var i in dumpableProperties) {
-//            var propertyName = dumpableProperties[i];
-////            entityData[propertyName] = root[propertyName];
-//            var sourceObject = root;
-//            var targetObject = entityData;
-//            var previousTargetObject = targetObject;
-//            var splits = propertyName.split(".");
-//            var subName = "";
-//            for(var j in splits) {
-//                subName = splits[j];
-//                sourceObject = sourceObject[subName];
-//                if(!targetObject[subName]) {
-//                    targetObject[subName] = {};
-//                }
-//                previousTargetObject = targetObject;
-//                targetObject = targetObject[subName];
-//            }
-//            previousTargetObject[subName] = sourceObject;
-//        }
-//        return entityData;
-//    }
-
-//    function dump() {
-//        return _basicSelfDump()
-//    }
 
     Rectangle{
         anchors.fill: labelBox
@@ -175,7 +146,6 @@ NodeBase {
         onDoubleClicked: {
             mouse.accepted = false;
         }
-
     }
 }
 

@@ -15,11 +15,11 @@ RectangularKernelEngine{
                 property: "orientation"
                 minimumValue: 0.0
                 maximumValue: 3.*Math.PI/2
-                unitScale: Math.PI
+                unitScale: Math.PI/180
                 stepSize: Math.PI/2.
                 precision: 1
                 text: "Orientation"
-                unit: "π"
+                unit: "degrees"
             }
 
         }

@@ -63,7 +63,7 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "IrregularSpike generator"
+            title: "Irregular Spike generator"
             BoundSlider {
                 target: engine
                 property: "rate"

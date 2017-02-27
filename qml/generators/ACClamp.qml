@@ -49,7 +49,7 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "AC clamp"
+            title: "AC current source"
             BoundSlider {
                 target: engine
                 property: "amplitude"

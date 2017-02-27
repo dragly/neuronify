@@ -1,0 +1,11 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:ovilab/QmlPreviewer.git
+	branch = dev
+	commit = db7ace19e7096c941a131f3865139900a659237f
+	parent = 14220e498dfac450523067f68e592c300707e3b3
+	cmdver = 0.3.0

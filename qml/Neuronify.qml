@@ -1,6 +1,5 @@
 import QtQuick 2.5
-import QtQuick.Controls 1.1
-import QtQuick.Controls 2.0 as QQC2
+import QtQuick.Controls 1.4
 import QtQuick.Dialogs 1.0
 import QtQuick.Layouts 1.1
 import QtQuick.Particles 2.0
@@ -11,6 +10,7 @@ import QtMultimedia 5.5
 import Qt.labs.settings 1.0
 
 import Neuronify 1.0
+import CuteVersioning 1.0
 
 import "qrc:/qml/hud"
 import "qrc:/qml/menus/mainmenu"
@@ -54,6 +54,7 @@ Rectangle {
     property url currentSimulationUrl
     property bool advanced: false
     property bool firstRun: true
+    property int latestZ: 0
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -80,6 +81,8 @@ Rectangle {
         Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
                 firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed
+        focus: true
+        //        forceActiveFocus()
     }
 
     function firstLoad() {
@@ -108,6 +111,7 @@ Rectangle {
     }
 
     function saveState(fileUrl) {
+        console.log("Saving state to", fileUrl)
         fileManager.saveState(fileUrl)
     }
 
@@ -377,7 +381,7 @@ Rectangle {
     }
 
     function deleteNode(node) {
-        console.log("Delete node");
+        console.log("Deleting node", node);
         if(selectedEntities.indexOf(node) !== -1) {
             deselectAll();
         }
@@ -391,7 +395,7 @@ Rectangle {
     }
 
     function deleteEdge(edge) {
-        console.log("Delete edge");
+        console.log("Deleting edge", edge);
         graphEngine.removeEdge(edge);
     }
 
@@ -402,7 +406,6 @@ Rectangle {
         }
         for(var i in toDelete) {
             var node = toDelete[i]
-            console.log("Deleting " + node);
             deleteNode(node);
         }
         if(activeObject && activeObject.isEdge) {
@@ -488,10 +491,12 @@ Rectangle {
         entity.clicked.connect(raiseToTop)
         entity.dragStarted.connect(raiseToTop)
         entity.startConnectMultipleFromThis.connect(function() {
-            clickMode = "connectMultipleFromThis";
+            clickMode = "connectMultipleFromThis"
+            propertiesPanel.close()
         });
         entity.startConnectMultipleToThis.connect(function() {
-            clickMode = "connectMultipleToThis";
+            clickMode = "connectMultipleToThis"
+            propertiesPanel.close()
         });
         entity.dragStarted.connect(function(entity) {
             draggedEntity = entity;
@@ -499,11 +504,8 @@ Rectangle {
         entity.dragEnded.connect(function(entity) {
             draggedEntity = undefined;
         });
-        entity.droppedConnector.connect(function(itemA, connector) {
-            var targetEntity = itemUnderConnector(itemA, connector)
-            if(targetEntity) {
-                connectEntities(itemA, targetEntity)
-            }
+        entity.receivedDrop.connect(function(from) {
+            connectEntities(from, entity)
         })
 
         // retina specific
@@ -550,11 +552,18 @@ Rectangle {
         var connection = connectionComponent.createObject(connectionLayer, {itemA: itemA, itemB: itemB});
 
         connection.particleSystem = particleSystem;
+        connection.playbackSpeed = Qt.binding(function() {
+            return root.playbackSpeed
+        })
         connection.clicked.connect(function(connection) {
             deselectAll();
             activeObject = connection;
             connection.selected = true;
+            latestZ-=1
+            connection.z = latestZ
         });
+        latestZ-=1
+        connection.z = latestZ
         addToUndoList()
         graphEngine.addEdge(connection)
         return connection
@@ -595,7 +604,13 @@ Rectangle {
 
     Item {
         id: viewport
-        anchors.fill: parent
+        anchors {
+            top: parent.top
+            bottom: parent.bottom
+            left: parent.left
+            leftMargin: -propertiesPanel.offset * 0.33
+        }
+        width: parent.width
     }
 
     Item {
@@ -665,7 +680,7 @@ Rectangle {
                 anchors.fill: parent
 
                 propagateComposedEvents: true
-                drag.target: workspace
+                drag.target: scaleAnimation.running ? undefined : workspace
 
                 onWheel: {
                     if(wheel.modifiers & Qt.ControlModifier) {
@@ -928,9 +943,7 @@ Rectangle {
         }
 
         PropertiesButton {
-//            revealed: activeObject ? true : false
             onClicked: {
-//                propertiesPanel.revealed = !propertiesPanel.revealed
                 propertiesPanel.open()
             }
         }
@@ -957,6 +970,14 @@ Rectangle {
 
         blurSource: workspaceFlickable
 
+        onRevealedChanged: {
+            if(revealed) {
+                root.focus = false
+            } else {
+                root.focus = true
+            }
+        }
+
         onDroppedEntity: {
             var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
             properties.x = workspacePosition.x
@@ -967,6 +988,7 @@ Rectangle {
         onDeleteEverything: {
             root.deleteEverything()
         }
+
     }
 
     PropertiesPanel {
@@ -976,6 +998,16 @@ Rectangle {
         snappingEnabled: root.snappingEnabled
         activeObject: root.activeObject
         workspace: workspace
+
+        onRevealedChanged: {
+            if(revealed) {
+                //                root.focus = false
+                clickMode = "selection"
+
+            } else {
+                root.focus = true
+            }
+        }
 
         onResetDynamics: {
             for(var i in graphEngine.nodes) {
@@ -1008,7 +1040,21 @@ Rectangle {
         }
 
         onSaveToOpened: {
-            saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
+            propertiesPanel.revealed = false
+            saveTimer.start(1000)
+        }
+
+        Timer {
+            id: saveTimer
+            onTriggered: {
+                saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
+                var imageUrl = StandardPaths.toLocalFile(StandardPaths.originalSimulationLocation(currentSimulationUrl)).replace(".nfy", ".png")
+
+                workspaceFlickable.grabToImage(function(result) {
+                    console.log("Saving image to " + imageUrl);
+                    result.saveToFile(imageUrl);
+                }, Qt.size(workspaceFlickable.width / 3.0, workspaceFlickable.height / 3.0));
+            }
         }
 
         Binding {
@@ -1049,12 +1095,17 @@ Rectangle {
 
         property bool wasRunning: true
 
+        focus: true
+
         anchors.fill: parent
         blurSource: workspaceFlickable
 
         onRevealedChanged: {
             if(revealed) {
                 wasRunning = root.running
+                root.focus = false
+            } else {
+                root.focus = true
             }
         }
 
@@ -1222,11 +1273,12 @@ Rectangle {
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
             clipboard.pasteNeurons()
         }
-        if(event.key === Qt.Key_Delete) {
+        if(event.key === Qt.Key_Delete || (Qt.platform.os === "osx" && event.key === Qt.Key_Backspace) ) {
             deleteSelected()
         }
         if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
             playbackControls.toggleSpeed(event.key)
         }
     }
+
 }

@@ -29,7 +29,7 @@ Node {
     width: 180
     height: 120
 
-    color: "#54B2FF"
+    color: "white"
     savedProperties: PropertyGroup {
         property alias text: noteRoot.text
         property alias width: noteRoot.width
@@ -76,6 +76,8 @@ Node {
     Rectangle {
         anchors.fill: parent
         color: parent.color
+        border.color: Style.meter.border.color
+        border.width: Style.meter.border.width
     }
 
     Text {

@@ -101,8 +101,6 @@
         <file>qml/store/StoreFrontPage.qml</file>
         <file>qml/store/StoreItem.qml</file>
         <file>qml/main_preview.qml</file>
-        <file>QmlPreviewerDialog.qml</file>
-        <file>QmlPreviewerButton.qml</file>
         <file>qtquickcontrols2.conf</file>
         <file>qml/store/StoreShadow.qml</file>
         <file>qml/store/StoreSimulation.qml</file>

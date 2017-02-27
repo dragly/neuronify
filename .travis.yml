@@ -1,18 +1,50 @@
 language: cpp
-os:
-- linux
-compiler:
-- gcc
-sudo: required
-services: docker
-notifications:
-  slack:
-    on_success: change
-    on_failure: always
-    rooms:
-        secure: kuyFzncY4kcv2ZAyHg6jYL7ASfKMirXSTRr8OVsFBh6exTvItqkFmzcgxhke9Foqp2KJuKOSg8qf2pP2mpW/JznssDJLrcUxbCGakt3BYLXtuE3ZD+3SVwvjBPkBJncG5knEayMW0TCBWI+FZBnzH66RwP2iQRVGkXJX4skVOSM=
-before_install:
-- docker build -t ovilab/neuronify -f .docker/Dockerfile .
+branches:
+  except:
+  - appveyor
+matrix:
+  include:
+  - os: osx
+    before_install:
+    - brew update
+    - brew install p7zip
+    - bash .travis/qt5-mac.sh $(pwd) extra-charts 3d base declarative graphicaleffects
+      imageformats macextras multimedia quickcontrols quickcontrols2 sensors svg tools
+      translations xmlpatterns
+    - export PATH=$(pwd)/5.7/clang_64/bin:$PATH
+    before_deploy:
+    - git clone https://github.com/iltommi/macdeployqtfix.git
+    - python macdeployqtfix/macdeployqtfix.py neuronify.app/Contents/MacOS/neuronify
+      /usr/local
+    - macdeployqt neuronify.app -qmldir=. -dmg
+    install:
+    - qmake
+    - make
+    deploy:
+      skip_cleanup: true
+      provider: releases
+      file: neuronify.dmg
+      'on':
+        tags: true
+      api_key:
+        secure: WJ9YTjPf8GWZ4PmdVoPubtL0CBU+cAIIMFjTpeOKwOLX1vH3zFkdwAz1nbY28CWWhm+YQwWVWwByZOI9hePsf5t6wtkWfJB4wzgrKEcIyKHMHmjaMYc+fp6V//3f7Z4Kc6vYn7wNNy1i9zgA8VVr2A4u8Rf1i7Euio4SLpey17w=
+  - os: linux
+    dist: trusty
+    sudo: required
+    services: docker
+    install:
+    - docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/ && .travis/ubuntu.sh"
+    after_success:
+    - openssl aes-256-cbc -K $encrypted_8bc7dae8784d_key -iv $encrypted_8bc7dae8784d_iv
+      -in .snapcraft/.snapcraft/travis_snapcraft.cfg -out .snapcraft/.snapcraft/snapcraft.cfg -d
+    deploy:
+      'on':
+        branch: dev # TODO add back when merged into dev
+      provider: script
+      script: docker run -v $(pwd):/app snapcore/snapcraft bash -c "cd /app/.snapcraft && snapcraft && snapcraft push *.snap --release edge"
+      skip_cleanup: true
 script:
-- docker run ovilab/neuronify bash -c "/opt/qt57/bin/qmake neuronify.pro && make
-  -j8"
+- echo "Finished"
+sudo: required
+services:
+- docker

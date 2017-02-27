@@ -1,12 +1,12 @@
 import QtQuick 2.2
-import QtQuick.Controls 1.1
-import QtQuick.Controls 2.0 as QQC2
+import QtQuick.Controls 1.4
 import QtQuick.Layouts 1.0
 import Qt.labs.settings 1.0
+import CuteVersioning 1.0
 
 import "store"
 
-QQC2.ApplicationWindow {
+ApplicationWindow {
     id: applicationWindow1
 
     property real startupTime: 0
@@ -15,21 +15,21 @@ QQC2.ApplicationWindow {
     visible: true
     width: 1136
     height: 640
-    title: qsTr("Neuronify")
+    title: qsTr("Neuronify " + Version.latestTag)
 
     Component.onCompleted: {
         console.log("ApplicationWindow load completed " + Date.now());
         startupTime = Date.now();
     }
 
-//    Settings {
-//        id: settings
-//        property alias width: applicationWindow1.width
-//        property alias height: applicationWindow1.height
-//        property alias x: applicationWindow1.x
-//        property alias y: applicationWindow1.y
-//        property alias firstRun: neuronify.firstRun
-//    }
+    Settings {
+        id: settings
+        property alias width: applicationWindow1.width
+        property alias height: applicationWindow1.height
+        property alias x: applicationWindow1.x
+        property alias y: applicationWindow1.y
+        property alias firstRun: neuronify.firstRun
+    }
 
     FontLoader {
         source: "qrc:/fonts/roboto/Roboto-Regular.ttf"
@@ -51,4 +51,9 @@ QQC2.ApplicationWindow {
 //    Store {
 //        anchors.fill: parent
 //    }
+    onClosing: {
+        if (Qt.platform.os === "android"){
+            close.accepted = false
+        }
+    }
 }

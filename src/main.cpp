@@ -1,3 +1,5 @@
+#include <CuteVersioning/CuteVersioning>
+
 #include "core/nodebase.h"
 #include "core/nodeengine.h"
 #include "core/edgebase.h"
@@ -29,13 +31,15 @@
 #include <QtQml>
 #include <QQmlContext>
 #include <QQuickView>
-
-#include "qmlpreviewer.h"
+#include <QDebug>
+#include <QmlPreviewer>
 
 int main(int argc, char *argv[])
 {
     qint64 startupTime = QDateTime::currentMSecsSinceEpoch();
-    qDebug() << "Neuronify started at" << startupTime;
+    qDebug() << "Neuronify version" << CuteVersioning::identifier << "started at" << startupTime;
+
+    CuteVersioning::init();
 
     qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
     qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
@@ -44,7 +48,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<NodeEngine>("Neuronify", 1, 0, "NodeEngine");
     qmlRegisterType<EdgeBase>("Neuronify", 1, 0, "EdgeBase");
     qmlRegisterType<GraphEngine>("Neuronify", 1, 0, "GraphEngine");
-     qmlRegisterType<EdgeEngine>("Neuronify", 1, 0, "EdgeEngine");
+    qmlRegisterType<EdgeEngine>("Neuronify", 1, 0, "EdgeEngine");
 
     qmlRegisterType<NeuronEngine>("Neuronify", 1, 0, "NeuronEngineBase");
 
@@ -76,15 +80,16 @@ int main(int argc, char *argv[])
     app.setApplicationName("Neuronify");
 
     QmlPreviewer previewer(app);
+    if(previewer.show()) {
+        return previewer.exec();
+    }
+
     QQmlApplicationEngine engine;
+    qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
+    QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
 
-    if(argc > 1) {
-        previewer.show();
-    } else {
-        qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
-        QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
-
-        engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
+    engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
+    if(engine.rootObjects().size() > 0) {
         QVariant qmlStartupTime = QQmlProperty::read(engine.rootObjects().first(), "startupTime");
         qDebug() << "Load time:" << qmlStartupTime.toDouble() - startupTime;
     }

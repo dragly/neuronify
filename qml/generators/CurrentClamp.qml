@@ -31,13 +31,13 @@ Node {
             property alias currentOutput: engine.currentOutput
         }
         onResettedProperties: {
-            currentOutput = 300e-12
+            currentOutput = 2e-9
         }
     }
 
     controls: Component {
         PropertiesPage {
-            title: "Current clamp"
+            title: "DC current source"
             BoundSlider {
                 target: engine
                 property: "currentOutput"
