@@ -33,6 +33,8 @@ import "qrc:/qml/controls"
 Rectangle {
     id: root
 
+    signal simulationLoaded
+
     property alias workspace: workspace
     property alias graphEngine: graphEngine
     property var selectedEntities: []
@@ -47,7 +49,7 @@ Rectangle {
     property bool undoRecordingEnabled: true
     property bool canRedo: false
     readonly property bool paused: workspace.playbackSpeed <= 0.0
-    readonly property bool running: applicationActive && !mainMenu.revealed && !paused
+    readonly property bool running: applicationActive && !paused // TODO pause when mainMenu.revealed
     property string clickMode: "selection"
     property real highestZ: 0.0
     property bool snappingEnabled: false
@@ -162,8 +164,6 @@ Rectangle {
 
         pinchArea.scaleSetByDoubleClick = false;
 
-        playbackControls.revealTemporarily()
-
         undoList.length = 0;
 
         undoIdx = 1;
@@ -266,6 +266,8 @@ Rectangle {
         }
 
         undoRecordingEnabled = true
+
+        simulationLoaded()
     }
 
     function addToUndoList() {
@@ -609,7 +611,7 @@ Rectangle {
             top: parent.top
             bottom: parent.bottom
             left: parent.left
-            leftMargin: -propertiesPanel.offset * 0.33
+//            leftMargin: -propertiesPanel.offset * 0.33
         }
         width: parent.width
     }
@@ -621,7 +623,7 @@ Rectangle {
             top: parent.top
             bottom: parent.bottom
             left: parent.left
-            leftMargin: -propertiesPanel.offset * 0.33
+//            leftMargin: -propertiesPanel.offset * 0.33 // TODO add back this somehow
         }
         width: parent.width
         antialiasing: true
@@ -792,9 +794,9 @@ Rectangle {
 
             function load(properties) {
                 if(properties.playbackSpeed) {
-                    playbackControls.playbackSpeed = properties.playbackSpeed;
+                    root.playbackSpeed = properties.playbackSpeed;
                 } else {
-                    playbackControls.playbackSpeed = 1.0;
+                    root.playbackSpeed = 1.0;
                 }
 
                 var visibleRectangle = properties.visibleRectangle;

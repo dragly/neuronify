@@ -104,5 +104,6 @@
         <file>qml/ButtonColumn.qml</file>
         <file>qml/ButtonColumnButton.qml</file>
         <file>qml/MainMobile.qml</file>
+        <file>qml/MainDesktop.qml</file>
     </qresource>
 </RCC>

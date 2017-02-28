@@ -24,6 +24,9 @@ Item {
     Neuronify {
         id: neuronify
         anchors.fill: parent
+        onSimulationLoaded: {
+            playbackControls.revealTemporarily()
+        }
     }
 
     ButtonColumn {

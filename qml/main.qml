@@ -42,8 +42,11 @@ ApplicationWindow {
         source: "qrc:/fonts/roboto/Roboto-Bold.ttf"
     }
 
-    MainMobile {
-        id: mainMobile
+//    MainMobile {
+//        anchors.fill: parent
+//    }
+
+    MainDesktop {
         anchors.fill: parent
     }
 
