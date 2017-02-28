@@ -48,9 +48,6 @@ ApplicationWindow {
         anchors.fill: parent
     }
 
-//    Store {
-//        anchors.fill: parent
-//    }
     onClosing: {
         if (Qt.platform.os === "android"){
             close.accepted = false
