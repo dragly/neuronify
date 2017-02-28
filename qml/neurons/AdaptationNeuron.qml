@@ -3,10 +3,10 @@ import QtQuick.Controls 1.0
 
 import Neuronify 1.0
 
-
-import ".."
-import "../controls"
-import "../style"
+import "qrc:/qml"
+import "qrc:/qml/controls"
+import "qrc:/qml/neurons"
+import "qrc:/qml/style"
 
 
 Neuron {
