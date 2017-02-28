@@ -23,6 +23,7 @@ Node {
     objectName: "note"
     filename: "annotations/Note.qml"
     square: true
+    snapToCenter: false
 
     canReceiveConnections: false
 

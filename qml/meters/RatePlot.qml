@@ -99,6 +99,7 @@ Node {
 
     width: 320
     height: 240
+    snapToCenter: false
 
     color: "#deebf7"
 

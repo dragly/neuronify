@@ -51,6 +51,7 @@ NodeBase {
     property bool square: false
     property var removableChildren: [] // used by nodes such as TouchSensor that has child nodes
     property bool canReceiveConnections: true
+    property bool snapToCenter: true
 
     property Component preferredEdge: Edge {}
 

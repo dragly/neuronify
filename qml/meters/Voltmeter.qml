@@ -77,6 +77,7 @@ Node {
     height: 240
     color: Style.meter.background
 
+    snapToCenter: false
     preferredEdge: MeterEdge {}
 
     canReceiveConnections: false

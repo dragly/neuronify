@@ -616,7 +616,7 @@ Rectangle {
         width: parent.width
     }
 
-    Item {
+    Rectangle {
         id: workspaceFlickable
 
         anchors {
@@ -627,6 +627,8 @@ Rectangle {
         }
         width: parent.width
         antialiasing: true
+
+        color: "#f7fdfd"
 
         PinchArea {
             id: pinchArea
@@ -832,6 +834,22 @@ Rectangle {
                 Style.workspaceScale = scale;
             }
 
+            Image {
+                x: - root.snapGridSize * (1 + Math.floor(workspace.x / workspace.scale / root.snapGridSize))
+                y: - root.snapGridSize * (1 + Math.floor(workspace.y / workspace.scale / root.snapGridSize))
+                width: workspaceFlickable.width / workspace.scale + root.snapGridSize
+                height: workspaceFlickable.height / workspace.scale + root.snapGridSize
+
+                visible: root.snappingEnabled
+
+                smooth: true
+                antialiasing: true
+                horizontalAlignment: Image.AlignLeft
+                verticalAlignment: Image.AlignTop
+                fillMode: Image.Tile
+                source: "qrc:/images/background/background.png"
+            }
+
             Item {
                 id: dragProxy
 
@@ -854,10 +872,18 @@ Rectangle {
                 }
 
                 function moveEntity(entity, delta) {
-                    var newX = entity.x - delta.x;
-                    var newY = entity.y - delta.y;
-                    entity.x = newX - newX % snapGridSize;
-                    entity.y = newY - newY % snapGridSize;
+                    var newX = entity.x - delta.x
+                    var newY = entity.y - delta.y
+                    if(entity.snapToCenter) {
+                        newX += entity.width / 2
+                        newY += entity.height / 2
+                    }
+                    entity.x = newX - newX % snapGridSize
+                    entity.y = newY - newY % snapGridSize
+                    if(entity.snapToCenter) {
+                        entity.x -= entity.width / 2
+                        entity.y -= entity.height / 2
+                    }
                 }
 
                 function apply(delta) {

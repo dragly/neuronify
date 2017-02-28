@@ -70,5 +70,6 @@
         <file>qml/store/StoreFrontPage.qml</file>
         <file>qml/store/StoreItem.qml</file>
         <file>images/store/ic_search_black_48dp.png</file>
+        <file>images/background/background.png</file>
     </qresource>
 </RCC>
