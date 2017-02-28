@@ -7,15 +7,27 @@
 #include <QResource>
 #include <QQmlEngine>
 #include <QCryptographicHash>
+#include <QTimer>
 
 QmlPreviewer::QmlPreviewer(QGuiApplication &app)
     : m_app(app)
 {
     Q_UNUSED(app)
+    connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, [&](const QString &path) {
+        qDebug() << "Path" << path << "updated";
+        if(m_reloadRequested) {
+            qDebug() << "Reload already requested.";
+            return;
+        }
+        m_reloadRequested = true;
+        qDebug() << "Starting reload timer.";
+        m_timer.singleShot(200, this, &QmlPreviewer::reload);
+    });
 }
 
 void QmlPreviewer::reload()
 {
+    m_reloadRequested = false;
     m_view.engine()->clearComponentCache();
 
     qDebug() << "Reloading";
@@ -32,9 +44,7 @@ void QmlPreviewer::reload()
         process.start("rcc", QStringList()
                       << "-binary" << map["path"].toUrl().toLocalFile()
                       << "-o" << map["rcc"].toString());
-        qDebug() << process.readAllStandardError();
         process.waitForFinished();
-        qDebug() << process.readAllStandardError();
 
         qDebug() << "Registering" << map["path"].toString();
 
@@ -61,6 +71,7 @@ void QmlPreviewer::reload()
 
         qDebug() << "Watching" << m_watcher.files().count() << "files";
     }
+    qDebug() << "Requesting QML to reload";
     QMetaObject::invokeMethod(m_rootItem, "reload");
 }
 
@@ -104,7 +115,6 @@ void QmlPreviewer::setQrcPaths(QVariant qrcPaths)
 bool QmlPreviewer::show()
 {
     if(m_app.arguments().contains("--qmlpreviewer")) {
-        connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &QmlPreviewer::reload);
         m_view.setTitle("QmlPreviewer");
         m_view.setSource(QUrl("qrc:///QmlPreviewer/QmlPreviewerDialog.qml"));
         m_view.setResizeMode(QQuickView::SizeRootObjectToView);

@@ -75,8 +75,10 @@ Rectangle {
 
     function reload() {
         console.log("Reload")
-        loader.source = ""
+        loader.active = false
         loader.source = filePath.toString().replace("file:", "qrc")
+        loader.active = true
+//        loader.source = ""
     }
 
     function notifyChangeQrcPaths() {

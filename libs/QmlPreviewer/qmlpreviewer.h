@@ -6,6 +6,8 @@
 #include <QQuickItem>
 #include <QQuickView>
 #include <QGuiApplication>
+#include <QTimer>
+#include <QMutex>
 
 class QmlPreviewer : public QObject
 {
@@ -26,6 +28,8 @@ private:
     QObject *m_object = nullptr;
     QString m_prefix = "/qtqmlpreview";
     QGuiApplication &m_app;
+    QTimer m_timer;
+    bool m_reloadRequested = false;
 };
 
 #endif // QMLPREVIEWER_H

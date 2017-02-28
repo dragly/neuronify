@@ -51,4 +51,11 @@ int main(int argc, char *argv[])
 }
 ```
 
-Please report any issues you encounter!
+## Limitations ##
+
+Images appear to be cached by the QML engine and are therefore
+not reloaded when they change on disk.
+Changes to images do however trigger a reload of the selected component.
+
+Please feel free to report any other issues you encounter.
+
