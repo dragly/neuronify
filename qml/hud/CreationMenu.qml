@@ -12,7 +12,6 @@ Item {
     signal droppedEntity(var fileUrl, var properties, var controlParent)
     signal deleteEverything()
 
-    property var blurSource: null
     property bool revealed: false
 
     width: parent.width * 0.1

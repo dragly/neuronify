@@ -103,5 +103,6 @@
         <file>qml/ItemShadow.qml</file>
         <file>qml/ButtonColumn.qml</file>
         <file>qml/ButtonColumnButton.qml</file>
+        <file>qml/MainMobile.qml</file>
     </qresource>
 </RCC>

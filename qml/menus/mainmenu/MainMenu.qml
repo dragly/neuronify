@@ -19,7 +19,6 @@ Item {
     signal loadSimulationRequested
 
     property bool revealed: false
-    property var blurSource: null
 
     state: revealed ? "revealed" : "hidden"
 

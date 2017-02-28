@@ -28,7 +28,6 @@ ApplicationWindow {
         property alias height: applicationWindow1.height
         property alias x: applicationWindow1.x
         property alias y: applicationWindow1.y
-        property alias firstRun: neuronify.firstRun
     }
 
     FontLoader {
@@ -43,8 +42,8 @@ ApplicationWindow {
         source: "qrc:/fonts/roboto/Roboto-Bold.ttf"
     }
 
-    Neuronify {
-        id: neuronify
+    MainMobile {
+        id: mainMobile
         anchors.fill: parent
     }
 

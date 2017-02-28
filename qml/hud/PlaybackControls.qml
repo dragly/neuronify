@@ -2,28 +2,30 @@ import QtQuick 2.0
 import QtQuick.Layouts 1.1
 import QtQuick.Controls 1.2
 
-import "../style"
+import "qrc:/qml"
+import "qrc:/qml/style"
 
 Rectangle {
     id: playbackRoot
 
+    property alias autoHideEnabled: autoHideTimer.running
     property real playbackSpeed: 1.0
     property bool revealed
 
     function revealTemporarily() {
         if(!revealed) {
             revealed = true
-            playbackControlsAutoHideTimer.restart()
+            autoHideTimer.restart()
         }
     }
 
     function revealPermanently() {
-        playbackControlsAutoHideTimer.stop()
+        autoHideTimer.stop()
         revealed = true
     }
 
     function toggleRevealPermanently() {
-        playbackControlsAutoHideTimer.stop()
+        autoHideTimer.stop()
         revealed = !revealed
     }
 
@@ -167,7 +169,7 @@ Rectangle {
 
     MouseArea {
         anchors.fill: parent
-        enabled: playbackControlsAutoHideTimer.running
+        enabled: autoHideTimer.running
         propagateComposedEvents: true
         onClicked: {
             revealPermanently()
@@ -176,8 +178,7 @@ Rectangle {
     }
 
     Timer {
-        id: playbackControlsAutoHideTimer
-        running: root.running
+        id: autoHideTimer
         interval: 2000
         onTriggered: {
             revealed = false

@@ -33,6 +33,7 @@ import "qrc:/qml/controls"
 Rectangle {
     id: root
 
+    property alias workspace: workspace
     property alias graphEngine: graphEngine
     property var selectedEntities: []
     property var draggedEntity: undefined
@@ -51,10 +52,10 @@ Rectangle {
     property real highestZ: 0.0
     property bool snappingEnabled: false
     property real snapGridSize: snappingEnabled ? 32.0 : 1.0
-    property alias playbackSpeed: playbackControls.playbackSpeed
+//    property alias playbackSpeed: playbackControls.playbackSpeed
+    property real playbackSpeed: 1.0 // TODO add connection to playbackControls
     property url currentSimulationUrl
     property bool advanced: false
-    property bool firstRun: true
     property int latestZ: 0
 
     property bool applicationActive: {
@@ -900,233 +901,6 @@ Rectangle {
 //                samples: 17
 //                color: Qt.rgba(0, 0, 0, 0.2)
 //            }
-        }
-    }
-
-    ButtonColumn {
-        ButtonColumnButton {
-            source: "qrc:/images/tools/mainmenu.png"
-            onClicked: {
-                mainMenu.revealed = true
-            }
-        }
-        ButtonColumnButton {
-            source: "qrc:/images/tools/create.png"
-            onClicked: {
-                creationMenu.revealed = !creationMenu.revealed
-            }
-        }
-        ButtonColumnButton {
-            source: "qrc:/images/tools/playback.png"
-            onClicked: {
-                playbackControls.toggleRevealPermanently()
-            }
-        }
-        ButtonColumnButton {
-            source: "qrc:/images/tools/properties.png"
-            onClicked: {
-                propertiesPanel.open()
-            }
-        }
-    }
-
-    DeleteButton {
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-        }
-        revealed: activeObject ? true : false
-        onClicked: {
-            deleteSelected()
-        }
-    }
-
-    PlaybackControls {
-        id: playbackControls
-        revealed: true
-    }
-
-    CreationMenu {
-        id: creationMenu
-
-        blurSource: workspaceFlickable
-
-        onRevealedChanged: {
-            if(revealed) {
-                root.focus = false
-            } else {
-                root.focus = true
-            }
-        }
-
-        onDroppedEntity: {
-            var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
-            properties.x = workspacePosition.x
-            properties.y = workspacePosition.y
-            root.createEntity(fileUrl, properties)
-        }
-
-        onDeleteEverything: {
-            root.deleteEverything()
-        }
-
-    }
-
-    PropertiesPanel {
-        id: propertiesPanel
-
-        advanced: root.advanced
-        snappingEnabled: root.snappingEnabled
-        activeObject: root.activeObject
-        workspace: workspace
-
-        onRevealedChanged: {
-            if(revealed) {
-                //                root.focus = false
-                clickMode = "selection"
-
-            } else {
-                root.focus = true
-            }
-        }
-
-        onResetDynamics: {
-            for(var i in graphEngine.nodes) {
-                var entity = graphEngine.nodes[i];
-                if(entity.engine) {
-                    entity.engine.resetDynamics();
-                }
-            }
-            for(var i in graphEngine.edges) {
-                var edge = graphEngine.edges[i];
-                if(edge.engine) {
-                    edge.engine.resetDynamics();
-                }
-            }
-        }
-
-        onResetProperties: {
-            for(var i in graphEngine.nodes) {
-                var entity = graphEngine.nodes[i];
-                if(entity.engine) {
-                    entity.engine.resetProperties();
-                }
-            }
-            for(var i in graphEngine.edges) {
-                var edge = graphEngine.edges[i];
-                if(edge.engine) {
-                    edge.engine.resetProperties();
-                }
-            }
-        }
-
-        onSaveToOpened: {
-            propertiesPanel.revealed = false
-            saveTimer.start(1000)
-        }
-
-        Timer {
-            id: saveTimer
-            onTriggered: {
-                saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
-                var imageUrl = StandardPaths.toLocalFile(StandardPaths.originalSimulationLocation(currentSimulationUrl)).replace(".nfy", ".png")
-
-                workspaceFlickable.grabToImage(function(result) {
-                    console.log("Saving image to " + imageUrl);
-                    result.saveToFile(imageUrl);
-                }, Qt.size(workspaceFlickable.width / 3.0, workspaceFlickable.height / 3.0));
-            }
-        }
-
-        Binding {
-            target: root
-            property: "advanced"
-            value: propertiesPanel.advanced
-        }
-
-        Binding {
-            target: propertiesPanel
-            property: "advanced"
-            value: root.advanced
-        }
-
-        Binding {
-            target: root
-            property: "snappingEnabled"
-            value: propertiesPanel.snappingEnabled
-        }
-
-        Binding {
-            target: propertiesPanel
-            property: "snappingEnabled"
-            value: root.snappingEnabled
-        }
-    }
-
-    ConnectionMenu {
-        visible: clickMode === "connectMultipleToThis" || clickMode === "connectMultipleFromThis"
-        fromThis: clickMode === "connectMultipleFromThis"
-        onDoneClicked: {
-            clickMode = "selection"
-        }
-    }
-
-    MainMenu {
-        id: mainMenu
-
-        property bool wasRunning: true
-
-        focus: true
-
-        anchors.fill: parent
-        blurSource: workspaceFlickable
-
-        onRevealedChanged: {
-            if(revealed) {
-                wasRunning = root.running
-                root.focus = false
-            } else {
-                root.focus = true
-            }
-        }
-
-        onContinueClicked: {
-            mainMenu.revealed = false
-        }
-
-        onNewClicked: {
-            root.loadSimulation("qrc:/simulations/empty/empty.nfy")
-            mainMenu.revealed = false
-        }
-
-        onLoadSimulation: {
-            root.loadSimulation(simulation)
-            mainMenu.revealed = false
-            //root.running = wasRunning
-        }
-
-        onSaveSimulation: {
-            root.saveState(simulation)
-            mainMenu.revealed = false
-        }
-
-        onSaveSimulationRequested: {
-            fileManager.showSaveDialog()
-        }
-
-        onLoadSimulationRequested: {
-            fileManager.showLoadDialog()
-        }
-
-        onRequestScreenshot: {
-            var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
-            var imageWidth;
-            if(workspaceFlickable.width > workspaceFlickable.height) {
-                imageWidth = workspaceFlickable.width / 3.0; // three icons per row in save view
-            } else {
-                imageWidth = workspaceFlickable.width / 2.0; // two icons per row in save view
-            }
-            workspaceFlickable.grabToImage(callback, Qt.size(imageWidth, imageWidth / aspectRatio));
         }
     }
 
