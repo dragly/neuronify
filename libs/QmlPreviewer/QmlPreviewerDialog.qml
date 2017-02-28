@@ -22,6 +22,10 @@ Rectangle {
     property bool enableResizing: true
     property alias backgroundColor: colorDialog.color
 
+    function wrap(value) {
+        return (value + 0.5) % 1.0
+    }
+
     function baseName(file) {
         var split = file.toString().split("/")
         return split[split.length - 1]
@@ -95,6 +99,8 @@ Rectangle {
         property alias showBorder: root.showBorder
         property alias enableResizing: root.enableResizing
         property alias enableDragging: root.enableDragging
+        property alias width: root.width
+        property alias height: root.height
 
         category: "qmlPreviewer"
     }
@@ -348,25 +354,34 @@ Rectangle {
                 enabled: enableResizing
             }
 
-            Rectangle {
+            Item {
                 anchors {
                     fill: parent
                     margins: 24
-                }
-                color: "transparent"
-                function wrap(value) {
-                    return (value + 0.5) % 1.0
-                }
-
-                border {
-                    color: Qt.rgba(wrap(backgroundColor.r), wrap(backgroundColor.g), wrap(backgroundColor.b), 1.0)
-                    width: borderCheckBox.checked ? 1.0 : 0.0
                 }
 
                 Loader {
                     id: loader
                     anchors.fill: parent
                     clip: true
+                }
+
+                Rectangle {
+                    anchors.fill: loader
+                    color: "transparent"
+                    border {
+                        color: Qt.hsla(wrap(backgroundColor.hslHue), 0.1, wrap(backgroundColor.hslLightness))
+                        width: root.showBorder ? 1.0 : 0.0
+                    }
+                }
+            }
+
+            Rectangle {
+                anchors.fill: canvas
+                color: "transparent"
+                border {
+                    color: Qt.hsla(wrap(backgroundColor.hslHue), 0.1, wrap(backgroundColor.hslLightness))
+                    width: root.showBorder ? 2.0 : 0.0
                 }
             }
         }

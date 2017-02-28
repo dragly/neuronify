@@ -49,12 +49,12 @@ void QmlPreviewer::reload()
             QString relativeFilePath = next;
             QUrl qrcDirectory = map["path"].toUrl().adjusted(QUrl::RemoveFilename);
             relativeFilePath = relativeFilePath.replace(":" + m_prefix + "/", "");
-            qDebug() << "- Path" << qrcDirectory;
-            qDebug() << "- Relative" << relativeFilePath;
+//            qDebug() << "- Path" << qrcDirectory;
+//            qDebug() << "- Relative" << relativeFilePath;
             QString result = qrcDirectory.resolved(QUrl(relativeFilePath)).toLocalFile();
-            qDebug() << "- Result" << result;
+//            qDebug() << "- Result" << result;
             if(QFileInfo::exists(result)) {
-                qDebug() << "-- Adding path" << result;
+//                qDebug() << "-- Adding path" << result;
                 m_watcher.addPath(result);
             }
         }
