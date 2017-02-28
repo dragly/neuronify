@@ -82,8 +82,6 @@ Rectangle {
         Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
                 firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed
-        focus: true
-        //        forceActiveFocus()
     }
 
     function firstLoad() {
