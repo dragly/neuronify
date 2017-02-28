@@ -55,14 +55,14 @@ Node {
         property real effectRatio: Math.max(thresholdRatio, hyperpolarizationRatio)
 
         anchors.fill: parent
-        anchors.margins: 6.0
-        border.width: effectRatio * 12.0
+        anchors.margins: 5.0
+        border.width: effectRatio * 22.0
         border.color: Qt.rgba(1.0, 1.0, 1.0)
         color: "transparent"
         radius: width * 0.5
         smooth: true
         antialiasing: true
-        opacity: effectRatio * 0.4
+        opacity: effectRatio * 0.8
     }
 
     Rectangle {
