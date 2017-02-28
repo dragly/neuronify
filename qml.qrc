@@ -26,7 +26,6 @@
         <file>qml/menus/Heading.qml</file>
         <file>qml/Simulation.qml</file>
         <file>qml/hud/PlaybackControls.qml</file>
-        <file>qml/menus/mainmenu/MainMenuButton.qml</file>
         <file>qml/Node.qml</file>
         <file>qml/hud/SensorControls.qml</file>
         <file>qml/io/FileManager.qml</file>
@@ -36,9 +35,7 @@
         <file>qml/Connector.qml</file>
         <file>qml/neurons/NeuronControls.qml</file>
         <file>qml/generators/CurrentClamp.qml</file>
-        <file>qml/hud/CreationMenuButton.qml</file>
         <file>qml/hud/DeleteButton.qml</file>
-        <file>qml/hud/PropertiesButton.qml</file>
         <file>qml/neurons/LeakyNeuron.qml</file>
         <file>qml/neurons/BurstNeuron.qml</file>
         <file>qml/hud/CreationList.qml</file>
@@ -67,7 +64,6 @@
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
         <file>qml/neurons/NeuronEngine.qml</file>
-        <file>qml/hud/PlaybackButton.qml</file>
         <file>qml/io/CustomFileIcon.qml</file>
         <file>qml/menus/mainmenu/SaveView.qml</file>
         <file>qml/controls/ResistanceControl.qml</file>
@@ -105,5 +101,7 @@
         <file>qml/store/StoreShadow.qml</file>
         <file>qml/store/StoreSimulation.qml</file>
         <file>qml/ItemShadow.qml</file>
+        <file>qml/ButtonColumn.qml</file>
+        <file>qml/ButtonColumnButton.qml</file>
     </qresource>
 </RCC>
