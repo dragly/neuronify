@@ -97,7 +97,9 @@ Rectangle {
     }
 
     Component.onDestruction: {
-        saveState(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
+        if(!firstLoadTimer.running) { // Don't save if not yet loaded
+            saveState(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
+        }
     }
 
     onPlaybackSpeedChanged: {
