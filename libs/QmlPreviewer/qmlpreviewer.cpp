@@ -10,7 +10,8 @@
 #include <QTimer>
 
 QmlPreviewer::QmlPreviewer(QGuiApplication &app)
-    : m_app(app)
+    : m_view(new QQuickView())
+    , m_app(app)
 {
     Q_UNUSED(app)
     connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, [&](const QString &path) {
@@ -28,7 +29,7 @@ QmlPreviewer::QmlPreviewer(QGuiApplication &app)
 void QmlPreviewer::reload()
 {
     m_reloadRequested = false;
-    m_view.engine()->clearComponentCache();
+    m_view->engine()->clearComponentCache();
 
     qDebug() << "Reloading";
 
@@ -115,13 +116,13 @@ void QmlPreviewer::setQrcPaths(QVariant qrcPaths)
 bool QmlPreviewer::show()
 {
     if(m_app.arguments().contains("--qmlpreviewer")) {
-        m_view.setTitle("QmlPreviewer");
-        m_view.setSource(QUrl("qrc:///QmlPreviewer/QmlPreviewerDialog.qml"));
-        m_view.setResizeMode(QQuickView::SizeRootObjectToView);
-        m_rootItem = m_view.rootObject();
+        m_view->setTitle("QmlPreviewer");
+        m_view->setSource(QUrl("qrc:///QmlPreviewer/QmlPreviewerDialog.qml"));
+        m_view->setResizeMode(QQuickView::SizeRootObjectToView);
+        m_rootItem = m_view->rootObject();
         connect(m_rootItem, SIGNAL(changeQrcPaths(QVariant)), this, SLOT(setQrcPaths(QVariant)));
         QMetaObject::invokeMethod(m_rootItem, "refresh");
-        m_view.show();
+        m_view->show();
         return true;
     }
     return false;
