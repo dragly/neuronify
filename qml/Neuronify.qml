@@ -1064,4 +1064,28 @@ Rectangle {
         }
     }
 
+
+    DropArea {
+        anchors.fill: parent
+        onEntered: {
+            console.log("Entered")
+        }
+
+        onDropped: {
+            if(!drop.source.creationItem) {
+                console.warn("WARNING: Cannot accept drop without source.")
+                return
+            }
+            var workspacePosition = root.mapToItem(neuronLayer, drop.source.x, drop.source.y)
+            var properties = {
+                x: workspacePosition.x,
+                y: workspacePosition.y,
+            }
+            root.createEntity(drop.source.creationItem.source, properties)
+
+        }
+
+        keys: ["lol"]
+    }
+
 }

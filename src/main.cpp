@@ -36,6 +36,8 @@
 
 int main(int argc, char *argv[])
 {
+    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
     qint64 startupTime = QDateTime::currentMSecsSinceEpoch();
     qDebug() << "Neuronify version" << CuteVersioning::identifier << "started at" << startupTime;
 

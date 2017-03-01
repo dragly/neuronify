@@ -4,7 +4,7 @@ ListModel {
     ListElement {
         name: "Leaky excitatory neuron"
         description: "Excitatory neuron with with only leak currents"
-        source: "../neurons/LeakyNeuron.qml"
+        source: "qrc:/qml/neurons/LeakyNeuron.qml"
         imageSource: "qrc:/images/neurons/leaky.png"
     }
 //    ListElement {
@@ -16,7 +16,7 @@ ListModel {
     ListElement {
         name: "Adaptive excitatory neuron"
         description: "Excitatory neuron with adapting spike response"
-        source: "../neurons/AdaptationNeuron.qml"
+        source: "qrc:/qml/neurons/AdaptationNeuron.qml"
         imageSource: "qrc:/images/neurons/adaptive.png"
     }
 }

@@ -1,13 +1,11 @@
 import QtQuick 2.0
 import "../style"
 
-Item {
+MouseArea {
     id: root
     property string objectName: "CreationItem"
 
     signal dropped(var fileUrl, var properties, var controlParent)
-    signal clicked(var entity)
-    signal pressed(var entity)
 
     default property alias subChildren: creationControl.children
 
@@ -15,25 +13,52 @@ Item {
     property string description: ""
     property url source: ""
     property url imageSource: ""
+    property Item parentWhenDragging
+    property bool dragActive: false
 
     width: Style.touchableSize
     height: width
 
+    drag.target: creationControl
+    drag.threshold: 0
+    onReleased: {
+        console.log(creationControl.Drag.target)
+        creationControl.Drag.drop()
+    }
+
+//    drag.smoothed: false
+//    drag.onActiveChanged: {
+//        if (!root.drag.active) {
+//            var properties = {x: creationControl.x, y: creationControl.y}
+//            dropped(source, properties, root)
+//        }
+//    }
+
     Item {
         id: creationControl
+
+        property alias creationItem: root
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
 
-        width: parent.width
-        height: parent.height
+        width: root.width
+        height: root.height
+
+        Drag.hotSpot.x: 32
+        Drag.hotSpot.y: 32
+        Drag.active: root.drag.active
+        Drag.keys: ["lol"]
 
         states: State {
-            when: dragArea.drag.active
+            when: root.drag.active
+            ParentChange { target: creationControl; parent: root.parentWhenDragging }
             AnchorChanges { target: creationControl; anchors.horizontalCenter: undefined; anchors.verticalCenter: undefined }
+            PropertyChanges {
+                target: root
+                dragActive: true
+            }
         }
-
-        Drag.dragType: Drag.Automatic
 
         Image {
             anchors.fill: parent
@@ -42,24 +67,6 @@ Item {
             antialiasing: true
             smooth: true
             asynchronous: true
-        }
-
-        MouseArea {
-            id: dragArea
-            anchors.fill: parent
-            drag.target: parent
-            drag.onActiveChanged: {
-                if (!dragArea.drag.active) {
-                    var properties = {x: creationControl.x, y: creationControl.y}
-                    dropped(source, properties, root)
-                }
-            }
-            onClicked: {
-                root.clicked(root)
-            }
-            onPressed: {
-                root.pressed(root)
-            }
         }
     }
 }
