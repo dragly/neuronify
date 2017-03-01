@@ -628,7 +628,7 @@ Rectangle {
         width: parent.width
         antialiasing: true
 
-        color: "#f7fdfd"
+        color: "#fafcfe"
 
         PinchArea {
             id: pinchArea
