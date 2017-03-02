@@ -29,6 +29,7 @@ Item {
 
     property alias color: colorsObject
     property alias border: borderObject
+    property alias creation: creationObject
 
     property real playbackSpeed
     property real workspaceScale
@@ -106,6 +107,16 @@ Item {
                 font.pixelSize: 2.5 * root.size
                 font.family: "Roboto Light, Roboto"
             }
+        }
+    }
+
+    Item {
+        id: creationObject
+
+        property alias text: creationTextObject
+        Item {
+            id: creationTextObject
+            property color color: "#2d76a2"
         }
     }
 

@@ -109,7 +109,7 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        root.state = ""
+                        root.state = "view"
                     }
                 }
             }
@@ -185,18 +185,18 @@ Item {
 
     Item {
         id: itemMenu
+
         anchors {
             left: leftMenu.right
-            //            left: parent.left
-            leftMargin: -width
             top: parent.top
             topMargin: 64
-//            bottom: parent.bottom
+            bottom: parent.bottom
+            bottomMargin: 64
             //            bottomMargin: 120
         }
 
         width: 240 + 32
-        height: categoriesListView.height
+        height: itemColumn.height
         z: 20
 
         ListModel {
@@ -231,10 +231,10 @@ Item {
         }
 
         Rectangle {
-            id: rect
+            id: itemMenuBackground
             color: "#e3eef9"
             anchors {
-                fill: parent
+                fill: itemFlickable
                 topMargin: -16
                 bottomMargin: -16
             }
@@ -242,73 +242,140 @@ Item {
 
         HudShadow {
             id: itemMenuShadow
-            anchors.fill: rect
-            source: rect
+            anchors.fill: itemMenuBackground
+            source: itemMenuBackground
         }
 
-        Column {
-            id: categoriesListView
-            property int currentIndex: -1
-
+        Flickable {
+            id: itemFlickable
             anchors {
                 left: parent.left
                 right: parent.right
             }
 
-            Component.onCompleted: {
-                currentIndex = 0
+            height: Math.min(parent.height, itemColumn.height)
+            clip: true
+
+            ScrollBar.vertical: ScrollBar {
+                active: itemColumn.height > itemFlickable.height
             }
+            contentHeight: itemColumn.height
 
-            onCurrentIndexChanged: {
-                itemModelLoader.source = categories.get(currentIndex).listSource
-            }
+            Column {
+                id: itemColumn
+                property int currentIndex: -1
 
-            Repeater {
-                model: categories
-                Item {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
-                    height: 72
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
 
-                    Rectangle {
-                        anchors {
-                            fill: parent
-                        }
-                        color: Qt.hsla(0.0, 0.0, 1.0, 0.6)
-                        smooth: true
-                        antialiasing: true
-                        visible: index === categoriesListView.currentIndex
-                    }
-                    Text {
+                Component.onCompleted: {
+                    currentIndex = 0
+                }
+
+    //            onCurrentIndexChanged: {
+    //                itemModelLoader.source = categories.get(currentIndex).listSource
+    //            }
+
+                Repeater {
+                    model: categories
+                    Column {
                         anchors {
                             left: parent.left
                             right: parent.right
-                            verticalCenter: parent.verticalCenter
-                            margins: 16
                         }
-                        font.pixelSize: 18
-                        font.family: Style.font.family
-                        color: "#2d76a2"
-                        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                        text: model.text
-                    }
+                        spacing: 12
+                        Text {
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+    //                            verticalCenter: parent.verticalCenter
+                                margins: 16
+                            }
+                            font.pixelSize: 16
+                            font.family: Style.font.family
+                            color: Style.creation.text.color
+                            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                            text: model.text
+                        }
 
-//                        Image {
-//                            anchors.centerIn: parent
-//                            width: parent.width * 0.6
-//                            height: width
+                        Flow {
+                            id: itemListView
+                            property int currentIndex: 0
+                            property alias listSource: itemModelLoader.source
+                            property int rows: Math.floor(parent.height / 96)
+                            property int columns: 3
+                            property real itemHeight: (height - spacing * (rows - 1)) / rows
+                            property real itemWidth: (width - spacing * (columns - 1)) / columns
 
-//                            asynchronous: true
-//                            source: imageSource
-//                            antialiasing: true
-//                            smooth: true
-//                        }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            categoriesListView.currentIndex = index
+                            anchors {
+    //                            bottom: parent.bottom
+    //                            top: parent.top
+                                left: parent.left
+                                right: parent.right
+                                margins: 32
+                            }
+
+    //                        flow: Flow.TopToBottom
+                            spacing: 8
+
+                            Loader {
+                                id: itemModelLoader
+                                source: model.listSource
+                            }
+
+                            Repeater {
+                                id: itemListRepeater
+
+                                model: itemModelLoader.item
+
+                                CreationItem {
+                                    id: creationItem
+
+//                                    width: itemListView.itemWidth
+                                    width: itemListView.itemWidth
+
+                                    Component.onCompleted: {
+                                        console.log("Width", width)
+                                    }
+
+                                    parentWhenDragging: root
+
+                                    name: model.name
+                                    description: model.description
+                                    source: model.source
+                                    imageSource: model.imageSource
+
+                                    onDragActiveChanged: {
+                                        console.log("Dragging")
+                                        if(dragActive) {
+                                            itemMenu.state = "dragging"
+                                        } else {
+                                            itemMenu.state = ""
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        onEntered: {
+                                            infoPanel.state = "revealed"
+                                            infoPanel.selectedItem = creationItem
+                                        }
+                                        onExited: {
+                                            hideInfoPanelTimer.start()
+                                        }
+                                        Timer {
+                                            id: hideInfoPanelTimer
+                                            interval: 2000
+                                            onTriggered: {
+                                                infoPanel.state = "hidden"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -336,138 +403,94 @@ Item {
     }
 
     Item {
-        id: subItemMenu
+        id: infoPanel
+
+        property var selectedItem
+
         anchors {
             left: itemMenu.right
-            leftMargin: -width
+            leftMargin: 0
             top: itemMenu.top
-            topMargin: 16
-            bottom: itemMenu.bottom
-            bottomMargin: 16
-//            bottom: parent.bottom
-            //            topMargin: 64
-        }
+            topMargin: {
+                itemFlickable.contentY // dummy to ensure updates on scroll
+                infoPanel.selectedItem ? itemMenu.mapFromItem(infoPanel.selectedItem, 0, 0).y : 0
+            }
 
-        width: itemListView.width + itemListView.anchors.margins * 2
-        z: 10
-        state: itemMenu.state
-
-        Behavior on width {
-            NumberAnimation {
-                duration: 400
-                easing.type: Easing.OutQuad
+            Behavior on topMargin {
+                SmoothedAnimation {
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
             }
         }
 
+        width: 240
+        height: infoColumn.height + infoColumn.anchors.margins * 2
+
         Rectangle {
-            id: subItemBackground
+            id: infoBackground
             anchors.fill: parent
-            color: "#fefefe"
             visible: false
+            color: "#fafafa"
         }
 
         HudShadow {
-            id: subItemShadow
-            anchors.fill: subItemBackground
-            source: subItemBackground
+            anchors.fill: infoBackground
+            source: infoBackground
         }
 
-        Item {
+        Column {
+            id: infoColumn
             anchors {
-                fill: parent
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                margins: 16
+                leftMargin: 20
             }
-            clip: true
-
-            Flow {
-                id: itemListView
-                property int currentIndex: 0
-                property alias listSource: itemModelLoader.source
-                property int rows: Math.floor(parent.height / 96)
-                property real itemHeight: (height - spacing * (rows - 1)) / rows
-
+            spacing: 8
+            Text {
                 anchors {
-                    bottom: parent.bottom
-                    top: parent.top
                     left: parent.left
-                    margins: 32
+                    right: parent.right
+                }
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                font.pixelSize: 18
+                text: infoPanel.selectedItem ? infoPanel.selectedItem.name : "Nothing selected"
+            }
+            Text {
+                anchors {
+                    left: parent.left
+                    right: parent.right
                 }
 
-                flow: Flow.TopToBottom
-                spacing: 8
-
-                Loader {
-                    id: itemModelLoader
-                }
-
-                Repeater {
-                    id: itemListRepeater
-
-                    model: itemModelLoader.item
-
-                    CreationItem {
-                        id: creationItem
-
-                        height: parent.itemHeight
-                        width: height
-
-                        parentWhenDragging: root
-
-                        name: model.name
-                        description: model.description
-                        source: model.source
-                        imageSource: model.imageSource
-
-                        onDragActiveChanged: {
-                            if(drag.active) {
-                                subItemMenu.state = "dragging"
-                                itemMenu.state = "dragging"
-                            } else {
-                                subItemMenu.state = ""
-                                itemMenu.state = ""
-                            }
-                        }
-
-                        onPressed: {
-                            itemListView.currentIndex = index
-                        }
-
-                        onDropped: {
-    //                                droppedEntity(fileUrl, properties, controlParent)
-                        }
-
-                        onClicked: {
-                            ToolTip.show("Drag to add", 3000)
-                        }
-                    }
-                }
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                font.pixelSize: 14
+                text: infoPanel.selectedItem ? infoPanel.selectedItem.description : "Nothing selected"
             }
         }
 
         states: [
             State {
-                name: "dragging"
+                name: "hidden"
                 PropertyChanges {
-                    target: subItemMenu
-                    opacity: 0.0
-                }
-            }
-        ]
 
-        transitions: [
-            Transition {
-                NumberAnimation {
-                    properties: "opacity"
-                    duration: 200
                 }
+            },
+            State {
+                name: "revealed"
             }
         ]
     }
 
     states: [
         State {
+            name: "view"
+            PropertyChanges { target: itemMenu; anchors.leftMargin: -width }
+        },
+        State {
             name: "creation"
             PropertyChanges { target: itemMenu; anchors.leftMargin: 0 }
-            PropertyChanges { target: subItemMenu; anchors.leftMargin: 0 }
             PropertyChanges { target: leftMenu; width: 72 }
             PropertyChanges { target: logoTextCopy; opacity: 1.0 }
         },
@@ -535,15 +558,8 @@ Item {
     ParallelAnimation {
         id: animateCreation
         NumberAnimation {
-            target: itemMenu
             properties: "anchors.leftMargin"
             duration: 600
-            easing.type: Easing.InOutQuad
-        }
-        NumberAnimation {
-            target: subItemMenu
-            properties: "anchors.leftMargin"
-            duration: 800
             easing.type: Easing.InOutQuad
         }
         ColorAnimation {

@@ -20,6 +20,7 @@ Rectangle {
     property bool showBorder: true
     property bool enableDragging: true
     property bool enableResizing: true
+    property bool useItemSize: false
     property alias backgroundColor: colorDialog.color
 
     function wrap(value) {
@@ -56,6 +57,11 @@ Rectangle {
         qrcPathsStringified = JSON.stringify(stringPaths)
         console.log("Stringified as", qrcPathsStringified)
         notifyChangeQrcPaths()
+    }
+
+    onUseItemSizeChanged: {
+        loader.active = false
+        loader.active = true
     }
 
     onFilePathChanged: {
@@ -103,6 +109,7 @@ Rectangle {
         property alias enableDragging: root.enableDragging
         property alias width: root.width
         property alias height: root.height
+        property alias useItemSize: root.useItemSize
 
         category: "qmlPreviewer"
     }
@@ -361,11 +368,11 @@ Rectangle {
                     fill: parent
                     margins: 24
                 }
+                clip: true
 
                 Loader {
                     id: loader
-                    anchors.fill: parent
-                    clip: true
+                    anchors.fill: root.useItemSize ? undefined : parent
                 }
 
                 Rectangle {
@@ -472,6 +479,24 @@ Rectangle {
                     target: root
                     property: "enableResizing"
                     value: resizeCheckBox.checked
+                }
+            }
+
+            CheckBox {
+                id: itemSizeCheckbox
+                text: "Use item size"
+                checked: root.useItemSize
+
+                Binding {
+                    target: itemSizeCheckbox
+                    property: "checked"
+                    value: root.useItemSize
+                }
+
+                Binding {
+                    target: root
+                    property: "useItemSize"
+                    value: itemSizeCheckbox.checked
                 }
             }
 
