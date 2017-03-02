@@ -202,7 +202,7 @@ Item {
             //            bottomMargin: 120
         }
 
-        width: 300 + 32
+        width: 280 + 32
         height: itemColumn.height
         z: 20
 
@@ -304,7 +304,7 @@ Item {
                                 right: parent.right
                                 margins: 16
                             }
-                            font.pixelSize: 16
+                            font.pixelSize: 18
                             font.family: Style.font.family
                             color: Style.creation.text.color
                             wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -323,7 +323,7 @@ Item {
                             anchors {
                                 left: parent.left
                                 right: parent.right
-                                margins: 32
+                                margins: 24
                             }
 
                             spacing: 8
@@ -538,7 +538,7 @@ Item {
             name: "creation"
             PropertyChanges { target: itemMenu; anchors.leftMargin: 0 }
             PropertyChanges { target: leftMenu; width: 72 }
-            PropertyChanges { target: logoTextCopy; opacity: 1.0 }
+            PropertyChanges { target: logoTextCopy; opacity: 0.0 }
         },
         State {
             name: "community"

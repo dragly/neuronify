@@ -4,7 +4,7 @@ ListModel {
     ListElement {
         name: "Note"
         description: "Annotate simulations with notes"
-        source: "../annotations/Note.qml"
+        source: "qrc:/qml/annotations/Note.qml"
         imageSource: "qrc:/images/annotate/annotate.png"
     }
 }
