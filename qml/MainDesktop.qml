@@ -186,7 +186,7 @@ Item {
     Item {
         id: itemMenu
         anchors {
-            left: subItemMenu.right
+            left: leftMenu.right
             //            left: parent.left
             leftMargin: -width
             top: parent.top
@@ -197,7 +197,7 @@ Item {
 
         width: 240 + 32
         height: categoriesListView.height
-        z: 5
+        z: 20
 
         ListModel {
             id: categories
@@ -241,6 +241,7 @@ Item {
         }
 
         HudShadow {
+            id: itemMenuShadow
             anchors.fill: rect
             source: rect
         }
@@ -259,7 +260,7 @@ Item {
             }
 
             onCurrentIndexChanged: {
-                stackView.replace(viewComponent, {listSource: categories.get(currentIndex).listSource})
+                itemModelLoader.source = categories.get(currentIndex).listSource
             }
 
             Repeater {
@@ -337,17 +338,26 @@ Item {
     Item {
         id: subItemMenu
         anchors {
-            left: leftMenu.right
+            left: itemMenu.right
             leftMargin: -width
-            top: parent.top
-            bottom: parent.bottom
+            top: itemMenu.top
+            topMargin: 16
+            bottom: itemMenu.bottom
+            bottomMargin: 16
+//            bottom: parent.bottom
             //            topMargin: 64
         }
 
-        width: 160
-        height: 480
+        width: itemListView.width + itemListView.anchors.margins * 2
         z: 10
         state: itemMenu.state
+
+        Behavior on width {
+            NumberAnimation {
+                duration: 400
+                easing.type: Easing.OutQuad
+            }
+        }
 
         Rectangle {
             id: subItemBackground
@@ -357,106 +367,78 @@ Item {
         }
 
         HudShadow {
+            id: subItemShadow
             anchors.fill: subItemBackground
             source: subItemBackground
         }
 
-        Component {
-            id: viewComponent
-            Column {
-                id: itemListView
-                property int currentIndex: 0
-                property alias listSource: itemModelLoader.source
-                Loader {
-                    id: itemModelLoader
-                }
-                Repeater {
-                    id: itemListRepeater
-
-                    model: itemModelLoader.item
-
-                    Item {
-                        property var item: creationItem
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                        }
-                        height: width * 0.6
-
-                        CreationItem {
-                            id: creationItem
-                            anchors.centerIn: parent
-
-                            width: parent.width * 0.5
-                            height: width
-                            parentWhenDragging: root
-
-                            name: model.name
-                            description: model.description
-                            source: model.source
-                            imageSource: model.imageSource
-
-                            onDragActiveChanged: {
-                                if(drag.active) {
-                                    subItemMenu.state = "dragging"
-                                    itemMenu.state = "dragging"
-                                } else {
-                                    subItemMenu.state = ""
-                                    itemMenu.state = ""
-                                }
-                            }
-
-                            onPressed: {
-                                itemListView.currentIndex = index
-                            }
-
-                            onDropped: {
-//                                droppedEntity(fileUrl, properties, controlParent)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        StackView {
-            id: stackView
+        Item {
             anchors {
                 fill: parent
             }
             clip: true
 
-            replaceEnter: Transition {
-                NumberAnimation {
-                    properties: "x"
-                    from: stackView.width / 2
-                    to: 0
-                    duration: 400
-                    easing.type: Easing.InOutQuad
-                }
-                NumberAnimation {
-                    properties: "opacity"
-                    from: 0
-                    to: 1
-                    duration: 600
-                    easing.type: Easing.InOutQuad
-                }
-            }
+            Flow {
+                id: itemListView
+                property int currentIndex: 0
+                property alias listSource: itemModelLoader.source
+                property int rows: Math.floor(parent.height / 96)
+                property real itemHeight: (height - spacing * (rows - 1)) / rows
 
-            replaceExit: Transition {
-                NumberAnimation {
-                    properties: "x"
-                    from: 0
-                    to: -stackView.width / 2
-                    duration: 400
-                    easing.type: Easing.InOutQuad
+                anchors {
+                    bottom: parent.bottom
+                    top: parent.top
+                    left: parent.left
+                    margins: 32
                 }
-                NumberAnimation {
-                    properties: "opacity"
-                    from: 1
-                    to: 0
-                    duration: 200
-                    easing.type: Easing.InOutQuad
+
+                flow: Flow.TopToBottom
+                spacing: 8
+
+                Loader {
+                    id: itemModelLoader
+                }
+
+                Repeater {
+                    id: itemListRepeater
+
+                    model: itemModelLoader.item
+
+                    CreationItem {
+                        id: creationItem
+
+                        height: parent.itemHeight
+                        width: height
+
+                        parentWhenDragging: root
+
+                        name: model.name
+                        description: model.description
+                        source: model.source
+                        imageSource: model.imageSource
+
+                        onDragActiveChanged: {
+                            if(drag.active) {
+                                subItemMenu.state = "dragging"
+                                itemMenu.state = "dragging"
+                            } else {
+                                subItemMenu.state = ""
+                                itemMenu.state = ""
+                            }
+                        }
+
+                        onPressed: {
+                            itemListView.currentIndex = index
+                        }
+
+                        onDropped: {
+    //                                droppedEntity(fileUrl, properties, controlParent)
+                        }
+
+                        onClicked: {
+                            ToolTip.show("Drag to add", 3000)
+                        }
+                    }
                 }
             }
         }
@@ -485,9 +467,9 @@ Item {
         State {
             name: "creation"
             PropertyChanges { target: itemMenu; anchors.leftMargin: 0 }
-            PropertyChanges { target: subItemMenu; anchors.leftMargin: 0}
+            PropertyChanges { target: subItemMenu; anchors.leftMargin: 0 }
             PropertyChanges { target: leftMenu; width: 72 }
-            PropertyChanges { target: logoTextCopy; opacity: 0.0 }
+            PropertyChanges { target: logoTextCopy; opacity: 1.0 }
         },
         State {
             name: "community"
@@ -562,6 +544,11 @@ Item {
             target: subItemMenu
             properties: "anchors.leftMargin"
             duration: 800
+            easing.type: Easing.InOutQuad
+        }
+        ColorAnimation {
+            properties: "color"
+            duration: 400
             easing.type: Easing.InOutQuad
         }
     }
