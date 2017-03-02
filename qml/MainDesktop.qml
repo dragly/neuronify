@@ -23,6 +23,8 @@ import "qrc:/qml/controls"
 Item {
     id: root
 
+    property bool dragging: false
+
     state: "creation"
 
     Neuronify {
@@ -49,6 +51,11 @@ Item {
 
         color: "#6BAED6"
         z: 40
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+        }
 
         Image {
             id: logo
@@ -195,9 +202,17 @@ Item {
             //            bottomMargin: 120
         }
 
-        width: 240 + 32
+        width: 300 + 32
         height: itemColumn.height
         z: 20
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onWheel: {
+                // NOTE: necessary to capture wheel events
+            }
+        }
 
         ListModel {
             id: categories
@@ -260,6 +275,7 @@ Item {
                 active: itemColumn.height > itemFlickable.height
             }
             contentHeight: itemColumn.height
+//            interactive: false
 
             Column {
                 id: itemColumn
@@ -274,10 +290,6 @@ Item {
                     currentIndex = 0
                 }
 
-    //            onCurrentIndexChanged: {
-    //                itemModelLoader.source = categories.get(currentIndex).listSource
-    //            }
-
                 Repeater {
                     model: categories
                     Column {
@@ -290,7 +302,6 @@ Item {
                             anchors {
                                 left: parent.left
                                 right: parent.right
-    //                            verticalCenter: parent.verticalCenter
                                 margins: 16
                             }
                             font.pixelSize: 16
@@ -310,14 +321,11 @@ Item {
                             property real itemWidth: (width - spacing * (columns - 1)) / columns
 
                             anchors {
-    //                            bottom: parent.bottom
-    //                            top: parent.top
                                 left: parent.left
                                 right: parent.right
                                 margins: 32
                             }
 
-    //                        flow: Flow.TopToBottom
                             spacing: 8
 
                             Loader {
@@ -336,10 +344,6 @@ Item {
 //                                    width: itemListView.itemWidth
                                     width: itemListView.itemWidth
 
-                                    Component.onCompleted: {
-                                        console.log("Width", width)
-                                    }
-
                                     parentWhenDragging: root
 
                                     name: model.name
@@ -348,30 +352,35 @@ Item {
                                     imageSource: model.imageSource
 
                                     onDragActiveChanged: {
-                                        console.log("Dragging")
                                         if(dragActive) {
-                                            itemMenu.state = "dragging"
+                                            root.dragging = true
                                         } else {
-                                            itemMenu.state = ""
+                                            root.dragging = false
                                         }
+                                        showInfoPanelTimer.stop()
                                     }
 
                                     MouseArea {
                                         anchors.fill: parent
                                         hoverEnabled: true
+                                        acceptedButtons: Qt.NoButton
+                                        propagateComposedEvents: true
                                         onEntered: {
-                                            infoPanel.state = "revealed"
                                             infoPanel.selectedItem = creationItem
+                                            hideInfoPanelTimer.stop()
+                                            showInfoPanelTimer.restart()
                                         }
                                         onExited: {
-                                            hideInfoPanelTimer.start()
+                                            hideInfoPanelTimer.restart()
+                                            showInfoPanelTimer.stop()
                                         }
-                                        Timer {
-                                            id: hideInfoPanelTimer
-                                            interval: 2000
-                                            onTriggered: {
-                                                infoPanel.state = "hidden"
-                                            }
+                                    }
+
+                                    Timer {
+                                        id: showInfoPanelTimer
+                                        interval: 400
+                                        onTriggered: {
+                                            infoPanel.state = "revealed"
                                         }
                                     }
                                 }
@@ -385,6 +394,7 @@ Item {
         states: [
             State {
                 name: "dragging"
+                when: root.dragging
                 PropertyChanges {
                     target: itemMenu
                     opacity: 0.0
@@ -424,6 +434,8 @@ Item {
             }
         }
 
+        state: "hidden"
+
         width: 240
         height: infoColumn.height + infoColumn.anchors.margins * 2
 
@@ -456,6 +468,7 @@ Item {
                 }
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 font.pixelSize: 18
+                color: "#676767"
                 text: infoPanel.selectedItem ? infoPanel.selectedItem.name : "Nothing selected"
             }
             Text {
@@ -470,15 +483,47 @@ Item {
             }
         }
 
+        Timer {
+            id: hideInfoPanelTimer
+            interval: 1000
+            onTriggered: {
+                infoPanel.state = "hidden"
+            }
+        }
+
         states: [
             State {
                 name: "hidden"
                 PropertyChanges {
-
+                    target: infoPanel; anchors.leftMargin: -width
                 }
             },
             State {
                 name: "revealed"
+            },
+            State {
+                name: "dragging"
+                extend: "hidden"
+                when: root.dragging
+                onCompleted: infoPanel.state = "hidden"
+                PropertyChanges {
+                    target: infoPanel
+                    opacity: 0.0
+                }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                NumberAnimation {
+                    properties: "anchors.leftMargin"
+                    duration: 800
+                    easing.type: Easing.InOutQuad
+                }
+                NumberAnimation {
+                    properties: "opacity"
+                    duration: 200
+                }
             }
         ]
     }
@@ -486,7 +531,8 @@ Item {
     states: [
         State {
             name: "view"
-            PropertyChanges { target: itemMenu; anchors.leftMargin: -width }
+            PropertyChanges { target: itemMenu; anchors.leftMargin: -itemMenu.width }
+            PropertyChanges { target: infoPanel; state: "hidden" }
         },
         State {
             name: "creation"
@@ -496,6 +542,7 @@ Item {
         },
         State {
             name: "community"
+            extend: "view"
             PropertyChanges { target: leftMenuShadow; opacity: 0.0 }
             PropertyChanges { target: communityBackground; width: parent.width }
             PropertyChanges { target: communityBackground; radius: 0 }
@@ -510,8 +557,8 @@ Item {
     transitions: [
         Transition {
             animations: [
+                animateCreation,
                 animateLeftMenu,
-                animateCreation
             ]
         },
         Transition {
@@ -559,7 +606,7 @@ Item {
         id: animateCreation
         NumberAnimation {
             properties: "anchors.leftMargin"
-            duration: 600
+            duration: 400
             easing.type: Easing.InOutQuad
         }
         ColorAnimation {

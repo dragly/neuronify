@@ -1,5 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 2.1
+import QtGraphicalEffects 1.0
 import "qrc:/qml/style"
 
 Item {
@@ -35,7 +36,10 @@ Item {
             height: width
 
             drag.target: creationControl
-//            drag.threshold: 0
+
+            onClicked: {
+                ToolTip.show("Drag and drop onto workspace", 2400)
+            }
 
             onReleased: {
                 creationControl.Drag.drop()
@@ -49,7 +53,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
 
-                width: mouseArea.width + 16
+                width: mouseArea.width
                 height: width
 
                 Drag.hotSpot.x: 32
@@ -68,12 +72,26 @@ Item {
                 }
 
                 Image {
+                    id: image
+                    visible: false
                     anchors.fill: parent
                     source: imageSource
                     fillMode: Image.PreserveAspectFit
                     antialiasing: true
                     smooth: true
                     asynchronous: true
+                }
+
+                DropShadow {
+                    anchors.fill: image
+                    source: image
+                    samples: 17
+                    radius: 8
+                    horizontalOffset: 1
+                    verticalOffset: 4
+                    color: Qt.hsla(0.0, 0.0, 0.0, 0.2)
+                    smooth: true
+                    antialiasing: true
                 }
             }
 

@@ -7,6 +7,7 @@ import "../paths"
 import Neuronify 1.0
 import QtQuick.Controls 1.3
 import QtQuick.Particles 2.0
+import QtGraphicalEffects 1.0
 
 /*!
 \qmltype Neuron
@@ -39,9 +40,23 @@ Node {
         fireAnimation.restart()
     }
 
+    DropShadow {
+        visible: !inhibitory
+        anchors.fill: image
+        source: image
+        smooth: true
+        antialiasing: true
+        samples: 17
+        radius: 8
+        horizontalOffset: 1
+        verticalOffset: 4
+        color: Qt.hsla(0.0, 0.0, 0.0, 0.2)
+    }
+
     Image {
+        id: image
         anchors.centerIn: parent
-        width: 96
+        width: 72
         height: width
         source: inhibitory ? inhibitoryImageSource : imageSource
         fillMode: Image.PreserveAspectFit
