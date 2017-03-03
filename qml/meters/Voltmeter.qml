@@ -375,6 +375,13 @@ Node {
         }
     }
 
+    Text {
+        anchors.centerIn: parent
+        color: Style.text.color
+        visible: voltmeterRoot.connectionPlots.length < 1
+        text: "Connect to neuron to see voltage"
+    }
+
     ResizeRectangle {}
 
     Connector {
