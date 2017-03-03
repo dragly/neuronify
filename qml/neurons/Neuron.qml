@@ -164,6 +164,7 @@ Node {
     Connector {
         color: inhibitory ? "#e41a1c" : "#6baed6"
         connectorColor: inhibitory ? "#e41a1c" : "#6baed6"
+        initialPoint: Qt.point(root.width * 2 / 3, root.height * 2 / 3)
     }
 
     DropArea {

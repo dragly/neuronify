@@ -271,9 +271,8 @@ Item {
             height: Math.min(parent.height, itemColumn.height)
             clip: true
 
-            ScrollBar.vertical: ScrollBar {
-                active: itemColumn.height > itemFlickable.height
-            }
+//            ScrollIndicator.vertical: ScrollIndicator {}
+            ScrollBar.vertical: ScrollBar {}
             contentHeight: itemColumn.height
 //            interactive: false
 
@@ -323,7 +322,8 @@ Item {
                             anchors {
                                 left: parent.left
                                 right: parent.right
-                                margins: 24
+                                leftMargin: 24
+                                rightMargin: 48
                             }
 
                             spacing: 8
@@ -361,6 +361,7 @@ Item {
                                     }
 
                                     MouseArea {
+                                        id: hoverArea
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         acceptedButtons: Qt.NoButton
@@ -380,7 +381,9 @@ Item {
                                         id: showInfoPanelTimer
                                         interval: 400
                                         onTriggered: {
+                                            if(hoverArea.containsMouse) {
                                             infoPanel.state = "revealed"
+                                            }
                                         }
                                     }
                                 }
@@ -422,8 +425,9 @@ Item {
             leftMargin: 0
             top: itemMenu.top
             topMargin: {
-                itemFlickable.contentY // dummy to ensure updates on scroll
-                infoPanel.selectedItem ? itemMenu.mapFromItem(infoPanel.selectedItem, 0, 0).y : 0
+//                itemFlickable.contentY // dummy to ensure updates on scroll
+//                infoPanel.selectedItem ? itemMenu.mapFromItem(infoPanel.selectedItem, 0, 0).y : 0
+                return 12
             }
 
             Behavior on topMargin {
