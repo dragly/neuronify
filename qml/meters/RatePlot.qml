@@ -186,6 +186,9 @@ Node {
             titleText: ratePlotRoot.showLegend ? "t [ms]" : ""
             titleFont.weight: Font.Normal
             titleFont.pixelSize: 14
+            visible: false // IMPORTANT: Due to a bug in Qt Charts/Qt Graphics View,
+            // performance is degraded with time when text changes
+            // https://bugreports.qt.io/browse/QTBUG-59040
         }
 
         ValueAxis {

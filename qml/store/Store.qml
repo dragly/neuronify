@@ -1,8 +1,10 @@
 import QtQuick 2.7
-import QtQuick.Controls 2.1
+import QtQuick.Controls 2.0
 import QtQuick.Layouts 1.0
 import QtGraphicalEffects 1.0
 //import QtPurchasing 1.0 as QP
+
+import "qrc:/qml/style"
 
 Item {
     width: 1280
@@ -26,78 +28,78 @@ Item {
 //        }
 //    }
 
-    ToolBar {
-        id: headerRectangle
-        height: 65
-//        color: "#ffffff"
-        anchors {
-            right: parent.right
-            left: parent.left
-            top: parent.top
-        }
-        z: 9999
+//    ToolBar {
+//        id: headerRectangle
+//        height: 65
+////        color: "#ffffff"
+//        anchors {
+//            right: parent.right
+//            left: parent.left
+//            top: parent.top
+//        }
+//        z: 9999
 
-        Label {
-            id: text1
-            anchors {
-                left: parent.left
-                leftMargin: 16
-                verticalCenter: parent.verticalCenter
-            }
-            text: qsTr("Neuronify Store")
-            font.pixelSize: 24
-        }
+//        Label {
+//            id: text1
+//            anchors {
+//                left: parent.left
+//                leftMargin: 16
+//                verticalCenter: parent.verticalCenter
+//            }
+//            text: qsTr("Neuronify Store")
+//            font.pixelSize: 24
+//        }
 
-        Button {
-            id: backButton
-            anchors {
-                left: text1.right
-                verticalCenter: parent.verticalCenter
-                margins: 16
-            }
+//        Button {
+//            id: backButton
+//            anchors {
+//                left: text1.right
+//                verticalCenter: parent.verticalCenter
+//                margins: 16
+//            }
 
-            text: "Back"
+//            text: "Back"
 
-            onClicked: stackView.pop()
-        }
+//            onClicked: stackView.pop()
+//        }
 
-        TextField {
-            id: textField1
-            x: 851
-            width: 373
-            text: qsTr("")
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 4
-            anchors.top: parent.top
-            anchors.topMargin: 4
-            anchors.right: item2.left
-            anchors.rightMargin: 0
-            placeholderText: qsTr("Search")
-        }
+//        TextField {
+//            id: textField1
+//            x: 851
+//            width: 373
+//            text: qsTr("")
+//            anchors.bottom: parent.bottom
+//            anchors.bottomMargin: 4
+//            anchors.top: parent.top
+//            anchors.topMargin: 4
+//            anchors.right: item2.left
+//            anchors.rightMargin: 0
+//            placeholderText: qsTr("Search")
+//        }
 
-        Item {
-            id: item2
-            width: height
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 16
-            anchors.top: parent.top
-            anchors.topMargin: 16
-            anchors.right: parent.right
-            anchors.rightMargin: 8
+//        Item {
+//            id: item2
+//            width: height
+//            anchors.bottom: parent.bottom
+//            anchors.bottomMargin: 16
+//            anchors.top: parent.top
+//            anchors.topMargin: 16
+//            anchors.right: parent.right
+//            anchors.rightMargin: 8
 
-            MouseArea {
-                id: mouseArea1
-                anchors.fill: parent
-            }
+//            MouseArea {
+//                id: mouseArea1
+//                anchors.fill: parent
+//            }
 
-            Image {
-                id: image1
-                anchors.rightMargin: 0
-                anchors.fill: parent
-                source: "qrc:/images/store/ic_search_black_48dp.png"
-            }
-        }
-    }
+//            Image {
+//                id: image1
+//                anchors.rightMargin: 0
+//                anchors.fill: parent
+//                source: "qrc:/images/store/ic_search_black_48dp.png"
+//            }
+//        }
+//    }
 
     Rectangle {
         id: rectangle2
@@ -106,7 +108,7 @@ Item {
         anchors.right: parent.right
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.top: headerRectangle.bottom
+        anchors.top: parent.top
 
         Rectangle {
             id: rectangle3

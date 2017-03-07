@@ -101,7 +101,8 @@ DISTFILES += \
     installer/packages/net.ovilab.neuronify/meta/installscript.qs \
     appveyor.yml \
     installer/packages/net.ovilab.neuronify/data/README.txt \
-    .travis.yml
+    .travis.yml \
+    qml/backend/qmldir
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 

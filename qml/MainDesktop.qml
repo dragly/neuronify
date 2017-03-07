@@ -1,5 +1,5 @@
 import QtQuick 2.5
-import QtQuick.Controls 2.1
+import QtQuick.Controls 2.0
 import QtQuick.Dialogs 1.0
 import QtQuick.Layouts 1.3
 import QtQuick.Particles 2.0
@@ -25,7 +25,7 @@ Item {
 
     property bool dragging: false
 
-    state: "creation"
+    state: "community"
 
     Neuronify {
         id: neuronify
@@ -40,6 +40,9 @@ Item {
 
     Rectangle {
         id: leftMenu
+
+        property real textOpacity: 1.0
+
         anchors {
             left: parent.left
             top: parent.top
@@ -102,85 +105,145 @@ Item {
             anchors {
                 left: parent.left
                 right: parent.right
-                verticalCenter: parent.verticalCenter
+                top: logoTextCopy.bottom
+                topMargin: 24
+                bottom: parent.bottom
             }
             spacing: 24
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width / 2
-                height: width
-                radius: width / 4
-                color: "transparent"
-                border.width: parent.width * 0.04
-                border.color: "white"
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        root.state = "view"
+            Repeater {
+                model: ListModel {
+                    ListElement {
+                        state: "projects"
+                        name: "Welcome"
+                    }
+                    ListElement {
+                        state: "view"
+                        name: "View"
+                    }
+                    ListElement {
+                        state: "creation"
+                        name: "Create"
+                    }
+                    ListElement {
+                        state: "save"
+                        name: "Save"
+                    }
+                    ListElement {
+                        state: "community"
+                        name: "Community"
+                    }
+                    ListElement {
+                        state: "help"
+                        name: "Help"
                     }
                 }
-            }
-
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width / 2
-                height: width
-                radius: width / 4
-                color: "transparent"
-                border.width: parent.width * 0.04
-                border.color: "white"
                 MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        root.state = "creation"
+                    anchors {
+                        left: parent.left
+                        right: parent.right
                     }
-                }
-            }
-
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width / 2
-                height: width
-                radius: width / 4
-                color: "transparent"
-                border.width: parent.width * 0.04
-                border.color: "white"
-                MouseArea {
-                    anchors.fill: parent
+                    height: menuItemColumn.height
                     onClicked: {
-                        root.state = "community"
+                        root.state = model.state
+                    }
+                    Column {
+                        id: menuItemColumn
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                        }
+
+                        spacing: 8
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width / 2
+                            height: width
+                            radius: width / 4
+                            color: root.state == model.state ? "white" : "transparent"
+                            border.width: parent.width * 0.04
+                            border.color: "white"
+                        }
+                        Text {
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                            }
+                            horizontalAlignment: Text.AlignHCenter
+                            color: "white"
+                            opacity: leftMenu.textOpacity
+                            font.pixelSize: 12
+                            text: model.name
+                        }
                     }
                 }
             }
         }
+
+        onStateChanged: console.log("Left menu state", state)
+
+        states: [
+            State {
+                name: "small"
+                PropertyChanges { target: leftMenu; width: 72 }
+                PropertyChanges { target: logoTextCopy; opacity: 0.0 }
+                PropertyChanges { target: leftMenu; textOpacity: 0.0 }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                NumberAnimation {
+                    target: leftMenu
+                    properties: "width,textOpacity"
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
+                NumberAnimation {
+                    target: leftMenuShadow
+                    properties: "opacity"
+                    duration: 0
+                }
+            }
+        ]
     }
 
     Rectangle {
-        id: communityBackground
+        id: community
         anchors {
-            left: parent.left
+            left: leftMenu.right
             top: parent.top
             bottom: parent.bottom
         }
         radius: height / 2
-        width: 0
+        width: parent.width
         color: leftMenu.color
         z: 39
-    }
+        state: "hidden"
 
-    Text {
-        id: communityText
-        anchors {
-            top: parent.top
-            left : leftMenu.right
-            topMargin: 48
-            leftMargin: 240
+        Loader {
+            anchors.fill: parent
+            source: "store/Store.qml"
         }
-        text: "Neuronify community"
-        font.pixelSize: 48
-        color: "white"
-        z: 40
-        opacity: 0.0
+
+        states: [
+            State {
+                name: "hidden"
+                PropertyChanges {
+                    target: community
+                    anchors.leftMargin: -width
+                }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                NumberAnimation {
+                    duration: 600
+                    properties: "anchors.leftMargin"
+                    easing.type: Easing.OutQuad
+                }
+            }
+        ]
     }
 
     HudShadow {
@@ -382,7 +445,7 @@ Item {
                                         interval: 400
                                         onTriggered: {
                                             if(hoverArea.containsMouse) {
-                                            infoPanel.state = "revealed"
+                                                infoPanel.state = "revealed"
                                             }
                                         }
                                     }
@@ -402,6 +465,10 @@ Item {
                     target: itemMenu
                     opacity: 0.0
                 }
+            },
+            State {
+                name: "hidden"
+                PropertyChanges { target: itemMenu; anchors.leftMargin: -itemMenu.width }
             }
         ]
 
@@ -410,6 +477,73 @@ Item {
                 NumberAnimation {
                     properties: "opacity"
                     duration: 200
+                }
+                NumberAnimation {
+                    properties: "anchors.leftMargin"
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
+            }
+        ]
+    }
+
+    Item {
+        id: saveMenu
+
+        anchors {
+            left: leftMenu.right
+            top: parent.top
+            topMargin: 64
+            bottom: parent.bottom
+            bottomMargin: 64
+            //            bottomMargin: 120
+        }
+
+        width: 280 + 32
+        height: itemColumn.height
+        z: 20
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onWheel: {
+                // NOTE: necessary to capture wheel events
+            }
+        }
+
+        Rectangle {
+            id: saveMenuBackground
+            color: "#e3eef9"
+            anchors {
+                fill: parent
+                topMargin: -16
+                bottomMargin: -16
+            }
+        }
+
+        HudShadow {
+            id: saveMenuShadow
+            anchors.fill: saveMenuBackground
+            source: saveMenuBackground
+        }
+
+        states: [
+            State {
+                name: "hidden"
+                PropertyChanges { target: saveMenu; anchors.leftMargin: -saveMenu.width }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                NumberAnimation {
+                    properties: "opacity"
+                    duration: 200
+                }
+                NumberAnimation {
+                    properties: "anchors.leftMargin"
+                    duration: 400
+                    easing.type: Easing.InOutQuad
                 }
             }
         ]
@@ -535,27 +669,38 @@ Item {
     states: [
         State {
             name: "view"
-            PropertyChanges { target: itemMenu; anchors.leftMargin: -itemMenu.width }
+            PropertyChanges { target: community; state: "hidden" }
             PropertyChanges { target: infoPanel; state: "hidden" }
+            PropertyChanges { target: itemMenu; state: "hidden" }
+            PropertyChanges { target: saveMenu; state: "hidden" }
         },
         State {
             name: "creation"
-            PropertyChanges { target: itemMenu; anchors.leftMargin: 0 }
-            PropertyChanges { target: leftMenu; width: 72 }
-            PropertyChanges { target: logoTextCopy; opacity: 0.0 }
+            extend: "view"
+            PropertyChanges { target: leftMenu; state: "small" }
+            PropertyChanges { target: itemMenu; state: "" }
+        },
+        State {
+            name: "save"
+            extend: "view"
+            PropertyChanges { target: leftMenu; state: "small" }
+            PropertyChanges { target: saveMenu; state: "" }
         },
         State {
             name: "community"
             extend: "view"
+            PropertyChanges { target: community; state: "" }
             PropertyChanges { target: leftMenuShadow; opacity: 0.0 }
-            PropertyChanges { target: communityBackground; width: parent.width }
-            PropertyChanges { target: communityBackground; radius: 0 }
-            PropertyChanges {
-                target: communityText
-                anchors.leftMargin: 48
-                opacity: 1.0
-            }
+        },
+        State {
+            name: "projects"
+            extend: "view"
+        },
+        State {
+            name: "help"
+            extend: "view"
         }
+
     ]
 
     transitions: [
@@ -570,7 +715,6 @@ Item {
             animations: [
                 animateLeftMenu,
                 animateCreation,
-                animateCommunityBackground,
                 animateCommunityTextIn
             ]
         },
@@ -579,7 +723,6 @@ Item {
             animations: [
                 animateLeftMenu,
                 animateCreation,
-                animateCommunityBackground,
                 animateCommunityTextOut
             ]
         }
@@ -588,21 +731,10 @@ Item {
     ParallelAnimation {
         id: animateLeftMenu
         NumberAnimation {
-            target: leftMenu
-            property: "width"
-            duration: 400
-            easing.type: Easing.InOutQuad
-        }
-        NumberAnimation {
             target: logoTextCopy
             property: "opacity"
             duration: 400
             easing.type: Easing.InOutQuad
-        }
-        NumberAnimation {
-            target: leftMenuShadow
-            properties: "opacity"
-            duration: 0
         }
     }
 
@@ -625,35 +757,11 @@ Item {
         PauseAnimation {
             duration: 400
         }
-        NumberAnimation {
-            target: communityText
-            properties: "opacity,anchors.leftMargin"
-            duration: 800
-            easing.type: Easing.OutQuad
-        }
     }
     SequentialAnimation {
         id: animateCommunityTextOut
-        NumberAnimation {
-            target: communityText
-            properties: "opacity"
-            duration: 200
-            easing.type: Easing.InOutQuad
-        }
         PauseAnimation {
             duration: 200
         }
-        NumberAnimation {
-            target: communityText
-            properties: "anchors.leftMargin"
-            duration: 0
-        }
-    }
-    NumberAnimation {
-        id: animateCommunityBackground
-        target: communityBackground
-        properties: "width"
-        duration: 600
-        easing.type: Easing.InOutQuad
     }
 }

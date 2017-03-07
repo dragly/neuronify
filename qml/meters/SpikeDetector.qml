@@ -177,6 +177,9 @@ Node {
                 titleFont.weight: Font.Normal
                 titleFont.pixelSize: 14
                 titleText: rasterRoot.showLegend ? "t [ms]" : ""
+                visible: false // IMPORTANT: Due to a bug in Qt Charts/Qt Graphics View,
+                // performance is degraded with time when text changes
+                // https://bugreports.qt.io/browse/QTBUG-59040
             }
             axisY: CategoryAxis {
                 id: axisY

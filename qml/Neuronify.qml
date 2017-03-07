@@ -98,9 +98,12 @@ Rectangle {
     }
 
     Component.onDestruction: {
-        if(!firstLoadTimer.running) { // Don't save if not yet loaded
-            saveState(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
+        console.log("Neuronify finishing")
+        if(firstLoadTimer.running) { // Don't save if not yet loaded
+            console.log("WARNING: Not saving because load timer is still running.")
+            return
         }
+        saveState(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
     }
 
     onPlaybackSpeedChanged: {

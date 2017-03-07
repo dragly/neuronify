@@ -1,5 +1,9 @@
 import QtQuick 2.4
-import QtQuick.Controls 2.1
+import QtQuick.Controls 2.0
+
+import "qrc:/qml/backend"
+import "qrc:/qml/firebase"
+import "qrc:/qml/style"
 
 Item {
     id: root
@@ -10,30 +14,29 @@ Item {
     height: 400
 
     Component.onCompleted: {
-        var status
-        var wasLoading
-        var req = new XMLHttpRequest;
-        req.open("GET", "http://neuronify.ovilab.net:1337/parse/classes/Simulation");
-        req.setRequestHeader("X-Parse-Application-Id", "neuronify");
-        req.onreadystatechange = function() {
-            status = req.readyState;
-            if (status === XMLHttpRequest.DONE) {
-                var objectArray = JSON.parse(req.responseText);
-                if (objectArray.errors !== undefined)
-                    console.log("Error fetching tweets: " + objectArray.errors[0].message)
-                else {
-                    for(var i in objectArray.results) {
-                        var simulation = objectArray.results[i]
-                        listModel.append(objectArray.results[i])
-                    }
-                }
-                if (wasLoading == true) {
-                    console.log("Is loaded")
-                }
+        Parse.get("Simulation", function(response) {
+            for(var i in response.results) {
+                var simulation = response.results[i]
+                listModel.append(response.results[i])
             }
-            wasLoading = (status === XMLHttpRequest.LOADING);
+        })
+    }
+
+    Column {
+        z: 999
+        Button {
+            text: "Sign up!"
+            onClicked: {
+                Parse.post("_User", '{"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"}')
+            }
         }
-        req.send();
+
+        Button {
+            text: "Log in!"
+            onClicked: {
+                Parse.login("cooldude6", "p_n7!-e8")
+            }
+        }
     }
 
     FontMetrics {
@@ -76,9 +79,8 @@ Item {
                         width: 160
                         height: 256
                         name: model.name
-                        description: model.description
-                        price: model.price > 0 ? "NOK " + model.price.toFixed(2) : "Free"
-                        imageUrl: model.image.url
+                        description: model.description ? model.description : ""
+                        imageUrl: model.image ? model.image.url : ""
                         onClicked: {
                             root.clicked(model.objectId)
                         }
