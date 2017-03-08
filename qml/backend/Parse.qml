@@ -139,7 +139,24 @@ Backend {
             }
         }
         console.log("POST", url)
-        req.send(JSON.stringify(data));
+        req.send(JSON.stringify(data, null, 4));
+    }
+
+    function uploadBinary(name, data, callback) {
+
+//        var req = new XMLHttpRequest;
+//        var url = serverUrl + "files/" + name
+//        req.open("POST", url);
+//        setHeaders(req)
+//        req.setRequestHeader("Content-Type", "text/plain");
+//        req.onreadystatechange = function() {
+//            if(req.readyState == XMLHttpRequest.DONE) {
+//                var result = JSON.parse(req.responseText)
+//                callback(result)
+//            }
+//        }
+//        console.log("POST", url)
+//        req.send(JSON.stringify(data, null, 4));
     }
 
     function logout() {

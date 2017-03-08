@@ -35,7 +35,7 @@ public:
     };
 
     explicit StandardPaths(QObject *parent = nullptr);
-    Q_INVOKABLE static QUrl writableLocation(StandardLocation location, const QString &filename);
+    Q_INVOKABLE static QString writableLocation(StandardLocation location, const QString &filename);
     Q_INVOKABLE static QUrl locate(StandardLocation location, const QString &filename);
     Q_INVOKABLE static QString toLocalFile(QUrl url);
     Q_INVOKABLE static QUrl originalSimulationLocation(QUrl fileUrl);

@@ -27,7 +27,11 @@ Item {
 
     property bool dragging: false
 
-    state: "welcome"
+    state: "save"
+
+    DownloadManager {
+        id: downloadManager
+    }
 
     Parse {
         id: parse
@@ -333,9 +337,9 @@ Item {
                                 state: "community"
                             }
 
-    //                        ListElement {
-    //                            name: "Plugins"
-    //                        }
+                            //                        ListElement {
+                            //                            name: "Plugins"
+                            //                        }
                         }
 
                         delegate: ItemDelegate {
@@ -516,7 +520,7 @@ Item {
                                             height: 256
                                             name: model.name
                                             description: model.description ? model.description : ""
-                                            imageUrl: model.image ? model.image.url : ""
+                                            imageUrl: model.screenshot ? model.screenshot.url : ""
                                             onClicked: {
                                                 console.log("Pushing")
                                                 stackView2.push(simulationComponent)
@@ -533,6 +537,24 @@ Item {
                         id: simulationComponent
                         StoreSimulation {
                             backend: parse
+                            onDownloadClicked: {
+                                var targetLocation = StandardPaths.writableLocation(
+                                            StandardPaths.AppDataLocation,
+                                            "examples/" + objectData.objectId
+                                            )
+                                if(objectData.simulation) {
+                                    downloadManager.download(
+                                                objectData.simulation.url,
+                                                targetLocation,
+                                                "simulation.nfy")
+                                }
+                                if(objectData.screenshot) {
+                                    downloadManager.download(
+                                                objectData.screenshot.url,
+                                                targetLocation,
+                                                "screenshot.png")
+                                }
+                            }
                         }
                     }
 
@@ -846,7 +868,7 @@ Item {
         }
 
         width: 160
-//        height: savePanelColumn.height
+        //        height: savePanelColumn.height
         z: 20
 
         MouseArea {
@@ -990,7 +1012,7 @@ Item {
                 TextField {
                     id: locationField
                     Layout.fillWidth: true
-                    text: StandardPaths.writableLocation(StandardPaths.DocumentsLocation, "neuronify").toString().replace("file://", "")
+                    text: StandardPaths.writableLocation(StandardPaths.DocumentsLocation, "neuronify")
                 }
 
                 Button {
@@ -1072,32 +1094,47 @@ Item {
                 Button {
                     text: qsTr("upload")
                     onClicked: {
-//                        var data = neuronify.fileManager.serializeState()
-//                        Parse.upload("test.txt", data, function(result) {
-//                            var simulation = {
-//                                name: uploadNameField.text,
-//                                description: uploadDescriptionField.text,
-//                                simulation: {
-//                                    name: result.name,
-//                                    url: result.url,
-//                                    __type: "File"
-//                                }
-//                            }
-//                            Parse.post("Simulation", simulation)
-//                        })
-//                        uploadMenu.close()
-                            var simulation = {
-                                name: uploadNameField.text,
-                                description: uploadDescriptionField.text
-                            }
-                            if(parse.objectId) {
-                                simulation["owner"] = {
-                                    __type: "Pointer",
-                                    className: "_User",
-                                    objectId: parse.objectId
-                                }
-                            }
-                            parse.post("Simulation", simulation)
+                        var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation, "")
+                        var stateFilename = tempFolder + "/simulation.nfy"
+                        var screenshotFilename = tempFolder + "/screenshot.png"
+
+                        neuronify.fileManager.saveState(stateFilename)
+                        neuronify.saveScreenshot(screenshotFilename, function() {
+                            var data = neuronify.fileManager.serializeState()
+                            parse.upload("simulation.nfy", data, function(simulationFile) {
+                                downloadManager.upload(
+                                            screenshotFilename,
+                                            parse.serverUrl + "files/screenshot.png",
+                                            function(screenshotResult) {
+                                                var screenshotFile = JSON.parse(screenshotResult)
+                                                var simulation = {
+                                                    name: uploadNameField.text,
+                                                    description: uploadDescriptionField.text,
+                                                    simulation: {
+                                                        name: simulationFile.name,
+                                                        url: simulationFile.url,
+                                                        __type: "File"
+                                                    },
+                                                    screenshot: {
+                                                        name: screenshotFile.name,
+                                                        url: screenshotFile.url,
+                                                        __type: "File"
+                                                    }
+                                                }
+                                                if(parse.objectId) {
+                                                    simulation["owner"] = {
+                                                        __type: "Pointer",
+                                                        className: "_User",
+                                                        objectId: parse.objectId
+                                                    }
+                                                }
+                                                parse.post("Simulation", simulation)
+                                                ToolTip.show("Upload successful!", 2000)
+                                                uploadMenu.close()
+                                            })
+                            })
+                        })
+
                     }
                 }
             }

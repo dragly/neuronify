@@ -124,7 +124,7 @@ Item {
     function saveState(fileUrl) {
         console.log("Saving to " + fileUrl)
         var result = serializeState()
-        var fileString = JSON.stringify(result);
+        var fileString = JSON.stringify(result, null, 4)
 
         saveFileIO.source = fileUrl
         return saveFileIO.write(fileString)

@@ -55,7 +55,7 @@ Rectangle {
     property real highestZ: 0.0
     property bool snappingEnabled: false
     property real snapGridSize: snappingEnabled ? 32.0 : 1.0
-//    property alias playbackSpeed: playbackControls.playbackSpeed
+    //    property alias playbackSpeed: playbackControls.playbackSpeed
     property real playbackSpeed: 1.0 // TODO add connection to playbackControls
     property url currentSimulationUrl
     property bool advanced: false
@@ -121,6 +121,19 @@ Rectangle {
     function saveState(fileUrl) {
         console.log("Saving state to", fileUrl)
         return fileManager.saveState(fileUrl)
+    }
+
+    function saveScreenshot(filename, callback) {
+        var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
+        var imageWidth = 512
+        var size = Qt.size(imageWidth, imageWidth / aspectRatio)
+        var onSaved = function(result) {
+            result.saveToFile(filename)
+            if(callback) {
+                callback()
+            }
+        }
+        workspaceFlickable.grabToImage(onSaved, size)
     }
 
     function applyProperties(object, properties) {
@@ -615,7 +628,7 @@ Rectangle {
             top: parent.top
             bottom: parent.bottom
             left: parent.left
-//            leftMargin: -propertiesPanel.offset * 0.33
+            //            leftMargin: -propertiesPanel.offset * 0.33
         }
         width: parent.width
     }
@@ -627,7 +640,7 @@ Rectangle {
             top: parent.top
             bottom: parent.bottom
             left: parent.left
-//            leftMargin: -propertiesPanel.offset * 0.33 // TODO add back this somehow
+            //            leftMargin: -propertiesPanel.offset * 0.33 // TODO add back this somehow
         }
         width: parent.width
         antialiasing: true
@@ -923,16 +936,16 @@ Rectangle {
                                     viewport.width, viewport.height)
             }
 
-//            DropShadow {
-//                visible: Qt.platform.os == "linux"
-//                anchors.fill: neuronLayer
-//                source: neuronLayer
-//                horizontalOffset: 1
-//                verticalOffset: 4
-//                radius: 6.0
-//                samples: 17
-//                color: Qt.rgba(0, 0, 0, 0.2)
-//            }
+            //            DropShadow {
+            //                visible: Qt.platform.os == "linux"
+            //                anchors.fill: neuronLayer
+            //                source: neuronLayer
+            //                horizontalOffset: 1
+            //                verticalOffset: 4
+            //                radius: 6.0
+            //                samples: 17
+            //                color: Qt.rgba(0, 0, 0, 0.2)
+            //            }
         }
     }
 

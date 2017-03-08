@@ -25,6 +25,8 @@
 #include "io/standardpaths.h"
 #include "io/propertygroup.h"
 
+#include "io/downloadmanager.h"
+
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QTextStream>
@@ -62,7 +64,6 @@ int main(int argc, char *argv[])
     qmlRegisterType<RectangularKernelEngine>("Neuronify", 1, 0,
                                              "RectangularKernelEngine");
 
-
     qmlRegisterType<Kernel>("Neuronify", 1, 0, "Kernel");
     qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");
     qmlRegisterType<RetinaPainter>("Neuronify", 1, 0, "RetinaPainter");
@@ -74,6 +75,7 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<RateEngine>("Neuronify", 1, 0, "RateEngine");
     qmlRegisterType<PropertyGroup>("Neuronify", 1, 0, "PropertyGroup");
+    qmlRegisterType<DownloadManager>("Neuronify", 1, 0, "DownloadManager");
 
 
     QApplication app(argc, argv);

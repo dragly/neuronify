@@ -9,11 +9,14 @@ import "qrc:/qml/backend"
 Item {
     id: root
 
+    signal downloadClicked
+
     property Backend backend
     property string objectId
     property string name: "Some name of a simulation without a name yet and this has a long name"
     property string description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean sit amet tempor dui. Nam maximus tempus tortor a porttitor. Curabitur faucibus convallis dui, at dictum diam euismod eu. Sed sit amet eleifend tellus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi a erat nec augue egestas sodales. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Sed eget ex in felis lacinia sodales. Praesent semper sagittis eros non sodales. Nam eu mollis orci. Sed vehicula efficitur felis, nec ornare enim ullamcorper quis."
     property string creator: "The Creator Company Inc."
+    property var objectData
     property url imageUrl
     property real price: 0.0
 
@@ -28,10 +31,13 @@ Item {
         if(!objectId) {
             return
         }
-        backend.get("Simulation/" + objectId, function(object) {
-            name = object.name
-            description = object.description
-//            imageUrl = object.image.url
+        backend.get("Simulation/" + objectId, function(result) {
+            name = result.name
+            description = result.description
+            objectData = result
+            if(result.screenshot) {
+                imageUrl = result.screenshot.url
+            }
 //            creator = object.creator.name
 //            price = object.price
         })
@@ -146,6 +152,9 @@ Item {
                 }
 
                 text: root.price > 0 ? "BUY NOK " + root.price.toFixed(2) : "Install"
+                onClicked: {
+                    root.downloadClicked()
+                }
             }
 
             Label {

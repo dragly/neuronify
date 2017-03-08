@@ -34,7 +34,8 @@ HEADERS += \
     src/io/propertygroup.h \
     src/retina/kernels/rectangularkernelengine.h \
     src/core/edgebase.h \
-    src/core/edgeengine.h
+    src/core/edgeengine.h \
+    src/io/downloadmanager.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -62,6 +63,7 @@ SOURCES += \
     src/retina/kernels/rectangularkernelengine.cpp \
     src/core/edgebase.cpp \
     src/core/edgeengine.cpp \
+    src/io/downloadmanager.cpp
 
 
 RESOURCES += qml.qrc \
