@@ -4,10 +4,13 @@ import QtQuick.Controls.Material 2.0
 import QtQuick.Layouts 1.0
 import QtGraphicalEffects 1.0
 
+import "qrc:/qml/backend"
+
 Item {
     id: root
-    
-    property string objectId: "oSIhtssGMj"
+
+    property Backend backend
+    property string objectId
     property string name: "Some name of a simulation without a name yet and this has a long name"
     property string description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean sit amet tempor dui. Nam maximus tempus tortor a porttitor. Curabitur faucibus convallis dui, at dictum diam euismod eu. Sed sit amet eleifend tellus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi a erat nec augue egestas sodales. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Sed eget ex in felis lacinia sodales. Praesent semper sagittis eros non sodales. Nam eu mollis orci. Sed vehicula efficitur felis, nec ornare enim ullamcorper quis."
     property string creator: "The Creator Company Inc."
@@ -17,42 +20,21 @@ Item {
     width: 1200
     height: 600
 
-    Component.onCompleted: {
-        reload()
-    }
-
     onObjectIdChanged: {
         reload()
     }
 
     function reload() {
-        var status
-        var wasLoading
-        var req = new XMLHttpRequest;
-        req.open("GET", "http://neuronify.ovilab.net:1337/parse/classes/Simulation/" + objectId + "/?include=creator");
-        req.setRequestHeader("X-Parse-Application-Id", "neuronify");
-        req.onreadystatechange = function() {
-            status = req.readyState;
-            if (status === XMLHttpRequest.DONE) {
-                console.log("Response", req.responseText)
-                var object = JSON.parse(req.responseText);
-                if (object.error)
-                    console.log("Error fetching data: " + object.error)
-                else {
-                    console.log("Got result", object)
-                    root.name = object.name
-                    root.description = object.description
-                    root.imageUrl = object.image.url
-                    root.creator = object.creator.name
-                    root.price = object.price
-                }
-                if (wasLoading == true) {
-                    console.log("Is loaded")
-                }
-            }
-            wasLoading = (status === XMLHttpRequest.LOADING);
+        if(!objectId) {
+            return
         }
-        req.send();
+        backend.get("Simulation/" + objectId, function(object) {
+            name = object.name
+            description = object.description
+//            imageUrl = object.image.url
+//            creator = object.creator.name
+//            price = object.price
+        })
     }
     
     FontMetrics {

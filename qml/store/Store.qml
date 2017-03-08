@@ -118,22 +118,6 @@ Item {
                 width: 120
                 text: "Upload items"
             }
-
-            Button {
-                width: 120
-                text: "Sign up"
-                onClicked: {
-                    Parse.post("_User", '{"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"}')
-                }
-            }
-
-            Button {
-                width: 120
-                text: "Log in"
-                onClicked: {
-                    Parse.login("cooldude6", "p_n7!-e8")
-                }
-            }
         }
 
         Item {

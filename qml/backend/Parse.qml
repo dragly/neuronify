@@ -1,15 +1,49 @@
-pragma Singleton
 import QtQuick 2.0
 
-QtObject {
-    property bool debug: true
-    property string serverUrl: "https://parseapi.back4app.com/"
-    property string applicationId: "JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN"
-    property string restApiKey: "bBKStu7bqeyWFTYFfM5OIes255k9XEz2Voe4fUxS"
+Backend {
+    id: root
+    property bool debug: false
+    property string serverUrl
+    property string applicationId
+    property string restApiKey
+    property string sessionToken
+    property string objectId
+    readonly property bool loggedIn: {
+        console.log("Checking", sessionToken, objectId)
+        return sessionToken !== "" && objectId !== ""
+    }
+
+    onLoggedInChanged: {
+        console.log("Logged in", loggedIn)
+    }
+
+    onSessionTokenChanged: {
+        console.log("Session token changed", sessionToken)
+        if(!sessionToken) {
+            objectId = ""
+            return
+        }
+        var req = new XMLHttpRequest;
+        var url = serverUrl + "users/me"
+        req.open("GET", url);
+        setHeaders(req)
+        req.onreadystatechange = function() {
+            var result = processReply(req, function(result) {
+                objectId = result.objectId
+                console.log("Successfully logged in with previous token.")
+            })
+        }
+        console.log("GET", url)
+        req.send();
+    }
 
     function setHeaders(req) {
         req.setRequestHeader("X-Parse-Application-Id", applicationId);
         req.setRequestHeader("X-Parse-REST-API-Key", restApiKey);
+        if(sessionToken) {
+            console.log("Using session token", sessionToken)
+            req.setRequestHeader("X-Parse-Session-Token", sessionToken);
+        }
     }
 
     function processReply(req, callback) {
@@ -24,6 +58,7 @@ QtObject {
                     return
                 }
                 callback(result)
+                return result
             }
         }
     }
@@ -43,7 +78,12 @@ QtObject {
         req.open("GET", url);
         setHeaders(req)
         req.onreadystatechange = function() {
-            processReply(req, callback)
+            var result = processReply(req, function(result) {
+                sessionToken = result.sessionToken
+                if(callback) {
+                    callback(result)
+                }
+            })
         }
         console.log("GET", url)
         req.send();
@@ -90,8 +130,7 @@ QtObject {
         var req = new XMLHttpRequest;
         var url = serverUrl + "files/" + name
         req.open("POST", url);
-        req.setRequestHeader("X-Parse-Application-Id", applicationId);
-        req.setRequestHeader("X-Parse-REST-API-Key", restApiKey);
+        setHeaders(req)
         req.setRequestHeader("Content-Type", "text/plain");
         req.onreadystatechange = function() {
             if(req.readyState == XMLHttpRequest.DONE) {
@@ -101,6 +140,13 @@ QtObject {
         }
         console.log("POST", url)
         req.send(JSON.stringify(data));
+    }
+
+    function logout() {
+        sessionToken = ""
+        if(loggedIn) {
+            console.error("ERROR: Could not log out user:", sessionToken, objectId)
+        }
     }
 }
 

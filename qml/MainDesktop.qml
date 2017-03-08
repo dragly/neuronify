@@ -27,7 +27,21 @@ Item {
 
     property bool dragging: false
 
-    state: "save"
+    state: "welcome"
+
+    Parse {
+        id: parse
+        debug: true
+        serverUrl: "https://parseapi.back4app.com/"
+        applicationId: "JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN"
+        restApiKey: "bBKStu7bqeyWFTYFfM5OIes255k9XEz2Voe4fUxS"
+    }
+
+    Settings {
+        id: settings
+        category: "parse"
+        property alias sessionToken: parse.sessionToken
+    }
 
     Neuronify {
         id: neuronify
@@ -176,6 +190,40 @@ Item {
                 }
             }
         }
+
+        Column {
+            anchors {
+                bottom: parent.bottom
+            }
+
+            Button {
+                visible: !parse.loggedIn
+                width: 120
+                text: "Sign up"
+                onClicked: {
+                    parse.post("_User", {"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"})
+                }
+            }
+
+            Button {
+                visible: !parse.loggedIn
+                width: 120
+                text: "Log in"
+                onClicked: {
+                    parse.login("cooldude6", "p_n7!-e8")
+                }
+            }
+
+            Button {
+                visible: parse.loggedIn
+                text: "Log out"
+                onClicked: {
+                    parse.logout()
+                }
+            }
+
+        }
+
         onStateChanged: console.log("Left menu state", state)
 
         states: [
@@ -204,90 +252,344 @@ Item {
         ]
     }
 
-    Rectangle {
-        id: community
+    Item {
+        id: communityView
         anchors {
             left: leftMenu.right
             top: parent.top
             bottom: parent.bottom
+            right: parent.right
         }
-        width: parent.width
-        color: leftMenu.color
         z: 39
-        state: "hidden"
 
-        Column {
+        Rectangle {
+            id: communityBackground
             anchors {
                 left: parent.left
                 top: parent.top
-                margins: 64
+                bottom: parent.bottom
             }
-            spacing: 16
+            width: parent.width
+            color: leftMenu.color
+            state: "hidden"
 
-            Text {
-                color: "white"
-                font.pixelSize: 48
-                font.weight: Font.Light
-                text: "Recent"
-            }
+            Item {
+                id: viewItem
+                anchors {
+                    left: parent.left
+                    top: parent.top
+                    margins: 64
+                }
+                width: 160
+                height: viewColumn.height
 
-            Row {
-                spacing: 16
-                Repeater {
-                    model: ListModel {
-                        ListElement { name: "Demo" }
-                        ListElement { name: "Test" }
-                        ListElement { name: "This is amazing" }
+                Rectangle {
+                    anchors {
+                        right: parent.right
+                        top: parent.top
+                        bottom: parent.bottom
                     }
-                    delegate: StoreItem {
-                        width: 160
-                        height: 256
-                        name: model.name
-                        description: model.description ? model.description : ""
-                        imageUrl: model.image ? model.image.url : ""
-                        onClicked: {
-                            root.clicked(model.objectId)
+
+                    width: 2
+                    color: "white"
+                    opacity: 0.2
+                }
+
+                Column {
+                    id: viewColumn
+                    property int currentIndex: 4
+                    property var currentElement: viewModel.get(currentIndex)
+
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    Repeater {
+                        model: ListModel {
+                            id: viewModel
+                            ListElement {
+                                name: "New"
+                                state: "new"
+                            }
+
+                            ListElement {
+                                name: "Open"
+                                state: "open"
+                            }
+
+                            ListElement {
+                                name: "Save"
+                                state: "save"
+                            }
+
+                            ListElement {
+                                name: "Examples"
+                                state: "examples"
+                            }
+
+                            ListElement {
+                                name: "Community"
+                                state: "community"
+                            }
+
+    //                        ListElement {
+    //                            name: "Plugins"
+    //                        }
+                        }
+
+                        delegate: ItemDelegate {
+
+                            id: rectangle4
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                            }
+
+                            height: 56
+                            highlighted: viewColumn.currentIndex === index
+
+                            onClicked: {
+                                viewColumn.currentIndex = index
+                            }
+
+                            Label {
+                                id: text2
+                                anchors {
+                                    left: parent.left
+                                    leftMargin: 16
+                                    verticalCenter: parent.verticalCenter
+                                }
+                                color: "white"
+                                font.pixelSize: 18
+                                text: name
+                            }
                         }
                     }
                 }
             }
 
-            Text {
-                color: "white"
-                font.pixelSize: 48
-                font.weight: Font.Light
-                text: "Examples"
-            }
-
-            StoreFrontPage {
+            StackLayout {
+                id: stackView
                 anchors {
-                    left: parent.left
+                    left: viewItem.right
+                    top: viewItem.top
                     right: parent.right
+                    bottom: parent.bottom
+                    leftMargin: 48
+                    rightMargin: 48
                 }
-                height: 480
+
+                currentIndex: viewColumn.currentIndex
+
+                Item {
+                    Text {
+                        color: "white"
+                        font.pixelSize: 48
+                        font.weight: Font.Light
+                        text: "New"
+                    }
+                }
+
+                Item {
+                    Text {
+                        color: "white"
+                        font.pixelSize: 48
+                        font.weight: Font.Light
+                        text: "Open"
+                    }
+                }
+
+                Item {
+                    Text {
+                        color: "white"
+                        font.pixelSize: 48
+                        font.weight: Font.Light
+                        text: "Save"
+                    }
+                }
+
+                Item {
+                    Text {
+                        color: "white"
+                        font.pixelSize: 48
+                        font.weight: Font.Light
+                        text: "Examples"
+                    }
+                }
+
+                Item {
+                    Item {
+                        id: communityRow
+                        height: communityTitle.height
+                        MouseArea {
+                            id: communityBack
+                            anchors {
+                                left: parent.left
+                                top: parent.top
+                                bottom: parent.bottom
+                            }
+                            width: height
+
+                            onClicked: {
+                                stackView2.pop()
+                            }
+
+                            Image {
+                                anchors {
+                                    fill: parent
+                                    margins: 6
+                                }
+                                source: "qrc:/images/back.png"
+                            }
+                        }
+
+                        Text {
+                            id: communityTitle
+                            anchors {
+                                top: parent.top
+                                left: communityBack.right
+                            }
+
+                            color: "white"
+                            font.pixelSize: 48
+                            font.weight: Font.Light
+                            text: "Community"
+                        }
+                    }
+                    StackView {
+                        id: stackView2
+                        anchors {
+                            top: communityRow.bottom
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                            topMargin: 32
+                        }
+                        clip: true
+
+                        initialItem: Flickable {
+                            contentHeight: column.height
+                            clip: true
+
+                            flickableDirection: Flickable.VerticalFlick
+                            ScrollBar.vertical: ScrollBar {}
+
+                            Component.onCompleted: {
+                                parse.get("Simulation", function(response) {
+                                    for(var i in response.results) {
+                                        var simulation = response.results[i]
+                                        listModel.append(response.results[i])
+                                    }
+                                })
+                            }
+
+                            Column {
+                                id: column
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                }
+
+                                spacing: 16
+
+                                Text {
+                                    color: "white"
+                                    font.pixelSize: 24
+                                    font.weight: Font.Light
+                                    text: "Simulations"
+                                }
+
+                                Flow {
+                                    id: flow
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+
+                                    spacing: 16
+
+                                    Repeater {
+                                        model: ListModel { id: listModel }
+                                        delegate: StoreItem {
+                                            width: 160
+                                            height: 256
+                                            name: model.name
+                                            description: model.description ? model.description : ""
+                                            imageUrl: model.image ? model.image.url : ""
+                                            onClicked: {
+                                                console.log("Pushing")
+                                                stackView2.push(simulationComponent)
+                                                stackView2.currentItem.objectId = model.objectId
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Component {
+                        id: simulationComponent
+                        StoreSimulation {
+                            backend: parse
+                        }
+                    }
+
+                    state: "top"
+
+                    states: [
+                        State {
+                            name: "top"
+                            when: stackView2.depth < 2
+                            PropertyChanges {
+                                target: communityBack
+                                anchors.leftMargin: -communityBack.width
+                                opacity: 0.0
+                            }
+                        }
+                    ]
+                    transitions: [
+                        Transition {
+                            to: "top"
+                            reversible: true
+                            SequentialAnimation {
+                                NumberAnimation {
+                                    property: "opacity"
+                                    duration: 300
+                                    easing.type: Easing.InOutQuad
+                                }
+                                NumberAnimation {
+                                    property: "anchors.leftMargin"
+                                    duration: 600
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
+                        }
+                    ]
+                }
             }
 
+            states: [
+                State {
+                    name: "hidden"
+                    PropertyChanges {
+                        target: communityBackground
+                        anchors.leftMargin: -width
+                    }
+                }
+            ]
+
+            transitions: [
+                Transition {
+                    NumberAnimation {
+                        duration: 400
+                        properties: "anchors.leftMargin"
+                        easing.type: Easing.OutQuad
+                    }
+                }
+            ]
         }
-
-        states: [
-            State {
-                name: "hidden"
-                PropertyChanges {
-                    target: community
-                    anchors.leftMargin: -width
-                }
-            }
-        ]
-
-        transitions: [
-            Transition {
-                NumberAnimation {
-                    duration: 400
-                    properties: "anchors.leftMargin"
-                    easing.type: Easing.OutQuad
-                }
-            }
-        ]
     }
 
     HudShadow {
@@ -770,20 +1072,32 @@ Item {
                 Button {
                     text: qsTr("upload")
                     onClicked: {
-                        var data = neuronify.fileManager.serializeState()
-                        Parse.upload("test.txt", data, function(result) {
+//                        var data = neuronify.fileManager.serializeState()
+//                        Parse.upload("test.txt", data, function(result) {
+//                            var simulation = {
+//                                name: uploadNameField.text,
+//                                description: uploadDescriptionField.text,
+//                                simulation: {
+//                                    name: result.name,
+//                                    url: result.url,
+//                                    __type: "File"
+//                                }
+//                            }
+//                            Parse.post("Simulation", simulation)
+//                        })
+//                        uploadMenu.close()
                             var simulation = {
                                 name: uploadNameField.text,
-                                description: uploadDescriptionField.text,
-                                simulation: {
-                                    name: result.name,
-                                    url: result.url,
-                                    __type: "File"
+                                description: uploadDescriptionField.text
+                            }
+                            if(parse.objectId) {
+                                simulation["owner"] = {
+                                    __type: "Pointer",
+                                    className: "_User",
+                                    objectId: parse.objectId
                                 }
                             }
-                            Parse.post("Simulation", simulation)
-                        })
-//                        uploadMenu.close()
+                            parse.post("Simulation", simulation)
                     }
                 }
             }
@@ -799,11 +1113,7 @@ Item {
             left: itemMenu.right
             leftMargin: 0
             top: itemMenu.top
-            topMargin: {
-                //                itemFlickable.contentY // dummy to ensure updates on scroll
-                //                infoPanel.selectedItem ? itemMenu.mapFromItem(infoPanel.selectedItem, 0, 0).y : 0
-                return 12
-            }
+            topMargin: 12
 
             Behavior on topMargin {
                 SmoothedAnimation {
@@ -910,7 +1220,7 @@ Item {
     states: [
         State {
             name: "view"
-            PropertyChanges { target: community; state: "hidden" }
+            PropertyChanges { target: communityBackground; state: "hidden" }
             PropertyChanges { target: infoPanel; state: "hidden" }
             PropertyChanges { target: itemMenu; state: "hidden" }
             PropertyChanges { target: savePanel; state: "hidden" }
@@ -924,7 +1234,7 @@ Item {
         State {
             name: "welcome"
             extend: "view"
-            PropertyChanges { target: community; state: "" }
+            PropertyChanges { target: communityBackground; state: "" }
             PropertyChanges { target: leftMenuShadow; opacity: 0.0 }
         },
         State {

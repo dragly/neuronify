@@ -9,12 +9,13 @@ Item {
     id: root
 
     signal clicked(string objectId)
+    property Backend backend
 
     width: 400
     height: 400
 
     Component.onCompleted: {
-        Parse.get("Simulation", function(response) {
+        backend.get("Simulation", function(response) {
             for(var i in response.results) {
                 var simulation = response.results[i]
                 listModel.append(response.results[i])
