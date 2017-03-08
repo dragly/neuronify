@@ -13,19 +13,21 @@ import Neuronify 1.0
 import CuteVersioning 1.0
 import QtGraphicalEffects 1.0
 
-import "qrc:/qml/hud"
-import "qrc:/qml/menus/mainmenu"
-import "qrc:/qml/style"
-import "qrc:/qml/io"
-import "qrc:/qml/tools"
+import "qrc:/qml/backend"
 import "qrc:/qml/controls"
+import "qrc:/qml/hud"
+import "qrc:/qml/io"
+import "qrc:/qml/menus/mainmenu"
+import "qrc:/qml/tools"
+import "qrc:/qml/store"
+import "qrc:/qml/style"
 
 Item {
     id: root
 
     property bool dragging: false
 
-    state: "community"
+    state: "save"
 
     Neuronify {
         id: neuronify
@@ -102,18 +104,18 @@ Item {
         }
 
         Column {
+            id: menuColumn
             anchors {
                 left: parent.left
                 right: parent.right
                 top: logoTextCopy.bottom
                 topMargin: 24
-                bottom: parent.bottom
             }
             spacing: 24
             Repeater {
                 model: ListModel {
                     ListElement {
-                        state: "projects"
+                        state: "welcome"
                         name: "Welcome"
                     }
                     ListElement {
@@ -127,10 +129,6 @@ Item {
                     ListElement {
                         state: "save"
                         name: "Save"
-                    }
-                    ListElement {
-                        state: "community"
-                        name: "Community"
                     }
                     ListElement {
                         state: "help"
@@ -178,7 +176,6 @@ Item {
                 }
             }
         }
-
         onStateChanged: console.log("Left menu state", state)
 
         states: [
@@ -214,15 +211,62 @@ Item {
             top: parent.top
             bottom: parent.bottom
         }
-        radius: height / 2
         width: parent.width
         color: leftMenu.color
         z: 39
         state: "hidden"
 
-        Loader {
-            anchors.fill: parent
-            source: "store/Store.qml"
+        Column {
+            anchors {
+                left: parent.left
+                top: parent.top
+                margins: 64
+            }
+            spacing: 16
+
+            Text {
+                color: "white"
+                font.pixelSize: 48
+                font.weight: Font.Light
+                text: "Recent"
+            }
+
+            Row {
+                spacing: 16
+                Repeater {
+                    model: ListModel {
+                        ListElement { name: "Demo" }
+                        ListElement { name: "Test" }
+                        ListElement { name: "This is amazing" }
+                    }
+                    delegate: StoreItem {
+                        width: 160
+                        height: 256
+                        name: model.name
+                        description: model.description ? model.description : ""
+                        imageUrl: model.image ? model.image.url : ""
+                        onClicked: {
+                            root.clicked(model.objectId)
+                        }
+                    }
+                }
+            }
+
+            Text {
+                color: "white"
+                font.pixelSize: 48
+                font.weight: Font.Light
+                text: "Examples"
+            }
+
+            StoreFrontPage {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                height: 480
+            }
+
         }
 
         states: [
@@ -238,7 +282,7 @@ Item {
         transitions: [
             Transition {
                 NumberAnimation {
-                    duration: 600
+                    duration: 400
                     properties: "anchors.leftMargin"
                     easing.type: Easing.OutQuad
                 }
@@ -334,10 +378,10 @@ Item {
             height: Math.min(parent.height, itemColumn.height)
             clip: true
 
-//            ScrollIndicator.vertical: ScrollIndicator {}
+            //            ScrollIndicator.vertical: ScrollIndicator {}
             ScrollBar.vertical: ScrollBar {}
             contentHeight: itemColumn.height
-//            interactive: false
+            //            interactive: false
 
             Column {
                 id: itemColumn
@@ -368,7 +412,7 @@ Item {
                             }
                             font.pixelSize: 18
                             font.family: Style.font.family
-                            color: Style.creation.text.color
+                            color: Style.mainDesktop.text.color
                             wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                             text: model.text
                         }
@@ -404,7 +448,7 @@ Item {
                                 CreationItem {
                                     id: creationItem
 
-//                                    width: itemListView.itemWidth
+                                    //                                    width: itemListView.itemWidth
                                     width: itemListView.itemWidth
 
                                     parentWhenDragging: root
@@ -488,7 +532,7 @@ Item {
     }
 
     Item {
-        id: saveMenu
+        id: savePanel
 
         anchors {
             left: leftMenu.right
@@ -499,8 +543,8 @@ Item {
             //            bottomMargin: 120
         }
 
-        width: 280 + 32
-        height: itemColumn.height
+        width: 160
+//        height: savePanelColumn.height
         z: 20
 
         MouseArea {
@@ -512,25 +556,77 @@ Item {
         }
 
         Rectangle {
-            id: saveMenuBackground
+            id: savePanelBackground
             color: "#e3eef9"
             anchors {
-                fill: parent
+                fill: savePanelFlickable
                 topMargin: -16
                 bottomMargin: -16
             }
         }
 
         HudShadow {
-            id: saveMenuShadow
-            anchors.fill: saveMenuBackground
-            source: saveMenuBackground
+            id: savePanelShadow
+            anchors.fill: savePanelBackground
+            source: savePanelBackground
+        }
+
+        Flickable {
+            id: savePanelFlickable
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+
+            height: Math.min(parent.height, savePanelColumn.height)
+            clip: true
+
+            //            ScrollIndicator.vertical: ScrollIndicator {}
+            ScrollBar.vertical: ScrollBar {}
+            contentHeight: savePanelColumn.height
+            //            interactive: false
+
+            Column {
+                id: savePanelColumn
+                property int currentIndex: -1
+
+                anchors {
+                    left: parent.left
+                    leftMargin: 32
+                    right: parent.right
+                }
+
+                Component.onCompleted: {
+                    currentIndex = 0
+                }
+
+                Button {
+                    text: qsTr("Save")
+                    onClicked: {
+                        // TODO implement save
+                    }
+                }
+
+                Button {
+                    text: qsTr("Save as")
+                    onClicked: {
+                        saveMenu.open()
+                    }
+                }
+
+                Button {
+                    text: qsTr("Upload")
+                    onClicked: {
+                        uploadMenu.open()
+                    }
+                }
+            }
         }
 
         states: [
             State {
                 name: "hidden"
-                PropertyChanges { target: saveMenu; anchors.leftMargin: -saveMenu.width }
+                PropertyChanges { target: savePanel; anchors.leftMargin: -savePanel.width }
             }
         ]
 
@@ -549,6 +645,151 @@ Item {
         ]
     }
 
+    Popup {
+        id: saveMenu
+
+        x: parent.width / 2 - width / 2
+        y: parent.height / 2 - height / 2
+
+        modal: true
+        padding: 32
+
+        Column {
+            id: saveColumn
+            width: 420
+            height: 420
+            spacing: 8
+
+            Label {
+                text: "Name:"
+            }
+
+            TextField {
+                id: nameField
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+
+                placeholderText: "Name"
+            }
+
+            Label {
+                text: "Location:"
+            }
+
+            RowLayout {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                spacing: 8
+
+                TextField {
+                    id: locationField
+                    Layout.fillWidth: true
+                    text: StandardPaths.writableLocation(StandardPaths.DocumentsLocation, "neuronify").toString().replace("file://", "")
+                }
+
+                Button {
+                    text: "Browse"
+                }
+            }
+
+            Row {
+                Button {
+                    text: qsTr("Cancel")
+                    onClicked: saveMenu.close()
+                }
+                Button {
+                    text: qsTr("Save")
+                    onClicked: {
+                        if(!neuronify.saveState("file://" + locationField.text + "/" + nameField.text + ".nfy")) {
+                            ToolTip.show("Error: Could not save. Try changing the name or location.")
+                            return
+                        }
+                        saveMenu.close()
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: uploadMenu
+
+        x: parent.width / 2 - width / 2
+        y: parent.height / 2 - height / 2
+
+        modal: true
+        padding: 32
+
+        Column {
+            id: uploadColumn
+            width: 420
+            height: 420
+            spacing: 8
+
+            Label {
+                text: "Name:"
+            }
+
+            TextField {
+                id: uploadNameField
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                placeholderText: "Name"
+            }
+
+            Label {
+                text: "Description:"
+            }
+
+            TextField {
+                id: uploadDescriptionField
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+
+                placeholderText: "Name"
+            }
+
+            Row {
+                anchors {
+                    right: parent.right
+                }
+                spacing: 16
+
+                Button {
+                    text: qsTr("Cancel")
+                    onClicked: uploadMenu.close()
+                }
+                Button {
+                    text: qsTr("upload")
+                    onClicked: {
+                        var data = neuronify.fileManager.serializeState()
+                        Parse.upload("test.txt", data, function(result) {
+                            var simulation = {
+                                name: uploadNameField.text,
+                                description: uploadDescriptionField.text,
+                                simulation: {
+                                    name: result.name,
+                                    url: result.url,
+                                    __type: "File"
+                                }
+                            }
+                            Parse.post("Simulation", simulation)
+                        })
+//                        uploadMenu.close()
+                    }
+                }
+            }
+        }
+    }
+
     Item {
         id: infoPanel
 
@@ -559,8 +800,8 @@ Item {
             leftMargin: 0
             top: itemMenu.top
             topMargin: {
-//                itemFlickable.contentY // dummy to ensure updates on scroll
-//                infoPanel.selectedItem ? itemMenu.mapFromItem(infoPanel.selectedItem, 0, 0).y : 0
+                //                itemFlickable.contentY // dummy to ensure updates on scroll
+                //                infoPanel.selectedItem ? itemMenu.mapFromItem(infoPanel.selectedItem, 0, 0).y : 0
                 return 12
             }
 
@@ -672,7 +913,7 @@ Item {
             PropertyChanges { target: community; state: "hidden" }
             PropertyChanges { target: infoPanel; state: "hidden" }
             PropertyChanges { target: itemMenu; state: "hidden" }
-            PropertyChanges { target: saveMenu; state: "hidden" }
+            PropertyChanges { target: savePanel; state: "hidden" }
         },
         State {
             name: "creation"
@@ -681,16 +922,15 @@ Item {
             PropertyChanges { target: itemMenu; state: "" }
         },
         State {
-            name: "save"
-            extend: "view"
-            PropertyChanges { target: leftMenu; state: "small" }
-            PropertyChanges { target: saveMenu; state: "" }
-        },
-        State {
-            name: "community"
+            name: "welcome"
             extend: "view"
             PropertyChanges { target: community; state: "" }
             PropertyChanges { target: leftMenuShadow; opacity: 0.0 }
+        },
+        State {
+            name: "save"
+            extend: "view"
+            PropertyChanges { target: savePanel; state: "" }
         },
         State {
             name: "projects"

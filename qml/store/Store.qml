@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.0
 import QtGraphicalEffects 1.0
 //import QtPurchasing 1.0 as QP
 
+import "qrc:/qml/backend"
 import "qrc:/qml/style"
 
 Item {
@@ -18,92 +19,9 @@ Item {
         "#f0f3bd",
     ]
 
-//    QP.Store {
-//        QP.Product {
-//            identifier: "testProduct"
-//            type: QP.Product.Unlockable
-//            onPurchaseSucceeded: {
-//                console.log("Purchase OK")
-//            }
-//        }
-//    }
-
-//    ToolBar {
-//        id: headerRectangle
-//        height: 65
-////        color: "#ffffff"
-//        anchors {
-//            right: parent.right
-//            left: parent.left
-//            top: parent.top
-//        }
-//        z: 9999
-
-//        Label {
-//            id: text1
-//            anchors {
-//                left: parent.left
-//                leftMargin: 16
-//                verticalCenter: parent.verticalCenter
-//            }
-//            text: qsTr("Neuronify Store")
-//            font.pixelSize: 24
-//        }
-
-//        Button {
-//            id: backButton
-//            anchors {
-//                left: text1.right
-//                verticalCenter: parent.verticalCenter
-//                margins: 16
-//            }
-
-//            text: "Back"
-
-//            onClicked: stackView.pop()
-//        }
-
-//        TextField {
-//            id: textField1
-//            x: 851
-//            width: 373
-//            text: qsTr("")
-//            anchors.bottom: parent.bottom
-//            anchors.bottomMargin: 4
-//            anchors.top: parent.top
-//            anchors.topMargin: 4
-//            anchors.right: item2.left
-//            anchors.rightMargin: 0
-//            placeholderText: qsTr("Search")
-//        }
-
-//        Item {
-//            id: item2
-//            width: height
-//            anchors.bottom: parent.bottom
-//            anchors.bottomMargin: 16
-//            anchors.top: parent.top
-//            anchors.topMargin: 16
-//            anchors.right: parent.right
-//            anchors.rightMargin: 8
-
-//            MouseArea {
-//                id: mouseArea1
-//                anchors.fill: parent
-//            }
-
-//            Image {
-//                id: image1
-//                anchors.rightMargin: 0
-//                anchors.fill: parent
-//                source: "qrc:/images/store/ic_search_black_48dp.png"
-//            }
-//        }
-//    }
-
-    Rectangle {
+    Item {
         id: rectangle2
-        color: "#eee"
+//        color: "#eee"
 //        padding: 0
         anchors.right: parent.right
         anchors.left: parent.left
@@ -188,7 +106,7 @@ Item {
             anchors.fill: rectangle3
         }
 
-        Button {
+        Column {
             anchors {
                 top: rectangle3.bottom
                 left: parent.left
@@ -196,9 +114,26 @@ Item {
                 margins: 8
             }
 
-            height: 56
+            Button {
+                width: 120
+                text: "Upload items"
+            }
 
-            text: "Upload items"
+            Button {
+                width: 120
+                text: "Sign up"
+                onClicked: {
+                    Parse.post("_User", '{"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"}')
+                }
+            }
+
+            Button {
+                width: 120
+                text: "Log in"
+                onClicked: {
+                    Parse.login("cooldude6", "p_n7!-e8")
+                }
+            }
         }
 
         Item {

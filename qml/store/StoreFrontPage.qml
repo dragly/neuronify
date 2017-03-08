@@ -22,23 +22,6 @@ Item {
         })
     }
 
-    Column {
-        z: 999
-        Button {
-            text: "Sign up!"
-            onClicked: {
-                Parse.post("_User", '{"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"}')
-            }
-        }
-
-        Button {
-            text: "Log in!"
-            onClicked: {
-                Parse.login("cooldude6", "p_n7!-e8")
-            }
-        }
-    }
-
     FontMetrics {
         id: defaultMetric
     }

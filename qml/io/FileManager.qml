@@ -61,14 +61,12 @@ Item {
         return result;
     }
 
-    function saveState(fileUrl) {
+    function serializeState() {
         var nodes = graphEngine.nodes
         var edges = graphEngine.edges
         var nodeList = [];
         var edgeList = [];
         var otherList = [];
-
-        console.log("Saving to " + fileUrl)
 
         var counter = 0
         for(var i in nodes) {
@@ -95,12 +93,12 @@ Item {
             var itemAEntityIndex = graphEngine.nodeIndex(edge.itemA)
             if(itemAEntityIndex === -1) {
                 console.error("Could not find index of node " + edge.itemA + " in GraphEngine! Aborting dump!")
-                return ""
+                return false
             }
             var itemBEntityIndex = graphEngine.nodeIndex(edge.itemB)
             if(itemBEntityIndex === -1) {
                 console.error("Could not find index of node " + edge.itemB + " in GraphEngine! Aborting dump!")
-                return ""
+                return false
             }
 
             var edgeDump = {
@@ -120,10 +118,16 @@ Item {
             nodes: nodeList,
             workspace: workspaceProperties
         };
+        return result
+    }
+
+    function saveState(fileUrl) {
+        console.log("Saving to " + fileUrl)
+        var result = serializeState()
         var fileString = JSON.stringify(result);
 
         saveFileIO.source = fileUrl
-        saveFileIO.write(fileString)
+        return saveFileIO.write(fileString)
     }
 
     function read(fileUrl) {

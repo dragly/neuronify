@@ -37,6 +37,7 @@ Rectangle {
 
     property alias workspace: workspace
     property alias graphEngine: graphEngine
+    property alias fileManager: fileManager
     property var selectedEntities: []
     property var draggedEntity: undefined
     property var copiedNeurons: []
@@ -119,7 +120,7 @@ Rectangle {
 
     function saveState(fileUrl) {
         console.log("Saving state to", fileUrl)
-        fileManager.saveState(fileUrl)
+        return fileManager.saveState(fileUrl)
     }
 
     function applyProperties(object, properties) {

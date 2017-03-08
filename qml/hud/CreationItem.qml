@@ -103,7 +103,7 @@ Item {
                 left: parent.left
                 right: parent.right
             }
-            color: Style.creation.text.color
+            color: Style.mainDesktop.text.color
             font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WrapAtWordBoundaryOrAnywhere

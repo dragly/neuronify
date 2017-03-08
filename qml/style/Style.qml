@@ -29,7 +29,7 @@ Item {
 
     property alias color: colorsObject
     property alias border: borderObject
-    property alias creation: creationObject
+    property alias mainDesktop: mainDesktopObject
 
     property real playbackSpeed
     property real workspaceScale
@@ -111,12 +111,18 @@ Item {
     }
 
     Item {
-        id: creationObject
+        id: mainDesktopObject
 
-        property alias text: creationTextObject
+        property alias text: mainDesktopTextObject
         Item {
-            id: creationTextObject
+            id: mainDesktopTextObject
             property color color: "#2d76a2"
+            property alias font: mainDesktopFontProxy.font
+            Text {
+                id: mainDesktopFontProxy
+                font.pixelSize: 18
+                font.family: "Roboto Light, Roboto"
+            }
         }
     }
 

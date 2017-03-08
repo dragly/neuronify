@@ -15,7 +15,7 @@ QtObject {
     function processReply(req, callback) {
         if (req.readyState === XMLHttpRequest.DONE) {
             if(debug) {
-                console.log(req.responseText)
+                console.log("Response:", req.responseText)
             }
             if(callback) {
                 var result = JSON.parse(req.responseText)
@@ -70,7 +70,7 @@ QtObject {
             processReply(req, callback)
         }
         console.log("PUT", url)
-        req.send(data);
+        req.send(JSON.stringify(data));
     }
 
     function post(name, data, callback) {
@@ -81,8 +81,26 @@ QtObject {
         req.onreadystatechange = function() {
             processReply(req, callback)
         }
+        console.log("POST", url, data)
+        console.log("Data", JSON.stringify(data))
+        req.send(JSON.stringify(data));
+    }
+
+    function upload(name, data, callback) {
+        var req = new XMLHttpRequest;
+        var url = serverUrl + "files/" + name
+        req.open("POST", url);
+        req.setRequestHeader("X-Parse-Application-Id", applicationId);
+        req.setRequestHeader("X-Parse-REST-API-Key", restApiKey);
+        req.setRequestHeader("Content-Type", "text/plain");
+        req.onreadystatechange = function() {
+            if(req.readyState == XMLHttpRequest.DONE) {
+                var result = JSON.parse(req.responseText)
+                callback(result)
+            }
+        }
         console.log("POST", url)
-        req.send(data);
+        req.send(JSON.stringify(data));
     }
 }
 
