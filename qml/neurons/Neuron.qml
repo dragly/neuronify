@@ -41,7 +41,6 @@ Node {
     }
 
     DropShadow {
-        visible: !inhibitory
         anchors.fill: image
         source: image
         smooth: true
