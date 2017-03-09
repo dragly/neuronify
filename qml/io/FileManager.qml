@@ -126,7 +126,7 @@ Item {
         var result = serializeState()
         var fileString = JSON.stringify(result, null, 4)
 
-        return FileIO.writeSynchronously(fileString, fileUrl)
+        return FileIO.writeSynchronously(fileUrl, fileString)
     }
 
     function read(fileUrl) {

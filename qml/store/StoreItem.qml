@@ -108,7 +108,7 @@ Item {
             margins: 8
         }
         clip: true
-        color: Material.shade(Material.background, Material.Shade100)
+//        color: Material.shade(Material.background, Material.Shade100)
 
         text: root.description
     }

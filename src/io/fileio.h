@@ -19,6 +19,8 @@ public:
     Q_INVOKABLE static QString readSynchronously(const QUrl &fileUrl);
     Q_INVOKABLE static bool writeSynchronously(const QUrl &fileUrl, const QString &data);
     Q_INVOKABLE static bool exists(const QUrl &fileUrl);
+    Q_INVOKABLE static void makePath(const QUrl &path, QJSValue callback);
+    Q_INVOKABLE static bool makePathSynchronously(const QUrl &path);
 
     static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
 };

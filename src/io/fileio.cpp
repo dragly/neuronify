@@ -83,6 +83,23 @@ bool FileIO::writeSynchronously(const QUrl& fileUrl, const QString& data)
     return true;
 }
 
+void FileIO::makePath(const QUrl &path, QJSValue callback)
+{
+    bool result = makePathSynchronously(path);
+    if(callback.isCallable()) {
+        callback.call(QJSValueList{QJSValue(result)});
+    }
+}
+
+bool FileIO::makePathSynchronously(const QUrl &path)
+{
+    if(!path.isLocalFile()) {
+        qWarning() << "ERROR: Path is not local file:" << path;
+        return false;
+    }
+    return QDir().mkpath(path.toLocalFile());
+}
+
 bool FileIO::exists(const QUrl &fileUrl)
 {
     if(!fileUrl.isLocalFile()) {

@@ -38,6 +38,7 @@ Rectangle {
     property alias workspace: workspace
     property alias graphEngine: graphEngine
     property alias fileManager: fileManager
+    property alias shaderEffectItem: workspaceFlickable
     property var selectedEntities: []
     property var draggedEntity: undefined
     property var copiedNeurons: []
@@ -60,6 +61,7 @@ Rectangle {
     property url currentSimulationUrl
     property bool advanced: false
     property int latestZ: 0
+    property bool autoPause: false
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -634,6 +636,12 @@ Rectangle {
     }
 
     Rectangle {
+        id: workspaceBackground
+        anchors.fill: workspaceFlickable
+        color: "#fafcfe"
+    }
+
+    Item {
         id: workspaceFlickable
 
         anchors {
@@ -644,8 +652,6 @@ Rectangle {
         }
         width: parent.width
         antialiasing: true
-
-        color: "#fafcfe"
 
         PinchArea {
             id: pinchArea
@@ -930,11 +936,11 @@ Rectangle {
                 anchors.fill: parent
             }
 
-            ShaderEffectSource {
-                sourceItem: neuronLayer
-                sourceRect: Qt.rect(-viewport.x, -viewport.y,
-                                    viewport.width, viewport.height)
-            }
+//            ShaderEffectSource {
+//                sourceItem: neuronLayer
+//                sourceRect: Qt.rect(-viewport.x, -viewport.y,
+//                                    viewport.width, viewport.height)
+//            }
 
             //            DropShadow {
             //                visible: Qt.platform.os == "linux"
@@ -959,7 +965,7 @@ Rectangle {
 
         interval: 16
         repeat: true
-        running: root.running
+        running: root.running && !root.autoPause
 
         onTriggered: {
             var dt = 0.1e-3

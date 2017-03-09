@@ -10,6 +10,7 @@ import QtCharts 2.1
 import QtMultimedia 5.5
 import Qt.labs.settings 1.0
 import Qt.labs.folderlistmodel 2.1
+import Qt.labs.platform 1.0
 
 import Neuronify 1.0
 import CuteVersioning 1.0
@@ -30,11 +31,16 @@ Item {
     id: root
 
     property bool dragging: false
+    property url latestFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/neuronify"
 
     state: "welcome"
 
+    Settings {
+        property alias latestFolder: root.latestFolder
+    }
+
     DownloadManager {
-        id: downloadManager
+        id: _downloadManager
     }
 
     Parse {
@@ -60,6 +66,7 @@ Item {
             bottom: parent.bottom
         }
         clip: true
+        autoPause: root.state != "view" && root.state != "create"
     }
 
     Rectangle {
@@ -203,41 +210,6 @@ Item {
             }
         }
 
-        Column {
-            anchors {
-                bottom: parent.bottom
-            }
-
-            Button {
-                visible: !parse.loggedIn
-                width: 120
-                text: "Sign up"
-                onClicked: {
-                    parse.post("_User", {"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"})
-                }
-            }
-
-            Button {
-                visible: !parse.loggedIn
-                width: 120
-                text: "Log in"
-                onClicked: {
-                    parse.login("cooldude6", "p_n7!-e8")
-                }
-            }
-
-            Button {
-                visible: parse.loggedIn
-                text: "Log out"
-                onClicked: {
-                    parse.logout()
-                }
-            }
-
-        }
-
-        onStateChanged: console.log("Left menu state", state)
-
         states: [
             State {
                 name: "small"
@@ -272,10 +244,18 @@ Item {
                     duration: 0
                 }
                 AnchorAnimation {
+                    duration: 0
+                }
+            },
+            Transition {
+                from: "hidden"
+                to: ""
+                AnchorAnimation {
                     duration: 400
                     easing.type: Easing.InOutQuad
                 }
             }
+
         ]
     }
 
@@ -291,16 +271,39 @@ Item {
 
         Material.theme: Material.Dark
 
-        Rectangle {
-            id: communityBackground
-            anchors {
-                left: parent.left
-                top: parent.top
-                bottom: parent.bottom
+        Item {
+            id: fileViewContent
+            anchors.fill: parent
+
+            Rectangle {
+                id: background
+                anchors.fill: parent
+                color: leftMenu.color
+                opacity: 1.0
             }
-            width: parent.width
-            color: leftMenu.color
-            state: "hidden"
+
+//            Blend {
+//                anchors.fill: parent
+//                source: blur
+//                foregroundSource: background
+//                mode: "multiply"
+//            }
+
+            ShaderEffectSource {
+                id: neuronifySource
+                anchors.fill: parent
+                visible: false
+                sourceItem: neuronify.shaderEffectItem
+            }
+
+            GaussianBlur {
+                id: blur
+                anchors.fill: parent
+                radius: 48
+                samples: 64
+                source: neuronifySource
+                opacity: 0.2
+            }
 
             MaterialIcon {
                 id: backButton
@@ -325,7 +328,7 @@ Item {
             }
 
             Item {
-                id: viewItem
+                id: fileViewMenu
                 anchors {
                     left: parent.left
                     leftMargin: 8
@@ -350,7 +353,7 @@ Item {
                 FileMenu {
                     id: viewColumn
                     property string currentName
-                    currentIndex: 3
+                    currentIndex: 2
 
                     anchors {
                         left: parent.left
@@ -380,12 +383,53 @@ Item {
                                 }
 
                                 Flow {
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+
+                                    spacing: 16
                                     StoreItem {
                                         name: "Blank simulation"
                                         description: "Start with a blank canvas."
                                         onClicked: {
                                             neuronify.loadSimulation("qrc:/simulations/empty/empty.nfy")
                                             root.state = "view"
+                                        }
+                                    }
+
+                                    Repeater {
+                                        model: [
+                                            {folder: "qrc:/simulations/tutorial/tutorial_1_intro"},
+                                            {folder: "qrc:/simulations/tutorial/tutorial_2_circuits"},
+                                            {folder: "qrc:/simulations/tutorial/tutorial_3_creation"},
+                                            {folder: "qrc:/simulations/items/neurons/leaky"},
+                                            {folder: "qrc:/simulations/items/neurons/inhibitory"},
+                                            {folder: "qrc:/simulations/items/neurons/adaptation"},
+                                            {folder: "qrc:/simulations/items/visualInput"},
+                                            {folder: "qrc:/simulations/items/generators"},
+                                            {folder: "qrc:/simulations/items/frPlot"},
+                                            {folder: "qrc:/simulations/mix/lateral_inhibition"},
+                                            {folder: "qrc:/simulations/mix/recurrent_inhibition"},
+                                            {folder: "qrc:/simulations/mix/reciprocal_inhibition"},
+                                            {folder: "qrc:/simulations/mix/disinhibition"},
+                                            {folder: "qrc:/simulations/mix/rythm_transformation"},
+                                            {folder: "qrc:/simulations/mix/prolonged_activity"},
+                                            {folder: "qrc:/simulations/mix/lateral_inhibition_1"},
+                                            {folder: "qrc:/simulations/mix/lateral_inhibition_2"},
+                                            {folder: "qrc:/simulations/mix/input_summation"},
+                                            {folder: "qrc:/simulations/sterratt/if_response"},
+                                            {folder: "qrc:/simulations/sterratt/refractory_period"},
+                                        ]
+                                        StoreItem {
+                                            SimulationLoader {
+                                                id: loader
+                                                folder: modelData.folder
+                                            }
+
+                                            name: loader.item.name
+                                            description: loader.item.description
+                                            imageUrl: loader.item.screenshotSource
                                         }
                                     }
                                 }
@@ -396,22 +440,39 @@ Item {
                     FileMenuItem {
                         name: "Open"
                         component: Item {
-                            Row {
+                            Column {
+                                anchors  {
+                                    left: parent.left
+                                    right: parent.right
+                                }
+
                                 spacing: 16
-                                FileMenu {
-                                    width: 240
-                                    FileMenuDelegate {
-                                        text: "Recent"
-                                    }
-                                    FileMenuDelegate {
-                                        text: "From computer"
-                                        onClicked: {
-                                            parent.currentIndex = 0
-                                        }
+                                Button {
+                                    Material.theme: Material.Light
+                                    text: "From computer"
+                                    onClicked: {
+                                        openFileDialog.open()
                                     }
                                 }
+
+                                FolderDialog {
+                                    id: openFileDialog
+                                    currentFolder: root.latestFolder
+                                    onAccepted: {
+                                        neuronify.loadSimulation(folder + "/simulation.nfy")
+                                        root.state = "view"
+                                    }
+                                }
+
                                 FileMenuHeading {
                                     text: "Recent"
+                                }
+
+                                Flow {
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
                                 }
                             }
                         }
@@ -420,127 +481,103 @@ Item {
                     FileMenuItem {
                         name: "Save"
                         component: Item {
+                            id: saveRoot
                             Column {
-                                width: 240
-                                FileMenuItem {
-                                    text: "Save"
-                                }
-                                FileMenuItem {
-                                    text: "Save as"
-                                }
-                            }
-                        }
-
-                    }
-
-                    FileMenuItem {
-                        name: "Share"
-                        component: Item {
-                            Column {
-                                id: uploadColumn
-                                width: 420
-                                height: 420
-                                spacing: 8
+                                spacing: 16
+                                width: Math.min(480, parent.width)
 
                                 Label {
-                                    text: "Name:"
-//                                    color: Material.color(Material.Grey)
+                                    text: qsTr("Name:")
                                 }
 
                                 TextField {
-                                    id: uploadNameField
+                                    id: saveName
                                     anchors {
                                         left: parent.left
                                         right: parent.right
                                     }
-                                    placeholderText: "e.g. 'Lateral inhibition'"
+                                    validator: RegExpValidator {
+                                        regExp: /[a-zA-Z0-9\-\_]+/
+                                    }
+
+                                    placeholderText: "e.g. MySimulation"
                                 }
 
                                 Label {
-                                    text: "Description:"
+                                    text: "Screenshot preview:"
                                 }
 
-                                TextField {
-                                    id: uploadDescriptionField
+                                ShaderEffectSource {
+                                    id: effectSource
+                                    readonly property real aspectRatio: neuronify.width / neuronify.height
+                                    width: parent.width * 0.6
+                                    height: width / aspectRatio
+//                                    sourceRect: Qt.rect(neuronify.width / 2 - width / 2,
+//                                                        neuronify.height / 2 - height / 2,
+//                                                        width,
+//                                                        height)
+                                    sourceItem: neuronify
+                                }
+                                Label {
+                                    text: "Location:"
+                                }
+
+                                RowLayout {
                                     anchors {
                                         left: parent.left
-                                        right: parent.right
-                                    }
-
-                                    placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
-                                }
-
-                                Row {
-                                    anchors {
                                         right: parent.right
                                     }
                                     spacing: 16
 
-                                    Button {
-                                        text: qsTr("Cancel")
-                                        onClicked: uploadMenu.close()
+                                TextField {
+                                    Layout.fillWidth: true
+                                    readOnly: true
+                                    text: latestFolder.toString().replace("file://", "")
+                                }
+
+                                Button {
+                                    Material.theme: Material.Light
+                                    width: 120
+                                    text: "Change"
+                                    onClicked: {
+                                        saveFolderDialog.open()
                                     }
-                                    Button {
-                                        text: qsTr("upload")
-                                        onClicked: {
-                                            var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation, "")
-                                            var stateFilename = tempFolder + "/simulation.nfy"
-                                            var screenshotFilename = tempFolder + "/screenshot.png"
+                                }
 
-                                            neuronify.fileManager.saveState(stateFilename)
-                                            neuronify.saveScreenshot(screenshotFilename, function() {
-                                                var data = neuronify.fileManager.serializeState()
-                                                parse.upload("simulation.nfy", data, function(simulationFile) {
-                                                    downloadManager.upload(
-                                                                screenshotFilename,
-                                                                parse.serverUrl + "files/screenshot.png",
-                                                                function(screenshotResult) {
-                                                                    var screenshotFile = JSON.parse(screenshotResult)
-                                                                    var simulation = {
-                                                                        name: uploadNameField.text,
-                                                                        description: uploadDescriptionField.text,
-                                                                        simulation: {
-                                                                            name: simulationFile.name,
-                                                                            url: simulationFile.url,
-                                                                            __type: "File"
-                                                                        },
-                                                                        screenshot: {
-                                                                            name: screenshotFile.name,
-                                                                            url: screenshotFile.url,
-                                                                            __type: "File"
-                                                                        }
-                                                                    }
-                                                                    if(parse.objectId) {
-                                                                        simulation["owner"] = {
-                                                                            __type: "Pointer",
-                                                                            className: "_User",
-                                                                            objectId: parse.objectId
-                                                                        }
-                                                                    }
-                                                                    parse.post("Simulation", simulation)
-                                                                    ToolTip.show("Upload successful!", 2000)
-                                                                    uploadMenu.close()
-                                                                })
-                                                })
-                                            })
+                                }
 
-                                        }
+                                Button {
+                                    anchors {
+                                        right: parent.right
+                                    }
+
+                                    Material.theme: Material.Light
+                                    width: 120
+                                    enabled: saveName.acceptableInput
+                                    text: qsTr("Save")
+
+                                    onClicked: {
+                                        neuronify.saveState(latestFolder + "/" + saveName.text + "/simulation.nfy")
+                                        neuronify.saveScreenshot(latestFolder + "/" + saveName.text + "/screenshot.png")
+                                        root.state = "view"
+                                    }
+                                }
+
+                                FolderDialog {
+                                    id: saveFolderDialog
+                                    currentFolder: root.latestFolder
+                                    onAccepted: {
+                                        root.latestFolder = folder
                                     }
                                 }
                             }
                         }
-                    }
 
-                    FileMenuItem {
-                        name: "Examples"
-                        component: Item {
-                        }
                     }
-
                     FileMenuItem {
-                        name: "Community"
+                        name: "Download"
                         component: Flickable {
-                            contentHeight: column.height
+                            contentHeight: column.height + 64
                             clip: true
 
                             flickableDirection: Flickable.VerticalFlick
@@ -557,6 +594,7 @@ Item {
                             Component {
                                 id: simulationComponent
                                 StoreSimulation {
+                                    downloadManager: _downloadManager
                                     onRunClicked: {
                                         neuronify.loadSimulation(fileUrl)
                                         root.state = "view"
@@ -576,7 +614,7 @@ Item {
 
                                 FolderListModel {
                                     id: communityFolderModel
-                                    folder: StandardPaths.writableLocation(StandardPaths.AppDataLocation, "community")
+                                    folder: StandardPaths.writableLocation(StandardPaths.AppDataLocation) + "/community"
                                     showFiles: false
                                     showDirs: true
                                     showOnlyReadable: true
@@ -656,18 +694,158 @@ Item {
                             }
                         }
                     }
+
+                    FileMenuItem {
+                        name: "Upload"
+                        component: Item {
+                            Column {
+                                id: uploadColumn
+                                width: 420
+                                height: 420
+                                spacing: 8
+
+                                Label {
+                                    text: "Name:"
+//                                    color: Material.color(Material.Grey)
+                                }
+
+                                TextField {
+                                    id: uploadNameField
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+                                    placeholderText: "e.g. 'Lateral inhibition'"
+                                }
+
+                                Label {
+                                    text: "Description:"
+                                }
+
+                                TextField {
+                                    id: uploadDescriptionField
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+
+                                    placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
+                                }
+
+                                Row {
+                                    anchors {
+                                        right: parent.right
+                                    }
+                                    spacing: 16
+
+                                    Button {
+                                        text: qsTr("Cancel")
+                                        onClicked: uploadMenu.close()
+                                    }
+                                    Button {
+                                        text: qsTr("upload")
+                                        onClicked: {
+                                            var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
+                                            var stateFilename = tempFolder + "/simulation.nfy"
+                                            var screenshotFilename = tempFolder + "/screenshot.png"
+
+                                            neuronify.fileManager.saveState(stateFilename)
+                                            neuronify.saveScreenshot(screenshotFilename, function() {
+                                                var data = neuronify.fileManager.serializeState()
+                                                parse.upload("simulation.nfy", data, function(simulationFile) {
+                                                    _downloadManager.upload(
+                                                                screenshotFilename,
+                                                                parse.serverUrl + "files/screenshot.png",
+                                                                function(screenshotResult) {
+                                                                    var screenshotFile = JSON.parse(screenshotResult)
+                                                                    var simulation = {
+                                                                        name: uploadNameField.text,
+                                                                        description: uploadDescriptionField.text,
+                                                                        simulation: {
+                                                                            name: simulationFile.name,
+                                                                            url: simulationFile.url,
+                                                                            __type: "File"
+                                                                        },
+                                                                        screenshot: {
+                                                                            name: screenshotFile.name,
+                                                                            url: screenshotFile.url,
+                                                                            __type: "File"
+                                                                        }
+                                                                    }
+                                                                    if(parse.objectId) {
+                                                                        simulation["owner"] = {
+                                                                            __type: "Pointer",
+                                                                            className: "_User",
+                                                                            objectId: parse.objectId
+                                                                        }
+                                                                    }
+                                                                    parse.post("Simulation", simulation)
+                                                                    ToolTip.show("Upload successful!", 2000)
+                                                                    uploadMenu.close()
+                                                                })
+                                                })
+                                            })
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    FileMenuItem {
+                        name: "Account"
+                        component: Item {
+                            Column {
+                                Button {
+                                    Material.theme: Material.Light
+                                    visible: !parse.loggedIn
+                                    width: 120
+                                    text: "Sign up"
+                                    onClicked: {
+                                        parse.post("_User", {"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"})
+                                    }
+                                }
+
+                                Button {
+                                    Material.theme: Material.Light
+                                    visible: !parse.loggedIn
+                                    width: 120
+                                    text: "Log in"
+                                    onClicked: {
+                                        parse.login("cooldude6", "p_n7!-e8")
+                                    }
+                                }
+
+                                Button {
+                                    Material.theme: Material.Light
+                                    visible: parse.loggedIn
+                                    width: 120
+                                    text: "Log out"
+                                    onClicked: {
+                                        parse.logout()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    FileMenuItem {
+                        name: "Options"
+                        component: Item {}
+                    }
                 }
             }
 
             Item {
                 id: titleRow
                 anchors {
-                    top: viewItem.top
-                    left: viewItem.right
+                    top: fileViewMenu.top
+                    left: fileViewMenu.right
                     leftMargin: 48
                 }
 
-                height: communityTitle.height
+                height: fileViewTitle.height
                 MouseArea {
                     id: stackBackButton
                     anchors {
@@ -692,7 +870,7 @@ Item {
                 }
 
                 Text {
-                    id: communityTitle
+                    id: fileViewTitle
                     anchors {
                         top: parent.top
                         left: stackBackButton.right
@@ -725,11 +903,11 @@ Item {
                         name: "top"
                         when: stackView.depth < 2
                         AnchorChanges {
-                            target: communityTitle
+                            target: fileViewTitle
                             anchors.left: parent.left
                         }
                         PropertyChanges {
-                            target: communityTitle
+                            target: fileViewTitle
                             anchors.leftMargin: 0
                         }
                         PropertyChanges {
@@ -756,28 +934,58 @@ Item {
                     }
                 ]
             }
-            //            }
-
-            states: [
-                State {
-                    name: "hidden"
-                    PropertyChanges {
-                        target: communityBackground
-                        anchors.leftMargin: -width
-                    }
-                }
-            ]
-
-            transitions: [
-                Transition {
-                    NumberAnimation {
-                        duration: 400
-                        properties: "anchors.leftMargin"
-                        easing.type: Easing.InOutQuad
-                    }
-                }
-            ]
         }
+        states: [
+            State {
+                name: "hidden"
+                PropertyChanges {
+                    target: fileViewContent
+                    visible: false
+                }
+                PropertyChanges {
+                    target: titleRow
+                    opacity: 0.0
+                }
+                PropertyChanges {
+                    target: titleRow
+                    anchors.leftMargin: 1024
+                }
+                PropertyChanges {
+                    target: fileViewMenu
+                    opacity: 0.0
+                }
+                AnchorChanges {
+                    target: viewColumn
+                    anchors {
+                        left: undefined
+                        right: parent.left
+                    }
+                }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                to: ""
+                NumberAnimation {
+                    targets: [titleRow, fileViewMenu]
+                    properties: "opacity"
+                    duration: 600
+                    easing.type: Easing.InOutQuad
+                }
+                NumberAnimation {
+                    targets: [titleRow]
+                    properties: "anchors.leftMargin"
+                    duration: 360
+                    easing.type: Easing.OutQuad
+                }
+                AnchorAnimation {
+                    targets: viewColumn
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
+            }
+        ]
     }
 
     HudShadow {
@@ -1137,87 +1345,6 @@ Item {
         ]
     }
 
-    Popup {
-        id: saveMenu
-
-        x: parent.width / 2 - width / 2
-        y: parent.height / 2 - height / 2
-
-        modal: true
-        padding: 32
-
-        Column {
-            id: saveColumn
-            width: 420
-            height: 420
-            spacing: 8
-
-            Label {
-                text: "Name:"
-            }
-
-            TextField {
-                id: nameField
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-
-                placeholderText: "Name"
-            }
-
-            Label {
-                text: "Location:"
-            }
-
-            RowLayout {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                spacing: 8
-
-                TextField {
-                    id: locationField
-                    Layout.fillWidth: true
-                    text: StandardPaths.writableLocation(StandardPaths.DocumentsLocation, "neuronify")
-                }
-
-                Button {
-                    text: "Browse"
-                }
-            }
-
-            Row {
-                Button {
-                    text: qsTr("Cancel")
-                    onClicked: saveMenu.close()
-                }
-                Button {
-                    text: qsTr("Save")
-                    onClicked: {
-                        if(!neuronify.saveState("file://" + locationField.text + "/" + nameField.text + ".nfy")) {
-                            ToolTip.show("Error: Could not save. Try changing the name or location.")
-                            return
-                        }
-                        saveMenu.close()
-                    }
-                }
-            }
-        }
-    }
-
-    Popup {
-        id: uploadMenu
-
-        x: parent.width / 2 - width / 2
-        y: parent.height / 2 - height / 2
-
-        modal: true
-        padding: 32
-
-    }
-
     Item {
         id: infoPanel
 
@@ -1334,7 +1461,7 @@ Item {
     states: [
         State {
             name: "view"
-            PropertyChanges { target: communityBackground; state: "hidden" }
+            PropertyChanges { target: fileView; state: "hidden" }
             PropertyChanges { target: infoPanel; state: "hidden" }
             PropertyChanges { target: itemMenu; state: "hidden" }
             PropertyChanges { target: savePanel; state: "hidden" }
@@ -1348,7 +1475,7 @@ Item {
         State {
             name: "welcome"
             extend: "view"
-            PropertyChanges { target: communityBackground; state: "" }
+            PropertyChanges { target: fileView; state: "" }
             PropertyChanges { target: leftMenuShadow; opacity: 0.0 }
             PropertyChanges { target: leftMenu; state: "hidden" }
         },
