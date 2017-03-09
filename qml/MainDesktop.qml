@@ -85,8 +85,8 @@ Item {
 
         Material.theme: Material.Dark
 
-//        color: "#1782C2"
-//        color: Material.color(Material.Cyan)
+        //        color: "#1782C2"
+        //        color: Material.color(Material.Cyan)
         color: Material.primary
         z: 40
 
@@ -149,19 +149,27 @@ Item {
                 model: ListModel {
                     ListElement {
                         state: "welcome"
-                        name: "Simulations"
+                        name: "Simulation"
+                        category: "action"
+                        icon: "view_list"
                     }
                     ListElement {
                         state: "view"
                         name: "View"
+                        category: "image"
+                        icon: "remove_red_eye"
                     }
                     ListElement {
                         state: "creation"
                         name: "Create"
+                        category: "content"
+                        icon: "create"
                     }
                     ListElement {
                         state: "help"
                         name: "Help"
+                        category: "action"
+                        icon: "help_outline"
                     }
                 }
                 MouseArea {
@@ -181,14 +189,16 @@ Item {
                         }
 
                         spacing: 8
-                        Rectangle {
+                        MaterialIcon {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: parent.width * 0.4
                             height: width
-                            radius: width / 4
-                            color: root.state == model.state ? "white" : "transparent"
-                            border.width: parent.width * 0.04
-                            border.color: "white"
+                            //                            radius: width / 4
+                            color: root.state == model.state ? "white" : "#aaffffff"
+                            //                            border.width: parent.width * 0.04
+                            //                            border.color: "white"
+                            name: model.icon
+                            category: model.category
                         }
                         Text {
                             anchors {
@@ -215,13 +225,13 @@ Item {
             },
             State {
                 name: "hidden"
-//                AnchorChanges {
-//                    target: leftMenu
-//                    anchors {
-//                        left: undefined
-//                        right: parent.left
-//                    }
-//                }
+                //                AnchorChanges {
+                //                    target: leftMenu
+                //                    anchors {
+                //                        left: undefined
+                //                        right: parent.left
+                //                    }
+                //                }
             }
 
         ]
@@ -258,7 +268,8 @@ Item {
     Item {
         id: fileView
         anchors {
-            left: leftMenu.right
+            left: parent.left
+            leftMargin: 72
             top: parent.top
             bottom: parent.bottom
             right: parent.right
@@ -266,6 +277,14 @@ Item {
         z: 39
 
         Material.theme: Material.Dark
+
+        MouseArea {
+            id: fileViewMouseArea
+            anchors.fill: parent
+            onWheel: {
+                return
+            }
+        }
 
         Item {
             id: fileViewContent
@@ -278,12 +297,12 @@ Item {
                 opacity: 1.0
             }
 
-//            Blend {
-//                anchors.fill: parent
-//                source: blur
-//                foregroundSource: background
-//                mode: "multiply"
-//            }
+            //            Blend {
+            //                anchors.fill: parent
+            //                source: blur
+            //                foregroundSource: background
+            //                mode: "multiply"
+            //            }
 
             ShaderEffectSource {
                 id: neuronifySource
@@ -301,33 +320,32 @@ Item {
                 opacity: 0.2
             }
 
-//            MaterialIcon {
-//                id: backButton
-//                anchors {
-//                    left: parent.left
-//                    top: parent.top
-//                    leftMargin: 16
-//                    topMargin: 24
-//                }
+            //            MaterialIcon {
+            //                id: backButton
+            //                anchors {
+            //                    left: parent.left
+            //                    top: parent.top
+            //                    leftMargin: 16
+            //                    topMargin: 24
+            //                }
 
-//                width: 48
-//                height: 48
-//                color: "white"
-//                name: "arrow_back"
+            //                width: 48
+            //                height: 48
+            //                color: "white"
+            //                name: "arrow_back"
 
-//                MouseArea {
-//                    anchors.fill: parent
-//                    onClicked: {
-//                        root.state = "view"
-//                    }
-//                }
-//            }
+            //                MouseArea {
+            //                    anchors.fill: parent
+            //                    onClicked: {
+            //                        root.state = "view"
+            //                    }
+            //                }
+            //            }
 
             Item {
                 id: fileViewMenu
                 anchors {
                     left: parent.left
-                    leftMargin: 8
                     top: parent.top
                     topMargin: 64
                 }
@@ -371,8 +389,14 @@ Item {
 
                     FileMenuItem {
                         name: "New"
-                        component: Item {
+                        component: Flickable {
+                            contentHeight: newColumn.height + 64
+                            clip: true
+
+                            flickableDirection: Flickable.VerticalFlick
+                            ScrollBar.vertical: ScrollBar {}
                             Column {
+                                id: newColumn
                                 anchors {
                                     left: parent.left
                                     right: parent.right
@@ -426,6 +450,11 @@ Item {
                                             name: loader.item.name
                                             description: loader.item.description
                                             imageUrl: loader.item.screenshotSource
+
+                                            onClicked: {
+                                                neuronify.loadSimulation(loader.item.stateSource)
+                                                root.state = "view"
+                                            }
                                         }
                                     }
                                 }
@@ -508,12 +537,9 @@ Item {
                                     readonly property real aspectRatio: neuronify.width / neuronify.height
                                     width: parent.width * 0.6
                                     height: width / aspectRatio
-//                                    sourceRect: Qt.rect(neuronify.width / 2 - width / 2,
-//                                                        neuronify.height / 2 - height / 2,
-//                                                        width,
-//                                                        height)
                                     sourceItem: neuronify
                                 }
+
                                 Label {
                                     text: "Location:"
                                 }
@@ -525,20 +551,20 @@ Item {
                                     }
                                     spacing: 16
 
-                                TextField {
-                                    Layout.fillWidth: true
-                                    readOnly: true
-                                    text: latestFolder.toString().replace("file://", "")
-                                }
-
-                                Button {
-                                    Material.theme: Material.Light
-                                    width: 120
-                                    text: "Change"
-                                    onClicked: {
-                                        saveFolderDialog.open()
+                                    TextField {
+                                        Layout.fillWidth: true
+                                        readOnly: true
+                                        text: latestFolder.toString().replace("file://", "")
                                     }
-                                }
+
+                                    Button {
+                                        Material.theme: Material.Light
+                                        width: 120
+                                        text: "Change"
+                                        onClicked: {
+                                            saveFolderDialog.open()
+                                        }
+                                    }
 
                                 }
 
@@ -702,7 +728,7 @@ Item {
 
                                 Label {
                                     text: "Name:"
-//                                    color: Material.color(Material.Grey)
+                                    //                                    color: Material.color(Material.Grey)
                                 }
 
                                 TextField {
@@ -728,6 +754,17 @@ Item {
                                     placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
                                 }
 
+                                Label {
+                                    text: "Screenshot preview:"
+                                }
+
+                                ShaderEffectSource {
+                                    readonly property real aspectRatio: neuronify.width / neuronify.height
+                                    width: parent.width * 0.6
+                                    height: width / aspectRatio
+                                    sourceItem: neuronify
+                                }
+
                                 Row {
                                     anchors {
                                         right: parent.right
@@ -735,10 +772,12 @@ Item {
                                     spacing: 16
 
                                     Button {
+                                        Material.theme: Material.Light
                                         text: qsTr("Cancel")
                                         onClicked: uploadMenu.close()
                                     }
                                     Button {
+                                        Material.theme: Material.Light
                                         text: qsTr("upload")
                                         onClicked: {
                                             var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
@@ -936,7 +975,7 @@ Item {
                 name: "hidden"
                 PropertyChanges {
                     target: fileViewContent
-                    visible: false
+                    opacity: 0.0
                 }
                 PropertyChanges {
                     target: titleRow
@@ -947,8 +986,16 @@ Item {
                     anchors.leftMargin: 1024
                 }
                 PropertyChanges {
+                    target: stackView
+                    anchors.rightMargin: -1024
+                }
+                PropertyChanges {
                     target: fileViewMenu
                     opacity: 0.0
+                }
+                PropertyChanges {
+                    target: fileViewMouseArea
+                    enabled: false
                 }
                 AnchorChanges {
                     target: viewColumn
@@ -962,7 +1009,7 @@ Item {
 
         transitions: [
             Transition {
-                to: ""
+//                to: ""
                 NumberAnimation {
                     targets: [titleRow, fileViewMenu]
                     properties: "opacity"
@@ -970,8 +1017,7 @@ Item {
                     easing.type: Easing.InOutQuad
                 }
                 NumberAnimation {
-                    targets: [titleRow]
-                    properties: "anchors.leftMargin"
+                    properties: "anchors.leftMargin,anchors.rightMargin"
                     duration: 360
                     easing.type: Easing.OutQuad
                 }
@@ -980,7 +1026,16 @@ Item {
                     duration: 400
                     easing.type: Easing.InOutQuad
                 }
+                NumberAnimation {
+                    target: fileViewContent
+                    properties: "opacity"
+                    duration: 400
+                }
             }
+//            Transition {
+//                to: "hidden"
+
+//            }
         ]
     }
 
@@ -1473,7 +1528,7 @@ Item {
             extend: "view"
             PropertyChanges { target: fileView; state: "" }
             PropertyChanges { target: leftMenuShadow; opacity: 0.0 }
-            PropertyChanges { target: leftMenu; state: "hidden" }
+            PropertyChanges { target: leftMenu; state: "small" }
         },
         State {
             name: "save"
