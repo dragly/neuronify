@@ -44,6 +44,8 @@ Item {
     readonly property url simulationPath: targetLocation + "/simulation.nfy"
     readonly property bool downloaded: FileIO.exists(simulationPath) // TODO add file watcher
 
+    Material.theme: Material.Light
+
     onObjectDataChanged: console.log(imageUrl, objectData.screenshot.url)
 
     width: 1200
@@ -69,6 +71,8 @@ Item {
             anchors {
                 fill: contents
             }
+
+            color: Material.background
         }
 
         StoreShadow {

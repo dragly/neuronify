@@ -13,6 +13,8 @@ Item {
     property string price
     property url imageUrl
 
+    Material.theme: Material.Light
+
     clip: true
 
     width: 160
@@ -21,7 +23,7 @@ Item {
     Rectangle {
         id: background
         anchors.fill: parent
-        color: !mouseArea.pressed ? "#fff" : "#ddd"
+        color: Material.background
     }
 
     StoreShadow {
@@ -106,7 +108,7 @@ Item {
             margins: 8
         }
         clip: true
-        color: Material.shade(Material.foreground, Material.Shade100)
+        color: Material.shade(Material.background, Material.Shade100)
 
         text: root.description
     }

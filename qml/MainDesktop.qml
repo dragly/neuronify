@@ -1,5 +1,6 @@
 import QtQuick 2.5
-import QtQuick.Controls 2.0
+import QtQuick.Controls 2.1
+import QtQuick.Controls.Material 2.1
 import QtQuick.Dialogs 1.0
 import QtQuick.Layouts 1.3
 import QtQuick.Particles 2.0
@@ -75,7 +76,11 @@ Item {
 
         width: 128
 
-        color: "#6BAED6"
+        Material.theme: Material.Dark
+
+//        color: "#1782C2"
+//        color: Material.color(Material.Cyan)
+        color: Material.primary
         z: 40
 
         MouseArea {
@@ -239,7 +244,18 @@ Item {
                 PropertyChanges { target: leftMenu; width: 72 }
                 PropertyChanges { target: logoTextCopy; opacity: 0.0 }
                 PropertyChanges { target: leftMenu; textOpacity: 0.0 }
+            },
+            State {
+                name: "hidden"
+                AnchorChanges {
+                    target: leftMenu
+                    anchors {
+                        left: undefined
+                        right: parent.left
+                    }
+                }
             }
+
         ]
 
         transitions: [
@@ -255,12 +271,16 @@ Item {
                     properties: "opacity"
                     duration: 0
                 }
+                AnchorAnimation {
+                    duration: 400
+                    easing.type: Easing.InOutQuad
+                }
             }
         ]
     }
 
     Item {
-        id: communityView
+        id: fileView
         anchors {
             left: leftMenu.right
             top: parent.top
@@ -268,6 +288,8 @@ Item {
             right: parent.right
         }
         z: 39
+
+        Material.theme: Material.Dark
 
         Rectangle {
             id: communityBackground
@@ -280,12 +302,35 @@ Item {
             color: leftMenu.color
             state: "hidden"
 
+            MaterialIcon {
+                id: backButton
+                anchors {
+                    left: parent.left
+                    top: parent.top
+                    leftMargin: 16
+                    topMargin: 24
+                }
+
+                width: 48
+                height: 48
+                color: "white"
+                name: "arrow_back"
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        root.state = "view"
+                    }
+                }
+            }
+
             Item {
                 id: viewItem
                 anchors {
                     left: parent.left
-                    top: parent.top
-                    topMargin: 64
+                    leftMargin: 8
+                    top: backButton.bottom
+                    topMargin: 24
                 }
                 width: 196
                 height: viewColumn.height
@@ -305,7 +350,7 @@ Item {
                 FileMenu {
                     id: viewColumn
                     property string currentName
-                    currentIndex: 2
+                    currentIndex: 3
 
                     anchors {
                         left: parent.left
@@ -399,6 +444,7 @@ Item {
 
                                 Label {
                                     text: "Name:"
+//                                    color: Material.color(Material.Grey)
                                 }
 
                                 TextField {
@@ -407,7 +453,7 @@ Item {
                                         left: parent.left
                                         right: parent.right
                                     }
-                                    placeholderText: "Name"
+                                    placeholderText: "e.g. 'Lateral inhibition'"
                                 }
 
                                 Label {
@@ -421,7 +467,7 @@ Item {
                                         right: parent.right
                                     }
 
-                                    placeholderText: "Name"
+                                    placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
                                 }
 
                                 Row {
@@ -727,7 +773,7 @@ Item {
                     NumberAnimation {
                         duration: 400
                         properties: "anchors.leftMargin"
-                        easing.type: Easing.OutQuad
+                        easing.type: Easing.InOutQuad
                     }
                 }
             ]
@@ -1304,6 +1350,7 @@ Item {
             extend: "view"
             PropertyChanges { target: communityBackground; state: "" }
             PropertyChanges { target: leftMenuShadow; opacity: 0.0 }
+            PropertyChanges { target: leftMenu; state: "hidden" }
         },
         State {
             name: "save"
