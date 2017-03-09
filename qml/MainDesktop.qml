@@ -66,7 +66,7 @@ Item {
             bottom: parent.bottom
         }
         clip: true
-        autoPause: root.state != "view" && root.state != "create"
+        autoPause: root.state != "view" && root.state != "creation"
     }
 
     Rectangle {
