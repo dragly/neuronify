@@ -35,7 +35,7 @@ Item {
     Rectangle {
         id: rectangle1
         anchors {
-            bottom: titleText.top
+            bottom: textContainer.top
             bottomMargin: 8
             top: parent.top
             right: parent.right
@@ -43,11 +43,15 @@ Item {
         }
 
         color: "#ffffff"
+        clip: true
 
         Image {
             id: image1
             fillMode: Image.PreserveAspectCrop
-            anchors.fill: parent
+            anchors.centerIn: parent
+            height: root.height
+            width: height
+
             source: root.imageUrl
         }
     }
@@ -61,78 +65,111 @@ Item {
         font: titleText.font
     }
 
-    Label {
-        id: titleText
-        clip: true
+    Item {
+        id: textContainer
         anchors {
-            bottom: descriptionText.top
-            left: parent.left
-            leftMargin: 8
-        }
-
-        font.pixelSize: 16
-
-        text: root.name
-    }
-
-    LinearGradient {
-        id: gradient
-        property rect textRect: titleMetrics.boundingRect(titleText.text)
-        anchors {
-            top: titleText.top
-            bottom: titleText.bottom
-            right: parent.right
-        }
-        width: parent.width * 0.5
-        start: Qt.point(0, 0)
-        end: Qt.point(width, 0)
-        visible: titleText.x + titleText.width > root.width - 8
-        gradient: Gradient {
-            GradientStop {
-                color: "transparent"
-                position: 0
-            }
-            GradientStop {
-                color: background.color
-                position: 1
-            }
-        }
-    }
-
-    Label {
-        id: descriptionText
-        anchors {
-            left: parent.left
-            right: parent.right
-            bottom: priceText.top
-            margins: 8
-        }
-        clip: true
-//        color: Material.shade(Material.background, Material.Shade100)
-
-        text: root.description
-    }
-
-    Label {
-        id: priceText
-        anchors {
-            right: parent.right
-            rightMargin: 8
             bottom: parent.bottom
-            bottomMargin: 8
+            left: parent.left
+            right: parent.right
+            margins: 16
         }
 
-        color: (root.price.toLowerCase() === "free") ? Material.color(Material.Green) : Material.color(Material.Blue)
+        height: titleMetrics.height * 2
+        clip: true
 
-        text: root.price.toUpperCase()
+        Column {
+            anchors {
+                top: parent.top
+                left: parent.left
+                right: parent.right
+            }
+
+        Label {
+            id: titleText
+
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+
+            clip: true
+
+            font.pixelSize: 16
+            wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+
+            text: root.name
+        }
+
+        Label {
+            id: descriptionText
+
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+            clip: true
+            wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+            color: Material.shade(Material.foreground, Material.Shade100)
+
+            text: root.description
+        }
+
+        }
     }
+
+//    LinearGradient {
+//        id: gradient
+//        property rect textRect: titleMetrics.boundingRect(titleText.text)
+//        anchors {
+//            top: titleText.top
+//            bottom: titleText.bottom
+//            right: parent.right
+//        }
+//        width: parent.width * 0.5
+//        start: Qt.point(0, 0)
+//        end: Qt.point(width, 0)
+//        visible: titleText.x + titleText.width > root.width - 8
+//        gradient: Gradient {
+//            GradientStop {
+//                color: "transparent"
+//                position: 0
+//            }
+//            GradientStop {
+//                color: background.color
+//                position: 1
+//            }
+//        }
+//    }
+
+
 
     MouseArea {
         id: mouseArea
-
         anchors.fill: parent
-
+        hoverEnabled: true
         onClicked: root.clicked(root.name)
+        cursorShape: Qt.PointingHandCursor
     }
+
+    states: [
+        State {
+            when: mouseArea.containsMouse
+            name: "hovered"
+            PropertyChanges {
+                target: textContainer
+                height: root.height * 0.7
+            }
+        }
+    ]
+    transitions: [
+        Transition {
+            NumberAnimation {
+                id: heightAnimation
+                properties: "height"
+                duration: 300
+                easing.type: Easing.OutQuad
+            }
+        }
+    ]
 }
 

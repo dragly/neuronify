@@ -159,10 +159,6 @@ Item {
                         state: "creation"
                         name: "Create"
                     }
-                    //                    ListElement {
-                    //                        state: "save"
-                    //                        name: "Save"
-                    //                    }
                     ListElement {
                         state: "help"
                         name: "Help"
@@ -187,7 +183,7 @@ Item {
                         spacing: 8
                         Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width / 2
+                            width: parent.width * 0.4
                             height: width
                             radius: width / 4
                             color: root.state == model.state ? "white" : "transparent"
@@ -219,13 +215,13 @@ Item {
             },
             State {
                 name: "hidden"
-                AnchorChanges {
-                    target: leftMenu
-                    anchors {
-                        left: undefined
-                        right: parent.left
-                    }
-                }
+//                AnchorChanges {
+//                    target: leftMenu
+//                    anchors {
+//                        left: undefined
+//                        right: parent.left
+//                    }
+//                }
             }
 
         ]
@@ -305,35 +301,35 @@ Item {
                 opacity: 0.2
             }
 
-            MaterialIcon {
-                id: backButton
-                anchors {
-                    left: parent.left
-                    top: parent.top
-                    leftMargin: 16
-                    topMargin: 24
-                }
+//            MaterialIcon {
+//                id: backButton
+//                anchors {
+//                    left: parent.left
+//                    top: parent.top
+//                    leftMargin: 16
+//                    topMargin: 24
+//                }
 
-                width: 48
-                height: 48
-                color: "white"
-                name: "arrow_back"
+//                width: 48
+//                height: 48
+//                color: "white"
+//                name: "arrow_back"
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        root.state = "view"
-                    }
-                }
-            }
+//                MouseArea {
+//                    anchors.fill: parent
+//                    onClicked: {
+//                        root.state = "view"
+//                    }
+//                }
+//            }
 
             Item {
                 id: fileViewMenu
                 anchors {
                     left: parent.left
                     leftMargin: 8
-                    top: backButton.bottom
-                    topMargin: 24
+                    top: parent.top
+                    topMargin: 64
                 }
                 width: 196
                 height: viewColumn.height
@@ -353,7 +349,7 @@ Item {
                 FileMenu {
                     id: viewColumn
                     property string currentName
-                    currentIndex: 2
+                    currentIndex: 0
 
                     anchors {
                         left: parent.left
