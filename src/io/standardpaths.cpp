@@ -9,13 +9,13 @@ StandardPaths::StandardPaths(QObject *parent)
 
 }
 
-QString StandardPaths::writableLocation(StandardLocation location, const QString &filename)
+QUrl StandardPaths::writableLocation(StandardLocation location, const QString &filename)
 {
     QString path = QStandardPaths::writableLocation((QStandardPaths::StandardLocation)location);
     if(!filename.isEmpty()) {
         path += "/" + filename;
     }
-    return path;
+    return QUrl::fromLocalFile(path);
 }
 
 QUrl StandardPaths::locate(StandardLocation location, const QString &filename)

@@ -128,7 +128,7 @@ Rectangle {
         var imageWidth = 512
         var size = Qt.size(imageWidth, imageWidth / aspectRatio)
         var onSaved = function(result) {
-            result.saveToFile(filename)
+            result.saveToFile(StandardPaths.toLocalFile(filename))
             if(callback) {
                 callback()
             }

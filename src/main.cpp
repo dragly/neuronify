@@ -83,14 +83,23 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("net");
     app.setApplicationName("Neuronify");
 
+    QQmlApplicationEngine engine;
+    QList<QUrl> neededPaths{
+        StandardPaths::writableLocation(StandardPaths::AppConfigLocation, "savedata"),
+        StandardPaths::writableLocation(StandardPaths::AppDataLocation, "community")
+    };
+    for(const auto &url : neededPaths) {
+        qDebug() << "Verifying existense of" << url;
+        if(!QDir().mkpath(url.toLocalFile())) {
+            qDebug() << "Could not create" << url;
+            return 1;
+        }
+    }
+
     QmlPreviewer previewer(app);
     if(previewer.show()) {
         return previewer.exec();
     }
-
-    QQmlApplicationEngine engine;
-    qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
-    QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
 
     engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
     if(engine.rootObjects().size() > 0) {

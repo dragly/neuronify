@@ -8,6 +8,7 @@ import QtQuick.Window 2.1
 import QtCharts 2.1
 import QtMultimedia 5.5
 import Qt.labs.settings 1.0
+import Qt.labs.folderlistmodel 2.1
 
 import Neuronify 1.0
 import CuteVersioning 1.0
@@ -27,7 +28,7 @@ Item {
 
     property bool dragging: false
 
-    state: "save"
+    state: "welcome"
 
     DownloadManager {
         id: downloadManager
@@ -415,6 +416,7 @@ Item {
 
                 Item {
                     Text {
+                        id: examplesTitle
                         color: "white"
                         font.pixelSize: 48
                         font.weight: Font.Light
@@ -497,11 +499,54 @@ Item {
 
                                 spacing: 16
 
+                                FolderListModel {
+                                    id: communityFolderModel
+                                    folder: StandardPaths.writableLocation(StandardPaths.AppDataLocation, "community")
+                                    showFiles: false
+                                    showDirs: true
+                                    showOnlyReadable: true
+                                }
+
                                 Text {
                                     color: "white"
                                     font.pixelSize: 24
                                     font.weight: Font.Light
-                                    text: "Simulations"
+                                    text: "Installed"
+                                    visible: communityFolderModel.count > 0
+                                }
+
+                                Flow {
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+
+                                    spacing: 16
+                                    visible: communityFolderModel.count > 0
+
+                                    Repeater {
+                                        model: communityFolderModel
+                                        delegate: StoreItem {
+                                            width: 160
+                                            height: 256
+                                            name: model.fileName
+//                                            name: model.name
+//                                            description: model.description ? model.description : ""
+//                                            imageUrl: model.screenshot ? model.screenshot.url : ""
+//                                            onClicked: {
+//                                                console.log("Pushing")
+//                                                stackView2.push(simulationComponent)
+//                                                stackView2.currentItem.objectId = model.objectId
+//                                            }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    color: "white"
+                                    font.pixelSize: 24
+                                    font.weight: Font.Light
+                                    text: "Available"
                                 }
 
                                 Flow {
@@ -540,19 +585,18 @@ Item {
                             onDownloadClicked: {
                                 var targetLocation = StandardPaths.writableLocation(
                                             StandardPaths.AppDataLocation,
-                                            "examples/" + objectData.objectId
+                                            "community/" + objectData.objectId
                                             )
+
                                 if(objectData.simulation) {
                                     downloadManager.download(
                                                 objectData.simulation.url,
-                                                targetLocation,
-                                                "simulation.nfy")
+                                                targetLocation + "/simulation.nfy")
                                 }
                                 if(objectData.screenshot) {
                                     downloadManager.download(
                                                 objectData.screenshot.url,
-                                                targetLocation,
-                                                "screenshot.png")
+                                                targetLocation + "/screenshot.png")
                                 }
                             }
                         }
