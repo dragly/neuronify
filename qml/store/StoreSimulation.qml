@@ -4,44 +4,50 @@ import QtQuick.Controls.Material 2.0
 import QtQuick.Layouts 1.0
 import QtGraphicalEffects 1.0
 
+import Neuronify 1.0
+
 import "qrc:/qml/backend"
 
 Item {
     id: root
 
-    signal downloadClicked
+    signal runClicked(url fileUrl)
 
-    property Backend backend
-    property string objectId
-    property string name: "Some name of a simulation without a name yet and this has a long name"
-    property string description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean sit amet tempor dui. Nam maximus tempus tortor a porttitor. Curabitur faucibus convallis dui, at dictum diam euismod eu. Sed sit amet eleifend tellus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi a erat nec augue egestas sodales. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Sed eget ex in felis lacinia sodales. Praesent semper sagittis eros non sodales. Nam eu mollis orci. Sed vehicula efficitur felis, nec ornare enim ullamcorper quis."
+    property DownloadManager downloadManager
+
+    property string name: objectData.name
+    property string description: objectData.description
     property string creator: "The Creator Company Inc."
-    property var objectData
-    property url imageUrl
+    property var objectData: {
+        return {
+            "createdAt":"2017-03-09T08:48:35.368Z",
+            "description":"hello",
+            "name":"test",
+            "objectId":"m4JkohPzJ8",
+            "screenshot":{
+               "__type":"File",
+               "name":"53a3dc41efa39bf5162678b7f581f622_screenshot.png",
+               "url":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/53a3dc41efa39bf5162678b7f581f622_screenshot.png"
+            },
+            "simulation":{
+               "__type":"File",
+               "name":"b4d41543780cda16f4f06b2aa6334f12_simulation.nfy",
+               "url":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/b4d41543780cda16f4f06b2aa6334f12_simulation.nfy"
+            },
+            "updatedAt":"2017-03-09T08:48:35.368Z"
+        }
+    }
+
+    property url imageUrl: objectData.screenshot.url
     property real price: 0.0
+    readonly property url targetLocation: StandardPaths.writableLocation(StandardPaths.AppDataLocation, "community/" + objectData.objectId)
+    readonly property url simulationPath: targetLocation + "/simulation.nfy"
+    readonly property bool downloaded: FileIO.exists(simulationPath) // TODO add file watcher
+
+    onObjectDataChanged: console.log(imageUrl, objectData.screenshot.url)
 
     width: 1200
     height: 600
-
-    onObjectIdChanged: {
-        reload()
-    }
-
-    function reload() {
-        if(!objectId) {
-            return
-        }
-        backend.get("Simulation/" + objectId, function(result) {
-            name = result.name
-            description = result.description
-            objectData = result
-            if(result.screenshot) {
-                imageUrl = result.screenshot.url
-            }
-//            creator = object.creator.name
-//            price = object.price
-        })
-    }
     
     FontMetrics {
         id: defaultMetric
@@ -144,16 +150,40 @@ Item {
                 }
             }
 
-            Button {
-                id: installButton
+            Row {
                 anchors {
                     right: parent.right
                     margins: 24
                 }
+                spacing: 8
 
-                text: root.price > 0 ? "BUY NOK " + root.price.toFixed(2) : "Install"
-                onClicked: {
-                    root.downloadClicked()
+                Button {
+                    id: installButton
+                    text: downloaded ? "Reinstall" : "Install"
+                    onClicked: {
+                        FileIO.write(targetLocation + "/info.json", JSON.stringify(objectData, null, 4))
+                        if(objectData.simulation) {
+                            downloadManager.download(
+                                        objectData.simulation.url,
+                                        targetLocation + "/simulation.nfy")
+                        }
+                        if(objectData.screenshot) {
+                            downloadManager.download(
+                                        objectData.screenshot.url,
+                                        targetLocation + "/screenshot.png")
+                        }
+                    }
+                }
+
+                Button {
+                    id: runButton
+
+                    visible: downloaded
+
+                    text: "Run"
+                    onClicked: {
+                        root.runClicked(simulationPath)
+                    }
                 }
             }
 

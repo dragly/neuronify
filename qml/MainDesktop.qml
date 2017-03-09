@@ -18,10 +18,12 @@ import "qrc:/qml/backend"
 import "qrc:/qml/controls"
 import "qrc:/qml/hud"
 import "qrc:/qml/io"
+import "qrc:/qml/menus/filemenu"
 import "qrc:/qml/menus/mainmenu"
 import "qrc:/qml/tools"
 import "qrc:/qml/store"
 import "qrc:/qml/style"
+import "qrc:/qml/ui"
 
 Item {
     id: root
@@ -128,14 +130,14 @@ Item {
                 left: parent.left
                 right: parent.right
                 top: logoTextCopy.bottom
-                topMargin: 24
+                topMargin: 48
             }
             spacing: 24
             Repeater {
                 model: ListModel {
                     ListElement {
                         state: "welcome"
-                        name: "Welcome"
+                        name: "Simulations"
                     }
                     ListElement {
                         state: "view"
@@ -145,10 +147,10 @@ Item {
                         state: "creation"
                         name: "Create"
                     }
-                    ListElement {
-                        state: "save"
-                        name: "Save"
-                    }
+                    //                    ListElement {
+                    //                        state: "save"
+                    //                        name: "Save"
+                    //                    }
                     ListElement {
                         state: "help"
                         name: "Help"
@@ -283,9 +285,9 @@ Item {
                 anchors {
                     left: parent.left
                     top: parent.top
-                    margins: 64
+                    topMargin: 64
                 }
-                width: 160
+                width: 196
                 height: viewColumn.height
 
                 Rectangle {
@@ -300,181 +302,198 @@ Item {
                     opacity: 0.2
                 }
 
-                Column {
+                FileMenu {
                     id: viewColumn
-                    property int currentIndex: 4
-                    property var currentElement: viewModel.get(currentIndex)
+                    property string currentName
+                    currentIndex: 2
 
                     anchors {
                         left: parent.left
                         right: parent.right
                     }
 
-                    Repeater {
-                        model: ListModel {
-                            id: viewModel
-                            ListElement {
-                                name: "New"
-                                state: "new"
-                            }
+                    Component.onCompleted: {
+                        reloadComponent()
+                    }
 
-                            ListElement {
-                                name: "Open"
-                                state: "open"
-                            }
+                    function reloadComponent() {
+                        currentName = children[currentIndex].name
+                        stackView.replace(children[currentIndex].component)
+                    }
 
-                            ListElement {
-                                name: "Save"
-                                state: "save"
-                            }
+                    onCurrentIndexChanged: {
+                        reloadComponent()
+                    }
 
-                            ListElement {
-                                name: "Examples"
-                                state: "examples"
-                            }
-
-                            ListElement {
-                                name: "Community"
-                                state: "community"
-                            }
-
-                            //                        ListElement {
-                            //                            name: "Plugins"
-                            //                        }
-                        }
-
-                        delegate: ItemDelegate {
-
-                            id: rectangle4
-                            anchors {
-                                left: parent.left
-                                right: parent.right
-                            }
-
-                            height: 56
-                            highlighted: viewColumn.currentIndex === index
-
-                            onClicked: {
-                                viewColumn.currentIndex = index
-                            }
-
-                            Label {
-                                id: text2
+                    FileMenuItem {
+                        name: "New"
+                        component: Item {
+                            Column {
                                 anchors {
                                     left: parent.left
-                                    leftMargin: 16
-                                    verticalCenter: parent.verticalCenter
+                                    right: parent.right
                                 }
-                                color: "white"
-                                font.pixelSize: 18
-                                text: name
-                            }
-                        }
-                    }
-                }
-            }
 
-            StackLayout {
-                id: stackView
-                anchors {
-                    left: viewItem.right
-                    top: viewItem.top
-                    right: parent.right
-                    bottom: parent.bottom
-                    leftMargin: 48
-                    rightMargin: 48
-                }
-
-                currentIndex: viewColumn.currentIndex
-
-                Item {
-                    Text {
-                        color: "white"
-                        font.pixelSize: 48
-                        font.weight: Font.Light
-                        text: "New"
-                    }
-                }
-
-                Item {
-                    Text {
-                        color: "white"
-                        font.pixelSize: 48
-                        font.weight: Font.Light
-                        text: "Open"
-                    }
-                }
-
-                Item {
-                    Text {
-                        color: "white"
-                        font.pixelSize: 48
-                        font.weight: Font.Light
-                        text: "Save"
-                    }
-                }
-
-                Item {
-                    Text {
-                        id: examplesTitle
-                        color: "white"
-                        font.pixelSize: 48
-                        font.weight: Font.Light
-                        text: "Examples"
-                    }
-                }
-
-                Item {
-                    Item {
-                        id: communityRow
-                        height: communityTitle.height
-                        MouseArea {
-                            id: communityBack
-                            anchors {
-                                left: parent.left
-                                top: parent.top
-                                bottom: parent.bottom
-                            }
-                            width: height
-
-                            onClicked: {
-                                stackView2.pop()
-                            }
-
-                            Image {
-                                anchors {
-                                    fill: parent
-                                    margins: 6
+                                Flow {
+                                    StoreItem {
+                                        name: "Blank simulation"
+                                        description: "Start with a blank canvas."
+                                        onClicked: {
+                                            neuronify.loadSimulation("qrc:/simulations/empty/empty.nfy")
+                                            root.state = "view"
+                                        }
+                                    }
                                 }
-                                source: "qrc:/images/back.png"
                             }
-                        }
-
-                        Text {
-                            id: communityTitle
-                            anchors {
-                                top: parent.top
-                                left: communityBack.right
-                            }
-
-                            color: "white"
-                            font.pixelSize: 48
-                            font.weight: Font.Light
-                            text: "Community"
                         }
                     }
-                    StackView {
-                        id: stackView2
-                        anchors {
-                            top: communityRow.bottom
-                            left: parent.left
-                            right: parent.right
-                            bottom: parent.bottom
-                            topMargin: 32
-                        }
-                        clip: true
 
-                        initialItem: Flickable {
+                    FileMenuItem {
+                        name: "Open"
+                        component: Item {
+                            Row {
+                                spacing: 16
+                                FileMenu {
+                                    width: 240
+                                    FileMenuDelegate {
+                                        text: "Recent"
+                                    }
+                                    FileMenuDelegate {
+                                        text: "From computer"
+                                        onClicked: {
+                                            parent.currentIndex = 0
+                                        }
+                                    }
+                                }
+                                FileMenuHeading {
+                                    text: "Recent"
+                                }
+                            }
+                        }
+                    }
+
+                    FileMenuItem {
+                        name: "Save"
+                        component: Item {
+                            Column {
+                                width: 240
+                                FileMenuItem {
+                                    text: "Save"
+                                }
+                                FileMenuItem {
+                                    text: "Save as"
+                                }
+                            }
+                        }
+
+                    }
+
+                    FileMenuItem {
+                        name: "Share"
+                        component: Item {
+                            Column {
+                                id: uploadColumn
+                                width: 420
+                                height: 420
+                                spacing: 8
+
+                                Label {
+                                    text: "Name:"
+                                }
+
+                                TextField {
+                                    id: uploadNameField
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+                                    placeholderText: "Name"
+                                }
+
+                                Label {
+                                    text: "Description:"
+                                }
+
+                                TextField {
+                                    id: uploadDescriptionField
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+
+                                    placeholderText: "Name"
+                                }
+
+                                Row {
+                                    anchors {
+                                        right: parent.right
+                                    }
+                                    spacing: 16
+
+                                    Button {
+                                        text: qsTr("Cancel")
+                                        onClicked: uploadMenu.close()
+                                    }
+                                    Button {
+                                        text: qsTr("upload")
+                                        onClicked: {
+                                            var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation, "")
+                                            var stateFilename = tempFolder + "/simulation.nfy"
+                                            var screenshotFilename = tempFolder + "/screenshot.png"
+
+                                            neuronify.fileManager.saveState(stateFilename)
+                                            neuronify.saveScreenshot(screenshotFilename, function() {
+                                                var data = neuronify.fileManager.serializeState()
+                                                parse.upload("simulation.nfy", data, function(simulationFile) {
+                                                    downloadManager.upload(
+                                                                screenshotFilename,
+                                                                parse.serverUrl + "files/screenshot.png",
+                                                                function(screenshotResult) {
+                                                                    var screenshotFile = JSON.parse(screenshotResult)
+                                                                    var simulation = {
+                                                                        name: uploadNameField.text,
+                                                                        description: uploadDescriptionField.text,
+                                                                        simulation: {
+                                                                            name: simulationFile.name,
+                                                                            url: simulationFile.url,
+                                                                            __type: "File"
+                                                                        },
+                                                                        screenshot: {
+                                                                            name: screenshotFile.name,
+                                                                            url: screenshotFile.url,
+                                                                            __type: "File"
+                                                                        }
+                                                                    }
+                                                                    if(parse.objectId) {
+                                                                        simulation["owner"] = {
+                                                                            __type: "Pointer",
+                                                                            className: "_User",
+                                                                            objectId: parse.objectId
+                                                                        }
+                                                                    }
+                                                                    parse.post("Simulation", simulation)
+                                                                    ToolTip.show("Upload successful!", 2000)
+                                                                    uploadMenu.close()
+                                                                })
+                                                })
+                                            })
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    FileMenuItem {
+                        name: "Examples"
+                        component: Item {
+                        }
+                    }
+
+                    FileMenuItem {
+                        name: "Community"
+                        component: Flickable {
                             contentHeight: column.height
                             clip: true
 
@@ -482,12 +501,22 @@ Item {
                             ScrollBar.vertical: ScrollBar {}
 
                             Component.onCompleted: {
+                                communityProgressBar.visible = true
                                 parse.get("Simulation", function(response) {
-                                    for(var i in response.results) {
-                                        var simulation = response.results[i]
-                                        listModel.append(response.results[i])
-                                    }
+                                    communityProgressBar.visible = false
+                                    communityRepeater.model = response.results
                                 })
+                            }
+
+                            Component {
+                                id: simulationComponent
+                                StoreSimulation {
+                                    onRunClicked: {
+                                        neuronify.loadSimulation(fileUrl)
+                                        root.state = "view"
+                                        stackView.pop()
+                                    }
+                                }
                             }
 
                             Column {
@@ -507,10 +536,7 @@ Item {
                                     showOnlyReadable: true
                                 }
 
-                                Text {
-                                    color: "white"
-                                    font.pixelSize: 24
-                                    font.weight: Font.Light
+                                FileMenuHeading {
                                     text: "Installed"
                                     visible: communityFolderModel.count > 0
                                 }
@@ -527,25 +553,29 @@ Item {
                                     Repeater {
                                         model: communityFolderModel
                                         delegate: StoreItem {
+
+                                            property var objectData: JSON.parse(FileIO.readSynchronously(model.fileURL + "/info.json"))
+
                                             width: 160
                                             height: 256
-                                            name: model.fileName
-//                                            name: model.name
-//                                            description: model.description ? model.description : ""
-//                                            imageUrl: model.screenshot ? model.screenshot.url : ""
-//                                            onClicked: {
-//                                                console.log("Pushing")
-//                                                stackView2.push(simulationComponent)
-//                                                stackView2.currentItem.objectId = model.objectId
-//                                            }
+                                            name: objectData.name
+                                            description: objectData.description
+                                            imageUrl: model.fileURL + "/screenshot.png"
+                                            onClicked: {
+                                                console.log("Pushing", JSON.stringify(objectData))
+                                                stackView.push(simulationComponent)
+                                                stackView.currentItem.objectData = objectData
+                                            }
                                         }
                                     }
                                 }
 
-                                Text {
-                                    color: "white"
-                                    font.pixelSize: 24
-                                    font.weight: Font.Light
+                                Item {
+                                    height: 16
+                                    width: 1
+                                }
+
+                                FileMenuHeading {
                                     text: "Available"
                                 }
 
@@ -558,18 +588,21 @@ Item {
 
                                     spacing: 16
 
+                                    ProgressBar {
+                                        id: communityProgressBar
+                                        indeterminate: true
+                                    }
+
                                     Repeater {
-                                        model: ListModel { id: listModel }
+                                        id: communityRepeater
                                         delegate: StoreItem {
-                                            width: 160
-                                            height: 256
-                                            name: model.name
-                                            description: model.description ? model.description : ""
-                                            imageUrl: model.screenshot ? model.screenshot.url : ""
+                                            name: modelData.name
+                                            description: modelData.description
+                                            imageUrl: modelData.screenshot.url
                                             onClicked: {
-                                                console.log("Pushing")
-                                                stackView2.push(simulationComponent)
-                                                stackView2.currentItem.objectId = model.objectId
+                                                console.log("Pushing", JSON.stringify(modelData))
+                                                stackView.push(simulationComponent)
+                                                stackView.currentItem.objectData = modelData
                                             }
                                         }
                                     }
@@ -577,64 +610,107 @@ Item {
                             }
                         }
                     }
+                }
+            }
 
-                    Component {
-                        id: simulationComponent
-                        StoreSimulation {
-                            backend: parse
-                            onDownloadClicked: {
-                                var targetLocation = StandardPaths.writableLocation(
-                                            StandardPaths.AppDataLocation,
-                                            "community/" + objectData.objectId
-                                            )
+            Item {
+                id: titleRow
+                anchors {
+                    top: viewItem.top
+                    left: viewItem.right
+                    leftMargin: 48
+                }
 
-                                if(objectData.simulation) {
-                                    downloadManager.download(
-                                                objectData.simulation.url,
-                                                targetLocation + "/simulation.nfy")
-                                }
-                                if(objectData.screenshot) {
-                                    downloadManager.download(
-                                                objectData.screenshot.url,
-                                                targetLocation + "/screenshot.png")
-                                }
+                height: communityTitle.height
+                MouseArea {
+                    id: stackBackButton
+                    anchors {
+                        left: parent.left
+                        top: parent.top
+                        bottom: parent.bottom
+                    }
+                    width: height
+
+                    onClicked: {
+                        stackView.pop(null)
+                    }
+
+                    MaterialIcon {
+                        anchors {
+                            fill: parent
+                            margins: 6
+                        }
+                        name: "arrow_back"
+                        color: "white"
+                    }
+                }
+
+                Text {
+                    id: communityTitle
+                    anchors {
+                        top: parent.top
+                        left: stackBackButton.right
+                        leftMargin: 8
+                    }
+
+                    color: "white"
+                    font.pixelSize: 48
+                    font.weight: Font.Light
+                    text: viewColumn.currentName
+                }
+            }
+
+            StackView {
+                id: stackView
+                anchors {
+                    left: titleRow.left
+                    top: titleRow.bottom
+                    right: parent.right
+                    bottom: parent.bottom
+                    topMargin: 32
+                    rightMargin: 0
+                }
+                clip: true
+
+                state: "top"
+
+                states: [
+                    State {
+                        name: "top"
+                        when: stackView.depth < 2
+                        AnchorChanges {
+                            target: communityTitle
+                            anchors.left: parent.left
+                        }
+                        PropertyChanges {
+                            target: communityTitle
+                            anchors.leftMargin: 0
+                        }
+                        PropertyChanges {
+                            target: stackBackButton
+                            opacity: 0.0
+                        }
+                    }
+                ]
+                transitions: [
+                    Transition {
+                        to: "top"
+                        reversible: true
+                        SequentialAnimation {
+                            NumberAnimation {
+                                property: "opacity"
+                                duration: 300
+                                easing.type: Easing.InOutQuad
+                            }
+                            AnchorAnimation {
+                                duration: 600
+                                easing.type: Easing.InOutQuad
                             }
                         }
                     }
-
-                    state: "top"
-
-                    states: [
-                        State {
-                            name: "top"
-                            when: stackView2.depth < 2
-                            PropertyChanges {
-                                target: communityBack
-                                anchors.leftMargin: -communityBack.width
-                                opacity: 0.0
-                            }
-                        }
-                    ]
-                    transitions: [
-                        Transition {
-                            to: "top"
-                            reversible: true
-                            SequentialAnimation {
-                                NumberAnimation {
-                                    property: "opacity"
-                                    duration: 300
-                                    easing.type: Easing.InOutQuad
-                                }
-                                NumberAnimation {
-                                    property: "anchors.leftMargin"
-                                    duration: 600
-                                    easing.type: Easing.InOutQuad
-                                }
-                            }
-                        }
-                    ]
-                }
+                ]
             }
+            //            }
 
             states: [
                 State {
@@ -972,20 +1048,22 @@ Item {
                     text: qsTr("Save")
                     onClicked: {
                         // TODO implement save
+                        ToolTip.show("TODO: Implement quicksave")
                     }
                 }
 
                 Button {
                     text: qsTr("Save as")
                     onClicked: {
-                        saveMenu.open()
+                        root.state = "welcome"
+                        viewColumn.openSave()
                     }
                 }
 
                 Button {
                     text: qsTr("Upload")
                     onClicked: {
-                        uploadMenu.open()
+                        viewColumn.openSave()
                     }
                 }
             }
@@ -1092,97 +1170,6 @@ Item {
         modal: true
         padding: 32
 
-        Column {
-            id: uploadColumn
-            width: 420
-            height: 420
-            spacing: 8
-
-            Label {
-                text: "Name:"
-            }
-
-            TextField {
-                id: uploadNameField
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                placeholderText: "Name"
-            }
-
-            Label {
-                text: "Description:"
-            }
-
-            TextField {
-                id: uploadDescriptionField
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-
-                placeholderText: "Name"
-            }
-
-            Row {
-                anchors {
-                    right: parent.right
-                }
-                spacing: 16
-
-                Button {
-                    text: qsTr("Cancel")
-                    onClicked: uploadMenu.close()
-                }
-                Button {
-                    text: qsTr("upload")
-                    onClicked: {
-                        var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation, "")
-                        var stateFilename = tempFolder + "/simulation.nfy"
-                        var screenshotFilename = tempFolder + "/screenshot.png"
-
-                        neuronify.fileManager.saveState(stateFilename)
-                        neuronify.saveScreenshot(screenshotFilename, function() {
-                            var data = neuronify.fileManager.serializeState()
-                            parse.upload("simulation.nfy", data, function(simulationFile) {
-                                downloadManager.upload(
-                                            screenshotFilename,
-                                            parse.serverUrl + "files/screenshot.png",
-                                            function(screenshotResult) {
-                                                var screenshotFile = JSON.parse(screenshotResult)
-                                                var simulation = {
-                                                    name: uploadNameField.text,
-                                                    description: uploadDescriptionField.text,
-                                                    simulation: {
-                                                        name: simulationFile.name,
-                                                        url: simulationFile.url,
-                                                        __type: "File"
-                                                    },
-                                                    screenshot: {
-                                                        name: screenshotFile.name,
-                                                        url: screenshotFile.url,
-                                                        __type: "File"
-                                                    }
-                                                }
-                                                if(parse.objectId) {
-                                                    simulation["owner"] = {
-                                                        __type: "Pointer",
-                                                        className: "_User",
-                                                        objectId: parse.objectId
-                                                    }
-                                                }
-                                                parse.post("Simulation", simulation)
-                                                ToolTip.show("Upload successful!", 2000)
-                                                uploadMenu.close()
-                                            })
-                            })
-                        })
-
-                    }
-                }
-            }
-        }
     }
 
     Item {

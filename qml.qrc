@@ -111,5 +111,10 @@
         <file>qml/backend/Parse.qml</file>
         <file>qml/backend/qmldir</file>
         <file>qml/backend/Backend.qml</file>
+        <file>qml/menus/filemenu/FileMenuItem.qml</file>
+        <file>Test.qml</file>
+        <file>qml/ui/MaterialIcon.qml</file>
+        <file>qml/menus/filemenu/FileMenuHeading.qml</file>
+        <file>qml/menus/filemenu/FileMenuDelegate.qml</file>
     </qresource>
 </RCC>

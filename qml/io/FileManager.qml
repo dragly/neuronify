@@ -126,33 +126,16 @@ Item {
         var result = serializeState()
         var fileString = JSON.stringify(result, null, 4)
 
-        saveFileIO.source = fileUrl
-        return saveFileIO.write(fileString)
+        return FileIO.writeSynchronously(fileString, fileUrl)
     }
 
     function read(fileUrl) {
-        console.log("Reading file " + fileUrl)
         if(!fileUrl) {
-            loadFileIO.source = "";
-        } else {
-            loadFileIO.source = fileUrl
+            return
         }
-        var stateFile = loadFileIO.read()
+        var stateFile = FileIO.readSynchronously(fileUrl)
         return stateFile
     }
-
-    FileIO {
-        id: loadFileIO
-        source: "none"
-        onError: console.log(msg)
-    }
-
-    FileIO {
-        id: saveFileIO
-        source: "none"
-        onError: console.log(msg)
-    }
-
 
 //    Item {
 //        id: saveFileDialog

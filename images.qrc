@@ -75,5 +75,9 @@
         <file>images/categories/annotation.png</file>
         <file>images/categories/excitatory.png</file>
         <file>images/categories/inhibitory.png</file>
+        <file>images/material-icons/navigation/svg/production/ic_arrow_back_18px.svg</file>
+        <file>images/material-icons/navigation/svg/production/ic_arrow_back_24px.svg</file>
+        <file>images/material-icons/navigation/svg/production/ic_arrow_back_36px.svg</file>
+        <file>images/material-icons/navigation/svg/production/ic_arrow_back_48px.svg</file>
     </qresource>
 </RCC>

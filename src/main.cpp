@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 
     CuteVersioning::init();
 
-    qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
+    qmlRegisterSingletonType<FileIO>("Neuronify", 1, 0, "FileIO", &FileIO::qmlInstance);
     qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
 
     qmlRegisterType<NodeBase>("Neuronify", 1, 0, "NodeBase");

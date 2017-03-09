@@ -11,10 +11,12 @@ Item {
     property string name
     property string description
     property string price
-    property url imageUrl: "qrc:/images/store/ic_search_black_48dp.png"
+    property url imageUrl
 
-    width: 320
-    height: 480
+    clip: true
+
+    width: 160
+    height: 256
 
     Rectangle {
         id: background
@@ -52,31 +54,37 @@ Item {
         id: defaultMetric
     }
 
+    FontMetrics {
+        id: titleMetrics
+        font: titleText.font
+    }
+
     Label {
         id: titleText
         clip: true
         anchors {
             bottom: descriptionText.top
-            right: parent.right
-            rightMargin: 8
             left: parent.left
             leftMargin: 8
         }
 
-        font.pixelSize: defaultMetric.font.pixelSize * 1.6
+        font.pixelSize: 16
 
         text: root.name
     }
 
     LinearGradient {
+        id: gradient
+        property rect textRect: titleMetrics.boundingRect(titleText.text)
         anchors {
             top: titleText.top
             bottom: titleText.bottom
-            right: titleText.right
+            right: parent.right
         }
-        width: titleText.width * 0.5
+        width: parent.width * 0.5
         start: Qt.point(0, 0)
         end: Qt.point(width, 0)
+        visible: titleText.x + titleText.width > root.width - 8
         gradient: Gradient {
             GradientStop {
                 color: "transparent"
