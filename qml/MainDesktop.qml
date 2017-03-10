@@ -27,6 +27,15 @@ import "qrc:/qml/store"
 import "qrc:/qml/style"
 import "qrc:/qml/ui"
 
+// TODO New menu needs categories
+// TODO Add Recent to Open menu
+// TODO Add save button to main view
+// TODO Download should categorise available networks
+// TODO Upload should redirect to uploaded simulation in downloads view
+// TODO Upload should show progress
+// TODO Account should include login/signup fields
+// TODO Options view needs content
+
 Item {
     id: root
 
