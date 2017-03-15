@@ -4,6 +4,10 @@
 
 An educational neural network app using the integrate-and-fire method.
 
+## Download Neuronify
+
+Visit the [Neuronify website](http://ovilab.net/neuronify) to download the latest version for your operating system.
+
 ## Building Neuronify
 
 ### Prerequisites
