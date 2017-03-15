@@ -81,8 +81,9 @@ Node {
 
 
     MouseArea {
-        id: mouseRoot
+        id: mouseArea
         anchors.fill: parent
+        hoverEnabled: true
 
         onPressed: {
             sensorRoot.sensing = true
@@ -120,6 +121,31 @@ Node {
     }
 
     MoveHandle {
+        id: moveHandle
+        opacity: {
+            var os = Qt.platform.os
+            if(os === "android" || os == "ios") {
+                return 1.0
+            }
+            return 0.0
+        }
+
+        states: State {
+            name: "hovered"
+            when: mouseArea.containsMouse || moveHandle.containsMouse
+            PropertyChanges {
+                target: moveHandle
+                opacity: 1.0
+            }
+        }
+
+        transitions: Transition {
+            NumberAnimation {
+                properties: "opacity"
+                duration: 240
+                easing.type: Easing.InOutQuad
+            }
+        }
     }
 
     Keys.onPressed: {
