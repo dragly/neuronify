@@ -8,7 +8,11 @@ confinement: strict
 apps:
     neuronify:
         command: neuronify
-        plugs: ['unity7', 'x11', 'opengl']
+        plugs:
+          - unity7
+          - x11
+          - opengl
+          - pulseaudio
 
 parts:
     qml:
