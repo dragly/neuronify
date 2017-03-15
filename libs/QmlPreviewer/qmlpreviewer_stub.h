@@ -22,10 +22,11 @@ public slots:
         Q_UNUSED(path)
     }
     bool show() {
-        return true;
+        return false;
     }
-    void exect() {
-        return qFatal("Preview not supported on Android / iOS");
+    int exec() {
+        qFatal("Preview not supported on Android / iOS");
+        return 1;
     }
     void handleDialogStart(QVariant qrcPaths, QUrl filePath) {
         Q_UNUSED(qrcPaths)
