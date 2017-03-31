@@ -105,7 +105,6 @@
         <file>qml/ButtonColumnButton.qml</file>
         <file>qml/MainMobile.qml</file>
         <file>qml/MainDesktop.qml</file>
-        <file>qml/HudShadow.qml</file>
         <file>qml/firebase/Firebase.qml</file>
         <file>qml/firebase/qmldir</file>
         <file>qml/backend/Parse.qml</file>
@@ -116,5 +115,9 @@
         <file>qml/ui/MaterialIcon.qml</file>
         <file>qml/menus/filemenu/FileMenuHeading.qml</file>
         <file>qml/menus/filemenu/FileMenuDelegate.qml</file>
+        <file>qml/menus/filemenu/FileView.qml</file>
+        <file>qml/menus/LeftMenu.qml</file>
+        <file>qml/menus/ItemMenu.qml</file>
+        <file>qml/hud/HudShadow.qml</file>
     </qresource>
 </RCC>
