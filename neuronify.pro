@@ -123,6 +123,15 @@ ios {
     QMAKE_BUNDLE_DATA += app_launch_images
 }
 
+macx {
+    ICON = macos/icon.icns
+    QMAKE_INFO_PLIST = macos/macos.plist
+    QMAKE_MAC_SDK = macosx10.9
+    DISTFILES +=  \
+    macos/icon.icns \
+    macos/macos.plist
+}
+
 WINRT_MANIFEST.name = Neuronify
 WINRT_MANIFEST.background = $${LITERAL_HASH}399cdd
 WINRT_MANIFEST.publisher = Ovilab
