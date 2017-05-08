@@ -124,6 +124,7 @@ ios {
 }
 
 macx {
+    TARGET=Neuronify
     ICON = macos/icon.icns
     QMAKE_INFO_PLIST = macos/macos.plist
     QMAKE_MAC_SDK = macosx10.9
