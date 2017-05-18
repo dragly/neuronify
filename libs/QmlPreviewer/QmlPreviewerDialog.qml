@@ -395,6 +395,14 @@ Rectangle {
             }
         }
 
+        Text {
+            anchors {
+                top: canvas.bottom
+                left: canvas.right
+            }
+            text: loader.width.toFixed(0) + "x" + loader.height.toFixed(0)
+        }
+
         Column {
             id: hideColumn
             anchors {
