@@ -119,5 +119,9 @@
         <file>qml/menus/LeftMenu.qml</file>
         <file>qml/menus/ItemMenu.qml</file>
         <file>qml/hud/HudShadow.qml</file>
+        <file>qml/menus/MaterialButton.qml</file>
+        <file>qml/neurons/NeuronDashboard.qml</file>
+        <file>qml/hud/PropertiesContainer.qml</file>
+        <file>qml/neurons/ChartSlider.qml</file>
     </qresource>
 </RCC>
