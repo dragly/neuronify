@@ -9,8 +9,9 @@ import "../hud"
 import "../style"
 
 Item {
-    anchors.fill: parent
-    clip: true
+    id: root
+    default property var initialItem
+
     Item {
         id: header
         
@@ -76,7 +77,6 @@ Item {
                 if(stackView.depth > 1) {
                     stackView.pop()
                 } else {
-                    root.revealed = false;
                 }
             }
         }
@@ -94,5 +94,6 @@ Item {
             rightMargin: Style.spacing
         }
         clip: true
+        initialItem: root.initialItem
     }
 }

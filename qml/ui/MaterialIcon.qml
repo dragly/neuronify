@@ -19,6 +19,7 @@ Item {
         smooth: true
         antialiasing: true
         visible: false
+        fillMode: Image.PreserveAspectFit
         sourceSize: Qt.size(renderSize, renderSize)
         source: "qrc:/images/material-icons/" + category + "/svg/production/ic_" + name + "_24px.svg"
     }

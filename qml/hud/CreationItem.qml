@@ -32,7 +32,9 @@ Item {
         MouseArea {
             id: mouseArea
 
-            width: parent.width
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            width: parent.width * 0.6
             height: width
 
             drag.target: creationControl

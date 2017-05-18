@@ -47,7 +47,7 @@ Item {
         Rectangle {
             id: background
             anchors.fill: parent
-            color: leftMenu.color
+            color: topMenu.color
             opacity: 1.0
         }
         

@@ -31,18 +31,6 @@ import "qrc:/qml/ui"
 Item {
     id: itemMenu
     
-    width: 280 + 32
-    height: itemColumn.height
-    z: 20
-    
-    MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        onWheel: {
-            // NOTE: necessary to capture wheel events
-        }
-    }
-    
     ListModel {
         id: categories
         ListElement {
@@ -74,22 +62,6 @@ Item {
         }
     }
     
-    Rectangle {
-        id: itemMenuBackground
-        color: "#e3eef9"
-        anchors {
-            fill: itemFlickable
-            topMargin: -16
-            bottomMargin: -16
-        }
-    }
-    
-    HudShadow {
-        id: itemMenuShadow
-        anchors.fill: itemMenuBackground
-        source: itemMenuBackground
-    }
-    
     Flickable {
         id: itemFlickable
         anchors {
@@ -110,6 +82,8 @@ Item {
             property int currentIndex: -1
             
             anchors {
+                top: parent.top
+                topMargin: 16
                 left: parent.left
                 right: parent.right
             }
@@ -132,7 +106,7 @@ Item {
                             right: parent.right
                             margins: 16
                         }
-                        font.pixelSize: 18
+                        font.pixelSize: 14
                         font.family: Style.font.family
                         color: Style.mainDesktop.text.color
                         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -145,14 +119,14 @@ Item {
                         property alias listSource: itemModelLoader.source
                         property int rows: Math.floor(parent.height / 96)
                         property int columns: 3
-                        property real itemHeight: (height - spacing * (rows - 1)) / rows
-                        property real itemWidth: (width - spacing * (columns - 1)) / columns
+                        property real itemHeight: (height - spacing * (rows - 1)) / rows - 1
+                        property real itemWidth: (width - spacing * (columns - 1)) / columns - 1
                         
                         anchors {
                             left: parent.left
                             right: parent.right
-                            leftMargin: 24
-                            rightMargin: 48
+                            leftMargin: 18
+                            rightMargin: 18
                         }
                         
                         spacing: 8
@@ -187,33 +161,6 @@ Item {
                                         root.dragging = false
                                     }
                                     showInfoPanelTimer.stop()
-                                }
-                                
-                                MouseArea {
-                                    id: hoverArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.NoButton
-                                    propagateComposedEvents: true
-                                    onEntered: {
-                                        infoPanel.selectedItem = creationItem
-                                        hideInfoPanelTimer.stop()
-                                        showInfoPanelTimer.restart()
-                                    }
-                                    onExited: {
-                                        hideInfoPanelTimer.restart()
-                                        showInfoPanelTimer.stop()
-                                    }
-                                }
-                                
-                                Timer {
-                                    id: showInfoPanelTimer
-                                    interval: 400
-                                    onTriggered: {
-                                        if(hoverArea.containsMouse) {
-                                            infoPanel.state = "revealed"
-                                        }
-                                    }
                                 }
                             }
                         }

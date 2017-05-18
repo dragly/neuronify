@@ -62,10 +62,10 @@ private:
     void checkFire();
 
     double m_voltage = 0.0;
-    double m_restingPotential = 0.0;
-    double m_initialPotential = 0.0;
-    double m_threshold = 0.0;
-    double m_capacitance = 0.0;
+    double m_restingPotential = -70.0e-3;
+    double m_initialPotential = -80.0e-3;
+    double m_threshold = -55.0e-3;
+    double m_capacitance = 0.2e-9;
     double m_receivedCurrents = 0.0;
     double m_minimumVoltage = -90.0e-3; // mV
     double m_maximumVoltage = 60.0e-3; // mV

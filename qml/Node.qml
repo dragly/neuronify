@@ -1,7 +1,10 @@
-import QtQuick 2.0
+import QtQuick 2.6
+import QtQuick.Controls 1.4
 import QtMultimedia 5.0
 
 import Neuronify 1.0
+
+import "qrc:/qml/style"
 
 /*!
 \qmltype Node

@@ -28,139 +28,140 @@ import "qrc:/qml/style"
 import "qrc:/qml/ui"
 
 Rectangle {
-    id: leftMenu
+    id: root
     
     property real textOpacity: 1.0
+
+    signal newClicked()
+    signal saveClicked()
+    signal openClicked()
+    signal uploadClicked()
+    signal communityClicked()
+
+    signal accountClicked()
+    signal settingsClicked()
     
     Material.theme: Material.Dark
-    
-    //        color: "#1782C2"
-    //        color: Material.color(Material.Cyan)
+
     color: Material.primary
     z: 40
     
     MouseArea {
+        id: mouseArea
         anchors.fill: parent
         hoverEnabled: true
     }
     
-    Image {
-        id: logo
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: parent.top
-            margins: parent.width * 0.2
-            topMargin: 48
-        }
-        fillMode: Image.PreserveAspectFit
-        height: width
-        source: "qrc:/images/logo/logo-no-background.png"
-        mipmap: true
-    }
-    
-    Text {
-        id: logoText
-        color: "white"
-        font.pixelSize: 24
-        font.family: Style.font.family
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-        text: "Neuronify\n" + Version.latestTag
-    }
-    
-    ShaderEffectSource {
-        id: logoTextCopy
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: logo.bottom
-            //                top: parent.top
-            margins: 8
-        }
-        height: width * logoText.height / logoText.width
-        hideSource: true
-        sourceItem: logoText
-        smooth: true
-        antialiasing: true
-    }
-    
-    Column {
+    RowLayout {
         id: menuColumn
         anchors {
-            left: parent.left
-            right: parent.right
-            top: logoTextCopy.bottom
-            topMargin: 48
+            fill: parent
+            leftMargin: 24
+            rightMargin: 8
+            topMargin: 10
+            bottomMargin: 8
         }
-        spacing: 24
-        Repeater {
-            model: ListModel {
-                ListElement {
-                    state: "welcome"
-                    name: "Simulation"
-                    category: "action"
-                    icon: "view_list"
-                }
-                ListElement {
-                    state: "view"
-                    name: "View"
-                    category: "image"
-                    icon: "remove_red_eye"
-                }
-                ListElement {
-                    state: "creation"
-                    name: "Create"
-                    category: "content"
-                    icon: "create"
-                }
-                ListElement {
-                    state: "help"
-                    name: "Help"
-                    category: "action"
-                    icon: "help_outline"
-                }
+        spacing: 8
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "New"
+            icon.name: "create"
+            icon.category: "content"
+            duration: 200
+            onClicked: {
+                newClicked()
             }
-            MouseArea {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                height: menuItemColumn.height
-                onClicked: {
-                    root.state = model.state
-                }
-                Column {
-                    id: menuItemColumn
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
-                    
-                    spacing: 8
-                    MaterialIcon {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width * 0.4
-                        height: width
-                        //                            radius: width / 4
-                        color: root.state == model.state ? "white" : "#aaffffff"
-                        //                            border.width: parent.width * 0.04
-                        //                            border.color: "white"
-                        name: model.icon
-                        category: model.category
-                    }
-                    Text {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                        }
-                        horizontalAlignment: Text.AlignHCenter
-                        color: "white"
-                        opacity: leftMenu.textOpacity
-                        font.pixelSize: 12
-                        text: model.name
-                    }
-                }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Save"
+            icon.name: "save"
+            icon.category: "content"
+            duration: 250
+            onClicked: {
+                saveClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Open"
+            icon.name: "folder_open"
+            icon.category: "file"
+            duration: 300
+            onClicked: {
+                openClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Upload"
+            icon.name: "cloud_upload"
+            icon.category: "file"
+            duration: 350
+            onClicked: {
+                uploadClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Get more"
+            icon.name: "cloud_download"
+            icon.category: "file"
+            duration: 400
+            onClicked: {
+                communityClicked()
+            }
+        }
+        Item {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Account"
+            icon.name: "account_circle"
+            icon.category: "action"
+            duration: 300
+            onClicked: {
+                accountClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Settings"
+            icon.name: "settings"
+            icon.category: "action"
+            duration: 200
+            onClicked: {
+                settingsClicked()
             }
         }
     }
@@ -168,9 +169,9 @@ Rectangle {
     states: [
         State {
             name: "small"
-            PropertyChanges { target: leftMenu; width: 72 }
+            PropertyChanges { target: root; width: 72 }
             PropertyChanges { target: logoTextCopy; opacity: 0.0 }
-            PropertyChanges { target: leftMenu; textOpacity: 0.0 }
+            PropertyChanges { target: root; textOpacity: 0.0 }
         },
         State {
             name: "hidden"
@@ -188,7 +189,7 @@ Rectangle {
     transitions: [
         Transition {
             NumberAnimation {
-                target: leftMenu
+                target: root
                 properties: "width,textOpacity"
                 duration: 400
                 easing.type: Easing.InOutQuad
