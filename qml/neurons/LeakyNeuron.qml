@@ -9,33 +9,33 @@ import "qrc:/qml/neurons"
 import "qrc:/qml/style"
 
 Neuron {
-    id: neuronRoot
+    id: root
 
     objectName: "leakyNeuron"
     filename: "neurons/LeakyNeuron.qml"
     imageSource: "qrc:/images/neurons/leaky.png"
     inhibitoryImageSource: "qrc:/images/neurons/leaky_inhibitory.png"
 
-    property bool fakeInhibitory: neuronEngine.fakeFireOutput < 0
+    property bool fakeInhibitory: neuronEngine_.fakeFireOutput < 0
 
     onFakeInhibitoryChanged: {
         if(fakeInhibitory) {
-            neuronRoot.inhibitory = true;
+            root.inhibitory = true;
         }
     }
 
     savedProperties: PropertyGroup {
-        property alias label: neuronRoot.label
+        property alias label: root.label
     }
 
     engine: NeuronEngine {
-        id: neuronEngine
+        id: neuronEngine_
         property real refractoryPeriod
         property real timeSinceFire: 1.0 / 0.0 // infinity
 
         savedProperties: PropertyGroup {
-            property alias refractoryPeriod: neuronEngine.refractoryPeriod
-            property alias resistance: leakyCurrent.resistance
+            property alias refractoryPeriod: neuronEngine_.refractoryPeriod
+            property alias resistance: leakCurrent_.resistance
         }
 
         onResettedProperties: {
@@ -44,9 +44,9 @@ Neuron {
 
         onStepped: {
             if(timeSinceFire < refractoryPeriod) {
-                neuronEngine.enabled = false
+                neuronEngine_.enabled = false
             } else {
-                neuronEngine.enabled = true
+                neuronEngine_.enabled = true
             }
             timeSinceFire += dt
         }
@@ -56,11 +56,16 @@ Neuron {
         }
 
         LeakCurrent {
-            id: leakyCurrent
+            id: leakCurrent_
         }
     }
 
-    controls: NeuronDashboard {}
+    controls: NeuronDashboard {
+        neuronEngine: neuronEngine_
+        leakCurrent: leakCurrent_
+        neuron: root
+    }
+
 //    controls: Component {
 //        PropertiesPage {
 //            property string title: "Leaky neuron"

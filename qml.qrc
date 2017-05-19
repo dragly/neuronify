@@ -123,5 +123,6 @@
         <file>qml/neurons/NeuronDashboard.qml</file>
         <file>qml/hud/PropertiesContainer.qml</file>
         <file>qml/neurons/ChartSlider.qml</file>
+        <file>qml/controls/NumberSlider.qml</file>
     </qresource>
 </RCC>

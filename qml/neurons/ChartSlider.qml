@@ -7,27 +7,29 @@ import QtQuick.Layouts 1.1
 import Neuronify 1.0
 
 Item {
-    id: sliderRoot
+    id: root
 
-    property real cutValue: 0.0
     property var chart
     property var series
     property alias text: label.text
     property alias value: slider.value
 
-    property real _sliderMinimum: 0.0
-    property real _sliderMaximum: 0.0
-
     property var next: null
     property alias field: thresholdField
+    property bool ready: false
 
     function refresh() {
         dummySlider.value = 1
         var maxPoint = dummySlider.handle.mapToItem(chart, 0, dummySlider.handle.height / 2)
-        _sliderMaximum = chart.mapToValue(maxPoint, series).y
+        var max = chart.mapToValue(maxPoint, series).y
         dummySlider.value = 0
         var minPoint = dummySlider.handle.mapToItem(chart, 0, dummySlider.handle.height / 2)
-        _sliderMinimum = chart.mapToValue(minPoint, series).y
+        var min = chart.mapToValue(minPoint, series).y
+        if(max > min) {
+            slider.to = max
+            slider.from = min
+            ready = true
+        }
     }
 
     implicitWidth: Math.max(label.implicitWidth, fieldMetrics.width)
@@ -70,8 +72,6 @@ Item {
         orientation: Qt.Vertical
         onValueChanged: {
             rect.update()
-            var chartY = handle.mapToItem(chart, 0, handle.height / 2).y
-            cutValue = chart.mapToValue(Qt.point(0, chartY), series).y
         }
         value: 0.5
         hoverEnabled: true
@@ -120,16 +120,12 @@ Item {
         KeyNavigation.tab: next
 
         onEditingFinished: {
-            var min = _sliderMinimum
-            var max = _sliderMaximum
-            var value = (Number(text) - min) / (max - min)
-            console.log(min, max, value)
-            slider.value = value
+            slider.value = Number(text)
         }
         Binding {
             target: thresholdField
             property: "text"
-            value: cutValue.toFixed(1)
+            value: root.value.toFixed(1)
         }
     }
 }
