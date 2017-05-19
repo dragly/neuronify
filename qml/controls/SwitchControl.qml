@@ -35,7 +35,7 @@ Item {
         text: switchRoot.checked ? checkedText : uncheckedText
     }
 
-    Switch{
+    Switch {
         id: switchRoot
 
         width: parent.width * 0.2
@@ -46,27 +46,6 @@ Item {
             right: parent.right
             verticalCenter: parent.verticalCenter
         }
-
-        style: SwitchStyle {
-            groove: Rectangle {
-                implicitWidth: switchRoot.width
-                implicitHeight: switchRoot.height
-                radius: height/2
-                color: Style.color.background
-                border.color: "#9ecae1"
-                border.width: Style.border.width
-            }
-            handle: Rectangle {
-                implicitWidth:  switchRoot.width * 0.5
-                implicitHeight: switchRoot.height
-                radius: height/2
-                color: "#9ecae1"
-                border.color: "#9ecae1"
-                border.width: Style.border.width
-                gradient: grad
-            }
-        }
-
     }
 
     Gradient {
