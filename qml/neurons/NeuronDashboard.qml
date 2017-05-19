@@ -8,13 +8,13 @@ import Neuronify 1.0
 
 Rectangle {
     id: root
-    color: "#def"
+    color: Material.background
 
     property real timeFactor: 1e3
     property real voltageFactor: 1e3
 
-    width: 640
-    height: 480
+    width: 480
+    height: 360
 
     TabBar {
         id: tabBar
@@ -35,125 +35,136 @@ Rectangle {
         }
     }
 
-    RowLayout {
+    SwipeView {
         anchors {
             top: tabBar.bottom
             bottom: parent.bottom
             left: parent.left
             right: parent.right
         }
-
-        ColumnLayout {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Label {
+        currentIndex: tabBar.currentIndex
+        interactive: false
+        Item {
+            RowLayout {
                 anchors {
-                    horizontalCenter: thresholdSlider.horizontalCenter
+                    fill: parent
+                    margins: 24
                 }
-                text: "Threshold"
-            }
-            ChartSlider {
-                id: thresholdSlider
-                Layout.fillHeight: true
 
-                Binding {
-                    target: thresholdSlider
-                    property: "chart"
-                    value: chart_
+                ChartSlider {
+                    id: thresholdSlider
+                    Layout.fillHeight: true
+//                    Layout.preferredWidth: 64
+                    chart: chart
+                    series: series
+
+                    text: "Threshold"
+                    next: resetSlider.field
+                    onValueChanged: {
+                        if(value < resetSlider.value + 0.05) {
+                            value = resetSlider.value + 0.05
+                        }
+                    }
+                }
+
+                ChartSlider {
+                    id: resetSlider
+                    Layout.fillHeight: true
+//                    Layout.preferredWidth: 64
+                    chart: chart
+                    series: series
+
+                    text: "Reset"
+                    next: restingSlider.field
+                    onValueChanged: {
+                        if(value > thresholdSlider.value - 0.05) {
+                            value = thresholdSlider.value - 0.05
+                        }
+                    }
+                }
+
+                ChartView {
+                    id: chart
+
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+
+                    antialiasing: true
+                    smooth: true
+                    backgroundColor: Material.background
+                    legend.visible: false
+                    z: -1
+                    title: "Response"
+
+                    LineSeries {
+                        id: series
+                        axisX: axisX
+                        axisY: axisY
+                        color: Material.primary
+                        width: 3
+                    }
+
+                    LineSeries {
+                        id: fireSeries
+                        axisX: axisX
+                        axisY: axisY
+                        color: Material.primary
+                        width: 3
+                    }
+
+                    ValueAxis {
+                        id: axisX
+                        min:  0
+                        max:  100
+                        gridVisible: false
+                        lineVisible: false
+                        labelsColor: Material.foreground
+                        visible: false
+                    }
+
+                    ValueAxis {
+                        id: axisY
+                        min: -100
+                        max: 30
+                        gridVisible: false
+                        lineVisible: false
+                        labelsColor: "grey"
+//                        labelsColor: "white"
+                    }
+                }
+
+                ChartSlider {
+                    id: restingSlider
+                    Layout.fillHeight: true
+//                    Layout.preferredWidth: 64
+                    chart: chart
+                    series: series
+
+                    text: "Resting"
+                    next: thresholdSlider.field
                 }
             }
         }
-
+        RowLayout {
+            Dial {
+//                text: "Capacitance"
+            }
+            Dial {
+//                text: "Resistance"
+            }
+        }
         ColumnLayout {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Label {
-                text: "Reset"
+            Switch {
+                text: "Excitatory"
             }
+            Dial {
 
-            ChartSlider {
-                id: resetSlider
-
+            }
+            Item {
+                Layout.fillWidth: true
                 Layout.fillHeight: true
-
-                Binding {
-                    target: resetSlider
-                    property: "chart"
-                    value: chart_
-                }
             }
         }
-
-        ChartView {
-            id: chart_
-
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-
-            antialiasing: true
-            smooth: true
-            backgroundColor: Material.primary
-            legend.visible: false
-            z: -1
-
-            LineSeries {
-               id: series
-               axisX: axisX
-               axisY: axisY
-               color: "white"
-               width: 3
-            }
-
-            LineSeries {
-               id: fireSeries
-               axisX: axisX
-               axisY: axisY
-               color: "white"
-               width: 3
-            }
-
-            ValueAxis {
-                id: axisX
-                min:  0
-                max:  100
-                gridVisible: false
-                color: "white"
-                lineVisible: false
-                labelsColor: "white"
-            }
-
-            ValueAxis {
-                id: axisY
-                min: -100
-                max: 30
-                gridVisible: false
-                lineVisible: false
-                labelsColor: "white"
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-
-            Label {
-                anchors {
-                    horizontalCenter: restingSlider.horizontalCenter
-                }
-                text: "Resting"
-            }
-            ChartSlider {
-                id: restingSlider
-                Layout.fillHeight: true
-
-                Binding {
-                    target: restingSlider
-                    property: "chart"
-                    value: chart_
-                }
-            }
-        }
-
     }
 
 
@@ -174,19 +185,20 @@ Rectangle {
                 engine.receiveCurrent(current, null)
             }
             engine.step(dt, true)
-//            console.log(engine.voltage * voltageFactor)
-            series.append(t*timeFactor, engine.voltage*voltageFactor)
+            //            console.log(engine.voltage * voltageFactor)
 
             if(engine.hasFire) {
+                series.append((t - dt)*timeFactor, engine.voltage*voltageFactor)
                 fireSeries.append((t - dt) * timeFactor - 1e-1, 1000e-3 * voltageFactor)
                 fireSeries.append((t - dt) * timeFactor, engine.voltage * voltageFactor)
                 fireSeries.append((t - dt) * timeFactor + 1e-1, 1000e-3 * voltageFactor)
                 didFireSometime = true
             }
+            series.append(t*timeFactor, engine.voltage*voltageFactor)
 
             engine.hasFire = false
 
-//            console.log(t, engine.voltage)
+            //            console.log(t, engine.voltage)
             t += dt
         }
     }
@@ -196,7 +208,7 @@ Rectangle {
 
         property bool hasFire: false
 
-//        capacitance: capacitanceSlider.value * 1e-9
+        //        capacitance: capacitanceSlider.value * 1e-9
         threshold: thresholdSlider.cutValue * 1e-3
         restingPotential: restingSlider.cutValue * 1e-3
         initialPotential: resetSlider.cutValue * 1e-3
@@ -223,14 +235,14 @@ Rectangle {
 
         onFired: {
             hasFire = true
-//            console.log("FIRED")
+            //            console.log("FIRED")
         }
 
 
         LeakCurrent {
             id: leak
 
-//            resistance: resistanceSlider.value * 1e6
+            //            resistance: resistanceSlider.value * 1e6
             onResistanceChanged: {
                 refresh()
             }
@@ -238,25 +250,25 @@ Rectangle {
     }
 
     Column {
-//        Slider {
-//            id: capacitanceSlider
-//            from: 0.2
-//            to: 2
-//            value: 1
-//        }
+        //        Slider {
+        //            id: capacitanceSlider
+        //            from: 0.2
+        //            to: 2
+        //            value: 1
+        //        }
 
-//        Slider {
-//            id: resistanceSlider
-//            from: 2
-//            to: 50
-//            value: 25
-//        }
+        //        Slider {
+        //            id: resistanceSlider
+        //            from: 2
+        //            to: 50
+        //            value: 25
+        //        }
 
-//        Slider {
-//            id: restingSlider
-//            from: -100
-//            to: 30
-//            value: -70
-//        }
+        //        Slider {
+        //            id: restingSlider
+        //            from: -100
+        //            to: 30
+        //            value: -70
+        //        }
     }
 }
