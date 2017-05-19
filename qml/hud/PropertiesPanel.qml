@@ -80,11 +80,6 @@ Item {
         }
     }
 
-    HudShadow {
-        anchors.fill: background
-        source: background
-    }
-
     Loader {
         id: loader
         clip: true

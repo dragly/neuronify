@@ -298,6 +298,12 @@ Item {
         activeObject: neuronify.activeObject
     }
 
+    HudShadow {
+        anchors.fill: propertiesPanel
+        source: propertiesPanel
+        verticalOffset: -1
+    }
+
 //    Rectangle {
 //        id: itemMenuBackground
 //        color: "#e3eef9"
