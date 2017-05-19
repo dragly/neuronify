@@ -93,11 +93,16 @@ MouseArea {
     ]
     transitions: [
         Transition {
-            NumberAnimation {
-                id: transtionAnimation
-                properties: "height,opacity"
-                duration: 240
-                easing.type: Easing.InOutQuad
+            SequentialAnimation {
+                PauseAnimation {
+                    duration: 200
+                }
+                NumberAnimation {
+                    id: transtionAnimation
+                    properties: "height,opacity"
+                    duration: 240
+                    easing.type: Easing.InOutQuad
+                }
             }
         }
 
