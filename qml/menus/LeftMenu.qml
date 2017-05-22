@@ -83,6 +83,20 @@ Rectangle {
             Layout.minimumWidth: 48
             Layout.maximumWidth: parent.height
             state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Open"
+            icon.name: "folder_open"
+            icon.category: "file"
+            duration: 300
+            onClicked: {
+                openRequested()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
             text: "Save"
             icon.name: "save"
             icon.category: "content"
@@ -106,20 +120,6 @@ Rectangle {
             duration: 250
             onClicked: {
                 saveAsRequested()
-            }
-        }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
-            text: "Open"
-            icon.name: "folder_open"
-            icon.category: "file"
-            duration: 300
-            onClicked: {
-                openRequested()
             }
         }
         MaterialButton {
