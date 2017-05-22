@@ -210,6 +210,6 @@ Node {
 
     Connector {
         color: Style.meter.border.color
-        visible: parent.selected || rateEngine.neuronCount < 1
+//        visible: parent.selected || rateEngine.neuronCount < 1
     }
 }

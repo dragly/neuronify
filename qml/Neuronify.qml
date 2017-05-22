@@ -63,6 +63,7 @@ Rectangle {
     property int latestZ: 0
     property bool autoPause: false
     property bool hasUnsavedChanges: true
+    property var copiedState
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -104,6 +105,7 @@ Rectangle {
     function open(simulation) {
         console.log("Open", simulation)
         var data = JSON.parse(simulation.data)
+        deleteEverything()
         loadState(data)
         hasUnsavedChanges = false
         return simulation
@@ -151,7 +153,11 @@ Rectangle {
         }
 
         for(var i in properties) {
-            var prop = properties[i];
+            var prop = properties[i]
+            if(prop === undefined) {
+                console.log("WARNING: Got undefined property on", object, i)
+                continue
+            }
             if(!object.hasOwnProperty("savedProperties")) {
                 console.warn("WARNING: Object " + object + " is missing savedProperties property.");
                 continue;
@@ -184,18 +190,18 @@ Rectangle {
         }
 
         var data = JSON.parse(code)
+        deleteEverything()
         loadState(data)
         hasUnsavedChanges = false
     }
 
     function loadState(data) {
-        console.log("Neuronify.loadState called")
+        console.log("Neuronify.loadState called", JSON.stringify(data))
         firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
         pinchArea.scaleSetByDoubleClick = false;
         undoList.length = 0;
         undoIdx = 1;
         undoRecordingEnabled = false;
-        deleteEverything();
 
         var expectedFileFormatVersion = 4
 
@@ -286,6 +292,8 @@ Rectangle {
         undoRecordingEnabled = true
 
         simulationLoaded()
+
+        return createdNodes
     }
 
     function addToUndoList() {
@@ -606,12 +614,34 @@ Rectangle {
         return connectionAlreadyExists
     }
 
-    GraphEngine {
-        id: graphEngine
+    function cut() {
+        copiedState = fileManager.serializeState(selectedEntities)
+        deleteSelected()
     }
 
-    Clipboard {
-        id: clipboard
+    function copy() {
+        copiedState = fileManager.serializeState(selectedEntities)
+    }
+
+    function paste() {
+        deselectAll()
+        var selection = []
+        var nodes = loadState(copiedState)
+        console.log("Loaded", nodes)
+        for(var i in nodes) {
+            var node = nodes[i]
+            console.log("Node", node)
+            node.x -= 64
+            node.y += 64
+            node.z += 1
+            selection.push(node)
+            node.selected = true
+        }
+        selectedEntities = selection
+    }
+
+    GraphEngine {
+        id: graphEngine
     }
 
     Item {
@@ -1057,10 +1087,10 @@ Rectangle {
             selectAll()
         }
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
-            clipboard.copyNeurons()
+            copy()
         }
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
-            clipboard.pasteNeurons()
+            paste()
         }
         if(event.key === Qt.Key_Delete || (Qt.platform.os === "osx" && event.key === Qt.Key_Backspace) ) {
             deleteSelected()

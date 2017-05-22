@@ -387,6 +387,6 @@ Node {
 
     Connector {
         color: Style.meter.border.color
-        visible: parent.selected || numberOfEdges < 1
+//        visible: parent.selected || numberOfEdges < 1
     }
 }

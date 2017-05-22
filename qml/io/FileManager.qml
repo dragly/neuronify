@@ -63,7 +63,7 @@ Item {
         return result;
     }
 
-    function serializeState() {
+    function serializeState(filter) {
         var nodes = graphEngine.nodes
         var edges = graphEngine.edges
         var nodeList = [];
@@ -73,6 +73,9 @@ Item {
         var counter = 0
         for(var i in nodes) {
             var node = nodes[i];
+            if(filter && filter.indexOf(node) < 0) {
+                continue
+            }
             var savedProperties = objectify(node);
             if(!savedProperties) {
                 console.log("ERROR: Could not objectify node " + node + " number " + i);
@@ -81,11 +84,15 @@ Item {
                 filename: node.filename,
                 savedProperties: savedProperties
             };
-            nodeList.push(nodeDump);
+            nodeList.push(nodeDump)
         }
 
         for(var i in edges) {
             var edge = edges[i];
+
+            if(filter && (filter.indexOf(edge.itemA) < 0 || filter.indexOf(edge.itemB) < 0)) {
+                continue
+            }
 
             var savedProperties = objectify(edge);
             if(!savedProperties) {
@@ -118,8 +125,10 @@ Item {
             fileFormatVersion: 4,
             edges: edgeList,
             nodes: nodeList,
-            workspace: workspaceProperties
         };
+        if(!filter) {
+            result["workspace"] = workspaceProperties
+        }
         return result
     }
 

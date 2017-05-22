@@ -29,7 +29,6 @@
         <file>qml/Node.qml</file>
         <file>qml/hud/SensorControls.qml</file>
         <file>qml/io/FileManager.qml</file>
-        <file>qml/tools/Clipboard.qml</file>
         <file>qml/neurons/AdaptationNeuron.qml</file>
         <file>qml/generators/IrregularSpikeGenerator.qml</file>
         <file>qml/Connector.qml</file>

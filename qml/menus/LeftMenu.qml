@@ -32,12 +32,17 @@ Rectangle {
     
     property real textOpacity: 1.0
 
+    // TODO Replace with event system from Atomify
     signal newClicked()
     signal saveRequested()
     signal saveAsRequested()
     signal openRequested()
     signal uploadClicked()
     signal communityClicked()
+
+    signal cutClicked()
+    signal copyClicked()
+    signal pasteClicked()
 
     signal accountClicked()
     signal settingsClicked()
@@ -134,6 +139,52 @@ Rectangle {
             duration: 400
             onClicked: {
                 communityClicked()
+            }
+        }
+        Item {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Cut"
+            icon.category: "content"
+            icon.name: "content cut"
+            duration: 450
+            onClicked: {
+                cutClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Copy"
+            icon.category: "content"
+            icon.name: "content copy"
+            duration: 400
+            onClicked: {
+                copyClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Paste"
+            icon.category: "content"
+            icon.name: "content paste"
+            duration: 350
+            onClicked: {
+                pasteClicked()
             }
         }
         Item {

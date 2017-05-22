@@ -167,6 +167,22 @@ Item {
             fileView.open("community")
         }
 
+        // Editing
+
+        onCutClicked: {
+            neuronify.cut()
+        }
+
+        onCopyClicked: {
+            neuronify.copy()
+        }
+
+        onPasteClicked: {
+            neuronify.paste()
+        }
+
+        // Settings
+
         onAccountClicked: {
             fileView.open("account")
         }
