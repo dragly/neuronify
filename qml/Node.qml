@@ -38,6 +38,7 @@ NodeBase {
 
     property real snapGridSize: 1.0
     property var dragProxy
+    property string name: "Unnamed node"
     property string label: ""
     property string objectName: "entity"
     property string filename: "Entity.qml"

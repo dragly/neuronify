@@ -29,6 +29,7 @@ Node {
 
     objectName: "Loudspeaker"
     filename: "meters/Loudspeaker.qml"
+    name: "Speaker"
 
     width: 64
     height: 64
@@ -39,7 +40,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Speaker"
             width: parent ? parent.width : 100
 
             Component.onCompleted: {
@@ -102,10 +102,10 @@ Node {
                 }
             }
 
-            ConnectMultipleControl {
-                toEnabled: false
-                node: speaker
-            }
+//            ConnectMultipleControl {
+//                toEnabled: false
+//                node: speaker
+//            }
         }
     }
 

@@ -228,7 +228,7 @@ Item {
         }
 
         onSaveSimulation: {
-            neuronify.saveState(simulation)
+            neuronify.save(simulation)
             mainMenu.revealed = false
         }
 

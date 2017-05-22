@@ -19,6 +19,7 @@ import "../controls"
 Node {
     id: currentClampRoot
     filename: "generators/CurrentClamp.qml"
+    name: "DC current source"
 
     width: 64
     height: 64
@@ -37,7 +38,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "DC current source"
             BoundSlider {
                 target: engine
                 property: "currentOutput"
@@ -50,14 +50,14 @@ Node {
                 precision: 2
             }
 
-            ConnectMultipleControl {
-                toEnabled: false
-                node: currentClampRoot
-            }
+//            ConnectMultipleControl {
+//                toEnabled: false
+//                node: currentClampRoot
+//            }
 
-            ResetControl {
-                engine: currentClampRoot.engine
-            }
+//            ResetControl {
+//                engine: currentClampRoot.engine
+//            }
         }
     }
 

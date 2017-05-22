@@ -58,13 +58,13 @@ PropertiesPage {
         maximumValue: meterControlsRoot.sliderMaximum
     }
 
-    ConnectMultipleControl {
-        toEnabled: false
-        node: meter
-    }
+//    ConnectMultipleControl {
+//        toEnabled: false
+//        node: meter
+//    }
 
-    ResetControl {
-        engine: meterControlsRoot.engine
-    }
+//    ResetControl {
+//        engine: meterControlsRoot.engine
+//    }
 }
 

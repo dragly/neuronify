@@ -32,6 +32,7 @@ Node {
 
     objectName: "irregularSpikeGenerator"
     filename: "generators/IrregularSpikeGenerator.qml"
+    name: "Irregular Spike generator"
 
     preferredEdge: CurrentSynapse {}
 
@@ -63,7 +64,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "Irregular Spike generator"
             BoundSlider {
                 target: engine
                 property: "rate"
@@ -83,14 +83,14 @@ Node {
 
             }
 
-            ConnectMultipleControl {
-                toEnabled: false
-                node: root
-            }
+//            ConnectMultipleControl {
+//                toEnabled: false
+//                node: root
+//            }
 
-            ResetControl {
-                engine: root.engine
-            }
+//            ResetControl {
+//                engine: root.engine
+//            }
         }
     }
 

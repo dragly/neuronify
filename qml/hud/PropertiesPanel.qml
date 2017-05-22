@@ -1,5 +1,5 @@
 import QtQuick 2.6
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.1
 import QtQuick.Controls 2.1
 import QtQuick.Controls.Material 2.1
 import QtQuick.Dialogs 1.2
@@ -19,7 +19,6 @@ Item {
 
     property var workspace
     property Item activeObject: null
-    property bool revealed: false
     property bool advanced
     property bool snappingEnabled
 
@@ -31,19 +30,7 @@ Item {
     Rectangle {
         id: background
         anchors.fill: parent
-
-        color: "#e3eef9"
-        width: {
-            if(Style.device === "phone") {
-                if(parent.width > parent.height) {
-                    return parent.width * 0.5;
-                } else {
-                    return parent.width * 0.85;
-                }
-            } else {
-                return parent.width * 0.4;
-            }
-        }
+        color: Material.background
 
         MouseArea {
             anchors.fill: parent
@@ -59,23 +46,6 @@ Item {
             }
             onWheel: {
                 wheel.accepted = true
-            }
-        }
-
-        states: State {
-            when: root.revealed
-            PropertyChanges {
-                target: background
-                anchors.rightMargin: 0.0
-            }
-        }
-
-        transitions: Transition {
-            NumberAnimation {
-                target: background
-                property: "anchors.rightMargin"
-                duration: 400
-                easing.type: Easing.InOutCubic
             }
         }
     }

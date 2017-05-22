@@ -30,6 +30,7 @@ Node {
     objectName: "touchSensor"
     filename: "sensors/TouchSensor.qml"
     square: true
+    name: "Touch activator"
 
 
     property bool sensing: false
@@ -58,7 +59,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-             property string title: "Touch activator"
 
         }
     }

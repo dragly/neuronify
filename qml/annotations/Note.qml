@@ -24,6 +24,7 @@ Node {
     filename: "annotations/Note.qml"
     square: true
     snapToCenter: false
+    name: "Note"
 
     canReceiveConnections: false
 
@@ -39,8 +40,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Note"
-            spacing: Style.spacing
             Text {
                 text: "Text:"
                 font: Style.control.font
@@ -53,7 +52,6 @@ Node {
                     right: parent.right
                 }
                 text: noteRoot.text
-                height: 200
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 clip: true
                 textFormat: Text.PlainText

@@ -1,5 +1,5 @@
 import QtQuick 2.6
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.1
 
 import Neuronify 1.0
 
@@ -15,6 +15,7 @@ Neuron {
     filename: "neurons/LeakyNeuron.qml"
     imageSource: "qrc:/images/neurons/leaky.png"
     inhibitoryImageSource: "qrc:/images/neurons/leaky_inhibitory.png"
+    name: "Leaky neuron"
 
     property bool fakeInhibitory: neuronEngine_.fakeFireOutput < 0
 

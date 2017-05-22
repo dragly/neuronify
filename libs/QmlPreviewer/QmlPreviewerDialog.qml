@@ -110,6 +110,7 @@ Rectangle {
         property alias width: root.width
         property alias height: root.height
         property alias useItemSize: root.useItemSize
+        property alias showHud: root.showHud
 
         category: "qmlPreviewer"
     }

@@ -15,6 +15,7 @@ Edge {
 
     objectName: "CurrentSynapse"
     filename: "edges/CurrentSynapse.qml"
+    name: "Current based synapse"
 
     engine: EdgeEngine {
         id: engine
@@ -108,7 +109,6 @@ Edge {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Current based synapse"
             BoundSlider {
                 target: engine
                 property: "maximumCurrent"

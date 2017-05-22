@@ -12,6 +12,7 @@ EdgeBase {
 
     property real playbackSpeed
     property string objectName: "edge"
+    property string name: "Unnamed edge"
     property bool isEdge: true
     property string filename: "Edge.qml"
     property bool selected: false

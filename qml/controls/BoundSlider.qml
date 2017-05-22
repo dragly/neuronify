@@ -39,7 +39,7 @@ Item {
 
     state: "edit"
 
-    implicitWidth: 32
+    implicitWidth: parent.width
     implicitHeight: Style.control.fontMetrics.height * 2
 
     function applyTextEdit() {

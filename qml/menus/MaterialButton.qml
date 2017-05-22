@@ -93,6 +93,8 @@ MouseArea {
     ]
     transitions: [
         Transition {
+            from: "discrete"
+            reversible: true
             SequentialAnimation {
                 PauseAnimation {
                     duration: 200

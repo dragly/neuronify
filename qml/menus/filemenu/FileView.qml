@@ -311,7 +311,7 @@ Item {
                                 text: qsTr("Save")
                                 
                                 onClicked: {
-                                    neuronify.saveState(latestFolder + "/" + saveName.text + "/simulation.nfy")
+                                    neuronify.save(latestFolder + "/" + saveName.text + "/simulation.nfy")
                                     neuronify.saveScreenshot(latestFolder + "/" + saveName.text + "/screenshot.png")
                                     root.state = "view"
                                 }
@@ -515,7 +515,7 @@ Item {
                                         var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
                                         var stateFilename = tempFolder + "/simulation.nfy"
                                         var screenshotFilename = tempFolder + "/screenshot.png"
-                                        
+
                                         neuronify.fileManager.saveState(stateFilename)
                                         neuronify.saveScreenshot(screenshotFilename, function() {
                                             var data = neuronify.fileManager.serializeState()
@@ -552,7 +552,7 @@ Item {
                                                             })
                                             })
                                         })
-                                        
+
                                     }
                                 }
                             }

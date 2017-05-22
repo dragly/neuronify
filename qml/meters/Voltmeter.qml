@@ -29,6 +29,7 @@ Node {
     objectName: "voltmeter"
     filename: "meters/Voltmeter.qml"
     square: true
+    name: "Voltmeter"
 
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",

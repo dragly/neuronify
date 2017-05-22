@@ -21,9 +21,10 @@
 #include "neurons/leakcurrent.h"
 #include "neurons/adaptationcurrent.h"
 
-#include "io/fileio.h"
+#include "io/fileio.h" // TODO consider removing
 #include "io/standardpaths.h"
 #include "io/propertygroup.h"
+#include "io/neuronifyfile.h"
 
 #include "io/downloadmanager.h"
 
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
     CuteVersioning::init();
 
     qmlRegisterSingletonType<FileIO>("Neuronify", 1, 0, "FileIO", &FileIO::qmlInstance);
+    qmlRegisterSingletonType<NeuronifyFile>("Neuronify", 1, 0, "NeuronifyFile", &NeuronifyFile::qmlInstance);
     qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
 
     qmlRegisterType<NodeBase>("Neuronify", 1, 0, "NodeBase");
