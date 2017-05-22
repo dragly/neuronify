@@ -87,7 +87,7 @@ Item {
                 horizontalCenter: parent.horizontalCenter
             }
 
-            width: 800
+            width: 640
 
             spacing: 24
             padding: 24

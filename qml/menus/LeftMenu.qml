@@ -33,8 +33,9 @@ Rectangle {
     property real textOpacity: 1.0
 
     signal newClicked()
-    signal saveRequested(string file)
-    signal openRequested(string file)
+    signal saveRequested()
+    signal saveAsRequested()
+    signal openRequested()
     signal uploadClicked()
     signal communityClicked()
 
@@ -69,8 +70,8 @@ Rectangle {
             Layout.maximumWidth: parent.height
             state: mouseArea.containsMouse ? "" : "discrete"
             text: "New"
-            icon.name: "create"
-            icon.category: "content"
+            icon.category: "editor"
+            icon.name: "insert drive file"
             duration: 200
             onClicked: {
                 newClicked()
@@ -87,7 +88,24 @@ Rectangle {
             icon.category: "content"
             duration: 250
             onClicked: {
-                saveDialog.open()
+                saveRequested()
+            }
+            onPressAndHold: {
+                saveAsRequested()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Save as"
+            icon.category: "file"
+            icon.name: "file download"
+            duration: 250
+            onClicked: {
+                saveAsRequested()
             }
         }
         MaterialButton {
@@ -101,7 +119,7 @@ Rectangle {
             icon.category: "file"
             duration: 300
             onClicked: {
-                openDialog.open()
+                openRequested()
             }
         }
         MaterialButton {
@@ -110,23 +128,9 @@ Rectangle {
             Layout.minimumWidth: 48
             Layout.maximumWidth: parent.height
             state: mouseArea.containsMouse ? "" : "discrete"
-            text: "Upload"
-            icon.name: "cloud_upload"
-            icon.category: "file"
-            duration: 350
-            onClicked: {
-                uploadClicked()
-            }
-        }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
-            text: "Get more"
-            icon.name: "cloud_download"
-            icon.category: "file"
+            text: "Community"
+            icon.category: "social"
+            icon.name: "people"
             duration: 400
             onClicked: {
                 communityClicked()
@@ -163,24 +167,6 @@ Rectangle {
             onClicked: {
                 settingsClicked()
             }
-        }
-    }
-
-    FileDialog {
-        id: saveDialog
-        fileMode: FileDialog.SaveFile
-        nameFilters: ["Neuronify files (*.neuronify)"]
-        onAccepted: {
-            saveRequested(file)
-        }
-    }
-
-    FileDialog {
-        id: openDialog
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["Neuronify files (*.neuronify)"]
-        onAccepted: {
-            openRequested(file)
         }
     }
     

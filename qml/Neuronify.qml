@@ -127,7 +127,7 @@ Rectangle {
         loadState(data)
     }
 
-    function save(fileUrl) {
+    function save(fileUrl, name, description) {
         console.log("Saving state to", fileUrl)
         var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
         var imageWidth = 512
@@ -136,7 +136,7 @@ Rectangle {
         var fileString = JSON.stringify(result, null, 4)
         var onSaved = function(grabResult) {
             console.log("Woop")
-            NeuronifyFile.save(fileUrl, "test", "demo", fileString, grabResult)
+            NeuronifyFile.save(fileUrl, name, description, fileString, grabResult)
             console.log("Doop")
         }
         workspaceFlickable.grabToImage(onSaved, size)

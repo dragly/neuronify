@@ -5,6 +5,7 @@ FileMenuDelegate {
     id: root
 
     property string name
+    property string identifier
     property Component component
 
     anchors {

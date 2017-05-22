@@ -1,17 +1,26 @@
-import QtQuick 2.0
+pragma Singleton
+
+import QtQuick 2.7
+import Qt.labs.settings 1.0
 
 Backend {
     id: root
-    property bool debug: false
-    property string serverUrl
-    property string applicationId
-    property string restApiKey
+    property bool debug: true
+    property string serverUrl: "https://parseapi.back4app.com/"
+    property string applicationId: "JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN"
+    property string restApiKey: "bBKStu7bqeyWFTYFfM5OIes255k9XEz2Voe4fUxS"
     property string sessionToken
     property string objectId
+    property var settings: Settings {
+        id: settings
+        category: "parse"
+        property alias sessionToken: root.sessionToken
+    }
+
     readonly property bool loggedIn: {
         console.log("Checking", sessionToken, objectId)
         return sessionToken !== "" && objectId !== ""
-    }
+    }    
 
     onLoggedInChanged: {
         console.log("Logged in", loggedIn)
@@ -164,6 +173,6 @@ Backend {
         if(loggedIn) {
             console.error("ERROR: Could not log out user:", sessionToken, objectId)
         }
-    }
+    }    
 }
 

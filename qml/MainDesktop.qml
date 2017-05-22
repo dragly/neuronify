@@ -34,30 +34,12 @@ Item {
     id: root
 
     property bool dragging: false
-    property url latestFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/neuronify"
+    property url currentSimulationFile
 
     state: "view"
 
-    Settings {
-        property alias latestFolder: root.latestFolder
-    }
-
     DownloadManager {
         id: _downloadManager
-    }
-
-    Parse {
-        id: parse
-        debug: true
-        serverUrl: "https://parseapi.back4app.com/"
-        applicationId: "JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN"
-        restApiKey: "bBKStu7bqeyWFTYFfM5OIes255k9XEz2Voe4fUxS"
-    }
-
-    Settings {
-        id: settings
-        category: "parse"
-        property alias sessionToken: parse.sessionToken
     }
 
     Neuronify {
@@ -72,6 +54,7 @@ Item {
         autoPause: root.state != "view" && root.state != "creation"
         onBackgroundClicked: {
             itemModelLoader.source = ""
+            propertiesPanel.revealed = false
         }
     }
 
@@ -86,25 +69,55 @@ Item {
 
         height: 72
 
+        onNewClicked: {
+            fileView.open("new")
+        }
+
         onSaveRequested: {
-            neuronify.save(file)
+            console.log("Considering", currentSimulationFile)
+            if(Qt.resolvedUrl(currentSimulationFile) !== Qt.resolvedUrl("")) {
+                neuronify.save(currentSimulationFile) // TODO hold name and description
+                return
+            }
+            fileView.open("save")
+        }
+
+        onSaveAsRequested: {
+            fileView.open("save")
         }
 
         onOpenRequested: {
-            neuronify.open(file)
+            fileView.open("open")
+        }
+
+        onCommunityClicked: {
+            fileView.open("community")
+        }
+
+        onAccountClicked: {
+            fileView.open("account")
+        }
+
+        onSettingsClicked: {
+            fileView.open("settings")
         }
     }
 
     FileView {
         id: fileView
-        anchors {
-            left: parent.left
-            leftMargin: 72
-            top: parent.top
-            bottom: parent.bottom
-            right: parent.right
+        anchors.fill: parent
+        revealed: false
+        z: 99
+
+        onSaveRequested: {
+            currentSimulationFile = file
+            neuronify.save(file, name, description)
         }
-        z: 39
+
+        onOpenRequested: {
+            currentSimulationFile = file
+            neuronify.open(file)
+        }
     }
 
     HudShadow {
@@ -373,175 +386,6 @@ Item {
         source: propertiesPanel
         verticalOffset: -1
     }
-
-    //    Rectangle {
-    //        id: itemMenuBackground
-    //        color: Material.background
-    //        anchors {
-    //            top: leftMenu.bottom
-    //            left: parent.left
-    //            bottom: parent.bottom
-    //        }
-
-    //        width: 240
-
-    //        MouseArea {
-    //            anchors.fill: parent
-    //            hoverEnabled: true
-    //            onWheel: {
-    //                // NOTE: necessary to capture wheel events
-    //            }
-    //        }
-
-    //        QQC1.SplitView {
-    //            anchors.fill: parent
-    //            orientation: Qt.Vertical
-
-    //            ItemMenu {
-    //                id: itemMenu
-    //                anchors {
-    //                    left: parent.left
-    //                    right: parent.right
-    //                }
-    //                Layout.minimumHeight: 200
-    //                Layout.fillHeight: true
-    //            }
-
-    //            PropertiesPanel {
-    //                id: properties
-    //                anchors {
-    //                    left: parent.left
-    //                    right: parent.right
-    //                }
-    //                Layout.minimumHeight: 300
-
-    //                activeObject: neuronify.activeObject
-    //                workspace: neuronify.workspace
-    //            }
-
-    //        }
-    //    }
-
-    //    HudShadow {
-    //        id: itemMenuShadow
-    //        anchors.fill: itemMenuBackground
-    //        source: itemMenuBackground
-    //    }
-
-
-
-    //    Item {
-    //        id: infoPanel
-
-    //        property var selectedItem
-
-    //        anchors {
-    //            left: itemMenu.right
-    //            leftMargin: 0
-    //            top: itemMenu.top
-    //            topMargin: 12
-
-    //            Behavior on topMargin {
-    //                SmoothedAnimation {
-    //                    duration: 400
-    //                    easing.type: Easing.InOutQuad
-    //                }
-    //            }
-    //        }
-
-    //        state: "hidden"
-
-    //        width: 240
-    //        height: infoColumn.height + infoColumn.anchors.margins * 2
-
-    //        Rectangle {
-    //            id: infoBackground
-    //            anchors.fill: parent
-    //            visible: false
-    //            color: "#fafafa"
-    //        }
-
-    //        HudShadow {
-    //            anchors.fill: infoBackground
-    //            source: infoBackground
-    //        }
-
-    //        Column {
-    //            id: infoColumn
-    //            anchors {
-    //                left: parent.left
-    //                right: parent.right
-    //                top: parent.top
-    //                margins: 16
-    //                leftMargin: 20
-    //            }
-    //            spacing: 8
-    //            Text {
-    //                anchors {
-    //                    left: parent.left
-    //                    right: parent.right
-    //                }
-    //                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-    //                font.pixelSize: 18
-    //                color: "#676767"
-    //                text: infoPanel.selectedItem ? infoPanel.selectedItem.name : "Nothing selected"
-    //            }
-    //            Text {
-    //                anchors {
-    //                    left: parent.left
-    //                    right: parent.right
-    //                }
-
-    //                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-    //                font.pixelSize: 14
-    //                text: infoPanel.selectedItem ? infoPanel.selectedItem.description : "Nothing selected"
-    //            }
-    //        }
-
-    //        Timer {
-    //            id: hideInfoPanelTimer
-    //            interval: 1000
-    //            onTriggered: {
-    //                infoPanel.state = "hidden"
-    //            }
-    //        }
-
-    //        states: [
-    //            State {
-    //                name: "hidden"
-    //                PropertyChanges {
-    //                    target: infoPanel; anchors.leftMargin: -width
-    //                }
-    //            },
-    //            State {
-    //                name: "revealed"
-    //            },
-    //            State {
-    //                name: "dragging"
-    //                extend: "hidden"
-    //                when: root.dragging
-    //                onCompleted: infoPanel.state = "hidden"
-    //                PropertyChanges {
-    //                    target: infoPanel
-    //                    opacity: 0.0
-    //                }
-    //            }
-    //        ]
-
-    //        transitions: [
-    //            Transition {
-    //                NumberAnimation {
-    //                    properties: "anchors.leftMargin"
-    //                    duration: 800
-    //                    easing.type: Easing.InOutQuad
-    //                }
-    //                NumberAnimation {
-    //                    properties: "opacity"
-    //                    duration: 200
-    //                }
-    //            }
-    //        ]
-    //    }
 
     states: [
         State {
