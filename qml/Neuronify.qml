@@ -624,6 +624,11 @@ Rectangle {
     }
 
     function paste() {
+        if(!copiedState) {
+            ToolTip.show("Nothing to paste", 3000) // TODO move to center
+            return
+        }
+
         deselectAll()
         var selection = []
         var nodes = loadState(copiedState)
@@ -735,6 +740,7 @@ Rectangle {
                     if(wheel.modifiers & Qt.ShiftModifier) {
                         workspace.x += wheel.angleDelta.x * 0.4;
                         workspace.y += wheel.angleDelta.y * 0.4;
+                        return
                     }
                     var targetScale = workspace.scale + wheel.angleDelta.y * 0.0005;
                     pinchArea.scaleAndPosition(wheel.x, wheel.y, targetScale);
