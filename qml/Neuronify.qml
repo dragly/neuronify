@@ -34,6 +34,7 @@ Rectangle {
     id: root
 
     signal simulationLoaded
+    signal backgroundClicked
 
     property alias workspace: workspace
     property alias graphEngine: graphEngine
@@ -58,7 +59,6 @@ Rectangle {
     property real snapGridSize: snappingEnabled ? 32.0 : 1.0
     //    property alias playbackSpeed: playbackControls.playbackSpeed
     property real playbackSpeed: 1.0 // TODO add connection to playbackControls
-    property url currentSimulationUrl
     property bool advanced: false
     property int latestZ: 0
     property bool autoPause: false
@@ -106,7 +106,7 @@ Rectangle {
             console.log("WARNING: Not saving because load timer is still running.")
             return
         }
-        saveState(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
+        save(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
     }
 
     onPlaybackSpeedChanged: {
@@ -120,9 +120,26 @@ Rectangle {
         }
     }
 
-    function saveState(fileUrl) {
+    function open(fileUrl) {
+        console.log("Neuronify.qml: Open", fileUrl)
+        var dataString = NeuronifyFile.open(fileUrl)
+        var data = JSON.parse(dataString)
+        loadState(data)
+    }
+
+    function save(fileUrl) {
         console.log("Saving state to", fileUrl)
-        return fileManager.saveState(fileUrl)
+        var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
+        var imageWidth = 512
+        var size = Qt.size(imageWidth, imageWidth / aspectRatio)
+        var result = fileManager.serializeState()
+        var fileString = JSON.stringify(result, null, 4)
+        var onSaved = function(grabResult) {
+            console.log("Woop")
+            NeuronifyFile.save(fileUrl, "test", "demo", fileString, grabResult)
+            console.log("Doop")
+        }
+        workspaceFlickable.grabToImage(onSaved, size)
     }
 
     function saveScreenshot(filename, callback) {
@@ -176,20 +193,6 @@ Rectangle {
     }
 
     function loadSimulation(fileUrl) {
-        currentSimulationUrl = fileUrl;
-
-        firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
-        console.log("Load state called")
-
-        pinchArea.scaleSetByDoubleClick = false;
-
-        undoList.length = 0;
-
-        undoIdx = 1;
-        undoRecordingEnabled = false;
-
-        deleteEverything();
-
         var code = fileManager.read(fileUrl);
         if(!code) {
             console.log("Load state got empty contents.")
@@ -197,6 +200,18 @@ Rectangle {
         }
 
         var data = JSON.parse(code);
+
+        loadState(data)
+    }
+
+    function loadState(data) {
+        console.log("Neuronify.loadState called")
+        firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
+        pinchArea.scaleSetByDoubleClick = false;
+        undoList.length = 0;
+        undoIdx = 1;
+        undoRecordingEnabled = false;
+        deleteEverything();
 
         var expectedFileFormatVersion = 4
 
@@ -231,11 +246,11 @@ Rectangle {
         }
 
         if(!data.nodes) {
-            console.warn("ERROR: Could not find nodes. Cannot load simulation " + fileUrl)
+            console.warn("ERROR: Could not find nodes. Cannot load simulation.")
             return
         }
         if(!data.edges) {
-            console.warn("ERROR: Could not find edges. Cannot load simulation " + fileUrl)
+            console.warn("ERROR: Could not find edges. Cannot load simulation.")
             return
         }
 
@@ -712,19 +727,19 @@ Rectangle {
                 drag.target: scaleAnimation.running ? undefined : workspace
 
                 onWheel: {
-                    if(wheel.modifiers & Qt.ControlModifier) {
-                        var targetScale = workspace.scale + wheel.angleDelta.y * 0.001;
-                        pinchArea.scaleAndPosition(wheel.x, wheel.y, targetScale);
-                        pinchArea.scaleSetByDoubleClick = false;
-                    } else {
+                    if(wheel.modifiers & Qt.ShiftModifier) {
                         workspace.x += wheel.angleDelta.x * 0.4;
                         workspace.y += wheel.angleDelta.y * 0.4;
                     }
+                    var targetScale = workspace.scale + wheel.angleDelta.y * 0.0005;
+                    pinchArea.scaleAndPosition(wheel.x, wheel.y, targetScale);
+                    pinchArea.scaleSetByDoubleClick = false;
                 }
 
                 onClicked: {
                     deselectAll();
                     selectedEntities = [];
+                    root.backgroundClicked()
                 }
 
                 onDoubleClicked: {

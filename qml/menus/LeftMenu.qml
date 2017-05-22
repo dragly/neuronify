@@ -33,8 +33,8 @@ Rectangle {
     property real textOpacity: 1.0
 
     signal newClicked()
-    signal saveClicked()
-    signal openClicked()
+    signal saveRequested(string file)
+    signal openRequested(string file)
     signal uploadClicked()
     signal communityClicked()
 
@@ -87,7 +87,7 @@ Rectangle {
             icon.category: "content"
             duration: 250
             onClicked: {
-                saveClicked()
+                saveDialog.open()
             }
         }
         MaterialButton {
@@ -101,7 +101,7 @@ Rectangle {
             icon.category: "file"
             duration: 300
             onClicked: {
-                openClicked()
+                openDialog.open()
             }
         }
         MaterialButton {
@@ -163,6 +163,24 @@ Rectangle {
             onClicked: {
                 settingsClicked()
             }
+        }
+    }
+
+    FileDialog {
+        id: saveDialog
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Neuronify files (*.neuronify)"]
+        onAccepted: {
+            saveRequested(file)
+        }
+    }
+
+    FileDialog {
+        id: openDialog
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Neuronify files (*.neuronify)"]
+        onAccepted: {
+            openRequested(file)
         }
     }
     

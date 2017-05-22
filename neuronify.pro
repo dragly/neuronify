@@ -6,7 +6,7 @@ android {
     TARGET = Neuronify
 }
 
-QT += qml quick widgets multimedia multimediawidgets charts
+QT += qml quick widgets multimedia multimediawidgets charts sql
 
 CONFIG += c++11 qtquickcompiler
 
@@ -35,7 +35,8 @@ HEADERS += \
     src/retina/kernels/rectangularkernelengine.h \
     src/core/edgebase.h \
     src/core/edgeengine.h \
-    src/io/downloadmanager.h
+    src/io/downloadmanager.h \
+    src/io/neuronifyfile.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -63,7 +64,8 @@ SOURCES += \
     src/retina/kernels/rectangularkernelengine.cpp \
     src/core/edgebase.cpp \
     src/core/edgeengine.cpp \
-    src/io/downloadmanager.cpp
+    src/io/downloadmanager.cpp \
+    src/io/neuronifyfile.cpp
 
 
 RESOURCES += qml.qrc \

@@ -1,5 +1,5 @@
 import QtQuick 2.5
-import QtQuick.Controls 1.4 as QQC1
+import QtQuick.Controls 2.1 as QQC1
 import QtQuick.Controls 2.1
 import QtQuick.Controls.Material 2.1
 import QtQuick.Dialogs 1.0
@@ -70,6 +70,9 @@ Item {
         }
         clip: true
         autoPause: root.state != "view" && root.state != "creation"
+        onBackgroundClicked: {
+            itemModelLoader.source = ""
+        }
     }
 
     LeftMenu { // TODO rename to topmenu
@@ -82,6 +85,14 @@ Item {
         }
 
         height: 72
+
+        onSaveRequested: {
+            neuronify.save(file)
+        }
+
+        onOpenRequested: {
+            neuronify.open(file)
+        }
     }
 
     FileView {
@@ -193,7 +204,31 @@ Item {
                 bottomMargin: 16
             }
 
+            spacing: 8
+
+            Label {
+                id: selectedLabel
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+
+                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                text: ""
+                font.pixelSize: 12
+                horizontalAlignment: Qt.AlignHCenter
+                color: Style.mainDesktop.text.color
+                states: State {
+                    when: neuronify.activeObject ? true : false
+                    PropertyChanges {
+                        target: selectedLabel
+                        text: neuronify.activeObject.name
+                    }
+                }
+            }
+
             MaterialButton {
+                id: propertiesButton
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -204,6 +239,19 @@ Item {
                 icon.category: "action"
                 color: Material.primary
                 text: "Properties"
+
+                onClicked: {
+                    propertiesPanel.revealed = !propertiesPanel.revealed
+                }
+
+                states: State {
+                    when: neuronify.activeObject ? false : true
+                    PropertyChanges {
+                        target: propertiesButton
+                        opacity: 0.0
+                        enabled: false
+                    }
+                }
             }
         }
     }
@@ -223,7 +271,7 @@ Item {
         width: 240
         height: itemListView.height + 36
         visible: Qt.resolvedUrl(itemModelLoader.source) !== Qt.resolvedUrl("") ? true : false
-        color: "#e3eef9"
+        color: Material.background
 
         Flow {
             id: itemListView
@@ -247,7 +295,7 @@ Item {
 
             Loader {
                 id: itemModelLoader
-//                source: model.listSource
+                //                source: model.listSource
             }
 
             Repeater {
@@ -288,14 +336,36 @@ Item {
 
     PropertiesPanel {
         id: propertiesPanel
+
+        property bool revealed: false
+
         anchors {
             left: itemMenu.right
             bottom: parent.bottom
         }
-
-//        width: 320
-//        height: 320
         activeObject: neuronify.activeObject
+
+        states: [
+            State {
+                when: !propertiesPanel.revealed
+                AnchorChanges {
+                    target: propertiesPanel
+                    anchors {
+                        left: undefined
+                        right: itemMenu.left
+                    }
+                }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                AnchorAnimation {
+                    duration: 200
+                    easing.type: Easing.InOutQuad
+                }
+            }
+        ]
     }
 
     HudShadow {
@@ -304,180 +374,180 @@ Item {
         verticalOffset: -1
     }
 
-//    Rectangle {
-//        id: itemMenuBackground
-//        color: "#e3eef9"
-//        anchors {
-//            top: leftMenu.bottom
-//            left: parent.left
-//            bottom: parent.bottom
-//        }
+    //    Rectangle {
+    //        id: itemMenuBackground
+    //        color: Material.background
+    //        anchors {
+    //            top: leftMenu.bottom
+    //            left: parent.left
+    //            bottom: parent.bottom
+    //        }
 
-//        width: 240
+    //        width: 240
 
-//        MouseArea {
-//            anchors.fill: parent
-//            hoverEnabled: true
-//            onWheel: {
-//                // NOTE: necessary to capture wheel events
-//            }
-//        }
+    //        MouseArea {
+    //            anchors.fill: parent
+    //            hoverEnabled: true
+    //            onWheel: {
+    //                // NOTE: necessary to capture wheel events
+    //            }
+    //        }
 
-//        QQC1.SplitView {
-//            anchors.fill: parent
-//            orientation: Qt.Vertical
+    //        QQC1.SplitView {
+    //            anchors.fill: parent
+    //            orientation: Qt.Vertical
 
-//            ItemMenu {
-//                id: itemMenu
-//                anchors {
-//                    left: parent.left
-//                    right: parent.right
-//                }
-//                Layout.minimumHeight: 200
-//                Layout.fillHeight: true
-//            }
+    //            ItemMenu {
+    //                id: itemMenu
+    //                anchors {
+    //                    left: parent.left
+    //                    right: parent.right
+    //                }
+    //                Layout.minimumHeight: 200
+    //                Layout.fillHeight: true
+    //            }
 
-//            PropertiesPanel {
-//                id: properties
-//                anchors {
-//                    left: parent.left
-//                    right: parent.right
-//                }
-//                Layout.minimumHeight: 300
+    //            PropertiesPanel {
+    //                id: properties
+    //                anchors {
+    //                    left: parent.left
+    //                    right: parent.right
+    //                }
+    //                Layout.minimumHeight: 300
 
-//                activeObject: neuronify.activeObject
-//                workspace: neuronify.workspace
-//            }
+    //                activeObject: neuronify.activeObject
+    //                workspace: neuronify.workspace
+    //            }
 
-//        }
-//    }
+    //        }
+    //    }
 
-//    HudShadow {
-//        id: itemMenuShadow
-//        anchors.fill: itemMenuBackground
-//        source: itemMenuBackground
-//    }
+    //    HudShadow {
+    //        id: itemMenuShadow
+    //        anchors.fill: itemMenuBackground
+    //        source: itemMenuBackground
+    //    }
 
 
 
-//    Item {
-//        id: infoPanel
+    //    Item {
+    //        id: infoPanel
 
-//        property var selectedItem
+    //        property var selectedItem
 
-//        anchors {
-//            left: itemMenu.right
-//            leftMargin: 0
-//            top: itemMenu.top
-//            topMargin: 12
+    //        anchors {
+    //            left: itemMenu.right
+    //            leftMargin: 0
+    //            top: itemMenu.top
+    //            topMargin: 12
 
-//            Behavior on topMargin {
-//                SmoothedAnimation {
-//                    duration: 400
-//                    easing.type: Easing.InOutQuad
-//                }
-//            }
-//        }
+    //            Behavior on topMargin {
+    //                SmoothedAnimation {
+    //                    duration: 400
+    //                    easing.type: Easing.InOutQuad
+    //                }
+    //            }
+    //        }
 
-//        state: "hidden"
+    //        state: "hidden"
 
-//        width: 240
-//        height: infoColumn.height + infoColumn.anchors.margins * 2
+    //        width: 240
+    //        height: infoColumn.height + infoColumn.anchors.margins * 2
 
-//        Rectangle {
-//            id: infoBackground
-//            anchors.fill: parent
-//            visible: false
-//            color: "#fafafa"
-//        }
+    //        Rectangle {
+    //            id: infoBackground
+    //            anchors.fill: parent
+    //            visible: false
+    //            color: "#fafafa"
+    //        }
 
-//        HudShadow {
-//            anchors.fill: infoBackground
-//            source: infoBackground
-//        }
+    //        HudShadow {
+    //            anchors.fill: infoBackground
+    //            source: infoBackground
+    //        }
 
-//        Column {
-//            id: infoColumn
-//            anchors {
-//                left: parent.left
-//                right: parent.right
-//                top: parent.top
-//                margins: 16
-//                leftMargin: 20
-//            }
-//            spacing: 8
-//            Text {
-//                anchors {
-//                    left: parent.left
-//                    right: parent.right
-//                }
-//                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-//                font.pixelSize: 18
-//                color: "#676767"
-//                text: infoPanel.selectedItem ? infoPanel.selectedItem.name : "Nothing selected"
-//            }
-//            Text {
-//                anchors {
-//                    left: parent.left
-//                    right: parent.right
-//                }
+    //        Column {
+    //            id: infoColumn
+    //            anchors {
+    //                left: parent.left
+    //                right: parent.right
+    //                top: parent.top
+    //                margins: 16
+    //                leftMargin: 20
+    //            }
+    //            spacing: 8
+    //            Text {
+    //                anchors {
+    //                    left: parent.left
+    //                    right: parent.right
+    //                }
+    //                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+    //                font.pixelSize: 18
+    //                color: "#676767"
+    //                text: infoPanel.selectedItem ? infoPanel.selectedItem.name : "Nothing selected"
+    //            }
+    //            Text {
+    //                anchors {
+    //                    left: parent.left
+    //                    right: parent.right
+    //                }
 
-//                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-//                font.pixelSize: 14
-//                text: infoPanel.selectedItem ? infoPanel.selectedItem.description : "Nothing selected"
-//            }
-//        }
+    //                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+    //                font.pixelSize: 14
+    //                text: infoPanel.selectedItem ? infoPanel.selectedItem.description : "Nothing selected"
+    //            }
+    //        }
 
-//        Timer {
-//            id: hideInfoPanelTimer
-//            interval: 1000
-//            onTriggered: {
-//                infoPanel.state = "hidden"
-//            }
-//        }
+    //        Timer {
+    //            id: hideInfoPanelTimer
+    //            interval: 1000
+    //            onTriggered: {
+    //                infoPanel.state = "hidden"
+    //            }
+    //        }
 
-//        states: [
-//            State {
-//                name: "hidden"
-//                PropertyChanges {
-//                    target: infoPanel; anchors.leftMargin: -width
-//                }
-//            },
-//            State {
-//                name: "revealed"
-//            },
-//            State {
-//                name: "dragging"
-//                extend: "hidden"
-//                when: root.dragging
-//                onCompleted: infoPanel.state = "hidden"
-//                PropertyChanges {
-//                    target: infoPanel
-//                    opacity: 0.0
-//                }
-//            }
-//        ]
+    //        states: [
+    //            State {
+    //                name: "hidden"
+    //                PropertyChanges {
+    //                    target: infoPanel; anchors.leftMargin: -width
+    //                }
+    //            },
+    //            State {
+    //                name: "revealed"
+    //            },
+    //            State {
+    //                name: "dragging"
+    //                extend: "hidden"
+    //                when: root.dragging
+    //                onCompleted: infoPanel.state = "hidden"
+    //                PropertyChanges {
+    //                    target: infoPanel
+    //                    opacity: 0.0
+    //                }
+    //            }
+    //        ]
 
-//        transitions: [
-//            Transition {
-//                NumberAnimation {
-//                    properties: "anchors.leftMargin"
-//                    duration: 800
-//                    easing.type: Easing.InOutQuad
-//                }
-//                NumberAnimation {
-//                    properties: "opacity"
-//                    duration: 200
-//                }
-//            }
-//        ]
-//    }
+    //        transitions: [
+    //            Transition {
+    //                NumberAnimation {
+    //                    properties: "anchors.leftMargin"
+    //                    duration: 800
+    //                    easing.type: Easing.InOutQuad
+    //                }
+    //                NumberAnimation {
+    //                    properties: "opacity"
+    //                    duration: 200
+    //                }
+    //            }
+    //        ]
+    //    }
 
     states: [
         State {
             name: "view"
             PropertyChanges { target: fileView; state: "hidden" }
-//            PropertyChanges { target: infoPanel; state: "hidden" }
+            //            PropertyChanges { target: infoPanel; state: "hidden" }
         },
         State {
             name: "creation"

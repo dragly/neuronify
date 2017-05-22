@@ -21,6 +21,8 @@ as a js string.
 
   2: v0.92
   3: v0.93
+  4: v?
+  5: v1.2
 */
 
 Item {
@@ -136,49 +138,5 @@ Item {
         var stateFile = FileIO.readSynchronously(fileUrl)
         return stateFile
     }
-
-//    Item {
-//        id: saveFileDialog
-//        visible : false
-//        Grid{
-//            id: saveFileDialogGrid
-//            columns: 3
-//            spacing: 2
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-
-//        }
-
-
-
-
-
-//    FileDialog {
-//        id: saveFileDialog
-//        title: "Please enter a filename"
-//        visible : false
-//        selectExisting: false
-//        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
-
-//        onAccepted: {
-//            saveState(fileUrl)
-//        }
-//    }
-
-//    FileDialog {
-//        id: loadFileDialog
-//        title: "Please choose a file"
-//        visible : false
-//        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
-
-//        onAccepted: {
-//            console.log("Load dialog accepted")
-//            loadState(fileUrl)
-//        }
-//    }
 }
 
