@@ -51,12 +51,16 @@ Item {
         neuronify.save(simulation, callback)
     }
 
-    function trySave(callback) {
+    function saveCurrentOrOpenDialog(callback) {
         console.log("Current simulation", currentSimulation)
         if(currentSimulation) {
             neuronify.save(currentSimulation, callback)
             return
         }
+        saveAs()
+    }
+
+    function saveAs() {
         fileView.open("save")
     }
 
@@ -94,7 +98,7 @@ Item {
         id: unsavedDialog
         onYesClicked: {
             console.log("Accepted, try saving")
-            trySave(function() {
+            saveCurrentOrOpenDialog(function() {
                 console.log("Save complete, request closing")
                 root.requestClose()
             })
@@ -148,11 +152,11 @@ Item {
         }
 
         onSaveRequested: {
-            trySave()
+            saveCurrentOrOpenDialog()
         }
 
         onSaveAsRequested: {
-            fileView.open("save")
+            saveAs()
         }
 
         onOpenRequested: {
@@ -541,4 +545,15 @@ Item {
             duration: 200
         }
     }
+
+    Shortcut {
+        sequence: StandardKey.Save
+        onActivated: root.saveCurrentOrOpenDialog()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Shift+S"
+        onActivated: {console.log("saveas"); root.saveAs()}
+    }
+
 }
