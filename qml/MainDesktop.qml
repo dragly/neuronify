@@ -124,7 +124,7 @@ Item {
         anchors {
             left: itemMenu.right
             right: parent.right
-            top: parent.top
+            top: topMenu.bottom
             bottom: parent.bottom
         }
         clip: true
