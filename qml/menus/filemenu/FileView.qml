@@ -363,6 +363,7 @@ Item {
                                     id: saveDialog
                                     fileMode: FileDialog.SaveFile
                                     nameFilters: ["Neuronify files (*.neuronify)"]
+                                    defaultSuffix: ".neuronify"
                                     onAccepted: {
                                         var simulation = {
                                             file: file,
