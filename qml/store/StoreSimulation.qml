@@ -11,7 +11,7 @@ import "qrc:/qml/backend"
 Item {
     id: root
 
-    signal runClicked(url fileUrl)
+    signal runClicked(var simulation)
 
     property DownloadManager downloadManager
 
@@ -42,7 +42,7 @@ Item {
     property real price: 0.0
     readonly property url targetLocation: StandardPaths.writableLocation(StandardPaths.AppDataLocation, "community/" + objectData.objectId)
     readonly property url simulationPath: targetLocation + "/simulation.nfy"
-    readonly property bool downloaded: FileIO.exists(simulationPath) // TODO add file watcher
+    readonly property bool downloaded: FileIO.exists(simulationPath) // TODO replace with database
 
     Material.theme: Material.Light
 
@@ -161,32 +161,40 @@ Item {
                 }
                 spacing: 8
 
-                Button {
-                    id: installButton
-                    text: downloaded ? "Reinstall" : "Install"
-                    onClicked: {
-                        FileIO.write(targetLocation + "/info.json", JSON.stringify(objectData, null, 4))
-                        if(objectData.simulation) {
-                            downloadManager.download(
-                                        objectData.simulation.url,
-                                        targetLocation + "/simulation.nfy")
-                        }
-                        if(objectData.screenshot) {
-                            downloadManager.download(
-                                        objectData.screenshot.url,
-                                        targetLocation + "/screenshot.png")
-                        }
-                    }
-                }
+                // TODO add back install button when database is ready
+
+//                Button {
+//                    id: installButton
+//                    text: downloaded ? "Reinstall" : "Install"
+//                    onClicked: {
+//                        FileIO.write(targetLocation + "/info.json", JSON.stringify(objectData, null, 4))
+//                        if(objectData.simulation) {
+//                            downloadManager.download(
+//                                        objectData.simulation.url,
+//                                        targetLocation + "/simulation.nfy")
+//                        }
+//                        if(objectData.screenshot) {
+//                            downloadManager.download(
+//                                        objectData.screenshot.url,
+//                                        targetLocation + "/screenshot.png")
+//                        }
+//                    }
+//                }
 
                 Button {
                     id: runButton
 
-                    visible: downloaded
-
                     text: "Run"
                     onClicked: {
-                        root.runClicked(simulationPath)
+                        Parse.download(objectData.simulation.url, function(data) {
+                            var simulation = {
+                                name: objectData.name,
+                                description: objectData.description,
+                                data: data,
+                            }
+                            root.runClicked(simulation)
+                        })
+
                     }
                 }
             }

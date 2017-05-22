@@ -36,6 +36,7 @@ Item {
 
     signal saveRequested(var simulation)
     signal openRequested(url file)
+    signal runRequested(var simulation)
     signal loadRequested(url file) // TODO remove
 
     onRevealedChanged: console.log("REVEALED", revealed)
@@ -190,6 +191,7 @@ Item {
                                         }
                                     }
 
+                                    // TODO replace with database
                                     Repeater {
                                         model: [
                                             {folder: "qrc:/simulations/tutorial/tutorial_1_intro"},
@@ -261,9 +263,11 @@ Item {
                                     }
                                 }
 
-                                FileMenuHeading {
-                                    text: "Recent"
-                                }
+                                // TODO Add recent once database is ready
+
+//                                FileMenuHeading {
+//                                    text: "Recent"
+//                                }
 
                                 Flow {
                                     anchors {
@@ -396,7 +400,9 @@ Item {
                                 StoreSimulation {
                                     downloadManager: _downloadManager
                                     onRunClicked: {
-                                        loadRequested(fileUrl)
+//                                        loadRequested(fileUrl)
+//                                        openRequested(fileUrl)
+                                        runRequested(simulation)
                                         stackView.pop()
                                     }
                                 }
@@ -419,48 +425,50 @@ Item {
                                     showOnlyReadable: true
                                 }
 
-                                FileMenuHeading {
-                                    text: "Installed"
-                                    visible: communityFolderModel.count > 0
-                                }
+                                // TODO add back installed section when database is ready
 
-                                Flow {
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
+//                                FileMenuHeading {
+//                                    text: "Installed"
+//                                    visible: communityFolderModel.count > 0
+//                                }
 
-                                    spacing: 16
-                                    visible: communityFolderModel.count > 0
+//                                Flow {
+//                                    anchors {
+//                                        left: parent.left
+//                                        right: parent.right
+//                                    }
 
-                                    Repeater {
-                                        model: communityFolderModel
-                                        delegate: StoreItem {
+//                                    spacing: 16
+//                                    visible: communityFolderModel.count > 0
 
-                                            property var objectData: JSON.parse(FileIO.readSynchronously(model.fileURL + "/info.json"))
+//                                    Repeater {
+//                                        model: communityFolderModel
+//                                        delegate: StoreItem {
 
-                                            width: 160
-                                            height: 256
-                                            name: objectData.name
-                                            description: objectData.description
-                                            imageUrl: model.fileURL + "/screenshot.png"
-                                            onClicked: {
-                                                console.log("Pushing", JSON.stringify(objectData))
-                                                stackView.push(simulationComponent)
-                                                stackView.currentItem.objectData = objectData
-                                            }
-                                        }
-                                    }
-                                }
+//                                            property var objectData: JSON.parse(FileIO.readSynchronously(model.fileURL + "/info.json"))
 
-                                Item {
-                                    height: 16
-                                    width: 1
-                                }
+//                                            width: 160
+//                                            height: 256
+//                                            name: objectData.name
+//                                            description: objectData.description
+//                                            imageUrl: model.fileURL + "/screenshot.png"
+//                                            onClicked: {
+//                                                console.log("Pushing", JSON.stringify(objectData))
+//                                                stackView.push(simulationComponent)
+//                                                stackView.currentItem.objectData = objectData
+//                                            }
+//                                        }
+//                                    }
+//                                }
 
-                                FileMenuHeading {
-                                    text: "Available"
-                                }
+//                                Item {
+//                                    height: 16
+//                                    width: 1
+//                                }
+
+//                                FileMenuHeading {
+//                                    text: "Available"
+//                                }
 
                                 Flow {
                                     id: flow

@@ -40,8 +40,9 @@ Item {
     property bool ignoreUnsavedChanges: false
 
     function open(file) {
-        var simulation = neuronify.open(file)
+        var simulation = NeuronifyFile.open(file)
         if(simulation) {
+            neuronify.open(simulation)
             currentSimulation = simulation
         }
     }
@@ -52,8 +53,7 @@ Item {
     }
 
     function saveCurrentOrOpenDialog(callback) {
-        console.log("Current simulation", currentSimulation)
-        if(currentSimulation) {
+        if(currentSimulation && currentSimulation.file) {
             neuronify.save(currentSimulation, callback)
             return
         }
@@ -186,6 +186,12 @@ Item {
         onLoadRequested: {
             root.currentSimulation = undefined
             neuronify.loadSimulation(file)
+            revealed = false
+        }
+
+        onRunRequested: {
+            root.currentSimulation = simulation
+            neuronify.open(simulation)
             revealed = false
         }
 

@@ -101,9 +101,8 @@ Rectangle {
         }
     }
 
-    function open(fileUrl) {
-        console.log("Open", fileUrl)
-        var simulation = NeuronifyFile.open(fileUrl)
+    function open(simulation) {
+        console.log("Open", simulation)
         var data = JSON.parse(simulation.data)
         loadState(data)
         hasUnsavedChanges = false

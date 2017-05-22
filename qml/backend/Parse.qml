@@ -110,6 +110,24 @@ Backend {
         req.send();
     }
 
+    function download(url, callback) {
+        var req = new XMLHttpRequest
+        req.open("GET", url)
+        setHeaders(req)
+        req.onreadystatechange = function() {
+            if (req.readyState === XMLHttpRequest.DONE) {
+                if(debug) {
+                    console.log("Downloaded", url)
+                }
+                if(callback) {
+                    callback(req.responseText)
+                }
+            }
+        }
+        console.log("GET", url)
+        req.send()
+    }
+
     function put(name, data, callback) {
         var req = new XMLHttpRequest;
         var url = serverUrl + "classes/" + name
