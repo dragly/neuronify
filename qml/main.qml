@@ -75,6 +75,7 @@ ApplicationWindow {
     MainDesktop {
         id: mainDesktop
         anchors.fill: parent
+        focus: true
         onRequestClose: {
             console.log("Close requested")
             root.close()

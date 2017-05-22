@@ -29,7 +29,6 @@ Rectangle {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: focus = true
     }
 
     TabBar {

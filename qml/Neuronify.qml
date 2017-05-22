@@ -92,6 +92,8 @@ Rectangle {
         Style.playbackSpeed = root.playbackSpeed;
     }
 
+    onFocusChanged: console.log("Neuronify focus", focus)
+
     function deleteFromList(list, item) {
         var itemIndex = list.indexOf(item)
         if(itemIndex > -1) {
@@ -472,6 +474,7 @@ Rectangle {
         } else if (clickMode === "connectMultipleToThis") {
             connectEntities(entity, activeObject);
         }
+        root.focus = true
     }
 
     function raiseToTop(node) {
@@ -713,6 +716,7 @@ Rectangle {
                     deselectAll();
                     selectedEntities = [];
                     root.backgroundClicked()
+                    root.focus = true
                 }
 
                 onDoubleClicked: {
@@ -1049,6 +1053,7 @@ Rectangle {
     }
 
     Keys.onPressed: {
+        console.log("Key pressed", event.key)
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
             selectAll()
         }
@@ -1065,7 +1070,6 @@ Rectangle {
             playbackControls.toggleSpeed(event.key)
         }
     }
-
 
     DropArea {
         anchors.fill: parent

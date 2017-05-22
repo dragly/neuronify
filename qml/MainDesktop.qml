@@ -118,7 +118,7 @@ Item {
     Neuronify {
         id: neuronify
         anchors {
-            left: parent.left
+            left: itemMenu.right
             right: parent.right
             top: parent.top
             bottom: parent.bottom
@@ -129,6 +129,7 @@ Item {
             itemModelLoader.source = ""
             propertiesPanel.revealed = false
         }
+        focus: true
     }
 
     LeftMenu { // TODO rename to topmenu

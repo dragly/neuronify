@@ -20,12 +20,12 @@ Item {
     onRevealedChanged: {
         itemListView.currentIndex = 0
 
-        if (revealed) {
-            focus = true
-        }
-         else {
-            focus = false
-        }
+//        if (revealed) {
+//            focus = true
+//        }
+//         else {
+//            focus = false
+//        }
     }
 
     ListModel {

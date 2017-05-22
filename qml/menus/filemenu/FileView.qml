@@ -303,7 +303,8 @@ Item {
                                     Binding {
                                         target: saveName
                                         property: "text"
-                                        value: currentSimulation.name
+                                        when: currentSimulation ? true : false
+                                        value: currentSimulation ? currentSimulation.name : ""
                                     }
                                 }
 
@@ -322,7 +323,8 @@ Item {
                                     Binding {
                                         target: saveDescription
                                         property: "text"
-                                        value: currentSimulation.description
+                                        when: currentSimulation ? true : false
+                                        value: currentSimulation ? currentSimulation.description : ""
                                     }
                                 }
 
