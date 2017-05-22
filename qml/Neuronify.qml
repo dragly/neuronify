@@ -1082,7 +1082,7 @@ Rectangle {
                 console.warn("WARNING: Cannot accept drop without source.")
                 return
             }
-            var workspacePosition = root.mapToItem(neuronLayer, drop.source.x, drop.source.y)
+            var workspacePosition = drop.source.mapToItem(neuronLayer, 0, 0)
             var properties = {
                 x: workspacePosition.x,
                 y: workspacePosition.y,
