@@ -91,7 +91,7 @@ Rectangle {
             text: "Open"
             icon.name: "folder_open"
             icon.category: "file"
-            duration: 300
+            duration: 250
             onClicked: {
                 openRequested()
             }
@@ -105,7 +105,7 @@ Rectangle {
             text: "Save"
             icon.name: "save"
             icon.category: "content"
-            duration: 250
+            duration: 300
             onClicked: {
                 saveRequested()
             }
@@ -122,7 +122,7 @@ Rectangle {
             text: "Save as"
             icon.category: "file"
             icon.name: "file download"
-            duration: 250
+            duration: 350
             onClicked: {
                 saveAsRequested()
             }
