@@ -11,7 +11,7 @@ class NeuronifyFile : public QObject
 public:
     explicit NeuronifyFile(QObject *parent = 0);
 
-    Q_INVOKABLE QString open(QUrl fileUrl);
+    Q_INVOKABLE QVariant open(QUrl fileUrl);
     static QObject* qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
     Q_INVOKABLE bool save(const QUrl &fileUrl, const QString &name, const QString &description, const QString &simulation, const QVariant &grabResult);
 };

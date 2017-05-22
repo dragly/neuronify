@@ -62,6 +62,7 @@ Rectangle {
     property bool advanced: false
     property int latestZ: 0
     property bool autoPause: false
+    property bool hasUnsavedChanges: true
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -84,29 +85,7 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        console.log("Neuronify.qml load completed " + Date.now());
-        Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
-                firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed
-    }
-
-    function firstLoad() {
-        resetStyle();
-        var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy");
-        if(latest.toString() === "") {
-            loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy");
-        } else {
-            loadSimulation(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "latest.nfy"));
-        }
-    }
-
-    Component.onDestruction: {
-        console.log("Neuronify finishing")
-        if(firstLoadTimer.running) { // Don't save if not yet loaded
-            console.log("WARNING: Not saving because load timer is still running.")
-            return
-        }
-        save(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
     }
 
     onPlaybackSpeedChanged: {
@@ -121,24 +100,28 @@ Rectangle {
     }
 
     function open(fileUrl) {
-        console.log("Neuronify.qml: Open", fileUrl)
-        var dataString = NeuronifyFile.open(fileUrl)
-        var data = JSON.parse(dataString)
+        console.log("Open", fileUrl)
+        var simulation = NeuronifyFile.open(fileUrl)
+        var data = JSON.parse(simulation.data)
         loadState(data)
+        hasUnsavedChanges = false
+        return simulation
     }
 
-    function save(fileUrl, name, description) {
-        console.log("Saving state to", fileUrl)
+    function save(simulation, callback) {
         var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
         var imageWidth = 512
         var size = Qt.size(imageWidth, imageWidth / aspectRatio)
         var result = fileManager.serializeState()
         var fileString = JSON.stringify(result, null, 4)
         var onSaved = function(grabResult) {
-            console.log("Woop")
-            NeuronifyFile.save(fileUrl, name, description, fileString, grabResult)
-            console.log("Doop")
+            console.log("Saving simulation...")
+            NeuronifyFile.save(simulation.file, simulation.name, simulation.description, fileString, grabResult)
+            console.log("Save completed!")
+            hasUnsavedChanges = false
+            callback()
         }
+        console.log("Grabbing screenshot...")
         workspaceFlickable.grabToImage(onSaved, size)
     }
 
@@ -199,9 +182,9 @@ Rectangle {
             return;
         }
 
-        var data = JSON.parse(code);
-
+        var data = JSON.parse(code)
         loadState(data)
+        hasUnsavedChanges = false
     }
 
     function loadState(data) {
@@ -216,7 +199,7 @@ Rectangle {
         var expectedFileFormatVersion = 4
 
         if(data.fileFormatVersion < expectedFileFormatVersion) {
-            console.warn("The file " + fileUrl + " has format version " + data.fileFormatVersion + ". " +
+            console.warn("The file has format version " + data.fileFormatVersion + ". " +
                          "We are now at version " + expectedFileFormatVersion + ". " +
                          "Some data may be lost when you save it now, because the file will be " +
                          "converted to the newest format.")
@@ -266,7 +249,7 @@ Rectangle {
 
             var entity = createEntity(filename, {}, false);
             if(!entity) {
-                console.warn("WARNING: Could not create entity of type " + filename + " while loading " + fileUrl);
+                console.warn("WARNING: Could not create entity of type " + filename + " while loading.");
                 continue;
             }
 
@@ -286,7 +269,7 @@ Rectangle {
             var filename = edgeProperties.filename;
 
             if(!createdNodes[from] || !createdNodes[to]) {
-                console.warn("WARNING: Cannot connect entities " + from + " and " + to + " while loading " + fileUrl);
+                console.warn("WARNING: Cannot connect entities " + from + " and " + to + " while loading.");
                 continue;
             }
 
@@ -556,6 +539,7 @@ Rectangle {
         // finalize
         graphEngine.addNode(entity)
         addToUndoList()
+        hasUnsavedChanges = true
         return entity
     }
 
@@ -603,6 +587,7 @@ Rectangle {
         connection.z = latestZ
         addToUndoList()
         graphEngine.addEdge(connection)
+        hasUnsavedChanges = true
         return connection
     }
 
@@ -617,18 +602,6 @@ Rectangle {
             }
         }
         return connectionAlreadyExists
-    }
-
-    function resetStyle() {
-        Style.reset(width, height, Screen.pixelDensity)
-    }
-
-    onWidthChanged: {
-        resetStyle()
-    }
-
-    onHeightChanged: {
-        resetStyle()
     }
 
     GraphEngine {
@@ -1063,15 +1036,6 @@ Rectangle {
     Settings {
         property alias snappingEnabled: root.snappingEnabled
         property alias advanced: root.advanced
-    }
-
-    Timer {
-        // this is needed because workspaceFlickable doesn't have width at onCompleted
-        id: firstLoadTimer
-        interval: 200
-        onTriggered: {
-            root.firstLoad();
-        }
     }
 
     Shortcut {

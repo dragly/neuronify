@@ -33,10 +33,83 @@ import "qrc:/qml/ui"
 Item {
     id: root
 
+    signal requestClose
+
     property bool dragging: false
-    property url currentSimulationFile
+    property var currentSimulation
+    property bool ignoreUnsavedChanges: false
+
+    function open(file) {
+        var simulation = neuronify.open(file)
+        if(simulation) {
+            currentSimulation = simulation
+        }
+    }
+
+    function save(simulation, callback) {
+        currentSimulation = simulation
+        neuronify.save(simulation, callback)
+    }
+
+    function trySave(callback) {
+        console.log("Current simulation", currentSimulation)
+        if(currentSimulation) {
+            neuronify.save(currentSimulation, callback)
+            return
+        }
+        fileView.open("save")
+    }
+
+    Component.onCompleted: {
+        firstLoadTimer.start()
+    }
+
+    function firstLoad() {
+        neuronify.loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy") // TODO replace with open
+    }
+
+    function tryClose() {
+        if(ignoreUnsavedChanges) {
+            return true
+        }
+        if(neuronify.hasUnsavedChanges) {
+            unsavedDialog.open()
+            return false
+        }
+        return true
+    }
 
     state: "view"
+
+    Timer {
+        // this is needed because workspaceFlickable doesn't have width at onCompleted
+        id: firstLoadTimer
+        interval: 200
+        onTriggered: {
+            root.firstLoad()
+        }
+    }
+
+    MessageDialog {
+        id: unsavedDialog
+        onYesClicked: {
+            console.log("Accepted, try saving")
+            trySave(function() {
+                console.log("Save complete, request closing")
+                root.requestClose()
+            })
+        }
+        onNoClicked: {
+            console.log("Rejected, request close")
+            ignoreUnsavedChanges = true
+            root.requestClose()
+        }
+
+        buttons: MessageDialog.Yes | MessageDialog.No | MessageDialog.Cancel
+
+        text: "The document has been modified."
+        informativeText: "Do you want to save your changes?"
+    }
 
     DownloadManager {
         id: _downloadManager
@@ -74,12 +147,7 @@ Item {
         }
 
         onSaveRequested: {
-            console.log("Considering", currentSimulationFile)
-            if(Qt.resolvedUrl(currentSimulationFile) !== Qt.resolvedUrl("")) {
-                neuronify.save(currentSimulationFile) // TODO hold name and description
-                return
-            }
-            fileView.open("save")
+            trySave()
         }
 
         onSaveAsRequested: {
@@ -107,16 +175,23 @@ Item {
         id: fileView
         anchors.fill: parent
         revealed: false
+        currentSimulation: root.currentSimulation
         z: 99
 
+        onLoadRequested: {
+            root.currentSimulation = undefined
+            neuronify.loadSimulation(file)
+            revealed = false
+        }
+
         onSaveRequested: {
-            currentSimulationFile = file
-            neuronify.save(file, name, description)
+            root.save(simulation)
+            revealed = false
         }
 
         onOpenRequested: {
-            currentSimulationFile = file
-            neuronify.open(file)
+            root.open(file)
+            revealed = false
         }
     }
 

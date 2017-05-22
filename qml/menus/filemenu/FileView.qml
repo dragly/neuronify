@@ -32,9 +32,11 @@ Item {
 
     property bool revealed: true
     property url latestFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/neuronify"
+    property var currentSimulation
 
-    signal saveRequested(url file, string name, string description)
+    signal saveRequested(var simulation)
     signal openRequested(url file)
+    signal loadRequested(url file) // TODO remove
 
     onRevealedChanged: console.log("REVEALED", revealed)
     
@@ -101,7 +103,7 @@ Item {
                 topMargin: 64
             }
             width: 196
-            height: viewColumn.height
+            height: buttonContainer.height
             
             Rectangle {
                 anchors {
@@ -116,6 +118,7 @@ Item {
             }
 
             Column {
+                id: buttonContainer
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -183,8 +186,7 @@ Item {
                                         name: "Blank simulation"
                                         description: "Start with a blank canvas."
                                         onClicked: {
-                                            neuronify.loadSimulation("qrc:/simulations/empty/empty.nfy")
-                                            root.revealed = false
+                                            loadRequested("qrc:/simulations/empty/empty.nfy")
                                         }
                                     }
 
@@ -222,8 +224,7 @@ Item {
                                             imageUrl: loader.item.screenshotSource
 
                                             onClicked: {
-                                                neuronify.loadSimulation(loader.item.stateSource)
-                                                root.revealed = false
+                                                loadRequested(loader.item.stateSource)
                                             }
                                         }
                                     }
@@ -257,7 +258,6 @@ Item {
                                     nameFilters: ["Neuronify files (*.neuronify)"]
                                     onAccepted: {
                                         openRequested(file)
-                                        root.revealed = false
                                     }
                                 }
 
@@ -299,6 +299,12 @@ Item {
                                     }
 
                                     placeholderText: "e.g. MySimulation"
+
+                                    Binding {
+                                        target: saveName
+                                        property: "text"
+                                        value: currentSimulation.name
+                                    }
                                 }
 
                                 Label {
@@ -312,6 +318,12 @@ Item {
                                         right: parent.right
                                     }
                                     placeholderText: "e.g. Illustrates the effect of feedback inhibition."
+
+                                    Binding {
+                                        target: saveDescription
+                                        property: "text"
+                                        value: currentSimulation.description
+                                    }
                                 }
 
                                 Label {
@@ -346,8 +358,13 @@ Item {
                                     fileMode: FileDialog.SaveFile
                                     nameFilters: ["Neuronify files (*.neuronify)"]
                                     onAccepted: {
-                                        saveRequested(file, saveName.text, saveDescription.text)
-                                        root.revealed = false
+                                        var simulation = {
+                                            file: file,
+                                            name: saveName.text,
+                                            description: saveDescription.text
+                                        }
+
+                                        saveRequested(simulation)
                                     }
                                 }
                             }
@@ -377,8 +394,7 @@ Item {
                                 StoreSimulation {
                                     downloadManager: _downloadManager
                                     onRunClicked: {
-                                        neuronify.loadSimulation(fileUrl)
-                                        root.revealed = false
+                                        loadRequested(fileUrl)
                                         stackView.pop()
                                     }
                                 }

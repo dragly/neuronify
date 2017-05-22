@@ -21,7 +21,7 @@ bool NeuronifyFile::save(const QUrl &fileUrl, const QString &name, const QString
         return false;
     }
 
-    qDebug() << "Saving" << filename;
+    qDebug() << "Saving" << name << "to" << filename;
     QFile originalFile(filename);
     if(originalFile.exists()) {
         originalFile.remove();
@@ -56,27 +56,36 @@ bool NeuronifyFile::save(const QUrl &fileUrl, const QString &name, const QString
 }
 
 
-QString NeuronifyFile::open(QUrl fileUrl)
+QVariant NeuronifyFile::open(QUrl fileUrl)
 {
     QString filename = fileUrl.toLocalFile();
 
     QString data;
+    QString name;
+    QString description;
     {
         QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", filename);
         db.setDatabaseName(filename);
         db.open();
         QSqlQuery query = QSqlQuery(db);
-        if(!query.exec("SELECT data FROM simulations")) {
+        if(!query.exec("SELECT name, description, data FROM simulations")) {
             qDebug() << "ERROR loading simulations";
             return "";
         }
         query.first();
 
+        name = query.value("name").toString();
+        description = query.value("description").toString();
         data = query.value("data").toString();
     }
     QSqlDatabase::removeDatabase(filename);
     qDebug() << "NeuronifyFile::open: Returning data";
-    return data;
+    QVariantMap result;
+    result["file"] = fileUrl;
+    result["name"] = name;
+    result["description"] = description;
+    result["data"] = data;
+    return result;
 }
 
 QObject* NeuronifyFile::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine)
