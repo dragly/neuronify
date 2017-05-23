@@ -21,7 +21,7 @@ Item {
     property bool dragActive: false
     property bool selected: false
 
-    width: 64
+    width: 56
     height: column.height
 
     MouseArea {
@@ -123,7 +123,7 @@ Item {
 
         }
 
-        Text {
+        Label {
             id: text
             anchors {
                 left: parent.left

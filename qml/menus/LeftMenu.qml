@@ -45,6 +45,7 @@ Rectangle {
     signal cutClicked()
     signal copyClicked()
     signal pasteClicked()
+    signal deleteClicked()
 
     signal accountClicked()
     signal settingsClicked()
@@ -62,34 +63,27 @@ Rectangle {
     
     RowLayout {
         id: menuColumn
+
+        property bool containsMouse: mouseArea.containsMouse
+
         anchors {
             fill: parent
             leftMargin: 24
             rightMargin: 8
-            topMargin: 10
-            bottomMargin: 8
+            topMargin: 8
+            bottomMargin: 6
         }
-        spacing: 8
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
-            text: "New"
+        spacing: 6
+        LeftMenuButton {
+            duration: 200
             icon.category: "editor"
             icon.name: "insert drive file"
-            duration: 200
+            text: "New"
             onClicked: {
                 newClicked()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Open"
             icon.name: "folder_open"
             icon.category: "file"
@@ -98,12 +92,7 @@ Rectangle {
                 openRequested()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Save"
             icon.name: "save"
             icon.category: "content"
@@ -115,12 +104,7 @@ Rectangle {
                 saveAsRequested()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Save as"
             icon.category: "file"
             icon.name: "file download"
@@ -129,12 +113,7 @@ Rectangle {
                 saveAsRequested()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Community"
             icon.category: "social"
             icon.name: "people"
@@ -147,12 +126,7 @@ Rectangle {
             Layout.fillHeight: true
             Layout.fillWidth: true
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Undo"
             icon.category: "content"
             icon.name: "undo"
@@ -161,12 +135,7 @@ Rectangle {
                 undoClicked()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Redo"
             icon.category: "content"
             icon.name: "redo"
@@ -175,12 +144,7 @@ Rectangle {
                 redoClicked()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Cut"
             icon.category: "content"
             icon.name: "content cut"
@@ -189,12 +153,7 @@ Rectangle {
                 cutClicked()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Copy"
             icon.category: "content"
             icon.name: "content copy"
@@ -203,12 +162,7 @@ Rectangle {
                 copyClicked()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Paste"
             icon.category: "content"
             icon.name: "content paste"
@@ -217,16 +171,20 @@ Rectangle {
                 pasteClicked()
             }
         }
+        LeftMenuButton {
+            text: "Delete"
+            icon.category: "action"
+            icon.name: "delete"
+            duration: 250
+            onClicked: {
+                deleteClicked()
+            }
+        }
         Item {
             Layout.fillHeight: true
             Layout.fillWidth: true
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Account"
             icon.name: "account_circle"
             icon.category: "action"
@@ -235,12 +193,7 @@ Rectangle {
                 accountClicked()
             }
         }
-        MaterialButton {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            Layout.minimumWidth: 48
-            Layout.maximumWidth: parent.height
-            state: mouseArea.containsMouse ? "" : "discrete"
+        LeftMenuButton {
             text: "Settings"
             icon.name: "settings"
             icon.category: "action"

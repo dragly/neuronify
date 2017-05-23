@@ -603,6 +603,7 @@ Rectangle {
             connection.selected = true;
             latestZ-=1
             connection.z = latestZ
+            focus = true
         });
         latestZ-=1
         connection.z = latestZ

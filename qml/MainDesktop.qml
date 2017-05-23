@@ -189,6 +189,10 @@ Item {
             neuronify.paste()
         }
 
+        onDeleteClicked: {
+            neuronify.deleteSelected()
+        }
+
         // Settings
 
         onAccountClicked: {
@@ -245,7 +249,7 @@ Item {
             bottom: parent.bottom
         }
         color: "#e3eef9"
-        width: 96
+        width: 110
         z: 38
 
         Column {

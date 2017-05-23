@@ -123,5 +123,6 @@
         <file>qml/hud/PropertiesContainer.qml</file>
         <file>qml/neurons/ChartSlider.qml</file>
         <file>qml/controls/NumberSlider.qml</file>
+        <file>qml/menus/LeftMenuButton.qml</file>
     </qresource>
 </RCC>
