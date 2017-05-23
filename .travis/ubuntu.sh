@@ -1,13 +1,13 @@
 #!/bin/bash
-sudo apt-get update -qq
-sudo apt-get install -qq curl p7zip-full git build-essential
-sudo apt-get -qq build-dep qtbase-opensource-src
-bash .travis/qt5-ubuntu.sh $(pwd) extra-charts 3d base declarative graphicaleffects imageformats multimedia quickcontrols quickcontrols2 sensors svg tools translations xmlpatterns
-export QTDIR=$(pwd)/5.7/gcc_64/
+export QTDIR=/opt/qt5/5.7/gcc_64
 export PATH=$QTDIR/bin:$PATH
+SNAP_DUMP=snapdump
 qmake
-make
-cp -r $QTDIR/lib .snapcraft/
-cp -r $QTDIR/plugins .snapcraft/
-cp -r $QTDIR/qml .snapcraft/
-cp neuronify .snapcraft/
+make -j8
+mkdir -p ${SNAP_DUMP}
+cp -r $QTDIR/bin ${SNAP_DUMP}/
+cp -r $QTDIR/lib ${SNAP_DUMP}/
+cp -r $QTDIR/plugins ${SNAP_DUMP}/
+cp -r $QTDIR/plugins/platforms ${SNAP_DUMP}/
+cp -r $QTDIR/qml ${SNAP_DUMP}/
+cp src/neuronify ${SNAP_DUMP}/bin/neuronify
