@@ -1,7 +1,10 @@
-import QtQuick 2.0
+import QtQuick 2.6
+import QtQuick.Controls 2.1
 import QtMultimedia 5.0
 
 import Neuronify 1.0
+
+import "qrc:/qml/style"
 
 /*!
 \qmltype Node
@@ -35,6 +38,7 @@ NodeBase {
 
     property real snapGridSize: 1.0
     property var dragProxy
+    property string name: "Unnamed node"
     property string label: ""
     property string objectName: "entity"
     property string filename: "Entity.qml"
@@ -51,6 +55,7 @@ NodeBase {
     property bool square: false
     property var removableChildren: [] // used by nodes such as TouchSensor that has child nodes
     property bool canReceiveConnections: true
+    property bool snapToCenter: true
 
     property Component preferredEdge: Edge {}
 

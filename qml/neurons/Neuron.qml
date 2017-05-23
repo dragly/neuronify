@@ -7,6 +7,7 @@ import "../paths"
 import Neuronify 1.0
 import QtQuick.Controls 1.3
 import QtQuick.Particles 2.0
+import QtGraphicalEffects 1.0
 
 /*!
 \qmltype Neuron
@@ -29,9 +30,9 @@ Node {
     property bool isNeuron: true
 
     radius: width / 2
-    width: 64
+    width: 72
     height: width
-    color: inhibitory ? "#e41a1c" : "#6baed6"
+    color: inhibitory ? "#d66b88" : "#6baed6"
 
     preferredEdge: CurrentSynapse {}
 
@@ -39,8 +40,23 @@ Node {
         fireAnimation.restart()
     }
 
+    DropShadow {
+        anchors.fill: image
+        source: image
+        smooth: true
+        antialiasing: true
+        samples: 17
+        radius: 8
+        horizontalOffset: 1
+        verticalOffset: 4
+        color: Qt.hsla(0.0, 0.0, 0.0, 0.2)
+    }
+
     Image {
-        anchors.fill: parent
+        id: image
+        anchors.centerIn: parent
+        width: 72
+        height: width
         source: inhibitory ? inhibitoryImageSource : imageSource
         fillMode: Image.PreserveAspectFit
         smooth: true
@@ -53,14 +69,14 @@ Node {
         property real effectRatio: Math.max(thresholdRatio, hyperpolarizationRatio)
 
         anchors.fill: parent
-        anchors.margins: 6.0
-        border.width: effectRatio * 12.0
+        anchors.margins: 5.0
+        border.width: effectRatio * 22.0
         border.color: Qt.rgba(1.0, 1.0, 1.0)
         color: "transparent"
         radius: width * 0.5
         smooth: true
         antialiasing: true
-        opacity: effectRatio * 0.4
+        opacity: effectRatio * 0.8
     }
 
     Rectangle {
@@ -147,6 +163,7 @@ Node {
     Connector {
         color: inhibitory ? "#e41a1c" : "#6baed6"
         connectorColor: inhibitory ? "#e41a1c" : "#6baed6"
+        initialPoint: Qt.point(root.width * 2 / 3, root.height * 2 / 3)
     }
 
     DropArea {

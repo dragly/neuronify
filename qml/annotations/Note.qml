@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.1
 import QtQuick.Controls.Styles 1.4
 import ".."
 import "../controls"
@@ -23,6 +23,8 @@ Node {
     objectName: "note"
     filename: "annotations/Note.qml"
     square: true
+    snapToCenter: false
+    name: "Note"
 
     canReceiveConnections: false
 
@@ -38,8 +40,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Note"
-            spacing: Style.spacing
             Text {
                 text: "Text:"
                 font: Style.control.font
@@ -52,7 +52,6 @@ Node {
                     right: parent.right
                 }
                 text: noteRoot.text
-                height: 200
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 clip: true
                 textFormat: Text.PlainText
@@ -74,10 +73,17 @@ Node {
     }
 
     Rectangle {
+        id: background
         anchors.fill: parent
         color: parent.color
-        border.color: Style.meter.border.color
-        border.width: Style.meter.border.width
+//        border.color: Style.meter.border.color
+//        border.width: Style.meter.border.width
+        antialiasing: true
+    }
+
+    ItemShadow {
+        source: background
+        anchors.fill: background
     }
 
     Text {

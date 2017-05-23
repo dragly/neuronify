@@ -26,19 +26,15 @@
         <file>qml/menus/Heading.qml</file>
         <file>qml/Simulation.qml</file>
         <file>qml/hud/PlaybackControls.qml</file>
-        <file>qml/menus/mainmenu/MainMenuButton.qml</file>
         <file>qml/Node.qml</file>
         <file>qml/hud/SensorControls.qml</file>
         <file>qml/io/FileManager.qml</file>
-        <file>qml/tools/Clipboard.qml</file>
         <file>qml/neurons/AdaptationNeuron.qml</file>
         <file>qml/generators/IrregularSpikeGenerator.qml</file>
         <file>qml/Connector.qml</file>
         <file>qml/neurons/NeuronControls.qml</file>
         <file>qml/generators/CurrentClamp.qml</file>
-        <file>qml/hud/CreationMenuButton.qml</file>
         <file>qml/hud/DeleteButton.qml</file>
-        <file>qml/hud/PropertiesButton.qml</file>
         <file>qml/neurons/LeakyNeuron.qml</file>
         <file>qml/neurons/BurstNeuron.qml</file>
         <file>qml/hud/CreationList.qml</file>
@@ -67,7 +63,6 @@
         <file>qml/hud/ConnectionMenu.qml</file>
         <file>qml/ResizeHandle.qml</file>
         <file>qml/neurons/NeuronEngine.qml</file>
-        <file>qml/hud/PlaybackButton.qml</file>
         <file>qml/io/CustomFileIcon.qml</file>
         <file>qml/menus/mainmenu/SaveView.qml</file>
         <file>qml/controls/ResistanceControl.qml</file>
@@ -102,5 +97,32 @@
         <file>qml/store/StoreItem.qml</file>
         <file>qml/main_preview.qml</file>
         <file>qtquickcontrols2.conf</file>
+        <file>qml/store/StoreShadow.qml</file>
+        <file>qml/store/StoreSimulation.qml</file>
+        <file>qml/ItemShadow.qml</file>
+        <file>qml/ButtonColumn.qml</file>
+        <file>qml/ButtonColumnButton.qml</file>
+        <file>qml/MainMobile.qml</file>
+        <file>qml/MainDesktop.qml</file>
+        <file>qml/firebase/Firebase.qml</file>
+        <file>qml/firebase/qmldir</file>
+        <file>qml/backend/Parse.qml</file>
+        <file>qml/backend/qmldir</file>
+        <file>qml/backend/Backend.qml</file>
+        <file>qml/menus/filemenu/FileMenuItem.qml</file>
+        <file>Test.qml</file>
+        <file>qml/ui/MaterialIcon.qml</file>
+        <file>qml/menus/filemenu/FileMenuHeading.qml</file>
+        <file>qml/menus/filemenu/FileMenuDelegate.qml</file>
+        <file>qml/menus/filemenu/FileView.qml</file>
+        <file>qml/menus/LeftMenu.qml</file>
+        <file>qml/menus/ItemMenu.qml</file>
+        <file>qml/hud/HudShadow.qml</file>
+        <file>qml/menus/MaterialButton.qml</file>
+        <file>qml/neurons/NeuronDashboard.qml</file>
+        <file>qml/hud/PropertiesContainer.qml</file>
+        <file>qml/neurons/ChartSlider.qml</file>
+        <file>qml/controls/NumberSlider.qml</file>
+        <file>qml/menus/LeftMenuButton.qml</file>
     </qresource>
 </RCC>

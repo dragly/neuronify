@@ -21,9 +21,12 @@
 #include "neurons/leakcurrent.h"
 #include "neurons/adaptationcurrent.h"
 
-#include "io/fileio.h"
+#include "io/fileio.h" // TODO consider removing
 #include "io/standardpaths.h"
 #include "io/propertygroup.h"
+#include "io/neuronifyfile.h"
+
+#include "io/downloadmanager.h"
 
 #include <QApplication>
 #include <QQmlApplicationEngine>
@@ -36,12 +39,15 @@
 
 int main(int argc, char *argv[])
 {
+    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
     qint64 startupTime = QDateTime::currentMSecsSinceEpoch();
     qDebug() << "Neuronify version" << CuteVersioning::identifier << "started at" << startupTime;
 
     CuteVersioning::init();
 
-    qmlRegisterType<FileIO>("Neuronify", 1, 0, "FileIO");
+    qmlRegisterSingletonType<FileIO>("Neuronify", 1, 0, "FileIO", &FileIO::qmlInstance);
+    qmlRegisterSingletonType<NeuronifyFile>("Neuronify", 1, 0, "NeuronifyFile", &NeuronifyFile::qmlInstance);
     qmlRegisterSingletonType<StandardPaths>("Neuronify", 1, 0, "StandardPaths", &StandardPaths::qmlInstance);
 
     qmlRegisterType<NodeBase>("Neuronify", 1, 0, "NodeBase");
@@ -60,7 +66,6 @@ int main(int argc, char *argv[])
     qmlRegisterType<RectangularKernelEngine>("Neuronify", 1, 0,
                                              "RectangularKernelEngine");
 
-
     qmlRegisterType<Kernel>("Neuronify", 1, 0, "Kernel");
     qmlRegisterType<RetinaEngine>("Neuronify", 1, 0, "RetinaEngine");
     qmlRegisterType<RetinaPainter>("Neuronify", 1, 0, "RetinaPainter");
@@ -72,6 +77,7 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<RateEngine>("Neuronify", 1, 0, "RateEngine");
     qmlRegisterType<PropertyGroup>("Neuronify", 1, 0, "PropertyGroup");
+    qmlRegisterType<DownloadManager>("Neuronify", 1, 0, "DownloadManager");
 
 
     QApplication app(argc, argv);
@@ -79,14 +85,23 @@ int main(int argc, char *argv[])
     app.setOrganizationDomain("net");
     app.setApplicationName("Neuronify");
 
+    QQmlApplicationEngine engine;
+    QList<QUrl> neededPaths{
+        StandardPaths::writableLocation(StandardPaths::AppConfigLocation, "savedata"),
+        StandardPaths::writableLocation(StandardPaths::AppDataLocation, "community")
+    };
+    for(const auto &url : neededPaths) {
+        qDebug() << "Verifying existense of" << url;
+        if(!QDir().mkpath(url.toLocalFile())) {
+            qDebug() << "Could not create" << url;
+            return 1;
+        }
+    }
+
     QmlPreviewer previewer(app);
     if(previewer.show()) {
         return previewer.exec();
     }
-
-    QQmlApplicationEngine engine;
-    qDebug() << "Making" << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) << "/savedata";
-    QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/savedata");
 
     engine.load(QUrl(QStringLiteral("qrc:///qml/main.qml")));
     if(engine.rootObjects().size() > 0) {

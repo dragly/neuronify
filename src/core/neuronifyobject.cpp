@@ -2,7 +2,6 @@
 
 NeuronifyObject::NeuronifyObject(QQuickItem *parent) : QQuickItem(parent)
 {
-
 }
 
 void NeuronifyObject::addSavedPropertyGroup(PropertyGroup *propertyGroup)

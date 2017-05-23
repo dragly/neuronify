@@ -21,6 +21,8 @@ as a js string.
 
   2: v0.92
   3: v0.93
+  4: v?
+  5: v1.2
 */
 
 Item {
@@ -61,18 +63,19 @@ Item {
         return result;
     }
 
-    function saveState(fileUrl) {
+    function serializeState(filter) {
         var nodes = graphEngine.nodes
         var edges = graphEngine.edges
         var nodeList = [];
         var edgeList = [];
         var otherList = [];
 
-        console.log("Saving to " + fileUrl)
-
         var counter = 0
         for(var i in nodes) {
             var node = nodes[i];
+            if(filter && filter.indexOf(node) < 0) {
+                continue
+            }
             var savedProperties = objectify(node);
             if(!savedProperties) {
                 console.log("ERROR: Could not objectify node " + node + " number " + i);
@@ -81,11 +84,15 @@ Item {
                 filename: node.filename,
                 savedProperties: savedProperties
             };
-            nodeList.push(nodeDump);
+            nodeList.push(nodeDump)
         }
 
         for(var i in edges) {
             var edge = edges[i];
+
+            if(filter && (filter.indexOf(edge.itemA) < 0 || filter.indexOf(edge.itemB) < 0)) {
+                continue
+            }
 
             var savedProperties = objectify(edge);
             if(!savedProperties) {
@@ -95,12 +102,12 @@ Item {
             var itemAEntityIndex = graphEngine.nodeIndex(edge.itemA)
             if(itemAEntityIndex === -1) {
                 console.error("Could not find index of node " + edge.itemA + " in GraphEngine! Aborting dump!")
-                return ""
+                return false
             }
             var itemBEntityIndex = graphEngine.nodeIndex(edge.itemB)
             if(itemBEntityIndex === -1) {
                 console.error("Could not find index of node " + edge.itemB + " in GraphEngine! Aborting dump!")
-                return ""
+                return false
             }
 
             var edgeDump = {
@@ -118,80 +125,27 @@ Item {
             fileFormatVersion: 4,
             edges: edgeList,
             nodes: nodeList,
-            workspace: workspaceProperties
         };
-        var fileString = JSON.stringify(result);
+        if(!filter) {
+            result["workspace"] = workspaceProperties
+        }
+        return result
+    }
 
-        saveFileIO.source = fileUrl
-        saveFileIO.write(fileString)
+    function saveState(fileUrl) {
+        console.log("Saving to " + fileUrl)
+        var result = serializeState()
+        var fileString = JSON.stringify(result, null, 4)
+
+        return FileIO.writeSynchronously(fileUrl, fileString)
     }
 
     function read(fileUrl) {
-        console.log("Reading file " + fileUrl)
         if(!fileUrl) {
-            loadFileIO.source = "";
-        } else {
-            loadFileIO.source = fileUrl
+            return
         }
-        var stateFile = loadFileIO.read()
+        var stateFile = FileIO.readSynchronously(fileUrl)
         return stateFile
     }
-
-    FileIO {
-        id: loadFileIO
-        source: "none"
-        onError: console.log(msg)
-    }
-
-    FileIO {
-        id: saveFileIO
-        source: "none"
-        onError: console.log(msg)
-    }
-
-
-//    Item {
-//        id: saveFileDialog
-//        visible : false
-//        Grid{
-//            id: saveFileDialogGrid
-//            columns: 3
-//            spacing: 2
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-//            CustomFileIcon{ }
-
-//        }
-
-
-
-
-
-//    FileDialog {
-//        id: saveFileDialog
-//        title: "Please enter a filename"
-//        visible : false
-//        selectExisting: false
-//        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
-
-//        onAccepted: {
-//            saveState(fileUrl)
-//        }
-//    }
-
-//    FileDialog {
-//        id: loadFileDialog
-//        title: "Please choose a file"
-//        visible : false
-//        nameFilters: Qt.platform.os === "osx" ? [] : ["Neuronify files (*.nfy)", "All files (*)"]
-
-//        onAccepted: {
-//            console.log("Load dialog accepted")
-//            loadState(fileUrl)
-//        }
-//    }
 }
 

@@ -29,6 +29,7 @@ Node {
     id: root
     objectName: "retina"
     filename: "sensors/Retina.qml"
+    name: "Visual input"
     square: true
 
     property point connectionPoint: Qt.point(x + width / 2, y + height / 2)
@@ -277,7 +278,6 @@ Node {
     Component {
         id: controlsComponent
         PropertiesPage {
-            property string title: "Visual input"
             Component.onCompleted: {
                 for(var i = 0; i < fieldTypes.count; i++) {
                     var item = fieldTypes.get(i)
@@ -288,8 +288,6 @@ Node {
                     }
                 }
             }
-
-            spacing: 10
             Text {
                 text: "Receptive Field: " +
                       fieldTypes.get(fieldTypesView.currentIndex).name

@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.1
 import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
@@ -20,6 +20,7 @@ Rectangle {
     property bool showBorder: true
     property bool enableDragging: true
     property bool enableResizing: true
+    property bool useItemSize: false
     property alias backgroundColor: colorDialog.color
 
     function wrap(value) {
@@ -56,6 +57,11 @@ Rectangle {
         qrcPathsStringified = JSON.stringify(stringPaths)
         console.log("Stringified as", qrcPathsStringified)
         notifyChangeQrcPaths()
+    }
+
+    onUseItemSizeChanged: {
+        loader.active = false
+        loader.active = true
     }
 
     onFilePathChanged: {
@@ -103,6 +109,8 @@ Rectangle {
         property alias enableDragging: root.enableDragging
         property alias width: root.width
         property alias height: root.height
+        property alias useItemSize: root.useItemSize
+        property alias showHud: root.showHud
 
         category: "qmlPreviewer"
     }
@@ -361,11 +369,29 @@ Rectangle {
                     fill: parent
                     margins: 24
                 }
+                clip: true
 
                 Loader {
                     id: loader
-                    anchors.fill: parent
-                    clip: true
+                    anchors.fill: root.useItemSize ? undefined : parent
+                }
+
+                Rectangle {
+                    anchors.fill: loader
+                    color: "transparent"
+                    border {
+                        color: Qt.hsla(wrap(backgroundColor.hslHue), 0.1, wrap(backgroundColor.hslLightness))
+                        width: root.showBorder ? 1.0 : 0.0
+                    }
+                }
+            }
+
+            Rectangle {
+                anchors.fill: canvas
+                color: "transparent"
+                border {
+                    color: Qt.hsla(wrap(backgroundColor.hslHue), 0.1, wrap(backgroundColor.hslLightness))
+                    width: root.showBorder ? 2.0 : 0.0
                 }
 
                 Rectangle {
@@ -386,6 +412,14 @@ Rectangle {
                     width: root.showBorder ? 2.0 : 0.0
                 }
             }
+        }
+
+        Text {
+            anchors {
+                top: canvas.bottom
+                left: canvas.right
+            }
+            text: loader.width.toFixed(0) + "x" + loader.height.toFixed(0)
         }
 
         Column {
@@ -472,6 +506,24 @@ Rectangle {
                     target: root
                     property: "enableResizing"
                     value: resizeCheckBox.checked
+                }
+            }
+
+            CheckBox {
+                id: itemSizeCheckbox
+                text: "Use item size"
+                checked: root.useItemSize
+
+                Binding {
+                    target: itemSizeCheckbox
+                    property: "checked"
+                    value: root.useItemSize
+                }
+
+                Binding {
+                    target: root
+                    property: "useItemSize"
+                    value: itemSizeCheckbox.checked
                 }
             }
 

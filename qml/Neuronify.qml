@@ -1,5 +1,5 @@
 import QtQuick 2.5
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.1
 import QtQuick.Dialogs 1.0
 import QtQuick.Layouts 1.1
 import QtQuick.Particles 2.0
@@ -11,6 +11,7 @@ import Qt.labs.settings 1.0
 
 import Neuronify 1.0
 import CuteVersioning 1.0
+import QtGraphicalEffects 1.0
 
 import "qrc:/qml/hud"
 import "qrc:/qml/menus/mainmenu"
@@ -32,29 +33,37 @@ import "qrc:/qml/controls"
 Rectangle {
     id: root
 
+    signal simulationLoaded
+    signal backgroundClicked
+
+    property alias workspace: workspace
     property alias graphEngine: graphEngine
+    property alias fileManager: fileManager
+    property alias shaderEffectItem: workspaceFlickable
     property var selectedEntities: []
     property var draggedEntity: undefined
     property var copiedNeurons: []
     property real currentTimeStep: 0.0
     property real time: 0.0
     property var activeObject: null
-    property var undoList: [""]
-    property int undoIdx: 0
-    property int undoIdxCopy: 0
-    property bool undoRecordingEnabled: true
-    property bool canRedo: false
+    property var undoList: []
+    property var redoList: []
+    property var currentUndoState
+    readonly property bool undoRecordingEnabled: undoRecordingDepth == 0
+    property int undoRecordingDepth: 0
     readonly property bool paused: workspace.playbackSpeed <= 0.0
-    readonly property bool running: applicationActive && !mainMenu.revealed && !paused
+    readonly property bool running: applicationActive && !paused // TODO pause when mainMenu.revealed
     property string clickMode: "selection"
     property real highestZ: 0.0
     property bool snappingEnabled: false
     property real snapGridSize: snappingEnabled ? 32.0 : 1.0
-    property alias playbackSpeed: playbackControls.playbackSpeed
-    property url currentSimulationUrl
+    //    property alias playbackSpeed: playbackControls.playbackSpeed
+    property real playbackSpeed: 1.0 // TODO add connection to playbackControls
     property bool advanced: false
-    property bool firstRun: true
     property int latestZ: 0
+    property bool autoPause: false
+    property bool hasUnsavedChanges: true
+    property var copiedState
 
     property bool applicationActive: {
         if(Qt.platform.os === "android" || Qt.platform.os === "ios") {
@@ -77,31 +86,14 @@ Rectangle {
     focus: true
 
     Component.onCompleted: {
-        console.log("Neuronify.qml load completed " + Date.now());
-        Screen.orientationUpdateMask = Screen.LandscapeOrientation | Screen.PortraitOrientation | Screen.InvertedLandscapeOrientation | Screen.InvertedPortraitOrientation |
-                firstLoadTimer.start();
         Style.playbackSpeed = root.playbackSpeed
-        focus: true
-        //        forceActiveFocus()
-    }
-
-    function firstLoad() {
-        resetStyle();
-        var latest = StandardPaths.locate(StandardPaths.AppConfigLocation, "latest.nfy");
-        if(latest.toString() === "") {
-            loadSimulation("qrc:/simulations/tutorial/tutorial_1_intro/tutorial_1_intro.nfy");
-        } else {
-            loadSimulation(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "latest.nfy"));
-        }
-    }
-
-    Component.onDestruction: {
-        saveState(StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "/latest.nfy"))
     }
 
     onPlaybackSpeedChanged: {
         Style.playbackSpeed = root.playbackSpeed;
     }
+
+    onFocusChanged: console.log("Neuronify focus", focus)
 
     function deleteFromList(list, item) {
         var itemIndex = list.indexOf(item)
@@ -110,9 +102,58 @@ Rectangle {
         }
     }
 
-    function saveState(fileUrl) {
-        console.log("Saving state to", fileUrl)
-        fileManager.saveState(fileUrl)
+    function open(simulation) {
+        console.log("Open", simulation)
+        reloadState(simulation.data)
+        return simulation // TODO is this used anywhere?
+    }
+
+    function loadSimulation(fileUrl) {
+        var code = fileManager.read(fileUrl);
+        if(!code) {
+            console.log("Load state got empty contents.")
+            return;
+        }
+        reloadState(code)
+    }
+
+    function reloadState(simulationString) {
+        var data = JSON.parse(simulationString)
+        deleteEverything()
+        loadState(data)
+        hasUnsavedChanges = false
+        undoList.length = 0
+        redoList.length = 0
+    }
+
+    function save(simulation, callback) {
+        var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
+        var imageWidth = 512
+        var size = Qt.size(imageWidth, imageWidth / aspectRatio)
+        var result = fileManager.serializeState()
+        var fileString = JSON.stringify(result, null, 4)
+        var onSaved = function(grabResult) {
+            console.log("Saving simulation...")
+            NeuronifyFile.save(simulation.file, simulation.name, simulation.description, fileString, grabResult)
+            console.log("Save completed!")
+            hasUnsavedChanges = false
+            callback()
+        }
+        console.log("Grabbing screenshot...")
+        workspaceFlickable.grabToImage(onSaved, size)
+    }
+
+    function saveScreenshot(filename, callback) {
+        var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
+        var imageWidth = 512
+        var size = Qt.size(imageWidth, imageWidth / aspectRatio)
+        var onSaved = function(result) {
+            result.saveToFile(StandardPaths.toLocalFile(filename))
+            if(callback) {
+                callback()
+            }
+        }
+        workspaceFlickable.grabToImage(onSaved, size)
     }
 
     function applyProperties(object, properties) {
@@ -127,7 +168,11 @@ Rectangle {
         }
 
         for(var i in properties) {
-            var prop = properties[i];
+            var prop = properties[i]
+            if(prop === undefined) {
+                console.log("WARNING: Got undefined property on", object, i)
+                continue
+            }
             if(!object.hasOwnProperty("savedProperties")) {
                 console.warn("WARNING: Object " + object + " is missing savedProperties property.");
                 continue;
@@ -152,35 +197,15 @@ Rectangle {
         }
     }
 
-    function loadSimulation(fileUrl) {
-        currentSimulationUrl = fileUrl;
-
+    function loadState(data) {
+        console.log("Neuronify.loadState called", JSON.stringify(data))
         firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
-        console.log("Load state called")
-
-        pinchArea.scaleSetByDoubleClick = false;
-
-        playbackControls.revealTemporarily()
-
-        undoList.length = 0;
-
-        undoIdx = 1;
-        undoRecordingEnabled = false;
-
-        deleteEverything();
-
-        var code = fileManager.read(fileUrl);
-        if(!code) {
-            console.log("Load state got empty contents.")
-            return;
-        }
-
-        var data = JSON.parse(code);
+        pinchArea.scaleSetByDoubleClick = false
 
         var expectedFileFormatVersion = 4
 
         if(data.fileFormatVersion < expectedFileFormatVersion) {
-            console.warn("The file " + fileUrl + " has format version " + data.fileFormatVersion + ". " +
+            console.warn("The file has format version " + data.fileFormatVersion + ". " +
                          "We are now at version " + expectedFileFormatVersion + ". " +
                          "Some data may be lost when you save it now, because the file will be " +
                          "converted to the newest format.")
@@ -210,13 +235,17 @@ Rectangle {
         }
 
         if(!data.nodes) {
-            console.warn("ERROR: Could not find nodes. Cannot load simulation " + fileUrl)
+            console.warn("ERROR: Could not find nodes. Cannot load simulation.")
             return
         }
         if(!data.edges) {
-            console.warn("ERROR: Could not find edges. Cannot load simulation " + fileUrl)
+            console.warn("ERROR: Could not find edges. Cannot load simulation.")
             return
         }
+
+        registerUndoState()
+
+        undoRecordingDepth += 1
 
         for(var i in data.nodes) {
             var properties = data.nodes[i];
@@ -230,7 +259,7 @@ Rectangle {
 
             var entity = createEntity(filename, {}, false);
             if(!entity) {
-                console.warn("WARNING: Could not create entity of type " + filename + " while loading " + fileUrl);
+                console.warn("WARNING: Could not create entity of type " + filename + " while loading.");
                 continue;
             }
 
@@ -250,7 +279,7 @@ Rectangle {
             var filename = edgeProperties.filename;
 
             if(!createdNodes[from] || !createdNodes[to]) {
-                console.warn("WARNING: Cannot connect entities " + from + " and " + to + " while loading " + fileUrl);
+                console.warn("WARNING: Cannot connect entities " + from + " and " + to + " while loading.");
                 continue;
             }
 
@@ -263,65 +292,60 @@ Rectangle {
             workspace.load(data.workspace);
         }
 
-        undoRecordingEnabled = true
+        undoRecordingDepth -= 1
+
+        simulationLoaded()
+
+        return createdNodes
     }
 
-    function addToUndoList() {
+    function registerUndoState() {
         if (!undoRecordingEnabled){
             return
         }
-        var fileString = ""
-
-        var counter = 0
-        //        for(var i in graphEngine.nodes) {
-        //            var entity = graphEngine.nodes[i]
-        //            fileString += entity.dump(i)
-        //        }
-
-        //        for(var i in graphEngine.edges) {
-        //            var connection = graphEngine.edges[i]
-        //            fileString += connection.dump(i, graphEngine)
-        //        }
-
-        undoList = undoList.slice(0,undoIdx)
-        undoIdx += 1
-        undoList.push(fileString)
-        //        console.log("Making new undolist item ", undoIdx, undoList.length)
-        canRedo = false
+        var state = fileManager.serializeState()
+        console.log("Registering undoable state", JSON.stringify(state))
+        undoList.push(state)
+        redoList.length = 0
     }
 
     function undo(){
-        if (undoIdx > 1){
-            undoIdx -= 1
-            deleteEverything()
-            //            console.log("Undoing...", undoIdx, undoList.length)
-            undoRecordingEnabled = false
-            eval(undoList[undoIdx-1])
-            undoRecordingEnabled = true
-            canRedo = true
-        } else {
-            //            console.log("Nothing to undo! ")
+        var previousState = undoList.pop()
+        if(!previousState) {
+            console.log("Nothing to undo!")
+            return
         }
+        console.log("Undoing...")
+        undoRecordingDepth += 1
+        if(redoList.length === 0) {
+            currentUndoState = fileManager.serializeState()
+        }
+        redoList.push(currentUndoState)
+
+        deleteEverything()
+        loadState(previousState)
+        currentUndoState = previousState
+        undoRecordingDepth -= 1
     }
 
     function redo() {
-        if (undoIdx < undoList.length){
-            undoIdx += 1
-            deleteEverything()
-
-            undoRecordingEnabled = false
-            eval(undoList[undoIdx-1])
-            undoRecordingEnabled = true
-            console.log("Redoing...", undoIdx, undoList.length, undoIdx===undoList.length)
-            if (undoIdx === undoList.length){
-                canRedo = false
-            }
-        } else {
-            console.log("Something went wrong! ", undoIdx, undoList.length)
+        var nextState = redoList.pop()
+        if(!nextState) {
+            console.log("Nothing to redo!")
+            return
         }
+        console.log("Redoing...")
+        undoList.push(currentUndoState)
+        undoRecordingDepth += 1
+        deleteEverything()
+        loadState(nextState)
+        currentUndoState = nextState
+        undoRecordingDepth -= 1
     }
 
     function deleteEverything() {
+        registerUndoState()
+        undoRecordingDepth += 1
         var nodesToDelete = [];
         for(var i in graphEngine.nodes) {
             nodesToDelete.push(graphEngine.nodes[i])
@@ -330,6 +354,7 @@ Rectangle {
             var node = nodesToDelete[i];
             graphEngine.removeNode(node);
         }
+        undoRecordingDepth -= 1
     }
 
     function isItemUnderConnector(item, source, connector) {
@@ -381,6 +406,8 @@ Rectangle {
     }
 
     function deleteNode(node) {
+        registerUndoState()
+        undoRecordingDepth += 1
         console.log("Deleting node", node);
         if(selectedEntities.indexOf(node) !== -1) {
             deselectAll();
@@ -390,16 +417,22 @@ Rectangle {
             var child = node.removableChildren[j];
             graphEngine.removeNode(child);
         }
-
-        graphEngine.removeNode(node);
+        graphEngine.removeNode(node)
+        undoRecordingDepth -= 1
     }
 
     function deleteEdge(edge) {
         console.log("Deleting edge", edge);
-        graphEngine.removeEdge(edge);
+        registerUndoState()
+        undoRecordingDepth += 1
+        graphEngine.removeEdge(edge)
+        undoRecordingDepth -= 1
     }
 
     function deleteSelected() {
+        registerUndoState()
+        undoRecordingDepth += 1
+
         var toDelete = []
         for(var i in selectedEntities) {
             toDelete.push(selectedEntities[i])
@@ -412,6 +445,7 @@ Rectangle {
             deleteEdge(activeObject);
         }
         deselectAll()
+        undoRecordingDepth -= 1
     }
 
     function clickedEntity(entity, mouse) {
@@ -451,6 +485,7 @@ Rectangle {
         } else if (clickMode === "connectMultipleToThis") {
             connectEntities(entity, activeObject);
         }
+        root.focus = true
     }
 
     function raiseToTop(node) {
@@ -486,6 +521,9 @@ Rectangle {
             return root.snapGridSize
         })
 
+        registerUndoState()
+        undoRecordingDepth += 1
+
         // signals
         entity.clicked.connect(clickedEntity)
         entity.clicked.connect(raiseToTop)
@@ -517,7 +555,9 @@ Rectangle {
 
         // finalize
         graphEngine.addNode(entity)
-        addToUndoList()
+        hasUnsavedChanges = true
+        undoRecordingDepth -= 1
+
         return entity
     }
 
@@ -535,6 +575,9 @@ Rectangle {
             return;
         }
 
+        registerUndoState()
+        undoRecordingDepth += 1
+
         var connectionComponent;
         if(filename){
             connectionComponent = Qt.createComponent(filename);
@@ -551,7 +594,6 @@ Rectangle {
 
         var connection = connectionComponent.createObject(connectionLayer, {itemA: itemA, itemB: itemB});
 
-        connection.particleSystem = particleSystem;
         connection.playbackSpeed = Qt.binding(function() {
             return root.playbackSpeed
         })
@@ -561,11 +603,14 @@ Rectangle {
             connection.selected = true;
             latestZ-=1
             connection.z = latestZ
+            focus = true
         });
         latestZ-=1
         connection.z = latestZ
-        addToUndoList()
         graphEngine.addEdge(connection)
+        hasUnsavedChanges = true
+        undoRecordingDepth -= 1
+
         return connection
     }
 
@@ -582,24 +627,39 @@ Rectangle {
         return connectionAlreadyExists
     }
 
-    function resetStyle() {
-        Style.reset(width, height, Screen.pixelDensity)
+    function cut() {
+        copiedState = fileManager.serializeState(selectedEntities)
+        deleteSelected()
     }
 
-    onWidthChanged: {
-        resetStyle()
+    function copy() {
+        copiedState = fileManager.serializeState(selectedEntities)
     }
 
-    onHeightChanged: {
-        resetStyle()
+    function paste() {
+        if(!copiedState) {
+            ToolTip.show("Nothing to paste", 3000) // TODO move to center
+            return
+        }
+
+        deselectAll()
+        var selection = []
+        var nodes = loadState(copiedState)
+        console.log("Loaded", nodes)
+        for(var i in nodes) {
+            var node = nodes[i]
+            console.log("Node", node)
+            node.x -= 64
+            node.y += 64
+            node.z += 1
+            selection.push(node)
+            node.selected = true
+        }
+        selectedEntities = selection
     }
 
     GraphEngine {
         id: graphEngine
-    }
-
-    Clipboard {
-        id: clipboard
     }
 
     Item {
@@ -608,9 +668,15 @@ Rectangle {
             top: parent.top
             bottom: parent.bottom
             left: parent.left
-            leftMargin: -propertiesPanel.offset * 0.33
+            //            leftMargin: -propertiesPanel.offset * 0.33
         }
         width: parent.width
+    }
+
+    Rectangle {
+        id: workspaceBackground
+        anchors.fill: workspaceFlickable
+        color: "#fafcfe"
     }
 
     Item {
@@ -620,9 +686,10 @@ Rectangle {
             top: parent.top
             bottom: parent.bottom
             left: parent.left
-            leftMargin: -propertiesPanel.offset * 0.33
+            //            leftMargin: -propertiesPanel.offset * 0.33 // TODO add back this somehow
         }
         width: parent.width
+        antialiasing: true
 
         PinchArea {
             id: pinchArea
@@ -683,19 +750,21 @@ Rectangle {
                 drag.target: scaleAnimation.running ? undefined : workspace
 
                 onWheel: {
-                    if(wheel.modifiers & Qt.ControlModifier) {
-                        var targetScale = workspace.scale + wheel.angleDelta.y * 0.001;
-                        pinchArea.scaleAndPosition(wheel.x, wheel.y, targetScale);
-                        pinchArea.scaleSetByDoubleClick = false;
-                    } else {
+                    if(wheel.modifiers & Qt.ShiftModifier) {
                         workspace.x += wheel.angleDelta.x * 0.4;
                         workspace.y += wheel.angleDelta.y * 0.4;
+                        return
                     }
+                    var targetScale = workspace.scale + wheel.angleDelta.y * 0.0005;
+                    pinchArea.scaleAndPosition(wheel.x, wheel.y, targetScale);
+                    pinchArea.scaleSetByDoubleClick = false;
                 }
 
                 onClicked: {
                     deselectAll();
                     selectedEntities = [];
+                    root.backgroundClicked()
+                    root.focus = true
                 }
 
                 onDoubleClicked: {
@@ -790,9 +859,9 @@ Rectangle {
 
             function load(properties) {
                 if(properties.playbackSpeed) {
-                    playbackControls.playbackSpeed = properties.playbackSpeed;
+                    root.playbackSpeed = properties.playbackSpeed;
                 } else {
-                    playbackControls.playbackSpeed = 1.0;
+                    root.playbackSpeed = 1.0;
                 }
 
                 var visibleRectangle = properties.visibleRectangle;
@@ -828,6 +897,22 @@ Rectangle {
                 Style.workspaceScale = scale;
             }
 
+            Image {
+                x: - root.snapGridSize * (1 + Math.floor(workspace.x / workspace.scale / root.snapGridSize))
+                y: - root.snapGridSize * (1 + Math.floor(workspace.y / workspace.scale / root.snapGridSize))
+                width: workspaceFlickable.width / workspace.scale + root.snapGridSize
+                height: workspaceFlickable.height / workspace.scale + root.snapGridSize
+
+                visible: root.snappingEnabled
+
+                smooth: true
+                antialiasing: true
+                horizontalAlignment: Image.AlignLeft
+                verticalAlignment: Image.AlignTop
+                fillMode: Image.Tile
+                source: "qrc:/images/background/background.png"
+            }
+
             Item {
                 id: dragProxy
 
@@ -850,10 +935,18 @@ Rectangle {
                 }
 
                 function moveEntity(entity, delta) {
-                    var newX = entity.x - delta.x;
-                    var newY = entity.y - delta.y;
-                    entity.x = newX - newX % snapGridSize;
-                    entity.y = newY - newY % snapGridSize;
+                    var newX = entity.x - delta.x
+                    var newY = entity.y - delta.y
+                    if(entity.snapToCenter) {
+                        newX += entity.width / 2
+                        newY += entity.height / 2
+                    }
+                    entity.x = newX - newX % snapGridSize
+                    entity.y = newY - newY % snapGridSize
+                    if(entity.snapToCenter) {
+                        entity.x -= entity.width / 2
+                        entity.y -= entity.height / 2
+                    }
                 }
 
                 function apply(delta) {
@@ -878,274 +971,27 @@ Rectangle {
                 anchors.fill: parent
             }
 
-            ParticleSystem {
-                id: particleSystem
-            }
-
-            ImageParticle {
-                system: particleSystem
-                source: "qrc:///images/particles/particle.png"
-            }
-
             Item {
                 id: neuronLayer
                 anchors.fill: parent
             }
-        }
-    }
 
-    Rectangle {
-        anchors {
-            right: parent.right
-            left: buttonColumn.left
-            top: parent.top
-            bottom: parent.bottom
-        }
+//            ShaderEffectSource {
+//                sourceItem: neuronLayer
+//                sourceRect: Qt.rect(-viewport.x, -viewport.y,
+//                                    viewport.width, viewport.height)
+//            }
 
-        color: Qt.rgba(1.0, 1.0, 1.0, 0.8);
-
-        MouseArea {
-            anchors.fill: parent
-        }
-    }
-
-    Column {
-        id: buttonColumn
-        anchors {
-            right: parent.right
-            top: parent.top
-        }
-        width: Style.touchableSize * 1.5
-
-        //        spacing: Style.spacing
-
-        spacing: 0
-
-        MainMenuButton {
-            id: mainMenuButton
-            revealed: !mainMenu.revealed
-            onClicked: {
-                mainMenu.revealed = true
-            }
-        }
-
-        CreationMenuButton {
-            onClicked: {
-                creationMenu.revealed = !creationMenu.revealed
-            }
-        }
-
-        PlaybackButton {
-            id: playbackButton
-            onClicked: {
-                playbackControls.toggleRevealPermanently()
-            }
-        }
-
-        PropertiesButton {
-            onClicked: {
-                propertiesPanel.open()
-            }
-        }
-    }
-
-    DeleteButton {
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-        }
-        revealed: activeObject ? true : false
-        onClicked: {
-            deleteSelected()
-        }
-    }
-
-    PlaybackControls {
-        id: playbackControls
-        revealed: true
-    }
-
-    CreationMenu {
-        id: creationMenu
-
-        blurSource: workspaceFlickable
-
-        onRevealedChanged: {
-            if(revealed) {
-                root.focus = false
-            } else {
-                root.focus = true
-            }
-        }
-
-        onDroppedEntity: {
-            var workspacePosition = controlParent.mapToItem(neuronLayer, properties.x, properties.y)
-            properties.x = workspacePosition.x
-            properties.y = workspacePosition.y
-            root.createEntity(fileUrl, properties)
-        }
-
-        onDeleteEverything: {
-            root.deleteEverything()
-        }
-
-    }
-
-    PropertiesPanel {
-        id: propertiesPanel
-
-        advanced: root.advanced
-        snappingEnabled: root.snappingEnabled
-        activeObject: root.activeObject
-        workspace: workspace
-
-        onRevealedChanged: {
-            if(revealed) {
-                //                root.focus = false
-                clickMode = "selection"
-
-            } else {
-                root.focus = true
-            }
-        }
-
-        onResetDynamics: {
-            for(var i in graphEngine.nodes) {
-                var entity = graphEngine.nodes[i];
-                if(entity.engine) {
-                    entity.engine.resetDynamics();
-                }
-            }
-            for(var i in graphEngine.edges) {
-                var edge = graphEngine.edges[i];
-                if(edge.engine) {
-                    edge.engine.resetDynamics();
-                }
-            }
-        }
-
-        onResetProperties: {
-            for(var i in graphEngine.nodes) {
-                var entity = graphEngine.nodes[i];
-                if(entity.engine) {
-                    entity.engine.resetProperties();
-                }
-            }
-            for(var i in graphEngine.edges) {
-                var edge = graphEngine.edges[i];
-                if(edge.engine) {
-                    edge.engine.resetProperties();
-                }
-            }
-        }
-
-        onSaveToOpened: {
-            propertiesPanel.revealed = false
-            saveTimer.start(1000)
-        }
-
-        Timer {
-            id: saveTimer
-            onTriggered: {
-                saveState(StandardPaths.originalSimulationLocation(currentSimulationUrl));
-                var imageUrl = StandardPaths.toLocalFile(StandardPaths.originalSimulationLocation(currentSimulationUrl)).replace(".nfy", ".png")
-
-                workspaceFlickable.grabToImage(function(result) {
-                    console.log("Saving image to " + imageUrl);
-                    result.saveToFile(imageUrl);
-                }, Qt.size(workspaceFlickable.width / 3.0, workspaceFlickable.height / 3.0));
-            }
-        }
-
-        Binding {
-            target: root
-            property: "advanced"
-            value: propertiesPanel.advanced
-        }
-
-        Binding {
-            target: propertiesPanel
-            property: "advanced"
-            value: root.advanced
-        }
-
-        Binding {
-            target: root
-            property: "snappingEnabled"
-            value: propertiesPanel.snappingEnabled
-        }
-
-        Binding {
-            target: propertiesPanel
-            property: "snappingEnabled"
-            value: root.snappingEnabled
-        }
-    }
-
-    ConnectionMenu {
-        visible: clickMode === "connectMultipleToThis" || clickMode === "connectMultipleFromThis"
-        fromThis: clickMode === "connectMultipleFromThis"
-        onDoneClicked: {
-            clickMode = "selection"
-        }
-    }
-
-    MainMenu {
-        id: mainMenu
-
-        property bool wasRunning: true
-
-        focus: true
-
-        anchors.fill: parent
-        blurSource: workspaceFlickable
-
-        onRevealedChanged: {
-            if(revealed) {
-                wasRunning = root.running
-                root.focus = false
-            } else {
-                root.focus = true
-            }
-        }
-
-        onContinueClicked: {
-            mainMenu.revealed = false
-        }
-
-        onNewClicked: {
-            root.loadSimulation("qrc:/simulations/empty/empty.nfy")
-            mainMenu.revealed = false
-        }
-
-        onLoadSimulation: {
-            root.loadSimulation(simulation)
-            mainMenu.revealed = false
-            //root.running = wasRunning
-        }
-
-        onSaveSimulation: {
-            root.saveState(simulation)
-            mainMenu.revealed = false
-        }
-
-        onSaveSimulationRequested: {
-            fileManager.showSaveDialog()
-        }
-
-        onLoadSimulationRequested: {
-            fileManager.showLoadDialog()
-        }
-
-        onRequestScreenshot: {
-            var aspectRatio = workspaceFlickable.width / workspaceFlickable.height;
-            var imageWidth;
-            if(workspaceFlickable.width > workspaceFlickable.height) {
-                imageWidth = workspaceFlickable.width / 3.0; // three icons per row in save view
-            } else {
-                imageWidth = workspaceFlickable.width / 2.0; // two icons per row in save view
-            }
-            workspaceFlickable.grabToImage(callback, Qt.size(imageWidth, imageWidth / aspectRatio));
+            //            DropShadow {
+            //                visible: Qt.platform.os == "linux"
+            //                anchors.fill: neuronLayer
+            //                source: neuronLayer
+            //                horizontalOffset: 1
+            //                verticalOffset: 4
+            //                radius: 6.0
+            //                samples: 17
+            //                color: Qt.rgba(0, 0, 0, 0.2)
+            //            }
         }
     }
 
@@ -1159,7 +1005,7 @@ Rectangle {
 
         interval: 16
         repeat: true
-        running: root.running
+        running: root.running && !root.autoPause
 
         onTriggered: {
             var dt = 0.1e-3
@@ -1244,15 +1090,6 @@ Rectangle {
         property alias advanced: root.advanced
     }
 
-    Timer {
-        // this is needed because workspaceFlickable doesn't have width at onCompleted
-        id: firstLoadTimer
-        interval: 200
-        onTriggered: {
-            root.firstLoad();
-        }
-    }
-
     Shortcut {
         sequence: "Shift+5"
         onActivated: root.snappingEnabled = !root.snappingEnabled
@@ -1264,14 +1101,20 @@ Rectangle {
     }
 
     Keys.onPressed: {
+        console.log("Key pressed", event.key)
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_A){
             selectAll()
         }
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_C){
-            clipboard.copyNeurons()
+            copy()
         }
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
-            clipboard.pasteNeurons()
+            paste()
+        }
+        if(event.modifiers & Qt.ControlModifier && event.modifiers & Qt.ShiftModifier && event.key=== Qt.Key_Z){
+            redo()
+        } else  if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_Z){
+            undo()
         }
         if(event.key === Qt.Key_Delete || (Qt.platform.os === "osx" && event.key === Qt.Key_Backspace) ) {
             deleteSelected()
@@ -1279,6 +1122,29 @@ Rectangle {
         if(event.modifiers === Qt.NoModifier && (event.key === Qt.Key_1 || event.key === Qt.Key_2 || event.key === Qt.Key_3 || event.key === Qt.Key_4)) {
             playbackControls.toggleSpeed(event.key)
         }
+    }
+
+    DropArea {
+        anchors.fill: parent
+        onEntered: {
+            console.log("Entered")
+        }
+
+        onDropped: {
+            if(!drop.source.creationItem) {
+                console.warn("WARNING: Cannot accept drop without source.")
+                return
+            }
+            var workspacePosition = drop.source.mapToItem(neuronLayer, 0, 0)
+            var properties = {
+                x: workspacePosition.x,
+                y: workspacePosition.y,
+            }
+            root.createEntity(drop.source.creationItem.source, properties)
+
+        }
+
+        keys: ["lol"]
     }
 
 }

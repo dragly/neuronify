@@ -6,7 +6,7 @@ android {
     TARGET = Neuronify
 }
 
-QT += qml quick widgets multimedia multimediawidgets charts
+QT += qml quick widgets multimedia multimediawidgets charts sql
 
 CONFIG += c++11 qtquickcompiler
 
@@ -34,7 +34,9 @@ HEADERS += \
     src/io/propertygroup.h \
     src/retina/kernels/rectangularkernelengine.h \
     src/core/edgebase.h \
-    src/core/edgeengine.h
+    src/core/edgeengine.h \
+    src/io/downloadmanager.h \
+    src/io/neuronifyfile.h
 
 SOURCES += \
     src/io/fileio.cpp \
@@ -62,6 +64,8 @@ SOURCES += \
     src/retina/kernels/rectangularkernelengine.cpp \
     src/core/edgebase.cpp \
     src/core/edgeengine.cpp \
+    src/io/downloadmanager.cpp \
+    src/io/neuronifyfile.cpp
 
 
 RESOURCES += qml.qrc \
@@ -101,7 +105,9 @@ DISTFILES += \
     installer/packages/net.ovilab.neuronify/meta/installscript.qs \
     appveyor.yml \
     installer/packages/net.ovilab.neuronify/data/README.txt \
-    .travis.yml
+    .travis.yml \
+    qml/backend/qmldir \
+    .travis/Dockerfile
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 

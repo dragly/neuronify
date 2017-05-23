@@ -15,6 +15,7 @@ Edge {
 
     objectName: "CurrentSynapse"
     filename: "edges/CurrentSynapse.qml"
+    name: "Current based synapse"
 
     engine: EdgeEngine {
         id: engine
@@ -108,7 +109,6 @@ Edge {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Current based synapse"
             BoundSlider {
                 target: engine
                 property: "maximumCurrent"
@@ -147,15 +147,17 @@ Edge {
 
     Component {
         id: signalComponent
-        Image {
+        Rectangle {
             id: signalRectangle
             property real delay: 0.0
             property real fraction: 0.0
             property real previousTime: Date.now()
 
-            width: 36
+            width: 24
             height: width
-            source: "qrc:///images/particles/particle.png"
+            radius: width * 0.5
+//            source: "qrc:///images/particles/particle.png"
+            color: root.itemA ? root.itemA.color : "black"
 
             x: root.startPoint.x + (root.endPoint.x - root.startPoint.x) * fraction - width / 2
             y: root.startPoint.y + (root.endPoint.y - root.startPoint.y) * fraction - height / 2

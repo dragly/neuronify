@@ -5,6 +5,8 @@
 #include <QDebug>
 #include <QQmlFile>
 #include <QDir>
+#include <QJSValue>
+#include <QQmlEngine>
 
 /*!
  * \class FileIO
@@ -18,47 +20,55 @@
 FileIO::FileIO(QObject *parent) :
     QObject(parent)
 {
-
 }
 
-QString FileIO::read()
+void FileIO::read(const QUrl& fileUrl, QJSValue callback)
 {
-    if (m_source.isEmpty()){
-        emit error("source is empty");
+    QString data = readSynchronously(fileUrl);
+    if(!callback.isCallable()) {
+        return;
+    }
+    callback.call(QJSValueList{QJSValue(data)});
+}
+
+QString FileIO::readSynchronously(const QUrl& fileUrl)
+{
+    if (!fileUrl.isValid()){
+        qWarning() <<  "ERROR: File url is invalid:" << fileUrl;
         return QString();
     }
 
-    QString path = QQmlFile::urlToLocalFileOrQrc(m_source);
+    QString path = QQmlFile::urlToLocalFileOrQrc(fileUrl);
 
     QFile file(path);
     QString fileContent;
-    if ( file.open(QIODevice::ReadOnly) ) {
-        QString line;
-        QTextStream t( &file );
-        do {
-            line = t.readLine();
-            fileContent += line + "\n";
-        } while (!line.isNull());
-        file.close();
-    } else {
-        emit error("Unable to open the file " + path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "ERROR: Could not open file" << fileUrl;
         return QString();
     }
-
-    return fileContent;
+    return QString::fromUtf8(file.readAll());
 }
 
-bool FileIO::write(const QString& data)
+void FileIO::write(const QUrl& fileUrl, const QString& data, QJSValue callback)
 {
-    if (m_source.isEmpty()){
-        qDebug() << "Source is empty!";
+    bool result = writeSynchronously(fileUrl, data);
+    if(!callback.isCallable()) {
+        return;
+    }
+    callback.call(QJSValueList{QJSValue(result)});
+}
+
+bool FileIO::writeSynchronously(const QUrl& fileUrl, const QString& data)
+{
+    if (!fileUrl.isValid()){
+        qWarning() <<  "ERROR: File url is invalid:" << fileUrl;
         return false;
     }
-    QString path = QQmlFile::urlToLocalFileOrQrc(m_source);
+    QString path = QQmlFile::urlToLocalFileOrQrc(fileUrl);
     QFileInfo fileinfo(path);
     QDir directory = fileinfo.absoluteDir();
     if(!directory.exists() && !directory.mkpath(".")) {
-        qDebug() << "Cannot make path to file" << m_source;
+        qDebug() << "Cannot make path to file" << fileUrl;
         return false;
     }
     QFile file(path);
@@ -67,10 +77,41 @@ bool FileIO::write(const QString& data)
         return false;
     }
 
-    QTextStream out(&file);
-    out << data;
-
+    file.write(data.toUtf8());
     file.close();
 
     return true;
+}
+
+void FileIO::makePath(const QUrl &path, QJSValue callback)
+{
+    bool result = makePathSynchronously(path);
+    if(callback.isCallable()) {
+        callback.call(QJSValueList{QJSValue(result)});
+    }
+}
+
+bool FileIO::makePathSynchronously(const QUrl &path)
+{
+    if(!path.isLocalFile()) {
+        qWarning() << "ERROR: Path is not local file:" << path;
+        return false;
+    }
+    return QDir().mkpath(path.toLocalFile());
+}
+
+bool FileIO::exists(const QUrl &fileUrl)
+{
+    if(!fileUrl.isLocalFile()) {
+        return false;
+    }
+    return QFileInfo(fileUrl.toLocalFile()).exists();
+}
+
+QObject* FileIO::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine)
+{
+    Q_UNUSED(engine);
+    Q_UNUSED(scriptEngine);
+
+    return new FileIO;
 }

@@ -25,6 +25,7 @@ Node {
     objectName: "ratePlot"
     filename: "meters/RatePlot.qml"
     square: true
+    name: "Firing rate plot"
 
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
@@ -99,6 +100,7 @@ Node {
 
     width: 320
     height: 240
+    snapToCenter: false
 
     color: "#deebf7"
 
@@ -185,6 +187,9 @@ Node {
             titleText: ratePlotRoot.showLegend ? "t [ms]" : ""
             titleFont.weight: Font.Normal
             titleFont.pixelSize: 14
+            visible: false // IMPORTANT: Due to a bug in Qt Charts/Qt Graphics View,
+            // performance is degraded with time when text changes
+            // https://bugreports.qt.io/browse/QTBUG-59040
         }
 
         ValueAxis {
@@ -205,6 +210,6 @@ Node {
 
     Connector {
         color: Style.meter.border.color
-        visible: parent.selected || rateEngine.neuronCount < 1
+//        visible: parent.selected || rateEngine.neuronCount < 1
     }
 }

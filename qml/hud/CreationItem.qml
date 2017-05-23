@@ -1,65 +1,120 @@
 import QtQuick 2.0
-import "../style"
+import QtQuick.Controls 2.0
+import QtGraphicalEffects 1.0
+import "qrc:/qml/style"
 
 Item {
     id: root
     property string objectName: "CreationItem"
 
     signal dropped(var fileUrl, var properties, var controlParent)
-    signal clicked(var entity)
-    signal pressed(var entity)
 
-    default property alias subChildren: creationControl.children
+//    default property alias subChildren: creationControl.children
 
-    property string name: ""
+    property string name: "test long text with long name"
     property string description: ""
     property url source: ""
-    property url imageSource: ""
+    property url imageSource: "qrc:/images/neurons/leaky.png"
+    property Item parentWhenDragging
+    property bool dragActive: false
 
-    width: Style.touchableSize
-    height: width
+    width: 64
+    height: column.height
 
-    Item {
-        id: creationControl
-
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.verticalCenter: parent.verticalCenter
-
-        width: parent.width
-        height: parent.height
-
-        states: State {
-            when: dragArea.drag.active
-            AnchorChanges { target: creationControl; anchors.horizontalCenter: undefined; anchors.verticalCenter: undefined }
+    Column {
+        id: column
+        anchors {
+            left: parent.left
+            right: parent.right
         }
-
-        Drag.dragType: Drag.Automatic
-
-        Image {
-            anchors.fill: parent
-            source: imageSource
-            fillMode: Image.PreserveAspectFit
-            antialiasing: true
-            smooth: true
-            asynchronous: true
-        }
+        spacing: 8
 
         MouseArea {
-            id: dragArea
-            anchors.fill: parent
-            drag.target: parent
-            drag.onActiveChanged: {
-                if (!dragArea.drag.active) {
-                    var properties = {x: creationControl.x, y: creationControl.y}
-                    dropped(source, properties, root)
+            id: mouseArea
+
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            width: parent.width * 0.6
+            height: width
+
+            drag.target: creationControl
+
+            onClicked: {
+                ToolTip.show("Drag and drop onto workspace", 2400)
+            }
+
+            onReleased: {
+                creationControl.Drag.drop()
+            }
+
+            Item {
+                id: creationControl
+
+                property alias creationItem: root
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+
+                width: mouseArea.width
+                height: width
+
+                Drag.hotSpot.x: 32
+                Drag.hotSpot.y: 32
+                Drag.active: mouseArea.drag.active
+                Drag.keys: ["lol"]
+
+                states: State {
+                    when: mouseArea.drag.active
+                    ParentChange { target: creationControl; parent: root.parentWhenDragging }
+                    AnchorChanges { target: creationControl; anchors.horizontalCenter: undefined; anchors.verticalCenter: undefined }
+                    PropertyChanges {
+                        target: root
+                        dragActive: true
+                    }
+                }
+
+                Image {
+                    id: image
+                    visible: false
+                    anchors.fill: parent
+                    source: imageSource
+                    fillMode: Image.PreserveAspectFit
+                    antialiasing: true
+                    smooth: true
+                    asynchronous: true
+                }
+
+                DropShadow {
+                    anchors.fill: image
+                    source: image
+                    samples: 17
+                    radius: 8
+                    horizontalOffset: 1
+                    verticalOffset: 4
+                    color: Qt.hsla(0.0, 0.0, 0.0, 0.2)
+                    smooth: true
+                    antialiasing: true
                 }
             }
-            onClicked: {
-                root.clicked(root)
+
+        }
+
+        Text {
+            id: text
+            anchors {
+                left: parent.left
+                right: parent.right
             }
-            onPressed: {
-                root.pressed(root)
-            }
+            color: Style.mainDesktop.text.color
+            font.pixelSize: 12
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            text: root.name
+        }
+
+        Item {
+            width: 1
+            height: 8
         }
     }
 }

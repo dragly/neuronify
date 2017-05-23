@@ -2,6 +2,7 @@ import QtQuick 2.0
 
 import QtQuick.Layouts 1.1
 import QtCharts 2.1
+import QtGraphicalEffects 1.0
 
 import Neuronify 1.0
 
@@ -28,6 +29,8 @@ Node {
     objectName: "voltmeter"
     filename: "meters/Voltmeter.qml"
     square: true
+    name: "Voltmeter"
+
     property var connectionPlots: []
     property var colors: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
         "#ff7f00", "#a65628", "#f781bf", "#999999"]
@@ -76,6 +79,7 @@ Node {
     height: 240
     color: Style.meter.background
 
+    snapToCenter: false
     preferredEdge: MeterEdge {}
 
     canReceiveConnections: false
@@ -175,14 +179,21 @@ Node {
 
 
     Rectangle {
+        id: background
         anchors.fill: parent
         color: parent.color
-        border.color: Style.meter.border.color
-        border.width: Style.meter.border.width
+//        border.color: Style.meter.border.color
+//        border.width: Style.meter.border.width
         smooth: true
         antialiasing: true
+        visible: false
+
     }
 
+    ItemShadow {
+        anchors.fill: background
+        source: background
+    }
 
     ValueAxis {
         id: dummyAxisY
@@ -311,6 +322,7 @@ Node {
                 id: chartView
                 anchors.fill: parent
                 legend.visible: false
+                smooth: true
                 antialiasing: true
                 backgroundColor: "transparent"
                 enabled: false // disables mouse input
@@ -325,7 +337,7 @@ Node {
                     axisY: axisY
                     timeRange: voltmeterRoot.timeRange * timeFactor
                     color: chartItem.lineColor
-                    width: 2.0
+                    width: 3.0
                 }
 
                 Plot {
@@ -334,7 +346,7 @@ Node {
                     axisY: axisY
                     timeRange: series.timeRange
                     color: chartItem.lineColor
-                    width: 2.0
+                    width: 3.0
                 }
 
                 ValueAxis {
@@ -364,10 +376,17 @@ Node {
         }
     }
 
+    Text {
+        anchors.centerIn: parent
+        color: Style.text.color
+        visible: voltmeterRoot.connectionPlots.length < 1
+        text: "Connect to neuron to see voltage"
+    }
+
     ResizeRectangle {}
 
     Connector {
         color: Style.meter.border.color
-        visible: parent.selected || numberOfEdges < 1
+//        visible: parent.selected || numberOfEdges < 1
     }
 }

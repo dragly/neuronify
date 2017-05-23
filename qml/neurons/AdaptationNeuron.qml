@@ -3,10 +3,10 @@ import QtQuick.Controls 1.0
 
 import Neuronify 1.0
 
-
-import ".."
-import "../controls"
-import "../style"
+import "qrc:/qml"
+import "qrc:/qml/controls"
+import "qrc:/qml/neurons"
+import "qrc:/qml/style"
 
 
 Neuron {
@@ -17,6 +17,7 @@ Neuron {
     filename: "neurons/AdaptationNeuron.qml"
     imageSource: "qrc:/images/neurons/adaptive.png"
     inhibitoryImageSource: "qrc:/images/neurons/adaptive_inhibitory.png"
+    name: "Adaptive neuron"
 
     engine: NeuronEngine {
         id: neuronEngine
@@ -34,7 +35,6 @@ Neuron {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Adaptive neuron"
             LabelControl {
                 neuron: neuronRoot
             }
@@ -44,7 +44,6 @@ Neuron {
                 property: "inhibitory"
                 checkedText: "Inhibitory"
                 uncheckedText: "Excitatory"
-
             }
             AdaptationControl{
                 current: adaptationCurrent
@@ -53,44 +52,46 @@ Neuron {
                 current: adaptationCurrent
             }
 
-            Text {
-                text: "Fixed parameters:"
-                font: Style.control.font
-                color: Style.text.color
-            }
+            // TODO add back list of fixed params
 
-            Text {
-                id: subText
-                font: Style.control.subText.font
-                color: Style.control.subText.color
-                textFormat: Text.RichText
-                text: "V<sub>m</sub>: " +
-                      (neuronEngine.restingPotential * 1e3).toFixed(1)
-                      + " mV, " +
-                      "V<sub>m</sub>: " +
-                      (neuronEngine.initialPotential * 1e3).toFixed(1)
-                      + " mV, " +
-                      "V<sub>thres</sub>: " +
-                      (neuronEngine.threshold * 1e3).toFixed(1)
-                      + " mV<br>" +
-                      "C<sub>m</sub>: " +
-                      (neuronEngine.capacitance * 1e9).toFixed(1)
-                      + " nF, " +
-                      "R<sub>m</sub>: " +
-                      (leakCurrent.resistance * 1e-3).toFixed(1)
-                      + " kΩ,<br>" +
-                      "τ<sub>r</sub>: "+
-                      0
-                      + " ms, "
-            }
+//            Text {
+//                text: "Fixed parameters:"
+//                font: Style.control.font
+//                color: Style.text.color
+//            }
 
-            ConnectMultipleControl {
-                node: neuronRoot
-            }
+//            Text {
+//                id: subText
+//                font: Style.control.subText.font
+//                color: Style.control.subText.color
+//                textFormat: Text.RichText
+//                text: "V<sub>m</sub>: " +
+//                      (neuronEngine.restingPotential * 1e3).toFixed(1)
+//                      + " mV, " +
+//                      "V<sub>m</sub>: " +
+//                      (neuronEngine.initialPotential * 1e3).toFixed(1)
+//                      + " mV, " +
+//                      "V<sub>thres</sub>: " +
+//                      (neuronEngine.threshold * 1e3).toFixed(1)
+//                      + " mV<br>" +
+//                      "C<sub>m</sub>: " +
+//                      (neuronEngine.capacitance * 1e9).toFixed(1)
+//                      + " nF, " +
+//                      "R<sub>m</sub>: " +
+//                      (leakCurrent.resistance * 1e-3).toFixed(1)
+//                      + " kΩ,<br>" +
+//                      "τ<sub>r</sub>: "+
+//                      0
+//                      + " ms, "
+//            }
 
-            ResetControl {
-                engine: neuronEngine
-            }
+//            ConnectMultipleControl {
+//                node: neuronRoot
+//            }
+
+//            ResetControl {
+//                engine: neuronEngine
+//            }
 
         }
     }

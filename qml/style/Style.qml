@@ -29,6 +29,7 @@ Item {
 
     property alias color: colorsObject
     property alias border: borderObject
+    property alias mainDesktop: mainDesktopObject
 
     property real playbackSpeed
     property real workspaceScale
@@ -50,7 +51,7 @@ Item {
     QtObject {
         id: meterBorderObject
         property color color: "#9ecae1"
-        property real width: 2.0
+        property real width: 3.0
     }
 
 
@@ -104,6 +105,22 @@ Item {
             Text {
                 id: menuTextFontProxy
                 font.pixelSize: 2.5 * root.size
+                font.family: "Roboto Light, Roboto"
+            }
+        }
+    }
+
+    Item {
+        id: mainDesktopObject
+
+        property alias text: mainDesktopTextObject
+        Item {
+            id: mainDesktopTextObject
+            property color color: "#2d76a2"
+            property alias font: mainDesktopFontProxy.font
+            Text {
+                id: mainDesktopFontProxy
+                font.pixelSize: 18
                 font.family: "Roboto Light, Roboto"
             }
         }

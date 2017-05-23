@@ -38,6 +38,7 @@ Node {
     objectName: "spikeDetector"
     filename: "meters/SpikeDetector.qml"
     square: true
+    name: "Spike detector"
 
     width: 320
     height: 240
@@ -66,7 +67,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Spike detector"
             BoundSlider {
                 target: rasterRoot
                 property: "timeRange"
@@ -78,14 +78,14 @@ Node {
                 stepSize: 10.0e-3
             }
 
-            ConnectMultipleControl {
-                toEnabled: false
-                node: rasterRoot
-            }
+//            ConnectMultipleControl {
+//                toEnabled: false
+//                node: rasterRoot
+//            }
 
-            ResetControl {
-                engine: rasterRoot.engine
-            }
+//            ResetControl {
+//                engine: rasterRoot.engine
+//            }
         }
     }
 
@@ -177,6 +177,9 @@ Node {
                 titleFont.weight: Font.Normal
                 titleFont.pixelSize: 14
                 titleText: rasterRoot.showLegend ? "t [ms]" : ""
+                visible: false // IMPORTANT: Due to a bug in Qt Charts/Qt Graphics View,
+                // performance is degraded with time when text changes
+                // https://bugreports.qt.io/browse/QTBUG-59040
             }
             axisY: CategoryAxis {
                 id: axisY

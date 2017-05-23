@@ -1,5 +1,5 @@
 import QtQuick 2.6
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.1
 import QtQuick.Controls.Styles 1.4
 import QtQml 2.2
 import QtGraphicalEffects 1.0
@@ -32,10 +32,11 @@ Item {
             right: switchRoot.left
             verticalCenter: parent.verticalCenter
         }
-        text: switchRoot.checked ? checkedText : uncheckedText
+//        text: switchRoot.checked ? checkedText : uncheckedText
+        text: checkedText
     }
 
-    Switch{
+    Switch {
         id: switchRoot
 
         width: parent.width * 0.2
@@ -46,27 +47,6 @@ Item {
             right: parent.right
             verticalCenter: parent.verticalCenter
         }
-
-        style: SwitchStyle {
-            groove: Rectangle {
-                implicitWidth: switchRoot.width
-                implicitHeight: switchRoot.height
-                radius: height/2
-                color: Style.color.background
-                border.color: "#9ecae1"
-                border.width: Style.border.width
-            }
-            handle: Rectangle {
-                implicitWidth:  switchRoot.width * 0.5
-                implicitHeight: switchRoot.height
-                radius: height/2
-                color: "#9ecae1"
-                border.color: "#9ecae1"
-                border.width: Style.border.width
-                gradient: grad
-            }
-        }
-
     }
 
     Gradient {

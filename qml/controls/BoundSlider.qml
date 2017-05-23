@@ -39,8 +39,8 @@ Item {
 
     state: "edit"
 
-    width: parent.width
-    height: Style.control.fontMetrics.height * 2
+    implicitWidth: parent.width
+    implicitHeight: Style.control.fontMetrics.height * 2
 
     function applyTextEdit() {
         root.focus = true

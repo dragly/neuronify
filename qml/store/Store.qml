@@ -1,76 +1,32 @@
 import QtQuick 2.7
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.0
 import QtQuick.Layouts 1.0
+import QtGraphicalEffects 1.0
+//import QtPurchasing 1.0 as QP
+
+import "qrc:/qml/backend"
+import "qrc:/qml/style"
 
 Item {
     width: 1280
     height: 900
-    Rectangle {
-        id: rectangle1
-        height: 65
-        color: "#ffffff"
-        anchors.right: parent.right
-        anchors.rightMargin: 0
-        anchors.left: parent.left
-        anchors.leftMargin: 0
-        anchors.top: parent.top
-        anchors.topMargin: 0
 
-        Label {
-            id: text1
-            y: 26
-            text: qsTr("Neuronify Store")
-            font.pixelSize: 24
-            anchors.left: parent.left
-            anchors.leftMargin: 16
-            anchors.verticalCenter: parent.verticalCenter
-        }
+    property var colors: [
+        "#05668d",
+        "#028090",
+        "#00a896",
+        "#02c39a",
+        "#f0f3bd",
+    ]
 
-        TextField {
-            id: textField1
-            x: 851
-            width: 373
-            text: qsTr("")
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 16
-            anchors.top: parent.top
-            anchors.topMargin: 16
-            anchors.right: item2.left
-            anchors.rightMargin: 0
-            placeholderText: qsTr("Search")
-        }
-
-        Item {
-            id: item2
-            width: height
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 16
-            anchors.top: parent.top
-            anchors.topMargin: 16
-            anchors.right: parent.right
-            anchors.rightMargin: 8
-
-            MouseArea {
-                id: mouseArea1
-                anchors.fill: parent
-            }
-
-            Image {
-                id: image1
-                anchors.rightMargin: 0
-                anchors.fill: parent
-                source: "qrc:/images/store/ic_search_black_48dp.png"
-            }
-        }
-    }
-
-    Rectangle {
+    Item {
         id: rectangle2
-        color: "#e4e7ed"
+//        color: "#eee"
+//        padding: 0
         anchors.right: parent.right
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.top: rectangle1.bottom
+        anchors.top: parent.top
 
         Rectangle {
             id: rectangle3
@@ -89,58 +45,120 @@ Item {
                 anchors.rightMargin: 0
                 anchors.left: parent.left
                 anchors.leftMargin: 0
+
                 Repeater {
                     model: ListModel {
                         ListElement {
                             name: "Simulations"
-                            colorCode: "#ed6a5a"
                         }
 
                         ListElement {
                             name: "Neurons"
-                            colorCode: "#63b4d1"
                         }
 
                         ListElement {
                             name: "Items"
-                            colorCode: "#f4f1bb"
                         }
 
                         ListElement {
                             name: "Plugins"
-                            colorCode: "#9bc1bc"
                         }
                     }
-                    delegate: Rectangle {
+                    delegate: ItemDelegate {
                         id: rectangle4
-                        height: 64
-                        color: colorCode
-                        anchors.right: parent.right
-                        anchors.left: parent.left
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                        }
+
+                        height: 56
+
+                        Rectangle {
+                            id: colorRectangle
+                            anchors {
+                                top: parent.top
+                                bottom: parent.bottom
+                                left: parent.left
+                            }
+
+                            width: 48
+
+                            color: colors[index]
+                        }
+
 
                         Label {
                             id: text2
-                            color: "#ffffff"
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                left: colorRectangle.right
+                                leftMargin: 16
+                            }
                             text: name
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.leftMargin: 16
-                            font.pixelSize: 16
                         }
                     }
                 }
             }
         }
 
+        StoreShadow {
+            source: rectangle3
+            anchors.fill: rectangle3
+        }
+
+        Column {
+            anchors {
+                top: rectangle3.bottom
+                left: parent.left
+                right: rectangle3.right
+                margins: 8
+            }
+
+            Button {
+                width: 120
+                text: "Upload items"
+            }
+        }
+
         Item {
             id: contentContainer
-            anchors.margins: 16
-            anchors.left: rectangle3.right
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.top: parent.top
+            anchors {
+                margins: 16
+                left: rectangle3.right
+                right: parent.right
+                bottom: parent.bottom
+                top: parent.top
+            }
 
-            StoreItem {}
+            clip: true
+
+            StackView {
+                id: stackView
+                anchors.fill: parent
+                initialItem: mainView
+            }
+        }
+
+        Component {
+            id: mainView
+            StoreFrontPage {
+                width: parent.width
+                height: parent.height
+
+                onClicked: {
+                    var item = stackView.push(simulationView)
+                    item.objectId = objectId
+                }
+            }
+        }
+
+        Component {
+            id: simulationView
+            StoreSimulation {
+                id: root
+                width: parent ? parent.width : 400
+                height: parent ? parent.height : 400
+            }
         }
     }
 }

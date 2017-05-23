@@ -12,6 +12,7 @@ Neuron {
     filename: "neurons/BurstNeuron.qml"
     imageSource: "qrc:/images/neurons/burst.png"
     inhibitoryImageSource: "qrc:/images/neurons/burst_inhibitory.png"
+    name: "Burst neuron"
 
     engine: NeuronEngine {
         id: neuronEngine
@@ -42,7 +43,6 @@ Neuron {
 
     controls: Component {
         PropertiesPage {
-            property string title: "Burst neuron"
             LabelControl {
                 neuron: neuronRoot
             }
@@ -85,13 +85,13 @@ Neuron {
                       + " ms, "
             }
 
-            ConnectMultipleControl {
-                node: neuronRoot
-            }
+//            ConnectMultipleControl {
+//                node: neuronRoot
+//            }
 
-            ResetControl {
-                engine: neuronEngine
-            }
+//            ResetControl {
+//                engine: neuronEngine
+//            }
         }
     }
 }

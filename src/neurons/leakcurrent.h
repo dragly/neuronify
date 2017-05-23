@@ -25,7 +25,7 @@ protected:
     virtual void resetPropertiesEvent() override;
 
 private:
-    double m_resistance = 0.0;
+    double m_resistance = 100.0e6;
 };
 
 #endif // PASSIVECURRENT_H

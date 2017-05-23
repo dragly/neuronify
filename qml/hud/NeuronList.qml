@@ -2,9 +2,9 @@ import QtQuick 2.0
 
 ListModel {
     ListElement {
-        name: "Leaky excitatory neuron"
-        description: "Excitatory neuron with with only leak currents"
-        source: "../neurons/LeakyNeuron.qml"
+        name: "Leaky"
+        description: "Excitatory neuron with only leak currents"
+        source: "qrc:/qml/neurons/LeakyNeuron.qml"
         imageSource: "qrc:/images/neurons/leaky.png"
     }
 //    ListElement {
@@ -14,9 +14,9 @@ ListModel {
 //        imageSource: "qrc:/images/neurons/burst.png"
 //    }
     ListElement {
-        name: "Adaptive excitatory neuron"
+        name: "Adaptive"
         description: "Excitatory neuron with adapting spike response"
-        source: "../neurons/AdaptationNeuron.qml"
+        source: "qrc:/qml/neurons/AdaptationNeuron.qml"
         imageSource: "qrc:/images/neurons/adaptive.png"
     }
 }

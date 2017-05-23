@@ -24,6 +24,7 @@ Node {
     height: 64
     color: "#dd5000"
     canReceiveConnections: false
+    name: "AC current source"
 
     engine: NodeEngine {
         id: engine
@@ -49,7 +50,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "AC current source"
             BoundSlider {
                 target: engine
                 property: "amplitude"
@@ -71,14 +71,14 @@ Node {
                 stepSize: 1.
             }
 
-            ConnectMultipleControl {
-                toEnabled: false
-                node: acRoot
-            }
+//            ConnectMultipleControl {
+//                toEnabled: false
+//                node: acRoot
+//            }
 
-            ResetControl {
-                engine: acRoot.engine
-            }
+//            ResetControl {
+//                engine: acRoot.engine
+//            }
         }
     }
 

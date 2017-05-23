@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.1
 
 import Neuronify 1.0
 
@@ -32,6 +32,7 @@ Node {
 
     objectName: "irregularSpikeGenerator"
     filename: "generators/IrregularSpikeGenerator.qml"
+    name: "Irregular Spike generator"
 
     preferredEdge: CurrentSynapse {}
 
@@ -63,7 +64,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            title: "Irregular Spike generator"
             BoundSlider {
                 target: engine
                 property: "rate"
@@ -83,14 +83,14 @@ Node {
 
             }
 
-            ConnectMultipleControl {
-                toEnabled: false
-                node: root
-            }
+//            ConnectMultipleControl {
+//                toEnabled: false
+//                node: root
+//            }
 
-            ResetControl {
-                engine: root.engine
-            }
+//            ResetControl {
+//                engine: root.engine
+//            }
         }
     }
 

@@ -1,67 +1,75 @@
 import QtQuick 2.4
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.0
+
+import "qrc:/qml/backend"
+import "qrc:/qml/firebase"
+import "qrc:/qml/style"
 
 Item {
+    id: root
+
+    signal clicked(string objectId)
+    property Backend backend
+
     width: 400
     height: 400
 
-    Rectangle {
-        id: rectangle1
-        x: 22
-        y: 18
-        width: 529
-        height: 315
-        color: "#ff00ff"
-    }
-
-    Text {
-        id: text1
-        x: 567
-        y: 18
-        text: "Something something"
-        font.pixelSize: 32
-    }
-
-    Text {
-        id: text2
-        x: 567
-        y: 62
-        width: 395
-        height: 271
-        text: qsTr("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec eu nisl auctor, ultrices dui non, pulvinar nibh. Phasellus feugiat sollicitudin ullamcorper. Donec commodo dolor vitae mi malesuada, eu fringilla nisi laoreet. Nunc id augue et diam bibendum ultrices. Aliquam erat volutpat. Cras est odio, feugiat sed orci sed, rhoncus molestie nulla. Aenean consectetur eget odio eget iaculis.\n\nPraesent hendrerit vitae dui sit amet tincidunt. Vivamus rutrum interdum auctor. Aliquam erat volutpat. Donec lacus metus, sagittis posuere suscipit et, iaculis sed sem. Donec sit amet interdum massa. Nullam dignissim eleifend cursus. Pellentesque eget dolor aliquet, sagittis magna sit amet, mollis dui. Morbi sit amet rhoncus elit. Maecenas pretium suscipit vestibulum. ")
-        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-        font.pixelSize: 12
-    }
-
-    Text {
-        id: text3
-        x: 22
-        y: 345
-        text: "Simulations"
-        font.pixelSize: 32
-    }
-
-    Row {
-        id: row1
-        x: 22
-        y: 389
-        width: 940
-        height: 213
-
-        Repeater {
-            model: ListModel {
-                ListElement {
-                    name: "Woop woop"
-                }
-                ListElement {
-                    name: "Doop asfaf"
-                }
-                ListElement {
-                    name: "Lol woop"
-                }
+    Component.onCompleted: {
+        backend.get("Simulation", function(response) {
+            for(var i in response.results) {
+                var simulation = response.results[i]
+                listModel.append(response.results[i])
             }
-            delegate: StoreItem {
-                titleText.text: name
+        })
+    }
+
+    FontMetrics {
+        id: defaultMetric
+    }
+
+    Flickable {
+        anchors.fill: parent
+        contentWidth: column.width
+        contentHeight: column.height
+        clip: true
+
+        flickableDirection: Flickable.VerticalFlick
+
+        ScrollBar.vertical: ScrollBar {}
+
+        Column {
+            id: column
+            anchors {
+                left: parent.left
+                top: parent.top
+                margins: 16
+            }
+
+            spacing: 16
+
+            Text {
+                id: text3
+                text: "Simulations"
+                font.pixelSize: defaultMetric.font.pixelSize * 1.6
+            }
+
+            Row {
+                id: row1
+                spacing: 16
+
+                Repeater {
+                    model: ListModel { id: listModel }
+                    delegate: StoreItem {
+                        width: 160
+                        height: 256
+                        name: model.name
+                        description: model.description ? model.description : ""
+                        imageUrl: model.image ? model.image.url : ""
+                        onClicked: {
+                            root.clicked(model.objectId)
+                        }
+                    }
+                }
             }
         }
     }

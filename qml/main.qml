@@ -1,13 +1,13 @@
 import QtQuick 2.2
-import QtQuick.Controls 1.4
-import QtQuick.Layouts 1.0
+import QtQuick.Controls 2.1
 import Qt.labs.settings 1.0
 import CuteVersioning 1.0
+import QtQuick.Window 2.0
 
-import "store"
+import "qrc:/qml/style"
 
 ApplicationWindow {
-    id: applicationWindow1
+    id: root
 
     property real startupTime: 0
 
@@ -22,13 +22,38 @@ ApplicationWindow {
         startupTime = Date.now();
     }
 
+    onWidthChanged: {
+        resetStyle()
+    }
+
+    onHeightChanged: {
+        resetStyle()
+    }
+
+    onClosing: {
+        // Hack to keep back button from closing app
+        console.log("onClosing")
+        if (Qt.platform.os === "android"){
+            close.accepted = false
+            return
+        }
+        if(!mainDesktop.tryClose()) {
+            close.accepted = false
+            return
+        }
+        console.log("Neuronify closing...")
+    }
+
+    function resetStyle() {
+        Style.reset(width, height, Screen.pixelDensity)
+    }
+
     Settings {
         id: settings
-        property alias width: applicationWindow1.width
-        property alias height: applicationWindow1.height
-        property alias x: applicationWindow1.x
-        property alias y: applicationWindow1.y
-        property alias firstRun: neuronify.firstRun
+        property alias width: root.width
+        property alias height: root.height
+        property alias x: root.x
+        property alias y: root.y
     }
 
     FontLoader {
@@ -43,14 +68,17 @@ ApplicationWindow {
         source: "qrc:/fonts/roboto/Roboto-Bold.ttf"
     }
 
-    Neuronify {
-        id: neuronify
-        anchors.fill: parent
+    FontLoader {
+        source: "https://github.com/google/material-design-icons/raw/master/iconfont/MaterialIcons-Regular.ttf"
     }
 
-    onClosing: {
-        if (Qt.platform.os === "android"){
-            close.accepted = false
+    MainDesktop {
+        id: mainDesktop
+        anchors.fill: parent
+        focus: true
+        onRequestClose: {
+            console.log("Close requested")
+            root.close()
         }
     }
 }
