@@ -20,12 +20,12 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-QT5_MAJOR=7
+QT5_MAJOR=9
 QT5_MINOR=0
-QT5_PATCH=1
+QT5_PATCH=0-201705121023 # beta 
 
-QT5_OSX_VERSION=10
-QT5_LINUX_VERSION=Linux-RHEL_6_6
+QT5_LINUX_VERSION=Linux-RHEL_7_2
+QT5_LINUX_VERSION_2=linux-Rhel7.2
 
 if (( $# < 2 )); then
   echo "Usage: <destination> <component> [component...]"
@@ -47,20 +47,21 @@ for x in ${@:2}; do
     exit 1
   fi
 
-  curl -L -o /tmp/qt5.7z $DOWNLOAD_URL
+  echo "Downloading $x"
+  curl -L -o /tmp/qt5.7z $DOWNLOAD_URL > /dev/null
   DOWNLOAD_HASH=$(shasum -a 1 /tmp/qt5.7z)
   if [[ $DOWNLOAD_HASH != $DOWNLOAD_HASH ]]; then
     echo "ERROR: Hash missmatch for $x" 1>&2
     exit 1
   fi
 
-  7z x -aoa "-o$1" /tmp/qt5.7z 1>&2
+  7z x -aoa "-o$1" /tmp/qt5.7z > /dev/null
   rm /tmp/qt5.7z
 done
 
-DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}icu-linux-Rhel6.6-x64.7z"
+DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}icu-${QT5_LINUX_VERSION_2}-x64.7z"
 curl -L -o /tmp/qt5.7z $DOWNLOAD_URL
-7z x -aoa "-o$1" /tmp/qt5.7z 1>&2
+7z x -aoa "-o$1" /tmp/qt5.7z  > /dev/null
 rm /tmp/qt5.7z
 
 # Minimal Qt Configuration File

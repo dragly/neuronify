@@ -1,5 +1,5 @@
 #!/bin/bash
-export QTDIR=/opt/qt5/5.7/gcc_64
+export QTDIR=/opt/qt5/5.9/gcc_64
 export PATH=$QTDIR/bin:$PATH
 SNAP_DUMP=snapdump
 qmake
@@ -10,4 +10,4 @@ cp -r $QTDIR/lib ${SNAP_DUMP}/
 cp -r $QTDIR/plugins ${SNAP_DUMP}/
 cp -r $QTDIR/plugins/platforms ${SNAP_DUMP}/
 cp -r $QTDIR/qml ${SNAP_DUMP}/
-cp src/neuronify ${SNAP_DUMP}/bin/neuronify
+cp neuronify ${SNAP_DUMP}/bin/neuronify
