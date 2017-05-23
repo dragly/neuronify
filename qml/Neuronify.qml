@@ -198,7 +198,7 @@ Rectangle {
     }
 
     function loadState(data) {
-        console.log("Neuronify.loadState called", JSON.stringify(data))
+        console.log("Neuronify.loadState called")
         firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
         pinchArea.scaleSetByDoubleClick = false
 
@@ -304,7 +304,7 @@ Rectangle {
             return
         }
         var state = fileManager.serializeState()
-        console.log("Registering undoable state", JSON.stringify(state))
+        console.log("Registering undoable state")
         undoList.push(state)
         redoList.length = 0
     }
