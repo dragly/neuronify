@@ -40,6 +40,8 @@ Rectangle {
     signal uploadClicked()
     signal communityClicked()
 
+    signal undoClicked()
+    signal redoClicked()
     signal cutClicked()
     signal copyClicked()
     signal pasteClicked()
@@ -151,10 +153,38 @@ Rectangle {
             Layout.minimumWidth: 48
             Layout.maximumWidth: parent.height
             state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Undo"
+            icon.category: "content"
+            icon.name: "undo"
+            duration: 500
+            onClicked: {
+                undoClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
+            text: "Redo"
+            icon.category: "content"
+            icon.name: "redo"
+            duration: 450
+            onClicked: {
+                redoClicked()
+            }
+        }
+        MaterialButton {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumWidth: 48
+            Layout.maximumWidth: parent.height
+            state: mouseArea.containsMouse ? "" : "discrete"
             text: "Cut"
             icon.category: "content"
             icon.name: "content cut"
-            duration: 450
+            duration: 400
             onClicked: {
                 cutClicked()
             }
@@ -168,7 +198,7 @@ Rectangle {
             text: "Copy"
             icon.category: "content"
             icon.name: "content copy"
-            duration: 400
+            duration: 350
             onClicked: {
                 copyClicked()
             }
@@ -182,7 +212,7 @@ Rectangle {
             text: "Paste"
             icon.category: "content"
             icon.name: "content paste"
-            duration: 350
+            duration: 300
             onClicked: {
                 pasteClicked()
             }
@@ -200,7 +230,7 @@ Rectangle {
             text: "Account"
             icon.name: "account_circle"
             icon.category: "action"
-            duration: 300
+            duration: 250
             onClicked: {
                 accountClicked()
             }

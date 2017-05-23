@@ -46,11 +46,11 @@ Rectangle {
     property real currentTimeStep: 0.0
     property real time: 0.0
     property var activeObject: null
-    property var undoList: [""]
-    property int undoIdx: 0
-    property int undoIdxCopy: 0
-    property bool undoRecordingEnabled: true
-    property bool canRedo: false
+    property var undoList: []
+    property var redoList: []
+    property var currentUndoState
+    readonly property bool undoRecordingEnabled: undoRecordingDepth == 0
+    property int undoRecordingDepth: 0
     readonly property bool paused: workspace.playbackSpeed <= 0.0
     readonly property bool running: applicationActive && !paused // TODO pause when mainMenu.revealed
     property string clickMode: "selection"
@@ -104,11 +104,26 @@ Rectangle {
 
     function open(simulation) {
         console.log("Open", simulation)
-        var data = JSON.parse(simulation.data)
+        reloadState(simulation.data)
+        return simulation // TODO is this used anywhere?
+    }
+
+    function loadSimulation(fileUrl) {
+        var code = fileManager.read(fileUrl);
+        if(!code) {
+            console.log("Load state got empty contents.")
+            return;
+        }
+        reloadState(code)
+    }
+
+    function reloadState(simulationString) {
+        var data = JSON.parse(simulationString)
         deleteEverything()
         loadState(data)
         hasUnsavedChanges = false
-        return simulation
+        undoList.length = 0
+        redoList.length = 0
     }
 
     function save(simulation, callback) {
@@ -182,26 +197,10 @@ Rectangle {
         }
     }
 
-    function loadSimulation(fileUrl) {
-        var code = fileManager.read(fileUrl);
-        if(!code) {
-            console.log("Load state got empty contents.")
-            return;
-        }
-
-        var data = JSON.parse(code)
-        deleteEverything()
-        loadState(data)
-        hasUnsavedChanges = false
-    }
-
     function loadState(data) {
         console.log("Neuronify.loadState called", JSON.stringify(data))
         firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
-        pinchArea.scaleSetByDoubleClick = false;
-        undoList.length = 0;
-        undoIdx = 1;
-        undoRecordingEnabled = false;
+        pinchArea.scaleSetByDoubleClick = false
 
         var expectedFileFormatVersion = 4
 
@@ -243,6 +242,10 @@ Rectangle {
             console.warn("ERROR: Could not find edges. Cannot load simulation.")
             return
         }
+
+        registerUndoState()
+
+        undoRecordingDepth += 1
 
         for(var i in data.nodes) {
             var properties = data.nodes[i];
@@ -289,69 +292,60 @@ Rectangle {
             workspace.load(data.workspace);
         }
 
-        undoRecordingEnabled = true
+        undoRecordingDepth -= 1
 
         simulationLoaded()
 
         return createdNodes
     }
 
-    function addToUndoList() {
+    function registerUndoState() {
         if (!undoRecordingEnabled){
             return
         }
-        var fileString = ""
-
-        var counter = 0
-        //        for(var i in graphEngine.nodes) {
-        //            var entity = graphEngine.nodes[i]
-        //            fileString += entity.dump(i)
-        //        }
-
-        //        for(var i in graphEngine.edges) {
-        //            var connection = graphEngine.edges[i]
-        //            fileString += connection.dump(i, graphEngine)
-        //        }
-
-        undoList = undoList.slice(0,undoIdx)
-        undoIdx += 1
-        undoList.push(fileString)
-        //        console.log("Making new undolist item ", undoIdx, undoList.length)
-        canRedo = false
+        var state = fileManager.serializeState()
+        console.log("Registering undoable state", JSON.stringify(state))
+        undoList.push(state)
+        redoList.length = 0
     }
 
     function undo(){
-        if (undoIdx > 1){
-            undoIdx -= 1
-            deleteEverything()
-            //            console.log("Undoing...", undoIdx, undoList.length)
-            undoRecordingEnabled = false
-            eval(undoList[undoIdx-1])
-            undoRecordingEnabled = true
-            canRedo = true
-        } else {
-            //            console.log("Nothing to undo! ")
+        var previousState = undoList.pop()
+        if(!previousState) {
+            console.log("Nothing to undo!")
+            return
         }
+        console.log("Undoing...")
+        undoRecordingDepth += 1
+        if(redoList.length === 0) {
+            currentUndoState = fileManager.serializeState()
+        }
+        redoList.push(currentUndoState)
+
+        deleteEverything()
+        loadState(previousState)
+        currentUndoState = previousState
+        undoRecordingDepth -= 1
     }
 
     function redo() {
-        if (undoIdx < undoList.length){
-            undoIdx += 1
-            deleteEverything()
-
-            undoRecordingEnabled = false
-            eval(undoList[undoIdx-1])
-            undoRecordingEnabled = true
-            console.log("Redoing...", undoIdx, undoList.length, undoIdx===undoList.length)
-            if (undoIdx === undoList.length){
-                canRedo = false
-            }
-        } else {
-            console.log("Something went wrong! ", undoIdx, undoList.length)
+        var nextState = redoList.pop()
+        if(!nextState) {
+            console.log("Nothing to redo!")
+            return
         }
+        console.log("Redoing...")
+        undoList.push(currentUndoState)
+        undoRecordingDepth += 1
+        deleteEverything()
+        loadState(nextState)
+        currentUndoState = nextState
+        undoRecordingDepth -= 1
     }
 
     function deleteEverything() {
+        registerUndoState()
+        undoRecordingDepth += 1
         var nodesToDelete = [];
         for(var i in graphEngine.nodes) {
             nodesToDelete.push(graphEngine.nodes[i])
@@ -360,6 +354,7 @@ Rectangle {
             var node = nodesToDelete[i];
             graphEngine.removeNode(node);
         }
+        undoRecordingDepth -= 1
     }
 
     function isItemUnderConnector(item, source, connector) {
@@ -411,6 +406,8 @@ Rectangle {
     }
 
     function deleteNode(node) {
+        registerUndoState()
+        undoRecordingDepth += 1
         console.log("Deleting node", node);
         if(selectedEntities.indexOf(node) !== -1) {
             deselectAll();
@@ -420,16 +417,22 @@ Rectangle {
             var child = node.removableChildren[j];
             graphEngine.removeNode(child);
         }
-
-        graphEngine.removeNode(node);
+        graphEngine.removeNode(node)
+        undoRecordingDepth -= 1
     }
 
     function deleteEdge(edge) {
         console.log("Deleting edge", edge);
-        graphEngine.removeEdge(edge);
+        registerUndoState()
+        undoRecordingDepth += 1
+        graphEngine.removeEdge(edge)
+        undoRecordingDepth -= 1
     }
 
     function deleteSelected() {
+        registerUndoState()
+        undoRecordingDepth += 1
+
         var toDelete = []
         for(var i in selectedEntities) {
             toDelete.push(selectedEntities[i])
@@ -442,6 +445,7 @@ Rectangle {
             deleteEdge(activeObject);
         }
         deselectAll()
+        undoRecordingDepth -= 1
     }
 
     function clickedEntity(entity, mouse) {
@@ -517,6 +521,9 @@ Rectangle {
             return root.snapGridSize
         })
 
+        registerUndoState()
+        undoRecordingDepth += 1
+
         // signals
         entity.clicked.connect(clickedEntity)
         entity.clicked.connect(raiseToTop)
@@ -548,8 +555,9 @@ Rectangle {
 
         // finalize
         graphEngine.addNode(entity)
-        addToUndoList()
         hasUnsavedChanges = true
+        undoRecordingDepth -= 1
+
         return entity
     }
 
@@ -566,6 +574,9 @@ Rectangle {
             console.warn("connectEntities(): " + itemB.filename + " cannot receive connections.")
             return;
         }
+
+        registerUndoState()
+        undoRecordingDepth += 1
 
         var connectionComponent;
         if(filename){
@@ -595,9 +606,10 @@ Rectangle {
         });
         latestZ-=1
         connection.z = latestZ
-        addToUndoList()
         graphEngine.addEdge(connection)
         hasUnsavedChanges = true
+        undoRecordingDepth -= 1
+
         return connection
     }
 
@@ -1097,6 +1109,11 @@ Rectangle {
         }
         if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_V){
             paste()
+        }
+        if(event.modifiers & Qt.ControlModifier && event.modifiers & Qt.ShiftModifier && event.key=== Qt.Key_Z){
+            redo()
+        } else  if(event.modifiers & Qt.ControlModifier && event.key=== Qt.Key_Z){
+            undo()
         }
         if(event.key === Qt.Key_Delete || (Qt.platform.os === "osx" && event.key === Qt.Key_Backspace) ) {
             deleteSelected()

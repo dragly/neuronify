@@ -169,6 +169,14 @@ Item {
 
         // Editing
 
+        onUndoClicked: {
+            neuronify.undo()
+        }
+
+        onRedoClicked: {
+            neuronify.redo()
+        }
+
         onCutClicked: {
             neuronify.cut()
         }
