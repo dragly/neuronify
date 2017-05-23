@@ -4,6 +4,7 @@ summary: Neuronify
 description: |
     Education neural network app
 confinement: strict
+grade: stable
 
 apps:
     neuronify:
@@ -13,6 +14,21 @@ apps:
           - x11
           - opengl
           - pulseaudio
+          - camera
+          - dbus
+          - home
+          - network
+    gdb:
+        command: desktop-launch custom-qt-helper gdb neuronify
+        plugs:
+          - unity7
+          - x11
+          - opengl
+          - pulseaudio
+          - camera
+          - dbus
+          - home
+          - network
 
 parts:
   move:
@@ -28,6 +44,7 @@ parts:
       - libgl1-mesa-glx
       - xserver-xorg-video-intel
       - qt5-default
+      - gdb
   helpers:
     plugin: nil
     after:
