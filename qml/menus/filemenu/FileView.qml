@@ -557,14 +557,13 @@ Item {
                                     }
                                     spacing: 16
                                     Button {
+                                        id: uploadButton
                                         Material.theme: Material.Light
                                         text: "Upload"
                                         onClicked: {
+                                            uploadButton.enabled = false
                                             var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
-                                            var stateFilename = tempFolder + "/simulation.nfy"
                                             var screenshotFilename = tempFolder + "/screenshot.png"
-
-                                            neuronify.fileManager.saveState(stateFilename)
                                             neuronify.saveScreenshot(screenshotFilename, function() {
                                                 var data = neuronify.fileManager.serializeState()
                                                 Parse.upload("simulation.nfy", data, function(simulationFile) {
@@ -596,7 +595,8 @@ Item {
                                                                     }
                                                                     Parse.post("Simulation", simulation)
                                                                     ToolTip.show("Upload successful!", 2000)
-                                                                    uploadMenu.close()
+                                                                    root.revealed = false
+                                                                    uploadButton.enabled = true
                                                                 })
                                                 })
                                             })
