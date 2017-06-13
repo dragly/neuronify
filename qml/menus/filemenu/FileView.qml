@@ -612,35 +612,44 @@ Item {
                         identifier: "account"
                         name: "Account"
                         component: Item {
+                            function login() {
+                                Parse.login(userField.text, passwordField.text)
+                            }
+
                             Column {
-                                Button {
-                                    Material.theme: Material.Light
-                                    visible: !Parse.loggedIn
-                                    width: 120
-                                    text: "Sign up"
-                                    onClicked: {
-                                        Parse.post("_User", {"username":"cooldude6","password":"p_n7!-e8","phone":"415-392-0202"})
+                                visible: !Parse.loggedIn
+                                TextField {
+                                    id: userField
+                                    placeholderText: "Username or email"
+                                }
+
+                                TextField {
+                                    id: passwordField
+                                    echoMode: TextInput.Password
+                                    placeholderText: "Password"
+                                    onAccepted: {
+                                        login()
                                     }
                                 }
 
                                 Button {
                                     Material.theme: Material.Light
-                                    visible: !Parse.loggedIn
+                                    enabled: userField.text != "" && passwordField.text != ""
                                     width: 120
                                     text: "Log in"
                                     onClicked: {
-                                        Parse.login("cooldude6", "p_n7!-e8")
+                                        login()
                                     }
                                 }
+                            }
 
-                                Button {
-                                    Material.theme: Material.Light
-                                    visible: Parse.loggedIn
-                                    width: 120
-                                    text: "Log out"
-                                    onClicked: {
-                                        Parse.logout()
-                                    }
+                            Button {
+                                Material.theme: Material.Light
+                                visible: Parse.loggedIn
+                                width: 120
+                                text: "Log out"
+                                onClicked: {
+                                    Parse.logout()
                                 }
                             }
                         }
