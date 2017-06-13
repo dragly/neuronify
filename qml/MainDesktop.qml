@@ -229,13 +229,16 @@ Item {
         }
 
         onRunRequested: {
-            if (neuronify.hasUnsavedChanges) {
-                unsavedDialog.openWithRequestedAction(function() {
-                    root.currentSimulation = simulation
-                    neuronify.open(simulation)
-                    revealed = false
-                })
+            var runAction = function() {
+                root.currentSimulation = simulation
+                neuronify.open(simulation)
+                revealed = false
             }
+            if (neuronify.hasUnsavedChanges) {
+                unsavedDialog.openWithRequestedAction(runAction)
+                return
+            }
+            runAction()
         }
 
         onSaveRequested: {
@@ -341,50 +344,61 @@ Item {
                 Layout.fillWidth: true
             }
 
-            Label {
-                id: selectedLabel
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: 64
+                Layout.maximumHeight: creationLayout.width + 16
 
-                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-                text: ""
-                font.pixelSize: 12
-                horizontalAlignment: Qt.AlignHCenter
-                color: Style.mainDesktop.text.color
-                states: State {
-                    when: neuronify.activeObject ? true : false
-                    PropertyChanges {
-                        target: selectedLabel
-                        text: neuronify.activeObject.name
+                Label {
+                    id: selectedLabel
+
+                    anchors {
+                        top: parent.top
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    text: ""
+                    font.pixelSize: 12
+                    horizontalAlignment: Qt.AlignHCenter
+                    color: Style.mainDesktop.text.color
+                    states: State {
+                        when: neuronify.activeObject ? true : false
+                        PropertyChanges {
+                            target: selectedLabel
+                            text: neuronify.activeObject.name
+                        }
                     }
                 }
-            }
 
-            MaterialButton {
-                id: propertiesButton
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                height: width
+                MaterialButton {
+                    id: propertiesButton
 
-                icon.category: "image"
-                icon.name: "tune"
-                color: Material.primary
-                text: "Properties"
+                    anchors {
+                        top: selectedLabel.bottom
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                    }
 
-                onClicked: {
-                    propertiesPanel.revealed = !propertiesPanel.revealed
-                }
+                    icon.category: "image"
+                    icon.name: "tune"
+                    color: Material.primary
+                    text: "Properties"
 
-                states: State {
-                    when: neuronify.activeObject ? false : true
-                    PropertyChanges {
-                        target: propertiesButton
-                        opacity: 0.0
-                        enabled: false
+                    onClicked: {
+                        propertiesPanel.revealed = !propertiesPanel.revealed
+                    }
+
+                    states: State {
+                        when: neuronify.activeObject ? false : true
+                        PropertyChanges {
+                            target: propertiesButton
+                            opacity: 0.0
+                            enabled: false
+                        }
                     }
                 }
             }

@@ -59,6 +59,7 @@ MouseArea {
                 name: "create"
             }
         }
+
         Item {
             anchors {
                 top: imageContainer.bottom
