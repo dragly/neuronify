@@ -264,14 +264,16 @@ Item {
             bottom: parent.bottom
         }
         color: "#e3eef9"
-        width: 110
+        width: 100
         z: 38
 
-        Column {
+        ColumnLayout {
+            id: creationLayout
             anchors {
                 top: parent.top
                 left: parent.left
                 right: parent.right
+                bottom: parent.bottom
                 topMargin: 16
                 leftMargin: 8
                 rightMargin: 8
@@ -315,12 +317,11 @@ Item {
                 TopCreationItem {
                     id: creationItem
 
-                    parentWhenDragging: root
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.maximumHeight: creationLayout.width
 
+                    parentWhenDragging: root
                     name: model.name
                     source: model.source
                     imageSource: model.imageSource
@@ -334,19 +335,11 @@ Item {
                     }
                 }
             }
-        }
 
-        Column {
-            anchors {
-                left: parent.left
-                bottom: parent.bottom
-                right: parent.right
-                leftMargin: 8
-                rightMargin: 8
-                bottomMargin: 16
+            Item {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
             }
-
-            spacing: 8
 
             Label {
                 id: selectedLabel

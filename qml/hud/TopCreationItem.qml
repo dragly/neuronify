@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 2.1
 import QtQuick.Controls.Material 2.1
+import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
 import "qrc:/qml/style"
 
@@ -21,8 +22,11 @@ Item {
     property bool dragActive: false
     property bool selected: false
 
-    width: 56
-    height: column.height
+
+    Layout.fillHeight: true
+    Layout.fillWidth: true
+    Layout.minimumHeight: 54
+    Layout.maximumHeight: parent.width
 
     MouseArea {
         anchors.fill: parent
@@ -31,13 +35,9 @@ Item {
         }
     }
 
-    Column {
+    Item {
         id: column
-        anchors {
-            left: parent.left
-            right: parent.right
-        }
-        spacing: 8
+        anchors.fill: parent
 
         MouseArea {
             id: mouseArea
@@ -46,7 +46,7 @@ Item {
                 horizontalCenter: parent.horizontalCenter
             }
 
-            width: parent.width * 0.6
+            width: parent.height * 0.6
             height: width
 
             drag.target: creationControl
@@ -126,6 +126,8 @@ Item {
         Label {
             id: text
             anchors {
+                top: mouseArea.bottom
+                topMargin: 8
                 left: parent.left
                 right: parent.right
             }
@@ -134,11 +136,6 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             text: root.name
-        }
-
-        Item {
-            width: 1
-            height: 8
         }
     }
 }
