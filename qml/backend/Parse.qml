@@ -88,7 +88,9 @@ Backend {
         setHeaders(req)
         req.onreadystatechange = function() {
             var result = processReply(req, function(result) {
-                sessionToken = result.sessionToken
+                if(result.sessionToken) {
+                    sessionToken = result.sessionToken
+                }
                 if(callback) {
                     callback(result)
                 }

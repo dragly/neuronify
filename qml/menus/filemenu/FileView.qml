@@ -269,12 +269,12 @@ Item {
 //                                    text: "Recent"
 //                                }
 
-                                Flow {
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
-                                }
+//                                Flow {
+//                                    anchors {
+//                                        left: parent.left
+//                                        right: parent.right
+//                                    }
+//                                }
                             }
                         }
                     }
@@ -299,7 +299,7 @@ Item {
                                         right: parent.right
                                     }
                                     validator: RegExpValidator {
-                                        regExp: /[a-zA-Z0-9\-\_]+/
+                                        regExp: /[a-zA-Z0-9\-\_ ]+/
                                     }
 
                                     placeholderText: "e.g. MySimulation"
@@ -505,6 +505,7 @@ Item {
 
                     FileMenuItem {
                         name: "Upload"
+                        visible: Parse.loggedIn
                         component: Item {
                             Column {
                                 id: uploadColumn
@@ -613,19 +614,25 @@ Item {
                         name: "Account"
                         component: Item {
                             function login() {
-                                Parse.login(userField.text, passwordField.text)
+                                Parse.login(userField.text, passwordField.text, function(response) {
+                                    if(!response.sessionToken) {
+                                        passwordField.ToolTip.show("Wrong username or password", 1000)
+                                    }
+                                })
                             }
 
                             Column {
                                 visible: !Parse.loggedIn
                                 TextField {
                                     id: userField
+                                    selectByMouse: true
                                     placeholderText: "Username or email"
                                 }
 
                                 TextField {
                                     id: passwordField
                                     echoMode: TextInput.Password
+                                    selectByMouse: true
                                     placeholderText: "Password"
                                     onAccepted: {
                                         login()
@@ -655,11 +662,13 @@ Item {
                         }
                     }
 
-                    FileMenuItem {
-                        identifier: "settings"
-                        name: "Settings"
-                        component: Item {}
-                    }
+
+                    // TODO add back settings view when ready
+//                    FileMenuItem {
+//                        identifier: "settings"
+//                        name: "Settings"
+//                        component: Item {}
+//                    }
                 }
             }
         }

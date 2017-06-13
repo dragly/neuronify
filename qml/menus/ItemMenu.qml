@@ -160,7 +160,6 @@ Item {
                                     } else {
                                         root.dragging = false
                                     }
-                                    showInfoPanelTimer.stop()
                                 }
                             }
                         }

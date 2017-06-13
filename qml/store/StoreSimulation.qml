@@ -141,17 +141,30 @@ Item {
                         wrapMode: Label.WrapAtWordBoundaryOrAnywhere
                     }
 
-                    Label {
-                        id: creatorLabel
-                        text: root.creator
-                        font.weight: defaultMetric.font.weight * 1.4
-                    }
+//                    Label {
+//                        id: creatorLabel
+//                        text: root.creator
+//                        font.weight: defaultMetric.font.weight * 1.4
+//                    }
 
-                    Label {
-                        id: priceLabel
-                        text: root.price > 0 ? "NOK" + root.price.toFixed(2) : "FREE"
-                    }
+//                    Label {
+//                        id: priceLabel
+//                        text: root.price > 0 ? "NOK" + root.price.toFixed(2) : "FREE"
+//                    }
                 }
+            }
+
+            Label {
+                id: descriptionLabel
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    margins: 24
+                }
+
+                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+
+                text: root.description
             }
 
             Row {
@@ -194,22 +207,8 @@ Item {
                             }
                             root.runClicked(simulation)
                         })
-
                     }
                 }
-            }
-
-            Label {
-                id: descriptionLabel
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    margins: 24
-                }
-
-                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-
-                text: root.description
             }
         }
 

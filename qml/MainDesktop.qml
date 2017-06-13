@@ -77,7 +77,7 @@ Item {
             return true
         }
         if(neuronify.hasUnsavedChanges) {
-            unsavedDialog.open()
+            unsavedDialog.openWithRequestedAction(root.requestClose)
             return false
         }
         return true
@@ -96,17 +96,28 @@ Item {
 
     MessageDialog {
         id: unsavedDialog
+        property var requestedAction
+
+        function openWithRequestedAction(action) {
+            requestedAction = action
+            open()
+        }
+
         onYesClicked: {
             console.log("Accepted, try saving")
             saveCurrentOrOpenDialog(function() {
                 console.log("Save complete, request closing")
-                root.requestClose()
+                if (requestedAction) {
+                    requestedAction()
+                }
             })
         }
         onNoClicked: {
             console.log("Rejected, request close")
             ignoreUnsavedChanges = true
-            root.requestClose()
+            if (requestedAction) {
+                requestedAction()
+            }
         }
 
         buttons: MessageDialog.Yes | MessageDialog.No | MessageDialog.Cancel
@@ -136,7 +147,7 @@ Item {
         focus: true
     }
 
-    LeftMenu { // TODO rename to topmenu
+    EditMenu { // TODO rename to topmenu
         id: topMenu
 
         anchors {
@@ -218,9 +229,13 @@ Item {
         }
 
         onRunRequested: {
-            root.currentSimulation = simulation
-            neuronify.open(simulation)
-            revealed = false
+            if (neuronify.hasUnsavedChanges) {
+                unsavedDialog.openWithRequestedAction(function() {
+                    root.currentSimulation = simulation
+                    neuronify.open(simulation)
+                    revealed = false
+                })
+            }
         }
 
         onSaveRequested: {
@@ -362,8 +377,8 @@ Item {
                 }
                 height: width
 
-                icon.name: "settings_input_component"
-                icon.category: "action"
+                icon.category: "image"
+                icon.name: "tune"
                 color: Material.primary
                 text: "Properties"
 
@@ -447,7 +462,6 @@ Item {
                         } else {
                             root.dragging = false
                         }
-                        showInfoPanelTimer.stop()
                     }
                 }
             }
