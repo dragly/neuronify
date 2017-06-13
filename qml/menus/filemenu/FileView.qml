@@ -178,14 +178,6 @@ Item {
 
                                 spacing: 16
 
-                                StoreItem {
-                                    name: "Blank simulation"
-                                    description: "Start with a blank canvas."
-                                    onClicked: {
-                                        loadRequested("qrc:/simulations/empty/empty.nfy")
-                                    }
-                                }
-
                                 Column {
                                     anchors {
                                         left: parent.left
@@ -193,6 +185,14 @@ Item {
                                     }
 
                                     spacing: 16
+
+                                    Button {
+                                        Material.theme: Material.Light
+                                        text: "Blank simulation"
+                                        onClicked: {
+                                            loadRequested("qrc:/simulations/empty/empty.nfy")
+                                        }
+                                    }
 
                                     // TODO replace with database
                                     Repeater {
@@ -259,7 +259,9 @@ Item {
                                                     left: parent.left
                                                     right: parent.right
                                                 }
+
                                                 spacing: 16
+
                                                 Repeater {
                                                     model: modelData.simulations
                                                     StoreItem {
