@@ -79,21 +79,21 @@ Item {
             opacity: 1.0
         }
         
-//        ShaderEffectSource {
-//            id: neuronifySource
-//            anchors.fill: parent
-//            visible: false
-//            sourceItem: neuronify.shaderEffectItem
-//        }
+        //        ShaderEffectSource {
+        //            id: neuronifySource
+        //            anchors.fill: parent
+        //            visible: false
+        //            sourceItem: neuronify.shaderEffectItem
+        //        }
         
-//        GaussianBlur {
-//            id: blur
-//            anchors.fill: parent
-//            radius: 48
-//            samples: 64
-//            source: neuronifySource
-//            opacity: 0.2
-//        }
+        //        GaussianBlur {
+        //            id: blur
+        //            anchors.fill: parent
+        //            radius: 48
+        //            samples: 64
+        //            source: neuronifySource
+        //            opacity: 0.2
+        //        }
         
         Item {
             id: fileViewMenu
@@ -176,57 +176,107 @@ Item {
                                     right: parent.right
                                 }
 
-                                Flow {
+                                spacing: 16
+
+                                StoreItem {
+                                    name: "Blank simulation"
+                                    description: "Start with a blank canvas."
+                                    onClicked: {
+                                        loadRequested("qrc:/simulations/empty/empty.nfy")
+                                    }
+                                }
+
+                                Column {
                                     anchors {
                                         left: parent.left
                                         right: parent.right
                                     }
 
                                     spacing: 16
-                                    StoreItem {
-                                        name: "Blank simulation"
-                                        description: "Start with a blank canvas."
-                                        onClicked: {
-                                            loadRequested("qrc:/simulations/empty/empty.nfy")
-                                        }
-                                    }
 
                                     // TODO replace with database
                                     Repeater {
                                         model: [
-                                            {folder: "qrc:/simulations/tutorial/tutorial_1_intro"},
-                                            {folder: "qrc:/simulations/tutorial/tutorial_2_circuits"},
-                                            {folder: "qrc:/simulations/tutorial/tutorial_3_creation"},
-                                            {folder: "qrc:/simulations/items/neurons/leaky"},
-                                            {folder: "qrc:/simulations/items/neurons/inhibitory"},
-                                            {folder: "qrc:/simulations/items/neurons/adaptation"},
-                                            {folder: "qrc:/simulations/items/visualInput"},
-                                            {folder: "qrc:/simulations/items/generators"},
-                                            {folder: "qrc:/simulations/items/frPlot"},
-                                            {folder: "qrc:/simulations/mix/lateral_inhibition"},
-                                            {folder: "qrc:/simulations/mix/recurrent_inhibition"},
-                                            {folder: "qrc:/simulations/mix/reciprocal_inhibition"},
-                                            {folder: "qrc:/simulations/mix/disinhibition"},
-                                            {folder: "qrc:/simulations/mix/rythm_transformation"},
-                                            {folder: "qrc:/simulations/mix/prolonged_activity"},
-                                            {folder: "qrc:/simulations/mix/lateral_inhibition_1"},
-                                            {folder: "qrc:/simulations/mix/lateral_inhibition_2"},
-                                            {folder: "qrc:/simulations/mix/input_summation"},
-                                            {folder: "qrc:/simulations/sterratt/if_response"},
-                                            {folder: "qrc:/simulations/sterratt/refractory_period"},
+                                            {
+                                                name: "Tutorial",
+                                                simulations: [
+                                                    "qrc:/simulations/tutorial/tutorial_1_intro",
+                                                    "qrc:/simulations/tutorial/tutorial_2_circuits",
+                                                    "qrc:/simulations/tutorial/tutorial_3_creation",
+                                                ]
+                                            },
+                                            {
+                                                name: "Neuronify Items",
+                                                simulations: [
+                                                    "qrc:/simulations/items/neurons/leaky",
+                                                    "qrc:/simulations/items/neurons/inhibitory",
+                                                    "qrc:/simulations/items/neurons/adaptation",
+                                                    "qrc:/simulations/items/visualInput",
+                                                    "qrc:/simulations/items/generators",
+                                                    "qrc:/simulations/items/frPlot",
+
+                                                ]
+                                            },
+                                            {
+                                                name: "Miscellaneous",
+                                                simulations: [
+                                                    "qrc:/simulations/mix/lateral_inhibition",
+                                                    "qrc:/simulations/mix/recurrent_inhibition",
+                                                    "qrc:/simulations/mix/reciprocal_inhibition",
+                                                    "qrc:/simulations/mix/disinhibition",
+                                                    "qrc:/simulations/mix/rythm_transformation",
+                                                    "qrc:/simulations/mix/prolonged_activity",
+                                                ]
+                                            },
+                                            {
+                                                name: "Textbook Examples",
+                                                simulations: [
+                                                    "qrc:/simulations/mix/lateral_inhibition_1",
+                                                    "qrc:/simulations/mix/lateral_inhibition_2",
+                                                    "qrc:/simulations/mix/input_summation",
+                                                    "qrc:/simulations/sterratt/if_response",
+                                                    "qrc:/simulations/sterratt/refractory_period",
+                                                ]
+                                            },
                                         ]
-                                        StoreItem {
-                                            SimulationLoader {
-                                                id: loader
-                                                folder: modelData.folder
+
+                                        Column {
+
+                                            anchors {
+                                                left: parent.left
+                                                right: parent.right
                                             }
 
-                                            name: loader.item.name
-                                            description: loader.item.description
-                                            imageUrl: loader.item.screenshotSource
+                                            spacing: 16
 
-                                            onClicked: {
-                                                loadRequested(loader.item.stateSource)
+                                            Label {
+                                                font.pixelSize: 24
+                                                text: modelData.name
+                                            }
+
+                                            Flow {
+                                                anchors {
+                                                    left: parent.left
+                                                    right: parent.right
+                                                }
+                                                spacing: 16
+                                                Repeater {
+                                                    model: modelData.simulations
+                                                    StoreItem {
+                                                        SimulationLoader {
+                                                            id: loader
+                                                            folder: modelData
+                                                        }
+
+                                                        name: loader.item.name
+                                                        description: loader.item.description
+                                                        imageUrl: loader.item.screenshotSource
+
+                                                        onClicked: {
+                                                            loadRequested(loader.item.stateSource)
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -265,16 +315,16 @@ Item {
 
                                 // TODO Add recent once database is ready
 
-//                                FileMenuHeading {
-//                                    text: "Recent"
-//                                }
+                                //                                FileMenuHeading {
+                                //                                    text: "Recent"
+                                //                                }
 
-//                                Flow {
-//                                    anchors {
-//                                        left: parent.left
-//                                        right: parent.right
-//                                    }
-//                                }
+                                //                                Flow {
+                                //                                    anchors {
+                                //                                        left: parent.left
+                                //                                        right: parent.right
+                                //                                    }
+                                //                                }
                             }
                         }
                     }
@@ -401,8 +451,8 @@ Item {
                                 StoreSimulation {
                                     downloadManager: _downloadManager
                                     onRunClicked: {
-//                                        loadRequested(fileUrl)
-//                                        openRequested(fileUrl)
+                                        //                                        loadRequested(fileUrl)
+                                        //                                        openRequested(fileUrl)
                                         runRequested(simulation)
                                         stackView.pop()
                                     }
@@ -426,50 +476,65 @@ Item {
                                     showOnlyReadable: true
                                 }
 
+                                Label {
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+
+                                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                                    onLinkActivated: Qt.openUrlExternally(link)
+                                    linkColor: "white"
+
+                                    text: "Would you also like to share your simulations with other users? " +
+                                          "Send an e-mail to <a href='mailto:ovilab.net@gmail.com'>ovilab.net@gmail.com</a> " +
+                                          "and request access to simulation upload."
+                                }
+
                                 // TODO add back installed section when database is ready
 
-//                                FileMenuHeading {
-//                                    text: "Installed"
-//                                    visible: communityFolderModel.count > 0
-//                                }
+                                //                                FileMenuHeading {
+                                //                                    text: "Installed"
+                                //                                    visible: communityFolderModel.count > 0
+                                //                                }
 
-//                                Flow {
-//                                    anchors {
-//                                        left: parent.left
-//                                        right: parent.right
-//                                    }
+                                //                                Flow {
+                                //                                    anchors {
+                                //                                        left: parent.left
+                                //                                        right: parent.right
+                                //                                    }
 
-//                                    spacing: 16
-//                                    visible: communityFolderModel.count > 0
+                                //                                    spacing: 16
+                                //                                    visible: communityFolderModel.count > 0
 
-//                                    Repeater {
-//                                        model: communityFolderModel
-//                                        delegate: StoreItem {
+                                //                                    Repeater {
+                                //                                        model: communityFolderModel
+                                //                                        delegate: StoreItem {
 
-//                                            property var objectData: JSON.parse(FileIO.readSynchronously(model.fileURL + "/info.json"))
+                                //                                            property var objectData: JSON.parse(FileIO.readSynchronously(model.fileURL + "/info.json"))
 
-//                                            width: 160
-//                                            height: 256
-//                                            name: objectData.name
-//                                            description: objectData.description
-//                                            imageUrl: model.fileURL + "/screenshot.png"
-//                                            onClicked: {
-//                                                console.log("Pushing", JSON.stringify(objectData))
-//                                                stackView.push(simulationComponent)
-//                                                stackView.currentItem.objectData = objectData
-//                                            }
-//                                        }
-//                                    }
-//                                }
+                                //                                            width: 160
+                                //                                            height: 256
+                                //                                            name: objectData.name
+                                //                                            description: objectData.description
+                                //                                            imageUrl: model.fileURL + "/screenshot.png"
+                                //                                            onClicked: {
+                                //                                                console.log("Pushing", JSON.stringify(objectData))
+                                //                                                stackView.push(simulationComponent)
+                                //                                                stackView.currentItem.objectData = objectData
+                                //                                            }
+                                //                                        }
+                                //                                    }
+                                //                                }
 
-//                                Item {
-//                                    height: 16
-//                                    width: 1
-//                                }
+                                //                                Item {
+                                //                                    height: 16
+                                //                                    width: 1
+                                //                                }
 
-//                                FileMenuHeading {
-//                                    text: "Available"
-//                                }
+                                //                                FileMenuHeading {
+                                //                                    text: "Available"
+                                //                                }
 
                                 Flow {
                                     id: flow
@@ -664,11 +729,11 @@ Item {
 
 
                     // TODO add back settings view when ready
-//                    FileMenuItem {
-//                        identifier: "settings"
-//                        name: "Settings"
-//                        component: Item {}
-//                    }
+                    //                    FileMenuItem {
+                    //                        identifier: "settings"
+                    //                        name: "Settings"
+                    //                        component: Item {}
+                    //                    }
                 }
             }
         }
