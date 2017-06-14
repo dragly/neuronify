@@ -522,6 +522,11 @@ Item {
         verticalOffset: -1
     }
 
+    PlaybackControls {
+        revealed: true
+        autoHideEnabled: false
+    }
+
     states: [
         State {
             name: "view"

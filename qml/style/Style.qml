@@ -202,8 +202,8 @@ Item {
             }
         } else {
             device = "desktop";
-            var base = Math.min(root.windowWidth, root.windowHeight);
-            size = base * 0.02;
+//            var base = Math.min(root.windowWidth, root.windowHeight);
+            size = 8
         }
     }
 }
