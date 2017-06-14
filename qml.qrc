@@ -115,7 +115,6 @@
         <file>qml/menus/filemenu/FileMenuHeading.qml</file>
         <file>qml/menus/filemenu/FileMenuDelegate.qml</file>
         <file>qml/menus/filemenu/FileView.qml</file>
-        <file>qml/menus/LeftMenu.qml</file>
         <file>qml/menus/ItemMenu.qml</file>
         <file>qml/hud/HudShadow.qml</file>
         <file>qml/menus/MaterialButton.qml</file>
@@ -124,5 +123,6 @@
         <file>qml/neurons/ChartSlider.qml</file>
         <file>qml/controls/NumberSlider.qml</file>
         <file>qml/menus/LeftMenuButton.qml</file>
+        <file>qml/menus/EditMenu.qml</file>
     </qresource>
 </RCC>

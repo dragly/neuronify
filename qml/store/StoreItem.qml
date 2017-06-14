@@ -17,8 +17,8 @@ Item {
 
     clip: true
 
-    width: 160
-    height: 256
+    width: 240
+    height: 200
 
     Rectangle {
         id: background
@@ -48,9 +48,11 @@ Item {
         Image {
             id: image1
             fillMode: Image.PreserveAspectCrop
-            anchors.centerIn: parent
-            height: root.height
-            width: height
+            anchors.fill: parent
+            smooth: true
+            mipmap: true
+//            height: root.height
+//            width: height
 
             source: root.imageUrl
         }

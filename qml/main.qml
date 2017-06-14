@@ -1,8 +1,9 @@
 import QtQuick 2.2
-import QtQuick.Controls 2.1
 import Qt.labs.settings 1.0
 import CuteVersioning 1.0
 import QtQuick.Window 2.0
+import QtQuick.Controls 2.1
+import Neuronify 1.0
 
 import "qrc:/qml/style"
 
@@ -20,6 +21,40 @@ ApplicationWindow {
     Component.onCompleted: {
         console.log("ApplicationWindow load completed " + Date.now());
         startupTime = Date.now();
+
+        // Convert files from older versions of Neuronify
+        for (var i = 0; i < 6; i++) {
+            var name = "savedata/custom" + i + ".nfy"
+            var newName = "savedata/custom" + i + ".neuronify"
+            var filename = StandardPaths.locate(StandardPaths.AppConfigLocation, name)
+            var newFilename = StandardPaths.writableLocation(StandardPaths.AppConfigLocation, newName)
+            FileIO.read(filename, function(data) {
+                if (!FileIO.exists(newFilename)) {
+                    NeuronifyFile.save(newFilename, "Old save " + i, "Imported from old version of Neuronify", data)
+                    savedataSettings.performed = true
+                    savedataSettings.location = StandardPaths.writableLocation(StandardPaths.AppConfigLocation, "savedata")
+                }
+            })
+        }
+    }
+
+    Settings {
+        id: savedataSettings
+        property bool performed
+        property url location
+        category: "converted_saves"
+    }
+
+    Dialog {
+        id: copyDialog
+
+        width: 400
+        height: 300
+
+        title: "Savefiles converted"
+        standardButtons: Dialog.Ok
+
+
     }
 
     onWidthChanged: {

@@ -13,7 +13,7 @@ public:
 
     Q_INVOKABLE QVariant open(QUrl fileUrl);
     static QObject* qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
-    Q_INVOKABLE bool save(const QUrl &fileUrl, const QString &name, const QString &description, const QString &simulation, const QVariant &grabResult);
+    Q_INVOKABLE bool save(const QUrl &fileUrl, const QString &name, const QString &description, const QString &simulation, const QVariant &grabResult = QVariant());
 };
 
 #endif // NEURONIFYFILE_H

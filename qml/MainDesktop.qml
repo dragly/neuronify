@@ -77,7 +77,7 @@ Item {
             return true
         }
         if(neuronify.hasUnsavedChanges) {
-            unsavedDialog.open()
+            unsavedDialog.openWithRequestedAction(root.requestClose)
             return false
         }
         return true
@@ -96,17 +96,28 @@ Item {
 
     MessageDialog {
         id: unsavedDialog
+        property var requestedAction
+
+        function openWithRequestedAction(action) {
+            requestedAction = action
+            open()
+        }
+
         onYesClicked: {
             console.log("Accepted, try saving")
             saveCurrentOrOpenDialog(function() {
                 console.log("Save complete, request closing")
-                root.requestClose()
+                if (requestedAction) {
+                    requestedAction()
+                }
             })
         }
         onNoClicked: {
             console.log("Rejected, request close")
             ignoreUnsavedChanges = true
-            root.requestClose()
+            if (requestedAction) {
+                requestedAction()
+            }
         }
 
         buttons: MessageDialog.Yes | MessageDialog.No | MessageDialog.Cancel
@@ -136,7 +147,7 @@ Item {
         focus: true
     }
 
-    LeftMenu { // TODO rename to topmenu
+    EditMenu { // TODO rename to topmenu
         id: topMenu
 
         anchors {
@@ -218,9 +229,16 @@ Item {
         }
 
         onRunRequested: {
-            root.currentSimulation = simulation
-            neuronify.open(simulation)
-            revealed = false
+            var runAction = function() {
+                root.currentSimulation = simulation
+                neuronify.open(simulation)
+                revealed = false
+            }
+            if (neuronify.hasUnsavedChanges) {
+                unsavedDialog.openWithRequestedAction(runAction)
+                return
+            }
+            runAction()
         }
 
         onSaveRequested: {
@@ -249,14 +267,16 @@ Item {
             bottom: parent.bottom
         }
         color: "#e3eef9"
-        width: 110
+        width: 100
         z: 38
 
-        Column {
+        ColumnLayout {
+            id: creationLayout
             anchors {
                 top: parent.top
                 left: parent.left
                 right: parent.right
+                bottom: parent.bottom
                 topMargin: 16
                 leftMargin: 8
                 rightMargin: 8
@@ -300,12 +320,11 @@ Item {
                 TopCreationItem {
                     id: creationItem
 
-                    parentWhenDragging: root
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.maximumHeight: creationLayout.width
 
+                    parentWhenDragging: root
                     name: model.name
                     source: model.source
                     imageSource: model.imageSource
@@ -319,64 +338,67 @@ Item {
                     }
                 }
             }
-        }
 
-        Column {
-            anchors {
-                left: parent.left
-                bottom: parent.bottom
-                right: parent.right
-                leftMargin: 8
-                rightMargin: 8
-                bottomMargin: 16
+            Item {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
             }
 
-            spacing: 8
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: 64
+                Layout.maximumHeight: creationLayout.width + 16
 
-            Label {
-                id: selectedLabel
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
+                Label {
+                    id: selectedLabel
 
-                wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-                text: ""
-                font.pixelSize: 12
-                horizontalAlignment: Qt.AlignHCenter
-                color: Style.mainDesktop.text.color
-                states: State {
-                    when: neuronify.activeObject ? true : false
-                    PropertyChanges {
-                        target: selectedLabel
-                        text: neuronify.activeObject.name
+                    anchors {
+                        top: parent.top
+                        left: parent.left
+                        right: parent.right
+                    }
+
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    text: ""
+                    font.pixelSize: 12
+                    horizontalAlignment: Qt.AlignHCenter
+                    color: Style.mainDesktop.text.color
+                    states: State {
+                        when: neuronify.activeObject ? true : false
+                        PropertyChanges {
+                            target: selectedLabel
+                            text: neuronify.activeObject.name
+                        }
                     }
                 }
-            }
 
-            MaterialButton {
-                id: propertiesButton
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                height: width
+                MaterialButton {
+                    id: propertiesButton
 
-                icon.name: "settings_input_component"
-                icon.category: "action"
-                color: Material.primary
-                text: "Properties"
+                    anchors {
+                        top: selectedLabel.bottom
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                    }
 
-                onClicked: {
-                    propertiesPanel.revealed = !propertiesPanel.revealed
-                }
+                    icon.category: "image"
+                    icon.name: "tune"
+                    color: Material.primary
+                    text: "Properties"
 
-                states: State {
-                    when: neuronify.activeObject ? false : true
-                    PropertyChanges {
-                        target: propertiesButton
-                        opacity: 0.0
-                        enabled: false
+                    onClicked: {
+                        propertiesPanel.revealed = !propertiesPanel.revealed
+                    }
+
+                    states: State {
+                        when: neuronify.activeObject ? false : true
+                        PropertyChanges {
+                            target: propertiesButton
+                            opacity: 0.0
+                            enabled: false
+                        }
                     }
                 }
             }
@@ -447,7 +469,6 @@ Item {
                         } else {
                             root.dragging = false
                         }
-                        showInfoPanelTimer.stop()
                     }
                 }
             }

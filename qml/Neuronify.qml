@@ -304,7 +304,6 @@ Rectangle {
             return
         }
         var state = fileManager.serializeState()
-        console.log("Registering undoable state")
         undoList.push(state)
         redoList.length = 0
     }

@@ -36,7 +36,7 @@ MouseArea {
 
     Layout.fillHeight: true
     Layout.fillWidth: true
-    Layout.minimumWidth: 54
+    Layout.minimumWidth: 48
     Layout.maximumWidth: parent.height
     state: parent.containsMouse ? "" : "discrete"
 
@@ -59,6 +59,7 @@ MouseArea {
                 name: "create"
             }
         }
+
         Item {
             anchors {
                 top: imageContainer.bottom
