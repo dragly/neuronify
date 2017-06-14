@@ -111,7 +111,7 @@ Rectangle {
     function loadSimulation(fileUrl) {
         var code = fileManager.read(fileUrl);
         if(!code) {
-            console.log("Load state got empty contents.")
+            console.error("Load state got empty contents.")
             return;
         }
         reloadState(code)
@@ -163,18 +163,18 @@ Rectangle {
             //            for(var i in properties) {
             //                console.log(i + ": " + properties[i])
             //            }
-            console.log("Cannot apply.")
+            console.error("Cannot apply.")
             return
         }
 
         for(var i in properties) {
             var prop = properties[i]
             if(prop === undefined) {
-                console.log("WARNING: Got undefined property on", object, i)
+                console.error("Got undefined property on", object, i)
                 continue
             }
             if(!object.hasOwnProperty("savedProperties")) {
-                console.warn("WARNING: Object " + object + " is missing savedProperties property.");
+                console.error("Object " + object + " is missing savedProperties property.");
                 continue;
             }
             var found = false;
@@ -192,13 +192,13 @@ Rectangle {
                 }
             }
             if(!found) {
-                console.warn("WARNING: Cannot assign to " + i + " on savedProperties of " + object);
+                console.error("Cannot assign to " + i + " on savedProperties of " + object);
             }
         }
     }
 
     function loadState(data) {
-        console.log("Neuronify.loadState called")
+        console.log("Loading state...")
         firstLoadTimer.stop() // stop in case we loaded before the initial simulations was loaded
         pinchArea.scaleSetByDoubleClick = false
 
@@ -215,7 +215,7 @@ Rectangle {
             for(var i in data.nodes) {
                 var node = data.nodes[i];
                 if(node.filename && node.filename === "neurons/PassiveNeuron.qml") {
-                    console.log("Replacing PassiveNeuron with LeakyNeuron due to file format change in 3 to 4.")
+                    console.warn("Replacing PassiveNeuron with LeakyNeuron due to file format change in 3 to 4.")
                     node.filename = "neurons/LeakyNeuron.qml";
                 }
             }
@@ -311,7 +311,7 @@ Rectangle {
     function undo(){
         var previousState = undoList.pop()
         if(!previousState) {
-            console.log("Nothing to undo!")
+            console.warn("Nothing to undo!")
             return
         }
         console.log("Undoing...")
@@ -330,7 +330,7 @@ Rectangle {
     function redo() {
         var nextState = redoList.pop()
         if(!nextState) {
-            console.log("Nothing to redo!")
+            console.warn("Nothing to redo!")
             return
         }
         console.log("Redoing...")
@@ -407,7 +407,6 @@ Rectangle {
     function deleteNode(node) {
         registerUndoState()
         undoRecordingDepth += 1
-        console.log("Deleting node", node);
         if(selectedEntities.indexOf(node) !== -1) {
             deselectAll();
         }
@@ -421,7 +420,6 @@ Rectangle {
     }
 
     function deleteEdge(edge) {
-        console.log("Deleting edge", edge);
         registerUndoState()
         undoRecordingDepth += 1
         graphEngine.removeEdge(edge)

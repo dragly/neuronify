@@ -127,10 +127,8 @@ Node {
     onEdgeRemoved: {
         numberOfEdges -=1
         var neuron = edge.itemB
-        console.log(neuron)
         var newList = neurons
         var index = newList.indexOf(neuron)
-        console.log("Index " + index)
         if(index > -1) {
             newList.splice(index, 1)
             neurons = newList

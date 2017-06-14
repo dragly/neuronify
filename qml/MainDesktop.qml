@@ -104,16 +104,13 @@ Item {
         }
 
         onYesClicked: {
-            console.log("Accepted, try saving")
             saveCurrentOrOpenDialog(function() {
-                console.log("Save complete, request closing")
                 if (requestedAction) {
                     requestedAction()
                 }
             })
         }
         onNoClicked: {
-            console.log("Rejected, request close")
             ignoreUnsavedChanges = true
             if (requestedAction) {
                 requestedAction()
@@ -613,7 +610,9 @@ Item {
 
     Shortcut {
         sequence: "Ctrl+Shift+S"
-        onActivated: {console.log("saveas"); root.saveAs()}
+        onActivated: {
+            root.saveAs()
+        }
     }
 
 }

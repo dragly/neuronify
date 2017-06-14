@@ -233,7 +233,6 @@ Rectangle {
                     text: "Threshold"
                     next: resetSlider.field
                     onValueChanged: {
-                        console.log("CHange!")
                         if(value < resetSlider.value + 0.05) {
                             value = resetSlider.value + 0.05
                         }

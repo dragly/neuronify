@@ -39,8 +39,6 @@ Item {
     signal runRequested(var simulation)
     signal loadRequested(url file) // TODO remove
 
-    onRevealedChanged: console.log("REVEALED", revealed)
-    
     Material.theme: Material.Dark
 
     function open(name) {
@@ -316,7 +314,6 @@ Item {
                                         text: "From older versions"
                                         onClicked: {
                                             openDialog.open()
-                                            console.log("Opening", savedataSettings.location)
                                             openDialog.folder = savedataSettings.location
                                         }
                                     }
@@ -559,7 +556,6 @@ Item {
                                                     description: modelData.description
                                                     imageUrl: modelData.screenshot.url
                                                     onClicked: {
-                                                        console.log("Pushing", JSON.stringify(modelData))
                                                         stackView.push(simulationComponent)
                                                         stackView.currentItem.objectData = modelData
                                                     }

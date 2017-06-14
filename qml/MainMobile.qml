@@ -155,7 +155,6 @@ Item {
                 var imageUrl = StandardPaths.toLocalFile(StandardPaths.originalSimulationLocation(currentSimulationUrl)).replace(".nfy", ".png")
 
                 workspaceFlickable.grabToImage(function(result) {
-                    console.log("Saving image to " + imageUrl);
                     result.saveToFile(imageUrl);
                 }, Qt.size(workspaceFlickable.width / 3.0, workspaceFlickable.height / 3.0));
             }
