@@ -40,8 +40,6 @@ Node {
 
     controls: Component {
         PropertiesPage {
-            width: parent ? parent.width : 100
-
             Component.onCompleted: {
                 for(var i = 0; i < repeater.count; i++) {
                     var item = repeater.itemAt(i)
@@ -174,11 +172,8 @@ Node {
         source: "glass.wav"
     }
 
-
-
     Connector {
         color: Style.meter.border.color
-        visible: parent.selected || numberOfEdges < 1
     }
 }
 

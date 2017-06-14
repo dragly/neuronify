@@ -206,6 +206,5 @@ Node {
 
     Connector {
         color: Style.meter.border.color
-        visible: parent.selected ||  numberOfEdges < 1
     }
 }
