@@ -8,20 +8,34 @@ NeuronifyFile::NeuronifyFile(QObject *parent) : QObject(parent)
 
 }
 
+QQuickItemGrabResult* itemFromGrabResult(const QVariant &grabResult) {
+    if(!grabResult.isValid()) {
+        return nullptr;
+    }
+
+    QObject *grabObject = qvariant_cast<QObject*>(grabResult);
+    if(!grabObject) {
+        return nullptr;
+    }
+    QQuickItemGrabResult *grabItem = qobject_cast<QQuickItemGrabResult*>(grabObject);
+    return grabItem;
+}
+
 bool NeuronifyFile::save(const QUrl &fileUrl, const QString &name, const QString &description,
                          const QString &simulation, const QVariant &grabResult)
 {
     QString filename = fileUrl.toLocalFile();
 
-    QObject *grabObject = qvariant_cast<QObject*>(grabResult);
-    QQuickItemGrabResult *grabItem = qobject_cast<QQuickItemGrabResult*>(grabObject);
+    qDebug() << Q_FUNC_INFO << "Saving" << name << "to" << filename;
 
-    if(!grabItem) {
-        qDebug() << "ERROR: NeuronifyFile::save: Could not get QQuickItemGrabResult.";
-        return false;
+    auto* grabItem = itemFromGrabResult(grabResult);
+    QPixmap pixmap;
+    if(grabItem) {
+        pixmap = QPixmap::fromImage(grabItem->image());
+    } else {
+        qDebug() << Q_FUNC_INFO << "WARNING: No grab result, storing without screenshot";
     }
 
-    qDebug() << "Saving" << name << "to" << filename;
     QFile originalFile(filename);
     if(originalFile.exists()) {
         originalFile.remove();
@@ -33,8 +47,6 @@ bool NeuronifyFile::save(const QUrl &fileUrl, const QString &name, const QString
 
         QSqlQuery query = QSqlQuery(db);
         query.exec("CREATE TABLE IF NOT EXISTS simulations (name TEXT, description TEXT, data TEXT, screenshot BLOB)");
-
-        QPixmap pixmap = QPixmap::fromImage(grabItem->image());
         QByteArray byteArray;
         QBuffer buffer(&byteArray);
         buffer.open(QIODevice::WriteOnly);

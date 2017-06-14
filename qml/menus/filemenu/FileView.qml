@@ -281,6 +281,15 @@ Item {
                         identifier: "open"
                         name: "Open"
                         component: Item {
+                            id: openItem
+
+                            Settings {
+                                id: savedataSettings
+                                property bool performed
+                                property url location
+                                category: "converted_saves"
+                            }
+
                             Column {
                                 anchors  {
                                     left: parent.left
@@ -293,6 +302,23 @@ Item {
                                     text: "From computer"
                                     onClicked: {
                                         openDialog.open()
+                                    }
+                                }
+
+                                Column {
+                                    anchors {
+                                        left: parent.left
+                                        right: parent.right
+                                    }
+                                    visible: savedataSettings.performed
+                                    Button {
+                                        Material.theme: Material.Light
+                                        text: "From older versions"
+                                        onClicked: {
+                                            openDialog.open()
+                                            console.log("Opening", savedataSettings.location)
+                                            openDialog.folder = savedataSettings.location
+                                        }
                                     }
                                 }
 
