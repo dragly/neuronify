@@ -125,7 +125,6 @@ Node {
     }
 
     Connector {
-        visible: root.selected
         color: inhibitory ? "#e41a1c" : "#6baed6"
         connectorColor: inhibitory ? "#e41a1c" : "#6baed6"
     }

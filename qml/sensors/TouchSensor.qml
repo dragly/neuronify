@@ -116,7 +116,6 @@ Node {
     Connector{
         color: "#dd5000"
         connectorColor: "#dd5000"
-        visible: sensorRoot.selected
         z: -1
     }
 

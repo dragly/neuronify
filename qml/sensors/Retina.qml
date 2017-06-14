@@ -268,7 +268,6 @@ Node {
     }
 
     Connector {
-        visible: root.selected
         color: "#dd5000"
         connectorColor: "#dd5000"
         initialPoint: Qt.point(root.width + 32, root.height + 32)
