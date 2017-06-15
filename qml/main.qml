@@ -26,7 +26,7 @@ ApplicationWindow {
         for (var i = 0; i < 6; i++) {
             var name = "savedata/custom" + i + ".nfy"
             var filename = StandardPaths.locate(StandardPaths.AppConfigLocation, name)
-            if(!filename) {
+            if (Qt.resolvedUrl(filename) == "") {
                 continue
             }
             var newName = "savedata/custom" + i + ".neuronify"
