@@ -144,6 +144,22 @@ Item {
         focus: true
     }
 
+    PlaybackControls {
+        id: playbackControls
+        revealed: true
+        autoHideEnabled: false
+        Binding {
+            target: neuronify
+            property: "playbackSpeed"
+            value: playbackControls.playbackSpeed
+        }
+        Binding {
+            target: playbackControls
+            property: "playbackSpeed"
+            value: neuronify.playbackSpeed
+        }
+    }
+
     EditMenu { // TODO rename to topmenu
         id: topMenu
 
@@ -517,11 +533,6 @@ Item {
         anchors.fill: propertiesPanel
         source: propertiesPanel
         verticalOffset: -1
-    }
-
-    PlaybackControls {
-        revealed: true
-        autoHideEnabled: false
     }
 
     states: [
