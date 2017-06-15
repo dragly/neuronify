@@ -64,6 +64,15 @@ Visit the [Neuronify website](http://ovilab.net/neuronify) to download the lates
 
 http://doc.qt.io/qt-5/windows-deployment.html
 
+### Creating a Windows Store app ###
+
+1. Run
+
+    qmake -tp vc neuronify.pro "CONFIG+=windeployqt"
+
+2. Open the genereated project file in Visual Studio 2015.
+3. Right click on the project and choose to upload using the options under Store.
+
 ### Creating a deployable .dmg on Mac
 
 Simply run the following command in the build-directory:
