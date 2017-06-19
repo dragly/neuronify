@@ -8,7 +8,7 @@ android {
 
 QT += qml quick widgets multimedia multimediawidgets charts sql
 
-CONFIG += c++11 qtquickcompiler
+CONFIG += c++14 qtquickcompiler
 
 HEADERS += \
     src/io/fileio.h \

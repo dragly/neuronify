@@ -29,14 +29,61 @@ GraphEngine::~GraphEngine()
 
 }
 
+class NodeWrapper {
+public:
+    static void append(QQmlListProperty<NodeBase>* list, NodeBase* node) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_nodes.append(node);
+    }
+
+    static void clear(QQmlListProperty<NodeBase>* list) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_nodes.clear();
+    }
+
+    static NodeBase* at(QQmlListProperty<NodeBase>* list, int index) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_nodes.at(index);
+    }
+
+    static int count(QQmlListProperty<NodeBase>* list) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_nodes.count();
+    }
+};
+
 QQmlListProperty<NodeBase> GraphEngine::nodes()
 {
-    return QQmlListProperty<NodeBase>(this, m_nodes);
+
+    return QQmlListProperty<NodeBase>(this, this,
+                                      &NodeWrapper::append,
+                                      &NodeWrapper::count,
+                                      &NodeWrapper::at,
+                                      &NodeWrapper::clear);
 }
+
+class EdgeWrapper {
+public:
+    static void append(QQmlListProperty<EdgeBase>* list, EdgeBase* edge) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_edges.append(edge);
+    }
+
+    static void clear(QQmlListProperty<EdgeBase>* list) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_edges.clear();
+    }
+
+    static EdgeBase* at(QQmlListProperty<EdgeBase>* list, int index) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_edges.at(index);
+    }
+
+    static int count(QQmlListProperty<EdgeBase>* list) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_edges.count();
+    }
+};
 
 QQmlListProperty<EdgeBase> GraphEngine::edges()
 {
-    return QQmlListProperty<EdgeBase>(this, m_edges);
+    return QQmlListProperty<EdgeBase>(this, this,
+                                      &EdgeWrapper::append,
+                                      &EdgeWrapper::count,
+                                      &EdgeWrapper::at,
+                                      &EdgeWrapper::clear);
 }
 
 int GraphEngine::nodeIndex(NodeBase *node) const

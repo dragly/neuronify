@@ -29,8 +29,11 @@ public slots:
     void removeEdge(EdgeBase *edge);
 
 private:
-    QList<NodeBase*> m_nodes;
-    QList<EdgeBase*> m_edges;
+    QVector<NodeBase*> m_nodes;
+    QVector<EdgeBase*> m_edges;
+
+    friend class EdgeWrapper;
+    friend class NodeWrapper;
 };
 
 #endif // GRAPHENGINE_H
