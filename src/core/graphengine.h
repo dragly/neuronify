@@ -36,4 +36,6 @@ private:
     friend class NodeWrapper;
 };
 
+void step(const QVector<NodeBase*> &nodes, const QVector<EdgeBase*> &edges, double dt);
+
 #endif // GRAPHENGINE_H

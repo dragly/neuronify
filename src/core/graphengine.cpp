@@ -113,8 +113,6 @@ void GraphEngine::addEdge(EdgeBase *edge)
     }
 
     m_edges.append(edge);
-
-
 }
 
 void GraphEngine::removeNode(NodeBase *node)
@@ -160,23 +158,23 @@ void GraphEngine::removeEdge(EdgeBase *edge)
     edge->deleteLater();
 }
 
-void GraphEngine::step(double dt)
+void step(const QVector<NodeBase*> &nodes, const QVector<EdgeBase*> &edges, double dt)
 {
     // step all nodes
-    for(NodeBase* node : m_nodes) {
+    for(NodeBase* node : nodes) {
         if(node->engine()) {
             node->engine()->step(dt, true);
         }
     }
 
-    for(EdgeBase* edge : m_edges) {
+    for(EdgeBase* edge : edges) {
         if(edge->engine()){
             edge->engine()->step(dt, true);
         }
     }
 
     //communicate events between nodes
-    for(EdgeBase* edge : m_edges) {
+    for(EdgeBase* edge : edges) {
         if(!(edge->itemA()) || !(edge->itemB())) {
             continue;
         }
@@ -211,10 +209,15 @@ void GraphEngine::step(double dt)
 
     //finalize step
     // TODO: remove this if not needed
-    for(NodeBase* node : m_nodes) {
+    for(NodeBase* node : nodes) {
         if(node->engine()) {
             node->engine()->finalizeStep(dt);
         }
     }
+}
+
+void GraphEngine::step(double dt)
+{
+    ::step(m_nodes, m_edges, dt);
 }
 
