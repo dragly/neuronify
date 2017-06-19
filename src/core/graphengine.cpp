@@ -127,7 +127,7 @@ void GraphEngine::removeNode(NodeBase *node)
     for(EdgeBase *edge : toDelete) {
         removeEdge(edge);
     }
-    node->deleteLater();
+    node->deleteLater(); // TODO memory handling here is bad: What if node is part of two graphs? Should not happen, but you never know.
 }
 
 void GraphEngine::removeEdge(EdgeBase *edge)
