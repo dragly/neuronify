@@ -29,14 +29,61 @@ GraphEngine::~GraphEngine()
 
 }
 
+class NodeWrapper {
+public:
+    static void append(QQmlListProperty<NodeBase>* list, NodeBase* node) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_nodes.append(node);
+    }
+
+    static void clear(QQmlListProperty<NodeBase>* list) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_nodes.clear();
+    }
+
+    static NodeBase* at(QQmlListProperty<NodeBase>* list, int index) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_nodes.at(index);
+    }
+
+    static int count(QQmlListProperty<NodeBase>* list) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_nodes.count();
+    }
+};
+
 QQmlListProperty<NodeBase> GraphEngine::nodes()
 {
-    return QQmlListProperty<NodeBase>(this, m_nodes);
+
+    return QQmlListProperty<NodeBase>(this, this,
+                                      &NodeWrapper::append,
+                                      &NodeWrapper::count,
+                                      &NodeWrapper::at,
+                                      &NodeWrapper::clear);
 }
+
+class EdgeWrapper {
+public:
+    static void append(QQmlListProperty<EdgeBase>* list, EdgeBase* edge) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_edges.append(edge);
+    }
+
+    static void clear(QQmlListProperty<EdgeBase>* list) {
+        reinterpret_cast<GraphEngine*>(list->data)->m_edges.clear();
+    }
+
+    static EdgeBase* at(QQmlListProperty<EdgeBase>* list, int index) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_edges.at(index);
+    }
+
+    static int count(QQmlListProperty<EdgeBase>* list) {
+        return reinterpret_cast<GraphEngine*>(list->data)->m_edges.count();
+    }
+};
 
 QQmlListProperty<EdgeBase> GraphEngine::edges()
 {
-    return QQmlListProperty<EdgeBase>(this, m_edges);
+    return QQmlListProperty<EdgeBase>(this, this,
+                                      &EdgeWrapper::append,
+                                      &EdgeWrapper::count,
+                                      &EdgeWrapper::at,
+                                      &EdgeWrapper::clear);
 }
 
 int GraphEngine::nodeIndex(NodeBase *node) const
@@ -66,8 +113,6 @@ void GraphEngine::addEdge(EdgeBase *edge)
     }
 
     m_edges.append(edge);
-
-
 }
 
 void GraphEngine::removeNode(NodeBase *node)
@@ -82,7 +127,7 @@ void GraphEngine::removeNode(NodeBase *node)
     for(EdgeBase *edge : toDelete) {
         removeEdge(edge);
     }
-    node->deleteLater();
+    node->deleteLater(); // TODO memory handling here is bad: What if node is part of two graphs? Should not happen, but you never know.
 }
 
 void GraphEngine::removeEdge(EdgeBase *edge)
@@ -113,23 +158,23 @@ void GraphEngine::removeEdge(EdgeBase *edge)
     edge->deleteLater();
 }
 
-void GraphEngine::step(double dt)
+void step(const QVector<NodeBase*> &nodes, const QVector<EdgeBase*> &edges, double dt)
 {
     // step all nodes
-    for(NodeBase* node : m_nodes) {
+    for(NodeBase* node : nodes) {
         if(node->engine()) {
             node->engine()->step(dt, true);
         }
     }
 
-    for(EdgeBase* edge : m_edges) {
+    for(EdgeBase* edge : edges) {
         if(edge->engine()){
             edge->engine()->step(dt, true);
         }
     }
 
     //communicate events between nodes
-    for(EdgeBase* edge : m_edges) {
+    for(EdgeBase* edge : edges) {
         if(!(edge->itemA()) || !(edge->itemB())) {
             continue;
         }
@@ -164,10 +209,15 @@ void GraphEngine::step(double dt)
 
     //finalize step
     // TODO: remove this if not needed
-    for(NodeBase* node : m_nodes) {
+    for(NodeBase* node : nodes) {
         if(node->engine()) {
             node->engine()->finalizeStep(dt);
         }
     }
+}
+
+void GraphEngine::step(double dt)
+{
+    ::step(m_nodes, m_edges, dt);
 }
 

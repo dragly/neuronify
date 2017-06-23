@@ -5,6 +5,11 @@ WORKDIR /app
 RUN apt-get -qq update
 RUN apt-get install -qq sudo apt-utils
 
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+
 RUN sudo apt-get update -qq
 RUN sudo apt-get install -qq curl p7zip-full git build-essential python snapcraft qt5-default libpulse-dev
 ADD qt5-ubuntu.sh /qt5-ubuntu.sh
