@@ -6,7 +6,7 @@ android {
     TARGET = Neuronify
 }
 
-QT += qml quick widgets multimedia multimediawidgets charts sql
+QT += qml quick widgets multimedia multimediawidgets charts sql svg xml gui core
 
 CONFIG += c++14 qtquickcompiler
 
