@@ -14,7 +14,7 @@ import CuteVersioning 1.0
 import QtGraphicalEffects 1.0
 
 import "qrc:/qml/hud"
-import "qrc:/qml/menus/mainmenu"
+
 import "qrc:/qml/style"
 import "qrc:/qml/io"
 import "qrc:/qml/tools"

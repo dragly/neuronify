@@ -21,7 +21,7 @@ import "qrc:/qml/controls"
 import "qrc:/qml/hud"
 import "qrc:/qml/io"
 import "qrc:/qml/menus/filemenu"
-import "qrc:/qml/menus/mainmenu"
+
 import "qrc:/qml/tools"
 import "qrc:/qml/store"
 import "qrc:/qml/style"

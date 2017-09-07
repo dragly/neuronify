@@ -11,7 +11,7 @@ Item {
     property real minimumTouchableSize: windowWidth / 25
     property real maximumTouchableSize: windowWidth / 10
     property real pixelDensity: 72
-    property real touchableSize: 6 * size
+    property real touchableSize: 42
     property real size: 72
     property real margin: 2 * size
     property real baseMargin: margin

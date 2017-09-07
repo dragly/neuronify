@@ -14,14 +14,8 @@
         <file>qml/paths/Line.qml</file>
         <file>qml/Neuronify.qml</file>
         <file>qml/hud/CreationItem.qml</file>
-        <file>qml/menus/mainmenu/MainMenu.qml</file>
         <file>qml/style/Style.qml</file>
-        <file>qml/menus/mainmenu/MenuButton.qml</file>
         <file>qml/style/qmldir</file>
-        <file>qml/menus/mainmenu/MainMenuView.qml</file>
-        <file>qml/menus/mainmenu/SimulationsView.qml</file>
-        <file>qml/menus/mainmenu/AboutView.qml</file>
-        <file>qml/menus/mainmenu/SimulationButton.qml</file>
         <file>qml/tools/SimulationLoader.qml</file>
         <file>qml/menus/Heading.qml</file>
         <file>qml/Simulation.qml</file>
@@ -64,7 +58,6 @@
         <file>qml/ResizeHandle.qml</file>
         <file>qml/neurons/NeuronEngine.qml</file>
         <file>qml/io/CustomFileIcon.qml</file>
-        <file>qml/menus/mainmenu/SaveView.qml</file>
         <file>qml/controls/ResistanceControl.qml</file>
         <file>qml/controls/ThresholdControl.qml</file>
         <file>qml/controls/RestingPotentialControl.qml</file>
@@ -79,7 +72,6 @@
         <file>qml/hud/AnnotationsList.qml</file>
         <file>qml/annotations/NextTutorial.qml</file>
         <file>qml/tools/MoveHandle.qml</file>
-        <file>qml/menus/mainmenu/MainMenuPage.qml</file>
         <file>images/tools/back.png</file>
         <file>qml/generators/RegularSpikeGenerator.qml</file>
         <file>fonts/roboto/Roboto-Bold.ttf</file>
@@ -124,5 +116,11 @@
         <file>qml/controls/NumberSlider.qml</file>
         <file>qml/menus/LeftMenuButton.qml</file>
         <file>qml/menus/EditMenu.qml</file>
+        <file>qml/menus/filemenu/OpenView.qml</file>
+        <file>qml/menus/filemenu/SaveView.qml</file>
+        <file>qml/menus/filemenu/CommunityView.qml</file>
+        <file>qml/menus/filemenu/UploadView.qml</file>
+        <file>qml/menus/filemenu/AccountView.qml</file>
+        <file>qml/menus/filemenu/NewView.qml</file>
     </qresource>
 </RCC>

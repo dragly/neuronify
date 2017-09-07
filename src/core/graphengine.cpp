@@ -26,7 +26,6 @@ GraphEngine::GraphEngine(QQuickItem *parent)
 
 GraphEngine::~GraphEngine()
 {
-
 }
 
 class NodeWrapper {

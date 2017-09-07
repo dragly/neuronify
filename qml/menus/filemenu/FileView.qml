@@ -21,7 +21,7 @@ import "qrc:/qml/controls"
 import "qrc:/qml/hud"
 import "qrc:/qml/io"
 import "qrc:/qml/menus/filemenu"
-import "qrc:/qml/menus/mainmenu"
+
 import "qrc:/qml/tools"
 import "qrc:/qml/store"
 import "qrc:/qml/style"
@@ -161,116 +161,9 @@ Item {
                     FileMenuItem {
                         identifier: "new"
                         name: "New"
-                        component: Flickable {
-                            contentHeight: newColumn.height + 64
-                            clip: true
-
-                            flickableDirection: Flickable.VerticalFlick
-                            ScrollBar.vertical: ScrollBar {}
-                            Column {
-                                id: newColumn
-                                anchors {
-                                    left: parent.left
-                                    right: parent.right
-                                    rightMargin: 16
-                                }
-
-                                spacing: 32
-
-                                StoreItem {
-                                    name: "New simulation"
-                                    description: "A blank canvas."
-                                    onClicked: {
-                                        loadRequested("qrc:/simulations/empty/empty.nfy")
-                                    }
-                                }
-
-                                // TODO replace with database
-                                Repeater {
-                                    model: [
-                                        {
-                                            name: "Tutorial",
-                                            simulations: [
-                                                "qrc:/simulations/tutorial/tutorial_1_intro",
-                                                "qrc:/simulations/tutorial/tutorial_2_circuits",
-                                                "qrc:/simulations/tutorial/tutorial_3_creation",
-                                            ]
-                                        },
-                                        {
-                                            name: "Neuronify Items",
-                                            simulations: [
-                                                "qrc:/simulations/items/neurons/leaky",
-                                                "qrc:/simulations/items/neurons/inhibitory",
-                                                "qrc:/simulations/items/neurons/adaptation",
-                                                "qrc:/simulations/items/visualInput",
-                                                "qrc:/simulations/items/generators",
-                                                "qrc:/simulations/items/frPlot",
-
-                                            ]
-                                        },
-                                        {
-                                            name: "Miscellaneous",
-                                            simulations: [
-                                                "qrc:/simulations/mix/lateral_inhibition",
-                                                "qrc:/simulations/mix/recurrent_inhibition",
-                                                "qrc:/simulations/mix/reciprocal_inhibition",
-                                                "qrc:/simulations/mix/disinhibition",
-                                                "qrc:/simulations/mix/rythm_transformation",
-                                                "qrc:/simulations/mix/prolonged_activity",
-                                            ]
-                                        },
-                                        {
-                                            name: "Textbook Examples",
-                                            simulations: [
-                                                "qrc:/simulations/mix/lateral_inhibition_1",
-                                                "qrc:/simulations/mix/lateral_inhibition_2",
-                                                "qrc:/simulations/mix/input_summation",
-                                                "qrc:/simulations/sterratt/if_response",
-                                                "qrc:/simulations/sterratt/refractory_period",
-                                            ]
-                                        },
-                                    ]
-
-                                    Column {
-
-                                        anchors {
-                                            left: parent.left
-                                            right: parent.right
-                                        }
-
-                                        spacing: 16
-
-                                        Label {
-                                            font.pixelSize: 24
-                                            text: modelData.name
-                                        }
-
-                                        Flow {
-                                            anchors {
-                                                left: parent.left
-                                                right: parent.right
-                                            }
-                                            spacing: 32
-                                            Repeater {
-                                                model: modelData.simulations
-                                                StoreItem {
-                                                    SimulationLoader {
-                                                        id: loader
-                                                        folder: modelData
-                                                    }
-
-                                                    name: loader.item.name
-                                                    description: loader.item.description
-                                                    imageUrl: loader.item.screenshotSource
-
-                                                    onClicked: {
-                                                        loadRequested(loader.item.stateSource)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                        component: NewView {
+                            onLoadRequested: {
+                                root.loadRequested(filename)
                             }
                         }
                     }
@@ -278,292 +171,32 @@ Item {
                     FileMenuItem {
                         identifier: "open"
                         name: "Open"
-                        component: Item {
+                        component: OpenView {
                             id: openItem
-
-                            Settings {
-                                id: savedataSettings
-                                property bool performed
-                                property url location
-                                category: "converted_saves"
-                            }
-
-                            Column {
-                                anchors  {
-                                    left: parent.left
-                                    right: parent.right
-                                }
-
-                                spacing: 16
-                                Button {
-                                    Material.theme: Material.Light
-                                    text: "From computer"
-                                    onClicked: {
-                                        openDialog.open()
-                                    }
-                                }
-
-                                Column {
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
-                                    visible: savedataSettings.performed
-                                    Button {
-                                        Material.theme: Material.Light
-                                        text: "From older versions"
-                                        onClicked: {
-                                            openDialog.open()
-                                            openDialog.folder = savedataSettings.location
-                                        }
-                                    }
-                                }
-
-                                FileDialog {
-                                    id: openDialog
-                                    fileMode: FileDialog.OpenFile
-                                    nameFilters: ["Neuronify files (*.neuronify)"]
-                                    onAccepted: {
-                                        openRequested(file)
-                                    }
-                                }
-
-                                // TODO Add recent once database is ready
-
-                                //                                FileMenuHeading {
-                                //                                    text: "Recent"
-                                //                                }
-
-                                //                                Flow {
-                                //                                    anchors {
-                                //                                        left: parent.left
-                                //                                        right: parent.right
-                                //                                    }
-                                //                                }
-                            }
+                            onOpenRequested: root.openRequested(file)
                         }
                     }
 
                     FileMenuItem {
                         identifier: "save"
                         name: "Save"
-                        component: Item {
+                        component: SaveView {
                             id: saveRoot
-                            Column {
-                                spacing: 16
-                                width: Math.min(480, parent.width)
-
-                                Label {
-                                    text: qsTr("Name:")
-                                }
-
-                                TextField {
-                                    id: saveName
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
-                                    validator: RegExpValidator {
-                                        regExp: /[a-zA-Z0-9\-\_ ]+/
-                                    }
-
-                                    placeholderText: "e.g. MySimulation"
-
-                                    Binding {
-                                        target: saveName
-                                        property: "text"
-                                        when: currentSimulation ? true : false
-                                        value: currentSimulation ? currentSimulation.name : ""
-                                    }
-                                }
-
-                                Label {
-                                    text: qsTr("Description:")
-                                }
-
-                                TextArea {
-                                    id: saveDescription
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
-                                    placeholderText: "e.g. Illustrates the effect of feedback inhibition."
-
-                                    Binding {
-                                        target: saveDescription
-                                        property: "text"
-                                        when: currentSimulation ? true : false
-                                        value: currentSimulation ? currentSimulation.description : ""
-                                    }
-                                }
-
-                                Label {
-                                    text: "Screenshot preview:"
-                                }
-
-                                ShaderEffectSource {
-                                    id: effectSource
-                                    readonly property real aspectRatio: neuronify.width / neuronify.height
-                                    width: parent.width * 0.6
-                                    height: width / aspectRatio
-                                    sourceItem: neuronify
-                                }
-
-                                Button {
-                                    anchors {
-                                        right: parent.right
-                                    }
-
-                                    Material.theme: Material.Light
-                                    width: 120
-                                    enabled: saveName.acceptableInput
-                                    text: qsTr("Save")
-
-                                    onClicked: {
-                                        saveDialog.open()
-                                    }
-                                }
-
-                                FileDialog {
-                                    id: saveDialog
-                                    fileMode: FileDialog.SaveFile
-                                    nameFilters: ["Neuronify files (*.neuronify)"]
-                                    defaultSuffix: ".neuronify"
-                                    onAccepted: {
-                                        var simulation = {
-                                            file: file,
-                                            name: saveName.text,
-                                            description: saveDescription.text
-                                        }
-
-                                        saveRequested(simulation)
-                                    }
-                                }
-                            }
+                            onSaveRequested: root.saveRequested(file)
                         }
 
                     }
                     FileMenuItem {
                         identifier: "community"
                         name: "Community"
-                        component: Flickable {
-                            contentHeight: column.height + 64
-                            clip: true
-
-                            flickableDirection: Flickable.VerticalFlick
-                            ScrollBar.vertical: ScrollBar {}
-
-                            Column {
-                                id: column
-                                anchors {
-                                    left: parent.left
-                                    right: parent.right
-                                }
-
-                                spacing: 16
-
-                                Component.onCompleted: {
-                                    communityProgressBar.processCount += 1
-                                    Parse.get('Tag?where={"objectId":{"$in":["KoorVWOOtU"]}}&order=-priority', function(response) {
-                                        communityProgressBar.processCount -= 1
-                                        communityTagsRepeater.model = response.results
-                                    })
-                                }
-
-                                Label {
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
-
-                                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-                                    onLinkActivated: Qt.openUrlExternally(link)
-                                    linkColor: "white"
-
-                                    text: "Would you like to see your simulations listed here? " +
-                                          "Send an e-mail to <a href='mailto:ovilab.net@gmail.com'>ovilab.net@gmail.com</a> " +
-                                          "to request upload rights."
-                                }
-
-                                ProgressBar {
-                                    id: communityProgressBar
-
-                                    property int processCount: 0
-
-                                    indeterminate: true
-                                    visible: processCount > 0
-                                }
-
-                                Repeater {
-                                    id: communityTagsRepeater
-
-                                    Column {
-                                        id: tag
-
-                                        anchors {
-                                            left: parent.left
-                                            right: parent.right
-                                        }
-                                        spacing: 16
-
-                                        Component.onCompleted: {
-                                            communityProgressBar.processCount += 1
-                                            Parse.get('Simulation?where={"tags":{"__type":"Pointer","className":"Tag","objectId":"' + modelData.objectId + '"}}', function(response) {
-                                                communityProgressBar.processCount -= 1
-                                                communityRepeater.model = response.results
-                                            })
-                                        }
-
-                                        Label {
-                                            font.pixelSize: 24
-                                            text: modelData.name
-                                        }
-
-                                        FolderListModel {
-                                            id: communityFolderModel
-                                            folder: StandardPaths.writableLocation(StandardPaths.AppDataLocation) + "/community"
-                                            showFiles: false
-                                            showDirs: true
-                                            showOnlyReadable: true
-                                        }
-
-                                        Component {
-                                            id: simulationComponent
-                                            StoreSimulation {
-                                                downloadManager: _downloadManager // TODO is this needed anymore?
-                                                onRunClicked: {
-                                                    //                                        loadRequested(fileUrl)
-                                                    //                                        openRequested(fileUrl)
-                                                    runRequested(simulation)
-                                                    stackView.pop()
-                                                }
-                                            }
-                                        }
-
-                                        Flow {
-                                            id: flow
-                                            anchors {
-                                                left: parent.left
-                                                right: parent.right
-                                            }
-
-                                            spacing: 16
-
-                                            Repeater {
-                                                id: communityRepeater
-                                                delegate: StoreItem {
-                                                    name: modelData.name
-                                                    description: modelData.description
-                                                    imageUrl: modelData.screenshot.url
-                                                    onClicked: {
-                                                        stackView.push(simulationComponent)
-                                                        stackView.currentItem.objectData = modelData
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                        component: CommunityView {
+                            onRunRequested: {
+                                root.runRequested(simulation)
+                                stackView.pop()
+                            }
+                            onItemClicked: {
+                                stackView.push(simulation)
+                                stackView.currentItem.objectData = simulationData
                             }
                         }
                     }
@@ -571,159 +204,14 @@ Item {
                     FileMenuItem {
                         name: "Upload"
                         visible: Parse.loggedIn
-                        component: Item {
-                            Column {
-                                id: uploadColumn
-                                width: 420
-                                height: 420
-                                spacing: 8
-
-                                Label {
-                                    text: "Name:"
-                                    //                                    color: Material.color(Material.Grey)
-                                }
-
-                                TextField {
-                                    id: uploadNameField
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
-                                    placeholderText: "e.g. 'Lateral inhibition'"
-                                }
-
-                                Label {
-                                    text: "Description:"
-                                }
-
-                                TextField {
-                                    id: uploadDescriptionField
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                    }
-
-                                    placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
-                                }
-
-                                Label {
-                                    text: "Screenshot preview:"
-                                }
-
-                                ShaderEffectSource {
-                                    readonly property real aspectRatio: neuronify.width / neuronify.height
-                                    width: parent.width * 0.6
-                                    height: width / aspectRatio
-                                    sourceItem: neuronify
-                                }
-
-                                Row {
-                                    anchors {
-                                        right: parent.right
-                                    }
-                                    spacing: 16
-                                    Button {
-                                        id: uploadButton
-                                        Material.theme: Material.Light
-                                        text: "Upload"
-                                        onClicked: {
-                                            uploadButton.enabled = false
-                                            var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
-                                            var screenshotFilename = tempFolder + "/screenshot.png"
-                                            neuronify.saveScreenshot(screenshotFilename, function() {
-                                                var data = neuronify.fileManager.serializeState()
-                                                Parse.upload("simulation.nfy", data, function(simulationFile) {
-                                                    _downloadManager.upload(
-                                                                screenshotFilename,
-                                                                Parse.serverUrl + "files/screenshot.png",
-                                                                function(screenshotResult) {
-                                                                    var screenshotFile = JSON.parse(screenshotResult)
-                                                                    var simulation = {
-                                                                        name: uploadNameField.text,
-                                                                        description: uploadDescriptionField.text,
-                                                                        simulation: {
-                                                                            name: simulationFile.name,
-                                                                            url: simulationFile.url,
-                                                                            __type: "File"
-                                                                        },
-                                                                        screenshot: {
-                                                                            name: screenshotFile.name,
-                                                                            url: screenshotFile.url,
-                                                                            __type: "File"
-                                                                        }
-                                                                    }
-                                                                    if(Parse.objectId) {
-                                                                        simulation["owner"] = {
-                                                                            __type: "Pointer",
-                                                                            className: "_User",
-                                                                            objectId: Parse.objectId
-                                                                        }
-                                                                    }
-                                                                    Parse.post("Simulation", simulation)
-                                                                    ToolTip.show("Upload successful!", 2000)
-                                                                    root.revealed = false
-                                                                    uploadButton.enabled = true
-                                                                })
-                                                })
-                                            })
-
-                                        }
-                                    }
-                                }
-                            }
+                        component: UploadView {
                         }
                     }
 
                     FileMenuItem {
                         identifier: "account"
                         name: "Account"
-                        component: Item {
-                            function login() {
-                                Parse.login(userField.text, passwordField.text, function(response) {
-                                    if(!response.sessionToken) {
-                                        passwordField.ToolTip.show("Wrong username or password", 1000)
-                                    }
-                                })
-                            }
-
-                            Column {
-                                visible: !Parse.loggedIn
-                                TextField {
-                                    id: userField
-                                    selectByMouse: true
-                                    placeholderText: "Username or email"
-                                }
-
-                                TextField {
-                                    id: passwordField
-                                    echoMode: TextInput.Password
-                                    selectByMouse: true
-                                    placeholderText: "Password"
-                                    onAccepted: {
-                                        login()
-                                    }
-                                }
-
-                                Button {
-                                    Material.theme: Material.Light
-                                    enabled: userField.text != "" && passwordField.text != ""
-                                    width: 120
-                                    text: "Log in"
-                                    onClicked: {
-                                        login()
-                                    }
-                                }
-                            }
-
-                            Button {
-                                Material.theme: Material.Light
-                                visible: Parse.loggedIn
-                                width: 120
-                                text: "Log out"
-                                onClicked: {
-                                    Parse.logout()
-                                }
-                            }
+                        component: AccountView {
                         }
                     }
 

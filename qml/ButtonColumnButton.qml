@@ -1,7 +1,7 @@
 import QtQuick 2.5
 
 import "qrc:/qml/hud"
-import "qrc:/qml/menus/mainmenu"
+
 import "qrc:/qml/style"
 
 Item {

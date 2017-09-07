@@ -24,7 +24,6 @@ import "qrc:/qml/io"
 import "qrc:/qml/hud"
 import "qrc:/qml/menus"
 import "qrc:/qml/menus/filemenu"
-import "qrc:/qml/menus/mainmenu"
 import "qrc:/qml/tools"
 import "qrc:/qml/store"
 import "qrc:/qml/style"
@@ -235,23 +234,28 @@ Item {
         currentSimulation: root.currentSimulation
         z: 99
 
+        function runOrShowSaveDialog(action) {
+            if (neuronify.hasUnsavedChanges) {
+                unsavedDialog.openWithRequestedAction(action)
+                return
+            }
+            action()
+        }
+
         onLoadRequested: {
-            root.currentSimulation = undefined
-            neuronify.loadSimulation(file)
-            revealed = false
+            runOrShowSaveDialog(function() {
+                root.currentSimulation = undefined
+                neuronify.loadSimulation(file)
+                revealed = false
+            })
         }
 
         onRunRequested: {
-            var runAction = function() {
+            runOrShowSaveDialog(function() {
                 root.currentSimulation = simulation
                 neuronify.open(simulation)
                 revealed = false
-            }
-            if (neuronify.hasUnsavedChanges) {
-                unsavedDialog.openWithRequestedAction(runAction)
-                return
-            }
-            runAction()
+            })
         }
 
         onSaveRequested: {
@@ -260,8 +264,10 @@ Item {
         }
 
         onOpenRequested: {
-            root.open(file)
-            revealed = false
+            runOrShowSaveDialog(function() {
+                root.open(file)
+                revealed = false
+            })
         }
     }
 
