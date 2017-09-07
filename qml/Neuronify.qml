@@ -14,7 +14,6 @@ import CuteVersioning 1.0
 import QtGraphicalEffects 1.0
 
 import "qrc:/qml/hud"
-import "qrc:/qml/menus/mainmenu"
 import "qrc:/qml/style"
 import "qrc:/qml/io"
 import "qrc:/qml/tools"
@@ -243,7 +242,7 @@ Rectangle {
             return
         }
 
-        registerUndoState()
+        stateChange()
 
         undoRecordingDepth += 1
 
@@ -299,7 +298,8 @@ Rectangle {
         return createdNodes
     }
 
-    function registerUndoState() {
+    function stateChange() {
+        hasUnsavedChanges = true
         if (!undoRecordingEnabled){
             return
         }
@@ -343,7 +343,7 @@ Rectangle {
     }
 
     function deleteEverything() {
-        registerUndoState()
+        stateChange()
         undoRecordingDepth += 1
         var nodesToDelete = [];
         for(var i in graphEngine.nodes) {
@@ -405,7 +405,7 @@ Rectangle {
     }
 
     function deleteNode(node) {
-        registerUndoState()
+        stateChange()
         undoRecordingDepth += 1
         if(selectedEntities.indexOf(node) !== -1) {
             deselectAll();
@@ -420,14 +420,14 @@ Rectangle {
     }
 
     function deleteEdge(edge) {
-        registerUndoState()
+        stateChange()
         undoRecordingDepth += 1
         graphEngine.removeEdge(edge)
         undoRecordingDepth -= 1
     }
 
     function deleteSelected() {
-        registerUndoState()
+        stateChange()
         undoRecordingDepth += 1
 
         var toDelete = []
@@ -518,7 +518,7 @@ Rectangle {
             return root.snapGridSize
         })
 
-        registerUndoState()
+        stateChange()
         undoRecordingDepth += 1
 
         // signals
@@ -572,7 +572,7 @@ Rectangle {
             return;
         }
 
-        registerUndoState()
+        stateChange()
         undoRecordingDepth += 1
 
         var connectionComponent;
