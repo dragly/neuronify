@@ -28,8 +28,7 @@ import "qrc:/qml/style"
 import "qrc:/qml/ui"
 
 Flickable {
-    signal runRequested(var simulation)
-    signal itemClicked(var simulation, var simulationData)
+    signal itemClicked(var simulationData)
 
     contentHeight: column.height + 64
     clip: true
@@ -48,9 +47,11 @@ Flickable {
         
         Component.onCompleted: {
             communityProgressBar.processCount += 1
-            Parse.get('Tag?order=-priority', function(response) {
+            Firebase.get('tags', function(response) {
                 communityProgressBar.processCount -= 1
-                communityTagsRepeater.model = response.results
+                console.log("Model", JSON.stringify(response))
+
+                communityTagsRepeater.model = Firebase.createModel(response)
             })
         }
         
@@ -91,10 +92,12 @@ Flickable {
                 spacing: 16
                 
                 Component.onCompleted: {
+                    console.log("On completed")
+                    console.log(JSON.stringify(modelData._key))
                     communityProgressBar.processCount += 1
-                    Parse.get('Simulation?where={"tags":{"__type":"Pointer","className":"Tag","objectId":"' + modelData.objectId + '"}}', function(response) {
+                    Firebase.get('tags/' + modelData._key + '/simulations', function(response) {
                         communityProgressBar.processCount -= 1
-                        communityRepeater.model = response.results
+                        communityRepeater.model = Firebase.createModel(response)
                     })
                 }
                 
@@ -111,18 +114,6 @@ Flickable {
                     showOnlyReadable: true
                 }
                 
-                Component {
-                    id: simulationComponent
-                    StoreSimulation {
-                        downloadManager: _downloadManager // TODO is this needed anymore?
-                        onRunClicked: {
-                            //                                        loadRequested(fileUrl)
-                            //                                        openRequested(fileUrl)
-                            runRequested(simulation)
-                        }
-                    }
-                }
-                
                 Flow {
                     id: flow
                     anchors {
@@ -135,11 +126,22 @@ Flickable {
                     Repeater {
                         id: communityRepeater
                         delegate: StoreItem {
-                            name: modelData.name
-                            description: modelData.description
-                            imageUrl: modelData.screenshot.url
+                            property var objectData
+
+                            Component.onCompleted: {
+                                console.log("ModelData", JSON.stringify(modelData))
+                                communityProgressBar.processCount += 1
+                                Firebase.get('simulations/' + modelData._key, function(response) {
+                                    communityProgressBar.processCount -= 1
+                                    objectData = response
+                                    name = response.name
+                                    description = response.description
+                                    imageUrl = response.screenshot
+                                })
+                            }
+
                             onClicked: {
-                                itemClicked(simulationComponent, modelData)
+                                itemClicked(objectData)
                             }
                         }
                     }

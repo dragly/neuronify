@@ -190,21 +190,38 @@ Item {
                         identifier: "community"
                         name: "Community"
                         component: CommunityView {
-                            onRunRequested: {
-                                root.runRequested(simulation)
-                                stackView.pop()
-                            }
                             onItemClicked: {
-                                stackView.push(simulation)
+                                stackView.push(simulationComponent)
                                 stackView.currentItem.objectData = simulationData
+                            }
+                        }
+
+                        Component {
+                            id: simulationComponent
+                            StoreSimulation {
+                                downloadManager: _downloadManager // TODO is this needed anymore?
+                                onRunClicked: {
+                                    runRequested(simulation)
+                                    stackView.pop()
+                                }
                             }
                         }
                     }
 
                     FileMenuItem {
-                        name: "Upload"
-                        visible: Parse.loggedIn
-                        component: UploadView {
+                        name: "My simulations"
+                        visible: Firebase.loggedIn
+                        component: MySimulations {
+                            onUploadClicked: stackView.push(uploadComponent)
+                        }
+
+                        Component {
+                            id: uploadComponent
+                            UploadView {
+                                onUploadCompleted: {
+                                    stackView.pop()
+                                }
+                            }
                         }
                     }
 

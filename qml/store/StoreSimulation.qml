@@ -24,21 +24,13 @@ Item {
             "description":"hello",
             "name":"test",
             "objectId":"m4JkohPzJ8",
-            "screenshot":{
-               "__type":"File",
-               "name":"53a3dc41efa39bf5162678b7f581f622_screenshot.png",
-               "url":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/53a3dc41efa39bf5162678b7f581f622_screenshot.png"
-            },
-            "simulation":{
-               "__type":"File",
-               "name":"b4d41543780cda16f4f06b2aa6334f12_simulation.nfy",
-               "url":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/b4d41543780cda16f4f06b2aa6334f12_simulation.nfy"
-            },
+            "screenshot":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/53a3dc41efa39bf5162678b7f581f622_screenshot.png",
+            "simulation":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/b4d41543780cda16f4f06b2aa6334f12_simulation.nfy",
             "updatedAt":"2017-03-09T08:48:35.368Z"
         }
     }
 
-    property url imageUrl: objectData.screenshot.url
+    property url imageUrl: objectData.screenshot
     property real price: 0.0
     readonly property url targetLocation: StandardPaths.writableLocation(StandardPaths.AppDataLocation, "community/" + objectData.objectId)
     readonly property url simulationPath: targetLocation + "/simulation.nfy"
@@ -46,7 +38,7 @@ Item {
 
     Material.theme: Material.Light
 
-    onObjectDataChanged: console.log(imageUrl, objectData.screenshot.url)
+    onObjectDataChanged: console.log(imageUrl, objectData.screenshot)
 
     width: 1200
     height: 600
@@ -199,7 +191,7 @@ Item {
 
                     text: "Run"
                     onClicked: {
-                        Parse.download(objectData.simulation.url, function(data) {
+                        Firebase.download(objectData.simulation, function(data) {
                             var simulation = {
                                 name: objectData.name,
                                 description: objectData.description,

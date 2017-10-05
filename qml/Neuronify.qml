@@ -92,8 +92,6 @@ Rectangle {
         Style.playbackSpeed = root.playbackSpeed;
     }
 
-    onFocusChanged: console.log("Neuronify focus", focus)
-
     function deleteFromList(list, item) {
         var itemIndex = list.indexOf(item)
         if(itemIndex > -1) {

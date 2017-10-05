@@ -28,17 +28,19 @@ import "qrc:/qml/style"
 import "qrc:/qml/ui"
 
 Item {
+    id: root
+    signal uploadCompleted()
     Column {
         id: uploadColumn
         width: 420
         height: 420
         spacing: 8
-        
+
         Label {
             text: "Name:"
             //                                    color: Material.color(Material.Grey)
         }
-        
+
         TextField {
             id: uploadNameField
             anchors {
@@ -47,32 +49,32 @@ Item {
             }
             placeholderText: "e.g. 'Lateral inhibition'"
         }
-        
+
         Label {
             text: "Description:"
         }
-        
+
         TextField {
             id: uploadDescriptionField
             anchors {
                 left: parent.left
                 right: parent.right
             }
-            
+
             placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
         }
-        
+
         Label {
             text: "Screenshot preview:"
         }
-        
+
         ShaderEffectSource {
             readonly property real aspectRatio: neuronify.width / neuronify.height
             width: parent.width * 0.6
             height: width / aspectRatio
             sourceItem: neuronify
         }
-        
+
         Row {
             anchors {
                 right: parent.right
@@ -89,10 +91,10 @@ Item {
                     // TODO do not reference "global" items
                     neuronify.saveScreenshot(screenshotFilename, function() {
                         var data = neuronify.fileManager.serializeState()
-                        Parse.upload("simulation.nfy", data, function(simulationFile) {
+                        Firebase.upload("simulation.nfy", data, function(simulationFile) {
                             _downloadManager.upload(
                                         screenshotFilename,
-                                        Parse.serverUrl + "files/screenshot.png",
+                                        Firebase.serverUrl + "files/screenshot.png",
                                         function(screenshotResult) {
                                             var screenshotFile = JSON.parse(screenshotResult)
                                             var simulation = {
@@ -109,21 +111,20 @@ Item {
                                                     __type: "File"
                                                 }
                                             }
-                                            if(Parse.objectId) {
+                                            if(Firebase.objectId) {
                                                 simulation["owner"] = {
                                                     __type: "Pointer",
                                                     className: "_User",
                                                     objectId: Parse.objectId
                                                 }
                                             }
-                                            Parse.post("Simulation", simulation)
+                                            Firebase.post("Simulation", simulation)
                                             ToolTip.show("Upload successful!", 2000)
-                                            root.revealed = false
                                             uploadButton.enabled = true
+                                            root.uploadCompleted()
                                         })
                         })
                     })
-                    
                 }
             }
         }

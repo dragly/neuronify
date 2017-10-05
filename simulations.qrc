@@ -72,5 +72,6 @@
         <file>simulations/items/frPlot/frPlot.qml</file>
         <file>simulations/items/frPlot/frPlot.png</file>
         <file>simulations/items/frPlot/frPlot.nfy</file>
+        <file>qml/menus/filemenu/MySimulations.qml</file>
     </qresource>
 </RCC>

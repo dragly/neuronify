@@ -8,5 +8,6 @@
         <file>sounds/glass.wav</file>
         <file>sounds/sonar.wav</file>
         <file>qml/menus/filemenu/FileMenu.qml</file>
+        <file>qml/backend/Firebase.qml</file>
     </qresource>
 </RCC>

@@ -29,7 +29,7 @@ import "qrc:/qml/ui"
 
 Item {
     function login() {
-        Parse.login(userField.text, passwordField.text, function(response) {
+        Firebase.login(userField.text, passwordField.text, function(response) {
             if(!response.sessionToken) {
                 passwordField.ToolTip.show("Wrong username or password", 1000)
             }
@@ -37,7 +37,7 @@ Item {
     }
     
     Column {
-        visible: !Parse.loggedIn
+        visible: !Firebase.loggedIn
         TextField {
             id: userField
             selectByMouse: true
@@ -67,11 +67,11 @@ Item {
     
     Button {
         Material.theme: Material.Light
-        visible: Parse.loggedIn
+        visible: Firebase.loggedIn
         width: 120
         text: "Log out"
         onClicked: {
-            Parse.logout()
+            Firebase.logout()
         }
     }
 }
