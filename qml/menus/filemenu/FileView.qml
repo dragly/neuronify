@@ -213,6 +213,10 @@ Item {
                         visible: Firebase.loggedIn
                         component: MySimulations {
                             onUploadClicked: stackView.push(uploadComponent)
+                            onItemClicked: {
+                                stackView.push(simulationComponent)
+                                stackView.currentItem.objectData = simulationData
+                            }
                         }
 
                         Component {

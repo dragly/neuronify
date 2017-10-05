@@ -46,6 +46,7 @@ Backend {
         req.onreadystatechange = function() {
             processReply(req, function(result) {
                 idToken = result.id_token
+                userId = result.user_id
                 console.log("Successfully logged in with previous token.")
             })
         }
@@ -84,7 +85,7 @@ Backend {
         req.setRequestHeader("Content-Type", "application/json")
         req.onreadystatechange = function() {
             processReply(req, function(result) {
-                if(result.sessionToken) {
+                if(result.refreshToken) {
                     refreshToken = result.refreshToken
                 }
                 if(callback) {
@@ -103,7 +104,7 @@ Backend {
             console.log("Building url", config.databaseURL, name)
         }
 
-        return config.databaseURL + "/" + name + ".json"
+        return config.databaseURL + "/" + name
     }
 
     function get(name, callback) {

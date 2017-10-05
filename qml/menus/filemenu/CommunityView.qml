@@ -47,7 +47,7 @@ Flickable {
         
         Component.onCompleted: {
             communityProgressBar.processCount += 1
-            Firebase.get('tags', function(response) {
+            Firebase.get('tags.json', function(response) {
                 communityProgressBar.processCount -= 1
                 console.log("Model", JSON.stringify(response))
 
@@ -95,7 +95,7 @@ Flickable {
                     console.log("On completed")
                     console.log(JSON.stringify(modelData._key))
                     communityProgressBar.processCount += 1
-                    Firebase.get('tags/' + modelData._key + '/simulations', function(response) {
+                    Firebase.get('tags/' + modelData._key + '/simulations.json', function(response) {
                         communityProgressBar.processCount -= 1
                         communityRepeater.model = Firebase.createModel(response)
                     })
@@ -131,7 +131,7 @@ Flickable {
                             Component.onCompleted: {
                                 console.log("ModelData", JSON.stringify(modelData))
                                 communityProgressBar.processCount += 1
-                                Firebase.get('simulations/' + modelData._key, function(response) {
+                                Firebase.get('simulations/' + modelData._key + ".json", function(response) {
                                     communityProgressBar.processCount -= 1
                                     objectData = response
                                     name = response.name

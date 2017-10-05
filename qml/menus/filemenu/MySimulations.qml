@@ -10,12 +10,13 @@ Item {
     id: root
 
     signal uploadClicked()
+    signal itemClicked(var simulationData)
 
     Component.onCompleted: {
         progressBar.processCount += 1
-        Firebase.get('Simulation?where={"user": "' + Firebase.objectId + '"}}', function(response) {
+        Firebase.get('simulations.json?orderBy="creator"&equalTo="' + Firebase.userId + '"', function(response) {
             progressBar.processCount -= 1
-            communityRepeater.model = response.results
+            communityRepeater.model = Firebase.createModel(response)
         })
     }
 
@@ -59,7 +60,7 @@ Item {
                 delegate: StoreItem {
                     name: modelData.name
                     description: modelData.description
-                    imageUrl: modelData.screenshot.url
+                    imageUrl: modelData.screenshot
                     onClicked: {
                         itemClicked(modelData)
                     }

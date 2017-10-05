@@ -30,8 +30,8 @@ import "qrc:/qml/ui"
 Item {
     function login() {
         Firebase.login(userField.text, passwordField.text, function(response) {
-            if(!response.sessionToken) {
-                passwordField.ToolTip.show("Wrong username or password", 1000)
+            if(!response.refreshToken) {
+                passwordField.ToolTip.show("Wrong username or password", 3000)
             }
         })
     }
