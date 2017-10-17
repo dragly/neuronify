@@ -98,8 +98,8 @@ Item {
 
                 height: 256
 
-                Image {
-                    id: image
+                Rectangle {
+                    id: imageRectangle
                     anchors {
                         top: parent.top
                         bottom: parent.bottom
@@ -108,15 +108,24 @@ Item {
 
                     width: height
 
-                    source: root.imageUrl
-                    fillMode: Image.PreserveAspectCrop
+                    Image {
+                        id: image
+
+                        anchors.fill: parent
+
+                        antialiasing: true
+                        smooth: true
+
+                        source: root.imageUrl
+                        fillMode: Image.PreserveAspectCrop
+                    }
                 }
 
                 Column {
                     anchors {
                         top: parent.top
+                        left: imageRectangle.right
                         bottom: parent.bottom
-                        left: image.right
                         leftMargin: 24
                         right: parent.right
                     }

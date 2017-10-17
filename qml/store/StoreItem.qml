@@ -51,8 +51,6 @@ Item {
             anchors.fill: parent
             smooth: true
             mipmap: true
-//            height: root.height
-//            width: height
 
             source: root.imageUrl
         }
