@@ -57,10 +57,16 @@ Item {
 
             Repeater {
                 id: communityRepeater
+
                 delegate: StoreItem {
+                    Component.onCompleted: {
+                        Firebase.cachedDownload(modelData.screenshot, function(localFilename) {
+                            imageUrl = localFilename
+                        })
+                    }
+
                     name: modelData.name
                     description: modelData.description
-                    imageUrl: modelData.screenshot
                     onClicked: {
                         itemClicked(modelData)
                     }
