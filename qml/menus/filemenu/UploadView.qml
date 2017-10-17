@@ -85,44 +85,43 @@ Item {
                 Material.theme: Material.Light
                 text: "Upload"
                 onClicked: {
+                    var simulation = {
+                        name: uploadNameField.text,
+                        description: uploadDescriptionField.text
+                    }
                     uploadButton.enabled = false
-                    var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
-                    var screenshotFilename = tempFolder + "/screenshot.png"
-                    // TODO do not reference "global" items
-                    neuronify.saveScreenshot(screenshotFilename, function() {
-                        var data = neuronify.fileManager.serializeState()
-                        Firebase.upload("simulation.nfy", data, function(simulationFile) {
-                            _downloadManager.upload(
-                                        screenshotFilename,
-                                        Firebase.serverUrl + "files/screenshot.png",
-                                        function(screenshotResult) {
-                                            var screenshotFile = JSON.parse(screenshotResult)
-                                            var simulation = {
-                                                name: uploadNameField.text,
-                                                description: uploadDescriptionField.text,
-                                                simulation: {
-                                                    name: simulationFile.name,
-                                                    url: simulationFile.url,
-                                                    __type: "File"
-                                                },
-                                                screenshot: {
-                                                    name: screenshotFile.name,
-                                                    url: screenshotFile.url,
-                                                    __type: "File"
-                                                }
-                                            }
-                                            if(Firebase.objectId) {
-                                                simulation["owner"] = {
-                                                    __type: "Pointer",
-                                                    className: "_User",
-                                                    objectId: Parse.objectId
-                                                }
-                                            }
-                                            Firebase.post("Simulation", simulation)
-                                            ToolTip.show("Upload successful!", 2000)
-                                            uploadButton.enabled = true
-                                            root.uploadCompleted()
-                                        })
+                    Firebase.post("simulations.json", simulation, function(result) {
+                        console.log("Simulation created!")
+                        var simulationAddress = "simulations/" + result.name
+                        var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
+                        var screenshotFilename = tempFolder + "/screenshot.png"
+                        // TODO do not reference "global" items
+                        neuronify.saveScreenshot(screenshotFilename, function() {
+                            console.log("Saved screenshot for upload")
+                            var data = neuronify.fileManager.serializeState()
+                            Firebase.upload(simulationAddress + "/simulation.nfy", data, function(simulationFile) {
+                                console.log("Uploaded the simulation!")
+                                console.log(JSON.stringify(simulationFile))
+                                // TODO move download manager here
+                                _downloadManager.upload(
+                                            screenshotFilename,
+                                            Firebase.buildUploadUrl(simulationAddress + "/screenshot.png"),
+                                            Firebase.idToken,
+                                            function(screenshotResult) {
+                                                console.log("Uploaded screenshot!")
+                                                console.log(screenshotResult)
+                                                var screenshotFile = JSON.parse(screenshotResult)
+                                                simulation["simulation"] = simulationFile.name
+                                                simulation["screenshot"] = screenshotFile.name
+                                                Firebase.put(simulationAddress + ".json", simulation, function(result) {
+                                                    console.log("Upload complete!")
+                                                    console.log(JSON.stringify(result))
+                                                    ToolTip.show("Upload successful!", 2000)
+                                                    uploadButton.enabled = true
+                                                    root.uploadCompleted()
+                                                })
+                                            })
+                            })
                         })
                     })
                 }

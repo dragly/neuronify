@@ -20,23 +20,6 @@ Item {
         })
     }
 
-    Button {
-        Material.theme: Material.Light
-        text: "Upload"
-        onClicked: {
-            uploadClicked()
-        }
-    }
-
-    ProgressBar {
-        id: progressBar
-
-        property int processCount: 0
-
-        indeterminate: true
-        visible: processCount > 0
-    }
-
     Column {
         id: tag
 
@@ -45,6 +28,23 @@ Item {
             right: parent.right
         }
         spacing: 16
+
+        Button {
+            Material.theme: Material.Light
+            text: "Upload"
+            onClicked: {
+                uploadClicked()
+            }
+        }
+
+        ProgressBar {
+            id: progressBar
+
+            property int processCount: 0
+
+            indeterminate: true
+            visible: processCount > 0
+        }
 
         Flow {
             id: flow

@@ -24,23 +24,28 @@ DownloadManager::DownloadManager()
             SLOT(uploadFinished(QNetworkReply*)));
 }
 
-void DownloadManager::upload(const QUrl localUrl, const QUrl &remoteUrl, QJSValue callback)
+void DownloadManager::upload(const QUrl localUrl, const QUrl &remoteUrl, const QString &token, QJSValue callback)
 {
     QString filename = QQmlFile::urlToLocalFileOrQrc(localUrl);
     QFile file(filename);
     file.open(QFile::ReadOnly);
 
     QNetworkRequest request(remoteUrl);
-    request.setRawHeader("X-Parse-Application-Id", "JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN");
-    request.setRawHeader("X-Parse-REST-API-Key", "bBKStu7bqeyWFTYFfM5OIes255k9XEz2Voe4fUxS");
     request.setRawHeader("Content-Type", "image/png");
+    request.setRawHeader("Authorization", QByteArray("Firebase ") + token.toLatin1());
 
-    QNetworkReply *reply = m_uploadManager.post(request, file.readAll());
+    qDebug() << "Uploading" << localUrl << "to" << remoteUrl << "with" << token;
+
+    QByteArray data = file.readAll();
+
+    qDebug() << "SIZE" << data.size();
+
+    QNetworkReply *reply = m_uploadManager.post(request, data);
 
     currentUploads[reply] = callback;
 }
 
-void DownloadManager::download(const QUrl &remoteUrl, const QUrl &localUrl)
+void DownloadManager::download(const QUrl &remoteUrl, const QUrl &localUrl, const QString &token, QJSValue callback)
 {
     if(!localUrl.isLocalFile()) {
         qWarning() << "ERROR: Requested download location is not local url:" << localUrl;
@@ -49,13 +54,22 @@ void DownloadManager::download(const QUrl &remoteUrl, const QUrl &localUrl)
     QString targetFilename = localUrl.toLocalFile();
     qDebug() << "Download requested" << remoteUrl << targetFilename;
     QNetworkRequest request(remoteUrl);
+    request.setRawHeader("Authorization", QByteArray("Firebase ") + token.toLatin1());
     QNetworkReply *reply = m_downloadManager.get(request);
 
 #ifndef QT_NO_SSL
     connect(reply, SIGNAL(sslErrors(QList<QSslError>)), SLOT(sslErrors(QList<QSslError>)));
 #endif
 
-    currentDownloads[reply] = targetFilename;
+    currentDownloads[reply] = {targetFilename, callback};
+}
+
+void DownloadManager::download(const QString &bucket, const QString &objectName, const QUrl &localUrl, const QString &token, QJSValue callback) {
+    QString urlString = QString("https://firebasestorage.googleapis.com/v0/b/") +
+            bucket + "/o/" + QUrl::toPercentEncoding(objectName) +
+            QString("?alt=media");
+    QUrl url(urlString);
+    download(url, localUrl, token, callback);
 }
 
 bool saveToDisk(const QString &filename, QIODevice *data)
@@ -90,7 +104,10 @@ void DownloadManager::uploadFinished(QNetworkReply *reply)
     }
 
     QJSValue callback = currentUploads[reply];
-    QJSValue resultArgument = QJSValue(QString::fromUtf8(reply->readAll()));
+    QString result = QString::fromUtf8(reply->readAll());
+    QJSValue resultArgument = QJSValue(result);
+
+    qDebug() << "Result" << result;
 
     callback.call(QJSValueList{resultArgument});
 
@@ -104,7 +121,9 @@ void DownloadManager::downloadFinished(QNetworkReply *reply)
         qDebug() << "WARNING: DownloadManager found non-existent reply.";
         return;
     }
-    QString filename = currentDownloads[reply];
+    DownloadData downloadData = currentDownloads[reply];
+    QString filename = downloadData.filename;
+    QJSValue callback = downloadData.callback;
     QDir targetDir = QFileInfo(filename).absoluteDir();
     if(!targetDir.mkpath(".")) {
         qDebug() << "ERROR: Could not create path" << targetDir;
@@ -117,6 +136,8 @@ void DownloadManager::downloadFinished(QNetworkReply *reply)
         if (saveToDisk(filename, reply))
             qDebug() << "Download succeeded:" << url << filename;
     }
+
+    callback.call();
 
     currentDownloads.remove(reply);
     reply->deleteLater();

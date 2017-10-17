@@ -191,7 +191,7 @@ Item {
 
                     text: "Run"
                     onClicked: {
-                        Firebase.download(objectData.simulation, function(data) {
+                        Firebase.downloadData(objectData.simulation, function(data) {
                             var simulation = {
                                 name: objectData.name,
                                 description: objectData.description,

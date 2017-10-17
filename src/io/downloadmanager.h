@@ -16,14 +16,20 @@
 #include <memory>
 #include <QJSValue>
 
+struct DownloadData {
+    QString filename;
+    QJSValue callback;
+};
+
 class DownloadManager: public QObject
 {
     Q_OBJECT
 
 public:
     DownloadManager();
-    Q_INVOKABLE void download(const QUrl &remoteUrl, const QUrl &localUrl);
-    Q_INVOKABLE void upload(const QUrl localUrl, const QUrl &remoteUrl, QJSValue callback);
+    Q_INVOKABLE void download(const QUrl &remoteUrl, const QUrl &localUrl, const QString &token, QJSValue callback);
+    Q_INVOKABLE void download(const QString &bucket, const QString &objectName, const QUrl &localUrl, const QString &token, QJSValue callback);
+    Q_INVOKABLE void upload(const QUrl localUrl, const QUrl &remoteUrl, const QString &token, QJSValue callback);
 
 private slots:
     void downloadFinished(QNetworkReply *reply);
@@ -33,7 +39,7 @@ private slots:
 private:
     QNetworkAccessManager m_downloadManager;
     QNetworkAccessManager m_uploadManager;
-    QMap<QNetworkReply*, QString> currentDownloads;
+    QMap<QNetworkReply*, DownloadData> currentDownloads;
     QMap<QNetworkReply*, QJSValue> currentUploads;
 };
 

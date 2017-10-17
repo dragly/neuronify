@@ -2,8 +2,9 @@ pragma Singleton
 
 import QtQuick 2.7
 import Qt.labs.settings 1.0
+import Neuronify 1.0
 
-Backend {
+DownloadManager {
     id: root
     property bool debug: true
     property string userId
@@ -100,11 +101,16 @@ Backend {
     }
 
     function buildUrl(name) {
-        if (debug) {
-            console.log("Building url", config.databaseURL, name)
+        var url = config.databaseURL + "/" + name
+        if (idToken) {
+            url += "?auth=" + idToken
         }
+        console.log("Built URL", url)
+        return url
+    }
 
-        return config.databaseURL + "/" + name
+    function buildUploadUrl(name) {
+        return "https://firebasestorage.googleapis.com/v0/b/" + config.storageBucket + "/o?name=" + name
     }
 
     function get(name, callback) {
@@ -120,7 +126,7 @@ Backend {
         req.send();
     }
 
-    function download(url, callback) {
+    function downloadData(url, callback) {
         var req = new XMLHttpRequest
         req.open("GET", url)
         req.onreadystatechange = function() {
@@ -143,7 +149,6 @@ Backend {
         var req = new XMLHttpRequest;
         var url = buildUrl(name)
         req.open("PUT", url);
-        setHeaders(req)
         req.onreadystatechange = function() {
             processReply(req, callback)
         }
@@ -157,7 +162,6 @@ Backend {
         var req = new XMLHttpRequest;
         var url = buildUrl(name)
         req.open("POST", url);
-        setHeaders(req)
         req.onreadystatechange = function() {
             processReply(req, callback)
         }
@@ -168,8 +172,8 @@ Backend {
         req.send(JSON.stringify(data));
     }
 
-    function upload(name, callback) {
-        var url = "https://firebasestorage.googleapis.com/v0/b/" + config.storageBucket + "/o?name=" + name
+    function upload(name, data, callback) {
+        var url = buildUploadUrl(name)
         var req = new XMLHttpRequest()
         req.open("POST", url)
         req.setRequestHeader("Content-Type", "text/plain");
@@ -178,7 +182,12 @@ Backend {
             console.log("RESPONSE DATA", req.responseText)
             processReply(req, function(result){
                 console.log("Upload successfull!")
+                callback(result)
             })
+        }
+        if (debug) {
+            console.log("POST", url, data)
+            console.log("Data", JSON.stringify(data))
         }
         req.send(JSON.stringify(data, null, 4));
 

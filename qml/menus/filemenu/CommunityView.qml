@@ -28,6 +28,8 @@ import "qrc:/qml/style"
 import "qrc:/qml/ui"
 
 Flickable {
+    id: root
+
     signal itemClicked(var simulationData)
 
     contentHeight: column.height + 64
@@ -47,11 +49,11 @@ Flickable {
         
         Component.onCompleted: {
             communityProgressBar.processCount += 1
-            Firebase.get('tags.json', function(response) {
+            Firebase.get('simulations.json', function(response) {
                 communityProgressBar.processCount -= 1
                 console.log("Model", JSON.stringify(response))
 
-                communityTagsRepeater.model = Firebase.createModel(response)
+                communityRepeater.model = Firebase.createModel(response)
             })
         }
         
@@ -78,72 +80,49 @@ Flickable {
             indeterminate: true
             visible: processCount > 0
         }
-        
-        Repeater {
-            id: communityTagsRepeater
-            
-            Column {
-                id: tag
-                
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                }
-                spacing: 16
-                
-                Component.onCompleted: {
-                    console.log("On completed")
-                    console.log(JSON.stringify(modelData._key))
-                    communityProgressBar.processCount += 1
-                    Firebase.get('tags/' + modelData._key + '/simulations.json', function(response) {
-                        communityProgressBar.processCount -= 1
-                        communityRepeater.model = Firebase.createModel(response)
-                    })
-                }
-                
-                Label {
-                    font.pixelSize: 24
-                    text: modelData.name
-                }
-                
-                FolderListModel {
-                    id: communityFolderModel
-                    folder: StandardPaths.writableLocation(StandardPaths.AppDataLocation) + "/community"
-                    showFiles: false
-                    showDirs: true
-                    showOnlyReadable: true
-                }
-                
-                Flow {
-                    id: flow
-                    anchors {
-                        left: parent.left
-                        right: parent.right
+
+        DownloadManager {
+            id: downloadManager
+        }
+
+        Flow {
+            id: flow
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+
+            spacing: 16
+
+            Repeater {
+                id: communityRepeater
+                delegate: StoreItem {
+                    property var objectData
+
+                    Component.onCompleted: {
+                        console.log("ModelData", JSON.stringify(modelData))
+                        communityProgressBar.processCount += 1
+                        Firebase.get('simulations/' + modelData._key + ".json", function(response) {
+                            communityProgressBar.processCount -= 1
+                            objectData = response
+                            name = response.name
+                            description = response.description
+//                            imageUrl = response.screenshot
+
+                            downloadManager.download(Firebase.config.storageBucket,
+                                                     response.screenshot,
+                                                     "file:///tmp/image.png",
+                                                     Firebase.idToken,
+                                                     function () {
+                                                         console.log("It is done!")
+                                                         imageUrl = "file:///tmp/image.png"
+                                                     })
+
+                        })
                     }
-                    
-                    spacing: 16
-                    
-                    Repeater {
-                        id: communityRepeater
-                        delegate: StoreItem {
-                            property var objectData
 
-                            Component.onCompleted: {
-                                console.log("ModelData", JSON.stringify(modelData))
-                                communityProgressBar.processCount += 1
-                                Firebase.get('simulations/' + modelData._key + ".json", function(response) {
-                                    communityProgressBar.processCount -= 1
-                                    objectData = response
-                                    name = response.name
-                                    description = response.description
-                                    imageUrl = response.screenshot
-                                })
-                            }
-
-                            onClicked: {
-                                itemClicked(objectData)
-                            }
-                        }
+                    onClicked: {
+                        itemClicked(objectData)
                     }
                 }
             }
