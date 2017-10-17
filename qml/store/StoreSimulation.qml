@@ -13,26 +13,13 @@ Item {
 
     signal runClicked(var simulation)
 
-    property string name: objectData.name
-    property string description: objectData.description
+    property string name: objectData ? objectData.name : ""
+    property string description: objectData ? objectData.description : ""
     property string creator: "The Creator Company Inc."
-    property var objectData: {
-        return {
-            "createdAt":"2017-03-09T08:48:35.368Z",
-            "description":"hello",
-            "name":"test",
-            "objectId":"m4JkohPzJ8",
-            "screenshot":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/53a3dc41efa39bf5162678b7f581f622_screenshot.png",
-            "simulation":"https://parsefiles.back4app.com/JffGes20AXUtdN9B6E1RkkHaS7DOxVmxJFSJgLoN/b4d41543780cda16f4f06b2aa6334f12_simulation.nfy",
-            "updatedAt":"2017-03-09T08:48:35.368Z"
-        }
-    }
+    property var objectData
 
     property url imageUrl
     property real price: 0.0
-    readonly property url targetLocation: StandardPaths.writableLocation(StandardPaths.AppDataLocation, "community/" + objectData.objectId)
-    readonly property url simulationPath: targetLocation + "/simulation.nfy"
-    readonly property bool downloaded: FileIO.exists(simulationPath) // TODO replace with database
 
     Material.theme: Material.Light
 
