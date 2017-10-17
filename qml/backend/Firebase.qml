@@ -52,20 +52,30 @@ DownloadManager {
     }
 
     function processReply(req, callback) {
-        if (req.readyState === XMLHttpRequest.DONE) {
-            if(debug) {
-                console.log("Response:", req.responseText)
-            }
-            if(callback) {
-                var result = JSON.parse(req.responseText)
-                if(result.errors !== undefined) {
-                    console.error("Error parsing", req.responseText)
-                    return
-                }
-                callback(result)
-                return result
-            }
+        if (req.readyState !== XMLHttpRequest.DONE) {
+            return
         }
+
+        if(debug) {
+            console.log("Response:", req.responseText)
+        }
+
+        if(!callback) {
+            return
+        }
+
+        if (req.responseText === "") {
+            return
+        }
+
+        var result = JSON.parse(req.responseText)
+        if(result.errors !== undefined) {
+            console.error("Error parsing", req.responseText, result.errors)
+            return
+        }
+
+        callback(result)
+        return result
     }
 
     function serialize(obj) {
