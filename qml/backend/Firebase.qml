@@ -69,6 +69,11 @@ DownloadManager {
         }
 
         var result = JSON.parse(req.responseText)
+        if (!result) {
+            console.error("Error parsing", req.responseText)
+            return
+        }
+
         if(result.errors !== undefined) {
             console.error("Error parsing", req.responseText, result.errors)
             return
