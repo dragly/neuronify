@@ -100,10 +100,9 @@ Item {
                         neuronify.saveScreenshot(screenshotFilename, function() {
                             console.log("Saved screenshot for upload")
                             var data = JSON.stringify(neuronify.fileManager.serializeState())
-                            Firebase.uploadData(simulationAddress + "/simulation.nfy", data, function(simulationFile) {
-                                console.log("Uploaded the simulation!")
-                                console.log(JSON.stringify(simulationFile))
-                                // TODO move download manager here
+                            Firebase.uploadText(simulationAddress + "/simulation.nfy", data, function(simulationResult) {
+                                var simulationFile = JSON.parse(simulationResult)
+                                console.log("Uploaded the simulation!", simulationFile)
                                 Firebase.upload(
                                             simulationAddress + "/screenshot.png",
                                             screenshotFilename,

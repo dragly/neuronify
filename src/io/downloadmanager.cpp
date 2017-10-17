@@ -44,16 +44,30 @@ void DownloadManager::upload(const QString &objectName, const QUrl localUrl, QJS
 
     QByteArray data = file.readAll();
 
-    uploadData(objectName, data, callback);
+    uploadData(objectName, data, "image/png", [callback](const QString &result) mutable {
+        callback.call(QJSValueList{
+                          QJSValue(result)
+                      });
+    });
 }
 
-void DownloadManager::uploadData(const QString &objectName, const QByteArray data, QJSValue callback)
+void DownloadManager::uploadText(const QString &objectName, const QString text, QJSValue callback)
+{
+    uploadData(objectName, text.toUtf8(), "plain/text", [callback](const QString &result) mutable {
+        callback.call(QJSValueList{
+                          QJSValue(result)
+                      });
+    });
+}
+
+void DownloadManager::uploadData(const QString &objectName, const QByteArray data, const QByteArray contentType, std::function<void(const QString&)> callback)
 {
     QString urlString = QString("https://firebasestorage.googleapis.com/v0/b/") +
             m_storageBucket + "/o?name=" + QUrl::toPercentEncoding(objectName);
     QUrl url(urlString);
 
     QNetworkRequest request(url);
+    request.setRawHeader("Content-Type", contentType);
     request.setRawHeader("Authorization", QByteArray("Firebase ") + m_idToken.toLatin1());
 
     QNetworkReply *reply = m_networkAccessManager.post(request, data);
@@ -61,9 +75,7 @@ void DownloadManager::uploadData(const QString &objectName, const QByteArray dat
     connect(reply, &QNetworkReply::finished, [reply, callback]() mutable {
         QString result = QString::fromUtf8(reply->readAll());
 
-        callback.call(QJSValueList{
-                          QJSValue(result)
-                      });
+        callback(result);
 
         reply->deleteLater();
     });

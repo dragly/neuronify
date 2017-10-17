@@ -38,7 +38,8 @@ public:
     Q_INVOKABLE void download(const QString &objectName, const QUrl &localUrl, QJSValue callback);
     Q_INVOKABLE void cachedDownload(const QString &objectName, QJSValue callback);
     Q_INVOKABLE void upload(const QString &objectName, const QUrl localUrl, QJSValue callback);
-    Q_INVOKABLE void uploadData(const QString &objectName, const QByteArray data, QJSValue callback);
+    Q_INVOKABLE void uploadText(const QString &objectName, const QString text, QJSValue callback);
+    void uploadData(const QString &objectName, const QByteArray data, const QByteArray contentType, std::function<void(const QString&)> callback);
     void download(const QString &objectName, const QUrl &localUrl, std::function<void(void)> callback);
 
     Q_INVOKABLE QString buildUrl(const QString &name);
