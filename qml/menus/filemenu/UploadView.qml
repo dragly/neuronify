@@ -87,7 +87,8 @@ Item {
                 onClicked: {
                     var simulation = {
                         name: uploadNameField.text,
-                        description: uploadDescriptionField.text
+                        description: uploadDescriptionField.text,
+                        creator: Firebase.userId
                     }
                     uploadButton.enabled = false
                     Firebase.post("simulations.json", simulation, function(result) {
