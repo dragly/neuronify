@@ -119,32 +119,6 @@ Item {
         }
     }
 
-    //    LinearGradient {
-    //        id: gradient
-    //        property rect textRect: titleMetrics.boundingRect(titleText.text)
-    //        anchors {
-    //            top: titleText.top
-    //            bottom: titleText.bottom
-    //            right: parent.right
-    //        }
-    //        width: parent.width * 0.5
-    //        start: Qt.point(0, 0)
-    //        end: Qt.point(width, 0)
-    //        visible: titleText.x + titleText.width > root.width - 8
-    //        gradient: Gradient {
-    //            GradientStop {
-    //                color: "transparent"
-    //                position: 0
-    //            }
-    //            GradientStop {
-    //                color: background.color
-    //                position: 1
-    //            }
-    //        }
-    //    }
-
-
-
     MouseArea {
         id: mouseArea
         anchors.fill: parent

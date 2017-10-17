@@ -13,8 +13,6 @@ Item {
 
     signal runClicked(var simulation)
 
-    property DownloadManager downloadManager
-
     property string name: objectData.name
     property string description: objectData.description
     property string creator: "The Creator Company Inc."
@@ -30,7 +28,7 @@ Item {
         }
     }
 
-    property url imageUrl: objectData.screenshot
+    property url imageUrl
     property real price: 0.0
     readonly property url targetLocation: StandardPaths.writableLocation(StandardPaths.AppDataLocation, "community/" + objectData.objectId)
     readonly property url simulationPath: targetLocation + "/simulation.nfy"
@@ -38,7 +36,13 @@ Item {
 
     Material.theme: Material.Light
 
-    onObjectDataChanged: console.log(imageUrl, objectData.screenshot)
+    onObjectDataChanged: {
+        Firebase.cachedDownload(
+                    objectData.screenshot,
+                    function (localFileName) {
+                        imageUrl = localFileName
+                    })
+    }
 
     width: 1200
     height: 600
@@ -132,17 +136,6 @@ Item {
                         text: root.name
                         wrapMode: Label.WrapAtWordBoundaryOrAnywhere
                     }
-
-//                    Label {
-//                        id: creatorLabel
-//                        text: root.creator
-//                        font.weight: defaultMetric.font.weight * 1.4
-//                    }
-
-//                    Label {
-//                        id: priceLabel
-//                        text: root.price > 0 ? "NOK" + root.price.toFixed(2) : "FREE"
-//                    }
                 }
             }
 
@@ -166,38 +159,20 @@ Item {
                 }
                 spacing: 8
 
-                // TODO add back install button when database is ready
-
-//                Button {
-//                    id: installButton
-//                    text: downloaded ? "Reinstall" : "Install"
-//                    onClicked: {
-//                        FileIO.write(targetLocation + "/info.json", JSON.stringify(objectData, null, 4))
-//                        if(objectData.simulation) {
-//                            downloadManager.download(
-//                                        objectData.simulation.url,
-//                                        targetLocation + "/simulation.nfy")
-//                        }
-//                        if(objectData.screenshot) {
-//                            downloadManager.download(
-//                                        objectData.screenshot.url,
-//                                        targetLocation + "/screenshot.png")
-//                        }
-//                    }
-//                }
-
                 Button {
                     id: runButton
 
                     text: "Run"
                     onClicked: {
-                        Firebase.downloadData(objectData.simulation, function(data) {
-                            var simulation = {
-                                name: objectData.name,
-                                description: objectData.description,
-                                data: data,
-                            }
-                            root.runClicked(simulation)
+                        Firebase.cachedDownload(objectData.simulation, function(localFilename) {
+                            FileIO.read(localFilename, function(data) {
+                                var simulation = {
+                                    name: objectData.name,
+                                    description: objectData.description,
+                                    data: data,
+                                }
+                                root.runClicked(simulation)
+                            })
                         })
                     }
                 }

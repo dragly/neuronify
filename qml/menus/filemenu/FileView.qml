@@ -199,7 +199,6 @@ Item {
                         Component {
                             id: simulationComponent
                             StoreSimulation {
-                                downloadManager: _downloadManager // TODO is this needed anymore?
                                 onRunClicked: {
                                     runRequested(simulation)
                                     stackView.pop()

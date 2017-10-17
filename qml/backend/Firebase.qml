@@ -6,26 +6,23 @@ import Neuronify 1.0
 
 DownloadManager {
     id: root
+
+    apiKey: "AIzaSyAaTf5yA2Hz9mSJjIPJYwDLjXbr-B2ecMY"
+    authDomain: "neuronify.firebaseapp.com"
+    databaseURL: "https://neuronify.firebaseio.com"
+    projectId: "neuronify"
+    storageBucket: "neuronify.appspot.com"
+    messagingSenderId: "483464139976"
+
     property bool debug: true
     property string userId
     property string refreshToken
-    property string idToken
+//    property string idToken
     property string objectId
     property var settings: Settings {
         id: settings
         category: "firebase"
         property alias refreshToken: root.refreshToken
-    }
-
-    property var config: {
-        return {
-            apiKey: "AIzaSyAaTf5yA2Hz9mSJjIPJYwDLjXbr-B2ecMY",
-            authDomain: "neuronify.firebaseapp.com",
-            databaseURL: "https://neuronify.firebaseio.com",
-            projectId: "neuronify",
-            storageBucket: "neuronify.appspot.com",
-            messagingSenderId: "483464139976"
-        };
     }
 
     readonly property bool loggedIn: {
@@ -40,7 +37,7 @@ DownloadManager {
             objectId = ""
             return
         }
-        var url = "https://securetoken.googleapis.com/v1/token?key=" + config.apiKey
+        var url = "https://securetoken.googleapis.com/v1/token?key=" + apiKey
         var req = new XMLHttpRequest()
         req.open("POST", url)
         req.setRequestHeader("Content-Type", "application/x-www-form-urlencoded")
@@ -80,7 +77,7 @@ DownloadManager {
     }
 
     function login(username, password, callback) {
-        var url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=" + config.apiKey
+        var url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=" + apiKey
         var req = new XMLHttpRequest()
         req.open("POST", url)
         req.setRequestHeader("Content-Type", "application/json")
@@ -100,17 +97,8 @@ DownloadManager {
         req.send(JSON.stringify({"email": username, "password": password, "returnSecureToken":true}));
     }
 
-    function buildUrl(name) {
-        var url = config.databaseURL + "/" + name
-        if (idToken) {
-            url += "?auth=" + idToken
-        }
-        console.log("Built URL", url)
-        return url
-    }
-
     function buildUploadUrl(name) {
-        return "https://firebasestorage.googleapis.com/v0/b/" + config.storageBucket + "/o?name=" + name
+        return "https://firebasestorage.googleapis.com/v0/b/" + storageBucket + "/o?name=" + name
     }
 
     function get(name, callback) {
@@ -170,42 +158,6 @@ DownloadManager {
             console.log("Data", JSON.stringify(data))
         }
         req.send(JSON.stringify(data));
-    }
-
-    function upload(name, data, callback) {
-        var url = buildUploadUrl(name)
-        var req = new XMLHttpRequest()
-        req.open("POST", url)
-        req.setRequestHeader("Content-Type", "text/plain");
-        req.setRequestHeader("Authorization", "Firebase " + idToken)
-        req.onreadystatechange = function() {
-            console.log("RESPONSE DATA", req.responseText)
-            processReply(req, function(result){
-                console.log("Upload successfull!")
-                callback(result)
-            })
-        }
-        if (debug) {
-            console.log("POST", url, data)
-            console.log("Data", JSON.stringify(data))
-        }
-        req.send(JSON.stringify(data, null, 4));
-
-//        var req = new XMLHttpRequest;
-//        var url = serverUrl + "files/" + name
-//        req.open("POST", url);
-//        setHeaders(req)
-//        req.setRequestHeader("Content-Type", "text/plain");
-//        req.onreadystatechange = function() {
-//            if(req.readyState == XMLHttpRequest.DONE) {
-//                var result = JSON.parse(req.responseText)
-//                callback(result)
-//            }
-//        }
-//        if (debug) {
-//            console.debug("POST", url)
-//        }
-//        req.send(JSON.stringify(data, null, 4));
     }
 
     function logout() {

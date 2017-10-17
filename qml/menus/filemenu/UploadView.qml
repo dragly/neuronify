@@ -98,15 +98,14 @@ Item {
                         // TODO do not reference "global" items
                         neuronify.saveScreenshot(screenshotFilename, function() {
                             console.log("Saved screenshot for upload")
-                            var data = neuronify.fileManager.serializeState()
-                            Firebase.upload(simulationAddress + "/simulation.nfy", data, function(simulationFile) {
+                            var data = JSON.stringify(neuronify.fileManager.serializeState())
+                            Firebase.uploadData(simulationAddress + "/simulation.nfy", data, function(simulationFile) {
                                 console.log("Uploaded the simulation!")
                                 console.log(JSON.stringify(simulationFile))
                                 // TODO move download manager here
-                                _downloadManager.upload(
+                                Firebase.upload(
+                                            simulationAddress + "/screenshot.png",
                                             screenshotFilename,
-                                            Firebase.buildUploadUrl(simulationAddress + "/screenshot.png"),
-                                            Firebase.idToken,
                                             function(screenshotResult) {
                                                 console.log("Uploaded screenshot!")
                                                 console.log(screenshotResult)

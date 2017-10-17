@@ -107,16 +107,13 @@ Flickable {
                             objectData = response
                             name = response.name
                             description = response.description
-//                            imageUrl = response.screenshot
 
-                            downloadManager.download(Firebase.config.storageBucket,
-                                                     response.screenshot,
-                                                     "file:///tmp/image.png",
-                                                     Firebase.idToken,
-                                                     function () {
-                                                         console.log("It is done!")
-                                                         imageUrl = "file:///tmp/image.png"
-                                                     })
+                            Firebase.cachedDownload(
+                                        response.screenshot,
+                                        function (localFileName) {
+                                            console.log("It is done!", localFileName)
+                                            imageUrl = localFileName
+                                        })
 
                         })
                     }
