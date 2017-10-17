@@ -243,7 +243,12 @@ void DownloadManager::handleSslErrors(const QList<QSslError> &sslErrors)
 QString DownloadManager::buildUrl(const QString &name) {
     auto url = m_databaseURL + "/" + name;
     if (!m_idToken.isEmpty()) {
-        url += "?auth=" + m_idToken;
+        if (!name.contains("?")) {
+            url += "?";
+        } else {
+            url += "&";
+        }
+        url += "auth=" + m_idToken;
     }
     return url;
 }
