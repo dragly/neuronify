@@ -8,7 +8,7 @@ import QtMultimedia 5.0
 import Neuronify 1.0
 
 import "hud"
-import "menus/mainmenu"
+import "menus/filemenu"
 import "style"
 import "io"
 import "tools"

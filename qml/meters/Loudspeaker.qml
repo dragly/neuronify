@@ -75,13 +75,13 @@ Node {
                 property: "muted"
                 value: mutedCheckBox.checked
             }
-            ExclusiveGroup { id: soundGroup }
+            ButtonGroup { id: soundGroup }
             Repeater {
                 id: repeater
                 model: soundsModel
                 RadioButton {
                     property url source: model.source
-                    exclusiveGroup: soundGroup
+//                    buttonGroup: soundGroup
 
                     Text{
                         anchors.left: parent.right
