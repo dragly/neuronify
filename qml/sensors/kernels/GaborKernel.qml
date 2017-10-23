@@ -11,6 +11,30 @@ GaborKernelEngine{
         Column{
             BoundSlider {
                 target: gaborEngine
+                property: "shift_x"
+                minimumValue: -0.5
+                maximumValue: 0.5
+                unitScale: 0.1
+                stepSize: 0.1
+                precision: 1
+                text: "x"
+                unit: ""
+            }
+
+            BoundSlider {
+                target: gaborEngine
+                property: "shift_y"
+                minimumValue: -0.5
+                maximumValue: 0.5
+                unitScale: 0.1
+                stepSize: 0.1
+                precision: 1
+                text: "y"
+                unit: ""
+            }
+
+            BoundSlider {
+                target: gaborEngine
                 property: "theta"
                 minimumValue: 0.0
                 maximumValue: Math.PI
@@ -21,12 +45,15 @@ GaborKernelEngine{
                 unit: "degrees"
             }
 
+
         }
 
     }
 
     savedProperties: PropertyGroup {
         property alias theta: gaborEngine.theta
+        property alias shift_x: gaborEngine.shift_x
+        property alias shift_y: gaborEngine.shift_y
     }
 }
 

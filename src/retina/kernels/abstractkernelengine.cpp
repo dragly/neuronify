@@ -4,6 +4,8 @@ AbstractKernelEngine::AbstractKernelEngine()
 {
         updateX();
         updateY();
+        m_shift_x = 0.0;
+        m_shift_y = 0.0;
 }
 
 int AbstractKernelEngine::resolutionHeight() const
@@ -38,9 +40,42 @@ void AbstractKernelEngine::setResolutionWidth(int resolutionWidth)
     emit needsRecreation();
 }
 
+void AbstractKernelEngine::setShift_x(double shift_x)
+{
+    qWarning("Floating point comparison needs context sanity check");
+    if (qFuzzyCompare(m_shift_x, shift_x))
+        return;
+
+    m_shift_x = shift_x;
+    emit shift_xChanged(m_shift_x);
+    emit needsRecreation();
+}
+
+void AbstractKernelEngine::setShift_y(double shift_y)
+{
+    qWarning("Floating point comparison needs context sanity check");
+    if (qFuzzyCompare(m_shift_y, shift_y))
+        return;
+
+    m_shift_y = shift_y;
+    emit shift_yChanged(m_shift_y);
+    emit needsRecreation();
+
+}
+
 vector<double> AbstractKernelEngine::y() const
 {
     return m_y;
+}
+
+double AbstractKernelEngine::shift_x() const
+{
+    return m_shift_x;
+}
+
+double AbstractKernelEngine::shift_y() const
+{
+    return m_shift_y;
 }
 
 vector<double> AbstractKernelEngine::x() const

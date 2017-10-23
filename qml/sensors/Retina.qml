@@ -91,7 +91,9 @@ Node {
                                       kernelLoader.item : null
 
         imageAlpha: 225
+
     }
+
 
     Rectangle {
         id: backgroundRect

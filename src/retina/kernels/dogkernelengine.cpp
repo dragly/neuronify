@@ -27,7 +27,7 @@ bool DogKernelEngine::isOffCenter() const
 
 double DogKernelEngine::advance(double x, double y)
 {
-    double r2 = x*x + y*y;
+    double r2 = (x-m_shift_x)*(x-m_shift_x) + (y-m_shift_y)*(y-m_shift_y);
     double center   = m_centerWeight * exp(-m_centerExp * r2);
     double surround = m_surroundWeight * exp(-m_surroundExp * r2);
     return center - surround;
