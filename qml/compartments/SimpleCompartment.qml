@@ -35,17 +35,9 @@ Node {
         property real potassiumPotential: -77
         property real leakPotential: -54.4
         property real sodiumActivation: 0.5
-        property real sodiumActivationAlpha: 0.1 * ((voltage + 40) / (1 - Math.exp(-((voltage+40)/10))))
-        property real sodiumActivationBeta: 4 * Math.exp(-(voltage + 65) / 18.0)
         property real sodiumInactivation: 0.5
-        property real sodiumInactivationAlpha: 0.07 * Math.exp(-(voltage + 65) / 20.0)
-        property real sodiumInactivationBeta: 1.0 / (Math.exp(-(voltage + 35)/10) + 1.0)
         property real potassiumActivation: 0.5
-        property real potassiumActivationAlpha: 0.01 * ((voltage + 55) / (1.0 - Math.exp(-(voltage + 55) / 10.0)))
-        property real potassiumActivationBeta: 0.125 * Math.exp(- (voltage + 65) / 80)
-//        property real axialResistance: 0.5
-//        property real length: 1.0
-//        property real diameter: 0.8
+
         property real sodiumCurrent: 0.0
         property real potassiumCurrent: 0.0
         property real leakCurrent: 0.0
@@ -57,13 +49,20 @@ Node {
         }
 
         onReceivedCurrent: {
-            console.log(root, "Received", current)
             receivedCurrents += current
-            console.log(root, "Sum", receivedCurrents)
         }
 
         onStepped: {
             dt = 0.01
+
+            var V = voltage
+
+            var sodiumActivationAlpha = 0.1 * ((V + 40) / (1 - Math.exp(-((V+40)/10))))
+            var sodiumActivationBeta = 4 * Math.exp(-(V + 65) / 18.0)
+            var sodiumInactivationAlpha = 0.07 * Math.exp(-(V + 65) / 20.0)
+            var sodiumInactivationBeta = 1.0 / (Math.exp(-(V + 35)/10) + 1.0)
+            var potassiumActivationAlpha = 0.01 * ((V + 55) / (1.0 - Math.exp(-(V + 55) / 10.0)))
+            var potassiumActivationBeta = 0.125 * Math.exp(- (V + 65) / 80)
 
             var m = sodiumActivation
             var alpham = sodiumActivationAlpha
@@ -99,16 +98,6 @@ Node {
             if(forceTargetVoltage) {
                 voltage = targetVoltage
             } else {
-
-    //            var axialCurrent = 0
-    //            var d = diameter
-    //            var Ra = axialResistance
-    //            var l = length
-    //            for(var i in connections) {
-    //                var connection = connections[i]
-    //                axialCurrent += d / (4 * Ra * l * l) * (V - connection.otherCompartment(compartmentRoot).voltage)
-    //            }
-
                 leakCurrent = -gL * (V - EL)
                 if(passive) {
                     sodiumCurrent = 0
@@ -117,12 +106,9 @@ Node {
                     sodiumCurrent = -gNa * m3 * h * (V - ENa)
                     potassiumCurrent = -gK * n4 * (V - EK)
                 }
-                dt = 0.01
-                var dV = dt * (1.0 / cm) * (leakCurrent + sodiumCurrent + potassiumCurrent + receivedCurrents)
+                var dV = dt * (1.0 / cm) * (leakCurrent + sodiumCurrent + potassiumCurrent + receivedCurrents * 1e9)
 
-                console.log(leakCurrent, sodiumCurrent, potassiumCurrent, receivedCurrents)
-
-                voltage = voltage + dV
+                voltage += dV
             }
 
     //        sodiumCurrent = gNa * m3 * h * (V - ENa)
@@ -176,7 +162,7 @@ Node {
 
     Text {
         anchors.centerIn: parent
-        text: engine.voltage.toFixed(1)
+        text: (engine.voltage).toFixed(1)
         font.pixelSize: 14
     }
 

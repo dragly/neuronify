@@ -37,8 +37,7 @@ Edge {
             var d = diameter
             var Ra = axialResistance
             var l = length
-            currentOutput = - d / (4 * Ra * l * l) * (itemB.engine.voltage - itemA.engine.voltage)
-            console.log("Output", currentOutput)
+            currentOutput = - d / (4 * Ra * l * l) * (itemB.engine.voltage - itemA.engine.voltage) * 1e-9
         }
     }
 
