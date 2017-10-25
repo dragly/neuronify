@@ -22,9 +22,9 @@ Edge {
     engine: EdgeEngine {
         id: engine
 
-        property real axialResistance: 0.5
-        property real length: 1.0
-        property real diameter: 0.8
+        property real axialResistance: 0.5 * 1e12
+        property real length: 1.0 * 1e-6
+        property real diameter: 0.8 * 1e-6
 
         onResettedDynamics: {
             currentOutput = 0
@@ -34,10 +34,12 @@ Edge {
         }
 
         onStepped:{
+            var Va = itemA.engine.voltage
+            var Vb = itemB.engine.voltage
             var d = diameter
             var Ra = axialResistance
             var l = length
-            currentOutput = - d / (4 * Ra * l * l) * (itemB.engine.voltage - itemA.engine.voltage) * 1e-9
+            currentOutput = - d / (4 * Ra * l * l) * (Vb - Va)
         }
     }
 

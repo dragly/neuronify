@@ -9,7 +9,7 @@ Node {
     filename: "compartments/SimpleCompartment.qml"
     name: "Simple compartment"
 
-    readonly property real voltage: engine.voltage * 1e-3 // TODO consider removing and making voltmeter use engine.voltage
+    readonly property real voltage: engine.voltage
 
     width: 64
     height: 64
@@ -55,7 +55,7 @@ Node {
         onStepped: {
             dt = 0.01
 
-            var V = voltage
+            var V = voltage * 1e3
 
             var sodiumActivationAlpha = 0.1 * ((V + 40) / (1 - Math.exp(-((V+40)/10))))
             var sodiumActivationBeta = 4 * Math.exp(-(V + 65) / 18.0)
@@ -91,7 +91,6 @@ Node {
             var EL = leakPotential
             var ENa = sodiumPotential
             var EK = potassiumPotential
-            var V = voltage
             var m3 = m*m*m
             var n4 = n*n*n*n
 
@@ -108,7 +107,8 @@ Node {
                 }
                 var dV = dt * (1.0 / cm) * (leakCurrent + sodiumCurrent + potassiumCurrent + receivedCurrents * 1e9)
 
-                voltage += dV
+                V += dV
+                voltage = V * 1e-3
             }
 
     //        sodiumCurrent = gNa * m3 * h * (V - ENa)
@@ -157,12 +157,12 @@ Node {
         anchors.margins: 2.0
         radius: Math.min(width, height) / 10
         color: "#f7fbff"
-        opacity: (engine.voltage + 100) / (150)
+        opacity: (engine.voltage * 1e3 + 100) / (150)
     }
 
     Text {
         anchors.centerIn: parent
-        text: (engine.voltage).toFixed(1)
+        text: (engine.voltage * 1e3).toFixed(1)
         font.pixelSize: 14
     }
 
