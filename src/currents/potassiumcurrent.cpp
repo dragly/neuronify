@@ -82,7 +82,7 @@ void PotassiumCurrent::stepEvent(double dt, bool parentEnabled)
     double betan = potassiumActivationBeta;
     double dn = dt * (alphan * (1 - n) - betan * n);
 
-    n += dn;
+    n += 1e3 * dn;
     n = fmax(0.0, fmin(1.0, n));
 
     double gK = m_meanPotassiumConductance;
@@ -97,7 +97,7 @@ void PotassiumCurrent::stepEvent(double dt, bool parentEnabled)
 void PotassiumCurrent::resetPropertiesEvent()
 {
     Current::resetPropertiesEvent();
-    setMeanPotassiumConductance(36e-6);
+    setMeanPotassiumConductance(36e-3);
     setPotassiumPotential(-77e-3);
 }
 

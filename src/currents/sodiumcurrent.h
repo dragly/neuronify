@@ -12,6 +12,7 @@ class SodiumCurrent : public Current
     Q_PROPERTY(double meanSodiumConductance READ meanSodiumConductance WRITE setMeanSodiumConductance NOTIFY meanSodiumConductanceChanged)
     Q_PROPERTY(double sodiumPotential READ sodiumPotential WRITE setSodiumPotential NOTIFY sodiumPotentialChanged)
     Q_PROPERTY(double voltage READ voltage WRITE setVoltage NOTIFY voltageChanged)
+    Q_PROPERTY(double area READ area WRITE setArea NOTIFY areaChanged)
 
 public:
     explicit SodiumCurrent(QQuickItem *parent = 0);
@@ -22,6 +23,8 @@ public:
     double sodiumPotential() const;
     double voltage() const;
 
+    double area() const;
+
 public slots:
     void setSodiumActivation(double sodiumActivation);
     void setSodiumInactivation(double sodiumInactivation);
@@ -29,12 +32,16 @@ public slots:
     void setSodiumPotential(double sodiumPotential);
     void setVoltage(double voltage);
 
+    void setArea(double area);
+
 signals:
     void sodiumActivationChanged(double sodiumActivation);
     void sodiumInactivationChanged(double sodiumInactivation);
     void meanSodiumConductanceChanged(double meanSodiumConductance);
     void sodiumPotentialChanged(double sodiumPotential);
     void voltageChanged(double voltage);
+
+    void areaChanged(double area);
 
 protected:
     virtual void stepEvent(double dt, bool parentEnabled) override;
@@ -46,8 +53,8 @@ private:
     double m_meanSodiumConductance = 0.0;
     double m_sodiumPotential = 0.0;
     double m_voltage = 0.0;
+    double m_area = 0.0;
 
-    // NeuronifyObject interface
 protected:
     virtual void resetDynamicsEvent() override;
 };
