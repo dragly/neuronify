@@ -94,6 +94,28 @@ Node {
 
     }
 
+    Rectangle {
+        z: 1
+        x: 10; y: 10
+        width: 20; height: 20
+        color: "red"
+
+        Drag.active: dragArea.drag.active
+        Drag.hotSpot.x: 0
+        Drag.hotSpot.y: 10
+
+        MouseArea {
+            id: dragArea
+            anchors.fill: parent
+            drag.target: parent
+            drag.axis: Drag.XAndYAxis
+            drag.minimumX: 0
+            drag.maximumX: retinaPainter.width
+            drag.minimumY: 0
+            drag.maximumY: retinaPainter.height
+        }
+    }
+
 
     Rectangle {
         id: backgroundRect
