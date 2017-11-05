@@ -126,5 +126,6 @@
         <file>qml/hud/TopCreationItem.qml</file>
         <file>qml/compartments/SimpleCompartment.qml</file>
         <file>qml/hud/CompartmentsList.qml</file>
+        <file>qml/compartments/CompartmentEngine.qml</file>
     </qresource>
 </RCC>

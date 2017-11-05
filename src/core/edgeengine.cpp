@@ -40,7 +40,6 @@ void EdgeEngine::receiveFire(NodeEngine *sender)
 
 void EdgeEngine::setCurrentInput(double currentInput)
 {
-    qWarning("Floating point comparison needs context sanity check");
     if (qFuzzyCompare(m_currentInput, currentInput))
         return;
 
