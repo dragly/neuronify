@@ -108,14 +108,14 @@ void SodiumCurrent::stepEvent(double dt, bool parentEnabled)
     double m = m_sodiumActivation;
     double alpham = sodiumActivationAlpha;
     double betam = sodiumActivationBeta;
-    double dm = dt * (alpham * (1 - m) - betam * m);
+    double dm = 1e3 * dt * (alpham * (1 - m) - betam * m);
     double h = m_sodiumInactivation;
     double alphah = sodiumInactivationAlpha;
     double betah = sodiumInactivationBeta;
-    double dh = dt * (alphah * (1 - h) - betah * h);
+    double dh = 1e3 * dt * (alphah * (1 - h) - betah * h);
 
-    m += 1e3 * dm; // TODO WARNING this unit is wrong, just fixed because of dt
-    h += 1e3 * dh;
+    m += dm;
+    h += dh;
 
     m = fmax(0.0, fmin(1.0, m));
     h = fmax(0.0, fmin(1.0, h));

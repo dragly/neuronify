@@ -80,16 +80,16 @@ void PotassiumCurrent::stepEvent(double dt, bool parentEnabled)
     double n = m_potassiumActivation;
     double alphan = potassiumActivationAlpha;
     double betan = potassiumActivationBeta;
-    double dn = dt * (alphan * (1 - n) - betan * n);
+    double dn = 1e3 * dt * (alphan * (1 - n) - betan * n);
 
-    n += 1e3 * dn;
+    n += dn;
     n = fmax(0.0, fmin(1.0, n));
 
     double gK = m_meanPotassiumConductance;
     double EK = m_potassiumPotential;
     double n4 = n*n*n*n;
 
-    setCurrent(-gK * n4 * (m_voltage - EK)); // TODO check units
+    setCurrent(-gK * n4 * (m_voltage - EK));
 
     m_potassiumActivation = n;
 }

@@ -62,8 +62,6 @@ void CompartmentEngine::stepEvent(double dt, bool parentEnabled)
         }
     }
 
-    dt = 0.01; // TODO fix
-
     double totalCurrent = otherCurrents + m_receivedCurrents;
     double dV = totalCurrent / m_capacitance * dt;
     m_voltage += dV;

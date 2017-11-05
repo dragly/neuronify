@@ -30,7 +30,7 @@ Node {
             restingPotential: -54.4e-3
 
             onResettedProperties: {
-                var conductance = 0.3 * 1e-3
+                var conductance = 0.3e-3
                 resistance = (1.0 / conductance)
             }
         }
