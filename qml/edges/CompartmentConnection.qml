@@ -40,6 +40,7 @@ Edge {
             var Ra = axialResistance
             var l = length
             currentOutput = - d / (4 * Ra * l * l) * (Vb - Va)
+            currentInput = -currentOutput
         }
     }
 

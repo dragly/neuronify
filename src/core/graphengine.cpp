@@ -198,6 +198,9 @@ void step(const QVector<NodeBase*> &nodes, const QVector<EdgeBase*> &edges, doub
             if(edge->engine()->currentOutput() != 0.0) {
                 engineB->receiveCurrent(sign * edge->engine()->currentOutput(), engineA);
             }
+            if(edge->engine()->currentInput() != 0.0) {
+                engineA->receiveCurrent(sign * edge->engine()->currentInput(), engineB);
+            }
         }
 
         //TODO: do we need this with the new synapses?
