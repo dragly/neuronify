@@ -31,11 +31,6 @@ double SodiumCurrent::voltage() const
     return m_voltage;
 }
 
-double SodiumCurrent::area() const
-{
-    return m_area;
-}
-
 void SodiumCurrent::setSodiumActivation(double sodiumActivation)
 {
     if (qFuzzyCompare(m_sodiumActivation, sodiumActivation))
@@ -79,15 +74,6 @@ void SodiumCurrent::setVoltage(double voltage)
 
     m_voltage = voltage;
     emit voltageChanged(m_voltage);
-}
-
-void SodiumCurrent::setArea(double area)
-{
-    if (qFuzzyCompare(m_area, area))
-        return;
-
-    m_area = area;
-    emit areaChanged(m_area);
 }
 
 void SodiumCurrent::stepEvent(double dt, bool parentEnabled)
@@ -137,7 +123,6 @@ void SodiumCurrent::resetPropertiesEvent()
     Current::resetPropertiesEvent();
     setMeanSodiumConductance(120e-3);
     setSodiumPotential(50e-3);
-    setArea(1e-18);
 }
 
 

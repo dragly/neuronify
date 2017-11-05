@@ -17,6 +17,26 @@ double CompartmentEngine::capacitance() const
     return m_capacitance;
 }
 
+double CompartmentEngine::length() const
+{
+    return m_length;
+}
+
+double CompartmentEngine::radiusA() const
+{
+    return m_radiusA;
+}
+
+double CompartmentEngine::radiusB() const
+{
+    return m_radiusB;
+}
+
+double CompartmentEngine::area() const
+{
+    return m_area;
+}
+
 void CompartmentEngine::setVoltage(double voltage)
 {
     if (qFuzzyCompare(m_voltage, voltage))
@@ -35,16 +55,48 @@ void CompartmentEngine::setCapacitance(double capacitance)
     emit capacitanceChanged(m_capacitance);
 }
 
+void CompartmentEngine::setLength(double length)
+{
+    if (qFuzzyCompare(m_length, length))
+        return;
+
+    m_length = length;
+    updateArea();
+    emit lengthChanged(m_length);
+}
+
+void CompartmentEngine::setRadiusA(double radiusA)
+{
+    if (qFuzzyCompare(m_radiusA, radiusA))
+        return;
+
+    m_radiusA = radiusA;
+    updateArea();
+    emit radiusAChanged(m_radiusA);
+}
+
+void CompartmentEngine::setRadiusB(double radiusB)
+{
+    if (qFuzzyCompare(m_radiusB, radiusB))
+        return;
+
+    m_radiusB = radiusB;
+    updateArea();
+    emit radiusBChanged(m_radiusB);
+}
+
 
 void CompartmentEngine::resetDynamicsEvent()
 {
-    setVoltage(-65e-3);
+    setVoltage(-60e-3);
     m_receivedCurrents = 0.0;
 }
 
 void CompartmentEngine::resetPropertiesEvent()
 {
-    setCapacitance(1e-6);
+    setLength(50e-6);
+    setRadiusA(50e-6);
+    setRadiusB(50e-6);
 }
 
 void CompartmentEngine::stepEvent(double dt, bool parentEnabled)
@@ -78,4 +130,15 @@ void CompartmentEngine::receiveCurrentEvent(double currentOutput, NodeEngine *se
         return;
     }
     m_receivedCurrents += currentOutput;
+}
+
+void CompartmentEngine::updateArea()
+{
+    double h = m_length;
+    double r1 = m_radiusA;
+    double r2 = m_radiusB;
+    double rd = r1 - r2;
+
+    m_area = M_PI * ((r1 + r2) * sqrt(rd*rd + h*h) + r1*r1 + r2*r2);
+    emit areaChanged(m_area);
 }

@@ -41,6 +41,7 @@ private:
     double m_meanPotassiumConductance = 36e-3;
     double m_potassiumPotential = -77e-3;
     double m_voltage = 0.0;
+    double m_area;
 };
 
 #endif // POTASSIUMCURRENT_H

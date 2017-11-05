@@ -24,22 +24,22 @@ Node {
 //            property alias currentOutput: engine.currentOutput
         }
 
-        LeakCurrent {
+        capacitance: 1e-6 * engine.area * 1e4
 
+        LeakCurrent {
+            property real conductance: 0.3e-3 * engine.area * 1e4
+            resistance: (1.0 / conductance)
             voltage: engine.voltage
             restingPotential: -54.4e-3
-
-            onResettedProperties: {
-                var conductance = 0.3e-3
-                resistance = (1.0 / conductance)
-            }
         }
 
         SodiumCurrent {
+            meanSodiumConductance: 120e-3 * engine.area * 1e4
             voltage: engine.voltage
         }
 
         PotassiumCurrent {
+            meanPotassiumConductance: 36e-3 * engine.area * 1e4
             voltage: engine.voltage
         }
     }
