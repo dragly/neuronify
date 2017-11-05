@@ -42,16 +42,21 @@
             <!-- Background running -->
         </activity>
     </application>
-    <uses-sdk android:minSdkVersion="16" android:targetSdkVersion="16"/>
+    <uses-sdk android:minSdkVersion="16" android:targetSdkVersion="23"/>
     <supports-screens android:largeScreens="true" android:normalScreens="true" android:anyDensity="true" android:smallScreens="true"/>
 
     <!-- The following comment will be replaced upon deployment with default permissions based on the dependencies of the application.
          Remove the comment if you do not require these default permissions. -->
-    <!-- %%INSERT_PERMISSIONS -->
+
 
     <!-- The following comment will be replaced upon deployment with default features based on the dependencies of the application.
          Remove the comment if you do not require these default features. -->
-    <!-- %%INSERT_FEATURES -->
 
-<uses-permission android:name="android.permission.CAMERA"/>
+
+
+
+
+
+<!-- %%INSERT_FEATURES -->
+<!-- %%INSERT_PERMISSIONS -->
 </manifest>
