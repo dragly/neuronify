@@ -10,6 +10,9 @@ Node {
     name: "Simple compartment"
 
     readonly property real voltage: engine.voltage
+    readonly property real leakCurrent: leakCurrent.current
+    readonly property real sodiumCurrent: sodiumCurrent.current
+    readonly property real potassiumCurrent: potassiumCurrent.current
 
     width: 64
     height: 64
@@ -27,6 +30,7 @@ Node {
         capacitance: 1e-6 * engine.area * 1e4
 
         LeakCurrent {
+            id: leakCurrent
             property real conductance: 0.3e-3 * engine.area * 1e4
             resistance: (1.0 / conductance)
             voltage: engine.voltage
@@ -34,11 +38,13 @@ Node {
         }
 
         SodiumCurrent {
+            id: sodiumCurrent
             meanSodiumConductance: 120e-3 * engine.area * 1e4
             voltage: engine.voltage
         }
 
         PotassiumCurrent {
+            id: potassiumCurrent
             meanPotassiumConductance: 36e-3 * engine.area * 1e4
             voltage: engine.voltage
         }
