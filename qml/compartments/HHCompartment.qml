@@ -6,11 +6,13 @@ import "../edges"
 
 Node {
     id: root
-    filename: "compartments/SimpleCompartment.qml"
-    name: "Simple compartment"
+    filename: "compartments/HHCompartment.qml"
+    name: "Hodgkin-Huxley compartment"
 
     readonly property real voltage: engine.voltage
     readonly property real leakCurrent: leakCurrent.current
+    readonly property real sodiumCurrent: sodiumCurrent.current
+    readonly property real potassiumCurrent: potassiumCurrent.current
 
     width: 64
     height: 64
@@ -33,6 +35,18 @@ Node {
             resistance: (1.0 / conductance)
             voltage: engine.voltage
             restingPotential: -54.4e-3
+        }
+
+        SodiumCurrent {
+            id: sodiumCurrent
+            meanSodiumConductance: 120e-3 * engine.area * 1e4
+            voltage: engine.voltage
+        }
+
+        PotassiumCurrent {
+            id: potassiumCurrent
+            meanPotassiumConductance: 36e-3 * engine.area * 1e4
+            voltage: engine.voltage
         }
     }
 

@@ -331,7 +331,7 @@ Item {
                     }
                     ListElement  {
                         name: "Compartments"
-                        source: "qrc:/qml/compartments/SimpleCompartment.qml"
+                        source: "qrc:/qml/compartments/HHCompartment.qml"
                         imageSource: "qrc:/images/generators/current_clamp.png"
                         listSource: "qrc:/qml/hud/CompartmentsList.qml"
                     }

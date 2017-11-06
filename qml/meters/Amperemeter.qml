@@ -94,9 +94,6 @@ Node {
                     var compartment = connectionPlot.connection.itemB
 
                     if(compartment) {
-                        console.log("I_L:", compartment.leakCurrent)
-                        console.log("I_Na:", compartment.sodiumCurrent)
-                        console.log("I_K:", compartment.potassiumCurrent)
                         if(compartment.leakCurrent) {
                             leakPlot.addPoint(time * timeFactor, compartment.leakCurrent * ampereFactor)
                         }
