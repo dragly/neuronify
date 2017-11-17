@@ -4,8 +4,8 @@ AbstractKernelEngine::AbstractKernelEngine()
 {
         updateX();
         updateY();
-        m_shift_x = 0.0;
-        m_shift_y = 0.0;
+        m_xOffset = 0.0;
+        m_yOffset = 0.0;
 }
 
 int AbstractKernelEngine::resolutionHeight() const
@@ -40,25 +40,25 @@ void AbstractKernelEngine::setResolutionWidth(int resolutionWidth)
     emit needsRecreation();
 }
 
-void AbstractKernelEngine::setShift_x(double shift_x)
+void AbstractKernelEngine::setXOffset(double xOffset)
 {
     qWarning("Floating point comparison needs context sanity check");
-    if (qFuzzyCompare(m_shift_x, shift_x))
+    if (qFuzzyCompare(m_xOffset, xOffset))
         return;
 
-    m_shift_x = shift_x;
-    emit shift_xChanged(m_shift_x);
+    m_xOffset = xOffset;
+    emit xOffsetChanged(m_xOffset);
     emit needsRecreation();
 }
 
-void AbstractKernelEngine::setShift_y(double shift_y)
+void AbstractKernelEngine::setYOffset(double yOffset)
 {
     qWarning("Floating point comparison needs context sanity check");
-    if (qFuzzyCompare(m_shift_y, shift_y))
+    if (qFuzzyCompare(m_yOffset, yOffset))
         return;
 
-    m_shift_y = shift_y;
-    emit shift_yChanged(m_shift_y);
+    m_yOffset = yOffset;
+    emit yOffsetChanged(m_yOffset);
     emit needsRecreation();
 
 }
@@ -68,14 +68,14 @@ vector<double> AbstractKernelEngine::y() const
     return m_y;
 }
 
-double AbstractKernelEngine::shift_x() const
+double AbstractKernelEngine::xOffset() const
 {
-    return m_shift_x;
+    return m_xOffset;
 }
 
-double AbstractKernelEngine::shift_y() const
+double AbstractKernelEngine::yOffset() const
 {
-    return m_shift_y;
+    return m_yOffset;
 }
 
 vector<double> AbstractKernelEngine::x() const

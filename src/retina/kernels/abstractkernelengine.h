@@ -15,8 +15,8 @@ class AbstractKernelEngine: public NeuronifyObject
     Q_OBJECT
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
     Q_PROPERTY(int resolutionWidth READ resolutionWidth WRITE setResolutionWidth NOTIFY resolutionWidthChanged)
-    Q_PROPERTY(double shift_x READ shift_x WRITE setShift_x NOTIFY shift_xChanged)
-    Q_PROPERTY(double shift_y READ shift_y WRITE setShift_y NOTIFY shift_yChanged)
+    Q_PROPERTY(double xOffset READ xOffset WRITE setXOffset NOTIFY xOffsetChanged)
+    Q_PROPERTY(double yOffset READ yOffset WRITE setYOffset NOTIFY yOffsetChanged)
 
 
 public:
@@ -29,30 +29,30 @@ public:
     vector<double> x() const;
     vector<double> y() const;
 
-    double shift_x() const;
-    double shift_y() const;
+    double xOffset() const;
+    double yOffset() const;
 
 public slots:
     void setResolutionHeight(int resolutionHeight);
     void setResolutionWidth(int resolutionWidth);
 
-    void setShift_x(double shift_x);
-    void setShift_y(double shift_y);
+    void setXOffset(double xOffset);
+    void setYOffset(double yOffset);
 
 signals:
     void resolutionHeightChanged(int resolutionHeight);
     void resolutionWidthChanged(int resolutionWidth);
     void needsRecreation();
-    void shift_xChanged(double shift_x);
-    void shift_yChanged(double shift_y);
+    void xOffsetChanged(double xOffset);
+    void yOffsetChanged(double yOffset);
 
 protected:
     int m_resolutionHeight=20;
     int m_resolutionWidth=20;
     vector<double> m_x;
     vector<double> m_y;
-    double m_shift_x;
-    double m_shift_y;
+    double m_xOffset;
+    double m_yOffset;
 
 private:
     void updateX();

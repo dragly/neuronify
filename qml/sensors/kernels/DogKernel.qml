@@ -14,7 +14,7 @@ DogKernelEngine{
         Column{
             BoundSlider {
                 target: dogEngine
-                property: "shift_x"
+                property: "xOffset"
                 minimumValue: -0.5
                 maximumValue: 0.5
                 unitScale: 0.1
@@ -26,7 +26,7 @@ DogKernelEngine{
 
             BoundSlider {
                 target: dogEngine
-                property: "shift_y"
+                property: "yOffset"
                 minimumValue: -0.5
                 maximumValue: 0.5
                 unitScale: 0.1
@@ -52,8 +52,8 @@ DogKernelEngine{
 
     savedProperties: PropertyGroup {
         property alias isOffCenter: dogEngine.isOffCenter
-        property alias shift_x: dogEngine.shift_x
-        property alias shift_y: dogEngine.shift_y
+        property alias xOffset: dogEngine.xOffset
+        property alias yOffset: dogEngine.yOffset
     }
 
 }
