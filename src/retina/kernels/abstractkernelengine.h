@@ -15,6 +15,8 @@ class AbstractKernelEngine: public NeuronifyObject
     Q_OBJECT
     Q_PROPERTY(int resolutionHeight READ resolutionHeight WRITE setResolutionHeight NOTIFY resolutionHeightChanged)
     Q_PROPERTY(int resolutionWidth READ resolutionWidth WRITE setResolutionWidth NOTIFY resolutionWidthChanged)
+    Q_PROPERTY(double xOffset READ xOffset WRITE setXOffset NOTIFY xOffsetChanged)
+    Q_PROPERTY(double yOffset READ yOffset WRITE setYOffset NOTIFY yOffsetChanged)
 
 
 public:
@@ -27,20 +29,30 @@ public:
     vector<double> x() const;
     vector<double> y() const;
 
+    double xOffset() const;
+    double yOffset() const;
+
 public slots:
     void setResolutionHeight(int resolutionHeight);
     void setResolutionWidth(int resolutionWidth);
+
+    void setXOffset(double xOffset);
+    void setYOffset(double yOffset);
 
 signals:
     void resolutionHeightChanged(int resolutionHeight);
     void resolutionWidthChanged(int resolutionWidth);
     void needsRecreation();
+    void xOffsetChanged(double xOffset);
+    void yOffsetChanged(double yOffset);
 
 protected:
     int m_resolutionHeight=20;
     int m_resolutionWidth=20;
     vector<double> m_x;
     vector<double> m_y;
+    double m_xOffset;
+    double m_yOffset;
 
 private:
     void updateX();
