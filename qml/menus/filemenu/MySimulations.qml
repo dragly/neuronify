@@ -13,8 +13,12 @@ Item {
     signal itemClicked(var simulationData)
 
     Component.onCompleted: {
+        refresh()
+    }
+
+    function refresh() {
         progressBar.processCount += 1
-        Firebase.get('simulations.json?orderBy="creator"&equalTo="' + Firebase.userId + '"', function(response) {
+        Firebase.get('simulations.json?orderBy="uid"&equalTo="' + Firebase.userId + '"', function(response) {
             progressBar.processCount -= 1
             communityRepeater.model = Firebase.createModel(response)
         })
@@ -29,9 +33,16 @@ Item {
         }
         spacing: 16
 
+        Label {
+            visible: !progressBar.visible && (!communityRepeater.model || communityRepeater.model.length === 0)
+            wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+            text: "You have not yet shared any simulations.\n" +
+                  "Click the button below to share your first simulation."
+        }
+
         Button {
             Material.theme: Material.Light
-            text: "Upload"
+            text: "Upload current simulation"
             onClicked: {
                 uploadClicked()
             }

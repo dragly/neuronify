@@ -37,7 +37,21 @@ Flickable {
     
     flickableDirection: Flickable.VerticalFlick
     ScrollBar.vertical: ScrollBar {}
-    
+
+    Component.onCompleted: {
+        refresh()
+    }
+
+    function refresh() {
+        communityProgressBar.processCount += 1
+        Firebase.get('simulations.json', function(response) {
+            communityProgressBar.processCount -= 1
+            console.log("Model", JSON.stringify(response))
+
+            communityRepeater.model = Firebase.createModel(response)
+        })
+    }
+
     Column {
         id: column
         anchors {
@@ -47,16 +61,6 @@ Flickable {
         
         spacing: 16
         
-        Component.onCompleted: {
-            communityProgressBar.processCount += 1
-            Firebase.get('simulations.json', function(response) {
-                communityProgressBar.processCount -= 1
-                console.log("Model", JSON.stringify(response))
-
-                communityRepeater.model = Firebase.createModel(response)
-            })
-        }
-        
         ProgressBar {
             id: communityProgressBar
             
@@ -64,6 +68,17 @@ Flickable {
             
             indeterminate: true
             visible: processCount > 0
+        }
+
+        Label {
+            anchors {
+                left: parent.left
+                right: parent.right
+            }
+
+            wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+            text: "<p>Simulations in this view are shared by other Neuronify users. " +
+                  "Please report any broken simulations, problems, or abuse of this feature to ovilab.net@gmail.com</p>"
         }
 
         DownloadManager {
@@ -85,18 +100,16 @@ Flickable {
                     property var objectData
 
                     Component.onCompleted: {
-                        console.log("ModelData", JSON.stringify(modelData))
                         communityProgressBar.processCount += 1
                         objectData = modelData
                         name = modelData.name
                         description = modelData.description
                         Firebase.cachedDownload(
-                            modelData.screenshot,
-                            function (localFileName) {
-                                communityProgressBar.processCount -= 1
-                                imageUrl = localFileName
-                            }
-                        )
+                                    modelData.screenshot,
+                                    function (localFileName) {
+                                        communityProgressBar.processCount -= 1
+                                        imageUrl = localFileName
+                                    })
                     }
 
                     onClicked: {

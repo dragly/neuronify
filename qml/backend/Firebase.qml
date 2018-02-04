@@ -69,13 +69,18 @@ DownloadManager {
         }
 
         var result = JSON.parse(req.responseText)
-        if (!result) {
+        if (result === undefined) {
             console.error("Error parsing", req.responseText)
             return
         }
 
-        if(result.errors !== undefined) {
+        if(result && result.errors !== undefined) {
             console.error("Error parsing", req.responseText, result.errors)
+            return
+        }
+
+        if(result && result.error !== undefined) {
+            console.error("Error parsing", req.responseText, result.error)
             return
         }
 
@@ -173,6 +178,19 @@ DownloadManager {
             console.log("Data", JSON.stringify(data))
         }
         req.send(JSON.stringify(data));
+    }
+
+    function remove(name, callback) {
+        var req = new XMLHttpRequest;
+        var url = buildUrl(name)
+        req.open("DELETE", url);
+        req.onreadystatechange = function() {
+            processReply(req, callback)
+        }
+        if (debug) {
+            console.log("DELETE", url)
+        }
+        req.send()
     }
 
     function logout() {

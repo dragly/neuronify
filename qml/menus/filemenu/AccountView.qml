@@ -35,43 +35,77 @@ Item {
             }
         })
     }
-    
-    Column {
-        visible: !Firebase.loggedIn
-        TextField {
-            id: userField
-            selectByMouse: true
-            placeholderText: "Username or email"
-        }
-        
-        TextField {
-            id: passwordField
-            echoMode: TextInput.Password
-            selectByMouse: true
-            placeholderText: "Password"
-            onAccepted: {
-                login()
+
+    Flickable {
+        ScrollBar.vertical: ScrollBar {}
+
+        width: 480
+
+        Column {
+            anchors {
+                left: parent.left
+                right: parent.right
             }
-        }
-        
-        Button {
-            Material.theme: Material.Light
-            enabled: userField.text != "" && passwordField.text != ""
-            width: 120
-            text: "Log in"
-            onClicked: {
-                login()
+
+
+            Column {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+
+                visible: !Firebase.loggedIn
+
+                Label {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    onLinkActivated: Qt.openUrlExternally(link)
+                    linkColor: "white"
+
+                    text: "Would you like to share your simulations with other Neuronify users? " +
+                          "Send an e-mail to <a href='mailto:ovilab.net@gmail.com'>ovilab.net@gmail.com</a> " +
+                          "to request upload rights."
+                }
+
+                TextField {
+                    id: userField
+                    selectByMouse: true
+                    placeholderText: "Username or email"
+                }
+
+                TextField {
+                    id: passwordField
+                    echoMode: TextInput.Password
+                    selectByMouse: true
+                    placeholderText: "Password"
+                    onAccepted: {
+                        login()
+                    }
+                }
+
+                Button {
+                    Material.theme: Material.Light
+                    enabled: userField.text != "" && passwordField.text != ""
+                    width: 120
+                    text: "Log in"
+                    onClicked: {
+                        login()
+                    }
+                }
             }
-        }
-    }
-    
-    Button {
-        Material.theme: Material.Light
-        visible: Firebase.loggedIn
-        width: 120
-        text: "Log out"
-        onClicked: {
-            Firebase.logout()
+
+            Button {
+                Material.theme: Material.Light
+                visible: Firebase.loggedIn
+                width: 120
+                text: "Log out"
+                onClicked: {
+                    Firebase.logout()
+                }
+            }
         }
     }
 }
