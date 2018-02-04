@@ -57,21 +57,6 @@ Flickable {
             })
         }
         
-        Label {
-            anchors {
-                left: parent.left
-                right: parent.right
-            }
-            
-            wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-            onLinkActivated: Qt.openUrlExternally(link)
-            linkColor: "white"
-            
-            text: "Would you like to see your simulations listed here? " +
-                  "Send an e-mail to <a href='mailto:ovilab.net@gmail.com'>ovilab.net@gmail.com</a> " +
-                  "to request upload rights."
-        }
-        
         ProgressBar {
             id: communityProgressBar
             
@@ -102,20 +87,16 @@ Flickable {
                     Component.onCompleted: {
                         console.log("ModelData", JSON.stringify(modelData))
                         communityProgressBar.processCount += 1
-                        Firebase.get('simulations/' + modelData._key + ".json", function(response) {
-                            communityProgressBar.processCount -= 1
-                            objectData = response
-                            name = response.name
-                            description = response.description
-
-                            Firebase.cachedDownload(
-                                        response.screenshot,
-                                        function (localFileName) {
-                                            console.log("It is done!", localFileName)
-                                            imageUrl = localFileName
-                                        })
-
-                        })
+                        objectData = modelData
+                        name = modelData.name
+                        description = modelData.description
+                        Firebase.cachedDownload(
+                            modelData.screenshot,
+                            function (localFileName) {
+                                communityProgressBar.processCount -= 1
+                                imageUrl = localFileName
+                            }
+                        )
                     }
 
                     onClicked: {
