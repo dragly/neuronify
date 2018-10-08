@@ -16,6 +16,7 @@
  */
 
 VideoSurface::VideoSurface()
+    : QAbstractVideoSurface()
 {
     connect(&m_probe, &QVideoProbe::videoFrameProbed, this, &VideoSurface::present);
 }
@@ -79,43 +80,18 @@ QList<QVideoFrame::PixelFormat> VideoSurface::supportedPixelFormats(QAbstractVid
 {
     Q_UNUSED(handleType);
     QList<QVideoFrame::PixelFormat> pixelFormat;
+
+#ifdef Q_OS_ANDROID
+    pixelFormat.append(QVideoFrame::Format_NV21);
+#else
     pixelFormat.append(QVideoFrame::Format_RGB24);
     pixelFormat.append(QVideoFrame::Format_RGB32);
-    pixelFormat.append(QVideoFrame::Format_NV21);
-    pixelFormat.append(QVideoFrame::Format_ARGB32);
-    pixelFormat.append(QVideoFrame::Format_Invalid);
     pixelFormat.append(QVideoFrame::Format_ARGB32);
     pixelFormat.append(QVideoFrame::Format_ARGB32_Premultiplied);
-    pixelFormat.append(QVideoFrame::Format_RGB32);
-    pixelFormat.append(QVideoFrame::Format_RGB24);
-    pixelFormat.append(QVideoFrame::Format_RGB565);
     pixelFormat.append(QVideoFrame::Format_RGB555);
+    pixelFormat.append(QVideoFrame::Format_RGB565);
     pixelFormat.append(QVideoFrame::Format_ARGB8565_Premultiplied);
-    pixelFormat.append(QVideoFrame::Format_BGRA32);
-    pixelFormat.append(QVideoFrame::Format_BGRA32_Premultiplied);
-    pixelFormat.append(QVideoFrame::Format_BGR32);
-    pixelFormat.append(QVideoFrame::Format_BGR24);
-    pixelFormat.append(QVideoFrame::Format_BGR565);
-    pixelFormat.append(QVideoFrame::Format_BGR555);
-    pixelFormat.append(QVideoFrame::Format_BGRA5658_Premultiplied);
-    pixelFormat.append(QVideoFrame::Format_AYUV444);
-    pixelFormat.append(QVideoFrame::Format_AYUV444_Premultiplied);
-    pixelFormat.append(QVideoFrame::Format_YUV444);
-    pixelFormat.append(QVideoFrame::Format_YUV420P);
-    pixelFormat.append(QVideoFrame::Format_YV12);
-    pixelFormat.append(QVideoFrame::Format_UYVY);
-    pixelFormat.append(QVideoFrame::Format_YUYV);
-    pixelFormat.append(QVideoFrame::Format_NV12);
-    pixelFormat.append(QVideoFrame::Format_NV21);
-    pixelFormat.append(QVideoFrame::Format_IMC1);
-    pixelFormat.append(QVideoFrame::Format_IMC2);
-    pixelFormat.append(QVideoFrame::Format_IMC3);
-    pixelFormat.append(QVideoFrame::Format_IMC4);
-    pixelFormat.append(QVideoFrame::Format_Y8);
-    pixelFormat.append(QVideoFrame::Format_Y16);
-    pixelFormat.append(QVideoFrame::Format_Jpeg);
-    pixelFormat.append(QVideoFrame::Format_CameraRaw);
-    pixelFormat.append(QVideoFrame::Format_AdobeDng);
+#endif
 
     return pixelFormat;
 }
@@ -150,7 +126,7 @@ bool VideoSurface::present(const QVideoFrame &constFrame)
     QVideoFrame myFrame = frame;
     myFrame.map(QAbstractVideoBuffer::ReadOnly);
 
-    QImage::Format imageFormat = QVideoFrame::imageFormatFromPixelFormat(frame.pixelFormat());
+    QImage::Format imageFormat = QVideoFrame::imageFormatFromPixelFormat(myFrame.pixelFormat());
 
     m_paintedImage = QImage(myFrame.bits(), myFrame.width(), myFrame.height(),
                      myFrame.bytesPerLine(), imageFormat);
