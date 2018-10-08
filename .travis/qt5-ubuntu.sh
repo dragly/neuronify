@@ -25,7 +25,7 @@ QT5_MINOR=6
 QT5_PATCH=0-201806072052
 
 QT5_LINUX_VERSION=Linux-RHEL_7_4
-QT5_LINUX_VERSION_2=linux-Rhel7.4
+QT5_LINUX_VERSION_2=linux-Rhel7.2
 
 if (( $# < 2 )); then
   echo "Usage: <destination> <component> [component...]"
@@ -48,6 +48,7 @@ for x in ${@:2}; do
   fi
 
   echo "Downloading $x"
+  echo ${DOWNLOAD_URL}
   curl -L -o /tmp/qt5.7z $DOWNLOAD_URL > /dev/null
   DOWNLOAD_HASH=$(shasum -a 1 /tmp/qt5.7z)
   if [[ $DOWNLOAD_HASH != $DOWNLOAD_HASH ]]; then
@@ -59,16 +60,19 @@ for x in ${@:2}; do
   rm /tmp/qt5.7z
 done
 
+echo "Download icu"
 DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}${QT5_MINOR}/qt.5${QT5_MAJOR}${QT5_MINOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}icu-${QT5_LINUX_VERSION_2}-x64.7z"
+echo $DOWNLOAD_URL
 curl -L -o /tmp/qt5.7z $DOWNLOAD_URL
 7z x -aoa "-o$1" /tmp/qt5.7z  > /dev/null
 rm /tmp/qt5.7z
 
 # Minimal Qt Configuration File
-echo "[Paths]" > $1/5.${QT5_MAJOR}/gcc_64/bin/qt.conf
-echo "Prefix=.." >> $1/5.${QT5_MAJOR}/gcc_64/bin/qt.conf
+echo "Creating config file"
+echo "[Paths]" > $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/bin/qt.conf
+echo "Prefix=.." >> $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/bin/qt.conf
 
 # Why does Qt default to Enterprise Licence?
-sed -i 's/^[[:space:]]*QT_EDITION[[:space:]]*=.*$/QT_EDITION = OpenSource/' $1/5.${QT5_MAJOR}/gcc_64/mkspecs/qconfig.pri
+sed -i 's/^[[:space:]]*QT_EDITION[[:space:]]*=.*$/QT_EDITION = OpenSource/' $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/mkspecs/qconfig.pri
 
-echo $1/5.${QT5_MAJOR}/gcc_64/bin
+echo $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/bin
