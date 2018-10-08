@@ -35,9 +35,9 @@ fi
 
 for x in ${@:2}; do
   if [[ $x = extra-* ]]; then
-    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.qt${x/#extra-/}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x/#extra-/}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
+    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}${QT5_MINOR}/qt.5${QT5_MAJOR}${QT5_MINOR}.qt${x/#extra-/}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x/#extra-/}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
   else
-    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
+    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}${QT5_MINOR}/qt.5${QT5_MAJOR}${QT5_MINOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
   fi
 
   DOWNLOAD_CHECK=$(curl -f ${DOWNLOAD_URL}.sha1 2>/dev/null)
@@ -59,7 +59,7 @@ for x in ${@:2}; do
   rm /tmp/qt5.7z
 done
 
-DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}icu-${QT5_LINUX_VERSION_2}-x64.7z"
+DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}${QT5_MINOR}/qt.5${QT5_MAJOR}${QT5_MINOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}icu-${QT5_LINUX_VERSION_2}-x64.7z"
 curl -L -o /tmp/qt5.7z $DOWNLOAD_URL
 7z x -aoa "-o$1" /tmp/qt5.7z  > /dev/null
 rm /tmp/qt5.7z
