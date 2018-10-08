@@ -21,11 +21,11 @@
 #  SOFTWARE.
 
 QT5_MAJOR=9
-QT5_MINOR=0
-QT5_PATCH=0-201705121023 # beta 
+QT5_MINOR=6
+QT5_PATCH=0-201806072052
 
-QT5_LINUX_VERSION=Linux-RHEL_7_2
-QT5_LINUX_VERSION_2=linux-Rhel7.2
+QT5_LINUX_VERSION=Linux-RHEL_7_4
+QT5_LINUX_VERSION_2=linux-Rhel7.4
 
 if (( $# < 2 )); then
   echo "Usage: <destination> <component> [component...]"
