@@ -34,7 +34,7 @@ Flickable {
     clip: true
     
     flickableDirection: Flickable.VerticalFlick
-    ScrollBar.vertical: ScrollBar {}
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
     Column {
         id: newColumn
         anchors {

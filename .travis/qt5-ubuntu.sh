@@ -21,10 +21,10 @@
 #  SOFTWARE.
 
 QT5_MAJOR=9
-QT5_MINOR=0
-QT5_PATCH=0-201705121023 # beta 
+QT5_MINOR=6
+QT5_PATCH=0-201806072052
 
-QT5_LINUX_VERSION=Linux-RHEL_7_2
+QT5_LINUX_VERSION=Linux-RHEL_7_4
 QT5_LINUX_VERSION_2=linux-Rhel7.2
 
 if (( $# < 2 )); then
@@ -35,9 +35,9 @@ fi
 
 for x in ${@:2}; do
   if [[ $x = extra-* ]]; then
-    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.qt${x/#extra-/}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x/#extra-/}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
+    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}${QT5_MINOR}/qt.5${QT5_MAJOR}${QT5_MINOR}.qt${x/#extra-/}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x/#extra-/}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
   else
-    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
+    DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}${QT5_MINOR}/qt.5${QT5_MAJOR}${QT5_MINOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}qt${x}-${QT5_LINUX_VERSION}-GCC-${QT5_LINUX_VERSION}-X86_64.7z"
   fi
 
   DOWNLOAD_CHECK=$(curl -f ${DOWNLOAD_URL}.sha1 2>/dev/null)
@@ -48,6 +48,7 @@ for x in ${@:2}; do
   fi
 
   echo "Downloading $x"
+  echo ${DOWNLOAD_URL}
   curl -L -o /tmp/qt5.7z $DOWNLOAD_URL > /dev/null
   DOWNLOAD_HASH=$(shasum -a 1 /tmp/qt5.7z)
   if [[ $DOWNLOAD_HASH != $DOWNLOAD_HASH ]]; then
@@ -59,16 +60,19 @@ for x in ${@:2}; do
   rm /tmp/qt5.7z
 done
 
-DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}/qt.5${QT5_MAJOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}icu-${QT5_LINUX_VERSION_2}-x64.7z"
+echo "Download icu"
+DOWNLOAD_URL="https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5${QT5_MAJOR}${QT5_MINOR}/qt.5${QT5_MAJOR}${QT5_MINOR}.gcc_64/5.${QT5_MAJOR}.${QT5_MINOR}-${QT5_PATCH}icu-${QT5_LINUX_VERSION_2}-x64.7z"
+echo $DOWNLOAD_URL
 curl -L -o /tmp/qt5.7z $DOWNLOAD_URL
 7z x -aoa "-o$1" /tmp/qt5.7z  > /dev/null
 rm /tmp/qt5.7z
 
 # Minimal Qt Configuration File
-echo "[Paths]" > $1/5.${QT5_MAJOR}/gcc_64/bin/qt.conf
-echo "Prefix=.." >> $1/5.${QT5_MAJOR}/gcc_64/bin/qt.conf
+echo "Creating config file"
+echo "[Paths]" > $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/bin/qt.conf
+echo "Prefix=.." >> $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/bin/qt.conf
 
 # Why does Qt default to Enterprise Licence?
-sed -i 's/^[[:space:]]*QT_EDITION[[:space:]]*=.*$/QT_EDITION = OpenSource/' $1/5.${QT5_MAJOR}/gcc_64/mkspecs/qconfig.pri
+sed -i 's/^[[:space:]]*QT_EDITION[[:space:]]*=.*$/QT_EDITION = OpenSource/' $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/mkspecs/qconfig.pri
 
-echo $1/5.${QT5_MAJOR}/gcc_64/bin
+echo $1/5.${QT5_MAJOR}.${QT5_MINOR}/gcc_64/bin

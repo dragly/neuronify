@@ -113,7 +113,8 @@ DISTFILES += \
     installer/packages/net.ovilab.neuronify/data/README.txt \
     .travis.yml \
     qml/backend/qmldir \
-    .travis/Dockerfile
+    .travis/Dockerfile \
+    conanfile.txt
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
@@ -145,13 +146,20 @@ macx {
     macos/macos.plist
 }
 
+win32 {
+    CONFIG += conan_basic_setup
+    include(conanbuildinfo.pri)
+}
+
 WINRT_MANIFEST.name = Neuronify
 WINRT_MANIFEST.background = $${LITERAL_HASH}399cdd
 WINRT_MANIFEST.publisher = Ovilab
-WINRT_MANIFEST.version = 1.0.0.0
+WINRT_MANIFEST.version = 1.2.2.0
 WINRT_MANIFEST.description = Educational neural network app
 WINRT_MANIFEST.capabilities += codeGeneration
 WINRT_MANIFEST.logo_small=winrt/logo_44x44.png
 WINRT_MANIFEST.logo_large=winrt/logo_150x150.png
 WINRT_MANIFEST.logo_store=winrt/logo_50x50.png
 WINRT_MANIFEST.logo_splash=winrt/logo_620x300.png
+WINRT_MANIFEST.minVersion=10.0.10586.0
+WINRT_MANIFEST.maxVersionTested=10.0.10586.0

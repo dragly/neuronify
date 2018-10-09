@@ -187,9 +187,18 @@ Item {
 
                     }
                     FileMenuItem {
+                        id: communityItem
+                        signal refresh()
                         identifier: "community"
                         name: "Community"
                         component: CommunityView {
+                            id: communityView
+
+                            Connections {
+                                target: communityItem
+                                onRefresh: communityView.refresh()
+                            }
+
                             onItemClicked: {
                                 stackView.push(simulationComponent)
                                 stackView.currentItem.objectData = simulationData
@@ -203,14 +212,29 @@ Item {
                                     runRequested(simulation)
                                     stackView.pop()
                                 }
+                                onDeleted: {
+                                    // Refresh whichever of these is open
+                                    communityItem.refresh()
+                                    mySimulationsItem.refresh()
+
+                                    stackView.pop()
+                                }
                             }
                         }
                     }
 
                     FileMenuItem {
+                        id: mySimulationsItem
+                        signal refresh()
                         name: "My simulations"
                         visible: Firebase.loggedIn
                         component: MySimulations {
+                            id: mySimulations
+                            Connections {
+                                target: mySimulationsItem
+                                onRefresh: mySimulations.refresh()
+                            }
+
                             onUploadClicked: stackView.push(uploadComponent)
                             onItemClicked: {
                                 stackView.push(simulationComponent)
@@ -223,6 +247,7 @@ Item {
                             UploadView {
                                 onUploadCompleted: {
                                     stackView.pop()
+                                    mySimulationsItem.refresh()
                                 }
                             }
                         }
@@ -232,6 +257,13 @@ Item {
                         identifier: "account"
                         name: "Account"
                         component: AccountView {
+                        }
+                    }
+
+                    FileMenuItem {
+                        identifier: "about"
+                        name: "About"
+                        component: AboutView {
                         }
                     }
 

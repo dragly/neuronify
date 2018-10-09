@@ -12,6 +12,7 @@ Item {
     id: root
 
     signal runClicked(var simulation)
+    signal deleted()
 
     property string name: objectData ? objectData.name : ""
     property string description: objectData ? objectData.description : ""
@@ -154,6 +155,22 @@ Item {
                     margins: 24
                 }
                 spacing: 8
+
+                Button {
+                    visible: objectData && objectData.uid === Firebase.userId ? true : false
+                    text: "Delete"
+                    onClicked: {
+                        for (var i in objectData) {
+                            console.log(i)
+                        }
+
+                        Firebase.remove(
+                                    "simulations/" + objectData._key + ".json",
+                                    function (response) {
+                                        root.deleted()
+                                    })
+                    }
+                }
 
                 Button {
                     id: runButton

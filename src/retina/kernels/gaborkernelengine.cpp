@@ -13,8 +13,8 @@ GaborKernelEngine::GaborKernelEngine()
 double GaborKernelEngine::advance(double x, double y)
 {
 
-    double xr =  x * cos(m_theta) + y * sin(m_theta);
-    double yr = -x * sin(m_theta) + y * cos(m_theta);
+    double xr =  (x-m_xOffset) * cos(m_theta) + (y-m_yOffset) * sin(m_theta);
+    double yr = -(x-m_xOffset) * sin(m_theta) + (y-m_yOffset) * cos(m_theta);
 
 //    double prefactor = 1.0/(2.* pi * m_sigmaX * m_sigmaY);
     double prefactor = 1.0;

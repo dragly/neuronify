@@ -12,6 +12,30 @@ DogKernelEngine{
 
     property Component controls: Component{
         Column{
+            BoundSlider {
+                target: dogEngine
+                property: "xOffset"
+                minimumValue: -0.5
+                maximumValue: 0.5
+                unitScale: 0.1
+                stepSize: 0.1
+                precision: 1
+                text: "x"
+                unit: ""
+            }
+
+            BoundSlider {
+                target: dogEngine
+                property: "yOffset"
+                minimumValue: -0.5
+                maximumValue: 0.5
+                unitScale: 0.1
+                stepSize: 0.1
+                precision: 1
+                text: "y"
+                unit: ""
+            }
+
             SwitchControl{
                 id: switchControl
                 target: dogEngine
@@ -20,6 +44,7 @@ DogKernelEngine{
                 uncheckedText: "On center"
             }
 
+
         }
 
     }
@@ -27,6 +52,8 @@ DogKernelEngine{
 
     savedProperties: PropertyGroup {
         property alias isOffCenter: dogEngine.isOffCenter
+        property alias xOffset: dogEngine.xOffset
+        property alias yOffset: dogEngine.yOffset
     }
 
 }

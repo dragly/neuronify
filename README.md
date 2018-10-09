@@ -23,6 +23,43 @@ Visit the [Neuronify website](http://ovilab.net/neuronify) to download the lates
 6. Under configure project that shows up, mark Desktop Qt 5.4.0 GCC and unmark Desktop before pressing Configure Project
 7. Press Run (green triangle) and it should hopefully build and run.
 
+## Releasing Neuronify
+
+This information is mostly relevant to Neuronify developers who want to help deploying new
+versions of Neruonify.
+
+### Deploying Neuronify as a Snap package
+
+This is handled automatically by our Travis CI setup.
+
+To deploy, simply create a new tag:
+
+    git tag -a v1.x.y -m "Release of version 1.x.y"
+
+Then push this:
+
+    git push --tags
+
+Travis CI should pick up on this and build the release and push it to Ubuntu's snap store.
+You can track the build status at https://travis-ci.org/CINPLA/neuronify/
+
+Once finished, test it locally by running
+
+    sudo snap install neuronify --edge
+
+If it works, you can log into the Ubuntu app store and change the channel from `edge` to `stable`.
+
+**Note:** Once a year, we need to update the encryption keys.
+To do this, run the following on your machine:
+
+    snapcraft enable-ci travis --refresh
+
+This will add an `after_success` clause at the end of `.travis.yml`.
+Copy this and overwrite the existing `after_success` clause further up in the file,
+in the build matrix, under the linux OS configuration.
+That is, make sure that the openssl command references the latest `*_key` and `*_iv`
+environment values.
+
 ### Creating a deployable .zip on Windows
 
 1. In Qt Creator, you may choose to build using the MinGW or Visual Studio 2013 (MSVC) compilers depending on your installation. We recommend Visual Studio because this adds support for systems without OpenGL drivers already installed.
@@ -56,8 +93,8 @@ Visit the [Neuronify website](http://ovilab.net/neuronify) to download the lates
 
     - if you are using MSVC:
         - from C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x64\Microsoft.VC120.CRT:
-        - msvcp120.dll 
-        - msvcr120.dll      
+        - msvcp120.dll
+        - msvcr120.dll
 
 8. Zip the whole folder, and you should be good to go
 9. Note that these are the files you need to copy if you are using Qt 5.4 and Visual Studio 2013. If you are using a newer version, you may want to use a newer set of files. Please refer to the documentation for more information:

@@ -129,5 +129,6 @@
         <file>qml/compartments/CompartmentEngine.qml</file>
         <file>qml/meters/Amperemeter.qml</file>
         <file>qml/compartments/HHCompartment.qml</file>
+        <file>qml/menus/filemenu/AboutView.qml</file>
     </qresource>
 </RCC>

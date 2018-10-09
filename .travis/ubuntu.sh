@@ -1,5 +1,5 @@
 #!/bin/bash
-export QTDIR=/opt/qt5/5.9/gcc_64
+export QTDIR=/opt/qt5/5.9.6/gcc_64
 export PATH=$QTDIR/bin:$PATH
 SNAP_DUMP=snapdump
 qmake

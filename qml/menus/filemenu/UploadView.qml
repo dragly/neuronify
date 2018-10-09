@@ -27,102 +27,139 @@ import "qrc:/qml/store"
 import "qrc:/qml/style"
 import "qrc:/qml/ui"
 
-Item {
+Flickable {
     id: root
+
     signal uploadCompleted()
+
+    contentHeight: uploadColumn.height + 64
+    clip: true
+
+    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+    flickableDirection: Flickable.VerticalFlick
+
     Column {
         id: uploadColumn
         width: 420
-        height: 420
-        spacing: 8
 
         Label {
-            text: "Name:"
-            //                                    color: Material.color(Material.Grey)
-        }
-
-        TextField {
-            id: uploadNameField
-            anchors {
-                left: parent.left
-                right: parent.right
-            }
-            placeholderText: "e.g. 'Lateral inhibition'"
-        }
-
-        Label {
-            text: "Description:"
-        }
-
-        TextField {
-            id: uploadDescriptionField
             anchors {
                 left: parent.left
                 right: parent.right
             }
 
-            placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
+            wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+            onLinkActivated: Qt.openUrlExternally(link)
+            text: "
+<p>Terms and conditions</p>
+<p>By uploading a simulation,
+including any assets such as the automatically generated screenshot,
+you confirm that you are the copyright holder of this work
+and irrevocably grant anyone the right to use this work under the
+Creative Commons Attribution ShareAlike 4.0 license
+(<a href='https://creativecommons.org/licenses/by-sa/4.0'>legal code</a>).</p>
+
+<p>NOTE: This is an experimental feature of Neuronify.
+We cannot guarantee the availability of this feature in the future.</p>
+"
         }
 
-        Label {
-            text: "Screenshot preview:"
+        CheckBox {
+            id: agreeCheckbox
+            text: "I agree to the terms and conditions"
         }
 
-        ShaderEffectSource {
-            readonly property real aspectRatio: neuronify.width / neuronify.height
-            width: parent.width * 0.6
-            height: width / aspectRatio
-            sourceItem: neuronify
-        }
-
-        Row {
-            anchors {
-                right: parent.right
+        Column {
+            enabled: agreeCheckbox.checked
+            width: parent.width
+            spacing: parent.spacing
+            Label {
+                text: "Name:"
             }
-            spacing: 16
-            Button {
-                id: uploadButton
-                Material.theme: Material.Light
-                text: "Upload"
-                onClicked: {
-                    var simulation = {
-                        name: uploadNameField.text,
-                        description: uploadDescriptionField.text,
-                        creator: Firebase.userId
-                    }
-                    uploadButton.enabled = false
-                    Firebase.post("simulations.json", simulation, function(result) {
-                        console.log("Simulation created!")
-                        var simulationAddress = "simulations/" + result.name
-                        var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
-                        var screenshotFilename = tempFolder + "/screenshot.png"
-                        // TODO do not reference "global" items
-                        neuronify.saveScreenshot(screenshotFilename, function() {
-                            console.log("Saved screenshot for upload")
-                            var data = JSON.stringify(neuronify.fileManager.serializeState())
-                            Firebase.uploadText(simulationAddress + "/simulation.nfy", data, function(simulationResult) {
-                                var simulationFile = JSON.parse(simulationResult)
-                                console.log("Uploaded the simulation!", simulationFile)
-                                Firebase.upload(
-                                            simulationAddress + "/screenshot.png",
-                                            screenshotFilename,
-                                            function(screenshotResult) {
-                                                console.log("Uploaded screenshot!")
-                                                console.log(screenshotResult)
-                                                var screenshotFile = JSON.parse(screenshotResult)
-                                                simulation["simulation"] = simulationFile.name
-                                                simulation["screenshot"] = screenshotFile.name
-                                                Firebase.put(simulationAddress + ".json", simulation, function(result) {
-                                                    console.log("Upload complete!")
-                                                    console.log(JSON.stringify(result))
-                                                    ToolTip.show("Upload successful!", 2000)
-                                                    uploadButton.enabled = true
-                                                    root.uploadCompleted()
+
+            TextField {
+                id: uploadNameField
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                placeholderText: "e.g. 'Lateral inhibition'"
+            }
+
+            Label {
+                text: "Description:"
+            }
+
+            TextField {
+                id: uploadDescriptionField
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+
+                placeholderText: "e.g. 'Shows network effects of lateral inhibition.'"
+            }
+
+            Label {
+                text: "Screenshot preview:"
+            }
+
+            ShaderEffectSource {
+                readonly property real aspectRatio: neuronify.width / neuronify.height
+                width: parent.width * 0.6
+                height: width / aspectRatio
+                sourceItem: neuronify
+            }
+
+            Row {
+                anchors {
+                    right: parent.right
+                }
+                spacing: 16
+                Button {
+                    id: uploadButton
+                    Material.theme: Material.Light
+                    text: "Upload"
+                    onClicked: {
+                        var simulation = {
+                            name: uploadNameField.text,
+                            description: uploadDescriptionField.text,
+                            uid: Firebase.userId
+                        }
+                        uploadButton.enabled = false
+                        Firebase.post("simulations.json", simulation, function(result) {
+                            console.log("Simulation created!")
+                            var simulationAddress = "simulations/" + result.name
+                            var tempFolder = StandardPaths.writableLocation(StandardPaths.TempLocation)
+                            var screenshotFilename = tempFolder + "/screenshot.png"
+                            // TODO do not reference "global" items
+                            neuronify.saveScreenshot(screenshotFilename, function() {
+                                console.log("Saved screenshot for upload")
+                                var data = JSON.stringify(neuronify.fileManager.serializeState())
+                                Firebase.uploadText(simulationAddress + "/simulation.nfy", data, function(simulationResult) {
+                                    var simulationFile = JSON.parse(simulationResult)
+                                    console.log("Uploaded the simulation!", simulationFile)
+                                    Firebase.upload(
+                                                simulationAddress + "/screenshot.png",
+                                                screenshotFilename,
+                                                function(screenshotResult) {
+                                                    console.log("Uploaded screenshot!")
+                                                    console.log(screenshotResult)
+                                                    var screenshotFile = JSON.parse(screenshotResult)
+                                                    simulation["simulation"] = simulationFile.name
+                                                    simulation["screenshot"] = screenshotFile.name
+                                                    Firebase.put(simulationAddress + ".json", simulation, function(result) {
+                                                        console.log("Upload complete!")
+                                                        console.log(JSON.stringify(result))
+                                                        ToolTip.show("Upload successful!", 2000)
+                                                        uploadButton.enabled = true
+                                                        root.uploadCompleted()
+                                                    })
                                                 })
-                                            })
+                                })
                             })
                         })
-                    })
+                    }
                 }
             }
         }

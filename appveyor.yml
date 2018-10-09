@@ -2,7 +2,11 @@ install:
   - set QTDIR=C:\Qt\5.9\msvc2015_64
   - set PATH=%PATH%;%QTDIR%\bin;C:\Qt\QtIFW2.0.1\bin
   - call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x86_amd64
+  - cmd: pip.exe install conan
+  - cmd: conan user
+  - cmd: conan --version
 build_script:
+  - conan install . -s compiler="Visual Studio" -s compiler.version=14
   - git submodule update --init --recursive
   - qmake neuronify.pro
   - nmake
