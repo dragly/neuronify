@@ -1,5 +1,7 @@
 #include "potassiumcurrent.h"
 
+#include <QtMath>
+
 #include "../neurons/neuronengine.h"
 
 PotassiumCurrent::PotassiumCurrent(QQuickItem *parent) :

@@ -1,5 +1,7 @@
 #include "compartmentengine.h"
 
+#include <QtMath>
+
 #include "../currents/current.h"
 
 CompartmentEngine::CompartmentEngine()

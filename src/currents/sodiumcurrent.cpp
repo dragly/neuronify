@@ -1,6 +1,8 @@
 #include "sodiumcurrent.h"
 #include "../neurons/neuronengine.h"
 
+#include <QtMath>
+
 SodiumCurrent::SodiumCurrent(QQuickItem *parent)
 {
 
