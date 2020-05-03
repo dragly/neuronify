@@ -1,8 +1,12 @@
 import QtQuick 2.0
 import Neuronify 1.0
+import QtQuick.Controls 2.1
+import QtQuick.Controls.Material 2.1
+import QtQuick.Layouts 1.1
 
 import ".."
 import "../edges"
+import "../controls"
 
 Node {
     id: root
@@ -50,21 +54,58 @@ Node {
         }
     }
 
-//    controls: Component {
-//        PropertiesPage {
-//            BoundSlider {
-//                target: engine
-//                property: "currentOutput"
-//                text: "Current output"
-//                unit: "nA"
-//                minimumValue: 0.0e-9
-//                maximumValue: 30.0e-9
-//                stepSize: 0.01e-9
-//                unitScale: 1e-9
-//                precision: 2
-//            }
-//        }
-//    }
+    controls: Rectangle {
+        color: Material.background
+        width: 480
+        height: 360
+
+        ColumnLayout {
+            anchors {
+                fill: parent
+                margins: 16
+            }
+
+            BoundSlider {
+                target: engine
+                property: "length"
+                text: "Length"
+                unit: "μm"
+                minimumValue: 1.0e-6
+                maximumValue: 300.0e-6
+                stepSize: 1.0e-6
+                unitScale: 1e-6
+                precision: 1
+            }
+            BoundSlider {
+                target: engine
+                property: "radiusA"
+                text: "Radius A"
+                unit: "μm"
+                minimumValue: 1.0e-6
+                maximumValue: 300.0e-6
+                stepSize: 1.0e-6
+                unitScale: 1e-6
+                precision: 1
+            }
+            BoundSlider {
+                target: engine
+                property: "radiusB"
+                text: "Radius B"
+                unit: "μm"
+                minimumValue: 1.0e-6
+                maximumValue: 300.0e-6
+                stepSize: 1.0e-6
+                unitScale: 1e-6
+                precision: 1
+            }
+
+            Item {
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+            }
+        }
+    }
+
 
     Rectangle {
         anchors.fill: parent
