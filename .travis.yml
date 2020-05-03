@@ -5,15 +5,12 @@ branches:
 matrix:
   include:
   - os: osx
-    osx_image: xcode10.2
+    osx_image: xcode11.3
     before_install:
     - brew update
     - brew install qt5
     - brew link qt5 --force
     before_deploy:
-    - git clone https://github.com/iltommi/macdeployqtfix.git
-    - python macdeployqtfix/macdeployqtfix.py neuronify.app/Contents/MacOS/neuronify
-      /usr/local
     - macdeployqt neuronify.app -qmldir=. -dmg
     install:
     - qmake
@@ -24,8 +21,7 @@ matrix:
       file: neuronify.dmg
       on:
         tags: true
-      api_key:
-        secure: WJ9YTjPf8GWZ4PmdVoPubtL0CBU+cAIIMFjTpeOKwOLX1vH3zFkdwAz1nbY28CWWhm+YQwWVWwByZOI9hePsf5t6wtkWfJB4wzgrKEcIyKHMHmjaMYc+fp6V//3f7Z4Kc6vYn7wNNy1i9zgA8VVr2A4u8Rf1i7Euio4SLpey17w=
+      api_key: $GITHUB_RELEASE_KEY
   - os: linux
     dist: trusty
     sudo: required
