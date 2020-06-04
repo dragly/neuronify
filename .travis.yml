@@ -23,22 +23,28 @@ matrix:
         tags: true
       api_key: $GITHUB_RELEASE_KEY
   - os: linux
-    dist: trusty
-    sudo: required
+    dist: xenial
     services: docker
+    addons:
+      snaps:
+        - name: snapcraft
+          channel: stable
+          confinement: classic
     install:
     - docker build .travis -t neuronify
     script:
     - docker run -v $(pwd):/app -t neuronify bash -ex .travis/ubuntu.sh
-    after_success:
-    - openssl aes-256-cbc -K $encrypted_011e1d67e5b5_key -iv $encrypted_011e1d67e5b5_iv
-      -in .snapcraft/travis_snapcraft.cfg -out .snapcraft/snapcraft.cfg -d
+    before_deploy:
+    - docker run -v $(pwd):/app -t neuronify bash -c "cd /app/ && snapcraft"
     deploy:
       on:
-        tags: true
-      provider: script
-      script: docker run -v $(pwd):/app -t neuronify bash -c "cd /app/ && snapcraft
-        && snapcraft push *.snap --release edge"
+        branch:
+        - master
+        - /^release\/.*$/
+      provider: snap
+      snap: neuronify*.snap
+      channel: edge
+      cleanup: false
       skip_cleanup: true
 script:
 - echo "Finished"
