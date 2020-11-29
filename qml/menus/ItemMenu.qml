@@ -9,7 +9,6 @@ import QtQuick.Window 2.1
 import QtCharts 2.1
 import QtMultimedia 5.5
 import Qt.labs.settings 1.0
-import Qt.labs.folderlistmodel 2.1
 import Qt.labs.platform 1.0
 
 import Neuronify 1.0

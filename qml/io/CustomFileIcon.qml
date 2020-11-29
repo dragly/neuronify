@@ -1,7 +1,6 @@
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.3
-import Qt.labs.folderlistmodel 2.1
 
 import "../.."
 import "../style"

@@ -186,8 +186,7 @@ Node {
 //        border.width: Style.meter.border.width
         smooth: true
         antialiasing: true
-        visible: false
-
+//        visible: false
     }
 
     ItemShadow {

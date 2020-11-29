@@ -9,14 +9,12 @@ import QtQuick.Window 2.1
 import QtCharts 2.1
 import QtMultimedia 5.5
 import Qt.labs.settings 1.0
-import Qt.labs.folderlistmodel 2.1
 import Qt.labs.platform 1.0
 
 import Neuronify 1.0
 import CuteVersioning 1.0
 import QtGraphicalEffects 1.0
 
-import "qrc:/qml/backend"
 import "qrc:/qml/controls"
 import "qrc:/qml/hud"
 import "qrc:/qml/io"
@@ -33,7 +31,6 @@ Rectangle {
 
     // TODO Replace with event system from Atomify
     signal newClicked()
-    signal saveRequested()
     signal saveAsRequested()
     signal openRequested()
     signal uploadClicked()
@@ -47,7 +44,6 @@ Rectangle {
     signal deleteClicked()
 
     signal accountClicked()
-    signal settingsClicked()
     
     Material.theme: Material.Dark
 
@@ -92,18 +88,6 @@ Rectangle {
             }
         }
         LeftMenuButton {
-            text: "Save"
-            icon.name: "save"
-            icon.category: "content"
-            duration: 300
-            onClicked: {
-                saveRequested()
-            }
-            onPressAndHold: {
-                saveAsRequested()
-            }
-        }
-        LeftMenuButton {
             text: "Save as"
             icon.category: "file"
             icon.name: "file download"
@@ -117,6 +101,7 @@ Rectangle {
             icon.category: "social"
             icon.name: "people"
             duration: 400
+            visible: Qt.platform.os !== "wasm"
             onClicked: {
                 communityClicked()
             }
@@ -187,18 +172,10 @@ Rectangle {
             text: "Account"
             icon.name: "account_circle"
             icon.category: "action"
+            visible: Qt.platform.os !== "wasm"
             duration: 250
             onClicked: {
                 accountClicked()
-            }
-        }
-        LeftMenuButton {
-            text: "Settings"
-            icon.name: "settings"
-            icon.category: "action"
-            duration: 200
-            onClicked: {
-                settingsClicked()
             }
         }
     }

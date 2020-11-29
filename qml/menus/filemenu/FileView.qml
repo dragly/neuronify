@@ -9,7 +9,6 @@ import QtQuick.Window 2.1
 import QtCharts 2.1
 import QtMultimedia 5.5
 import Qt.labs.settings 1.0
-import Qt.labs.folderlistmodel 2.1
 import Qt.labs.platform 1.0
 
 import Neuronify 1.0
@@ -33,9 +32,9 @@ Item {
     property bool revealed: true
     property url latestFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/neuronify"
     property var currentSimulation
+    required property FileManager fileManager
 
-    signal saveRequested(var simulation)
-    signal openRequested(url file)
+    signal saved()
     signal runRequested(var simulation)
     signal loadRequested(url file) // TODO remove
 
@@ -76,22 +75,6 @@ Item {
             color: Material.primary
             opacity: 1.0
         }
-        
-        //        ShaderEffectSource {
-        //            id: neuronifySource
-        //            anchors.fill: parent
-        //            visible: false
-        //            sourceItem: neuronify.shaderEffectItem
-        //        }
-        
-        //        GaussianBlur {
-        //            id: blur
-        //            anchors.fill: parent
-        //            radius: 48
-        //            samples: 64
-        //            source: neuronifySource
-        //            opacity: 0.2
-        //        }
         
         Item {
             id: fileViewMenu
@@ -169,41 +152,11 @@ Item {
                     }
 
                     FileMenuItem {
-                        identifier: "open"
-                        name: "Open"
-                        component: OpenView {
-                            id: openItem
-                            onOpenRequested: root.openRequested(file)
-                        }
-                    }
-
-                    FileMenuItem {
-                        identifier: "save"
-                        name: "Save"
-                        component: SaveView {
-                            id: saveRoot
-                            onSaveRequested: root.saveRequested(file)
-                        }
-
-                    }
-                    FileMenuItem {
                         id: communityItem
                         signal refresh()
                         identifier: "community"
                         name: "Community"
-                        component: CommunityView {
-                            id: communityView
-
-                            Connections {
-                                target: communityItem
-                                onRefresh: communityView.refresh()
-                            }
-
-                            onItemClicked: {
-                                stackView.push(simulationComponent)
-                                stackView.currentItem.objectData = simulationData
-                            }
-                        }
+                        visible: Qt.platform.os !== "wasm"
 
                         Component {
                             id: simulationComponent
@@ -256,6 +209,7 @@ Item {
                     FileMenuItem {
                         identifier: "account"
                         name: "Account"
+                        visible: Qt.platform.os !== "wasm"
                         component: AccountView {
                         }
                     }
@@ -266,14 +220,6 @@ Item {
                         component: AboutView {
                         }
                     }
-
-
-                    // TODO add back settings view when ready
-                    //                    FileMenuItem {
-                    //                        identifier: "settings"
-                    //                        name: "Settings"
-                    //                        component: Item {}
-                    //                    }
                 }
             }
         }

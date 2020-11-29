@@ -115,8 +115,6 @@
         <file>qml/controls/NumberSlider.qml</file>
         <file>qml/menus/LeftMenuButton.qml</file>
         <file>qml/menus/EditMenu.qml</file>
-        <file>qml/menus/filemenu/OpenView.qml</file>
-        <file>qml/menus/filemenu/SaveView.qml</file>
         <file>qml/menus/filemenu/CommunityView.qml</file>
         <file>qml/menus/filemenu/UploadView.qml</file>
         <file>qml/menus/filemenu/AccountView.qml</file>

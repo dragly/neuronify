@@ -1,7 +1,7 @@
 import QtQuick 2.2
 import Qt.labs.settings 1.0
 import CuteVersioning 1.0
-import QtQuick.Window 2.0
+import QtQuick.Window 2.12
 import QtQuick.Controls 2.1
 import Neuronify 1.0
 
@@ -104,10 +104,6 @@ ApplicationWindow {
 
     FontLoader {
         source: "qrc:/fonts/roboto/Roboto-Bold.ttf"
-    }
-
-    FontLoader {
-        source: "https://github.com/google/material-design-icons/raw/master/iconfont/MaterialIcons-Regular.ttf"
     }
 
     MainDesktop {

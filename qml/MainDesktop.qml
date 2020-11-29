@@ -10,7 +10,6 @@ import QtQuick.Window 2.1
 import QtCharts 2.1
 import QtMultimedia 5.5
 import Qt.labs.settings 1.0
-import Qt.labs.folderlistmodel 2.1
 import Qt.labs.platform 1.0
 
 import Neuronify 1.0
@@ -46,24 +45,24 @@ Item {
         }
     }
 
-    function save(simulation, callback) {
-        currentSimulation = simulation
-        neuronify.save(simulation, callback)
+    function saveAs() {
+        var result = neuronify.fileManager.serializeState();
+        var fileString = JSON.stringify(result, null, 4);
+        fileDialog.saveFileContent(fileString);
+        neuronify.hasUnsavedChanges = false;
     }
 
-    function saveCurrentOrOpenDialog(callback) {
-        if(currentSimulation && currentSimulation.file) {
-            neuronify.save(currentSimulation, callback)
+    function runOrShowSaveDialog(action) {
+        if (neuronify.hasUnsavedChanges) {
+            unsavedDialog.openWithRequestedAction(action)
             return
         }
-        saveAs()
+        action()
     }
 
-    function saveAs() {
-        fileView.open("save")
-    }
 
     Component.onCompleted: {
+        console.log("MainDesktop loaded. Platform:", Qt.platform.os)
         firstLoadTimer.start()
     }
 
@@ -98,21 +97,17 @@ Item {
         property var requestedAction
 
         function openWithRequestedAction(action) {
-            requestedAction = action
-            open()
+            requestedAction = action;
+            open();
         }
 
         onYesClicked: {
-            saveCurrentOrOpenDialog(function() {
-                if (requestedAction) {
-                    requestedAction()
-                }
-            })
+            saveAs();
         }
         onNoClicked: {
-            ignoreUnsavedChanges = true
+            ignoreUnsavedChanges = true;
             if (requestedAction) {
-                requestedAction()
+                requestedAction();
             }
         }
 
@@ -134,6 +129,7 @@ Item {
             top: topMenu.bottom
             bottom: parent.bottom
         }
+//        anchors.fill: parent
         clip: true
         autoPause: root.state != "view" && root.state != "creation"
         onBackgroundClicked: {
@@ -174,16 +170,14 @@ Item {
             fileView.open("new")
         }
 
-        onSaveRequested: {
-            saveCurrentOrOpenDialog()
+        onOpenRequested: {
+            runOrShowSaveDialog(function() {
+                fileDialog.getOpenFileContent()
+            });
         }
 
         onSaveAsRequested: {
             saveAs()
-        }
-
-        onOpenRequested: {
-            fileView.open("open")
         }
 
         onCommunityClicked: {
@@ -217,13 +211,8 @@ Item {
         }
 
         // Settings
-
         onAccountClicked: {
             fileView.open("account")
-        }
-
-        onSettingsClicked: {
-            fileView.open("settings")
         }
     }
 
@@ -233,14 +222,7 @@ Item {
         revealed: false
         currentSimulation: root.currentSimulation
         z: 99
-
-        function runOrShowSaveDialog(action) {
-            if (neuronify.hasUnsavedChanges) {
-                unsavedDialog.openWithRequestedAction(action)
-                return
-            }
-            action()
-        }
+        fileManager: neuronify.fileManager
 
         onLoadRequested: {
             runOrShowSaveDialog(function() {
@@ -254,18 +236,6 @@ Item {
             runOrShowSaveDialog(function() {
                 root.currentSimulation = simulation
                 neuronify.open(simulation)
-                revealed = false
-            })
-        }
-
-        onSaveRequested: {
-            root.save(simulation)
-            revealed = false
-        }
-
-        onOpenRequested: {
-            runOrShowSaveDialog(function() {
-                root.open(file)
                 revealed = false
             })
         }
@@ -622,7 +592,7 @@ Item {
 
     Shortcut {
         sequence: StandardKey.Save
-        onActivated: root.saveCurrentOrOpenDialog()
+        onActivated: root.saveAs()
     }
 
     Shortcut {
@@ -632,4 +602,10 @@ Item {
         }
     }
 
+    AsyncFileDialog {
+        id: fileDialog
+        onContentRequested: {
+            neuronify.reloadState(contents)
+        }
+    }
 }
