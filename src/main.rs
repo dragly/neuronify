@@ -262,7 +262,7 @@ impl Simulation {
         let connection_vector = connection.position_b.clone() - connection.position_a.clone();
         // TODO: Add normalize function to expressions
         let connection_endpoint = connection.position_a.clone() + connection_vector.clone()
-            - connection_vector.clone() / connection_vector.clone().length() * NODE_RADIUS * 3.0;
+            - connection_vector.clone() / connection_vector.clone().length() * NODE_RADIUS * 2.0;
         let connection_lines = Lines::new(
             &application.rendering_descriptor(),
             &LineDelegate {
