@@ -12,8 +12,6 @@ use visula::{
     CustomEvent, InstanceBuffer, LineDelegate, Lines, RenderData, SphereDelegate, Spheres,
 };
 use visula_derive::Instance;
-use winit::event::KeyboardInput;
-use winit::event::ModifiersState;
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, Event, MouseButton, WindowEvent},
