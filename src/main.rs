@@ -306,9 +306,7 @@ impl Simulation {
                 left_down: false,
                 position: None,
             },
-            keyboard: Keyboard {
-                shift_down: false,
-            },
+            keyboard: Keyboard { shift_down: false },
             iterations: 4,
         }
     }
@@ -611,7 +609,7 @@ impl visula::Simulation for Simulation {
                         .expect("Connection from does not exist!");
                     let base_current = match &neuron_from.ty {
                         NeuronType::Excitatory => 3000.0,
-                        NeuronType::Inhibitory => -1500.0,
+                        NeuronType::Inhibitory => -3000.0,
                     };
                     let current = connection.strength * base_current;
                     let mut triggers = vec![];
@@ -624,7 +622,7 @@ impl visula::Simulation for Simulation {
                 })
                 .collect();
             for (connection_entity, brain, current) in new_triggers {
-                world.spawn((Trigger::new(0.5, current, connection_entity, brain),));
+                world.spawn((Trigger::new(0.3, current, connection_entity, brain),));
             }
 
             for (_, trigger) in world.query_mut::<&mut Trigger>() {
