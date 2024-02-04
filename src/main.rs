@@ -356,64 +356,66 @@ impl Simulation {
         let mouse_position = Vec3::new(intersection.x, intersection.y, intersection.z);
 
         let minimum_distance = 6.0 * NODE_RADIUS;
+        let previous_too_near = if let Some(pc) = previous_creation {
+            pc.position.distance(mouse_position) < minimum_distance
+        } else {
+            false
+        };
         match tool {
             Tool::ExcitatoryNeuron | Tool::InhibitoryNeuron => {
-                if previous_creation.is_none()
-                    || previous_creation
-                        .as_ref()
-                        .unwrap()
-                        .position
-                        .distance(mouse_position)
-                        > minimum_distance
-                {
-                    let dynamics = NeuronDynamics {
-                        current: 0.0,
-                        refraction: 0.0,
-                        voltage: 0.0,
-                        fired: false,
-                    };
-                    let leak_current = LeakCurrent {
-                        current: 0.0,
-                        tau: 1.0,
-                    };
-                    let stimulate_current = StimulateCurrent { current: 0.0 };
-                    match self.tool {
-                        Tool::ExcitatoryNeuron => {
-                            self.world.spawn((
-                                Position {
-                                    position: mouse_position,
-                                },
-                                Neuron::new(NeuronType::Excitatory),
-                                StaticSource {},
-                                dynamics,
-                                leak_current,
-                                Deletable {},
-                                stimulate_current,
-                                Selectable { selected: false },
-                            ));
-                        }
-                        Tool::InhibitoryNeuron => {
-                            self.world.spawn((
-                                Position {
-                                    position: mouse_position,
-                                },
-                                Neuron::new(NeuronType::Inhibitory),
-                                StaticSource {},
-                                dynamics,
-                                leak_current,
-                                Deletable {},
-                                stimulate_current,
-                                Selectable { selected: false },
-                            ));
-                        }
-                        _ => {}
-                    }
-                    self.previous_creation = Some(PreviousCreation {
-                        position: mouse_position,
-                    });
+                if previous_too_near {
+                    return;
                 }
+                let dynamics = NeuronDynamics {
+                    current: 0.0,
+                    refraction: 0.0,
+                    voltage: 0.0,
+                    fired: false,
+                };
+                let leak_current = LeakCurrent {
+                    current: 0.0,
+                    tau: 1.0,
+                };
+                let stimulate_current = StimulateCurrent { current: 0.0 };
+                match self.tool {
+                    Tool::ExcitatoryNeuron => {
+                        self.world.spawn((
+                            Position {
+                                position: mouse_position,
+                            },
+                            Neuron::new(NeuronType::Excitatory),
+                            StaticSource {},
+                            dynamics,
+                            leak_current,
+                            Deletable {},
+                            stimulate_current,
+                            Selectable { selected: false },
+                        ));
+                    }
+                    Tool::InhibitoryNeuron => {
+                        self.world.spawn((
+                            Position {
+                                position: mouse_position,
+                            },
+                            Neuron::new(NeuronType::Inhibitory),
+                            StaticSource {},
+                            dynamics,
+                            leak_current,
+                            Deletable {},
+                            stimulate_current,
+                            Selectable { selected: false },
+                        ));
+                    }
+                    _ => {}
+                }
+                self.previous_creation = Some(PreviousCreation {
+                    position: mouse_position,
+                });
             }
             Tool::CurrentSource => {
+                if previous_too_near {
+                    return;
+                }
                 self.world.spawn((
                     Position {
                         position: mouse_position,
@@ -423,27 +425,32 @@ impl Simulation {
                     Deletable {},
                     Selectable { selected: false },
                 ));
+                self.previous_creation = Some(PreviousCreation {
+                    position: mouse_position,
+                });
             }
             Tool::StaticConnection | Tool::LearningConnection => {
-                let nearest = world
-                    .query::<&Position>()
-                    .with::<&StaticSource>()
-                    .iter()
-                    .min_by(|(_, x), (_, y)| {
-                        mouse_position
-                            .distance(x.position)
-                            .partial_cmp(&mouse_position.distance(y.position))
-                            .unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                    .and_then(|(id, position)| {
-                        if mouse_position.distance(position.position) < 1.5 * NODE_RADIUS {
-                            Some((id, position.position))
-                        } else {
-                            None
-                        }
-                    });
+                let closest = |(_, x): &(Entity, &Position), (_, y): &(Entity, &Position)| {
+                    mouse_position
+                        .distance(x.position)
+                        .partial_cmp(&mouse_position.distance(y.position))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                };
+                let filter = |(id, position): (Entity, &Position)| {
+                    if mouse_position.distance(position.position) < 1.5 * NODE_RADIUS {
+                        Some((id, position.position))
+                    } else {
+                        None
+                    }
+                };
                 if let Some(ct) = connection_tool {
-                    if let Some((id, position)) = nearest {
+                    let nearest_target = world
+                        .query::<&Position>()
+                        .with::<&Neuron>()
+                        .iter()
+                        .min_by(closest)
+                        .and_then(filter);
+                    if let Some((id, position)) = nearest_target {
                         let strength = if *tool == Tool::StaticConnection {
                             1.0
                         } else {
@@ -480,12 +487,20 @@ impl Simulation {
                         }
                     }
                     ct.end = mouse_position;
-                } else if let Some((id, position)) = nearest {
-                    *connection_tool = Some(ConnectionTool {
-                        start: position,
-                        end: mouse_position,
-                        from: id,
-                    });
+                } else {
+                    *connection_tool = world
+                        .query::<&Position>()
+                        .with::<&StaticSource>()
+                        .iter()
+                        .min_by(closest)
+                        .and_then(filter)
+                        .and_then(|(id, position)| {
+                            Some(ConnectionTool {
+                                start: position,
+                                end: mouse_position,
+                                from: id,
+                            })
+                        });
                 }
             }
             Tool::Stimulate => {
@@ -706,10 +721,12 @@ impl visula::Simulation for Simulation {
                 }
             })
             .collect();
+
         let source_spheres: Vec<Sphere> = world
-            .query::<(&CurrentSource, &Position)>()
+            .query::<&Position>()
+            .with::<&CurrentSource>()
             .iter()
-            .map(|(_entity, (current_source, position))| {
+            .map(|(_entity, position)| {
                 let color = Vec3::new(0.8, 0.8, 0.1);
                 Sphere {
                     position: position.position,
@@ -718,6 +735,7 @@ impl visula::Simulation for Simulation {
                 }
             })
             .collect();
+
         let trigger_spheres: Vec<Sphere> = world
             .query::<&Trigger>()
             .iter()
