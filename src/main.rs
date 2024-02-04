@@ -56,11 +56,7 @@ struct Neuron {
     threshold: f64,
     input_tau: f64,
     ty: NeuronType,
-    dynamics: HashMap<Entity, NeuronDynamics>,
 }
-
-#[derive(Clone, Debug)]
-struct Brain {}
 
 #[derive(Clone, Debug)]
 struct Selectable {
@@ -82,19 +78,7 @@ pub struct Position {
 }
 
 impl Neuron {
-    pub fn new(ty: NeuronType, brains: &[Entity]) -> Neuron {
-        let dynamics = HashMap::from_iter(brains.iter().map(|e| {
-            (
-                *e,
-                NeuronDynamics {
-                    refraction: 0.0,
-                    voltage: 0.0,
-                    input_current: 0.0,
-                    fired: false,
-                    last_fired: None,
-                },
-            )
-        }));
+    pub fn new(ty: NeuronType) -> Neuron {
         Neuron {
             initial_voltage: 0.0,
             leak_tau: 1.0,
@@ -103,7 +87,6 @@ impl Neuron {
             threshold: 30.0,
             input_tau: 0.1,
             ty,
-            dynamics,
         }
     }
 }
@@ -121,17 +104,15 @@ struct Trigger {
     remaining: f64,
     current: f64,
     connection: Entity,
-    brain: Entity,
 }
 
 impl Trigger {
-    pub fn new(time: f64, current: f64, connection: Entity, brain: Entity) -> Trigger {
+    pub fn new(time: f64, current: f64, connection: Entity) -> Trigger {
         Trigger {
             total: time,
             remaining: time,
             current,
             connection,
-            brain,
         }
     }
     pub fn decrement(&mut self, dt: f64) {
@@ -143,6 +124,17 @@ impl Trigger {
     pub fn done(&self) -> bool {
         self.remaining <= 0.0
     }
+}
+
+#[derive(Clone, Debug)]
+struct Current {
+    neuron: Entity,
+    value: f64,
+}
+
+#[derive(Clone, Debug)]
+struct LeakCurrent {
+    tau: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -194,8 +186,6 @@ struct Keyboard {
 }
 
 struct Simulation {
-    brains: Vec<Entity>,
-    selected_brain: Entity,
     tool: Tool,
     previous_creation: Option<PreviousCreation>,
     connection_tool: Option<ConnectionTool>,
@@ -286,12 +276,7 @@ impl Simulation {
 
         let mut world = hecs::World::new();
 
-        let brains = vec![world.spawn((Brain {},))];
-        let player_brain = *brains.first().expect("No brains were added!");
-
         Simulation {
-            brains,
-            selected_brain: player_brain,
             spheres,
             sphere_buffer,
             connection_lines,
@@ -388,13 +373,21 @@ impl Simulation {
                         .distance(mouse_position)
                         > minimum_distance
                 {
+                    let dynamics = NeuronDynamics {
+                        refraction: 0.0,
+                        voltage: 0.0,
+                        input_current: 0.0,
+                        fired: false,
+                        last_fired: None,
+                    };
                     match self.tool {
                         Tool::ExcitatoryNeuron => {
                             self.world.spawn((
                                 Position {
                                     position: mouse_position,
                                 },
-                                Neuron::new(NeuronType::Excitatory, &self.brains),
+                                Neuron::new(NeuronType::Excitatory),
+                                dynamics,
                                 Deletable {},
                                 Stimulate::new(),
                                 Selectable { selected: false },
@@ -405,7 +398,8 @@ impl Simulation {
                                 Position {
                                     position: mouse_position,
                                 },
-                                Neuron::new(NeuronType::Inhibitory, &self.brains),
+                                Neuron::new(NeuronType::Inhibitory),
+                                dynamics,
                                 Deletable {},
                                 Stimulate::new(),
                                 Selectable { selected: false },
@@ -562,7 +556,6 @@ impl visula::Simulation for Simulation {
             world,
             time,
             stimulation_tool,
-            selected_brain,
             ..
         } = self;
         let dt = 0.001;
@@ -579,34 +572,41 @@ impl visula::Simulation for Simulation {
         }
 
         for _ in 0..self.iterations {
-            for (_, (neuron, stimulate)) in world.query_mut::<(&mut Neuron, &Stimulate)>() {
-                for dynamics in neuron.dynamics.values_mut() {
-                    dynamics.input_current =
-                        dynamics.input_current - dynamics.input_current * dt / neuron.input_tau;
-                    let leak_current =
-                        (neuron.resting_potential - dynamics.voltage) / neuron.leak_tau;
-                    let other_currents = if dynamics.refraction <= 0.0 {
-                        dynamics.input_current + stimulate.injected_current
-                    } else {
-                        0.0
-                    };
-                    let current = leak_current + other_currents;
-                    dynamics.voltage = (dynamics.voltage + current * dt).clamp(-200.0, 200.0);
-                    if dynamics.refraction <= 0.0 && dynamics.voltage > neuron.threshold {
-                        dynamics.fired = true;
-                        dynamics.last_fired = Some(*time);
-                        dynamics.refraction = 0.2;
-                        dynamics.voltage = neuron.initial_voltage;
-                        dynamics.voltage = neuron.reset_potential;
-                    }
+            for (_, (current, neuron, dynamics, leak_current)) in
+                world.query_mut::<(&mut Current, &Neuron, &NeuronDynamics, &LeakCurrent)>()
+            {
+                current.value = (neuron.resting_potential - dynamics.voltage) / leak_current.tau;
+            }
+            for (_, (dynamics, neuron, stimulate)) in
+                world.query_mut::<(&mut NeuronDynamics, &Neuron, &Stimulate)>()
+            {
+                dynamics.input_current =
+                    dynamics.input_current - dynamics.input_current * dt / neuron.input_tau;
+                let leak_current = (neuron.resting_potential - dynamics.voltage) / neuron.leak_tau;
+                let other_currents = if dynamics.refraction <= 0.0 {
+                    dynamics.input_current + stimulate.injected_current
+                } else {
+                    0.0
+                };
+                let current = leak_current + other_currents;
+                dynamics.voltage = (dynamics.voltage + current * dt).clamp(-200.0, 200.0);
+                if dynamics.refraction <= 0.0 && dynamics.voltage > neuron.threshold {
+                    dynamics.fired = true;
+                    dynamics.last_fired = Some(*time);
+                    dynamics.refraction = 0.2;
+                    dynamics.voltage = neuron.initial_voltage;
+                    dynamics.voltage = neuron.reset_potential;
                 }
             }
-            let new_triggers: Vec<(Entity, Entity, f64)> = world
+            let new_triggers: Vec<(Entity, f64)> = world
                 .query::<&Connection>()
                 .iter()
                 .flat_map(|(connection_entity, connection)| {
                     let neuron_from = world
                         .get::<&Neuron>(connection.from)
+                        .expect("Connection from does not exist!");
+                    let dynamics_from = world
+                        .get::<&NeuronDynamics>(connection.from)
                         .expect("Connection from does not exist!");
                     let base_current = match &neuron_from.ty {
                         NeuronType::Excitatory => 3000.0,
@@ -614,16 +614,14 @@ impl visula::Simulation for Simulation {
                     };
                     let current = connection.strength * base_current;
                     let mut triggers = vec![];
-                    for (brain, dynamics) in neuron_from.dynamics.iter() {
-                        if dynamics.fired {
-                            triggers.push((connection_entity, *brain, current));
-                        }
+                    if dynamics_from.fired {
+                        triggers.push((connection_entity, current));
                     }
                     triggers
                 })
                 .collect();
-            for (connection_entity, brain, current) in new_triggers {
-                world.spawn((Trigger::new(0.3, current, connection_entity, brain),));
+            for (connection_entity, current) in new_triggers {
+                world.spawn((Trigger::new(0.3, current, connection_entity),));
             }
 
             for (_, trigger) in world.query_mut::<&mut Trigger>() {
@@ -636,19 +634,10 @@ impl visula::Simulation for Simulation {
                 .filter_map(|(entity, trigger)| {
                     if trigger.done() {
                         let connection = world.get::<&Connection>(trigger.connection).unwrap();
-                        let mut neuron_to = world.get::<&mut Neuron>(connection.to).unwrap();
-                        neuron_to
-                            .dynamics
-                            .get_mut(&trigger.brain)
-                            .unwrap()
-                            .input_current += trigger.current;
-                        neuron_to
-                            .dynamics
-                            .get_mut(&trigger.brain)
-                            .unwrap()
-                            .input_current = neuron_to.dynamics[&trigger.brain]
-                            .input_current
-                            .clamp(-20000.0, 20000.0);
+                        let mut neuron_to =
+                            world.get::<&mut NeuronDynamics>(connection.to).unwrap();
+                        neuron_to.input_current =
+                            (neuron_to.input_current + trigger.current).clamp(-20000.0, 20000.0);
                         Some(entity)
                     } else {
                         None
@@ -659,22 +648,19 @@ impl visula::Simulation for Simulation {
                 world.despawn(entity).expect("Could not delete entity!");
             }
 
-            for (_, neuron) in world.query_mut::<&mut Neuron>() {
-                for dynamics in neuron.dynamics.values_mut() {
-                    dynamics.fired = false;
-                    dynamics.refraction -= dt;
-                }
+            for (_, dynamics) in world.query_mut::<&mut NeuronDynamics>() {
+                dynamics.fired = false;
+                dynamics.refraction -= dt;
             }
 
             *time += dt;
         }
 
         let neuron_spheres: Vec<Sphere> = world
-            .query::<(&Neuron, &Position)>()
+            .query::<(&Neuron, &NeuronDynamics, &Position)>()
             .iter()
-            .map(|(_entity, (neuron, position))| {
-                let value = ((neuron.dynamics[selected_brain].voltage + 100.0) / 150.0)
-                    .clamp(0.0, 1.0) as f32;
+            .map(|(_entity, (neuron, dynamics, position))| {
+                let value = ((dynamics.voltage + 100.0) / 150.0).clamp(0.0, 1.0) as f32;
                 let color = match neuron.ty {
                     NeuronType::Excitatory => Vec3::new(value / 2.0, value, 0.95),
                     NeuronType::Inhibitory => Vec3::new(0.95, value / 2.0, value),
@@ -690,9 +676,6 @@ impl visula::Simulation for Simulation {
             .query::<&Trigger>()
             .iter()
             .filter_map(|(_entity, trigger)| {
-                if trigger.brain != *selected_brain {
-                    return None;
-                }
                 let connection = world
                     .get::<&Connection>(trigger.connection)
                     .expect("Connection from broken");
