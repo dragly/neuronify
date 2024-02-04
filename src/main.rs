@@ -30,7 +30,7 @@ pub enum Tool {
 
 const NODE_RADIUS: f32 = 1.0;
 const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
-const SIGMA: f32 = 3.0 * NODE_RADIUS;
+const SIGMA: f32 = 1.0 * NODE_RADIUS;
 
 #[derive(Clone, Debug)]
 enum NeuronType {
@@ -41,7 +41,7 @@ enum NeuronType {
 #[derive(Clone, Debug)]
 struct NeuronDynamics {
     voltage: f64,
-    input_current: f64,
+    current: f64,
     refraction: f64,
     fired: bool,
     last_fired: Option<f64>,
@@ -52,10 +52,14 @@ struct Neuron {
     initial_voltage: f64,
     reset_potential: f64,
     resting_potential: f64,
-    leak_tau: f64,
     threshold: f64,
-    input_tau: f64,
     ty: NeuronType,
+}
+
+#[derive(Clone, Debug)]
+struct SynapseCurrent {
+    current: f64,
+    tau: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -81,11 +85,9 @@ impl Neuron {
     pub fn new(ty: NeuronType) -> Neuron {
         Neuron {
             initial_voltage: 0.0,
-            leak_tau: 1.0,
             reset_potential: -70.0,
             resting_potential: -70.0,
             threshold: 30.0,
-            input_tau: 0.1,
             ty,
         }
     }
@@ -127,13 +129,8 @@ impl Trigger {
 }
 
 #[derive(Clone, Debug)]
-struct Current {
-    neuron: Entity,
-    value: f64,
-}
-
-#[derive(Clone, Debug)]
 struct LeakCurrent {
+    current: f64,
     tau: f64,
 }
 
@@ -145,22 +142,8 @@ struct Connection {
 }
 
 #[derive(Clone, Debug)]
-pub struct Stimulate {
-    pub injected_current: f64,
-}
-
-impl Stimulate {
-    pub fn new() -> Stimulate {
-        Stimulate {
-            injected_current: 0.0,
-        }
-    }
-}
-
-impl Default for Stimulate {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct StimulateCurrent {
+    pub current: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -374,12 +357,17 @@ impl Simulation {
                         > minimum_distance
                 {
                     let dynamics = NeuronDynamics {
+                        current: 0.0,
                         refraction: 0.0,
                         voltage: 0.0,
-                        input_current: 0.0,
                         fired: false,
                         last_fired: None,
                     };
+                    let leak_current = LeakCurrent {
+                        current: 0.0,
+                        tau: 1.0,
+                    };
+                    let stimulate_current = StimulateCurrent { current: 0.0 };
                     match self.tool {
                         Tool::ExcitatoryNeuron => {
                             self.world.spawn((
@@ -388,8 +376,9 @@ impl Simulation {
                                 },
                                 Neuron::new(NeuronType::Excitatory),
                                 dynamics,
+                                leak_current,
                                 Deletable {},
-                                Stimulate::new(),
+                                stimulate_current,
                                 Selectable { selected: false },
                             ));
                         }
@@ -400,8 +389,9 @@ impl Simulation {
                                 },
                                 Neuron::new(NeuronType::Inhibitory),
                                 dynamics,
+                                leak_current,
                                 Deletable {},
-                                Stimulate::new(),
+                                stimulate_current,
                                 Selectable { selected: false },
                             ));
                         }
@@ -442,15 +432,24 @@ impl Simulation {
                             to: id,
                             strength,
                         };
+                        let synapse_current = SynapseCurrent {
+                            current: 0.0,
+                            tau: 0.1,
+                        };
                         let connection_exists =
                             world.query::<&Connection>().iter().any(|(_, c)| {
                                 c.from == new_connection.from && c.to == new_connection.to
                             });
                         if !connection_exists && ct.from != id {
                             if *tool == Tool::StaticConnection {
-                                world.spawn((new_connection, Deletable {}));
+                                world.spawn((new_connection, Deletable {}, synapse_current));
                             } else {
-                                world.spawn((new_connection, Deletable {}, LearningSynapse {}));
+                                world.spawn((
+                                    new_connection,
+                                    Deletable {},
+                                    LearningSynapse {},
+                                    synapse_current,
+                                ));
                             };
                         }
                         if !self.keyboard.shift_down {
@@ -560,36 +559,45 @@ impl visula::Simulation for Simulation {
         } = self;
         let dt = 0.001;
 
-        for (_, (position, stimulate)) in world.query_mut::<(&Position, &mut Stimulate)>() {
+        for (_, (position, stimulate)) in world.query_mut::<(&Position, &mut StimulateCurrent)>() {
             if let Some(stim) = stimulation_tool {
                 let mouse_distance = position.position.distance(stim.position);
-                stimulate.injected_current = (2000.0
+                stimulate.current = (600.0
                     * (-mouse_distance * mouse_distance / (2.0 * SIGMA * SIGMA)).exp())
                     as f64;
             } else {
-                stimulate.injected_current = 0.0;
+                stimulate.current = 0.0;
             }
         }
 
         for _ in 0..self.iterations {
-            for (_, (current, neuron, dynamics, leak_current)) in
-                world.query_mut::<(&mut Current, &Neuron, &NeuronDynamics, &LeakCurrent)>()
-            {
-                current.value = (neuron.resting_potential - dynamics.voltage) / leak_current.tau;
+            for (_, dynamics) in world.query_mut::<&mut NeuronDynamics>() {
+                dynamics.current = 0.0;
             }
-            for (_, (dynamics, neuron, stimulate)) in
-                world.query_mut::<(&mut NeuronDynamics, &Neuron, &Stimulate)>()
+            for (_, (leak, neuron, dynamics)) in
+                world.query_mut::<(&mut LeakCurrent, &Neuron, &mut NeuronDynamics)>()
             {
-                dynamics.input_current =
-                    dynamics.input_current - dynamics.input_current * dt / neuron.input_tau;
-                let leak_current = (neuron.resting_potential - dynamics.voltage) / neuron.leak_tau;
-                let other_currents = if dynamics.refraction <= 0.0 {
-                    dynamics.input_current + stimulate.injected_current
-                } else {
-                    0.0
-                };
-                let current = leak_current + other_currents;
-                dynamics.voltage = (dynamics.voltage + current * dt).clamp(-200.0, 200.0);
+                leak.current = (neuron.resting_potential - dynamics.voltage) / leak.tau;
+                dynamics.current += leak.current;
+            }
+            for (_, (dynamics, stimulate)) in
+                world.query_mut::<(&mut NeuronDynamics, &StimulateCurrent)>()
+            {
+                dynamics.current += stimulate.current;
+            }
+            for (_, synapse) in world.query_mut::<&mut SynapseCurrent>() {
+                synapse.current -= synapse.current * dt / synapse.tau;
+            }
+
+            for (_, (synapse, connection)) in world.query::<(&SynapseCurrent, &Connection)>().iter()
+            {
+                let mut dynamics = world.get::<&mut NeuronDynamics>(connection.to).unwrap();
+                if dynamics.refraction <= 0.0 {
+                    dynamics.current += synapse.current;
+                }
+            }
+            for (_, (dynamics, neuron)) in world.query_mut::<(&mut NeuronDynamics, &Neuron)>() {
+                dynamics.voltage = (dynamics.voltage + dynamics.current * dt).clamp(-200.0, 200.0);
                 if dynamics.refraction <= 0.0 && dynamics.voltage > neuron.threshold {
                     dynamics.fired = true;
                     dynamics.last_fired = Some(*time);
@@ -633,17 +641,17 @@ impl visula::Simulation for Simulation {
                 .iter()
                 .filter_map(|(entity, trigger)| {
                     if trigger.done() {
-                        let connection = world.get::<&Connection>(trigger.connection).unwrap();
-                        let mut neuron_to =
-                            world.get::<&mut NeuronDynamics>(connection.to).unwrap();
-                        neuron_to.input_current =
-                            (neuron_to.input_current + trigger.current).clamp(-20000.0, 20000.0);
+                        let mut synapse = world
+                            .get::<&mut SynapseCurrent>(trigger.connection)
+                            .unwrap();
+                        synapse.current = trigger.current;
                         Some(entity)
                     } else {
                         None
                     }
                 })
                 .collect();
+
             for entity in triggers_to_delete {
                 world.despawn(entity).expect("Could not delete entity!");
             }
