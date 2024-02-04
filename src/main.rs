@@ -22,6 +22,7 @@ pub enum Tool {
     Select,
     ExcitatoryNeuron,
     InhibitoryNeuron,
+    CurrentSource,
     StaticConnection,
     LearningConnection,
     Erase,
@@ -66,8 +67,18 @@ struct Selectable {
     selected: bool,
 }
 
+#[derive(Clone, Debug)]
+struct CurrentSource {
+    current: f64,
+}
+
+#[derive(Clone, Debug)]
+struct StaticSource {}
+
+#[derive(Clone, Debug)]
 struct LearningSynapse {}
 
+#[derive(Clone, Debug)]
 struct PreviousCreation {
     position: Vec3,
 }
@@ -373,6 +384,7 @@ impl Simulation {
                                     position: mouse_position,
                                 },
                                 Neuron::new(NeuronType::Excitatory),
+                                StaticSource {},
                                 dynamics,
                                 leak_current,
                                 Deletable {},
@@ -386,6 +398,7 @@ impl Simulation {
                                     position: mouse_position,
                                 },
                                 Neuron::new(NeuronType::Inhibitory),
+                                StaticSource {},
                                 dynamics,
                                 leak_current,
                                 Deletable {},
@@ -400,10 +413,21 @@ impl Simulation {
                     });
                 }
             }
+            Tool::CurrentSource => {
+                self.world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    StaticSource {},
+                    CurrentSource { current: 1000.0 },
+                    Deletable {},
+                    Selectable { selected: false },
+                ));
+            }
             Tool::StaticConnection | Tool::LearningConnection => {
                 let nearest = world
                     .query::<&Position>()
-                    .with::<&Neuron>()
+                    .with::<&StaticSource>()
                     .iter()
                     .min_by(|(_, x), (_, y)| {
                         mouse_position
@@ -587,6 +611,13 @@ impl visula::Simulation for Simulation {
                 synapse.current -= synapse.current * dt / synapse.tau;
             }
 
+            for (_, (synapse, connection)) in
+                world.query::<(&mut SynapseCurrent, &Connection)>().iter()
+            {
+                if let Ok(source) = world.get::<&CurrentSource>(connection.from) {
+                    synapse.current = source.current;
+                }
+            }
             for (_, (synapse, connection)) in world.query::<(&SynapseCurrent, &Connection)>().iter()
             {
                 let mut dynamics = world.get::<&mut NeuronDynamics>(connection.to).unwrap();
@@ -607,20 +638,18 @@ impl visula::Simulation for Simulation {
                 .query::<&Connection>()
                 .iter()
                 .flat_map(|(connection_entity, connection)| {
-                    let neuron_from = world
-                        .get::<&Neuron>(connection.from)
-                        .expect("Connection from does not exist!");
-                    let dynamics_from = world
-                        .get::<&NeuronDynamics>(connection.from)
-                        .expect("Connection from does not exist!");
-                    let base_current = match &neuron_from.ty {
-                        NeuronType::Excitatory => 3000.0,
-                        NeuronType::Inhibitory => -3000.0,
-                    };
-                    let current = connection.strength * base_current;
                     let mut triggers = vec![];
-                    if dynamics_from.fired {
-                        triggers.push((connection_entity, current));
+                    if let Ok(neuron_from) = world.get::<&Neuron>(connection.from) {
+                        if let Ok(dynamics_from) = world.get::<&NeuronDynamics>(connection.from) {
+                            let base_current = match &neuron_from.ty {
+                                NeuronType::Excitatory => 3000.0,
+                                NeuronType::Inhibitory => -3000.0,
+                            };
+                            let current = connection.strength * base_current;
+                            if dynamics_from.fired {
+                                triggers.push((connection_entity, current));
+                            }
+                        }
                     }
                     triggers
                 })
@@ -677,6 +706,18 @@ impl visula::Simulation for Simulation {
                 }
             })
             .collect();
+        let source_spheres: Vec<Sphere> = world
+            .query::<(&CurrentSource, &Position)>()
+            .iter()
+            .map(|(_entity, (current_source, position))| {
+                let color = Vec3::new(0.8, 0.8, 0.1);
+                Sphere {
+                    position: position.position,
+                    color,
+                    _padding: Default::default(),
+                }
+            })
+            .collect();
         let trigger_spheres: Vec<Sphere> = world
             .query::<&Trigger>()
             .iter()
@@ -704,6 +745,7 @@ impl visula::Simulation for Simulation {
 
         let mut spheres = Vec::new();
         spheres.extend(neuron_spheres.iter());
+        spheres.extend(source_spheres.iter());
         spheres.extend(trigger_spheres.iter());
 
         let mut connections: Vec<ConnectionData> = world
