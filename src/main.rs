@@ -44,7 +44,6 @@ struct NeuronDynamics {
     current: f64,
     refraction: f64,
     fired: bool,
-    last_fired: Option<f64>,
 }
 
 #[derive(Clone, Debug)]
@@ -361,7 +360,6 @@ impl Simulation {
                         refraction: 0.0,
                         voltage: 0.0,
                         fired: false,
-                        last_fired: None,
                     };
                     let leak_current = LeakCurrent {
                         current: 0.0,
@@ -600,7 +598,6 @@ impl visula::Simulation for Simulation {
                 dynamics.voltage = (dynamics.voltage + dynamics.current * dt).clamp(-200.0, 200.0);
                 if dynamics.refraction <= 0.0 && dynamics.voltage > neuron.threshold {
                     dynamics.fired = true;
-                    dynamics.last_fired = Some(*time);
                     dynamics.refraction = 0.2;
                     dynamics.voltage = neuron.initial_voltage;
                     dynamics.voltage = neuron.reset_potential;
