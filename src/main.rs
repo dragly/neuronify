@@ -50,6 +50,7 @@ struct NeuronDynamics {
 #[derive(Clone, Debug)]
 struct Neuron {
     initial_voltage: f64,
+    reset_potential: f64,
     resting_potential: f64,
     leak_tau: f64,
     threshold: f64,
@@ -97,6 +98,7 @@ impl Neuron {
         Neuron {
             initial_voltage: 0.0,
             leak_tau: 1.0,
+            reset_potential: -70.0,
             resting_potential: -70.0,
             threshold: 30.0,
             input_tau: 0.1,
@@ -271,6 +273,7 @@ impl Simulation {
             },
         )
         .unwrap();
+
         let connection_spheres = Spheres::new(
             &application.rendering_descriptor(),
             &SphereDelegate {
@@ -594,7 +597,7 @@ impl visula::Simulation for Simulation {
                         dynamics.last_fired = Some(*time);
                         dynamics.refraction = 0.2;
                         dynamics.voltage = neuron.initial_voltage;
-                        dynamics.voltage = neuron.resting_potential;
+                        dynamics.voltage = neuron.reset_potential;
                     }
                 }
             }
