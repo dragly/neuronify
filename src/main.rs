@@ -1,10 +1,13 @@
 use bytemuck::{Pod, Zeroable};
 use cgmath::prelude::*;
+use egui::Color32;
+use egui::LayerId;
+use egui::Pos2;
+use egui_plot::{Line, PlotPoints};
 use glam::Quat;
 use glam::Vec3;
 use hecs::Entity;
-use std::collections::HashMap;
-use std::iter::FromIterator;
+
 use strum::EnumIter;
 use strum::IntoEnumIterator;
 use visula::Renderable;
@@ -23,6 +26,7 @@ pub enum Tool {
     ExcitatoryNeuron,
     InhibitoryNeuron,
     CurrentSource,
+    Voltmeter,
     StaticConnection,
     LearningConnection,
     Erase,
@@ -60,6 +64,11 @@ struct Neuron {
 struct SynapseCurrent {
     current: f64,
     tau: f64,
+}
+
+#[derive(Clone, Debug)]
+struct Voltmeter {
+    entity: Entity,
 }
 
 #[derive(Clone, Debug)]
@@ -193,6 +202,7 @@ struct Simulation {
     connection_spheres: Spheres,
     connection_buffer: InstanceBuffer<ConnectionData>,
     iterations: u32,
+    window_y: f32,
 }
 
 #[derive(Debug)]
@@ -267,7 +277,7 @@ impl Simulation {
         )
         .unwrap();
 
-        let mut world = hecs::World::new();
+        let world = hecs::World::new();
 
         Simulation {
             spheres,
@@ -287,6 +297,7 @@ impl Simulation {
             },
             keyboard: Keyboard { shift_down: false },
             iterations: 4,
+            window_y: 0.0,
         }
     }
 
@@ -421,7 +432,7 @@ impl Simulation {
                         position: mouse_position,
                     },
                     StaticSource {},
-                    CurrentSource { current: 1000.0 },
+                    CurrentSource { current: 200.0 },
                     Deletable {},
                     Selectable { selected: false },
                 ));
@@ -569,6 +580,23 @@ impl Simulation {
                     .collect::<Vec<Entity>>();
                 for trigger in triggers_to_delete {
                     world.despawn(trigger).unwrap();
+                }
+            }
+            Tool::Voltmeter => {
+                let target = world
+                    .query::<&Position>()
+                    .with::<&Neuron>()
+                    .iter()
+                    .find_map(|(entity, position)| {
+                        let distance = position.position.distance(mouse_position);
+                        if distance < NODE_RADIUS {
+                            Some(entity)
+                        } else {
+                            None
+                        }
+                    });
+                if let Some(entity) = target {
+                    world.spawn((Voltmeter { entity },));
                 }
             }
             Tool::Select => {
@@ -818,6 +846,35 @@ impl visula::Simulation for Simulation {
             ui.label("Simulation speed");
             ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
         });
+
+        for (_entity, voltmeter) in self.world.query::<&Voltmeter>().iter() {
+            egui::Window::new("Voltmeter").show(context, |ui| {
+                let n = 128;
+                let line_points: PlotPoints = (0..=n)
+                    .map(|i| {
+                        use std::f64::consts::TAU;
+                        let x = egui::remap(i as f64, 0.0..=n as f64, -TAU..=TAU);
+                        [x, x.sin()]
+                    })
+                    .collect();
+                let line = Line::new(line_points);
+                egui_plot::Plot::new("example_plot")
+                    .height(32.0)
+                    .show_axes(false)
+                    .data_aspect(1.0)
+                    .show(ui, |plot_ui| plot_ui.line(line))
+                    .response
+            });
+
+            let mut start = Pos2::new(0.0, 0.0);
+            context.memory(|memory| {
+                start = memory.area_rect("Voltmeter").unwrap().min;
+            });
+            let line_end = (200.0, 200.0).into();
+            context
+                .layer_painter(LayerId::background())
+                .line_segment([start, line_end], (1.0, Color32::WHITE)); // Adjust color and line thickness as needed
+        }
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {

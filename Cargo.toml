@@ -20,6 +20,7 @@ bytemuck = { version = "1.4", features = ["derive"] }
 log = "0.4"
 winit = { version = "0.28" }
 egui = "0.23"
+egui_plot = "0.23"
 egui_wgpu_backend = "0.27.0"
 egui_winit_platform = "0.20"
 pyo3 = "0.20.0"
