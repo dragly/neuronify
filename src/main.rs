@@ -1,3 +1,7 @@
+mod measurement;
+
+use crate::measurement::voltmeter::Voltmeter;
+
 use bytemuck::{Pod, Zeroable};
 use cgmath::prelude::*;
 use cgmath::Vector4;
@@ -9,6 +13,8 @@ use glam::Quat;
 use glam::Vec3;
 use hecs::Entity;
 
+use measurement::voltmeter::RollingWindow;
+use measurement::voltmeter::VoltageMeasurement;
 use strum::EnumIter;
 use strum::IntoEnumIterator;
 use visula::Renderable;
@@ -66,9 +72,6 @@ struct SynapseCurrent {
     current: f64,
     tau: f64,
 }
-
-#[derive(Clone, Debug)]
-struct Voltmeter {}
 
 #[derive(Clone, Debug)]
 struct Selectable {
@@ -597,7 +600,12 @@ impl Simulation {
                 if let Some(entity) = target {
                     if world.get::<&Voltmeter>(entity).is_err() {
                         world
-                            .insert_one(entity, Voltmeter {})
+                            .insert_one(
+                                entity,
+                                Voltmeter {
+                                    measurements: RollingWindow::new(1000),
+                                },
+                            )
                             .expect("Could not create Voltmeter!");
                     }
                 }
@@ -733,6 +741,14 @@ impl visula::Simulation for Simulation {
                 dynamics.refraction -= dt;
             }
 
+            for (_, (voltmeter, dynamics)) in world.query_mut::<(&mut Voltmeter, &NeuronDynamics)>()
+            {
+                voltmeter.measurements.push(VoltageMeasurement {
+                    voltage: dynamics.voltage,
+                    time: *time,
+                });
+            }
+
             *time += dt;
         }
 
@@ -850,33 +866,34 @@ impl visula::Simulation for Simulation {
             ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
         });
 
-        for (entity, (_voltmeter, position)) in self.world.query::<(&Voltmeter, &Position)>().iter()
+        for (entity, (voltmeter, position)) in self.world.query::<(&Voltmeter, &Position)>().iter()
         {
             let id = egui::Id::new(entity);
-            egui::Window::new("Voltmeter").id(id).show(context, |ui| {
-                let n = 128;
-                let line_points: PlotPoints = (0..=n)
-                    .map(|i| {
-                        use std::f64::consts::TAU;
-                        let x = egui::remap(i as f64, 0.0..=n as f64, -TAU..=TAU);
-                        [x, x.sin()]
-                    })
-                    .collect();
-                let line = Line::new(line_points);
-                egui_plot::Plot::new("Voltage")
-                    .height(32.0)
-                    .show_axes(false)
-                    .data_aspect(1.0)
-                    .show(ui, |plot_ui| plot_ui.line(line))
-                    .response
-            });
+            egui::Window::new("Voltmeter")
+                .id(id)
+                .resizable(true)
+                .show(context, |ui| {
+                    let line_points: PlotPoints = voltmeter
+                        .measurements
+                        .iter()
+                        .map(|m| [m.time, m.voltage])
+                        .collect();
+                    let line = Line::new(line_points);
+                    egui_plot::Plot::new("Voltage")
+                        .auto_bounds_x()
+                        .include_y(-100.0)
+                        .include_y(100.0)
+                        .show_axes(true)
+                        .show(ui, |plot_ui| plot_ui.line(line))
+                        .response
+                });
 
             let mut start = Pos2::new(0.0, 0.0);
             context.memory(|memory| {
-                start = memory
+                let rect = memory
                     .area_rect(id)
-                    .expect("Could not find id of window that was just created")
-                    .min;
+                    .expect("Could not find id of window that was just created");
+                start = rect.center();
             });
             let width = application.config.width as f32;
             let height = application.config.height as f32;
@@ -938,5 +955,5 @@ impl visula::Simulation for Simulation {
 }
 
 fn main() {
-    visula::run(Simulation::new); //.expect("Initializing simulation failed"));
+    visula::run(Simulation::new);
 }
