@@ -37,11 +37,8 @@ pub struct VoltageMeasurement {
 
 #[derive(Clone, Debug)]
 pub struct VoltageSeries {
-    pub entity: Entity,
     pub measurements: RollingWindow<VoltageMeasurement>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Voltmeter {
-    pub entities: Vec<Entity>,
-}
+pub struct Voltmeter {}

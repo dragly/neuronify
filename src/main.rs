@@ -1,5 +1,7 @@
 mod measurement;
 
+use std::collections::HashMap;
+
 use crate::measurement::voltmeter::VoltageSeries;
 
 use bytemuck::{Pod, Zeroable};
@@ -8,6 +10,7 @@ use cgmath::Vector4;
 use egui::Color32;
 use egui::LayerId;
 use egui::Pos2;
+use egui_plot::PlotBounds;
 use egui_plot::{Line, PlotPoints};
 use glam::Quat;
 use glam::Vec3;
@@ -589,35 +592,45 @@ impl Simulation {
                 if previous_too_near {
                     return;
                 }
-                let Some(target, position) = world.query::<&Position>().with::<&Neuron>().iter().find(
-                    |(entity, position)| {
+                let result = world
+                    .query::<&Position>()
+                    .with::<&Neuron>()
+                    .iter()
+                    .find_map(|(entity, position)| {
                         let distance = position.position.distance(mouse_position);
-                        distance < NODE_RADIUS
-                    },
-                ) else {
+                        if distance < NODE_RADIUS {
+                            Some((entity.clone(), position.clone()))
+                        } else {
+                            None
+                        }
+                    });
+                let Some((target, position)) = result else {
                     return;
-                }
-                if let Some(entity) = target {
-                    let already_exists = world
-                        .query::<&Voltmeter>()
-                        .iter()
-                        .find(|(_, v)| {
-                            v.series_collection
-                                .iter()
-                                .find(|s| s.entity == entity)
-                                .is_some()
-                        })
-                        .is_some();
-                    if !already_exists {
-                        world.spawn((Voltmeter {
-                            series_collection: vec![VoltageSeries {
-                                entity,
-                                measurements: RollingWindow::new(100000),
-                            }],
-                        },));
-                    }
-                }
-                previous_creation = Some(position);
+                };
+                let voltmeter = world.spawn((
+                    Voltmeter {},
+                    Position {
+                        position: position.position
+                            + Vec3 {
+                                x: 1.0,
+                                y: 1.0,
+                                z: 0.0,
+                            },
+                    },
+                ));
+                *previous_creation = Some(PreviousCreation {
+                    position: position.position,
+                });
+                world.spawn((
+                    VoltageSeries {
+                        measurements: RollingWindow::new(100000),
+                    },
+                    Connection {
+                        from: target,
+                        to: voltmeter,
+                        strength: 1.0,
+                    },
+                ));
             }
             Tool::Select => {
                 for (_, (selectable, position)) in world.query_mut::<(&mut Selectable, &Position)>()
@@ -699,6 +712,7 @@ impl visula::Simulation for Simulation {
             }
             let new_triggers: Vec<(Entity, f64)> = world
                 .query::<&Connection>()
+                .with::<&SynapseCurrent>()
                 .iter()
                 .flat_map(|(connection_entity, connection)| {
                     let mut triggers = vec![];
@@ -750,13 +764,25 @@ impl visula::Simulation for Simulation {
                 dynamics.refraction -= dt;
             }
 
-            for (_, (voltmeter, dynamics)) in
-                world.query_mut::<(&mut VoltageSeries, &NeuronDynamics)>()
-            {
-                voltmeter.measurements.push(VoltageMeasurement {
-                    voltage: dynamics.voltage,
-                    time: *time,
-                });
+            let mut updates = HashMap::new();
+            for (entity, (_, connection)) in world.query::<(&VoltageSeries, &Connection)>().iter() {
+                let dynamics = world
+                    .get::<&NeuronDynamics>(connection.from)
+                    .expect("Connection with voltage series does not come from neuron");
+                updates.insert(
+                    entity,
+                    VoltageMeasurement {
+                        voltage: dynamics.voltage,
+                        time: *time,
+                    },
+                );
+            }
+            for (entity, value) in updates {
+                world
+                    .get::<&mut VoltageSeries>(entity)
+                    .unwrap()
+                    .measurements
+                    .push(value);
             }
 
             *time += dt;
@@ -876,37 +902,42 @@ impl visula::Simulation for Simulation {
             ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
         });
 
-        for (_, voltmeter) in self.world.query::<&Voltmeter>().iter() {
-            for serie in &voltmeter.series_collection {
-                let VoltageSeries {
-                    entity,
-                    measurements,
-                } = serie;
-                let Ok(position) = self.world.get::<&Position>(*entity) else {
+        for (voltmeter_id, voltmeter) in self.world.query::<&Voltmeter>().iter() {
+            for (_, (series, connection)) in
+                self.world.query::<(&VoltageSeries, &Connection)>().iter()
+            {
+                if connection.to != voltmeter_id {
+                    continue;
+                }
+                let Ok(position) = self.world.get::<&Position>(connection.from) else {
                     log::error!("Position not found for entity");
                     continue;
                 };
-                let id = egui::Id::new(format!("voltmeter_{entity:?}"));
+                let id = egui::Id::new(voltmeter_id);
                 egui::Window::new("Voltmeter")
                     .id(id)
                     .resizable(true)
                     .show(context, |ui| {
-                        let line_points: PlotPoints =
-                            measurements.iter().map(|m| [m.time, m.voltage]).collect();
+                        let line_points: PlotPoints = series
+                            .measurements
+                            .iter()
+                            .map(|m| [m.time, m.voltage])
+                            .collect();
                         let (min_x, max_x) = {
-                            match measurements.last().map(|m| m.time) {
+                            match series.measurements.last().map(|m| m.time) {
                                 Some(t) => (t - 5.0, t),
                                 None => (-5.0, 0.0),
                             }
                         };
                         let line = Line::new(line_points);
                         egui_plot::Plot::new("Voltage")
-                            .auto_bounds_x()
-                            .include_y(-100.0)
-                            .include_y(100.0)
-                            .include_x(min_x)
-                            .include_x(max_x)
-                            .show(ui, |plot_ui| plot_ui.line(line))
+                            .show(ui, |plot_ui| {
+                                plot_ui.set_plot_bounds(PlotBounds::from_min_max(
+                                    [min_x, -100.0],
+                                    [max_x, 100.0],
+                                ));
+                                plot_ui.line(line)
+                            })
                             .response
                     });
 

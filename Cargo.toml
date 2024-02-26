@@ -4,9 +4,9 @@ version = "2.0.0"
 edition = "2021"
 
 [dependencies]
-visula = { git = "https://github.com/dragly/visula", rev = "2224f1d42b7e7ea15156f08c372f6b5ad2581e92" }
-visula_derive = { git = "https://github.com/dragly/visula", rev = "2224f1d42b7e7ea15156f08c372f6b5ad2581e92" }
-visula_core = { git = "https://github.com/dragly/visula", rev = "2224f1d42b7e7ea15156f08c372f6b5ad2581e92" }
+visula = { git = "https://github.com/dragly/visula", rev = "7a47653a7ece037b9f19cb65628837f9894aeba0" }
+visula_derive = { git = "https://github.com/dragly/visula", rev = "7a47653a7ece037b9f19cb65628837f9894aeba0" }
+visula_core = { git = "https://github.com/dragly/visula", rev = "7a47653a7ece037b9f19cb65628837f9894aeba0" }
 wgpu = { version = "0.18", features = ["webgl"] }
 glam = { version = "0.24", features = ["bytemuck"] }
 naga = { version = "0.13", features = ["wgsl-in", "wgsl-out"] }
