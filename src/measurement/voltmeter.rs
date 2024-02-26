@@ -1,3 +1,5 @@
+use hecs::Entity;
+
 #[derive(Clone, Debug)]
 pub struct RollingWindow<T> {
     data: Vec<T>,
@@ -22,6 +24,9 @@ impl<T> RollingWindow<T> {
     pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.data.iter()
     }
+    pub fn last(&self) -> Option<&T> {
+        self.data.last()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -31,6 +36,12 @@ pub struct VoltageMeasurement {
 }
 
 #[derive(Clone, Debug)]
-pub struct Voltmeter {
+pub struct VoltageSeries {
+    pub entity: Entity,
     pub measurements: RollingWindow<VoltageMeasurement>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Voltmeter {
+    pub entities: Vec<Entity>,
 }

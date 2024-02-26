@@ -1,6 +1,6 @@
 mod measurement;
 
-use crate::measurement::voltmeter::Voltmeter;
+use crate::measurement::voltmeter::VoltageSeries;
 
 use bytemuck::{Pod, Zeroable};
 use cgmath::prelude::*;
@@ -13,8 +13,9 @@ use glam::Quat;
 use glam::Vec3;
 use hecs::Entity;
 
-use measurement::voltmeter::RollingWindow;
-use measurement::voltmeter::VoltageMeasurement;
+use crate::measurement::voltmeter::RollingWindow;
+use crate::measurement::voltmeter::VoltageMeasurement;
+use crate::measurement::voltmeter::Voltmeter;
 use strum::EnumIter;
 use strum::IntoEnumIterator;
 use visula::Renderable;
@@ -585,30 +586,38 @@ impl Simulation {
                 }
             }
             Tool::Voltmeter => {
-                let target = world
-                    .query::<&Position>()
-                    .with::<&Neuron>()
-                    .iter()
-                    .find_map(|(entity, position)| {
+                if previous_too_near {
+                    return;
+                }
+                let Some(target, position) = world.query::<&Position>().with::<&Neuron>().iter().find(
+                    |(entity, position)| {
                         let distance = position.position.distance(mouse_position);
-                        if distance < NODE_RADIUS {
-                            Some(entity)
-                        } else {
-                            None
-                        }
-                    });
+                        distance < NODE_RADIUS
+                    },
+                ) else {
+                    return;
+                }
                 if let Some(entity) = target {
-                    if world.get::<&Voltmeter>(entity).is_err() {
-                        world
-                            .insert_one(
+                    let already_exists = world
+                        .query::<&Voltmeter>()
+                        .iter()
+                        .find(|(_, v)| {
+                            v.series_collection
+                                .iter()
+                                .find(|s| s.entity == entity)
+                                .is_some()
+                        })
+                        .is_some();
+                    if !already_exists {
+                        world.spawn((Voltmeter {
+                            series_collection: vec![VoltageSeries {
                                 entity,
-                                Voltmeter {
-                                    measurements: RollingWindow::new(1000),
-                                },
-                            )
-                            .expect("Could not create Voltmeter!");
+                                measurements: RollingWindow::new(100000),
+                            }],
+                        },));
                     }
                 }
+                previous_creation = Some(position);
             }
             Tool::Select => {
                 for (_, (selectable, position)) in world.query_mut::<(&mut Selectable, &Position)>()
@@ -741,7 +750,8 @@ impl visula::Simulation for Simulation {
                 dynamics.refraction -= dt;
             }
 
-            for (_, (voltmeter, dynamics)) in world.query_mut::<(&mut Voltmeter, &NeuronDynamics)>()
+            for (_, (voltmeter, dynamics)) in
+                world.query_mut::<(&mut VoltageSeries, &NeuronDynamics)>()
             {
                 voltmeter.measurements.push(VoltageMeasurement {
                     voltage: dynamics.voltage,
@@ -866,59 +876,72 @@ impl visula::Simulation for Simulation {
             ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
         });
 
-        for (entity, (voltmeter, position)) in self.world.query::<(&Voltmeter, &Position)>().iter()
-        {
-            let id = egui::Id::new(entity);
-            egui::Window::new("Voltmeter")
-                .id(id)
-                .resizable(true)
-                .show(context, |ui| {
-                    let line_points: PlotPoints = voltmeter
-                        .measurements
-                        .iter()
-                        .map(|m| [m.time, m.voltage])
-                        .collect();
-                    let line = Line::new(line_points);
-                    egui_plot::Plot::new("Voltage")
-                        .auto_bounds_x()
-                        .include_y(-100.0)
-                        .include_y(100.0)
-                        .show_axes(true)
-                        .show(ui, |plot_ui| plot_ui.line(line))
-                        .response
+        for (_, voltmeter) in self.world.query::<&Voltmeter>().iter() {
+            for serie in &voltmeter.series_collection {
+                let VoltageSeries {
+                    entity,
+                    measurements,
+                } = serie;
+                let Ok(position) = self.world.get::<&Position>(*entity) else {
+                    log::error!("Position not found for entity");
+                    continue;
+                };
+                let id = egui::Id::new(format!("voltmeter_{entity:?}"));
+                egui::Window::new("Voltmeter")
+                    .id(id)
+                    .resizable(true)
+                    .show(context, |ui| {
+                        let line_points: PlotPoints =
+                            measurements.iter().map(|m| [m.time, m.voltage]).collect();
+                        let (min_x, max_x) = {
+                            match measurements.last().map(|m| m.time) {
+                                Some(t) => (t - 5.0, t),
+                                None => (-5.0, 0.0),
+                            }
+                        };
+                        let line = Line::new(line_points);
+                        egui_plot::Plot::new("Voltage")
+                            .auto_bounds_x()
+                            .include_y(-100.0)
+                            .include_y(100.0)
+                            .include_x(min_x)
+                            .include_x(max_x)
+                            .show(ui, |plot_ui| plot_ui.line(line))
+                            .response
+                    });
+
+                let mut start = Pos2::new(0.0, 0.0);
+                context.memory(|memory| {
+                    let rect = memory
+                        .area_rect(id)
+                        .expect("Could not find id of window that was just created");
+                    start = rect.center();
                 });
+                let width = application.config.width as f32;
+                let height = application.config.height as f32;
+                let position_2d_pre = application
+                    .camera_controller
+                    .uniforms(width / height)
+                    .model_view_projection_matrix
+                    * Vector4::new(
+                        position.position.x,
+                        position.position.y,
+                        position.position.z,
+                        1.0,
+                    );
 
-            let mut start = Pos2::new(0.0, 0.0);
-            context.memory(|memory| {
-                let rect = memory
-                    .area_rect(id)
-                    .expect("Could not find id of window that was just created");
-                start = rect.center();
-            });
-            let width = application.config.width as f32;
-            let height = application.config.height as f32;
-            let position_2d_pre = application
-                .camera_controller
-                .uniforms(width / height)
-                .model_view_projection_matrix
-                * Vector4::new(
-                    position.position.x,
-                    position.position.y,
-                    position.position.z,
-                    1.0,
-                );
+                let position_2d = position_2d_pre / position_2d_pre.w;
 
-            let position_2d = position_2d_pre / position_2d_pre.w;
-
-            let line_end = (
-                width / application.window.scale_factor() as f32 * (position_2d[0] + 1.0) / 2.0,
-                height / application.window.scale_factor() as f32
-                    * (((0.0 - position_2d[1]) + 1.0) / 2.0),
-            )
-                .into();
-            context
-                .layer_painter(LayerId::background())
-                .line_segment([start, line_end], (1.0, Color32::WHITE)); // Adjust color and line thickness as needed
+                let line_end = (
+                    width / application.window.scale_factor() as f32 * (position_2d[0] + 1.0) / 2.0,
+                    height / application.window.scale_factor() as f32
+                        * (((0.0 - position_2d[1]) + 1.0) / 2.0),
+                )
+                    .into();
+                context
+                    .layer_painter(LayerId::background())
+                    .line_segment([start, line_end], (1.0, Color32::WHITE)); // Adjust color and line thickness as needed
+            }
         }
     }
 
