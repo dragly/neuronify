@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use cgmath::prelude::*;
+use cgmath::Vector4;
 use egui::Color32;
 use egui::LayerId;
 use egui::Pos2;
@@ -67,9 +68,7 @@ struct SynapseCurrent {
 }
 
 #[derive(Clone, Debug)]
-struct Voltmeter {
-    entity: Entity,
-}
+struct Voltmeter {}
 
 #[derive(Clone, Debug)]
 struct Selectable {
@@ -596,7 +595,11 @@ impl Simulation {
                         }
                     });
                 if let Some(entity) = target {
-                    world.spawn((Voltmeter { entity },));
+                    if world.get::<&Voltmeter>(entity).is_err() {
+                        world
+                            .insert_one(entity, Voltmeter {})
+                            .expect("Could not create Voltmeter!");
+                    }
                 }
             }
             Tool::Select => {
@@ -837,7 +840,7 @@ impl visula::Simulation for Simulation {
         self.connection_spheres.render(data);
     }
 
-    fn gui(&mut self, context: &egui::Context) {
+    fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
         egui::Window::new("Settings").show(context, |ui| {
             ui.label("Tool");
             for value in Tool::iter() {
@@ -847,8 +850,10 @@ impl visula::Simulation for Simulation {
             ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
         });
 
-        for (_entity, voltmeter) in self.world.query::<&Voltmeter>().iter() {
-            egui::Window::new("Voltmeter").show(context, |ui| {
+        for (entity, (_voltmeter, position)) in self.world.query::<(&Voltmeter, &Position)>().iter()
+        {
+            let id = egui::Id::new(entity);
+            egui::Window::new("Voltmeter").id(id).show(context, |ui| {
                 let n = 128;
                 let line_points: PlotPoints = (0..=n)
                     .map(|i| {
@@ -858,7 +863,7 @@ impl visula::Simulation for Simulation {
                     })
                     .collect();
                 let line = Line::new(line_points);
-                egui_plot::Plot::new("example_plot")
+                egui_plot::Plot::new("Voltage")
                     .height(32.0)
                     .show_axes(false)
                     .data_aspect(1.0)
@@ -868,9 +873,32 @@ impl visula::Simulation for Simulation {
 
             let mut start = Pos2::new(0.0, 0.0);
             context.memory(|memory| {
-                start = memory.area_rect("Voltmeter").unwrap().min;
+                start = memory
+                    .area_rect(id)
+                    .expect("Could not find id of window that was just created")
+                    .min;
             });
-            let line_end = (200.0, 200.0).into();
+            let width = application.config.width as f32;
+            let height = application.config.height as f32;
+            let position_2d_pre = application
+                .camera_controller
+                .uniforms(width / height)
+                .model_view_projection_matrix
+                * Vector4::new(
+                    position.position.x,
+                    position.position.y,
+                    position.position.z,
+                    1.0,
+                );
+
+            let position_2d = position_2d_pre / position_2d_pre.w;
+
+            let line_end = (
+                width / application.window.scale_factor() as f32 * (position_2d[0] + 1.0) / 2.0,
+                height / application.window.scale_factor() as f32
+                    * (((0.0 - position_2d[1]) + 1.0) / 2.0),
+            )
+                .into();
             context
                 .layer_painter(LayerId::background())
                 .line_segment([start, line_end], (1.0, Color32::WHITE)); // Adjust color and line thickness as needed
