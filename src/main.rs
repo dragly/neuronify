@@ -1,5 +1,5 @@
-use neuronify::Simulation;
+use neuronify::Neuronify;
 
 fn main() {
-    visula::run(Simulation::new);
+    visula::run(Neuronify::new);
 }

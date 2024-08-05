@@ -1,4 +1,13 @@
+use std::borrow::BorrowMut;
+use visula::Simulation;
 mod measurement;
+use std::sync::Arc;
+use visula::initialize_event_loop_and_window_with_config;
+use visula::initialize_logger;
+use visula::winit::keyboard::ModifiersKeyState;
+use visula::Application;
+use visula::RunConfig;
+use wasm_bindgen::prelude::*;
 
 use std::collections::HashMap;
 
@@ -21,15 +30,15 @@ use crate::measurement::voltmeter::VoltageMeasurement;
 use crate::measurement::voltmeter::Voltmeter;
 use strum::EnumIter;
 use strum::IntoEnumIterator;
+use visula::winit::{
+    dpi::PhysicalPosition,
+    event::{ElementState, Event, MouseButton, WindowEvent},
+};
 use visula::Renderable;
 use visula::{
     CustomEvent, InstanceBuffer, LineDelegate, Lines, RenderData, SphereDelegate, Spheres,
 };
 use visula_derive::Instance;
-use winit::{
-    dpi::PhysicalPosition,
-    event::{ElementState, Event, MouseButton, WindowEvent},
-};
 
 #[derive(Clone, Debug, EnumIter, PartialEq)]
 pub enum Tool {
@@ -194,7 +203,7 @@ struct Keyboard {
     shift_down: bool,
 }
 
-pub struct Simulation {
+pub struct Neuronify {
     tool: Tool,
     previous_creation: Option<PreviousCreation>,
     connection_tool: Option<ConnectionTool>,
@@ -240,8 +249,8 @@ struct MeshInstanceData {
     rotation: Quat,
 }
 
-impl Simulation {
-    pub fn new(application: &mut visula::Application) -> Simulation {
+impl Neuronify {
+    pub fn new(application: &mut visula::Application) -> Neuronify {
         application.camera_controller.enabled = false;
 
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
@@ -286,7 +295,7 @@ impl Simulation {
 
         let world = hecs::World::new();
 
-        Simulation {
+        Neuronify {
             spheres,
             sphere_buffer,
             connection_lines,
@@ -309,7 +318,7 @@ impl Simulation {
     }
 
     fn handle_tool(&mut self, application: &visula::Application) {
-        let Simulation {
+        let Neuronify {
             tool,
             mouse,
             connection_tool,
@@ -644,12 +653,18 @@ impl Simulation {
             }
         }
     }
+
+    pub fn save() {}
+
+    pub fn load(application: &mut visula::Application, url: &str) -> Neuronify {
+        Neuronify::new(application)
+    }
 }
 
-impl visula::Simulation for Simulation {
+impl visula::Simulation for Neuronify {
     type Error = Error;
-    fn update(&mut self, application: &visula::Application) {
-        let Simulation {
+    fn update(&mut self, application: &mut visula::Application) {
+        let Neuronify {
             connection_tool,
             world,
             time,
@@ -998,7 +1013,8 @@ impl visula::Simulation for Simulation {
                 event: WindowEvent::ModifiersChanged(state),
                 ..
             } => {
-                self.keyboard.shift_down = state.shift();
+                self.keyboard.shift_down = state.lshift_state() == ModifiersKeyState::Pressed
+                    || state.rshift_state() == ModifiersKeyState::Pressed;
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
@@ -1010,4 +1026,38 @@ impl visula::Simulation for Simulation {
             _ => {}
         }
     }
+}
+
+#[wasm_bindgen]
+pub fn load(url: &str) {
+    initialize_logger();
+    let (event_loop, window) = initialize_event_loop_and_window_with_config(RunConfig {
+        canvas_name: "canvas".to_owned(),
+    });
+    let main_window_id = window.id();
+    let mut application =
+        pollster::block_on(async { Application::new(Arc::new(window), &event_loop).await });
+    let mut simulation = Neuronify::load(&mut application, &url);
+    event_loop
+        .run(move |event, target| {
+            if !application.handle_event(&event) {
+                simulation.handle_event(&mut application, &event);
+            }
+            if let Event::WindowEvent { window_id, event } = event {
+                if main_window_id != window_id {
+                    return;
+                }
+                match event {
+                    WindowEvent::RedrawRequested => {
+                        application.update();
+                        simulation.update(&mut application);
+                        application.render(&mut simulation);
+                        application.window.borrow_mut().request_redraw();
+                    }
+                    WindowEvent::CloseRequested => target.exit(),
+                    _ => {}
+                }
+            }
+        })
+        .expect("Event loop failed to run");
 }
