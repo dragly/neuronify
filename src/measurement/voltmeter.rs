@@ -1,6 +1,7 @@
 use hecs::Entity;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RollingWindow<T> {
     data: Vec<T>,
     max_capacity: usize,
@@ -29,16 +30,16 @@ impl<T> RollingWindow<T> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VoltageMeasurement {
     pub voltage: f64,
     pub time: f64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VoltageSeries {
     pub measurements: RollingWindow<VoltageMeasurement>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Voltmeter {}

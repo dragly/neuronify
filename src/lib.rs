@@ -1,4 +1,8 @@
+use hecs::{serialize::row::*, *};
+use serde::{Deserialize, Serialize};
+use std::any::TypeId;
 use std::borrow::BorrowMut;
+use std::io::BufReader;
 use visula::Simulation;
 mod measurement;
 use std::sync::Arc;
@@ -57,13 +61,13 @@ const NODE_RADIUS: f32 = 1.0;
 const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
 const SIGMA: f32 = 1.0 * NODE_RADIUS;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 enum NeuronType {
     Excitatory,
     Inhibitory,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct NeuronDynamics {
     voltage: f64,
     current: f64,
@@ -71,7 +75,7 @@ struct NeuronDynamics {
     fired: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Neuron {
     initial_voltage: f64,
     reset_potential: f64,
@@ -80,37 +84,37 @@ struct Neuron {
     ty: NeuronType,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct SynapseCurrent {
     current: f64,
     tau: f64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct Selectable {
     selected: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct CurrentSource {
     current: f64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct StaticSource {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct LearningSynapse {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct PreviousCreation {
     position: Vec3,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct Deletable {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Position {
     pub position: Vec3,
 }
@@ -134,7 +138,7 @@ struct ConnectionTool {
     from: Entity,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct Trigger {
     total: f64,
     remaining: f64,
@@ -162,25 +166,25 @@ impl Trigger {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct LeakCurrent {
     current: f64,
     tau: f64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct Connection {
     from: Entity,
     to: Entity,
     strength: f64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StimulateCurrent {
     pub current: f64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct StimulationTool {
     position: Vec3,
 }
@@ -218,7 +222,6 @@ pub struct Neuronify {
     connection_spheres: Spheres,
     connection_buffer: InstanceBuffer<ConnectionData>,
     iterations: u32,
-    window_y: f32,
 }
 
 #[derive(Debug)]
@@ -313,7 +316,6 @@ impl Neuronify {
             },
             keyboard: Keyboard { shift_down: false },
             iterations: 4,
-            window_y: 0.0,
         }
     }
 
@@ -654,10 +656,128 @@ impl Neuronify {
         }
     }
 
-    pub fn save() {}
+    pub fn save(&self) {
+        let mut context = SaveContext;
+        let writer = std::fs::File::create("output.json").unwrap();
+        let mut serializer = serde_json::Serializer::new(writer);
+        serialize(&self.world, &mut context, &mut serializer).unwrap();
+    }
+
+    pub fn loadfile(&mut self) {
+        let mut context = LoadContext;
+        let reader = std::fs::File::open("output.json").unwrap();
+        let bufreader = BufReader::new(reader);
+        let mut deserializer = serde_json::Deserializer::from_reader(bufreader);
+        self.world = deserialize(&mut context, &mut deserializer).unwrap();
+    }
 
     pub fn load(application: &mut visula::Application, url: &str) -> Neuronify {
         Neuronify::new(application)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+enum ComponentId {
+    Position,
+    Neuron,
+    CurrentSource,
+    StaticSource,
+    NeuronDynamics,
+    LeakCurrent,
+    Deletable,
+    Selectable,
+    LearningSynapse,
+    SynapseCurrent,
+    Voltmeter,
+    VoltageSeries,
+    Connection,
+    Trigger,
+}
+
+struct SaveContext;
+
+impl SerializeContext for SaveContext {
+    fn serialize_entity<S>(&mut self, entity: EntityRef<'_>, mut map: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::SerializeMap,
+    {
+        // Call `try_serialize` for every serializable component we want to save
+        try_serialize::<Position, _, _>(&entity, &ComponentId::Position, &mut map)?;
+        try_serialize::<Neuron, _, _>(&entity, &ComponentId::Neuron, &mut map)?;
+        try_serialize::<CurrentSource, _, _>(&entity, &ComponentId::CurrentSource, &mut map)?;
+        try_serialize::<StaticSource, _, _>(&entity, &ComponentId::StaticSource, &mut map)?;
+        try_serialize::<NeuronDynamics, _, _>(&entity, &ComponentId::NeuronDynamics, &mut map)?;
+        try_serialize::<LeakCurrent, _, _>(&entity, &ComponentId::LeakCurrent, &mut map)?;
+        try_serialize::<Deletable, _, _>(&entity, &ComponentId::Deletable, &mut map)?;
+        try_serialize::<Selectable, _, _>(&entity, &ComponentId::Selectable, &mut map)?;
+        try_serialize::<LearningSynapse, _, _>(&entity, &ComponentId::LearningSynapse, &mut map)?;
+        try_serialize::<SynapseCurrent, _, _>(&entity, &ComponentId::SynapseCurrent, &mut map)?;
+        try_serialize::<Voltmeter, _, _>(&entity, &ComponentId::Voltmeter, &mut map)?;
+        try_serialize::<VoltageSeries, _, _>(&entity, &ComponentId::VoltageSeries, &mut map)?;
+        try_serialize::<Connection, _, _>(&entity, &ComponentId::Connection, &mut map)?;
+        try_serialize::<Trigger, _, _>(&entity, &ComponentId::Trigger, &mut map)?;
+        map.end()
+    }
+}
+
+struct LoadContext;
+
+impl DeserializeContext for LoadContext {
+    fn deserialize_entity<'de, M>(
+        &mut self,
+        mut map: M,
+        entity: &mut EntityBuilder,
+    ) -> Result<(), M::Error>
+    where
+        M: serde::de::MapAccess<'de>,
+    {
+        while let Some(key) = map.next_key()? {
+            match key {
+                ComponentId::Position => {
+                    entity.add::<Position>(map.next_value()?);
+                }
+                ComponentId::Neuron => {
+                    entity.add::<Neuron>(map.next_value()?);
+                }
+                ComponentId::StaticSource => {
+                    entity.add::<StaticSource>(map.next_value()?);
+                }
+                ComponentId::CurrentSource => {
+                    entity.add::<CurrentSource>(map.next_value()?);
+                }
+                ComponentId::NeuronDynamics => {
+                    entity.add::<NeuronDynamics>(map.next_value()?);
+                }
+                ComponentId::LeakCurrent => {
+                    entity.add::<LeakCurrent>(map.next_value()?);
+                }
+                ComponentId::Deletable => {
+                    entity.add::<Deletable>(map.next_value()?);
+                }
+                ComponentId::Selectable => {
+                    entity.add::<Selectable>(map.next_value()?);
+                }
+                ComponentId::LearningSynapse => {
+                    entity.add::<LearningSynapse>(map.next_value()?);
+                }
+                ComponentId::SynapseCurrent => {
+                    entity.add::<SynapseCurrent>(map.next_value()?);
+                }
+                ComponentId::Voltmeter => {
+                    entity.add::<Voltmeter>(map.next_value()?);
+                }
+                ComponentId::VoltageSeries => {
+                    entity.add::<VoltageSeries>(map.next_value()?);
+                }
+                ComponentId::Connection => {
+                    entity.add::<Connection>(map.next_value()?);
+                }
+                ComponentId::Trigger => {
+                    entity.add::<Trigger>(map.next_value()?);
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -919,6 +1039,12 @@ impl visula::Simulation for Neuronify {
             }
             ui.label("Simulation speed");
             ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
+            if ui.button("Save").clicked() {
+                self.save();
+            }
+            if ui.button("Load").clicked() {
+                self.loadfile();
+            }
         });
 
         for (voltmeter_id, voltmeter) in self.world.query::<&Voltmeter>().iter() {
@@ -1052,6 +1178,7 @@ pub fn load(url: &str) {
                         application.update();
                         simulation.update(&mut application);
                         application.render(&mut simulation);
+
                         application.window.borrow_mut().request_redraw();
                     }
                     WindowEvent::CloseRequested => target.exit(),
