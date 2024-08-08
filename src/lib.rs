@@ -1,8 +1,11 @@
-use hecs::{serialize::row::*, *};
+use hecs::{serialize::column::*, *};
+use postcard::ser_flavors::Flavor;
 use serde::{Deserialize, Serialize};
 use std::any::TypeId;
 use std::borrow::BorrowMut;
 use std::io::BufReader;
+use std::io::Read;
+use std::io::Write;
 use visula::Simulation;
 mod measurement;
 use std::sync::Arc;
@@ -658,16 +661,23 @@ impl Neuronify {
 
     pub fn save(&self) {
         let mut context = SaveContext;
-        let writer = std::fs::File::create("output.json").unwrap();
-        let mut serializer = serde_json::Serializer::new(writer);
+        let mut serializer = postcard::Serializer {
+            output: postcard::ser_flavors::StdVec::new(),
+        };
         serialize(&self.world, &mut context, &mut serializer).unwrap();
+        let mut writer = std::fs::File::create("output.neuronify").unwrap();
+        writer
+            .write_all(&serializer.output.finalize().unwrap())
+            .unwrap();
     }
 
     pub fn loadfile(&mut self) {
-        let mut context = LoadContext;
-        let reader = std::fs::File::open("output.json").unwrap();
-        let bufreader = BufReader::new(reader);
-        let mut deserializer = serde_json::Deserializer::from_reader(bufreader);
+        let mut context = LoadContext { components: vec![] };
+        let reader = std::fs::File::open("output.neuronify").unwrap();
+        let mut bufreader = BufReader::new(reader);
+        let mut bytes: Vec<u8> = Vec::new();
+        bufreader.read_to_end(&mut bytes).unwrap();
+        let mut deserializer = postcard::Deserializer::from_bytes(&bytes);
         self.world = deserialize(&mut context, &mut deserializer).unwrap();
     }
 
@@ -676,8 +686,93 @@ impl Neuronify {
     }
 }
 
-#[derive(Deserialize, Serialize)]
-enum ComponentId {
+macro_rules! component_id {
+    ($($names:tt),*) => {
+        #[derive(Deserialize, Serialize)]
+        enum ComponentId {
+            $($names),*
+        }
+        struct SaveContext;
+        impl SerializeContext for SaveContext {
+            fn component_count(&self, archetype: &Archetype) -> usize {
+                archetype.component_types()
+                    .filter(|&t| $(t == TypeId::of::<$names>()) ||*)
+                    .count()
+            }
+
+            fn serialize_component_ids<S: serde::ser::SerializeTuple>(
+                &mut self,
+                archetype: &Archetype,
+                mut out: S,
+            ) -> Result<S::Ok, S::Error> {
+                $(try_serialize_id::<$names, _, _>(archetype, &ComponentId::$names, &mut out)?;)*
+                out.end()
+            }
+
+            fn serialize_components<S: serde::ser::SerializeTuple>(
+                &mut self,
+                archetype: &Archetype,
+                mut out: S,
+            ) -> Result<S::Ok, S::Error> {
+                $(try_serialize::<$names, _>(archetype, &mut out)?;)*
+                out.end()
+            }
+        }
+
+        struct LoadContext {
+            components: Vec<ComponentId>,
+        }
+
+        impl DeserializeContext for LoadContext {
+            fn deserialize_component_ids<'de, A>(
+                &mut self,
+                mut seq: A,
+            ) -> Result<ColumnBatchType, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                self.components.clear(); // Discard data from the previous archetype
+                let mut batch = ColumnBatchType::new();
+                while let Some(id) = seq.next_element()? {
+                    match id {
+                        $(
+                            ComponentId::$names => {
+                                batch.add::<$names>();
+                            }
+                        )*
+                    }
+                    self.components.push(id);
+                }
+                Ok(batch)
+            }
+
+            fn deserialize_components<'de, A>(
+                &mut self,
+                entity_count: u32,
+                mut seq: A,
+                batch: &mut ColumnBatchBuilder,
+            ) -> Result<(), A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                // Decode component data in the order that the component IDs appeared
+                for component in &self.components {
+                    match *component {
+                        $(
+                            ComponentId::$names => {
+                                deserialize_column::<$names, _>(entity_count, &mut seq, batch)?;
+                            }
+                        )*
+                    }
+                }
+                Ok(())
+            }
+        }
+
+    }
+}
+
+component_id!(
     Position,
     Neuron,
     CurrentSource,
@@ -691,95 +786,8 @@ enum ComponentId {
     Voltmeter,
     VoltageSeries,
     Connection,
-    Trigger,
-}
-
-struct SaveContext;
-
-impl SerializeContext for SaveContext {
-    fn serialize_entity<S>(&mut self, entity: EntityRef<'_>, mut map: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::SerializeMap,
-    {
-        // Call `try_serialize` for every serializable component we want to save
-        try_serialize::<Position, _, _>(&entity, &ComponentId::Position, &mut map)?;
-        try_serialize::<Neuron, _, _>(&entity, &ComponentId::Neuron, &mut map)?;
-        try_serialize::<CurrentSource, _, _>(&entity, &ComponentId::CurrentSource, &mut map)?;
-        try_serialize::<StaticSource, _, _>(&entity, &ComponentId::StaticSource, &mut map)?;
-        try_serialize::<NeuronDynamics, _, _>(&entity, &ComponentId::NeuronDynamics, &mut map)?;
-        try_serialize::<LeakCurrent, _, _>(&entity, &ComponentId::LeakCurrent, &mut map)?;
-        try_serialize::<Deletable, _, _>(&entity, &ComponentId::Deletable, &mut map)?;
-        try_serialize::<Selectable, _, _>(&entity, &ComponentId::Selectable, &mut map)?;
-        try_serialize::<LearningSynapse, _, _>(&entity, &ComponentId::LearningSynapse, &mut map)?;
-        try_serialize::<SynapseCurrent, _, _>(&entity, &ComponentId::SynapseCurrent, &mut map)?;
-        try_serialize::<Voltmeter, _, _>(&entity, &ComponentId::Voltmeter, &mut map)?;
-        try_serialize::<VoltageSeries, _, _>(&entity, &ComponentId::VoltageSeries, &mut map)?;
-        try_serialize::<Connection, _, _>(&entity, &ComponentId::Connection, &mut map)?;
-        try_serialize::<Trigger, _, _>(&entity, &ComponentId::Trigger, &mut map)?;
-        map.end()
-    }
-}
-
-struct LoadContext;
-
-impl DeserializeContext for LoadContext {
-    fn deserialize_entity<'de, M>(
-        &mut self,
-        mut map: M,
-        entity: &mut EntityBuilder,
-    ) -> Result<(), M::Error>
-    where
-        M: serde::de::MapAccess<'de>,
-    {
-        while let Some(key) = map.next_key()? {
-            match key {
-                ComponentId::Position => {
-                    entity.add::<Position>(map.next_value()?);
-                }
-                ComponentId::Neuron => {
-                    entity.add::<Neuron>(map.next_value()?);
-                }
-                ComponentId::StaticSource => {
-                    entity.add::<StaticSource>(map.next_value()?);
-                }
-                ComponentId::CurrentSource => {
-                    entity.add::<CurrentSource>(map.next_value()?);
-                }
-                ComponentId::NeuronDynamics => {
-                    entity.add::<NeuronDynamics>(map.next_value()?);
-                }
-                ComponentId::LeakCurrent => {
-                    entity.add::<LeakCurrent>(map.next_value()?);
-                }
-                ComponentId::Deletable => {
-                    entity.add::<Deletable>(map.next_value()?);
-                }
-                ComponentId::Selectable => {
-                    entity.add::<Selectable>(map.next_value()?);
-                }
-                ComponentId::LearningSynapse => {
-                    entity.add::<LearningSynapse>(map.next_value()?);
-                }
-                ComponentId::SynapseCurrent => {
-                    entity.add::<SynapseCurrent>(map.next_value()?);
-                }
-                ComponentId::Voltmeter => {
-                    entity.add::<Voltmeter>(map.next_value()?);
-                }
-                ComponentId::VoltageSeries => {
-                    entity.add::<VoltageSeries>(map.next_value()?);
-                }
-                ComponentId::Connection => {
-                    entity.add::<Connection>(map.next_value()?);
-                }
-                ComponentId::Trigger => {
-                    entity.add::<Trigger>(map.next_value()?);
-                }
-            }
-        }
-        Ok(())
-    }
-}
+    Trigger
+);
 
 impl visula::Simulation for Neuronify {
     type Error = Error;
