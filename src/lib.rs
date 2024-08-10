@@ -88,7 +88,6 @@ pub struct Neuron {
     pub reset_potential: f64,
     pub resting_potential: f64,
     pub threshold: f64,
-    pub ty: NeuronType,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -131,14 +130,19 @@ pub struct Position {
     pub position: Vec3,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SpatialDynamics {
+    pub velocity: Vec3,
+    pub acceleration: Vec3,
+}
+
 impl Neuron {
-    pub fn new(ty: NeuronType) -> Neuron {
+    pub fn new() -> Neuron {
         Neuron {
             initial_voltage: 0.0,
             reset_potential: -70.0,
             resting_potential: -70.0,
             threshold: 30.0,
-            ty,
         }
     }
 }
@@ -474,7 +478,8 @@ impl Neuronify {
                             Position {
                                 position: mouse_position,
                             },
-                            Neuron::new(NeuronType::Excitatory),
+                            Neuron::new(),
+                            NeuronType::Excitatory,
                             StaticConnectionSource {},
                             dynamics,
                             leak_current,
@@ -488,7 +493,8 @@ impl Neuronify {
                             Position {
                                 position: mouse_position,
                             },
-                            Neuron::new(NeuronType::Inhibitory),
+                            Neuron::new(),
+                            NeuronType::Inhibitory,
                             StaticConnectionSource {},
                             dynamics,
                             leak_current,
@@ -768,40 +774,53 @@ impl Neuronify {
                             if previous_too_near {
                                 return;
                             }
-                            let compartment = world.spawn((
-                                Position {
+                            let neuron_type =
+                                if let Ok(neuron_type) = world.get::<&NeuronType>(ct.from) {
+                                    Some((*neuron_type).clone())
+                                } else {
+                                    None
+                                };
+                            if let Some(neuron_type) = neuron_type {
+                                let compartment = world.spawn((
+                                    Position {
+                                        position: mouse_position + 2.0 * Vec3::Y,
+                                    },
+                                    neuron_type,
+                                    Compartment {
+                                        voltage: 100.0,
+                                        m: 0.084073044,
+                                        h: 0.45317015,
+                                        n: 0.38079754,
+                                        influence: 0.0,
+                                        capacitance: 4.0,
+                                        injected_current: 0.0,
+                                    },
+                                    StaticConnectionSource {},
+                                    Deletable {},
+                                    Selectable { selected: false },
+                                    SpatialDynamics {
+                                        velocity: Vec3::new(0.0, 0.0, 0.0),
+                                        acceleration: Vec3::new(0.0, 0.0, 0.0),
+                                    },
+                                ));
+                                let strength = 1.0;
+                                let new_connection = Connection {
+                                    from: ct.from,
+                                    to: compartment,
+                                    strength,
+                                    directional: false,
+                                };
+                                let compartment_current = CompartmentCurrent { capacitance: 0.5 };
+                                world.spawn((new_connection, Deletable {}, compartment_current));
+                                self.previous_creation = Some(PreviousCreation {
                                     position: mouse_position,
-                                },
-                                Compartment {
-                                    voltage: 100.0,
-                                    m: 0.084073044,
-                                    h: 0.45317015,
-                                    n: 0.38079754,
-                                    influence: 0.0,
-                                    capacitance: 4.0,
-                                    injected_current: 0.0,
-                                },
-                                StaticConnectionSource {},
-                                Deletable {},
-                                Selectable { selected: false },
-                            ));
-                            let strength = 1.0;
-                            let new_connection = Connection {
-                                from: ct.from,
-                                to: compartment,
-                                strength,
-                                directional: false,
-                            };
-                            let compartment_current = CompartmentCurrent { capacitance: 0.5 };
-                            world.spawn((new_connection, Deletable {}, compartment_current));
-                            self.previous_creation = Some(PreviousCreation {
-                                position: mouse_position,
-                            });
-                            *connection_tool = Some(ConnectionTool {
-                                start: mouse_position,
-                                end: mouse_position,
-                                from: compartment,
-                            });
+                                });
+                                *connection_tool = Some(ConnectionTool {
+                                    start: mouse_position,
+                                    end: mouse_position,
+                                    from: compartment,
+                                });
+                            }
                         }
                     }
                 }
@@ -846,12 +865,12 @@ impl visula::Simulation for Neuronify {
             stimulation_tool,
             ..
         } = self;
-        let dt = 0.005;
+        let dt = 0.001;
 
         for (_, (position, stimulate)) in world.query_mut::<(&Position, &mut StimulateCurrent)>() {
             if let Some(stim) = stimulation_tool {
                 let mouse_distance = position.position.distance(stim.position);
-                stimulate.current = (600.0
+                stimulate.current = (300.0
                     * (-mouse_distance * mouse_distance / (2.0 * SIGMA * SIGMA)).exp())
                     as f64;
             } else {
@@ -884,8 +903,16 @@ impl visula::Simulation for Neuronify {
                 if let Ok(source) = world.get::<&CurrentSource>(connection.from) {
                     synapse.current = source.current;
                 }
-                if let Ok(compartment) = world.get::<&Compartment>(connection.from) {
-                    synapse.current += compartment.voltage.clamp(0.0, 200.0) / 10.0;
+                if let (Ok(compartment), Ok(neuron_type)) = (
+                    world.get::<&Compartment>(connection.from),
+                    world.get::<&NeuronType>(connection.from),
+                ) {
+                    let current = (compartment.voltage - 50.0).clamp(0.0, 200.0);
+                    let sign = match *neuron_type {
+                        NeuronType::Excitatory => 1.0,
+                        NeuronType::Inhibitory => -1.0,
+                    };
+                    synapse.current += sign * current;
                 }
             }
             for (_, (synapse, connection)) in world.query::<(&SynapseCurrent, &Connection)>().iter()
@@ -905,6 +932,7 @@ impl visula::Simulation for Neuronify {
                 }
             }
             for (_, compartment) in world.query_mut::<&mut Compartment>() {
+                let cdt = 10.0 * dt;
                 let v = compartment.voltage;
 
                 let sodium_activation_alpha = 0.1 * (25.0 - v) / ((2.5 - 0.1 * v).exp() - 1.0);
@@ -915,11 +943,11 @@ impl visula::Simulation for Neuronify {
                 let mut m = compartment.m;
                 let alpham = sodium_activation_alpha;
                 let betam = sodium_activation_beta;
-                let dm = dt * (alpham * (1.0 - m) - betam * m);
+                let dm = cdt * (alpham * (1.0 - m) - betam * m);
                 let mut h = compartment.h;
                 let alphah = sodium_inactivation_alpha;
                 let betah = sodium_inactivation_beta;
-                let dh = dt * (alphah * (1.0 - h) - betah * h);
+                let dh = cdt * (alphah * (1.0 - h) - betah * h);
 
                 m += dm;
                 h += dh;
@@ -942,7 +970,7 @@ impl visula::Simulation for Neuronify {
                 let mut n = compartment.n;
                 let alphan = potassium_activation_alpha;
                 let betan = potassium_activation_beta;
-                let dn = dt * (alphan * (1.0 - n) - betan * n);
+                let dn = cdt * (alphan * (1.0 - n) - betan * n);
 
                 n += dn;
                 n = n.clamp(0.0, 1.0);
@@ -966,9 +994,9 @@ impl visula::Simulation for Neuronify {
                 compartment.n = n;
                 compartment.m = m;
                 compartment.h = h;
-                compartment.voltage += delta_voltage * dt;
+                compartment.voltage += delta_voltage * cdt;
                 compartment.voltage = compartment.voltage.clamp(-50.0, 200.0);
-                compartment.injected_current -= 1.0 * compartment.injected_current * dt;
+                compartment.injected_current -= 1.0 * compartment.injected_current * cdt;
             }
 
             let mut new_compartments: HashMap<Entity, Compartment> = world
@@ -1002,6 +1030,25 @@ impl visula::Simulation for Neuronify {
                     }
                 }
             }
+            let positions: Vec<(Entity, Position)> = world
+                .query::<&Position>()
+                .iter()
+                .map(|(e, p)| (e.to_owned(), p.to_owned()))
+                .collect();
+            for (id, (position, dynamics)) in world.query_mut::<(&Position, &mut SpatialDynamics)>()
+            {
+                for (other_id, other_position) in &positions {
+                    if id == *other_id {
+                        continue;
+                    }
+                    let from = position.position;
+                    let to = other_position.position;
+                    let r2 = from.distance_squared(to);
+                    let target2 = (2.0 * NODE_RADIUS).powi(2);
+                    let d = (to - from).normalize();
+                    dynamics.acceleration += 0.05 * (r2 - target2).min(0.0) * d;
+                }
+            }
             for (compartment_id, new_compartment) in new_compartments {
                 let mut old_compartment = world
                     .get::<&mut Compartment>(compartment_id)
@@ -1014,9 +1061,12 @@ impl visula::Simulation for Neuronify {
                 .iter()
                 .flat_map(|(connection_entity, connection)| {
                     let mut triggers = vec![];
-                    if let Ok(neuron_from) = world.get::<&Neuron>(connection.from) {
+                    if let (Ok(neuron_from), Ok(neuron_from_type)) = (
+                        world.get::<&Neuron>(connection.from),
+                        world.get::<&NeuronType>(connection.from),
+                    ) {
                         if let Ok(dynamics_from) = world.get::<&NeuronDynamics>(connection.from) {
-                            let base_current = match &neuron_from.ty {
+                            let base_current = match *neuron_from_type {
                                 NeuronType::Excitatory => 3000.0,
                                 NeuronType::Inhibitory => -3000.0,
                             };
@@ -1031,6 +1081,30 @@ impl visula::Simulation for Neuronify {
                 .collect();
             for (connection_entity, current) in new_triggers {
                 world.spawn((Trigger::new(0.3, current, connection_entity),));
+            }
+
+            for (_, connection) in world
+                .query::<&Connection>()
+                .with::<&CompartmentCurrent>()
+                .iter()
+            {
+                if let (Ok(from), Ok(to)) = (
+                    world.get::<&Position>(connection.from),
+                    world.get::<&Position>(connection.to),
+                ) {
+                    let r2 = from.position.distance_squared(to.position);
+                    let d = to.position - from.position;
+                    let target_length = 2.0 * NODE_RADIUS;
+                    let force = 0.5 * (r2 - target_length.powi(2)) * d.normalize();
+                    if let Ok(mut dynamics_from) =
+                        world.get::<&mut SpatialDynamics>(connection.from)
+                    {
+                        dynamics_from.acceleration += force;
+                    }
+                    if let Ok(mut dynamics_to) = world.get::<&mut SpatialDynamics>(connection.to) {
+                        dynamics_to.acceleration -= force;
+                    }
+                }
             }
 
             for (_, trigger) in world.query_mut::<&mut Trigger>() {
@@ -1062,6 +1136,23 @@ impl visula::Simulation for Neuronify {
                 dynamics.refraction -= dt;
             }
 
+            for (_, (position, dynamics)) in
+                world.query_mut::<(&mut Position, &mut SpatialDynamics)>()
+            {
+                let gravity = if position.position.y > 0.0 {
+                    -1.0
+                } else if position.position.y < 0.0 {
+                    1.0
+                } else {
+                    0.0
+                };
+                dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
+                dynamics.velocity += dynamics.acceleration * dt as f32;
+                position.position += dynamics.velocity * dt as f32;
+                dynamics.acceleration = Vec3::new(0.0, 0.0, 0.0);
+                dynamics.velocity -= dynamics.velocity * dt as f32;
+            }
+
             let mut updates = HashMap::new();
             for (entity, (_, connection)) in world.query::<(&VoltageSeries, &Connection)>().iter() {
                 let dynamics = world
@@ -1087,11 +1178,11 @@ impl visula::Simulation for Neuronify {
         }
 
         let neuron_spheres: Vec<Sphere> = world
-            .query::<(&Neuron, &NeuronDynamics, &Position)>()
+            .query::<(&Neuron, &NeuronDynamics, &Position, &NeuronType)>()
             .iter()
-            .map(|(_entity, (neuron, dynamics, position))| {
+            .map(|(_entity, (neuron, dynamics, position, neuron_type))| {
                 let value = ((dynamics.voltage + 100.0) / 150.0).clamp(0.0, 1.0) as f32;
-                let color = match neuron.ty {
+                let color = match *neuron_type {
                     NeuronType::Excitatory => Vec3::new(value / 2.0, value, 0.95),
                     NeuronType::Inhibitory => Vec3::new(0.95, value / 2.0, value),
                 };
@@ -1190,13 +1281,15 @@ impl visula::Simulation for Neuronify {
             })
             .collect();
 
-        if let Some(connection) = &connection_tool {
-            connections.push(ConnectionData {
-                position_a: connection.start,
-                position_b: connection.end,
-                strength: 1.0,
-                directional: 1.0,
-            });
+        if self.tool == Tool::StaticConnection || self.tool == Tool::LearningConnection {
+            if let Some(connection) = &connection_tool {
+                connections.push(ConnectionData {
+                    position_a: connection.start,
+                    position_b: connection.end,
+                    strength: 1.0,
+                    directional: 1.0,
+                });
+            }
         }
 
         self.sphere_buffer
