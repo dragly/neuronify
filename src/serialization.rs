@@ -1,7 +1,7 @@
 use crate::{
-    CompartmentCurrent, Connection, CurrentSource, Deletable, LeakCurrent, LearningSynapse, Neuron,
-    NeuronDynamics, Position, Selectable, StaticConnectionSource, SynapseCurrent, Trigger,
-    VoltageSeries, Voltmeter,
+    Compartment, CompartmentCurrent, Connection, CurrentSource, Deletable, LeakCurrent,
+    LearningSynapse, Neuron, NeuronDynamics, Position, Selectable, StaticConnectionSource,
+    SynapseCurrent, Trigger, VoltageSeries, Voltmeter,
 };
 use hecs::{serialize::column::*, *};
 use serde::{Deserialize, Serialize};
@@ -115,4 +115,5 @@ component_id!(
     Connection,
     Trigger,
     CompartmentCurrent,
+    Compartment,
 );

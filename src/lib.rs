@@ -98,7 +98,9 @@ pub struct SynapseCurrent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CompartmentCurrent {}
+pub struct CompartmentCurrent {
+    capacitance: f64,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Selectable {
@@ -272,6 +274,7 @@ struct Compartment {
     n: f64,
     influence: f64,
     capacitance: f64,
+    injected_current: f64,
 }
 
 fn lennard_jones(position_a: Vec3, position_b: Vec3, eps: f32, sigma: f32) -> Vec3 {
@@ -537,25 +540,29 @@ impl Neuronify {
                             strength,
                             directional: true,
                         };
-                        let synapse_current = SynapseCurrent {
-                            current: 0.0,
-                            tau: 0.1,
-                        };
                         let connection_exists =
                             world.query::<&Connection>().iter().any(|(_, c)| {
                                 c.from == new_connection.from && c.to == new_connection.to
                             });
                         if !connection_exists && ct.from != id {
-                            if *tool == Tool::StaticConnection {
-                                world.spawn((new_connection, Deletable {}, synapse_current));
-                            } else {
-                                world.spawn((
-                                    new_connection,
-                                    Deletable {},
-                                    LearningSynapse {},
-                                    synapse_current,
-                                ));
+                            let synapse_current = SynapseCurrent {
+                                current: 0.0,
+                                tau: 0.1,
                             };
+                            if world.get::<&CurrentSource>(ct.from).is_ok() {
+                                world.spawn((new_connection, Deletable {}, synapse_current));
+                            } else if world.get::<&Neuron>(ct.from).is_ok() {
+                                if *tool == Tool::StaticConnection {
+                                    world.spawn((new_connection, Deletable {}, synapse_current));
+                                } else {
+                                    world.spawn((
+                                        new_connection,
+                                        Deletable {},
+                                        synapse_current,
+                                        LearningSynapse {},
+                                    ));
+                                };
+                            }
                         }
                         if !self.keyboard.shift_down {
                             ct.start = position;
@@ -766,12 +773,13 @@ impl Neuronify {
                                     position: mouse_position,
                                 },
                                 Compartment {
-                                    voltage: 4.0266542,
+                                    voltage: 100.0,
                                     m: 0.084073044,
                                     h: 0.45317015,
                                     n: 0.38079754,
                                     influence: 0.0,
                                     capacitance: 4.0,
+                                    injected_current: 0.0,
                                 },
                                 StaticConnectionSource {},
                                 Deletable {},
@@ -784,7 +792,7 @@ impl Neuronify {
                                 strength,
                                 directional: false,
                             };
-                            let compartment_current = CompartmentCurrent {};
+                            let compartment_current = CompartmentCurrent { capacitance: 0.5 };
                             world.spawn((new_connection, Deletable {}, compartment_current));
                             self.previous_creation = Some(PreviousCreation {
                                 position: mouse_position,
@@ -838,7 +846,7 @@ impl visula::Simulation for Neuronify {
             stimulation_tool,
             ..
         } = self;
-        let dt = 0.001;
+        let dt = 0.005;
 
         for (_, (position, stimulate)) in world.query_mut::<(&Position, &mut StimulateCurrent)>() {
             if let Some(stim) = stimulation_tool {
@@ -875,6 +883,9 @@ impl visula::Simulation for Neuronify {
             {
                 if let Ok(source) = world.get::<&CurrentSource>(connection.from) {
                     synapse.current = source.current;
+                }
+                if let Ok(compartment) = world.get::<&Compartment>(connection.from) {
+                    synapse.current += compartment.voltage.clamp(0.0, 200.0) / 10.0;
                 }
             }
             for (_, (synapse, connection)) in world.query::<(&SynapseCurrent, &Connection)>().iter()
@@ -946,45 +957,56 @@ impl visula::Simulation for Neuronify {
                 let leak_conductance = 1.3;
                 let leak_current = -leak_conductance * (compartment.voltage - e_m);
 
-                let current = sodium_current + potassium_current + leak_current;
+                let current = sodium_current
+                    + potassium_current
+                    + leak_current
+                    + compartment.injected_current;
                 let delta_voltage = current / compartment.capacitance;
 
                 compartment.n = n;
                 compartment.m = m;
                 compartment.h = h;
                 compartment.voltage += delta_voltage * dt;
-                compartment.voltage = compartment.voltage.clamp(-50.0, 200.0)
+                compartment.voltage = compartment.voltage.clamp(-50.0, 200.0);
+                compartment.injected_current -= 1.0 * compartment.injected_current * dt;
             }
 
-            for (_, connection) in world
-                .query::<&Connection>()
-                .with::<&CompartmentCurrent>()
+            let mut new_compartments: HashMap<Entity, Compartment> = world
+                .query::<&Compartment>()
                 .iter()
+                .map(|(entity, &compartment)| (entity, compartment))
+                .collect();
+            for (_, (connection, current)) in
+                world.query::<(&Connection, &CompartmentCurrent)>().iter()
             {
-                let from_voltage = {
-                    if let (Ok(dynamics_from), Ok(neuron_from)) = (
-                        world.get::<&NeuronDynamics>(connection.from),
-                        world.get::<&Neuron>(connection.from),
-                    ) {
+                if let Ok(compartment_to) = world.get::<&Compartment>(connection.to) {
+                    if let Ok(dynamics_from) = world.get::<&NeuronDynamics>(connection.from) {
                         if dynamics_from.fired {
-                            Some(neuron_from.threshold)
-                        } else {
-                            None
+                            let new_compartment_to = new_compartments
+                                .get_mut(&connection.to)
+                                .expect("Could not get new compartment");
+                            new_compartment_to.injected_current += 150.0;
                         }
                     } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from)
                     {
-                        Some(compartment_from.voltage)
-                    } else {
-                        None
+                        let voltage_diff = compartment_from.voltage - compartment_to.voltage;
+                        let delta_voltage = voltage_diff / current.capacitance;
+                        let new_compartment_to = new_compartments
+                            .get_mut(&connection.to)
+                            .expect("Could not get new compartment");
+                        new_compartment_to.voltage += delta_voltage * dt;
+                        let new_compartment_from = new_compartments
+                            .get_mut(&connection.from)
+                            .expect("Could not get new compartment");
+                        new_compartment_from.voltage -= delta_voltage * dt;
                     }
-                };
-                if let (Some(from_voltage), Ok(mut compartment_to)) =
-                    (from_voltage, world.get::<&mut Compartment>(connection.to))
-                {
-                    let voltage_diff = from_voltage - compartment_to.voltage;
-                    let delta_voltage = voltage_diff / compartment_to.capacitance;
-                    compartment_to.voltage += delta_voltage;
                 }
+            }
+            for (compartment_id, new_compartment) in new_compartments {
+                let mut old_compartment = world
+                    .get::<&mut Compartment>(compartment_id)
+                    .expect("Could not find compartment");
+                *old_compartment = new_compartment;
             }
             let new_triggers: Vec<(Entity, f64)> = world
                 .query::<&Connection>()
@@ -1085,15 +1107,15 @@ impl visula::Simulation for Neuronify {
         let compartment_spheres: Vec<Sphere> = world
             .query::<(&Compartment, &Position)>()
             .iter()
-            .map(|(_entity, (compartment, position))| {
-                let value = ((compartment.voltage + 10.0) / 120.0).clamp(0.0, 1.0) as f32;
-                let color = Vec3::new(value / 2.0, value, value);
-                Sphere {
-                    position: position.position,
-                    color,
-                    radius: 0.8 * NODE_RADIUS,
-                    _padding: Default::default(),
-                }
+            .map(|(_entity, (compartment, position))| Sphere {
+                position: position.position,
+                color: Vec3::new(
+                    (0.1 + (compartment.voltage + 10.0) / 120.0) as f32,
+                    (0.5 + (compartment.voltage + 10.0) / 400.0) as f32,
+                    (0.3 + (compartment.voltage + 10.0) / 120.0) as f32,
+                ),
+                radius: 0.6 * NODE_RADIUS,
+                _padding: Default::default(),
             })
             .collect();
 
