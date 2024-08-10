@@ -2,6 +2,7 @@ use hecs::{serialize::column::*, *};
 use postcard::ser_flavors::Flavor;
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
+use std::cmp::Ordering;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
@@ -58,6 +59,7 @@ pub enum Tool {
     Voltmeter,
     StaticConnection,
     LearningConnection,
+    Axon,
     Erase,
     Stimulate,
 }
@@ -96,6 +98,9 @@ pub struct SynapseCurrent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CompartmentCurrent {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Selectable {
     pub selected: bool,
 }
@@ -106,7 +111,7 @@ pub struct CurrentSource {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct StaticSource {}
+pub struct StaticConnectionSource {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LearningSynapse {}
@@ -182,6 +187,7 @@ pub struct Connection {
     pub from: Entity,
     pub to: Entity,
     pub strength: f64,
+    pub directional: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -239,7 +245,7 @@ pub struct ConnectionData {
     pub position_a: Vec3,
     pub position_b: Vec3,
     pub strength: f32,
-    pub _padding: f32,
+    pub directional: f32,
 }
 
 #[repr(C, align(16))]
@@ -256,6 +262,47 @@ pub struct MeshInstanceData {
     pub position: Vec3,
     pub _padding: f32,
     pub rotation: Quat,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+struct Compartment {
+    voltage: f64,
+    m: f64,
+    h: f64,
+    n: f64,
+    influence: f64,
+    capacitance: f64,
+}
+
+fn lennard_jones(position_a: Vec3, position_b: Vec3, eps: f32, sigma: f32) -> Vec3 {
+    let r = position_a - position_b;
+    let r_l = r.length();
+
+    r / r_l.powi(2)
+        * eps.powi(24)
+        * (2.0 * sigma.powi(12) / r_l.powi(12) - sigma.powi(6) / r_l.powi(6))
+}
+
+fn nearest(
+    mouse_position: &Vec3,
+    (_, x): &(Entity, &Position),
+    (_, y): &(Entity, &Position),
+) -> Ordering {
+    mouse_position
+        .distance(x.position)
+        .partial_cmp(&mouse_position.distance(y.position))
+        .unwrap_or(std::cmp::Ordering::Equal)
+}
+
+fn within_attachment_range(
+    mouse_position: Vec3,
+    (id, position): (Entity, &Position),
+) -> Option<(Entity, Vec3)> {
+    if mouse_position.distance(position.position) < 1.5 * NODE_RADIUS {
+        Some((id, position.position))
+    } else {
+        None
+    }
 }
 
 impl Neuronify {
@@ -280,7 +327,10 @@ impl Neuronify {
         let connection_vector = connection.position_b.clone() - connection.position_a.clone();
         // TODO: Add normalize function to expressions
         let connection_endpoint = connection.position_a.clone() + connection_vector.clone()
-            - connection_vector.clone() / connection_vector.clone().length() * NODE_RADIUS * 2.0;
+            - connection.directional.clone() * connection_vector.clone()
+                / connection_vector.clone().length()
+                * NODE_RADIUS
+                * 2.0;
         let connection_lines = Lines::new(
             &application.rendering_descriptor(),
             &LineDelegate {
@@ -296,7 +346,7 @@ impl Neuronify {
             &application.rendering_descriptor(),
             &SphereDelegate {
                 position: connection_endpoint,
-                radius: (0.5 * NODE_RADIUS).into(),
+                radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
                 color: Vec3::new(1.0, 1.0, 1.0).into(),
             },
         )
@@ -390,7 +440,10 @@ impl Neuronify {
         let intersection = ray_origin + t * ray_world;
         let mouse_position = Vec3::new(intersection.x, intersection.y, intersection.z);
 
-        let minimum_distance = 6.0 * NODE_RADIUS;
+        let minimum_distance = match tool {
+            Tool::Axon => 2.0 * NODE_RADIUS,
+            _ => 6.0 * NODE_RADIUS,
+        };
         let previous_too_near = if let Some(pc) = previous_creation {
             pc.position.distance(mouse_position) < minimum_distance
         } else {
@@ -414,12 +467,12 @@ impl Neuronify {
                 let stimulate_current = StimulateCurrent { current: 0.0 };
                 match self.tool {
                     Tool::ExcitatoryNeuron => {
-                        self.world.spawn((
+                        world.spawn((
                             Position {
                                 position: mouse_position,
                             },
                             Neuron::new(NeuronType::Excitatory),
-                            StaticSource {},
+                            StaticConnectionSource {},
                             dynamics,
                             leak_current,
                             Deletable {},
@@ -428,12 +481,12 @@ impl Neuronify {
                         ));
                     }
                     Tool::InhibitoryNeuron => {
-                        self.world.spawn((
+                        world.spawn((
                             Position {
                                 position: mouse_position,
                             },
                             Neuron::new(NeuronType::Inhibitory),
-                            StaticSource {},
+                            StaticConnectionSource {},
                             dynamics,
                             leak_current,
                             Deletable {},
@@ -451,11 +504,11 @@ impl Neuronify {
                 if previous_too_near {
                     return;
                 }
-                self.world.spawn((
+                world.spawn((
                     Position {
                         position: mouse_position,
                     },
-                    StaticSource {},
+                    StaticConnectionSource {},
                     CurrentSource { current: 200.0 },
                     Deletable {},
                     Selectable { selected: false },
@@ -465,26 +518,13 @@ impl Neuronify {
                 });
             }
             Tool::StaticConnection | Tool::LearningConnection => {
-                let closest = |(_, x): &(Entity, &Position), (_, y): &(Entity, &Position)| {
-                    mouse_position
-                        .distance(x.position)
-                        .partial_cmp(&mouse_position.distance(y.position))
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                };
-                let filter = |(id, position): (Entity, &Position)| {
-                    if mouse_position.distance(position.position) < 1.5 * NODE_RADIUS {
-                        Some((id, position.position))
-                    } else {
-                        None
-                    }
-                };
                 if let Some(ct) = connection_tool {
                     let nearest_target = world
                         .query::<&Position>()
                         .with::<&Neuron>()
                         .iter()
-                        .min_by(closest)
-                        .and_then(filter);
+                        .min_by(|a, b| nearest(&mouse_position, a, b))
+                        .and_then(|v| within_attachment_range(mouse_position, v));
                     if let Some((id, position)) = nearest_target {
                         let strength = if *tool == Tool::StaticConnection {
                             1.0
@@ -495,6 +535,7 @@ impl Neuronify {
                             from: ct.from,
                             to: id,
                             strength,
+                            directional: true,
                         };
                         let synapse_current = SynapseCurrent {
                             current: 0.0,
@@ -525,10 +566,10 @@ impl Neuronify {
                 } else {
                     *connection_tool = world
                         .query::<&Position>()
-                        .with::<&StaticSource>()
+                        .with::<&StaticConnectionSource>()
                         .iter()
-                        .min_by(closest)
-                        .and_then(filter)
+                        .min_by(|a, b| nearest(&mouse_position, a, b))
+                        .and_then(|v| within_attachment_range(mouse_position, v))
                         .and_then(|(id, position)| {
                             Some(ConnectionTool {
                                 start: position,
@@ -647,6 +688,7 @@ impl Neuronify {
                         from: target,
                         to: voltmeter,
                         strength: 1.0,
+                        directional: true,
                     },
                 ));
             }
@@ -659,6 +701,103 @@ impl Neuronify {
                     }
                 }
             }
+            Tool::Axon => match connection_tool {
+                None => {
+                    *connection_tool = world
+                        .query::<&Position>()
+                        .with::<&StaticConnectionSource>()
+                        .iter()
+                        .min_by(|a, b| nearest(&mouse_position, a, b))
+                        .and_then(|v| within_attachment_range(mouse_position, v))
+                        .and_then(|(id, position)| {
+                            Some(ConnectionTool {
+                                start: position,
+                                end: mouse_position,
+                                from: id,
+                            })
+                        });
+                    match connection_tool {
+                        Some(ct) => {
+                            self.previous_creation = Some(PreviousCreation { position: ct.start });
+                        }
+                        None => {}
+                    }
+                }
+                Some(ct) => {
+                    ct.end = mouse_position;
+                    let nearest_target = world
+                        .query::<&Position>()
+                        .with::<&Neuron>()
+                        .iter()
+                        .min_by(|a, b| nearest(&mouse_position, a, b))
+                        .and_then(|v| within_attachment_range(mouse_position, v));
+
+                    match nearest_target {
+                        Some((id, position)) => {
+                            let strength = 1.0;
+                            let new_connection = Connection {
+                                from: ct.from,
+                                to: id,
+                                strength,
+                                directional: true,
+                            };
+                            let synapse_current = SynapseCurrent {
+                                current: 0.0,
+                                tau: 0.1,
+                            };
+                            let connection_exists =
+                                world.query::<&Connection>().iter().any(|(_, c)| {
+                                    c.from == new_connection.from && c.to == new_connection.to
+                                });
+                            if !connection_exists && ct.from != id {
+                                world.spawn((new_connection, Deletable {}, synapse_current));
+                            }
+                            if !self.keyboard.shift_down {
+                                ct.start = position;
+                                ct.from = id;
+                            }
+                        }
+                        None => {
+                            if previous_too_near {
+                                return;
+                            }
+                            let compartment = world.spawn((
+                                Position {
+                                    position: mouse_position,
+                                },
+                                Compartment {
+                                    voltage: 4.0266542,
+                                    m: 0.084073044,
+                                    h: 0.45317015,
+                                    n: 0.38079754,
+                                    influence: 0.0,
+                                    capacitance: 4.0,
+                                },
+                                StaticConnectionSource {},
+                                Deletable {},
+                                Selectable { selected: false },
+                            ));
+                            let strength = 1.0;
+                            let new_connection = Connection {
+                                from: ct.from,
+                                to: compartment,
+                                strength,
+                                directional: false,
+                            };
+                            let compartment_current = CompartmentCurrent {};
+                            world.spawn((new_connection, Deletable {}, compartment_current));
+                            self.previous_creation = Some(PreviousCreation {
+                                position: mouse_position,
+                            });
+                            *connection_tool = Some(ConnectionTool {
+                                start: mouse_position,
+                                end: mouse_position,
+                                from: compartment,
+                            });
+                        }
+                    }
+                }
+            },
         }
     }
 
@@ -752,6 +891,99 @@ impl visula::Simulation for Neuronify {
                     dynamics.refraction = 0.2;
                     dynamics.voltage = neuron.initial_voltage;
                     dynamics.voltage = neuron.reset_potential;
+                }
+            }
+            for (_, compartment) in world.query_mut::<&mut Compartment>() {
+                let v = compartment.voltage;
+
+                let sodium_activation_alpha = 0.1 * (25.0 - v) / ((2.5 - 0.1 * v).exp() - 1.0);
+                let sodium_activation_beta = 4.0 * (-v / 18.0).exp();
+                let sodium_inactivation_alpha = 0.07 * (-v / 20.0).exp();
+                let sodium_inactivation_beta = 1.0 / ((3.0 - 0.1 * v).exp() + 1.0);
+
+                let mut m = compartment.m;
+                let alpham = sodium_activation_alpha;
+                let betam = sodium_activation_beta;
+                let dm = dt * (alpham * (1.0 - m) - betam * m);
+                let mut h = compartment.h;
+                let alphah = sodium_inactivation_alpha;
+                let betah = sodium_inactivation_beta;
+                let dh = dt * (alphah * (1.0 - h) - betah * h);
+
+                m += dm;
+                h += dh;
+
+                m = m.clamp(0.0, 1.0);
+                h = h.clamp(0.0, 1.0);
+
+                let g_na = 120.0;
+
+                let ena = 115.0;
+
+                let m3 = m * m * m;
+
+                let sodium_current = -g_na * m3 * h * (compartment.voltage - ena);
+
+                let potassium_activation_alpha =
+                    0.01 * (10.0 - v) / ((1.0 - (0.1 * v)).exp() - 1.0);
+                let potassium_activation_beta = 0.125 * (-v / 80.0).exp();
+
+                let mut n = compartment.n;
+                let alphan = potassium_activation_alpha;
+                let betan = potassium_activation_beta;
+                let dn = dt * (alphan * (1.0 - n) - betan * n);
+
+                n += dn;
+                n = n.clamp(0.0, 1.0);
+
+                let g_k = 36.0;
+                let ek = -12.0;
+                let n4 = n * n * n * n;
+
+                let potassium_current = -g_k * n4 * (compartment.voltage - ek);
+
+                let e_m = 10.6;
+                let leak_conductance = 1.3;
+                let leak_current = -leak_conductance * (compartment.voltage - e_m);
+
+                let current = sodium_current + potassium_current + leak_current;
+                let delta_voltage = current / compartment.capacitance;
+
+                compartment.n = n;
+                compartment.m = m;
+                compartment.h = h;
+                compartment.voltage += delta_voltage * dt;
+                compartment.voltage = compartment.voltage.clamp(-50.0, 200.0)
+            }
+
+            for (_, connection) in world
+                .query::<&Connection>()
+                .with::<&CompartmentCurrent>()
+                .iter()
+            {
+                let from_voltage = {
+                    if let (Ok(dynamics_from), Ok(neuron_from)) = (
+                        world.get::<&NeuronDynamics>(connection.from),
+                        world.get::<&Neuron>(connection.from),
+                    ) {
+                        if dynamics_from.fired {
+                            Some(neuron_from.threshold)
+                        } else {
+                            None
+                        }
+                    } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from)
+                    {
+                        Some(compartment_from.voltage)
+                    } else {
+                        None
+                    }
+                };
+                if let (Some(from_voltage), Ok(mut compartment_to)) =
+                    (from_voltage, world.get::<&mut Compartment>(connection.to))
+                {
+                    let voltage_diff = from_voltage - compartment_to.voltage;
+                    let delta_voltage = voltage_diff / compartment_to.capacitance;
+                    compartment_to.voltage += delta_voltage;
                 }
             }
             let new_triggers: Vec<(Entity, f64)> = world
@@ -850,6 +1082,21 @@ impl visula::Simulation for Neuronify {
             })
             .collect();
 
+        let compartment_spheres: Vec<Sphere> = world
+            .query::<(&Compartment, &Position)>()
+            .iter()
+            .map(|(_entity, (compartment, position))| {
+                let value = ((compartment.voltage + 10.0) / 120.0).clamp(0.0, 1.0) as f32;
+                let color = Vec3::new(value / 2.0, value, value);
+                Sphere {
+                    position: position.position,
+                    color,
+                    radius: 0.8 * NODE_RADIUS,
+                    _padding: Default::default(),
+                }
+            })
+            .collect();
+
         let source_spheres: Vec<Sphere> = world
             .query::<&Position>()
             .with::<&CurrentSource>()
@@ -893,6 +1140,7 @@ impl visula::Simulation for Neuronify {
 
         let mut spheres = Vec::new();
         spheres.extend(neuron_spheres.iter());
+        spheres.extend(compartment_spheres.iter());
         spheres.extend(source_spheres.iter());
         spheres.extend(trigger_spheres.iter());
 
@@ -912,7 +1160,10 @@ impl visula::Simulation for Neuronify {
                     position_a: start,
                     position_b: end,
                     strength: connection.strength as f32,
-                    _padding: Default::default(),
+                    directional: match connection.directional {
+                        true => 1.0,
+                        false => 0.0,
+                    },
                 }
             })
             .collect();
@@ -922,7 +1173,7 @@ impl visula::Simulation for Neuronify {
                 position_a: connection.start,
                 position_b: connection.end,
                 strength: 1.0,
-                _padding: Default::default(),
+                directional: 1.0,
             });
         }
 
