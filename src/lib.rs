@@ -1,19 +1,17 @@
 use hecs::{serialize::column::*, *};
 use postcard::ser_flavors::Flavor;
 use serde::{Deserialize, Serialize};
-use std::any::TypeId;
 use std::borrow::BorrowMut;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
-use visula::Simulation;
-mod measurement;
 use std::sync::Arc;
 use visula::initialize_event_loop_and_window_with_config;
 use visula::initialize_logger;
 use visula::winit::keyboard::ModifiersKeyState;
 use visula::Application;
 use visula::RunConfig;
+use visula::Simulation;
 use wasm_bindgen::prelude::*;
 
 use std::collections::HashMap;
@@ -47,6 +45,10 @@ use visula::{
 };
 use visula_derive::Instance;
 
+pub mod measurement;
+pub mod serialization;
+use crate::serialization::{LoadContext, SaveContext};
+
 #[derive(Clone, Debug, EnumIter, PartialEq)]
 pub enum Tool {
     Select,
@@ -65,57 +67,57 @@ const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
 const SIGMA: f32 = 1.0 * NODE_RADIUS;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-enum NeuronType {
+pub enum NeuronType {
     Excitatory,
     Inhibitory,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct NeuronDynamics {
-    voltage: f64,
-    current: f64,
-    refraction: f64,
-    fired: bool,
+pub struct NeuronDynamics {
+    pub voltage: f64,
+    pub current: f64,
+    pub refraction: f64,
+    pub fired: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Neuron {
-    initial_voltage: f64,
-    reset_potential: f64,
-    resting_potential: f64,
-    threshold: f64,
-    ty: NeuronType,
+pub struct Neuron {
+    pub initial_voltage: f64,
+    pub reset_potential: f64,
+    pub resting_potential: f64,
+    pub threshold: f64,
+    pub ty: NeuronType,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct SynapseCurrent {
-    current: f64,
-    tau: f64,
+pub struct SynapseCurrent {
+    pub current: f64,
+    pub tau: f64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct Selectable {
-    selected: bool,
+pub struct Selectable {
+    pub selected: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct CurrentSource {
-    current: f64,
+pub struct CurrentSource {
+    pub current: f64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct StaticSource {}
+pub struct StaticSource {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct LearningSynapse {}
+pub struct LearningSynapse {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct PreviousCreation {
-    position: Vec3,
+pub struct PreviousCreation {
+    pub position: Vec3,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct Deletable {}
+pub struct Deletable {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Position {
@@ -135,18 +137,18 @@ impl Neuron {
 }
 
 #[derive(Clone, Debug)]
-struct ConnectionTool {
-    start: Vec3,
-    end: Vec3,
-    from: Entity,
+pub struct ConnectionTool {
+    pub start: Vec3,
+    pub end: Vec3,
+    pub from: Entity,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct Trigger {
-    total: f64,
-    remaining: f64,
-    current: f64,
-    connection: Entity,
+pub struct Trigger {
+    pub total: f64,
+    pub remaining: f64,
+    pub current: f64,
+    pub connection: Entity,
 }
 
 impl Trigger {
@@ -170,16 +172,16 @@ impl Trigger {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct LeakCurrent {
-    current: f64,
-    tau: f64,
+pub struct LeakCurrent {
+    pub current: f64,
+    pub tau: f64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct Connection {
-    from: Entity,
-    to: Entity,
-    strength: f64,
+pub struct Connection {
+    pub from: Entity,
+    pub to: Entity,
+    pub strength: f64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -188,43 +190,44 @@ pub struct StimulateCurrent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct StimulationTool {
-    position: Vec3,
+pub struct StimulationTool {
+    pub position: Vec3,
 }
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Instance, Pod, Zeroable)]
-struct Sphere {
-    position: glam::Vec3,
-    color: glam::Vec3,
-    radius: f32,
-    _padding: f32,
+pub struct Sphere {
+    pub position: glam::Vec3,
+    pub color: glam::Vec3,
+    pub radius: f32,
+    pub _padding: f32,
 }
 
-struct Mouse {
-    left_down: bool,
-    position: Option<PhysicalPosition<f64>>,
+#[derive(Clone, Copy, Debug)]
+pub struct Mouse {
+    pub left_down: bool,
+    pub position: Option<PhysicalPosition<f64>>,
 }
 
-struct Keyboard {
-    shift_down: bool,
+pub struct Keyboard {
+    pub shift_down: bool,
 }
 
 pub struct Neuronify {
-    tool: Tool,
-    previous_creation: Option<PreviousCreation>,
-    connection_tool: Option<ConnectionTool>,
-    stimulation_tool: Option<StimulationTool>,
-    world: hecs::World,
-    time: f64,
-    mouse: Mouse,
-    keyboard: Keyboard,
-    spheres: Spheres,
-    sphere_buffer: InstanceBuffer<Sphere>,
-    connection_lines: Lines,
-    connection_spheres: Spheres,
-    connection_buffer: InstanceBuffer<ConnectionData>,
-    iterations: u32,
+    pub tool: Tool,
+    pub previous_creation: Option<PreviousCreation>,
+    pub connection_tool: Option<ConnectionTool>,
+    pub stimulation_tool: Option<StimulationTool>,
+    pub world: hecs::World,
+    pub time: f64,
+    pub mouse: Mouse,
+    pub keyboard: Keyboard,
+    pub spheres: Spheres,
+    pub sphere_buffer: InstanceBuffer<Sphere>,
+    pub connection_lines: Lines,
+    pub connection_spheres: Spheres,
+    pub connection_buffer: InstanceBuffer<ConnectionData>,
+    pub iterations: u32,
 }
 
 #[derive(Debug)]
@@ -232,27 +235,27 @@ pub struct Error {}
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
-struct ConnectionData {
-    position_a: Vec3,
-    position_b: Vec3,
-    strength: f32,
-    _padding: f32,
+pub struct ConnectionData {
+    pub position_a: Vec3,
+    pub position_b: Vec3,
+    pub strength: f32,
+    pub _padding: f32,
 }
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
-struct LineData {
-    start: Vec3,
-    end: Vec3,
-    _padding: [f32; 2],
+pub struct LineData {
+    pub start: Vec3,
+    pub end: Vec3,
+    pub _padding: [f32; 2],
 }
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
-struct MeshInstanceData {
-    position: Vec3,
-    _padding: f32,
-    rotation: Quat,
+pub struct MeshInstanceData {
+    pub position: Vec3,
+    pub _padding: f32,
+    pub rotation: Quat,
 }
 
 impl Neuronify {
@@ -672,7 +675,7 @@ impl Neuronify {
     }
 
     pub fn loadfile(&mut self) {
-        let mut context = LoadContext { components: vec![] };
+        let mut context = LoadContext::new();
         let reader = std::fs::File::open("output.neuronify").unwrap();
         let mut bufreader = BufReader::new(reader);
         let mut bytes: Vec<u8> = Vec::new();
@@ -685,109 +688,6 @@ impl Neuronify {
         Neuronify::new(application)
     }
 }
-
-macro_rules! component_id {
-    ($($names:tt),*) => {
-        #[derive(Deserialize, Serialize)]
-        enum ComponentId {
-            $($names),*
-        }
-        struct SaveContext;
-        impl SerializeContext for SaveContext {
-            fn component_count(&self, archetype: &Archetype) -> usize {
-                archetype.component_types()
-                    .filter(|&t| $(t == TypeId::of::<$names>()) ||*)
-                    .count()
-            }
-
-            fn serialize_component_ids<S: serde::ser::SerializeTuple>(
-                &mut self,
-                archetype: &Archetype,
-                mut out: S,
-            ) -> Result<S::Ok, S::Error> {
-                $(try_serialize_id::<$names, _, _>(archetype, &ComponentId::$names, &mut out)?;)*
-                out.end()
-            }
-
-            fn serialize_components<S: serde::ser::SerializeTuple>(
-                &mut self,
-                archetype: &Archetype,
-                mut out: S,
-            ) -> Result<S::Ok, S::Error> {
-                $(try_serialize::<$names, _>(archetype, &mut out)?;)*
-                out.end()
-            }
-        }
-
-        struct LoadContext {
-            components: Vec<ComponentId>,
-        }
-
-        impl DeserializeContext for LoadContext {
-            fn deserialize_component_ids<'de, A>(
-                &mut self,
-                mut seq: A,
-            ) -> Result<ColumnBatchType, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                self.components.clear(); // Discard data from the previous archetype
-                let mut batch = ColumnBatchType::new();
-                while let Some(id) = seq.next_element()? {
-                    match id {
-                        $(
-                            ComponentId::$names => {
-                                batch.add::<$names>();
-                            }
-                        )*
-                    }
-                    self.components.push(id);
-                }
-                Ok(batch)
-            }
-
-            fn deserialize_components<'de, A>(
-                &mut self,
-                entity_count: u32,
-                mut seq: A,
-                batch: &mut ColumnBatchBuilder,
-            ) -> Result<(), A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                // Decode component data in the order that the component IDs appeared
-                for component in &self.components {
-                    match *component {
-                        $(
-                            ComponentId::$names => {
-                                deserialize_column::<$names, _>(entity_count, &mut seq, batch)?;
-                            }
-                        )*
-                    }
-                }
-                Ok(())
-            }
-        }
-
-    }
-}
-
-component_id!(
-    Position,
-    Neuron,
-    CurrentSource,
-    StaticSource,
-    NeuronDynamics,
-    LeakCurrent,
-    Deletable,
-    Selectable,
-    LearningSynapse,
-    SynapseCurrent,
-    Voltmeter,
-    VoltageSeries,
-    Connection,
-    Trigger
-);
 
 impl visula::Simulation for Neuronify {
     type Error = Error;
