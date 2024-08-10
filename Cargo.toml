@@ -7,9 +7,9 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-visula = { git = "https://github.com/dragly/visula", rev = "aa6c69f067011beb7c38643592f04bbe5810ad6a" }
-visula_derive = { git = "https://github.com/dragly/visula", rev = "aa6c69f067011beb7c38643592f04bbe5810ad6a" }
-visula_core = { git = "https://github.com/dragly/visula", rev = "aa6c69f067011beb7c38643592f04bbe5810ad6a" }
+visula = { git = "https://github.com/dragly/visula", rev = "dabb8609f22c9cc35dc073e0fb6d880ac079d715" }
+visula_derive = { git = "https://github.com/dragly/visula", rev = "dabb8609f22c9cc35dc073e0fb6d880ac079d715" }
+visula_core = { git = "https://github.com/dragly/visula", rev = "dabb8609f22c9cc35dc073e0fb6d880ac079d715" }
 wgpu = { version = "0.19", features = ["webgl"] }
 glam = { version = "0.24", features = ["bytemuck", "serde"] }
 bytemuck = { version = "1.4", features = ["derive"] }
@@ -31,7 +31,11 @@ quote = "1.0.10"
 proc-macro2 = "1.0.29"
 crude-profiler = "0.1.7"
 oxifive = { git = "https://github.com/dragly/oxifive", rev = "9f4314b587ef51029033288d95b4a44e40b0ddb5" }
-hecs = { version = "0.10.3", features = ["column-serialize", "serde", "row-serialize"] }
+hecs = { version = "0.10.3", features = [
+  "column-serialize",
+  "serde",
+  "row-serialize",
+] }
 strum = { version = "0.25.0", features = ["derive"] }
 rand = "0.8.5"
 serde_derive = "1.0.204"

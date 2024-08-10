@@ -1,6 +1,6 @@
 use crate::{
     Compartment, CompartmentCurrent, Connection, CurrentSource, Deletable, LeakCurrent,
-    LearningSynapse, Neuron, NeuronDynamics, Position, Selectable, SpatialDynamics,
+    LearningSynapse, Neuron, NeuronDynamics, NeuronType, Position, Selectable, SpatialDynamics,
     StaticConnectionSource, StimulateCurrent, SynapseCurrent, Trigger, VoltageSeries, Voltmeter,
 };
 use hecs::{serialize::column::*, *};
@@ -118,4 +118,5 @@ component_id!(
     Compartment,
     SpatialDynamics,
     StimulateCurrent,
+    NeuronType,
 );

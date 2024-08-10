@@ -13,6 +13,7 @@ use visula::winit::keyboard::ModifiersKeyState;
 use visula::Application;
 use visula::RunConfig;
 use visula::Simulation;
+use visula::Vector3;
 use wasm_bindgen::prelude::*;
 
 use std::collections::HashMap;
@@ -119,7 +120,7 @@ pub struct LearningSynapse {}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PreviousCreation {
-    pub position: Vec3,
+    pub entity: Entity,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -248,10 +249,12 @@ pub struct Error {}
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
 pub struct ConnectionData {
+    pub color: Vec3,
     pub position_a: Vec3,
     pub position_b: Vec3,
     pub strength: f32,
     pub directional: f32,
+    pub _padding: f32,
 }
 
 #[repr(C, align(16))]
@@ -315,6 +318,9 @@ fn within_attachment_range(
 impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
         application.camera_controller.enabled = false;
+        application.camera_controller.center = Vector3::new(0.0, 0.0, 0.0);
+        application.camera_controller.forward = Vector3::new(1.0, -1.0, 0.0);
+        application.camera_controller.distance = 50.0;
 
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
         let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
@@ -344,7 +350,7 @@ impl Neuronify {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
                 width: 0.2.into(),
-                alpha: 1.0.into(),
+                color: connection.color.clone(),
             },
         )
         .unwrap();
@@ -452,7 +458,11 @@ impl Neuronify {
             _ => 6.0 * NODE_RADIUS,
         };
         let previous_too_near = if let Some(pc) = previous_creation {
-            pc.position.distance(mouse_position) < minimum_distance
+            if let Ok(position) = world.get::<&Position>(pc.entity) {
+                position.position.distance(mouse_position) < minimum_distance
+            } else {
+                false
+            }
         } else {
             false
         };
@@ -472,48 +482,44 @@ impl Neuronify {
                     tau: 1.0,
                 };
                 let stimulate_current = StimulateCurrent { current: 0.0 };
-                match self.tool {
-                    Tool::ExcitatoryNeuron => {
-                        world.spawn((
-                            Position {
-                                position: mouse_position,
-                            },
-                            Neuron::new(),
-                            NeuronType::Excitatory,
-                            StaticConnectionSource {},
-                            dynamics,
-                            leak_current,
-                            Deletable {},
-                            stimulate_current,
-                            Selectable { selected: false },
-                        ));
-                    }
-                    Tool::InhibitoryNeuron => {
-                        world.spawn((
-                            Position {
-                                position: mouse_position,
-                            },
-                            Neuron::new(),
-                            NeuronType::Inhibitory,
-                            StaticConnectionSource {},
-                            dynamics,
-                            leak_current,
-                            Deletable {},
-                            stimulate_current,
-                            Selectable { selected: false },
-                        ));
-                    }
-                    _ => {}
+                let new_id = match self.tool {
+                    Tool::ExcitatoryNeuron => Some(world.spawn((
+                        Position {
+                            position: mouse_position + 0.4 * Vec3::Y,
+                        },
+                        Neuron::new(),
+                        NeuronType::Excitatory,
+                        StaticConnectionSource {},
+                        dynamics,
+                        leak_current,
+                        Deletable {},
+                        stimulate_current,
+                        Selectable { selected: false },
+                    ))),
+                    Tool::InhibitoryNeuron => Some(world.spawn((
+                        Position {
+                            position: mouse_position,
+                        },
+                        Neuron::new(),
+                        NeuronType::Inhibitory,
+                        StaticConnectionSource {},
+                        dynamics,
+                        leak_current,
+                        Deletable {},
+                        stimulate_current,
+                        Selectable { selected: false },
+                    ))),
+                    _ => None,
+                };
+                if let Some(id) = new_id {
+                    self.previous_creation = Some(PreviousCreation { entity: id });
                 }
-                self.previous_creation = Some(PreviousCreation {
-                    position: mouse_position,
-                });
             }
             Tool::CurrentSource => {
                 if previous_too_near {
                     return;
                 }
-                world.spawn((
+                let id = world.spawn((
                     Position {
                         position: mouse_position,
                     },
@@ -522,9 +528,7 @@ impl Neuronify {
                     Deletable {},
                     Selectable { selected: false },
                 ));
-                self.previous_creation = Some(PreviousCreation {
-                    position: mouse_position,
-                });
+                self.previous_creation = Some(PreviousCreation { entity: id });
             }
             Tool::StaticConnection | Tool::LearningConnection => {
                 if let Some(ct) = connection_tool {
@@ -690,9 +694,7 @@ impl Neuronify {
                             },
                     },
                 ));
-                *previous_creation = Some(PreviousCreation {
-                    position: position.position,
-                });
+                *previous_creation = Some(PreviousCreation { entity: voltmeter });
                 world.spawn((
                     VoltageSeries {
                         measurements: RollingWindow::new(100000),
@@ -731,7 +733,7 @@ impl Neuronify {
                         });
                     match connection_tool {
                         Some(ct) => {
-                            self.previous_creation = Some(PreviousCreation { position: ct.start });
+                            self.previous_creation = Some(PreviousCreation { entity: ct.from });
                         }
                         None => {}
                     }
@@ -783,7 +785,7 @@ impl Neuronify {
                             if let Some(neuron_type) = neuron_type {
                                 let compartment = world.spawn((
                                     Position {
-                                        position: mouse_position + 2.0 * Vec3::Y,
+                                        position: mouse_position,
                                     },
                                     neuron_type,
                                     Compartment {
@@ -813,7 +815,7 @@ impl Neuronify {
                                 let compartment_current = CompartmentCurrent { capacitance: 0.5 };
                                 world.spawn((new_connection, Deletable {}, compartment_current));
                                 self.previous_creation = Some(PreviousCreation {
-                                    position: mouse_position,
+                                    entity: compartment,
                                 });
                                 *connection_tool = Some(ConnectionTool {
                                     start: mouse_position,
@@ -1046,9 +1048,54 @@ impl visula::Simulation for Neuronify {
                     let r2 = from.distance_squared(to);
                     let target2 = (2.0 * NODE_RADIUS).powi(2);
                     let d = (to - from).normalize();
-                    dynamics.acceleration += 0.05 * (r2 - target2).min(0.0) * d;
+                    dynamics.acceleration += 5.0 * (r2 - target2).min(0.0) * d;
                 }
             }
+            let connections: Vec<(Entity, Connection)> = world
+                .query::<&Connection>()
+                .iter()
+                .map(|(e, c)| (e.to_owned(), c.to_owned()))
+                .collect();
+
+            for (connection_id_a, connection_a) in &connections {
+                for (connection_id_b, connection_b) in &connections {
+                    if connection_id_b == connection_id_b {
+                        continue;
+                    }
+                    let to_a = world.get::<&Position>(connection_a.to).unwrap().position;
+                    let from_a = world.get::<&Position>(connection_a.from).unwrap().position;
+                    let to_b = world.get::<&Position>(connection_b.to).unwrap().position;
+                    let from_b = world.get::<&Position>(connection_b.from).unwrap().position;
+                    let dir_a = to_a - from_a;
+                    let dir_b = to_b - from_b;
+                    let cross_dir = dir_a.cross(dir_b);
+                    let denom = cross_dir.length_squared();
+
+                    if denom.abs() < 1e-8 {
+                        continue;
+                    }
+                    let t = (from_b - from_a).cross(dir_b).dot(cross_dir) / denom;
+                    let u = (from_b - from_a).cross(dir_a).dot(cross_dir) / denom;
+
+                    if t < 0.0 || t > 1.0 || u < 0.0 || u > 1.0 {
+                        continue;
+                    }
+                    let force = cross_dir;
+                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_a.to) {
+                        dynamics.acceleration += force;
+                    }
+                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_a.from) {
+                        dynamics.acceleration += force;
+                    }
+                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_b.from) {
+                        dynamics.acceleration -= force;
+                    }
+                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_b.from) {
+                        dynamics.acceleration -= force;
+                    }
+                }
+            }
+
             for (compartment_id, new_compartment) in new_compartments {
                 let mut old_compartment = world
                     .get::<&mut Compartment>(compartment_id)
@@ -1095,7 +1142,7 @@ impl visula::Simulation for Neuronify {
                     let r2 = from.position.distance_squared(to.position);
                     let d = to.position - from.position;
                     let target_length = 2.0 * NODE_RADIUS;
-                    let force = 0.5 * (r2 - target_length.powi(2)) * d.normalize();
+                    let force = 10.0 * (r2 - target_length.powi(2)) * d.normalize();
                     if let Ok(mut dynamics_from) =
                         world.get::<&mut SpatialDynamics>(connection.from)
                     {
@@ -1139,13 +1186,7 @@ impl visula::Simulation for Neuronify {
             for (_, (position, dynamics)) in
                 world.query_mut::<(&mut Position, &mut SpatialDynamics)>()
             {
-                let gravity = if position.position.y > 0.0 {
-                    -1.0
-                } else if position.position.y < 0.0 {
-                    1.0
-                } else {
-                    0.0
-                };
+                let gravity = -position.position.y;
                 dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
                 dynamics.velocity += dynamics.acceleration * dt as f32;
                 position.position += dynamics.velocity * dt as f32;
@@ -1196,17 +1237,20 @@ impl visula::Simulation for Neuronify {
             .collect();
 
         let compartment_spheres: Vec<Sphere> = world
-            .query::<(&Compartment, &Position)>()
+            .query::<(&Compartment, &Position, &NeuronType)>()
             .iter()
-            .map(|(_entity, (compartment, position))| Sphere {
-                position: position.position,
-                color: Vec3::new(
-                    (0.1 + (compartment.voltage + 10.0) / 120.0) as f32,
-                    (0.5 + (compartment.voltage + 10.0) / 400.0) as f32,
-                    (0.3 + (compartment.voltage + 10.0) / 120.0) as f32,
-                ),
-                radius: 0.6 * NODE_RADIUS,
-                _padding: Default::default(),
+            .map(|(_entity, (compartment, position, neuron_type))| {
+                let value = ((compartment.voltage + 10.0) / 120.0) as f32;
+                let color = match neuron_type {
+                    NeuronType::Excitatory => Vec3::new(value / 2.0, value, 0.95),
+                    NeuronType::Inhibitory => Vec3::new(0.95, value / 2.0, value),
+                };
+                Sphere {
+                    position: position.position,
+                    color,
+                    radius: 0.4 * NODE_RADIUS,
+                    _padding: Default::default(),
+                }
             })
             .collect();
 
@@ -1269,6 +1313,13 @@ impl visula::Simulation for Neuronify {
                     .get::<&Position>(connection.to)
                     .expect("Connection to broken")
                     .position;
+                let color = match world.get::<&NeuronType>(connection.from) {
+                    Ok(t) => match *t {
+                        NeuronType::Excitatory => Vec3::new(0.2, 0.2, 0.95),
+                        NeuronType::Inhibitory => Vec3::new(0.95, 0.2, 0.2),
+                    },
+                    Err(_) => Vec3::new(0.9, 0.1, 0.9),
+                };
                 ConnectionData {
                     position_a: start,
                     position_b: end,
@@ -1277,6 +1328,8 @@ impl visula::Simulation for Neuronify {
                         true => 1.0,
                         false => 0.0,
                     },
+                    color,
+                    _padding: Default::default(),
                 }
             })
             .collect();
@@ -1288,6 +1341,8 @@ impl visula::Simulation for Neuronify {
                     position_b: connection.end,
                     strength: 1.0,
                     directional: 1.0,
+                    color: Vec3::new(0.8, 0.8, 0.8),
+                    _padding: Default::default(),
                 });
             }
         }
