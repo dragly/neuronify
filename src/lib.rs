@@ -812,7 +812,7 @@ impl Neuronify {
                                     strength,
                                     directional: false,
                                 };
-                                let compartment_current = CompartmentCurrent { capacitance: 0.5 };
+                                let compartment_current = CompartmentCurrent { capacitance: 0.1 };
                                 world.spawn((new_connection, Deletable {}, compartment_current));
                                 self.previous_creation = Some(PreviousCreation {
                                     entity: compartment,
