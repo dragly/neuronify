@@ -317,7 +317,7 @@ fn within_attachment_range(
 
 impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
-        // application.camera_controller.enabled = false;
+        application.camera_controller.enabled = false;
         application.camera_controller.center = Vector3::new(0.0, 0.0, 0.0);
         application.camera_controller.forward = Vector3::new(1.0, -1.0, 0.0);
         application.camera_controller.distance = 50.0;
