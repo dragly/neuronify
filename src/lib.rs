@@ -249,12 +249,13 @@ pub struct Error {}
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
 pub struct ConnectionData {
-    pub color: Vec3,
+    pub start_color: Vec3,
+    pub end_color: Vec3,
     pub position_a: Vec3,
     pub position_b: Vec3,
     pub strength: f32,
     pub directional: f32,
-    pub _padding: f32,
+    pub _padding: [f32; 2],
 }
 
 #[repr(C, align(16))]
@@ -350,7 +351,8 @@ impl Neuronify {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
                 width: 0.2.into(),
-                color: connection.color.clone(),
+                start_color: connection.start_color.clone(),
+                end_color: connection.end_color.clone(),
             },
         )
         .unwrap();
@@ -1246,7 +1248,7 @@ impl visula::Simulation for Neuronify {
                 Sphere {
                     position: position.position,
                     color,
-                    radius: 0.4 * NODE_RADIUS,
+                    radius: 0.3 * NODE_RADIUS,
                     _padding: Default::default(),
                 }
             })
@@ -1311,12 +1313,27 @@ impl visula::Simulation for Neuronify {
                     .get::<&Position>(connection.to)
                     .expect("Connection to broken")
                     .position;
-                let color = match world.get::<&NeuronType>(connection.from) {
-                    Ok(t) => match *t {
-                        NeuronType::Excitatory => Vec3::new(0.2, 0.2, 0.95),
-                        NeuronType::Inhibitory => Vec3::new(0.95, 0.2, 0.2),
+                let start_value = match world.get::<&Compartment>(connection.from) {
+                    Ok(compartment) => ((compartment.voltage + 10.0) / 120.0) as f32,
+                    Err(_) => 1.0,
+                };
+                let end_value = match world.get::<&Compartment>(connection.to) {
+                    Ok(compartment) => ((compartment.voltage + 10.0) / 120.0) as f32,
+                    Err(_) => 1.0,
+                };
+                let start_color = match world.get::<&NeuronType>(connection.from) {
+                    Ok(neuron_type) => match *neuron_type {
+                        NeuronType::Excitatory => Vec3::new(start_value / 2.0, start_value, 0.95),
+                        NeuronType::Inhibitory => Vec3::new(0.95, start_value / 2.0, start_value),
                     },
-                    Err(_) => Vec3::new(0.9, 0.1, 0.9),
+                    Err(_) => Vec3::new(1.0, 0.0, 1.0),
+                };
+                let end_color = match world.get::<&NeuronType>(connection.from) {
+                    Ok(neuron_type) => match *neuron_type {
+                        NeuronType::Excitatory => Vec3::new(end_value / 2.0, end_value, 0.95),
+                        NeuronType::Inhibitory => Vec3::new(0.95, end_value / 2.0, end_value),
+                    },
+                    Err(_) => Vec3::new(1.0, 0.0, 1.0),
                 };
                 ConnectionData {
                     position_a: start,
@@ -1326,7 +1343,8 @@ impl visula::Simulation for Neuronify {
                         true => 1.0,
                         false => 0.0,
                     },
-                    color,
+                    start_color,
+                    end_color,
                     _padding: Default::default(),
                 }
             })
@@ -1339,7 +1357,8 @@ impl visula::Simulation for Neuronify {
                     position_b: connection.end,
                     strength: 1.0,
                     directional: 1.0,
-                    color: Vec3::new(0.8, 0.8, 0.8),
+                    start_color: Vec3::new(0.8, 0.8, 0.8),
+                    end_color: Vec3::new(0.8, 0.8, 0.8),
                     _padding: Default::default(),
                 });
             }
