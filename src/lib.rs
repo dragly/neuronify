@@ -317,7 +317,7 @@ fn within_attachment_range(
 
 impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
-        application.camera_controller.enabled = false;
+        // application.camera_controller.enabled = false;
         application.camera_controller.center = Vector3::new(0.0, 0.0, 0.0);
         application.camera_controller.forward = Vector3::new(1.0, -1.0, 0.0);
         application.camera_controller.distance = 50.0;
@@ -1048,7 +1048,8 @@ impl visula::Simulation for Neuronify {
                     let r2 = from.distance_squared(to);
                     let target2 = (2.0 * NODE_RADIUS).powi(2);
                     let d = (to - from).normalize();
-                    dynamics.acceleration += 5.0 * (r2 - target2).min(0.0) * d;
+                    let force = 5.0 * (r2 - target2).min(0.0) * d;
+                    dynamics.acceleration += force;
                 }
             }
             let connections: Vec<(Entity, Connection)> = world
@@ -1057,41 +1058,38 @@ impl visula::Simulation for Neuronify {
                 .map(|(e, c)| (e.to_owned(), c.to_owned()))
                 .collect();
 
-            for (connection_id_a, connection_a) in &connections {
-                for (connection_id_b, connection_b) in &connections {
-                    if connection_id_b == connection_id_b {
+            for (connection_id_1, connection_1) in &connections {
+                for (connection_id_2, connection_2) in &connections {
+                    if connection_id_1 == connection_id_2 {
                         continue;
                     }
-                    let to_a = world.get::<&Position>(connection_a.to).unwrap().position;
-                    let from_a = world.get::<&Position>(connection_a.from).unwrap().position;
-                    let to_b = world.get::<&Position>(connection_b.to).unwrap().position;
-                    let from_b = world.get::<&Position>(connection_b.from).unwrap().position;
-                    let dir_a = to_a - from_a;
-                    let dir_b = to_b - from_b;
-                    let cross_dir = dir_a.cross(dir_b);
-                    let denom = cross_dir.length_squared();
-
-                    if denom.abs() < 1e-8 {
+                    if connection_1.to != connection_2.from {
                         continue;
                     }
-                    let t = (from_b - from_a).cross(dir_b).dot(cross_dir) / denom;
-                    let u = (from_b - from_a).cross(dir_a).dot(cross_dir) / denom;
-
-                    if t < 0.0 || t > 1.0 || u < 0.0 || u > 1.0 {
-                        continue;
+                    let to_1 = world.get::<&Position>(connection_1.to).unwrap().position;
+                    let from_1 = world.get::<&Position>(connection_1.from).unwrap().position;
+                    let to_2 = world.get::<&Position>(connection_2.to).unwrap().position;
+                    let from_2 = world.get::<&Position>(connection_2.from).unwrap().position;
+                    let target = 1.0;
+                    let dir_ab = (to_1 - from_1).normalize();
+                    let dir_bc = (to_2 - from_2).normalize();
+                    let dot = dir_ab.dot(dir_bc);
+                    let diff = target - dot;
+                    let p_a = (dir_ab.cross((dir_ab).cross(dir_bc))).normalize();
+                    let p_c = (dir_bc.cross((dir_ab).cross(dir_bc))).normalize();
+                    let k = 1.0;
+                    let f_a = k * diff / dir_ab.length() * p_a;
+                    let f_c = k * diff / dir_bc.length() * p_c;
+                    let f_b = -f_a - f_c;
+                    if let Ok(mut dynamics_a) = world.get::<&mut SpatialDynamics>(connection_1.from)
+                    {
+                        dynamics_a.acceleration += f_a;
                     }
-                    let force = cross_dir;
-                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_a.to) {
-                        dynamics.acceleration += force;
+                    if let Ok(mut dynamics_b) = world.get::<&mut SpatialDynamics>(connection_1.to) {
+                        dynamics_b.acceleration += f_b;
                     }
-                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_a.from) {
-                        dynamics.acceleration += force;
-                    }
-                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_b.from) {
-                        dynamics.acceleration -= force;
-                    }
-                    if let Ok(mut dynamics) = world.get::<&mut SpatialDynamics>(connection_b.from) {
-                        dynamics.acceleration -= force;
+                    if let Ok(mut dynamics_c) = world.get::<&mut SpatialDynamics>(connection_2.to) {
+                        dynamics_c.acceleration += f_c;
                     }
                 }
             }
