@@ -350,7 +350,7 @@ impl Neuronify {
             &LineDelegate {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
-                width: 0.2.into(),
+                width: 0.3.into(),
                 start_color: connection.start_color.clone(),
                 end_color: connection.end_color.clone(),
             },
@@ -861,6 +861,14 @@ impl Neuronify {
 
 impl visula::Simulation for Neuronify {
     type Error = Error;
+    fn clear_color(&self) -> wgpu::Color {
+        wgpu::Color {
+            r: (30.0 / 255.0 + 0.055_f64).powf(2.44) / 1.055,
+            g: (30.0 / 255.0 + 0.055_f64).powf(2.44) / 1.055,
+            b: (46.0 / 255.0 + 0.055_f64).powf(2.44) / 1.055,
+            a: 1.0,
+        }
+    }
     fn update(&mut self, application: &mut visula::Application) {
         let Neuronify {
             connection_tool,
