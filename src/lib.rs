@@ -362,7 +362,7 @@ impl Neuronify {
             &SphereDelegate {
                 position: connection_endpoint,
                 radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
-                color: Vec3::new(1.0, 1.0, 1.0).into(),
+                color: Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0).into(),
             },
         )
         .unwrap();
@@ -859,13 +859,60 @@ impl Neuronify {
     }
 }
 
+fn srgb_component(value: u8) -> f32 {
+    (value as f32 / 255.0 + 0.055_f32).powf(2.44) / 1.055
+}
+
+fn srgb(red: u8, green: u8, blue: u8) -> Vec3 {
+    Vec3::new(
+        srgb_component(red),
+        srgb_component(green),
+        srgb_component(blue),
+    )
+}
+
+fn red() -> Vec3 {
+    srgb(210, 15, 57)
+}
+
+fn maroon() -> Vec3 {
+    srgb(230, 69, 83)
+}
+
+fn blue() -> Vec3 {
+    srgb(30, 102, 245)
+}
+
+fn lavender() -> Vec3 {
+    srgb(114, 135, 253)
+}
+fn pink() -> Vec3 {
+    srgb(234, 118, 203)
+}
+fn base() -> Vec3 {
+    srgb(239, 241, 245)
+}
+fn mantle() -> Vec3 {
+    srgb(230, 233, 239)
+}
+fn crust() -> Vec3 {
+    srgb(220, 224, 232)
+}
+fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
+    let v = 1.0 / (1.0 + (-4.9 * (-1.0 + 2.0 * value)).exp());
+    match *neuron_type {
+        NeuronType::Excitatory => v * base() + (1.0 - v) * blue(),
+        NeuronType::Inhibitory => v * mantle() + (1.0 - v) * red(),
+    }
+}
+
 impl visula::Simulation for Neuronify {
     type Error = Error;
     fn clear_color(&self) -> wgpu::Color {
         wgpu::Color {
-            r: (30.0 / 255.0 + 0.055_f64).powf(2.44) / 1.055,
-            g: (30.0 / 255.0 + 0.055_f64).powf(2.44) / 1.055,
-            b: (46.0 / 255.0 + 0.055_f64).powf(2.44) / 1.055,
+            r: srgb_component(30) as f64,
+            g: srgb_component(30) as f64,
+            b: srgb_component(46) as f64,
             a: 1.0,
         }
     }
@@ -1231,13 +1278,9 @@ impl visula::Simulation for Neuronify {
             .iter()
             .map(|(_entity, (neuron, dynamics, position, neuron_type))| {
                 let value = ((dynamics.voltage + 100.0) / 150.0).clamp(0.0, 1.0) as f32;
-                let color = match *neuron_type {
-                    NeuronType::Excitatory => Vec3::new(value / 2.0, value, 0.95),
-                    NeuronType::Inhibitory => Vec3::new(0.95, value / 2.0, value),
-                };
                 Sphere {
                     position: position.position,
-                    color,
+                    color: neurocolor(neuron_type, value),
                     radius: NODE_RADIUS,
                     _padding: Default::default(),
                 }
@@ -1255,7 +1298,7 @@ impl visula::Simulation for Neuronify {
                 };
                 Sphere {
                     position: position.position,
-                    color,
+                    color: neurocolor(neuron_type, value),
                     radius: 0.3 * NODE_RADIUS,
                     _padding: Default::default(),
                 }
@@ -1330,17 +1373,11 @@ impl visula::Simulation for Neuronify {
                     Err(_) => 1.0,
                 };
                 let start_color = match world.get::<&NeuronType>(connection.from) {
-                    Ok(neuron_type) => match *neuron_type {
-                        NeuronType::Excitatory => Vec3::new(start_value / 2.0, start_value, 0.95),
-                        NeuronType::Inhibitory => Vec3::new(0.95, start_value / 2.0, start_value),
-                    },
+                    Ok(neuron_type) => neurocolor(&neuron_type, start_value),
                     Err(_) => Vec3::new(1.0, 0.0, 1.0),
                 };
                 let end_color = match world.get::<&NeuronType>(connection.from) {
-                    Ok(neuron_type) => match *neuron_type {
-                        NeuronType::Excitatory => Vec3::new(end_value / 2.0, end_value, 0.95),
-                        NeuronType::Inhibitory => Vec3::new(0.95, end_value / 2.0, end_value),
-                    },
+                    Ok(neuron_type) => neurocolor(&neuron_type, end_value),
                     Err(_) => Vec3::new(1.0, 0.0, 1.0),
                 };
                 ConnectionData {
