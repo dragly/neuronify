@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, TimeDelta, Utc};
+use chrono::{DateTime, Duration, Utc};
 use hecs::serialize::column::*;
 use js_sys::Uint8Array;
 use postcard::ser_flavors::Flavor;
@@ -18,7 +18,7 @@ use visula::RunConfig;
 use visula::Simulation;
 use visula::Vector3;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::prelude::*;
+
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, Response};
 
@@ -860,7 +860,7 @@ impl Neuronify {
     pub fn load(application: &mut visula::Application, bytes: &[u8]) -> Neuronify {
         let mut neuronify = Neuronify::new(application);
         let mut context = LoadContext::new();
-        let mut deserializer = postcard::Deserializer::from_bytes(&bytes);
+        let mut deserializer = postcard::Deserializer::from_bytes(bytes);
         neuronify.world = deserialize(&mut context, &mut deserializer).unwrap();
         neuronify
     }
@@ -1579,7 +1579,7 @@ pub async fn load(url: &str) -> Result<(), JsValue> {
 
     let mut opts = RequestInit::new();
     opts.method("GET");
-    let request = Request::new_with_str_and_init(&url, &opts)?;
+    let request = Request::new_with_str_and_init(url, &opts)?;
     let window = web_sys::window().ok_or("No global `window` exists")?;
     let response_value = JsFuture::from(window.fetch_with_request(&request)).await?;
     let response: Response = response_value.dyn_into()?;
