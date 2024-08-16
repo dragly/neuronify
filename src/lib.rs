@@ -1,4 +1,5 @@
 use hecs::serialize::column::*;
+use js_sys::Uint8Array;
 use postcard::ser_flavors::Flavor;
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
@@ -7,6 +8,9 @@ use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
 use visula::initialize_event_loop_and_window_with_config;
 use visula::initialize_logger;
 use visula::winit::keyboard::ModifiersKeyState;
@@ -15,6 +19,9 @@ use visula::RunConfig;
 use visula::Simulation;
 use visula::Vector3;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Request, RequestInit, Response};
 
 use std::collections::HashMap;
 
@@ -247,6 +254,8 @@ pub struct Neuronify {
     pub connection_spheres: Spheres,
     pub connection_buffer: InstanceBuffer<ConnectionData>,
     pub iterations: u32,
+    pub last_update: Instant,
+    pub fps: f64,
 }
 
 #[derive(Debug)]
@@ -384,6 +393,8 @@ impl Neuronify {
             },
             keyboard: Keyboard { shift_down: false },
             iterations: 4,
+            last_update: Instant::now(),
+            fps: 60.0,
         }
     }
 
@@ -847,8 +858,12 @@ impl Neuronify {
         self.world = deserialize(&mut context, &mut deserializer).unwrap();
     }
 
-    pub fn load(application: &mut visula::Application, _url: &str) -> Neuronify {
-        Neuronify::new(application)
+    pub fn load(application: &mut visula::Application, bytes: &[u8]) -> Neuronify {
+        let mut neuronify = Neuronify::new(application);
+        let mut context = LoadContext::new();
+        let mut deserializer = postcard::Deserializer::from_bytes(&bytes);
+        neuronify.world = deserialize(&mut context, &mut deserializer).unwrap();
+        neuronify
     }
 }
 
@@ -1407,6 +1422,18 @@ impl visula::Simulation for Neuronify {
 
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
+
+        let time_diff = Instant::now() - self.last_update;
+        if time_diff < Duration::from_millis(16) {
+            thread::sleep(Duration::from_millis(16) - time_diff)
+        }
+        self.fps = 0.99 * self.fps
+            + 0.01
+                * (1.0
+                    / (Instant::now() - self.last_update)
+                        .as_secs_f64()
+                        .max(0.0000001));
+        self.last_update = Instant::now();
     }
 
     fn render(&mut self, data: &mut RenderData) {
@@ -1417,6 +1444,7 @@ impl visula::Simulation for Neuronify {
 
     fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
         egui::Window::new("Settings").show(context, |ui| {
+            ui.label(format!("FPS: {:.2}", self.fps));
             ui.label("Tool");
             for value in Tool::iter() {
                 ui.selectable_value(&mut self.tool, value.clone(), format!("{:?}", &value));
@@ -1539,7 +1567,7 @@ impl visula::Simulation for Neuronify {
 }
 
 #[wasm_bindgen]
-pub fn load(url: &str) {
+pub async fn load(url: &str) -> Result<(), JsValue> {
     initialize_logger();
     let (event_loop, window) = initialize_event_loop_and_window_with_config(RunConfig {
         canvas_name: "canvas".to_owned(),
@@ -1547,7 +1575,17 @@ pub fn load(url: &str) {
     let main_window_id = window.id();
     let mut application =
         pollster::block_on(async { Application::new(Arc::new(window), &event_loop).await });
-    let mut simulation = Neuronify::load(&mut application, url);
+
+    let mut opts = RequestInit::new();
+    opts.method("GET");
+    let request = Request::new_with_str_and_init(&url, &opts)?;
+    let window = web_sys::window().ok_or("No global `window` exists")?;
+    let response_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+    let response: Response = response_value.dyn_into()?;
+    let buffer = JsFuture::from(response.array_buffer()?).await?;
+    let uint8_array = Uint8Array::new(&buffer);
+    let vec = uint8_array.to_vec();
+    let mut simulation = Neuronify::load(&mut application, &vec);
     event_loop
         .run(move |event, target| {
             if !application.handle_event(&event) {
@@ -1571,4 +1609,5 @@ pub fn load(url: &str) {
             }
         })
         .expect("Event loop failed to run");
+    Ok(())
 }
