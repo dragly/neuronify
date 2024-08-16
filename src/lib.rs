@@ -1,3 +1,4 @@
+use chrono::{DateTime, Duration, TimeDelta, Utc};
 use hecs::serialize::column::*;
 use js_sys::Uint8Array;
 use postcard::ser_flavors::Flavor;
@@ -9,8 +10,6 @@ use std::io::Read;
 use std::io::Write;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
-use std::time::Instant;
 use visula::initialize_event_loop_and_window_with_config;
 use visula::initialize_logger;
 use visula::winit::keyboard::ModifiersKeyState;
@@ -254,7 +253,7 @@ pub struct Neuronify {
     pub connection_spheres: Spheres,
     pub connection_buffer: InstanceBuffer<ConnectionData>,
     pub iterations: u32,
-    pub last_update: Instant,
+    pub last_update: DateTime<Utc>,
     pub fps: f64,
 }
 
@@ -393,7 +392,7 @@ impl Neuronify {
             },
             keyboard: Keyboard { shift_down: false },
             iterations: 4,
-            last_update: Instant::now(),
+            last_update: Utc::now(),
             fps: 60.0,
         }
     }
@@ -1423,17 +1422,19 @@ impl visula::Simulation for Neuronify {
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
 
-        let time_diff = Instant::now() - self.last_update;
-        if time_diff < Duration::from_millis(16) {
-            thread::sleep(Duration::from_millis(16) - time_diff)
+        let time_diff = Utc::now() - self.last_update;
+        #[cfg(not(target_arch = "wasm32"))]
+        if time_diff < Duration::milliseconds(16) {
+            thread::sleep(std::time::Duration::from_millis(
+                (Duration::milliseconds(16) - time_diff).num_milliseconds() as u64,
+            ))
         }
-        self.fps = 0.99 * self.fps
-            + 0.01
-                * (1.0
-                    / (Instant::now() - self.last_update)
-                        .as_secs_f64()
-                        .max(0.0000001));
-        self.last_update = Instant::now();
+        let low_pass_factor = 0.05;
+        let new_fps = 1.0
+            / ((Utc::now() - self.last_update).num_nanoseconds().unwrap() as f64 * 1e-9)
+                .max(0.0000001);
+        self.fps = (1.0 - low_pass_factor) * self.fps + low_pass_factor * new_fps;
+        self.last_update = Utc::now();
     }
 
     fn render(&mut self, data: &mut RenderData) {
@@ -1444,7 +1445,7 @@ impl visula::Simulation for Neuronify {
 
     fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
         egui::Window::new("Settings").show(context, |ui| {
-            ui.label(format!("FPS: {:.2}", self.fps));
+            ui.label(format!("FPS: {:.0}", self.fps));
             ui.label("Tool");
             for value in Tool::iter() {
                 ui.selectable_value(&mut self.tool, value.clone(), format!("{:?}", &value));

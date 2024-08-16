@@ -408,6 +408,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-targets 0.52.6",
 ]
@@ -1738,6 +1739,7 @@ version = "2.0.0"
 dependencies = [
  "bytemuck",
  "cgmath",
+ "chrono",
  "crude-profiler",
  "egui",
  "egui_plot",
