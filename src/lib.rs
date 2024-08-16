@@ -1,4 +1,4 @@
-use hecs::{serialize::column::*, *};
+use hecs::serialize::column::*;
 use postcard::ser_flavors::Flavor;
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
@@ -135,6 +135,12 @@ pub struct Position {
 pub struct SpatialDynamics {
     pub velocity: Vec3,
     pub acceleration: Vec3,
+}
+
+impl Default for Neuron {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Neuron {
@@ -283,15 +289,6 @@ struct Compartment {
     influence: f64,
     capacitance: f64,
     injected_current: f64,
-}
-
-fn lennard_jones(position_a: Vec3, position_b: Vec3, eps: f32, sigma: f32) -> Vec3 {
-    let r = position_a - position_b;
-    let r_l = r.length();
-
-    r / r_l.powi(2)
-        * eps.powi(24)
-        * (2.0 * sigma.powi(12) / r_l.powi(12) - sigma.powi(6) / r_l.powi(6))
 }
 
 fn nearest(
@@ -589,12 +586,10 @@ impl Neuronify {
                         .iter()
                         .min_by(|a, b| nearest(&mouse_position, a, b))
                         .and_then(|v| within_attachment_range(mouse_position, v))
-                        .and_then(|(id, position)| {
-                            Some(ConnectionTool {
-                                start: position,
-                                end: mouse_position,
-                                from: id,
-                            })
+                        .map(|(id, position)| ConnectionTool {
+                            start: position,
+                            end: mouse_position,
+                            from: id,
                         });
                 }
             }
@@ -677,7 +672,7 @@ impl Neuronify {
                     .find_map(|(entity, position)| {
                         let distance = position.position.distance(mouse_position);
                         if distance < NODE_RADIUS {
-                            Some((entity.clone(), position.clone()))
+                            Some((entity, position.clone()))
                         } else {
                             None
                         }
@@ -726,12 +721,10 @@ impl Neuronify {
                         .iter()
                         .min_by(|a, b| nearest(&mouse_position, a, b))
                         .and_then(|v| within_attachment_range(mouse_position, v))
-                        .and_then(|(id, position)| {
-                            Some(ConnectionTool {
-                                start: position,
-                                end: mouse_position,
-                                from: id,
-                            })
+                        .map(|(id, position)| ConnectionTool {
+                            start: position,
+                            end: mouse_position,
+                            from: id,
                         });
                     match connection_tool {
                         Some(ct) => {
@@ -854,7 +847,7 @@ impl Neuronify {
         self.world = deserialize(&mut context, &mut deserializer).unwrap();
     }
 
-    pub fn load(application: &mut visula::Application, url: &str) -> Neuronify {
+    pub fn load(application: &mut visula::Application, _url: &str) -> Neuronify {
         Neuronify::new(application)
     }
 }
@@ -1163,7 +1156,7 @@ impl visula::Simulation for Neuronify {
                 .iter()
                 .flat_map(|(connection_entity, connection)| {
                     let mut triggers = vec![];
-                    if let (Ok(neuron_from), Ok(neuron_from_type)) = (
+                    if let (Ok(_neuron_from), Ok(neuron_from_type)) = (
                         world.get::<&Neuron>(connection.from),
                         world.get::<&NeuronType>(connection.from),
                     ) {
@@ -1276,7 +1269,7 @@ impl visula::Simulation for Neuronify {
         let neuron_spheres: Vec<Sphere> = world
             .query::<(&Neuron, &NeuronDynamics, &Position, &NeuronType)>()
             .iter()
-            .map(|(_entity, (neuron, dynamics, position, neuron_type))| {
+            .map(|(_entity, (_neuron, dynamics, position, neuron_type))| {
                 let value = ((dynamics.voltage + 100.0) / 150.0).clamp(0.0, 1.0) as f32;
                 Sphere {
                     position: position.position,
@@ -1292,7 +1285,7 @@ impl visula::Simulation for Neuronify {
             .iter()
             .map(|(_entity, (compartment, position, neuron_type))| {
                 let value = ((compartment.voltage + 10.0) / 120.0) as f32;
-                let color = match neuron_type {
+                let _color = match neuron_type {
                     NeuronType::Excitatory => Vec3::new(value / 2.0, value, 0.95),
                     NeuronType::Inhibitory => Vec3::new(0.95, value / 2.0, value),
                 };
@@ -1323,7 +1316,7 @@ impl visula::Simulation for Neuronify {
         let trigger_spheres: Vec<Sphere> = world
             .query::<&Trigger>()
             .iter()
-            .filter_map(|(_entity, trigger)| {
+            .map(|(_entity, trigger)| {
                 let connection = world
                     .get::<&Connection>(trigger.connection)
                     .expect("Connection from broken");
@@ -1337,12 +1330,12 @@ impl visula::Simulation for Neuronify {
                     .position;
                 let diff = end - start;
                 let position = start + diff * trigger.progress() as f32;
-                Some(Sphere {
+                Sphere {
                     position,
                     color: Vec3::new(0.8, 0.9, 0.9),
                     radius: NODE_RADIUS * 0.5,
                     _padding: Default::default(),
-                })
+                }
             })
             .collect();
 
@@ -1438,7 +1431,7 @@ impl visula::Simulation for Neuronify {
             }
         });
 
-        for (voltmeter_id, voltmeter) in self.world.query::<&Voltmeter>().iter() {
+        for (voltmeter_id, _voltmeter) in self.world.query::<&Voltmeter>().iter() {
             for (_, (series, connection)) in
                 self.world.query::<(&VoltageSeries, &Connection)>().iter()
             {
@@ -1554,7 +1547,7 @@ pub fn load(url: &str) {
     let main_window_id = window.id();
     let mut application =
         pollster::block_on(async { Application::new(Arc::new(window), &event_loop).await });
-    let mut simulation = Neuronify::load(&mut application, &url);
+    let mut simulation = Neuronify::load(&mut application, url);
     event_loop
         .run(move |event, target| {
             if !application.handle_event(&event) {

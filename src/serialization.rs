@@ -44,6 +44,12 @@ macro_rules! component_id {
             components: Vec<ComponentId>,
         }
 
+        impl Default for LoadContext {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
         impl LoadContext {
             pub fn new() -> LoadContext {
                 LoadContext { components: vec![] }

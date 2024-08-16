@@ -1,4 +1,4 @@
-use hecs::Entity;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
