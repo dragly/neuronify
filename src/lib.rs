@@ -255,6 +255,7 @@ pub struct Neuronify {
     pub iterations: u32,
     pub last_update: DateTime<Utc>,
     pub fps: f64,
+    pub edit_enabled: bool,
 }
 
 #[derive(Debug)]
@@ -394,6 +395,7 @@ impl Neuronify {
             iterations: 4,
             last_update: Utc::now(),
             fps: 60.0,
+            edit_enabled: true,
         }
     }
 
@@ -862,6 +864,7 @@ impl Neuronify {
         let mut context = LoadContext::new();
         let mut deserializer = postcard::Deserializer::from_bytes(bytes);
         neuronify.world = deserialize(&mut context, &mut deserializer).unwrap();
+        neuronify.edit_enabled = false;
         neuronify
     }
 }
@@ -904,6 +907,12 @@ fn mantle() -> Vec3 {
 }
 fn crust() -> Vec3 {
     srgb(220, 224, 232)
+}
+fn mauve() -> Vec3 {
+    srgb(136, 57, 239)
+}
+fn yellow() -> Vec3 {
+    srgb(223, 142, 29)
 }
 fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
     let v = 1.0 / (1.0 + (-4.9 * (-1.0 + 2.0 * value)).exp());
@@ -1316,14 +1325,11 @@ impl visula::Simulation for Neuronify {
             .query::<&Position>()
             .with::<&CurrentSource>()
             .iter()
-            .map(|(_entity, position)| {
-                let color = Vec3::new(0.8, 0.8, 0.1);
-                Sphere {
-                    position: position.position,
-                    color,
-                    radius: NODE_RADIUS,
-                    _padding: Default::default(),
-                }
+            .map(|(_entity, position)| Sphere {
+                position: position.position,
+                color: yellow(),
+                radius: NODE_RADIUS,
+                _padding: Default::default(),
             })
             .collect();
 
@@ -1346,7 +1352,7 @@ impl visula::Simulation for Neuronify {
                 let position = start + diff * trigger.progress() as f32;
                 Sphere {
                     position,
-                    color: Vec3::new(0.8, 0.9, 0.9),
+                    color: crust(),
                     radius: NODE_RADIUS * 0.5,
                     _padding: Default::default(),
                 }
@@ -1371,22 +1377,28 @@ impl visula::Simulation for Neuronify {
                     .get::<&Position>(connection.to)
                     .expect("Connection to broken")
                     .position;
-                let start_value = match world.get::<&Compartment>(connection.from) {
-                    Ok(compartment) => ((compartment.voltage + 10.0) / 120.0) as f32,
-                    Err(_) => 1.0,
+                let value = |target: Entity| -> f32 {
+                    if let Ok(compartment) = world.get::<&Compartment>(target) {
+                        ((compartment.voltage + 10.0) / 120.0) as f32
+                    } else if let Ok(neuron_dynamics) = world.get::<&NeuronDynamics>(target) {
+                        ((neuron_dynamics.voltage + 10.0) / 120.0) as f32
+                    } else {
+                        1.0
+                    }
                 };
-                let end_value = match world.get::<&Compartment>(connection.to) {
-                    Ok(compartment) => ((compartment.voltage + 10.0) / 120.0) as f32,
-                    Err(_) => 1.0,
-                };
-                let start_color = match world.get::<&NeuronType>(connection.from) {
-                    Ok(neuron_type) => neurocolor(&neuron_type, start_value),
-                    Err(_) => Vec3::new(1.0, 0.0, 1.0),
-                };
-                let end_color = match world.get::<&NeuronType>(connection.from) {
-                    Ok(neuron_type) => neurocolor(&neuron_type, end_value),
-                    Err(_) => Vec3::new(1.0, 0.0, 1.0),
-                };
+                let start_value = value(connection.to);
+                let end_value = value(connection.from);
+                let (start_color, end_color) =
+                    if let Ok(_) = world.get::<&CurrentSource>(connection.from) {
+                        (yellow(), yellow())
+                    } else if let Ok(neuron_type) = world.get::<&NeuronType>(connection.from) {
+                        (
+                            neurocolor(&neuron_type, start_value),
+                            neurocolor(&neuron_type, end_value),
+                        )
+                    } else {
+                        (crust(), crust())
+                    };
                 ConnectionData {
                     position_a: start,
                     position_b: end,
@@ -1444,21 +1456,32 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
-        egui::Window::new("Settings").show(context, |ui| {
-            ui.label(format!("FPS: {:.0}", self.fps));
-            ui.label("Tool");
-            for value in Tool::iter() {
-                ui.selectable_value(&mut self.tool, value.clone(), format!("{:?}", &value));
-            }
-            ui.label("Simulation speed");
-            ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
-            if ui.button("Save").clicked() {
-                self.save();
-            }
-            if ui.button("Load").clicked() {
-                self.loadfile();
-            }
+        egui::Area::new("edit_button_area").show(context, |ui| {
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
+                    if ui.button("Edit").clicked() {
+                        self.edit_enabled = !self.edit_enabled;
+                    }
+                });
+            });
         });
+        if self.edit_enabled {
+            egui::Window::new("Edit").show(context, |ui| {
+                ui.label(format!("FPS: {:.0}", self.fps));
+                ui.label("Tool");
+                for value in Tool::iter() {
+                    ui.selectable_value(&mut self.tool, value.clone(), format!("{:?}", &value));
+                }
+                ui.label("Simulation speed");
+                ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
+                if ui.button("Save").clicked() {
+                    self.save();
+                }
+                if ui.button("Load").clicked() {
+                    self.loadfile();
+                }
+            });
+        }
 
         for (voltmeter_id, _voltmeter) in self.world.query::<&Voltmeter>().iter() {
             for (_, (series, connection)) in
