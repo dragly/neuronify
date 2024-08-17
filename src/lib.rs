@@ -533,7 +533,7 @@ impl Neuronify {
                         position: mouse_position,
                     },
                     StaticConnectionSource {},
-                    CurrentSource { current: 200.0 },
+                    CurrentSource { current: 150.0 },
                     Deletable {},
                     Selectable { selected: false },
                 ));
