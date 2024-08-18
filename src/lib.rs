@@ -12,7 +12,6 @@ use std::sync::Arc;
 use std::thread;
 use visula::initialize_event_loop_and_window_with_config;
 use visula::initialize_logger;
-use visula::winit::event::TouchPhase;
 use visula::winit::keyboard::ModifiersKeyState;
 use visula::Application;
 use visula::RunConfig;
@@ -1405,7 +1404,7 @@ impl visula::Simulation for Neuronify {
                 let start_value = value(connection.to);
                 let end_value = value(connection.from);
                 let (start_color, end_color) =
-                    if let Ok(_) = world.get::<&CurrentSource>(connection.from) {
+                    if world.get::<&CurrentSource>(connection.from).is_ok() {
                         (yellow(), yellow())
                     } else if let Ok(neuron_type) = world.get::<&NeuronType>(connection.from) {
                         (
@@ -1602,13 +1601,9 @@ impl visula::Simulation for Neuronify {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                self.mouse.delta_position = match self.mouse.position {
-                    Some(previous) => Some(PhysicalPosition::new(
-                        position.x - previous.x,
-                        position.y - previous.y,
-                    )),
-                    None => None,
-                };
+                self.mouse.delta_position = self.mouse.position.map(|previous| {
+                    PhysicalPosition::new(position.x - previous.x, position.y - previous.y)
+                });
                 self.mouse.position = Some(*position);
                 self.handle_tool(application);
             }
