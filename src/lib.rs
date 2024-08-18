@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::thread;
 use visula::initialize_event_loop_and_window_with_config;
 use visula::initialize_logger;
+use visula::winit::event::TouchPhase;
 use visula::winit::keyboard::ModifiersKeyState;
 use visula::Application;
 use visula::RunConfig;
@@ -232,6 +233,7 @@ pub struct Sphere {
 pub struct Mouse {
     pub left_down: bool,
     pub position: Option<PhysicalPosition<f64>>,
+    pub delta_position: Option<PhysicalPosition<f64>>,
 }
 
 pub struct Keyboard {
@@ -256,6 +258,8 @@ pub struct Neuronify {
     pub last_update: DateTime<Utc>,
     pub fps: f64,
     pub edit_enabled: bool,
+    pub last_touch_points: Option<((f64, f64), (f64, f64))>,
+    pub move_origin: Option<Vec3>,
 }
 
 #[derive(Debug)]
@@ -381,7 +385,7 @@ impl Neuronify {
             connection_lines,
             connection_spheres,
             connection_buffer,
-            tool: Tool::ExcitatoryNeuron,
+            tool: Tool::Select,
             previous_creation: None,
             connection_tool: None,
             stimulation_tool: None,
@@ -390,16 +394,19 @@ impl Neuronify {
             mouse: Mouse {
                 left_down: false,
                 position: None,
+                delta_position: None,
             },
             keyboard: Keyboard { shift_down: false },
             iterations: 4,
             last_update: Utc::now(),
             fps: 60.0,
             edit_enabled: true,
+            last_touch_points: None,
+            move_origin: None,
         }
     }
 
-    fn handle_tool(&mut self, application: &visula::Application) {
+    fn handle_tool(&mut self, application: &mut visula::Application) {
         let Neuronify {
             tool,
             mouse,
@@ -716,15 +723,24 @@ impl Neuronify {
                     },
                 ));
             }
-            Tool::Select => {
-                for (_, (selectable, position)) in world.query_mut::<(&mut Selectable, &Position)>()
-                {
-                    let distance = position.position.distance(mouse_position);
-                    if distance < NODE_RADIUS {
-                        selectable.selected = true;
+            Tool::Select => match self.mouse.left_down {
+                true => match self.move_origin {
+                    Some(origin) => {
+                        let center = mouse_position - origin;
+                        application.camera_controller.center -=
+                            Vector3::new(center.x, center.y, center.z);
                     }
-                }
-            }
+                    None => {
+                        let center = Vec3::new(
+                            application.camera_controller.center.x,
+                            application.camera_controller.center.y,
+                            application.camera_controller.center.z,
+                        );
+                        self.move_origin = Some(mouse_position);
+                    }
+                },
+                false => self.move_origin = None,
+            },
             Tool::Axon => match connection_tool {
                 None => {
                     *connection_tool = world
@@ -859,7 +875,7 @@ impl Neuronify {
         self.world = deserialize(&mut context, &mut deserializer).unwrap();
     }
 
-    pub fn load(application: &mut visula::Application, bytes: &[u8]) -> Neuronify {
+    pub fn from_slice(application: &mut visula::Application, bytes: &[u8]) -> Neuronify {
         let mut neuronify = Neuronify::new(application);
         let mut context = LoadContext::new();
         let mut deserializer = postcard::Deserializer::from_bytes(bytes);
@@ -1572,6 +1588,7 @@ impl visula::Simulation for Neuronify {
                 ..
             } => {
                 self.mouse.left_down = *state == ElementState::Pressed;
+                self.mouse.delta_position = None;
                 self.handle_tool(application);
             }
             Event::WindowEvent {
@@ -1585,6 +1602,13 @@ impl visula::Simulation for Neuronify {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
+                self.mouse.delta_position = match self.mouse.position {
+                    Some(previous) => Some(PhysicalPosition::new(
+                        position.x - previous.x,
+                        position.y - previous.y,
+                    )),
+                    None => None,
+                };
                 self.mouse.position = Some(*position);
                 self.handle_tool(application);
             }
@@ -1612,7 +1636,7 @@ pub async fn load(url: &str) -> Result<(), JsValue> {
     let buffer = JsFuture::from(response.array_buffer()?).await?;
     let uint8_array = Uint8Array::new(&buffer);
     let vec = uint8_array.to_vec();
-    let mut simulation = Neuronify::load(&mut application, &vec);
+    let mut simulation = Neuronify::from_slice(&mut application, &vec);
     event_loop
         .run(move |event, target| {
             if !application.handle_event(&event) {
