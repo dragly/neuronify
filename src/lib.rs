@@ -259,6 +259,7 @@ pub struct Neuronify {
     pub edit_enabled: bool,
     pub last_touch_points: Option<((f64, f64), (f64, f64))>,
     pub move_origin: Option<Vec3>,
+    pub active_entity: Option<Entity>,
 }
 
 #[derive(Debug)]
@@ -319,6 +320,17 @@ fn within_attachment_range(
     (id, position): (Entity, &Position),
 ) -> Option<(Entity, Vec3)> {
     if mouse_position.distance(position.position) < 1.5 * NODE_RADIUS {
+        Some((id, position.position))
+    } else {
+        None
+    }
+}
+
+fn within_selection_range(
+    mouse_position: Vec3,
+    (id, position): (Entity, &Position),
+) -> Option<(Entity, Vec3)> {
+    if mouse_position.distance(position.position) < 0.9 * NODE_RADIUS {
         Some((id, position.position))
     } else {
         None
@@ -402,6 +414,7 @@ impl Neuronify {
             edit_enabled: true,
             last_touch_points: None,
             move_origin: None,
+            active_entity: None,
         }
     }
 
@@ -413,12 +426,14 @@ impl Neuronify {
             stimulation_tool,
             world,
             previous_creation,
+            move_origin,
             ..
         } = self;
         if !mouse.left_down {
             *stimulation_tool = None;
             *connection_tool = None;
             *previous_creation = None;
+            *move_origin = None;
             return;
         }
         let mouse_physical_position = match mouse.position {
@@ -730,12 +745,18 @@ impl Neuronify {
                             Vector3::new(center.x, center.y, center.z);
                     }
                     None => {
-                        let center = Vec3::new(
-                            application.camera_controller.center.x,
-                            application.camera_controller.center.y,
-                            application.camera_controller.center.z,
-                        );
-                        self.move_origin = Some(mouse_position);
+                        if let Some(entity) = world
+                            .query::<&Position>()
+                            .iter()
+                            .min_by(|a, b| nearest(&mouse_position, a, b))
+                            .and_then(|v| within_selection_range(mouse_position, v))
+                            .map(|(id, _position)| id)
+                        {
+                            self.active_entity = Some(entity);
+                        } else {
+                            self.active_entity = None;
+                            self.move_origin = Some(mouse_position);
+                        }
                     }
                 },
                 false => self.move_origin = None,
@@ -834,8 +855,11 @@ impl Neuronify {
                                     strength,
                                     directional: false,
                                 };
-                                let compartment_current = CompartmentCurrent { capacitance: 0.1 };
-                                world.spawn((new_connection, Deletable {}, compartment_current));
+                                world.spawn((
+                                    new_connection,
+                                    Deletable {},
+                                    CompartmentCurrent { capacitance: 1.0 },
+                                ));
                                 self.previous_creation = Some(PreviousCreation {
                                     entity: compartment,
                                 });
@@ -956,6 +980,7 @@ impl visula::Simulation for Neuronify {
             ..
         } = self;
         let dt = 0.001;
+        let cdt = 0.01;
 
         for (_, (position, stimulate)) in world.query_mut::<(&Position, &mut StimulateCurrent)>() {
             if let Some(stim) = stimulation_tool {
@@ -1022,7 +1047,6 @@ impl visula::Simulation for Neuronify {
                 }
             }
             for (_, compartment) in world.query_mut::<&mut Compartment>() {
-                let cdt = 10.0 * dt;
                 let v = compartment.voltage;
 
                 let sodium_activation_alpha = 0.1 * (25.0 - v) / ((2.5 - 0.1 * v).exp() - 1.0);
@@ -1112,11 +1136,11 @@ impl visula::Simulation for Neuronify {
                         let new_compartment_to = new_compartments
                             .get_mut(&connection.to)
                             .expect("Could not get new compartment");
-                        new_compartment_to.voltage += delta_voltage * dt;
+                        new_compartment_to.voltage += delta_voltage * cdt;
                         let new_compartment_from = new_compartments
                             .get_mut(&connection.from)
                             .expect("Could not get new compartment");
-                        new_compartment_from.voltage -= delta_voltage * dt;
+                        new_compartment_from.voltage -= delta_voltage * cdt;
                     }
                 }
             }
@@ -1499,6 +1523,31 @@ impl visula::Simulation for Neuronify {
                 ui.label("Simulation speed");
                 ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
             });
+            if let Some(active_entity) = self.active_entity {
+                egui::Window::new("Selection").show(context, |ui| {
+                    if let Ok(compartment) = self.world.get::<&Compartment>(active_entity) {
+                        ui.collapsing("Compartment", |ui| {
+                            egui::Grid::new("compartment_state").show(ui, |ui| {
+                                ui.label("Voltage:");
+                                ui.label(format!("{:.2} mV", compartment.voltage));
+                                ui.end_row();
+
+                                ui.label("m:");
+                                ui.label(format!("{:.2}", compartment.m));
+                                ui.end_row();
+
+                                ui.label("n:");
+                                ui.label(format!("{:.2}", compartment.n));
+                                ui.end_row();
+
+                                ui.label("h:");
+                                ui.label(format!("{:.2}", compartment.h));
+                                ui.end_row();
+                            });
+                        });
+                    }
+                });
+            }
         }
 
         for (voltmeter_id, _voltmeter) in self.world.query::<&Voltmeter>().iter() {
