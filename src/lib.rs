@@ -1456,17 +1456,26 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
-        egui::Area::new("edit_button_area").show(context, |ui| {
-            ui.horizontal(|ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
-                    if ui.button("Edit").clicked() {
-                        self.edit_enabled = !self.edit_enabled;
-                    }
+        egui::Area::new("edit_button_area")
+            .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+            .show(context, |ui| {
+                ui.toggle_value(&mut self.edit_enabled, "Edit").clicked();
+            });
+        if self.edit_enabled {
+            egui::TopBottomPanel::top("top_panel").show(context, |ui| {
+                egui::menu::bar(ui, |ui| {
+                    ui.menu_button("File", |ui| {
+                        if ui.button("Save").clicked() {
+                            self.save();
+                        }
+
+                        if ui.button("Load").clicked() {
+                            self.loadfile();
+                        }
+                    });
                 });
             });
-        });
-        if self.edit_enabled {
-            egui::Window::new("Edit").show(context, |ui| {
+            egui::Window::new("Settings").show(context, |ui| {
                 ui.label(format!("FPS: {:.0}", self.fps));
                 ui.label("Tool");
                 for value in Tool::iter() {
@@ -1474,12 +1483,6 @@ impl visula::Simulation for Neuronify {
                 }
                 ui.label("Simulation speed");
                 ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
-                if ui.button("Save").clicked() {
-                    self.save();
-                }
-                if ui.button("Load").clicked() {
-                    self.loadfile();
-                }
             });
         }
 
