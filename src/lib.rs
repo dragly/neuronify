@@ -1193,6 +1193,9 @@ impl visula::Simulation for Neuronify {
                     let f_a = k * diff / dir_ab.length() * p_a;
                     let f_c = k * diff / dir_bc.length() * p_c;
                     let f_b = -f_a - f_c;
+                    if f_a.is_nan() || f_b.is_nan() || f_c.is_nan() {
+                        continue;
+                    }
                     if let Ok(mut dynamics_a) = world.get::<&mut SpatialDynamics>(connection_1.from)
                     {
                         dynamics_a.acceleration += f_a;
