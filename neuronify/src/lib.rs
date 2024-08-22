@@ -8,6 +8,7 @@ use std::cmp::Ordering;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 use visula::initialize_event_loop_and_window_with_config;
@@ -876,21 +877,21 @@ impl Neuronify {
         }
     }
 
-    pub fn save(&self) {
+    pub fn save(&self, path: PathBuf) {
         let mut context = SaveContext;
         let mut serializer = postcard::Serializer {
             output: postcard::ser_flavors::StdVec::new(),
         };
         serialize(&self.world, &mut context, &mut serializer).unwrap();
-        let mut writer = std::fs::File::create("output.neuronify").unwrap();
+        let mut writer = std::fs::File::create(path.with_extension("neuronify")).unwrap();
         writer
             .write_all(&serializer.output.finalize().unwrap())
             .unwrap();
     }
 
-    pub fn loadfile(&mut self) {
+    pub fn loadfile(&mut self, path: PathBuf) {
         let mut context = LoadContext::new();
-        let reader = std::fs::File::open("output.neuronify").unwrap();
+        let reader = std::fs::File::open(path).unwrap();
         let mut bufreader = BufReader::new(reader);
         let mut bytes: Vec<u8> = Vec::new();
         bufreader.read_to_end(&mut bytes).unwrap();
@@ -985,9 +986,11 @@ impl visula::Simulation for Neuronify {
         for (_, (position, stimulate)) in world.query_mut::<(&Position, &mut StimulateCurrent)>() {
             if let Some(stim) = stimulation_tool {
                 let mouse_distance = position.position.distance(stim.position);
-                stimulate.current = (300.0
-                    * (-mouse_distance * mouse_distance / (2.0 * SIGMA * SIGMA)).exp())
-                    as f64;
+                stimulate.current = if mouse_distance < NODE_RADIUS {
+                    2000.0
+                } else {
+                    0.0
+                };
             } else {
                 stimulate.current = 0.0;
             }
@@ -1504,15 +1507,20 @@ impl visula::Simulation for Neuronify {
                 ui.toggle_value(&mut self.edit_enabled, "Edit").clicked();
             });
         if self.edit_enabled {
+            #[cfg(not(target_arch = "wasm32"))]
             egui::TopBottomPanel::top("top_panel").show(context, |ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.menu_button("File", |ui| {
                         if ui.button("Save").clicked() {
-                            self.save();
+                            if let Some(path) = rfd::FileDialog::new().save_file() {
+                                self.save(path);
+                            }
                         }
 
-                        if ui.button("Load").clicked() {
-                            self.loadfile();
+                        if ui.button("Open").clicked() {
+                            if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                self.loadfile(path);
+                            }
                         }
                     });
                 });
