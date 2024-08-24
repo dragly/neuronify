@@ -1,0 +1,7 @@
+[workspace]
+members = ["run-wasm", "neuronify", "neuronify-core"]
+resolver = "2"
+
+[profile.optimized-dev]
+inherits = "dev"
+opt-level = 1
