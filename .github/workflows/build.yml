@@ -1,0 +1,56 @@
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+name: Continuous integration
+env:
+  RUSTC_WRAPPER: sccache
+jobs:
+  ci:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - 1.78.0  # Minimum supported Rust version
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list http://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+          sudo apt update
+          sudo apt install vulkan-sdk
+          sudo apt-get install libegl1-mesa-dev shaderc
+      - name: sccache cache files
+        uses: actions/cache@v1.1.0
+        with:
+          path: /home/runner/.cache/sccache
+          key: ${{ matrix.rust }}-sccache-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.rust }}-sccache
+      - name: Download sccache
+        run: |
+          wget https://github.com/mozilla/sccache/releases/download/v0.2.15/sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz
+          tar -xvzf sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz
+          sudo cp sccache-v0.2.15-x86_64-unknown-linux-musl/sccache /usr/bin/sccache
+          sudo chmod +x /usr/bin/sccache
+          sccache --show-stats
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: clippy, rustfmt
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Check
+        run: cargo check --all-features --all-targets
+      - name: Build
+        run: cargo build --all-features --all-targets
+      - name: Test
+        run: cargo test --all-features --all-targets
+      - name: Clippy
+        run: cargo clippy --all-features --all-targets -- -D warnings

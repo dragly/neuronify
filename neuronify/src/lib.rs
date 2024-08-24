@@ -925,20 +925,10 @@ fn red() -> Vec3 {
     srgb(210, 15, 57)
 }
 
-fn maroon() -> Vec3 {
-    srgb(230, 69, 83)
-}
-
 fn blue() -> Vec3 {
     srgb(30, 102, 245)
 }
 
-fn lavender() -> Vec3 {
-    srgb(114, 135, 253)
-}
-fn pink() -> Vec3 {
-    srgb(234, 118, 203)
-}
 fn base() -> Vec3 {
     srgb(239, 241, 245)
 }
@@ -947,9 +937,6 @@ fn mantle() -> Vec3 {
 }
 fn crust() -> Vec3 {
     srgb(220, 224, 232)
-}
-fn mauve() -> Vec3 {
-    srgb(136, 57, 239)
 }
 fn yellow() -> Vec3 {
     srgb(223, 142, 29)
