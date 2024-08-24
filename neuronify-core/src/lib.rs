@@ -1,35 +1,12 @@
-use chrono::{DateTime, Duration, Utc};
-use hecs::serialize::column::*;
-use js_sys::Uint8Array;
-use postcard::ser_flavors::Flavor;
-use serde::{Deserialize, Serialize};
-use std::borrow::BorrowMut;
-use std::cmp::Ordering;
-use std::io::BufReader;
-use std::io::Read;
-use std::io::Write;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::thread;
-use visula::initialize_event_loop_and_window_with_config;
-use visula::initialize_logger;
-use visula::winit::keyboard::ModifiersKeyState;
-use visula::Application;
-use visula::RunConfig;
-use visula::Simulation;
-use visula::Vector3;
-use wasm_bindgen::prelude::*;
-
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, Response};
-
-use std::collections::HashMap;
-
+use crate::measurement::voltmeter::RollingWindow;
+use crate::measurement::voltmeter::VoltageMeasurement;
 use crate::measurement::voltmeter::VoltageSeries;
-
+use crate::measurement::voltmeter::Voltmeter;
+use crate::serialization::{LoadContext, SaveContext};
 use bytemuck::{Pod, Zeroable};
 use cgmath::prelude::*;
 use cgmath::Vector4;
+use chrono::{DateTime, Duration, Utc};
 use egui::Color32;
 use egui::LayerId;
 use egui::Pos2;
@@ -37,26 +14,43 @@ use egui_plot::PlotBounds;
 use egui_plot::{Line, PlotPoints};
 use glam::Quat;
 use glam::Vec3;
+use hecs::serialize::column::*;
 use hecs::Entity;
-
-use crate::measurement::voltmeter::RollingWindow;
-use crate::measurement::voltmeter::VoltageMeasurement;
-use crate::measurement::voltmeter::Voltmeter;
+use js_sys::Uint8Array;
+use postcard::ser_flavors::Flavor;
+use serde::{Deserialize, Serialize};
+use std::borrow::BorrowMut;
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::io::BufReader;
+use std::io::Read;
+use std::io::Write;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::thread;
 use strum::EnumIter;
 use strum::IntoEnumIterator;
+use visula::create_window;
+#[cfg(target_arch = "wasm32")]
+use visula::winit::platform::web::EventLoopExtWebSys;
 use visula::winit::{
     dpi::PhysicalPosition,
     event::{ElementState, Event, MouseButton, WindowEvent},
 };
-use visula::Renderable;
 use visula::{
-    CustomEvent, InstanceBuffer, LineDelegate, Lines, RenderData, SphereDelegate, Spheres,
+    create_event_loop, initialize_logger, winit::keyboard::ModifiersKeyState, Application,
+    CustomEvent, InstanceBuffer, LineDelegate, Lines, RenderData, Renderable, RunConfig,
+    Simulation, SphereDelegate, Spheres, Vector3,
 };
 use visula_derive::Instance;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Request, RequestInit, Response};
+use winit::event_loop::EventLoop;
+use winit::event_loop::EventLoopWindowTarget;
 
 pub mod measurement;
 pub mod serialization;
-use crate::serialization::{LoadContext, SaveContext};
 
 #[derive(Clone, Debug, EnumIter, PartialEq)]
 pub enum Tool {
@@ -1622,6 +1616,11 @@ impl visula::Simulation for Neuronify {
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
+        if let Event::WindowEvent { window_id, .. } = event {
+            if &application.window.id() != window_id {
+                return;
+            }
+        }
         match event {
             Event::WindowEvent {
                 event:
@@ -1658,15 +1657,37 @@ impl visula::Simulation for Neuronify {
     }
 }
 
+struct Bundle {
+    application: Application,
+    simulation: Neuronify,
+}
+
 #[wasm_bindgen]
-pub async fn load(url: &str) -> Result<(), JsValue> {
+pub struct WasmWrapper {
+    event_loop: EventLoop<CustomEvent>,
+    bundles: Vec<Bundle>,
+}
+
+#[wasm_bindgen]
+pub async fn initialize() -> WasmWrapper {
     initialize_logger();
-    let (event_loop, window) = initialize_event_loop_and_window_with_config(RunConfig {
-        canvas_name: "canvas".to_owned(),
-    });
-    let main_window_id = window.id();
-    let mut application =
-        pollster::block_on(async { Application::new(Arc::new(window), &event_loop).await });
+    let event_loop = create_event_loop();
+    let bundles: Vec<Bundle> = Vec::new();
+    WasmWrapper {
+        event_loop,
+        bundles,
+    }
+}
+
+#[wasm_bindgen]
+pub async fn load(wrapper: &mut WasmWrapper, canvas: &str, url: &str) -> Result<(), JsValue> {
+    let window = create_window(
+        RunConfig {
+            canvas_name: canvas.to_owned(),
+        },
+        &wrapper.event_loop,
+    );
+    let mut application = pollster::block_on(async { Application::new(Arc::new(window)).await });
 
     let mut opts = RequestInit::new();
     opts.method("GET");
@@ -1677,21 +1698,29 @@ pub async fn load(url: &str) -> Result<(), JsValue> {
     let buffer = JsFuture::from(response.array_buffer()?).await?;
     let uint8_array = Uint8Array::new(&buffer);
     let vec = uint8_array.to_vec();
-    let mut simulation = Neuronify::from_slice(&mut application, &vec);
-    event_loop
-        .run(move |event, target| {
+    let simulation = Neuronify::from_slice(&mut application, &vec);
+    wrapper.bundles.push(Bundle {
+        application,
+        simulation,
+    });
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn start(mut wrapper: WasmWrapper) -> Result<(), JsValue> {
+    let event_handler = move |event, target: &EventLoopWindowTarget<CustomEvent>| {
+        for bundle in wrapper.bundles.iter_mut() {
+            let application = &mut bundle.application;
+            let simulation = &mut bundle.simulation;
             if !application.handle_event(&event) {
-                simulation.handle_event(&mut application, &event);
+                simulation.handle_event(application, &event);
             }
-            if let Event::WindowEvent { window_id, event } = event {
-                if main_window_id != window_id {
-                    return;
-                }
+            if let Event::WindowEvent { ref event, .. } = event {
                 match event {
                     WindowEvent::RedrawRequested => {
                         application.update();
-                        simulation.update(&mut application);
-                        application.render(&mut simulation);
+                        simulation.update(application);
+                        application.render(simulation);
 
                         application.window.borrow_mut().request_redraw();
                     }
@@ -1699,8 +1728,10 @@ pub async fn load(url: &str) -> Result<(), JsValue> {
                     _ => {}
                 }
             }
-        })
-        .expect("Event loop failed to run");
+        }
+    };
+    #[cfg(target_arch = "wasm32")]
+    wrapper.event_loop.spawn(event_handler);
     Ok(())
 }
 
