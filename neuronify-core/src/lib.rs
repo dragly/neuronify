@@ -1708,7 +1708,7 @@ pub async fn load(wrapper: &mut WasmWrapper, canvas: &str, url: &str) -> Result<
 
 #[wasm_bindgen]
 pub async fn start(mut wrapper: WasmWrapper) -> Result<(), JsValue> {
-    let event_handler = move |event, target: &EventLoopWindowTarget<CustomEvent>| {
+    let _event_handler = move |event, target: &EventLoopWindowTarget<CustomEvent>| {
         for bundle in wrapper.bundles.iter_mut() {
             let application = &mut bundle.application;
             let simulation = &mut bundle.simulation;
@@ -1731,7 +1731,7 @@ pub async fn start(mut wrapper: WasmWrapper) -> Result<(), JsValue> {
         }
     };
     #[cfg(target_arch = "wasm32")]
-    wrapper.event_loop.spawn(event_handler);
+    wrapper.event_loop.spawn(_event_handler);
     Ok(())
 }
 
