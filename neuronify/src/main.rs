@@ -1,5 +1,3 @@
-use neuronify::Neuronify;
-
 fn main() {
-    visula::run(Neuronify::new);
+    neuronify_core::run();
 }

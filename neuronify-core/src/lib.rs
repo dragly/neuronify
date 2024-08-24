@@ -74,7 +74,6 @@ pub enum Tool {
 
 const NODE_RADIUS: f32 = 1.0;
 const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
-const SIGMA: f32 = 1.0 * NODE_RADIUS;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum NeuronType {
@@ -1703,4 +1702,8 @@ pub async fn load(url: &str) -> Result<(), JsValue> {
         })
         .expect("Event loop failed to run");
     Ok(())
+}
+
+pub fn run() {
+    visula::run(Neuronify::new);
 }
