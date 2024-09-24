@@ -935,7 +935,7 @@ fn yellow() -> Vec3 {
     srgb(223, 142, 29)
 }
 fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
-    let v = 1.0 / (1.0 + (-4.9 * (-1.0 + 2.0 * value)).exp());
+    let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
     match *neuron_type {
         NeuronType::Excitatory => v * base() + (1.0 - v) * blue(),
         NeuronType::Inhibitory => v * mantle() + (1.0 - v) * red(),
@@ -1317,8 +1317,10 @@ impl visula::Simulation for Neuronify {
         let neuron_spheres: Vec<Sphere> = world
             .query::<(&Neuron, &NeuronDynamics, &Position, &NeuronType)>()
             .iter()
-            .map(|(_entity, (_neuron, dynamics, position, neuron_type))| {
-                let value = ((dynamics.voltage + 100.0) / 150.0).clamp(0.0, 1.0) as f32;
+            .map(|(_entity, (neuron, dynamics, position, neuron_type))| {
+                let value = ((dynamics.voltage - neuron.resting_potential)
+                    / (neuron.threshold - neuron.resting_potential))
+                    .clamp(0.0, 1.0) as f32;
                 Sphere {
                     position: position.position,
                     color: neurocolor(neuron_type, value),
@@ -1533,6 +1535,41 @@ impl visula::Simulation for Neuronify {
 
                                 ui.label("h:");
                                 ui.label(format!("{:.2}", compartment.h));
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    if let Ok(mut neuron) = self.world.get::<&mut Neuron>(active_entity) {
+                        ui.collapsing("Neuron", |ui| {
+                            egui::Grid::new("neuron_settings").show(ui, |ui| {
+                                ui.label("Threshold:");
+                                ui.add(egui::Slider::new(&mut neuron.threshold, -10.0..=100.0));
+                                ui.end_row();
+
+                                ui.label("Resting potential:");
+                                ui.add(egui::Slider::new(
+                                    &mut neuron.resting_potential,
+                                    -120.0..=-40.0,
+                                ));
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    if let Ok(dynamics) = self.world.get::<&NeuronDynamics>(active_entity) {
+                        ui.collapsing("Dynamics", |ui| {
+                            egui::Grid::new("neuron_dynamics").show(ui, |ui| {
+                                ui.label("Voltage:");
+                                ui.label(format!("{:.2} mV", dynamics.voltage));
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    if let Ok(mut leak_current) = self.world.get::<&mut LeakCurrent>(active_entity)
+                    {
+                        ui.collapsing("Leak current", |ui| {
+                            egui::Grid::new("neuron_settings").show(ui, |ui| {
+                                ui.label("Tau:");
+                                ui.add(egui::Slider::new(&mut leak_current.tau, 0.01..=10.0));
                                 ui.end_row();
                             });
                         });
