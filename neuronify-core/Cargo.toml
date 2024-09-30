@@ -7,9 +7,9 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-visula = { git = "https://github.com/dragly/visula", rev = "7da475058b3b886af0c6716496864af8083126d6" }
-visula_derive = { git = "https://github.com/dragly/visula", rev = "7da475058b3b886af0c6716496864af8083126d6" }
-visula_core = { git = "https://github.com/dragly/visula", rev = "7da475058b3b886af0c6716496864af8083126d6" }
+visula = { git = "https://github.com/dragly/visula", rev = "d964607cd7cfbf71172314baab1832f6e1b9f523" }
+visula_derive = { git = "https://github.com/dragly/visula", rev = "d964607cd7cfbf71172314baab1832f6e1b9f523" }
+visula_core = { git = "https://github.com/dragly/visula", rev = "d964607cd7cfbf71172314baab1832f6e1b9f523" }
 wgpu = { version = "0.19", features = ["webgl"] }
 glam = { version = "0.24", features = ["bytemuck", "serde"] }
 bytemuck = { version = "1.4", features = ["derive"] }
@@ -22,14 +22,12 @@ wasm-bindgen-futures = "0.4"
 wasm-bindgen = "=0.2.92"
 cgmath = "0.17.0"
 js-sys = "0.3"
-structopt = "0.3"
 ndarray = "0.15.3"
 num = "0.3"
 syn = { version = "1.0.80", features = ["parsing"] }
 quote = "1.0.10"
 proc-macro2 = "1.0.29"
 crude-profiler = "0.1.7"
-oxifive = { git = "https://github.com/dragly/oxifive", rev = "9f4314b587ef51029033288d95b4a44e40b0ddb5" }
 hecs = { version = "0.10.3", features = [
   "column-serialize",
   "serde",
