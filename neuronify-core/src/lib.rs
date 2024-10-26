@@ -7,6 +7,7 @@ use bytemuck::{Pod, Zeroable};
 use cgmath::prelude::*;
 use cgmath::Vector4;
 use chrono::{DateTime, Duration, Utc};
+use core::f32;
 use egui::Color32;
 use egui::LayerId;
 use egui::Pos2;
@@ -61,6 +62,8 @@ pub enum Tool {
     Voltmeter,
     StaticConnection,
     LearningConnection,
+    SoundEmitter,
+    SoundReceiver,
     Axon,
     Erase,
     Stimulate,
@@ -68,6 +71,7 @@ pub enum Tool {
 
 const NODE_RADIUS: f32 = 1.0;
 const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
+const SPEED_OF_SOUND: f32 = 50.0;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum NeuronType {
@@ -135,6 +139,17 @@ pub struct Position {
 pub struct SpatialDynamics {
     pub velocity: Vec3,
     pub acceleration: Vec3,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SoundEmitter {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SoundReceiver {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SoundSignal {
+    start_time: f64,
 }
 
 impl Default for Neuron {
@@ -244,6 +259,8 @@ pub struct Neuronify {
     pub keyboard: Keyboard,
     pub spheres: Spheres,
     pub sphere_buffer: InstanceBuffer<Sphere>,
+    pub sound_lines: Lines,
+    pub sound_buffer: InstanceBuffer<SoundData>,
     pub connection_lines: Lines,
     pub connection_spheres: Spheres,
     pub connection_buffer: InstanceBuffer<ConnectionData>,
@@ -269,6 +286,15 @@ pub struct ConnectionData {
     pub strength: f32,
     pub directional: f32,
     pub _padding: [f32; 2],
+}
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Instance, Pod, Zeroable)]
+pub struct SoundData {
+    pub position: Vec3,
+    pub radius: f32,
+    pub segment: f32,
+    pub _padding: [f32; 3],
 }
 
 #[repr(C, align(16))]
@@ -331,6 +357,13 @@ fn within_selection_range(
     }
 }
 
+const MAGIC_BYTES: [u8; 9] = *b"NEURONIFY";
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct SaveData {
+    time: f64,
+}
+
 impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
         application.camera_controller.enabled = false;
@@ -339,9 +372,13 @@ impl Neuronify {
         application.camera_controller.distance = 50.0;
 
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
-        let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
         let sphere = sphere_buffer.instance();
+
+        let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
         let connection = connection_buffer.instance();
+
+        let sound_buffer = InstanceBuffer::<SoundData>::new(&application.device);
+        let sound = sound_buffer.instance();
 
         let spheres = Spheres::new(
             &application.rendering_descriptor(),
@@ -360,6 +397,7 @@ impl Neuronify {
                 / connection_vector.clone().length()
                 * NODE_RADIUS
                 * 2.0;
+
         let connection_lines = Lines::new(
             &application.rendering_descriptor(),
             &LineDelegate {
@@ -368,6 +406,36 @@ impl Neuronify {
                 width: 0.3.into(),
                 start_color: connection.start_color.clone(),
                 end_color: connection.end_color.clone(),
+            },
+        )
+        .unwrap();
+
+        let sound_lines = Lines::new(
+            &application.rendering_descriptor(),
+            &LineDelegate {
+                start: sound.position.clone()
+                    + visula::Expression::Vector3 {
+                        x: (sound.radius.clone()
+                            * (2.0 * f32::consts::PI * sound.segment.clone() / 16.0).cos())
+                        .into(),
+                        y: 0.0.into(),
+                        z: (sound.radius.clone()
+                            * (2.0 * f32::consts::PI * sound.segment.clone() / 16.0).sin())
+                        .into(),
+                    },
+                end: sound.position.clone()
+                    + visula::Expression::Vector3 {
+                        x: (sound.radius.clone()
+                            * (2.0 * f32::consts::PI * (sound.segment.clone() + 1.0) / 16.0).cos())
+                        .into(),
+                        y: 0.0.into(),
+                        z: (sound.radius.clone()
+                            * (2.0 * f32::consts::PI * (sound.segment.clone() + 1.0) / 16.0).sin())
+                        .into(),
+                    },
+                width: 0.3.into(),
+                start_color: mauve().into(),
+                end_color: mauve().into(),
             },
         )
         .unwrap();
@@ -390,6 +458,8 @@ impl Neuronify {
             connection_lines,
             connection_spheres,
             connection_buffer,
+            sound_buffer,
+            sound_lines,
             tool: Tool::Select,
             previous_creation: None,
             connection_tool: None,
@@ -493,7 +563,10 @@ impl Neuronify {
             false
         };
         match tool {
-            Tool::ExcitatoryNeuron | Tool::InhibitoryNeuron => {
+            Tool::ExcitatoryNeuron
+            | Tool::InhibitoryNeuron
+            | Tool::SoundReceiver
+            | Tool::SoundEmitter => {
                 if previous_too_near {
                     return;
                 }
@@ -507,12 +580,14 @@ impl Neuronify {
                     current: 0.0,
                     tau: 1.0,
                 };
+                let position = Position {
+                    position: mouse_position,
+                };
+                let selectable = Selectable { selected: false };
                 let stimulate_current = StimulateCurrent { current: 0.0 };
                 let new_id = match self.tool {
                     Tool::ExcitatoryNeuron => Some(world.spawn((
-                        Position {
-                            position: mouse_position + 0.4 * Vec3::Y,
-                        },
+                        position,
                         Neuron::new(),
                         NeuronType::Excitatory,
                         StaticConnectionSource {},
@@ -520,12 +595,10 @@ impl Neuronify {
                         leak_current,
                         Deletable {},
                         stimulate_current,
-                        Selectable { selected: false },
+                        selectable,
                     ))),
                     Tool::InhibitoryNeuron => Some(world.spawn((
-                        Position {
-                            position: mouse_position,
-                        },
+                        position,
                         Neuron::new(),
                         NeuronType::Inhibitory,
                         StaticConnectionSource {},
@@ -533,9 +606,33 @@ impl Neuronify {
                         leak_current,
                         Deletable {},
                         stimulate_current,
-                        Selectable { selected: false },
+                        selectable,
                     ))),
-                    _ => None,
+                    Tool::SoundEmitter => Some(world.spawn((
+                        position,
+                        Neuron::new(),
+                        NeuronType::Excitatory,
+                        StaticConnectionSource {},
+                        dynamics,
+                        leak_current,
+                        Deletable {},
+                        stimulate_current,
+                        selectable,
+                        SoundEmitter {},
+                    ))),
+                    Tool::SoundReceiver => Some(world.spawn((
+                        position,
+                        Neuron::new(),
+                        NeuronType::Excitatory,
+                        StaticConnectionSource {},
+                        dynamics,
+                        leak_current,
+                        Deletable {},
+                        stimulate_current,
+                        selectable,
+                        SoundReceiver {},
+                    ))),
+                    _ => panic!("Unexpected tool type"),
                 };
                 if let Some(id) = new_id {
                     self.previous_creation = Some(PreviousCreation { entity: id });
@@ -875,6 +972,9 @@ impl Neuronify {
         let mut serializer = postcard::Serializer {
             output: postcard::ser_flavors::StdVec::new(),
         };
+        MAGIC_BYTES.serialize(&mut serializer).unwrap();
+        let save_data = SaveData { time: self.time };
+        save_data.serialize(&mut serializer).unwrap();
         serialize(&self.world, &mut context, &mut serializer).unwrap();
         let mut writer = std::fs::File::create(path.with_extension("neuronify")).unwrap();
         writer
@@ -889,6 +989,18 @@ impl Neuronify {
         let mut bytes: Vec<u8> = Vec::new();
         bufreader.read_to_end(&mut bytes).unwrap();
         let mut deserializer = postcard::Deserializer::from_bytes(&bytes);
+        if bytes.len() > 9 {
+            let magic_bytes = <[u8; 9]>::deserialize(&mut deserializer).unwrap();
+            if magic_bytes == MAGIC_BYTES {
+                let save_data = SaveData::deserialize(&mut deserializer).unwrap();
+                self.time = save_data.time;
+            } else {
+                log::warn!("Loading legacy save file. This will be deprecated in the near future. Please re-save the file.");
+                deserializer = postcard::Deserializer::from_bytes(&bytes);
+            }
+        } else {
+            log::warn!("Loading legacy save file. This will be deprecated in the near future. Please re-save the file.");
+        }
         self.world = deserialize(&mut context, &mut deserializer).unwrap();
     }
 
@@ -934,11 +1046,22 @@ fn crust() -> Vec3 {
 fn yellow() -> Vec3 {
     srgb(223, 142, 29)
 }
-fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
+fn green() -> Vec3 {
+    srgb(64, 160, 43)
+}
+fn mauve() -> Vec3 {
+    srgb(136, 57, 239)
+}
+
+fn animate_color(min: Vec3, max: Vec3, value: f32) -> Vec3 {
     let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
+    v * max + (1.0 - v) * min
+}
+
+fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
     match *neuron_type {
-        NeuronType::Excitatory => v * base() + (1.0 - v) * blue(),
-        NeuronType::Inhibitory => v * mantle() + (1.0 - v) * red(),
+        NeuronType::Excitatory => animate_color(blue(), base(), value),
+        NeuronType::Inhibitory => animate_color(red(), mantle(), value),
     }
 }
 
@@ -1018,15 +1141,6 @@ impl visula::Simulation for Neuronify {
                 let mut dynamics = world.get::<&mut NeuronDynamics>(connection.to).unwrap();
                 if dynamics.refraction <= 0.0 {
                     dynamics.current += synapse.current;
-                }
-            }
-            for (_, (dynamics, neuron)) in world.query_mut::<(&mut NeuronDynamics, &Neuron)>() {
-                dynamics.voltage = (dynamics.voltage + dynamics.current * dt).clamp(-200.0, 200.0);
-                if dynamics.refraction <= 0.0 && dynamics.voltage > neuron.threshold {
-                    dynamics.fired = true;
-                    dynamics.refraction = 0.2;
-                    dynamics.voltage = neuron.initial_voltage;
-                    dynamics.voltage = neuron.reset_potential;
                 }
             }
             for (_, compartment) in world.query_mut::<&mut Compartment>() {
@@ -1274,6 +1388,62 @@ impl visula::Simulation for Neuronify {
                 world.despawn(entity).expect("Could not delete entity!");
             }
 
+            let new_sounds: Vec<(SoundSignal, Position)> = world
+                .query::<(&Position, &NeuronDynamics)>()
+                .with::<&SoundEmitter>()
+                .iter()
+                .filter_map(|(_, (position, dynamics))| {
+                    if dynamics.fired {
+                        Some(((SoundSignal { start_time: *time }), position.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            for sound in new_sounds {
+                world.spawn(sound);
+            }
+
+            let sounds_to_delete: Vec<Entity> = world
+                .query::<&SoundSignal>()
+                .iter()
+                .filter_map(|(entity, sound)| {
+                    if *time - sound.start_time < 0.0 || *time - sound.start_time > 10.0 {
+                        Some(entity)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            for entity in sounds_to_delete {
+                world.despawn(entity).expect("Could not delete entity!");
+            }
+
+            let sound_receivers_to_trigger: Vec<Entity> = world
+                .query::<&Position>()
+                .with::<&SoundReceiver>()
+                .iter()
+                .filter_map(|(receiver_entity, receiver)| {
+                    for (_sound_entity, (sound_position, sound_signal)) in
+                        world.query::<(&Position, &SoundSignal)>().iter()
+                    {
+                        let distance = receiver.position.distance(sound_position.position);
+                        let radius = (*time - sound_signal.start_time) * SPEED_OF_SOUND as f64;
+                        if (radius - distance as f64).abs() < NODE_RADIUS as f64 {
+                            return Some(receiver_entity);
+                        }
+                    }
+                    None
+                })
+                .collect();
+
+            for receiver in sound_receivers_to_trigger {
+                let mut dynamics = world.get::<&mut NeuronDynamics>(receiver).unwrap();
+                dynamics.current += 60.0 * SPEED_OF_SOUND as f64;
+            }
+
             for (_, dynamics) in world.query_mut::<&mut NeuronDynamics>() {
                 dynamics.fired = false;
                 dynamics.refraction -= dt;
@@ -1288,6 +1458,15 @@ impl visula::Simulation for Neuronify {
                 position.position += dynamics.velocity * dt as f32;
                 dynamics.acceleration = Vec3::new(0.0, 0.0, 0.0);
                 dynamics.velocity -= dynamics.velocity * dt as f32;
+            }
+            for (_, (dynamics, neuron)) in world.query_mut::<(&mut NeuronDynamics, &Neuron)>() {
+                dynamics.voltage = (dynamics.voltage + dynamics.current * dt).clamp(-200.0, 200.0);
+                if dynamics.refraction <= 0.0 && dynamics.voltage > neuron.threshold {
+                    dynamics.fired = true;
+                    dynamics.refraction = 0.2;
+                    dynamics.voltage = neuron.initial_voltage;
+                    dynamics.voltage = neuron.reset_potential;
+                }
             }
 
             let mut updates = HashMap::new();
@@ -1317,13 +1496,23 @@ impl visula::Simulation for Neuronify {
         let neuron_spheres: Vec<Sphere> = world
             .query::<(&Neuron, &NeuronDynamics, &Position, &NeuronType)>()
             .iter()
-            .map(|(_entity, (neuron, dynamics, position, neuron_type))| {
+            .map(|(entity, (neuron, dynamics, position, neuron_type))| {
                 let value = ((dynamics.voltage - neuron.resting_potential)
                     / (neuron.threshold - neuron.resting_potential))
                     .clamp(0.0, 1.0) as f32;
+                let color = {
+                    if world.get::<&SoundEmitter>(entity).is_ok() {
+                        animate_color(mauve(), base(), value)
+                    } else if world.get::<&SoundReceiver>(entity).is_ok() {
+                        animate_color(green(), base(), value)
+                    } else {
+                        neurocolor(neuron_type, value)
+                    }
+                };
+
                 Sphere {
                     position: position.position,
-                    color: neurocolor(neuron_type, value),
+                    color,
                     radius: NODE_RADIUS,
                     _padding: Default::default(),
                 }
@@ -1455,11 +1644,32 @@ impl visula::Simulation for Neuronify {
             }
         }
 
+        let sounds: Vec<SoundData> = world
+            .query::<(&SoundSignal, &Position)>()
+            .iter()
+            .map(|(_, (sound, position))| {
+                let line_segments: Vec<SoundData> = (0..16)
+                    .map(|index| SoundData {
+                        position: position.position.clone(),
+                        radius: (SPEED_OF_SOUND * (*time as f32 - sound.start_time as f32) as f32)
+                            .into(),
+                        segment: (index as f32).into(),
+                        _padding: Default::default(),
+                    })
+                    .collect();
+                line_segments
+            })
+            .flatten()
+            .collect();
+
         self.sphere_buffer
             .update(&application.device, &application.queue, &spheres);
 
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
+
+        self.sound_buffer
+            .update(&application.device, &application.queue, &sounds);
 
         let time_diff = Utc::now() - self.last_update;
         #[cfg(not(target_arch = "wasm32"))]
@@ -1478,6 +1688,7 @@ impl visula::Simulation for Neuronify {
 
     fn render(&mut self, data: &mut RenderData) {
         self.spheres.render(data);
+        self.sound_lines.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
     }

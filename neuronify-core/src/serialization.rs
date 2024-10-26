@@ -1,7 +1,8 @@
 use crate::{
     Compartment, CompartmentCurrent, Connection, CurrentSource, Deletable, LeakCurrent,
-    LearningSynapse, Neuron, NeuronDynamics, NeuronType, Position, Selectable, SpatialDynamics,
-    StaticConnectionSource, StimulateCurrent, SynapseCurrent, Trigger, VoltageSeries, Voltmeter,
+    LearningSynapse, Neuron, NeuronDynamics, NeuronType, Position, Selectable, SoundEmitter,
+    SoundReceiver, SoundSignal, SpatialDynamics, StaticConnectionSource, StimulateCurrent,
+    SynapseCurrent, Trigger, VoltageSeries, Voltmeter,
 };
 use hecs::{serialize::column::*, *};
 use serde::{Deserialize, Serialize};
@@ -125,4 +126,7 @@ component_id!(
     SpatialDynamics,
     StimulateCurrent,
     NeuronType,
+    SoundEmitter,
+    SoundReceiver,
+    SoundSignal,
 );
