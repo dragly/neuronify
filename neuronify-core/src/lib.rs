@@ -768,11 +768,8 @@ impl Neuronify {
                             end: mouse_position,
                             from: id,
                         });
-                    match connection_tool {
-                        Some(ct) => {
-                            self.previous_creation = Some(PreviousCreation { entity: ct.from });
-                        }
-                        None => {}
+                    if let Some(ct) = connection_tool {
+                        self.previous_creation = Some(PreviousCreation { entity: ct.from });
                     }
                 }
                 Some(ct) => {
