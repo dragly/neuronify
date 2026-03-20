@@ -28,8 +28,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use strum::EnumIter;
-use strum::IntoEnumIterator;
 use visula::create_window;
 #[cfg(target_arch = "wasm32")]
 use visula::winit::platform::web::EventLoopExtWebSys;
@@ -53,19 +51,75 @@ pub mod legacy;
 pub mod measurement;
 pub mod serialization;
 
-#[derive(Clone, Debug, EnumIter, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Tool {
     Select,
     ExcitatoryNeuron,
     InhibitoryNeuron,
     CurrentSource,
     Voltmeter,
+    ClassicExcitatoryNeuron,
+    ClassicInhibitoryNeuron,
+    ClassicCurrentSource,
+    ClassicVoltmeter,
     StaticConnection,
     LearningConnection,
     Axon,
     Erase,
     Stimulate,
 }
+
+#[derive(Clone, Debug, PartialEq)]
+enum ToolCategory {
+    Interaction,
+    HodgkinHuxley,
+    LeakyIntegrateAndFire,
+    Connections,
+}
+
+impl ToolCategory {
+    fn label(&self) -> &str {
+        match self {
+            ToolCategory::Interaction => "Interaction",
+            ToolCategory::HodgkinHuxley => "Hodgkin-Huxley",
+            ToolCategory::LeakyIntegrateAndFire => "Leaky Integrate-and-Fire",
+            ToolCategory::Connections => "Connections",
+        }
+    }
+    fn tools(&self) -> Vec<(Tool, &str)> {
+        match self {
+            ToolCategory::Interaction => vec![
+                (Tool::Select, "Select"),
+                (Tool::Stimulate, "Stimulate"),
+                (Tool::Erase, "Erase"),
+            ],
+            ToolCategory::HodgkinHuxley => vec![
+                (Tool::ExcitatoryNeuron, "Excitatory Neuron"),
+                (Tool::InhibitoryNeuron, "Inhibitory Neuron"),
+                (Tool::CurrentSource, "Current Source"),
+                (Tool::Voltmeter, "Voltmeter"),
+            ],
+            ToolCategory::LeakyIntegrateAndFire => vec![
+                (Tool::ClassicExcitatoryNeuron, "Excitatory Neuron"),
+                (Tool::ClassicInhibitoryNeuron, "Inhibitory Neuron"),
+                (Tool::ClassicCurrentSource, "Current Source"),
+                (Tool::ClassicVoltmeter, "Voltmeter"),
+            ],
+            ToolCategory::Connections => vec![
+                (Tool::StaticConnection, "Static Connection"),
+                (Tool::LearningConnection, "Learning Connection"),
+                (Tool::Axon, "Axon"),
+            ],
+        }
+    }
+}
+
+const TOOL_CATEGORIES: [ToolCategory; 4] = [
+    ToolCategory::Interaction,
+    ToolCategory::HodgkinHuxley,
+    ToolCategory::LeakyIntegrateAndFire,
+    ToolCategory::Connections,
+];
 
 const NODE_RADIUS: f32 = 1.0;
 const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
@@ -599,12 +653,37 @@ impl Neuronify {
             }
             Tool::StaticConnection | Tool::LearningConnection => {
                 if let Some(ct) = connection_tool {
-                    let nearest_target = world
-                        .query::<&Position>()
-                        .with::<&Neuron>()
+                    // Find nearest target (new-style or classic neuron)
+                    let target_candidates: Vec<(Entity, Vec3)> = {
+                        let mut candidates: Vec<_> = world
+                            .query::<&Position>()
+                            .with::<&Neuron>()
+                            .iter()
+                            .map(|(e, p)| (e, p.position))
+                            .collect();
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&legacy::components::ClassicNeuron>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates
+                    };
+                    let nearest_target = target_candidates
                         .iter()
-                        .min_by(|a, b| nearest(&mouse_position, a, b))
-                        .and_then(|v| within_attachment_range(mouse_position, v));
+                        .min_by(|a, b| {
+                            a.1.distance(mouse_position)
+                                .partial_cmp(&b.1.distance(mouse_position))
+                                .unwrap_or(Ordering::Equal)
+                        })
+                        .and_then(|(id, pos)| {
+                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
+                                Some((*id, *pos))
+                            } else {
+                                None
+                            }
+                        });
                     if let Some((id, position)) = nearest_target {
                         let strength = if *tool == Tool::StaticConnection {
                             1.0
@@ -622,23 +701,35 @@ impl Neuronify {
                                 c.from == new_connection.from && c.to == new_connection.to
                             });
                         if !connection_exists && ct.from != id {
-                            let synapse_current = SynapseCurrent {
-                                current: 0.0,
-                                tau: 0.1,
-                            };
-                            if world.get::<&CurrentSource>(ct.from).is_ok() {
-                                world.spawn((new_connection, Deletable {}, synapse_current));
-                            } else if world.get::<&Neuron>(ct.from).is_ok() {
-                                if *tool == Tool::StaticConnection {
-                                    world.spawn((new_connection, Deletable {}, synapse_current));
-                                } else {
+                            let from_is_classic =
+                                world.get::<&legacy::components::ClassicNeuron>(ct.from).is_ok()
+                                    || world
+                                        .get::<&legacy::components::ClassicCurrentClamp>(ct.from)
+                                        .is_ok();
+                            if from_is_classic {
+                                world.spawn((
+                                    new_connection,
+                                    legacy::components::ClassicCurrentSynapse::default(),
+                                ));
+                            } else {
+                                let synapse_current = SynapseCurrent {
+                                    current: 0.0,
+                                    tau: 0.1,
+                                };
+                                if *tool == Tool::LearningConnection {
                                     world.spawn((
                                         new_connection,
                                         Deletable {},
                                         synapse_current,
                                         LearningSynapse {},
                                     ));
-                                };
+                                } else {
+                                    world.spawn((
+                                        new_connection,
+                                        Deletable {},
+                                        synapse_current,
+                                    ));
+                                }
                             }
                         }
                         if !self.keyboard.shift_down {
@@ -648,12 +739,44 @@ impl Neuronify {
                     }
                     ct.end = mouse_position;
                 } else {
-                    *connection_tool = world
-                        .query::<&Position>()
-                        .with::<&StaticConnectionSource>()
+                    // Find nearest connectable source (new-style or classic)
+                    let source_candidates: Vec<(Entity, Vec3)> = {
+                        let mut candidates: Vec<_> = world
+                            .query::<&Position>()
+                            .with::<&StaticConnectionSource>()
+                            .iter()
+                            .map(|(e, p)| (e, p.position))
+                            .collect();
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&legacy::components::ClassicNeuron>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&legacy::components::ClassicCurrentClamp>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates
+                    };
+                    *connection_tool = source_candidates
                         .iter()
-                        .min_by(|a, b| nearest(&mouse_position, a, b))
-                        .and_then(|v| within_attachment_range(mouse_position, v))
+                        .min_by(|a, b| {
+                            a.1.distance(mouse_position)
+                                .partial_cmp(&b.1.distance(mouse_position))
+                                .unwrap_or(Ordering::Equal)
+                        })
+                        .and_then(|(id, pos)| {
+                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
+                                Some((*id, *pos))
+                            } else {
+                                None
+                            }
+                        })
                         .map(|(id, position)| ConnectionTool {
                             start: position,
                             end: mouse_position,
@@ -729,49 +852,104 @@ impl Neuronify {
                     world.despawn(trigger).unwrap();
                 }
             }
-            Tool::Voltmeter => {
+            Tool::Voltmeter | Tool::ClassicVoltmeter => {
                 if previous_too_near {
                     return;
                 }
-                let result = world
-                    .query::<&Position>()
-                    .with::<&Neuron>()
-                    .iter()
-                    .find_map(|(entity, position)| {
-                        let distance = position.position.distance(mouse_position);
-                        if distance < NODE_RADIUS {
-                            Some((entity, position.clone()))
-                        } else {
-                            None
-                        }
-                    });
+                // Find nearest neuron (new-style or classic)
+                let result: Option<(Entity, Vec3)> = {
+                    let new_neuron = world
+                        .query::<&Position>()
+                        .with::<&Neuron>()
+                        .iter()
+                        .filter_map(|(entity, position)| {
+                            let distance = position.position.distance(mouse_position);
+                            if distance < NODE_RADIUS {
+                                Some((entity, position.position))
+                            } else {
+                                None
+                            }
+                        })
+                        .next();
+                    if new_neuron.is_some() {
+                        new_neuron
+                    } else {
+                        world
+                            .query::<&Position>()
+                            .with::<&legacy::components::ClassicNeuron>()
+                            .iter()
+                            .filter_map(|(entity, position)| {
+                                let distance = position.position.distance(mouse_position);
+                                if distance < NODE_RADIUS {
+                                    Some((entity, position.position))
+                                } else {
+                                    None
+                                }
+                            })
+                            .next()
+                    }
+                };
                 let Some((target, position)) = result else {
                     return;
                 };
                 let voltmeter = world.spawn((
                     Voltmeter {},
                     Position {
-                        position: position.position
+                        position: position
                             + Vec3 {
                                 x: 1.0,
-                                y: 1.0,
+                                y: 0.0,
                                 z: 0.0,
                             },
                     },
-                ));
-                *previous_creation = Some(PreviousCreation { entity: voltmeter });
-                world.spawn((
                     VoltageSeries {
                         measurements: RollingWindow::new(100000),
                         spike_times: Vec::new(),
                     },
                     Connection {
                         from: target,
-                        to: voltmeter,
+                        to: Entity::DANGLING,
                         strength: 1.0,
                         directional: true,
                     },
+                    legacy::components::ClassicVoltmeterSize::default(),
                 ));
+                // Fix self-reference: connection.to should point to voltmeter itself
+                if let Ok(mut conn) = world.get::<&mut Connection>(voltmeter) {
+                    conn.to = voltmeter;
+                }
+                *previous_creation = Some(PreviousCreation { entity: voltmeter });
+            }
+            Tool::ClassicExcitatoryNeuron | Tool::ClassicInhibitoryNeuron => {
+                if previous_too_near {
+                    return;
+                }
+                let entity = world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    legacy::components::ClassicNeuron::default(),
+                    legacy::components::ClassicNeuronDynamics::default(),
+                    legacy::components::ClassicLeakCurrent::default(),
+                ));
+                if *tool == Tool::ClassicInhibitoryNeuron {
+                    world
+                        .insert_one(entity, legacy::components::ClassicInhibitory)
+                        .unwrap();
+                }
+                *previous_creation = Some(PreviousCreation { entity });
+            }
+            Tool::ClassicCurrentSource => {
+                if previous_too_near {
+                    return;
+                }
+                let entity = world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    legacy::components::ClassicCurrentClamp::default(),
+                ));
+                *previous_creation = Some(PreviousCreation { entity });
             }
             Tool::Select => match mouse.left_down {
                 true => {
@@ -950,12 +1128,44 @@ impl Neuronify {
             },
             Tool::Axon => match connection_tool {
                 None => {
-                    *connection_tool = world
-                        .query::<&Position>()
-                        .with::<&StaticConnectionSource>()
+                    // Find nearest connectable source (new-style or classic)
+                    let source_candidates: Vec<(Entity, Vec3)> = {
+                        let mut candidates: Vec<_> = world
+                            .query::<&Position>()
+                            .with::<&StaticConnectionSource>()
+                            .iter()
+                            .map(|(e, p)| (e, p.position))
+                            .collect();
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&legacy::components::ClassicNeuron>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&legacy::components::ClassicCurrentClamp>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates
+                    };
+                    *connection_tool = source_candidates
                         .iter()
-                        .min_by(|a, b| nearest(&mouse_position, a, b))
-                        .and_then(|v| within_attachment_range(mouse_position, v))
+                        .min_by(|a, b| {
+                            a.1.distance(mouse_position)
+                                .partial_cmp(&b.1.distance(mouse_position))
+                                .unwrap_or(Ordering::Equal)
+                        })
+                        .and_then(|(id, pos)| {
+                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
+                                Some((*id, *pos))
+                            } else {
+                                None
+                            }
+                        })
                         .map(|(id, position)| ConnectionTool {
                             start: position,
                             end: mouse_position,
@@ -967,32 +1177,74 @@ impl Neuronify {
                 }
                 Some(ct) => {
                     ct.end = mouse_position;
-                    let nearest_target = world
-                        .query::<&Position>()
-                        .with::<&Neuron>()
+                    // Find nearest connectable target (new-style or classic neuron)
+                    let target_candidates: Vec<(Entity, Vec3)> = {
+                        let mut candidates: Vec<_> = world
+                            .query::<&Position>()
+                            .with::<&Neuron>()
+                            .iter()
+                            .map(|(e, p)| (e, p.position))
+                            .collect();
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&legacy::components::ClassicNeuron>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates
+                    };
+                    let nearest_target = target_candidates
                         .iter()
-                        .min_by(|a, b| nearest(&mouse_position, a, b))
-                        .and_then(|v| within_attachment_range(mouse_position, v));
+                        .min_by(|a, b| {
+                            a.1.distance(mouse_position)
+                                .partial_cmp(&b.1.distance(mouse_position))
+                                .unwrap_or(Ordering::Equal)
+                        })
+                        .and_then(|(id, pos)| {
+                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
+                                Some((*id, *pos))
+                            } else {
+                                None
+                            }
+                        });
 
                     match nearest_target {
                         Some((id, position)) => {
-                            let strength = 1.0;
                             let new_connection = Connection {
                                 from: ct.from,
                                 to: id,
-                                strength,
+                                strength: 1.0,
                                 directional: true,
-                            };
-                            let synapse_current = SynapseCurrent {
-                                current: 0.0,
-                                tau: 0.1,
                             };
                             let connection_exists =
                                 world.query::<&Connection>().iter().any(|(_, c)| {
                                     c.from == new_connection.from && c.to == new_connection.to
                                 });
                             if !connection_exists && ct.from != id {
-                                world.spawn((new_connection, Deletable {}, synapse_current));
+                                // Determine what kind of synapse to create based on source type
+                                let from_is_classic =
+                                    world.get::<&legacy::components::ClassicNeuron>(ct.from).is_ok()
+                                        || world
+                                            .get::<&legacy::components::ClassicCurrentClamp>(ct.from)
+                                            .is_ok();
+                                if from_is_classic {
+                                    // Create a classic current synapse for classic sources
+                                    world.spawn((
+                                        new_connection,
+                                        legacy::components::ClassicCurrentSynapse::default(),
+                                    ));
+                                } else {
+                                    let synapse_current = SynapseCurrent {
+                                        current: 0.0,
+                                        tau: 0.1,
+                                    };
+                                    world.spawn((
+                                        new_connection,
+                                        Deletable {},
+                                        synapse_current,
+                                    ));
+                                }
                             }
                             if !self.keyboard.shift_down {
                                 ct.start = position;
@@ -1205,9 +1457,10 @@ impl visula::Simulation for Neuronify {
             }
             for (_, (synapse, connection)) in world.query::<(&SynapseCurrent, &Connection)>().iter()
             {
-                let mut dynamics = world.get::<&mut NeuronDynamics>(connection.to).unwrap();
-                if dynamics.refraction <= 0.0 {
-                    dynamics.current += synapse.current;
+                if let Ok(mut dynamics) = world.get::<&mut NeuronDynamics>(connection.to) {
+                    if dynamics.refraction <= 0.0 {
+                        dynamics.current += synapse.current;
+                    }
                 }
             }
             for (_, (dynamics, neuron)) in world.query_mut::<(&mut NeuronDynamics, &Neuron)>() {
@@ -1839,7 +2092,7 @@ impl visula::Simulation for Neuronify {
         self.connection_spheres.render(data);
     }
 
-    fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
+    fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
         egui::Area::new("edit_button_area")
             .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
             .show(context, |ui| {
@@ -1864,45 +2117,48 @@ impl visula::Simulation for Neuronify {
                     });
                 });
             });
+            egui::Window::new("Elements").show(context, |ui| {
+                for category in &TOOL_CATEGORIES {
+                    ui.collapsing(category.label(), |ui| {
+                        for (tool_value, label) in category.tools() {
+                            ui.selectable_value(&mut self.tool, tool_value, label);
+                        }
+                    });
+                }
+            });
             egui::Window::new("Settings").show(context, |ui| {
                 ui.label(format!("FPS: {:.0}", self.fps));
-                ui.label("Tool");
-                for value in Tool::iter() {
-                    ui.selectable_value(&mut self.tool, value.clone(), format!("{:?}", &value));
-                }
                 ui.label("Simulation speed");
                 ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
             });
             if let Some(active_entity) = self.active_entity {
                 egui::Window::new("Selection").show(context, |ui| {
+                    // Hodgkin-Huxley compartment
                     if let Ok(compartment) = self.world.get::<&Compartment>(active_entity) {
                         ui.collapsing("Compartment", |ui| {
                             egui::Grid::new("compartment_state").show(ui, |ui| {
                                 ui.label("Voltage:");
                                 ui.label(format!("{:.2} mV", compartment.voltage));
                                 ui.end_row();
-
                                 ui.label("m:");
                                 ui.label(format!("{:.2}", compartment.m));
                                 ui.end_row();
-
                                 ui.label("n:");
                                 ui.label(format!("{:.2}", compartment.n));
                                 ui.end_row();
-
                                 ui.label("h:");
                                 ui.label(format!("{:.2}", compartment.h));
                                 ui.end_row();
                             });
                         });
                     }
+                    // New-style neuron
                     if let Ok(mut neuron) = self.world.get::<&mut Neuron>(active_entity) {
                         ui.collapsing("Neuron", |ui| {
                             egui::Grid::new("neuron_settings").show(ui, |ui| {
                                 ui.label("Threshold:");
                                 ui.add(egui::Slider::new(&mut neuron.threshold, -10.0..=100.0));
                                 ui.end_row();
-
                                 ui.label("Resting potential:");
                                 ui.add(egui::Slider::new(
                                     &mut neuron.resting_potential,
@@ -1924,18 +2180,111 @@ impl visula::Simulation for Neuronify {
                     if let Ok(mut leak_current) = self.world.get::<&mut LeakCurrent>(active_entity)
                     {
                         ui.collapsing("Leak current", |ui| {
-                            egui::Grid::new("neuron_settings").show(ui, |ui| {
+                            egui::Grid::new("leak_current_settings").show(ui, |ui| {
                                 ui.label("Tau:");
                                 ui.add(egui::Slider::new(&mut leak_current.tau, 0.01..=10.0));
                                 ui.end_row();
                             });
                         });
                     }
+                    // Classic (LIF) neuron
+                    if let Ok(mut neuron) =
+                        self.world
+                            .get::<&mut legacy::components::ClassicNeuron>(active_entity)
+                    {
+                        let is_inhibitory = self
+                            .world
+                            .get::<&legacy::components::ClassicInhibitory>(active_entity)
+                            .is_ok();
+                        let label = if is_inhibitory {
+                            "LIF Neuron (Inhibitory)"
+                        } else {
+                            "LIF Neuron (Excitatory)"
+                        };
+                        ui.collapsing(label, |ui| {
+                            egui::Grid::new("classic_neuron_settings").show(ui, |ui| {
+                                ui.label("Threshold:");
+                                ui.add(egui::Slider::new(
+                                    &mut neuron.threshold,
+                                    -0.08..=-0.03,
+                                ).suffix(" V"));
+                                ui.end_row();
+                                ui.label("Resting potential:");
+                                ui.add(egui::Slider::new(
+                                    &mut neuron.resting_potential,
+                                    -0.09..=-0.05,
+                                ).suffix(" V"));
+                                ui.end_row();
+                                ui.label("Capacitance:");
+                                ui.add(
+                                    egui::Slider::new(&mut neuron.capacitance, 1e-11..=1e-9)
+                                        .suffix(" F"),
+                                );
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    if let Ok(dynamics) = self
+                        .world
+                        .get::<&legacy::components::ClassicNeuronDynamics>(active_entity)
+                    {
+                        ui.collapsing("LIF Dynamics", |ui| {
+                            egui::Grid::new("classic_dynamics").show(ui, |ui| {
+                                ui.label("Voltage:");
+                                ui.label(format!("{:.4} V", dynamics.voltage));
+                                ui.end_row();
+                                ui.label("Fired:");
+                                ui.label(format!("{}", dynamics.fired));
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    // Classic current clamp
+                    if let Ok(mut clamp) = self
+                        .world
+                        .get::<&mut legacy::components::ClassicCurrentClamp>(active_entity)
+                    {
+                        ui.collapsing("Current Source", |ui| {
+                            egui::Grid::new("classic_clamp_settings").show(ui, |ui| {
+                                ui.label("Current:");
+                                ui.add(
+                                    egui::Slider::new(&mut clamp.current_output, 0.0..=1e-8)
+                                        .suffix(" A"),
+                                );
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    // Voltmeter
+                    if self.world.get::<&Voltmeter>(active_entity).is_ok() {
+                        ui.collapsing("Voltmeter", |ui| {
+                            if let Ok(mut size) = self
+                                .world
+                                .get::<&mut legacy::components::ClassicVoltmeterSize>(
+                                    active_entity,
+                                )
+                            {
+                                egui::Grid::new("voltmeter_size_settings").show(ui, |ui| {
+                                    ui.label("Width:");
+                                    ui.add(egui::Slider::new(&mut size.width, 2.0..=20.0));
+                                    ui.end_row();
+                                    ui.label("Height:");
+                                    ui.add(egui::Slider::new(&mut size.height, 1.0..=10.0));
+                                    ui.end_row();
+                                });
+                            }
+                            if let Ok(series) =
+                                self.world.get::<&VoltageSeries>(active_entity)
+                            {
+                                if let Some(last) = series.measurements.last() {
+                                    ui.label(format!("Voltage: {:.2} mV", last.voltage));
+                                }
+                            }
+                        });
+                    }
                 });
             }
         }
-
-        // Voltmeter is now rendered as 3D lines in the update function
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
