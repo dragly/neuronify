@@ -38,6 +38,8 @@ pub struct VoltageMeasurement {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VoltageSeries {
     pub measurements: RollingWindow<VoltageMeasurement>,
+    #[serde(default)]
+    pub spike_times: Vec<f64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

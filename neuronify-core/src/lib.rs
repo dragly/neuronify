@@ -49,6 +49,7 @@ use web_sys::{Request, RequestInit, Response};
 use winit::event_loop::EventLoop;
 use winit::event_loop::EventLoopWindowTarget;
 
+pub mod legacy;
 pub mod measurement;
 pub mod serialization;
 
@@ -254,6 +255,17 @@ pub struct Neuronify {
     pub last_touch_points: Option<((f64, f64), (f64, f64))>,
     pub move_origin: Option<Vec3>,
     pub active_entity: Option<Entity>,
+    pub dragging_entity: Option<Entity>,
+    pub drag_offset: Vec3,
+    pub resizing_voltmeter: Option<(Entity, ResizeCorner)>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ResizeCorner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
 }
 
 #[derive(Debug)]
@@ -382,7 +394,27 @@ impl Neuronify {
         )
         .unwrap();
 
-        let world = hecs::World::new();
+        let mut world = hecs::World::new();
+
+        // Load legacy .nfy file from command line argument if provided
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let args: Vec<String> = std::env::args().collect();
+            if args.len() > 1 {
+                let path = &args[1];
+                match std::fs::read_to_string(path) {
+                    Ok(contents) => match legacy::parse_legacy_nfy(&contents) {
+                        Ok(sim) => {
+                            log::info!("Loaded legacy simulation from {}: {} nodes, {} edges",
+                                path, sim.nodes.len(), sim.edges.len());
+                            legacy::spawn::spawn_legacy_simulation(&mut world, &sim);
+                        }
+                        Err(e) => log::error!("Failed to parse legacy file {}: {}", path, e),
+                    },
+                    Err(e) => log::error!("Failed to read file {}: {}", path, e),
+                }
+            }
+        }
 
         Neuronify {
             spheres,
@@ -409,6 +441,9 @@ impl Neuronify {
             last_touch_points: None,
             move_origin: None,
             active_entity: None,
+            dragging_entity: None,
+            drag_offset: Vec3::ZERO,
+            resizing_voltmeter: None,
         }
     }
 
@@ -421,6 +456,10 @@ impl Neuronify {
             world,
             previous_creation,
             move_origin,
+            active_entity,
+            dragging_entity,
+            drag_offset,
+            resizing_voltmeter,
             ..
         } = self;
         if !mouse.left_down {
@@ -428,6 +467,8 @@ impl Neuronify {
             *connection_tool = None;
             *previous_creation = None;
             *move_origin = None;
+            *dragging_entity = None;
+            *resizing_voltmeter = None;
             return;
         }
         let mouse_physical_position = match mouse.position {
@@ -722,6 +763,7 @@ impl Neuronify {
                 world.spawn((
                     VoltageSeries {
                         measurements: RollingWindow::new(100000),
+                        spike_times: Vec::new(),
                     },
                     Connection {
                         from: target,
@@ -731,29 +773,180 @@ impl Neuronify {
                     },
                 ));
             }
-            Tool::Select => match self.mouse.left_down {
-                true => match self.move_origin {
-                    Some(origin) => {
-                        let center = mouse_position - origin;
-                        application.camera_controller.center -=
-                            Vector3::new(center.x, center.y, center.z);
-                    }
-                    None => {
-                        if let Some(entity) = world
-                            .query::<&Position>()
-                            .iter()
-                            .min_by(|a, b| nearest(&mouse_position, a, b))
-                            .and_then(|v| within_selection_range(mouse_position, v))
-                            .map(|(id, _position)| id)
-                        {
-                            self.active_entity = Some(entity);
-                        } else {
-                            self.active_entity = None;
-                            self.move_origin = Some(mouse_position);
+            Tool::Select => match mouse.left_down {
+                true => {
+                    // If already dragging an entity, move it (with offset)
+                    if let Some(entity) = *dragging_entity {
+                        if let Ok(mut pos) = world.get::<&mut Position>(entity) {
+                            pos.position = mouse_position + *drag_offset;
+                            pos.position.y = 0.0;
+                        }
+                    } else if let Some((entity, corner)) = *resizing_voltmeter {
+                        // Resize voltmeter by dragging corner.
+                        // Anchor the opposite corner so only the dragged corner moves.
+                        // Read current state into locals to release borrows before writing.
+                        let current = world
+                            .get::<&Position>(entity)
+                            .ok()
+                            .map(|p| p.position)
+                            .and_then(|vpos| {
+                                world
+                                    .get::<&legacy::components::ClassicVoltmeterSize>(entity)
+                                    .ok()
+                                    .map(|s| (vpos, s.width, s.height))
+                            });
+                        if let Some((vpos, w, h)) = current {
+                            let bl = vpos + Vec3::new(-h * 0.5, 0.0, 0.0);
+                            let anchor = match corner {
+                                ResizeCorner::TopLeft => bl + Vec3::new(0.0, 0.0, w),
+                                ResizeCorner::TopRight => bl,
+                                ResizeCorner::BottomLeft => {
+                                    bl + Vec3::new(h, 0.0, w)
+                                }
+                                ResizeCorner::BottomRight => bl + Vec3::new(h, 0.0, 0.0),
+                            };
+                            let new_width = match corner {
+                                ResizeCorner::TopRight | ResizeCorner::BottomRight => {
+                                    (mouse_position.z - anchor.z).max(2.0)
+                                }
+                                ResizeCorner::TopLeft | ResizeCorner::BottomLeft => {
+                                    (anchor.z - mouse_position.z).max(2.0)
+                                }
+                            };
+                            let new_height = match corner {
+                                ResizeCorner::TopLeft | ResizeCorner::TopRight => {
+                                    (mouse_position.x - anchor.x).max(1.0)
+                                }
+                                ResizeCorner::BottomLeft | ResizeCorner::BottomRight => {
+                                    (anchor.x - mouse_position.x).max(1.0)
+                                }
+                            };
+                            let new_bl = match corner {
+                                ResizeCorner::TopLeft => Vec3::new(
+                                    anchor.x,
+                                    0.0,
+                                    mouse_position.z.min(anchor.z - 2.0),
+                                ),
+                                ResizeCorner::TopRight => anchor,
+                                ResizeCorner::BottomLeft => Vec3::new(
+                                    mouse_position.x.min(anchor.x - 1.0),
+                                    0.0,
+                                    mouse_position.z.min(anchor.z - 2.0),
+                                ),
+                                ResizeCorner::BottomRight => Vec3::new(
+                                    mouse_position.x.min(anchor.x - 1.0),
+                                    0.0,
+                                    anchor.z,
+                                ),
+                            };
+                            let new_pos = new_bl + Vec3::new(new_height * 0.5, 0.0, 0.0);
+                            // All reads done, borrows released — now write
+                            if let Ok(mut size) = world
+                                .get::<&mut legacy::components::ClassicVoltmeterSize>(entity)
+                            {
+                                size.width = new_width;
+                                size.height = new_height;
+                            }
+                            if let Ok(mut pos) = world.get::<&mut Position>(entity) {
+                                pos.position = new_pos;
+                            }
+                        }
+                    } else {
+                        match *move_origin {
+                            Some(origin) => {
+                                let center = mouse_position - origin;
+                                application.camera_controller.center -=
+                                    Vector3::new(center.x, center.y, center.z);
+                            }
+                            None => {
+                                // Collect voltmeter bounds to avoid holding borrows
+                                let voltmeter_bounds: Vec<_> = world
+                                    .query::<(&Voltmeter, &Position)>()
+                                    .iter()
+                                    .filter_map(|(vid, (_, pos))| {
+                                        world
+                                            .get::<&legacy::components::ClassicVoltmeterSize>(vid)
+                                            .ok()
+                                            .map(|size| (vid, pos.position, size.width, size.height))
+                                    })
+                                    .collect();
+
+                                // Check if clicking near a voltmeter corner for resize
+                                let mut found_corner = false;
+                                let corner_threshold = 1.0_f32;
+                                for (vid, vpos, w, h) in &voltmeter_bounds {
+                                    let bl = *vpos + Vec3::new(-h * 0.5, 0.0, 0.0);
+                                    let corners = [
+                                        (bl + Vec3::new(*h, 0.0, 0.0), ResizeCorner::TopLeft),
+                                        (bl + Vec3::new(*h, 0.0, *w), ResizeCorner::TopRight),
+                                        (bl, ResizeCorner::BottomLeft),
+                                        (bl + Vec3::new(0.0, 0.0, *w), ResizeCorner::BottomRight),
+                                    ];
+                                    for (corner_pos, corner_type) in &corners {
+                                        let dist = Vec3::new(
+                                            mouse_position.x - corner_pos.x,
+                                            0.0,
+                                            mouse_position.z - corner_pos.z,
+                                        )
+                                        .length();
+                                        if dist < corner_threshold {
+                                            *resizing_voltmeter = Some((*vid, *corner_type));
+                                            found_corner = true;
+                                            break;
+                                        }
+                                    }
+                                    if found_corner {
+                                        break;
+                                    }
+                                }
+
+                                if !found_corner {
+                                    // Check if clicking inside a voltmeter's trace area
+                                    let mut found_voltmeter = false;
+                                    for (vid, vpos, w, h) in &voltmeter_bounds {
+                                        let bl = *vpos + Vec3::new(-h * 0.5, 0.0, 0.0);
+                                        if mouse_position.x >= bl.x
+                                            && mouse_position.x <= bl.x + h
+                                            && mouse_position.z >= bl.z
+                                            && mouse_position.z <= bl.z + w
+                                        {
+                                            *active_entity = Some(*vid);
+                                            *dragging_entity = Some(*vid);
+                                            *drag_offset = *vpos - mouse_position;
+                                            drag_offset.y = 0.0;
+                                            found_voltmeter = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if !found_voltmeter {
+                                        if let Some((entity, entity_pos)) = world
+                                            .query::<&Position>()
+                                            .iter()
+                                            .min_by(|a, b| nearest(&mouse_position, a, b))
+                                            .and_then(|v| {
+                                                within_selection_range(mouse_position, v)
+                                            })
+                                        {
+                                            *active_entity = Some(entity);
+                                            *dragging_entity = Some(entity);
+                                            *drag_offset = entity_pos - mouse_position;
+                                            drag_offset.y = 0.0;
+                                        } else {
+                                            *active_entity = None;
+                                            *move_origin = Some(mouse_position);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
-                },
-                false => self.move_origin = None,
+                }
+                false => {
+                    *move_origin = None;
+                    *dragging_entity = None;
+                    *resizing_voltmeter = None;
+                }
             },
             Tool::Axon => match connection_tool {
                 None => {
@@ -1289,16 +1482,17 @@ impl visula::Simulation for Neuronify {
 
             let mut updates = HashMap::new();
             for (entity, (_, connection)) in world.query::<(&VoltageSeries, &Connection)>().iter() {
-                let dynamics = world
-                    .get::<&NeuronDynamics>(connection.from)
-                    .expect("Connection with voltage series does not come from neuron");
-                updates.insert(
-                    entity,
-                    VoltageMeasurement {
-                        voltage: dynamics.voltage,
-                        time: *time,
-                    },
-                );
+                // Try new-style NeuronDynamics first, skip if not found
+                // (classic neurons are handled by classic_step)
+                if let Ok(dynamics) = world.get::<&NeuronDynamics>(connection.from) {
+                    updates.insert(
+                        entity,
+                        VoltageMeasurement {
+                            voltage: dynamics.voltage,
+                            time: *time,
+                        },
+                    );
+                }
             }
             for (entity, value) in updates {
                 world
@@ -1310,6 +1504,54 @@ impl visula::Simulation for Neuronify {
 
             *time += dt;
         }
+
+        // Classic (legacy) simulation step — uses its own dt (0.1ms) matching old C++
+        // Run once per frame at playback speed 1 (iterations slider controls speed)
+        {
+            let classic_dt = 0.0001; // 0.1 ms, same as old C++ Neuronify
+            for _ in 0..self.iterations {
+                legacy::step::classic_step(world, classic_dt, *time);
+            }
+        }
+
+        // Classic neuron spheres
+        let classic_neuron_spheres: Vec<Sphere> = world
+            .query::<(
+                &legacy::components::ClassicNeuron,
+                &legacy::components::ClassicNeuronDynamics,
+                &Position,
+            )>()
+            .iter()
+            .map(|(_entity, (neuron, dynamics, position))| {
+                let value = ((dynamics.voltage - neuron.resting_potential)
+                    / (neuron.threshold - neuron.resting_potential))
+                    .clamp(0.0, 1.0) as f32;
+                let is_inhibitory = world.get::<&legacy::components::ClassicInhibitory>(_entity).is_ok();
+                let color = if is_inhibitory {
+                    value * mantle() + (1.0 - value) * red()
+                } else {
+                    value * base() + (1.0 - value) * blue()
+                };
+                Sphere {
+                    position: position.position,
+                    color,
+                    radius: NODE_RADIUS,
+                    _padding: Default::default(),
+                }
+            })
+            .collect();
+
+        let classic_source_spheres: Vec<Sphere> = world
+            .query::<&Position>()
+            .with::<&legacy::components::ClassicCurrentClamp>()
+            .iter()
+            .map(|(_entity, position)| Sphere {
+                position: position.position,
+                color: yellow(),
+                radius: NODE_RADIUS,
+                _padding: Default::default(),
+            })
+            .collect();
 
         let neuron_spheres: Vec<Sphere> = world
             .query::<(&Neuron, &NeuronDynamics, &Position, &NeuronType)>()
@@ -1388,6 +1630,8 @@ impl visula::Simulation for Neuronify {
         spheres.extend(compartment_spheres.iter());
         spheres.extend(source_spheres.iter());
         spheres.extend(trigger_spheres.iter());
+        spheres.extend(classic_neuron_spheres.iter());
+        spheres.extend(classic_source_spheres.iter());
 
         let mut connections: Vec<ConnectionData> = world
             .query::<&Connection>()
@@ -1447,6 +1691,122 @@ impl visula::Simulation for Neuronify {
                     directional: 1.0,
                     start_color: Vec3::new(0.8, 0.8, 0.8),
                     end_color: Vec3::new(0.8, 0.8, 0.8),
+                    _padding: Default::default(),
+                });
+            }
+        }
+
+        // Voltmeter traces as 3D lines
+        for (voltmeter_id, _) in world.query::<&Voltmeter>().iter() {
+            // Find the VoltageSeries + Connection on this voltmeter entity
+            let (series, spike_times, voltmeter_pos, trace_width, trace_height) = {
+                let Ok(series) = world.get::<&VoltageSeries>(voltmeter_id) else {
+                    continue;
+                };
+                let Ok(pos) = world.get::<&Position>(voltmeter_id) else {
+                    continue;
+                };
+                let size = world
+                    .get::<&legacy::components::ClassicVoltmeterSize>(voltmeter_id)
+                    .ok();
+                let tw = size.as_ref().map(|s| s.width).unwrap_or(8.0);
+                let th = size.as_ref().map(|s| s.height).unwrap_or(4.0);
+                // Clone the data we need so we can release the borrows
+                let measurements: Vec<_> = series
+                    .measurements
+                    .iter()
+                    .map(|m| (m.time, m.voltage))
+                    .collect();
+                let spikes = series.spike_times.clone();
+                let vpos = pos.position;
+                (measurements, spikes, vpos, tw, th)
+            };
+
+            if series.len() < 2 {
+                continue;
+            }
+
+            // Trace dimensions in world units
+            let time_window = 1.0_f64; // seconds of data to show
+            let v_min = -100.0_f64; // mV
+            let v_max = 50.0_f64; // mV
+
+            let latest_time = series.last().map(|(t, _)| *t).unwrap_or(0.0);
+            let start_time = latest_time - time_window;
+
+            // Bottom-left origin of the trace: offset from voltmeter position
+            // x-axis points up on screen, so bottom-left is below the position
+            let bottom_left_origin = voltmeter_pos + Vec3::new(-trace_height * 0.5, 0.0, 0.0);
+
+            let green = srgb(64, 160, 43);
+
+            // Draw border frame
+            let bottom_left = bottom_left_origin;
+            let bottom_right = bottom_left_origin + Vec3::new(0.0, 0.0, trace_width);
+            let top_left = bottom_left_origin + Vec3::new(trace_height, 0.0, 0.0);
+            let top_right = bottom_left_origin + Vec3::new(trace_height, 0.0, trace_width);
+            let frame_color = srgb(80, 80, 100);
+            for (a, b) in [
+                (top_left, top_right),
+                (top_right, bottom_right),
+                (bottom_right, bottom_left),
+                (bottom_left, top_left),
+            ] {
+                connections.push(ConnectionData {
+                    position_a: a,
+                    position_b: b,
+                    strength: 1.0,
+                    directional: 0.0,
+                    start_color: frame_color,
+                    end_color: frame_color,
+                    _padding: Default::default(),
+                });
+            }
+
+            // Draw voltage trace
+            let visible: Vec<_> = series
+                .iter()
+                .filter(|(t, _)| *t >= start_time)
+                .collect();
+
+            for window in visible.windows(2) {
+                let (t0, v0) = window[0];
+                let (t1, v1) = window[1];
+
+                let z0 = ((t0 - start_time) / time_window) as f32 * trace_width;
+                let z1 = ((t1 - start_time) / time_window) as f32 * trace_width;
+                let x0 = ((v0 - v_min) / (v_max - v_min)) as f32 * trace_height;
+                let x1 = ((v1 - v_min) / (v_max - v_min)) as f32 * trace_height;
+
+                let p0 = bottom_left_origin + Vec3::new(x0, 0.0, z0);
+                let p1 = bottom_left_origin + Vec3::new(x1, 0.0, z1);
+
+                connections.push(ConnectionData {
+                    position_a: p0,
+                    position_b: p1,
+                    strength: 1.0,
+                    directional: 0.0,
+                    start_color: green,
+                    end_color: green,
+                    _padding: Default::default(),
+                });
+            }
+
+            // Draw vertical spike markers
+            for spike_time in &spike_times {
+                if *spike_time < start_time || *spike_time > latest_time {
+                    continue;
+                }
+                let z = ((spike_time - start_time) / time_window) as f32 * trace_width;
+                let top = bottom_left_origin + Vec3::new(trace_height, 0.0, z);
+                let bottom = bottom_left_origin + Vec3::new(0.0, 0.0, z);
+                connections.push(ConnectionData {
+                    position_a: top,
+                    position_b: bottom,
+                    strength: 1.0,
+                    directional: 0.0,
+                    start_color: green,
+                    end_color: green,
                     _padding: Default::default(),
                 });
             }
@@ -1575,78 +1935,7 @@ impl visula::Simulation for Neuronify {
             }
         }
 
-        for (voltmeter_id, _voltmeter) in self.world.query::<&Voltmeter>().iter() {
-            for (_, (series, connection)) in
-                self.world.query::<(&VoltageSeries, &Connection)>().iter()
-            {
-                if connection.to != voltmeter_id {
-                    continue;
-                }
-                let Ok(position) = self.world.get::<&Position>(connection.from) else {
-                    log::error!("Position not found for entity");
-                    continue;
-                };
-                let id = egui::Id::new(voltmeter_id);
-                egui::Window::new("Voltmeter")
-                    .id(id)
-                    .resizable(true)
-                    .show(context, |ui| {
-                        let line_points: PlotPoints = series
-                            .measurements
-                            .iter()
-                            .map(|m| [m.time, m.voltage])
-                            .collect();
-                        let (min_x, max_x) = {
-                            match series.measurements.last().map(|m| m.time) {
-                                Some(t) => (t - 5.0, t),
-                                None => (-5.0, 0.0),
-                            }
-                        };
-                        let line = Line::new(line_points);
-                        egui_plot::Plot::new("Voltage")
-                            .show(ui, |plot_ui| {
-                                plot_ui.set_plot_bounds(PlotBounds::from_min_max(
-                                    [min_x, -100.0],
-                                    [max_x, 100.0],
-                                ));
-                                plot_ui.line(line)
-                            })
-                            .response
-                    });
-
-                let mut start = Pos2::new(0.0, 0.0);
-                context.memory(|memory| {
-                    let rect = memory
-                        .area_rect(id)
-                        .expect("Could not find id of window that was just created");
-                    start = rect.center();
-                });
-                let width = application.config.width as f32;
-                let height = application.config.height as f32;
-                let position_2d_pre = application
-                    .camera_controller
-                    .uniforms(width / height)
-                    .model_view_projection_matrix
-                    * Vector4::new(
-                        position.position.x,
-                        position.position.y,
-                        position.position.z,
-                        1.0,
-                    );
-
-                let position_2d = position_2d_pre / position_2d_pre.w;
-
-                let line_end = (
-                    width / application.window.scale_factor() as f32 * (position_2d[0] + 1.0) / 2.0,
-                    height / application.window.scale_factor() as f32
-                        * (((0.0 - position_2d[1]) + 1.0) / 2.0),
-                )
-                    .into();
-                context
-                    .layer_painter(LayerId::background())
-                    .line_segment([start, line_end], (1.0, Color32::WHITE)); // Adjust color and line thickness as needed
-            }
-        }
+        // Voltmeter is now rendered as 3D lines in the update function
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
@@ -1685,6 +1974,18 @@ impl visula::Simulation for Neuronify {
                 });
                 self.mouse.position = Some(*position);
                 self.handle_tool(application);
+            }
+            Event::WindowEvent {
+                event: WindowEvent::MouseWheel { delta, .. },
+                ..
+            } => {
+                let scroll = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => *y,
+                    winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 100.0,
+                };
+                application.camera_controller.distance *= 1.0 - scroll * 0.1;
+                application.camera_controller.distance =
+                    application.camera_controller.distance.clamp(5.0, 200.0);
             }
             _ => {}
         }
