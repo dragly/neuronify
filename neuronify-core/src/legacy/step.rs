@@ -3,7 +3,7 @@ use hecs::World;
 use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries};
 use crate::{Connection, Position, Voltmeter};
 
-use super::components::*;
+use crate::components::*;
 
 /// Records of spike events for testing/analysis.
 #[derive(Clone, Debug)]
@@ -21,7 +21,7 @@ pub struct SpikeRecord {
 /// 3. Communicate fires through edges
 /// 4. Propagate currents through edges
 /// 5. Finalize (reset fired flags)
-pub fn classic_step(world: &mut World, dt: f64, time: f64) {
+pub fn lif_step(world: &mut World, dt: f64, time: f64) {
     // =========================================================================
     // PHASE 1: Step all nodes
     // =========================================================================
@@ -29,14 +29,14 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
     // 1a. checkFire() - BEFORE integration (critical: C++ checks at start of step)
     // Also handle refractory period enable/disable
     let neuron_entities: Vec<hecs::Entity> = world
-        .query::<&ClassicNeuron>()
+        .query::<&LIFNeuron>()
         .iter()
         .map(|(e, _)| e)
         .collect();
 
     for entity in &neuron_entities {
         let mut query = world
-            .query_one::<(&ClassicNeuron, &mut ClassicNeuronDynamics)>(*entity)
+            .query_one::<(&LIFNeuron, &mut LIFDynamics)>(*entity)
             .unwrap();
         let (neuron, dynamics) = query.get().unwrap();
 
@@ -56,7 +56,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
 
     // 1b. Compute leak current for each neuron with a leak component
     for (_, (leak, neuron, dynamics)) in
-        world.query_mut::<(&mut ClassicLeakCurrent, &ClassicNeuron, &ClassicNeuronDynamics)>()
+        world.query_mut::<(&mut LeakCurrent, &LIFNeuron, &LIFDynamics)>()
     {
         if !dynamics.enabled {
             leak.current = 0.0;
@@ -69,7 +69,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
 
     // 1c. Compute adaptation current
     for (_, (adapt, neuron, dynamics)) in
-        world.query_mut::<(&mut ClassicAdaptationCurrent, &ClassicNeuron, &ClassicNeuronDynamics)>()
+        world.query_mut::<(&mut AdaptationCurrent, &LIFNeuron, &LIFDynamics)>()
     {
         if !dynamics.enabled {
             adapt.current = 0.0;
@@ -93,13 +93,13 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
     // Collect child currents (leak, adaptation) and add to integration
     {
         let leak_currents: Vec<(hecs::Entity, f64)> = world
-            .query::<(&ClassicLeakCurrent, &ClassicNeuronDynamics)>()
+            .query::<(&LeakCurrent, &LIFDynamics)>()
             .iter()
             .map(|(e, (leak, _))| (e, leak.current))
             .collect();
 
         for (entity, current) in leak_currents {
-            if let Ok(mut dynamics) = world.get::<&mut ClassicNeuronDynamics>(entity) {
+            if let Ok(mut dynamics) = world.get::<&mut LIFDynamics>(entity) {
                 dynamics.received_currents += current;
             }
         }
@@ -107,20 +107,20 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
 
     {
         let adapt_currents: Vec<(hecs::Entity, f64)> = world
-            .query::<(&ClassicAdaptationCurrent, &ClassicNeuronDynamics)>()
+            .query::<(&AdaptationCurrent, &LIFDynamics)>()
             .iter()
             .map(|(e, (adapt, _))| (e, adapt.current))
             .collect();
 
         for (entity, current) in adapt_currents {
-            if let Ok(mut dynamics) = world.get::<&mut ClassicNeuronDynamics>(entity) {
+            if let Ok(mut dynamics) = world.get::<&mut LIFDynamics>(entity) {
                 dynamics.received_currents += current;
             }
         }
     }
 
     // Now do the actual voltage integration
-    for (_, (neuron, dynamics)) in world.query_mut::<(&ClassicNeuron, &mut ClassicNeuronDynamics)>()
+    for (_, (neuron, dynamics)) in world.query_mut::<(&LIFNeuron, &mut LIFDynamics)>()
     {
         if !dynamics.enabled {
             dynamics.received_currents = 0.0;
@@ -145,7 +145,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
     // PHASE 2: Step all edges (synapse dynamics)
     // =========================================================================
 
-    for (_, synapse) in world.query_mut::<&mut ClassicCurrentSynapse>() {
+    for (_, synapse) in world.query_mut::<&mut CurrentSynapse>() {
         // Compute current output
         if synapse.alpha_function {
             synapse.current_output = synapse.maximum_current * synapse.linear * synapse.exponential;
@@ -177,7 +177,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
     }
 
     // ImmediateFireSynapse: reset current to 0 each step
-    for (_, synapse) in world.query_mut::<&mut ClassicImmediateFireSynapse>() {
+    for (_, synapse) in world.query_mut::<&mut ImmediateFireSynapse>() {
         synapse.current_output = 0.0;
     }
 
@@ -191,7 +191,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
         .iter()
         .filter_map(|(edge_entity, conn)| {
             let source_fired = world
-                .get::<&ClassicNeuronDynamics>(conn.from)
+                .get::<&LIFDynamics>(conn.from)
                 .map(|d| d.fired)
                 .unwrap_or(false);
             Some((edge_entity, conn.from, conn.to, source_fired))
@@ -204,7 +204,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
         }
 
         // CurrentSynapse receives fire
-        if let Ok(mut synapse) = world.get::<&mut ClassicCurrentSynapse>(*edge_entity) {
+        if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(*edge_entity) {
             if synapse.delay > 0.0 {
                 let trigger_time = synapse.time + synapse.delay;
                 synapse.triggers.push(trigger_time);
@@ -217,7 +217,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
         }
 
         // ImmediateFireSynapse receives fire
-        if let Ok(mut synapse) = world.get::<&mut ClassicImmediateFireSynapse>(*edge_entity) {
+        if let Ok(mut synapse) = world.get::<&mut ImmediateFireSynapse>(*edge_entity) {
             synapse.current_output = 1e6;
         }
     }
@@ -230,7 +230,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
         .iter()
         .filter_map(|(edge_entity, source, target, _)| {
             // Determine sign from source inhibitory marker
-            let sign = if world.get::<&ClassicInhibitory>(*source).is_ok() {
+            let sign = if world.get::<&Inhibitory>(*source).is_ok() {
                 -1.0
             } else {
                 1.0
@@ -239,21 +239,21 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
             let mut total = 0.0;
 
             // Current from synapse (CurrentSynapse)
-            if let Ok(synapse) = world.get::<&ClassicCurrentSynapse>(*edge_entity) {
+            if let Ok(synapse) = world.get::<&CurrentSynapse>(*edge_entity) {
                 if synapse.current_output != 0.0 {
                     total += sign * synapse.current_output;
                 }
             }
 
             // Current from ImmediateFireSynapse
-            if let Ok(synapse) = world.get::<&ClassicImmediateFireSynapse>(*edge_entity) {
+            if let Ok(synapse) = world.get::<&ImmediateFireSynapse>(*edge_entity) {
                 if synapse.current_output != 0.0 {
                     total += sign * synapse.current_output;
                 }
             }
 
             // Current from source node (CurrentClamp via Edge.qml)
-            if let Ok(clamp) = world.get::<&ClassicCurrentClamp>(*source) {
+            if let Ok(clamp) = world.get::<&CurrentClamp>(*source) {
                 if clamp.current_output != 0.0 {
                     total += sign * clamp.current_output;
                 }
@@ -268,7 +268,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
         .collect();
 
     for (target, current) in current_deliveries {
-        if let Ok(mut dynamics) = world.get::<&mut ClassicNeuronDynamics>(target) {
+        if let Ok(mut dynamics) = world.get::<&mut LIFDynamics>(target) {
             dynamics.received_currents += current;
         }
     }
@@ -281,7 +281,7 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
         .query::<(&Voltmeter, &Connection)>()
         .iter()
         .filter_map(|(entity, (_, conn))| {
-            let dynamics = world.get::<&ClassicNeuronDynamics>(conn.from).ok()?;
+            let dynamics = world.get::<&LIFDynamics>(conn.from).ok()?;
             Some((entity, dynamics.voltage, dynamics.time_since_fire == 0.0))
         })
         .collect();
@@ -302,9 +302,14 @@ pub fn classic_step(world: &mut World, dt: f64, time: f64) {
     // PHASE 6: Finalize - reset fired flags
     // =========================================================================
 
-    for (_, dynamics) in world.query_mut::<&mut ClassicNeuronDynamics>() {
+    for (_, dynamics) in world.query_mut::<&mut LIFDynamics>() {
         dynamics.fired = false;
     }
+}
+
+/// Backwards-compatible alias for `lif_step`.
+pub fn classic_step(world: &mut World, dt: f64, time: f64) {
+    lif_step(world, dt, time);
 }
 
 /// Run a headless simulation for testing.
@@ -314,33 +319,16 @@ pub fn run_headless(world: &mut World, steps: usize, dt: f64) -> Vec<SpikeRecord
 
     // Build entity-to-index map for neurons
     let neuron_entities: Vec<hecs::Entity> = world
-        .query::<&ClassicNeuron>()
+        .query::<&LIFNeuron>()
         .iter()
         .map(|(e, _)| e)
         .collect();
 
     for _step in 0..steps {
-        classic_step(world, dt, time);
+        lif_step(world, dt, time);
 
-        // Check for spikes after step (fired flags are reset, so we check voltage reset)
-        // Actually, we need to check during the step. Let's record before finalize.
-        // Better approach: check after checkFire but before finalize.
-        // Since we reset fired in finalize, we need to capture before that.
-        // Let's modify: we record spikes by checking if voltage == initial_potential
-        // after a fire event. But that's fragile.
-        //
-        // Alternative: record spikes inside classic_step. But we want to keep it clean.
-        // Let's just check voltage after the step and detect resets.
-        // Actually the simplest approach: we already reset fired in finalize,
-        // but time_since_fire == 0 after a fire.
         for (idx, entity) in neuron_entities.iter().enumerate() {
-            if let Ok(dynamics) = world.get::<&ClassicNeuronDynamics>(*entity) {
-                // Just fired this step: time_since_fire was set to 0, then incremented by dt
-                // in the next step. So at the end of the step where fire happened,
-                // time_since_fire == 0 (set in checkFire, then no further increment this step).
-                // Wait - we increment at the start before checkFire. Let me re-check.
-                // In our code: time_since_fire += dt happens BEFORE checkFire, and on fire
-                // it gets set to 0. So at the end of the fire step, time_since_fire == 0.
+            if let Ok(dynamics) = world.get::<&LIFDynamics>(*entity) {
                 if dynamics.time_since_fire == 0.0 {
                     spike_records.push(SpikeRecord {
                         entity_index: idx,

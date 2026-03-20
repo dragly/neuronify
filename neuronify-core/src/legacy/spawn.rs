@@ -1,10 +1,10 @@
 use glam::Vec3;
 use hecs::{Entity, World};
 
+use crate::components::*;
 use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement, VoltageSeries};
 use crate::{Connection, Position, Voltmeter};
 
-use super::components::*;
 use super::{LegacyEdge, LegacyNode, LegacySimulation};
 
 /// Convert old pixel position to Rust world coordinates.
@@ -49,7 +49,7 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
         "neurons/LeakyNeuron.qml" => spawn_leaky_neuron(world, node, pos),
         "neurons/LeakyInhibitoryNeuron.qml" => {
             let entity = spawn_leaky_neuron(world, node, pos);
-            world.insert_one(entity, ClassicInhibitory).unwrap();
+            world.insert_one(entity, Inhibitory).unwrap();
             entity
         }
         "neurons/AdaptationNeuron.qml" => spawn_adaptation_neuron(world, node, pos),
@@ -57,12 +57,12 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
             let current = node.engine.current_output.unwrap_or(2e-9);
             world.spawn((
                 pos,
-                ClassicCurrentClamp {
+                CurrentClamp {
                     current_output: current,
                 },
             ))
         }
-        "sensors/TouchSensor.qml" => world.spawn((pos, ClassicTouchSensor)),
+        "sensors/TouchSensor.qml" => world.spawn((pos, TouchSensor)),
         "meters/Voltmeter.qml" => world.spawn((
             pos,
             Voltmeter {},
@@ -70,7 +70,7 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
                 measurements: RollingWindow::new(10000),
                 spike_times: Vec::new(),
             },
-            ClassicVoltmeterSize::default(),
+            VoltmeterSize::default(),
         )),
         "meters/SpikeDetector.qml" => {
             // Spike detector - just a position for now
@@ -78,7 +78,7 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
         }
         s if s.starts_with("annotations/") => {
             let text = node.text.clone().unwrap_or_default();
-            world.spawn((pos, ClassicAnnotation { text }))
+            world.spawn((pos, Annotation { text }))
         }
         _ => {
             // Unknown node type - spawn as position-only
@@ -90,7 +90,7 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
 fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> Entity {
     let e = &node.engine;
 
-    let neuron = ClassicNeuron {
+    let neuron = LIFNeuron {
         capacitance: e.capacitance.unwrap_or(2e-10),
         resting_potential: e.resting_potential.unwrap_or(-0.07),
         threshold: e.threshold.unwrap_or(-0.055),
@@ -100,7 +100,7 @@ fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> En
         maximum_voltage: e.maximum_voltage.unwrap_or(0.06),
     };
 
-    let dynamics = ClassicNeuronDynamics {
+    let dynamics = LIFDynamics {
         voltage: e.voltage.unwrap_or(neuron.resting_potential),
         received_currents: 0.0,
         fired: false,
@@ -109,7 +109,7 @@ fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> En
         enabled: true,
     };
 
-    let leak = ClassicLeakCurrent {
+    let leak = LeakCurrent {
         resistance: e.resistance.unwrap_or(1e8),
         current: 0.0,
     };
@@ -117,7 +117,7 @@ fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> En
     let entity = world.spawn((pos, neuron, dynamics, leak));
 
     if node.inhibitory {
-        world.insert_one(entity, ClassicInhibitory).unwrap();
+        world.insert_one(entity, Inhibitory).unwrap();
     }
 
     entity
@@ -127,7 +127,7 @@ fn spawn_adaptation_neuron(world: &mut World, node: &LegacyNode, pos: Position) 
     let entity = spawn_leaky_neuron(world, node, pos);
 
     let e = &node.engine;
-    let adapt = ClassicAdaptationCurrent {
+    let adapt = AdaptationCurrent {
         adaptation: e.adaptation.unwrap_or(1e-8),
         conductance: e.conductance.unwrap_or(0.0),
         time_constant: e.time_constant.unwrap_or(0.5),
@@ -152,7 +152,7 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
     match edge.filename.as_str() {
         "edges/CurrentSynapse.qml" => {
             let e = &edge.engine;
-            let synapse = ClassicCurrentSynapse {
+            let synapse = CurrentSynapse {
                 tau: e.tau.unwrap_or(0.002),
                 maximum_current: e.maximum_current.unwrap_or(3e-9),
                 delay: e.delay.unwrap_or(0.005),
@@ -166,7 +166,7 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             world.spawn((connection, synapse));
         }
         "edges/ImmediateFireSynapse.qml" => {
-            world.spawn((connection, ClassicImmediateFireSynapse::default()));
+            world.spawn((connection, ImmediateFireSynapse::default()));
         }
         "edges/MeterEdge.qml" => {
             // In .nfy files, MeterEdge goes FROM voltmeter TO neuron.
@@ -196,7 +196,7 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
         "Edge.qml" => {
             // v2 default edge type - acts as a CurrentSynapse with defaults
             let e = &edge.engine;
-            let synapse = ClassicCurrentSynapse {
+            let synapse = CurrentSynapse {
                 tau: e.tau.unwrap_or(0.002),
                 maximum_current: e.maximum_current.unwrap_or(3e-9),
                 delay: e.delay.unwrap_or(0.005),

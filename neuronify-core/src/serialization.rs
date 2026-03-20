@@ -1,7 +1,10 @@
 use crate::{
-    Compartment, CompartmentCurrent, Connection, CurrentSource, Deletable, LeakCurrent,
-    LearningSynapse, Neuron, NeuronDynamics, NeuronType, Position, Selectable, SpatialDynamics,
-    StaticConnectionSource, StimulateCurrent, SynapseCurrent, Trigger, VoltageSeries, Voltmeter,
+    Compartment, CompartmentCurrent, Connection, Deletable, NeuronType, Position, Selectable,
+    SpatialDynamics, StaticConnectionSource, VoltageSeries, Voltmeter,
+    components::{
+        AdaptationCurrent, Annotation, CurrentClamp, CurrentSynapse, ImmediateFireSynapse,
+        Inhibitory, LIFDynamics, LIFNeuron, LeakCurrent, TouchSensor, VoltmeterSize,
+    },
 };
 use hecs::{serialize::column::*, *};
 use serde::{Deserialize, Serialize};
@@ -107,22 +110,25 @@ macro_rules! component_id {
 
 component_id!(
     Position,
-    Neuron,
-    CurrentSource,
-    StaticConnectionSource,
-    NeuronDynamics,
+    LIFNeuron,
+    LIFDynamics,
     LeakCurrent,
+    AdaptationCurrent,
+    CurrentClamp,
+    CurrentSynapse,
+    ImmediateFireSynapse,
+    Inhibitory,
+    TouchSensor,
+    VoltmeterSize,
+    Annotation,
+    StaticConnectionSource,
     Deletable,
     Selectable,
-    LearningSynapse,
-    SynapseCurrent,
     Voltmeter,
     VoltageSeries,
     Connection,
-    Trigger,
     CompartmentCurrent,
     Compartment,
     SpatialDynamics,
-    StimulateCurrent,
     NeuronType,
 );
