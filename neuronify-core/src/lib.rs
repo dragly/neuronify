@@ -1044,7 +1044,7 @@ impl Neuronify {
                                 world.spawn((
                                     new_connection,
                                     Deletable {},
-                                    CompartmentCurrent { capacitance: 1.0 },
+                                    CompartmentCurrent { capacitance: 1.0 / 24.0 },
                                 ));
                             }
                             if !self.keyboard.shift_down {
@@ -1069,12 +1069,12 @@ impl Neuronify {
                                     },
                                     neuron_type,
                                     Compartment {
-                                        voltage: 100.0,
-                                        m: 0.084073044,
-                                        h: 0.45317015,
-                                        n: 0.38079754,
+                                        voltage: -10.0, // FHN resting: v=-1.2 → -1.2*50+50
+                                        m: -0.625,      // FHN recovery variable w
+                                        h: 0.0,
+                                        n: 0.0,
                                         influence: 0.0,
-                                        capacitance: 4.0,
+                                        capacitance: 1.0,
                                         injected_current: 0.0,
                                         fire_impulse: 0.0,
                                     },
@@ -1095,7 +1095,7 @@ impl Neuronify {
                                 world.spawn((
                                     new_connection,
                                     Deletable {},
-                                    CompartmentCurrent { capacitance: 1.0 },
+                                    CompartmentCurrent { capacitance: 1.0 / 24.0 },
                                 ));
                                 self.previous_creation = Some(PreviousCreation {
                                     entity: compartment,
@@ -1251,80 +1251,30 @@ impl visula::Simulation for Neuronify {
             .map(|(e, _)| e)
             .collect();
 
-        // HH Compartment simulation
+        // FitzHugh-Nagumo compartment simulation
+        // Uses voltage (scaled) and m (as recovery variable w).
+        // FHN v ∈ [-2, 2] is stored as voltage = v * 50 + 50 for display.
+        let fhn_tau = 60.0;
+        let fhn_a = 0.7;
+        let fhn_b = 0.8;
+        let fhn_eps = 0.08;
+        let fhn_scale = 50.0;
+        let fhn_offset = 50.0;
         for _ in 0..self.iterations {
             for (_, compartment) in world.query_mut::<&mut Compartment>() {
-                let v = compartment.voltage;
+                // Convert from display voltage to FHN v
+                let v = (compartment.voltage - fhn_offset) / fhn_scale;
+                let w = compartment.m; // m stores the recovery variable
 
-                let sodium_activation_alpha = 0.1 * (25.0 - v) / ((2.5 - 0.1 * v).exp() - 1.0);
-                let sodium_activation_beta = 4.0 * (-v / 18.0).exp();
-                let sodium_inactivation_alpha = 0.07 * (-v / 20.0).exp();
-                let sodium_inactivation_beta = 1.0 / ((3.0 - 0.1 * v).exp() + 1.0);
+                // FitzHugh-Nagumo equations
+                let dv = fhn_tau * (v - v * v * v / 3.0 - w);
+                let dw = fhn_tau * fhn_eps * (v + fhn_a - fhn_b * w);
 
-                let mut m = compartment.m;
-                let alpham = sodium_activation_alpha;
-                let betam = sodium_activation_beta;
-                let dm = cdt * (alpham * (1.0 - m) - betam * m);
-                let mut h = compartment.h;
-                let alphah = sodium_inactivation_alpha;
-                let betah = sodium_inactivation_beta;
-                let dh = cdt * (alphah * (1.0 - h) - betah * h);
+                let new_v = v + dv * cdt;
+                let new_w = w + dw * cdt;
 
-                m += dm;
-                h += dh;
-
-                m = m.clamp(0.0, 1.0);
-                h = h.clamp(0.0, 1.0);
-
-                let g_na = 120.0;
-
-                let ena = 115.0;
-
-                let m3 = m * m * m;
-
-                let sodium_current = -g_na * m3 * h * (compartment.voltage - ena);
-
-                let potassium_activation_alpha =
-                    0.01 * (10.0 - v) / ((1.0 - (0.1 * v)).exp() - 1.0);
-                let potassium_activation_beta = 0.125 * (-v / 80.0).exp();
-
-                let mut n = compartment.n;
-                let alphan = potassium_activation_alpha;
-                let betan = potassium_activation_beta;
-                let dn = cdt * (alphan * (1.0 - n) - betan * n);
-
-                n += dn;
-                n = n.clamp(0.0, 1.0);
-
-                let g_k = 36.0;
-                let ek = -12.0;
-                let n4 = n * n * n * n;
-
-                let potassium_current = -g_k * n4 * (compartment.voltage - ek);
-
-                let e_m = 10.6;
-                let leak_conductance = 1.3;
-                let leak_current = -leak_conductance * (compartment.voltage - e_m);
-
-                let current = sodium_current
-                    + potassium_current
-                    + leak_current
-                    + compartment.injected_current;
-                let delta_voltage = current / compartment.capacitance;
-
-                compartment.n = n;
-                compartment.m = m;
-                compartment.h = h;
-                compartment.voltage += delta_voltage * cdt;
-
-                // Fire impulse: holds voltage high with exponential drop-off
-                if compartment.fire_impulse > 1.0 {
-                    compartment.voltage += compartment.fire_impulse;
-                    compartment.fire_impulse *= (-5.0 * cdt).exp();
-                }
-
-                compartment.voltage = compartment.voltage.clamp(-50.0, 200.0);
-                compartment.injected_current -= 1.0 * compartment.injected_current * cdt;
+                compartment.voltage = new_v * fhn_scale + fhn_offset;
+                compartment.m = new_w;
             }
 
             let mut new_compartments: HashMap<Entity, Compartment> = world
@@ -1337,11 +1287,12 @@ impl visula::Simulation for Neuronify {
             {
                 if let Ok(compartment_to) = world.get::<&Compartment>(connection.to) {
                     if recently_fired.contains(&connection.from) {
-                        // LIF neuron fired → voltage impulse with drop-off
+                        // LIF neuron fired → kick voltage above FHN threshold
+                        // FHN v=1.0 → display voltage = 1.0 * 50 + 50 = 100
                         let new_compartment_to = new_compartments
                             .get_mut(&connection.to)
                             .expect("Could not get new compartment");
-                        new_compartment_to.fire_impulse = 800.0;
+                        new_compartment_to.voltage = 1.0 * fhn_scale + fhn_offset;
                     } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from)
                     {
                         let voltage_diff = compartment_from.voltage - compartment_to.voltage;
