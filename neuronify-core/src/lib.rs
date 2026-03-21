@@ -268,6 +268,8 @@ struct Compartment {
     influence: f64,
     capacitance: f64,
     injected_current: f64,
+    #[serde(default)]
+    fire_impulse: f64,
 }
 
 /// Evaluate a quadratic Bezier curve at parameter t in [0,1].
@@ -371,8 +373,12 @@ impl Neuronify {
                 match std::fs::read_to_string(path) {
                     Ok(contents) => match legacy::parse_legacy_nfy(&contents) {
                         Ok(sim) => {
-                            log::info!("Loaded legacy simulation from {}: {} nodes, {} edges",
-                                path, sim.nodes.len(), sim.edges.len());
+                            log::info!(
+                                "Loaded legacy simulation from {}: {} nodes, {} edges",
+                                path,
+                                sim.nodes.len(),
+                                sim.edges.len()
+                            );
                             legacy::spawn::spawn_legacy_simulation(&mut world, &sim);
                         }
                         Err(e) => log::error!("Failed to parse legacy file {}: {}", path, e),
@@ -520,9 +526,7 @@ impl Neuronify {
                     Deletable {},
                 ));
                 if self.tool == Tool::InhibitoryNeuron {
-                    world
-                        .insert_one(entity, components::Inhibitory)
-                        .unwrap();
+                    world.insert_one(entity, components::Inhibitory).unwrap();
                 }
                 self.previous_creation = Some(PreviousCreation { entity });
             }
@@ -805,9 +809,7 @@ impl Neuronify {
                             let anchor = match corner {
                                 ResizeCorner::TopLeft => bl + Vec3::new(0.0, 0.0, w),
                                 ResizeCorner::TopRight => bl,
-                                ResizeCorner::BottomLeft => {
-                                    bl + Vec3::new(h, 0.0, w)
-                                }
+                                ResizeCorner::BottomLeft => bl + Vec3::new(h, 0.0, w),
                                 ResizeCorner::BottomRight => bl + Vec3::new(h, 0.0, 0.0),
                             };
                             let new_width = match corner {
@@ -827,27 +829,23 @@ impl Neuronify {
                                 }
                             };
                             let new_bl = match corner {
-                                ResizeCorner::TopLeft => Vec3::new(
-                                    anchor.x,
-                                    0.0,
-                                    mouse_position.z.min(anchor.z - 2.0),
-                                ),
+                                ResizeCorner::TopLeft => {
+                                    Vec3::new(anchor.x, 0.0, mouse_position.z.min(anchor.z - 2.0))
+                                }
                                 ResizeCorner::TopRight => anchor,
                                 ResizeCorner::BottomLeft => Vec3::new(
                                     mouse_position.x.min(anchor.x - 1.0),
                                     0.0,
                                     mouse_position.z.min(anchor.z - 2.0),
                                 ),
-                                ResizeCorner::BottomRight => Vec3::new(
-                                    mouse_position.x.min(anchor.x - 1.0),
-                                    0.0,
-                                    anchor.z,
-                                ),
+                                ResizeCorner::BottomRight => {
+                                    Vec3::new(mouse_position.x.min(anchor.x - 1.0), 0.0, anchor.z)
+                                }
                             };
                             let new_pos = new_bl + Vec3::new(new_height * 0.5, 0.0, 0.0);
                             // All reads done, borrows released — now write
-                            if let Ok(mut size) = world
-                                .get::<&mut components::VoltmeterSize>(entity)
+                            if let Ok(mut size) =
+                                world.get::<&mut components::VoltmeterSize>(entity)
                             {
                                 size.width = new_width;
                                 size.height = new_height;
@@ -869,10 +867,9 @@ impl Neuronify {
                                     .query::<(&Voltmeter, &Position)>()
                                     .iter()
                                     .filter_map(|(vid, (_, pos))| {
-                                        world
-                                            .get::<&components::VoltmeterSize>(vid)
-                                            .ok()
-                                            .map(|size| (vid, pos.position, size.width, size.height))
+                                        world.get::<&components::VoltmeterSize>(vid).ok().map(
+                                            |size| (vid, pos.position, size.width, size.height),
+                                        )
                                     })
                                     .collect();
 
@@ -929,9 +926,7 @@ impl Neuronify {
                                             .query::<&Position>()
                                             .iter()
                                             .min_by(|a, b| nearest(&mouse_position, a, b))
-                                            .and_then(|v| {
-                                                within_selection_range(mouse_position, v)
-                                            })
+                                            .and_then(|v| within_selection_range(mouse_position, v))
                                         {
                                             *active_entity = Some(entity);
                                             *dragging_entity = Some(entity);
@@ -1081,6 +1076,7 @@ impl Neuronify {
                                         influence: 0.0,
                                         capacitance: 4.0,
                                         injected_current: 0.0,
+                                        fire_impulse: 0.0,
                                     },
                                     StaticConnectionSource {},
                                     Deletable {},
@@ -1320,6 +1316,13 @@ impl visula::Simulation for Neuronify {
                 compartment.m = m;
                 compartment.h = h;
                 compartment.voltage += delta_voltage * cdt;
+
+                // Fire impulse: holds voltage high with exponential drop-off
+                if compartment.fire_impulse > 1.0 {
+                    compartment.voltage += compartment.fire_impulse;
+                    compartment.fire_impulse *= (-5.0 * cdt).exp();
+                }
+
                 compartment.voltage = compartment.voltage.clamp(-50.0, 200.0);
                 compartment.injected_current -= 1.0 * compartment.injected_current * cdt;
             }
@@ -1334,11 +1337,11 @@ impl visula::Simulation for Neuronify {
             {
                 if let Ok(compartment_to) = world.get::<&Compartment>(connection.to) {
                     if recently_fired.contains(&connection.from) {
-                        // LIF neuron fired → inject current into compartment
+                        // LIF neuron fired → voltage impulse with drop-off
                         let new_compartment_to = new_compartments
                             .get_mut(&connection.to)
                             .expect("Could not get new compartment");
-                        new_compartment_to.injected_current += 150.0;
+                        new_compartment_to.fire_impulse = 800.0;
                     } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from)
                     {
                         let voltage_diff = compartment_from.voltage - compartment_to.voltage;
@@ -1499,11 +1502,7 @@ impl visula::Simulation for Neuronify {
 
         // LIF neuron spheres
         let lif_neuron_spheres: Vec<Sphere> = world
-            .query::<(
-                &components::LIFNeuron,
-                &components::LIFDynamics,
-                &Position,
-            )>()
+            .query::<(&components::LIFNeuron, &components::LIFDynamics, &Position)>()
             .iter()
             .map(|(_entity, (neuron, dynamics, position))| {
                 let value = ((dynamics.voltage - neuron.resting_potential)
@@ -1645,19 +1644,18 @@ impl visula::Simulation for Neuronify {
             };
             let start_value = value(to);
             let end_value = value(from);
-            let (start_color, end_color) =
-                if world.get::<&components::CurrentClamp>(from).is_ok() {
-                    (yellow(), yellow())
-                } else if world.get::<&components::GeneratorDynamics>(from).is_ok() {
-                    (orange(), orange())
-                } else if let Ok(neuron_type) = world.get::<&NeuronType>(from) {
-                    (
-                        neurocolor(&neuron_type, start_value),
-                        neurocolor(&neuron_type, end_value),
-                    )
-                } else {
-                    (crust(), crust())
-                };
+            let (start_color, end_color) = if world.get::<&components::CurrentClamp>(from).is_ok() {
+                (yellow(), yellow())
+            } else if world.get::<&components::GeneratorDynamics>(from).is_ok() {
+                (orange(), orange())
+            } else if let Ok(neuron_type) = world.get::<&NeuronType>(from) {
+                (
+                    neurocolor(&neuron_type, start_value),
+                    neurocolor(&neuron_type, end_value),
+                )
+            } else {
+                (crust(), crust())
+            };
 
             let is_reciprocal = connection_pairs.contains(&(to, from));
             let dir_val = if directional { 1.0 } else { 0.0 };
@@ -1727,9 +1725,7 @@ impl visula::Simulation for Neuronify {
                 let Ok(pos) = world.get::<&Position>(voltmeter_id) else {
                     continue;
                 };
-                let size = world
-                    .get::<&components::VoltmeterSize>(voltmeter_id)
-                    .ok();
+                let size = world.get::<&components::VoltmeterSize>(voltmeter_id).ok();
                 let tw = size.as_ref().map(|s| s.width).unwrap_or(8.0);
                 let th = size.as_ref().map(|s| s.height).unwrap_or(4.0);
                 // Clone the data we need so we can release the borrows
@@ -1785,10 +1781,7 @@ impl visula::Simulation for Neuronify {
             }
 
             // Draw voltage trace
-            let visible: Vec<_> = series
-                .iter()
-                .filter(|(t, _)| *t >= start_time)
-                .collect();
+            let visible: Vec<_> = series.iter().filter(|(t, _)| *t >= start_time).collect();
 
             for window in visible.windows(2) {
                 let (t0, v0) = window[0];
@@ -1886,15 +1879,21 @@ impl visula::Simulation for Neuronify {
                     ui.menu_button("Examples", |ui| {
                         ui.menu_button("Tutorial", |ui| {
                             if ui.button("1 - Intro").clicked() {
-                                self.load_legacy_string(include_str!("../examples/tutorial_1_intro.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/tutorial_1_intro.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("2 - Circuits").clicked() {
-                                self.load_legacy_string(include_str!("../examples/tutorial_2_circuits.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/tutorial_2_circuits.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("3 - Creation").clicked() {
-                                self.load_legacy_string(include_str!("../examples/tutorial_3_creation.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/tutorial_3_creation.nfy"
+                                ));
                                 ui.close_menu();
                             }
                         });
@@ -1918,57 +1917,83 @@ impl visula::Simulation for Neuronify {
                         });
                         ui.menu_button("Circuits", |ui| {
                             if ui.button("Input Summation").clicked() {
-                                self.load_legacy_string(include_str!("../examples/input_summation.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/input_summation.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Prolonged Activity").clicked() {
-                                self.load_legacy_string(include_str!("../examples/prolonged_activity.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/prolonged_activity.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Disinhibition").clicked() {
-                                self.load_legacy_string(include_str!("../examples/disinhibition.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/disinhibition.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Recurrent Inhibition").clicked() {
-                                self.load_legacy_string(include_str!("../examples/recurrent_inhibition.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/recurrent_inhibition.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Reciprocal Inhibition").clicked() {
-                                self.load_legacy_string(include_str!("../examples/reciprocal_inhibition.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/reciprocal_inhibition.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Lateral Inhibition").clicked() {
-                                self.load_legacy_string(include_str!("../examples/lateral_inhibition.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/lateral_inhibition.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Lateral Inhibition 1").clicked() {
-                                self.load_legacy_string(include_str!("../examples/lateral_inhibition_1.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/lateral_inhibition_1.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Lateral Inhibition 2").clicked() {
-                                self.load_legacy_string(include_str!("../examples/lateral_inhibition_2.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/lateral_inhibition_2.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Two Neuron Oscillator").clicked() {
-                                self.load_legacy_string(include_str!("../examples/two_neuron_oscillator.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/two_neuron_oscillator.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Rhythm Transformation").clicked() {
-                                self.load_legacy_string(include_str!("../examples/rythm_transformation.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/rythm_transformation.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Types of Inhibition").clicked() {
-                                self.load_legacy_string(include_str!("../examples/types_of_inhibition.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/types_of_inhibition.nfy"
+                                ));
                                 ui.close_menu();
                             }
                         });
                         ui.menu_button("Textbook", |ui| {
                             if ui.button("IF Response").clicked() {
-                                self.load_legacy_string(include_str!("../examples/if_response.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/if_response.nfy"
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Refractory Period").clicked() {
-                                self.load_legacy_string(include_str!("../examples/refractory_period.nfy"));
+                                self.load_legacy_string(include_str!(
+                                    "../examples/refractory_period.nfy"
+                                ));
                                 ui.close_menu();
                             }
                         });
@@ -2018,8 +2043,7 @@ impl visula::Simulation for Neuronify {
                     }
                     // LIF neuron
                     if let Ok(mut neuron) =
-                        self.world
-                            .get::<&mut components::LIFNeuron>(active_entity)
+                        self.world.get::<&mut components::LIFNeuron>(active_entity)
                     {
                         let is_inhibitory = self
                             .world
@@ -2033,16 +2057,16 @@ impl visula::Simulation for Neuronify {
                         ui.collapsing(label, |ui| {
                             egui::Grid::new("neuron_settings").show(ui, |ui| {
                                 ui.label("Threshold:");
-                                ui.add(egui::Slider::new(
-                                    &mut neuron.threshold,
-                                    -0.08..=-0.03,
-                                ).suffix(" V"));
+                                ui.add(
+                                    egui::Slider::new(&mut neuron.threshold, -0.08..=-0.03)
+                                        .suffix(" V"),
+                                );
                                 ui.end_row();
                                 ui.label("Resting potential:");
-                                ui.add(egui::Slider::new(
-                                    &mut neuron.resting_potential,
-                                    -0.09..=-0.05,
-                                ).suffix(" V"));
+                                ui.add(
+                                    egui::Slider::new(&mut neuron.resting_potential, -0.09..=-0.05)
+                                        .suffix(" V"),
+                                );
                                 ui.end_row();
                                 ui.label("Capacitance:");
                                 ui.add(
@@ -2053,9 +2077,7 @@ impl visula::Simulation for Neuronify {
                             });
                         });
                     }
-                    if let Ok(dynamics) = self
-                        .world
-                        .get::<&components::LIFDynamics>(active_entity)
+                    if let Ok(dynamics) = self.world.get::<&components::LIFDynamics>(active_entity)
                     {
                         ui.collapsing("Dynamics", |ui| {
                             egui::Grid::new("neuron_dynamics").show(ui, |ui| {
@@ -2108,10 +2130,7 @@ impl visula::Simulation for Neuronify {
                         ui.collapsing("Poisson Generator", |ui| {
                             egui::Grid::new("poisson_gen_settings").show(ui, |ui| {
                                 ui.label("Rate:");
-                                ui.add(
-                                    egui::Slider::new(&mut gen.rate, 1.0..=200.0)
-                                        .suffix(" Hz"),
-                                );
+                                ui.add(egui::Slider::new(&mut gen.rate, 1.0..=200.0).suffix(" Hz"));
                                 ui.end_row();
                             });
                         });
@@ -2121,9 +2140,7 @@ impl visula::Simulation for Neuronify {
                         ui.collapsing("Voltmeter", |ui| {
                             if let Ok(mut size) = self
                                 .world
-                                .get::<&mut components::VoltmeterSize>(
-                                    active_entity,
-                                )
+                                .get::<&mut components::VoltmeterSize>(active_entity)
                             {
                                 egui::Grid::new("voltmeter_size_settings").show(ui, |ui| {
                                     ui.label("Width:");
@@ -2134,9 +2151,7 @@ impl visula::Simulation for Neuronify {
                                     ui.end_row();
                                 });
                             }
-                            if let Ok(series) =
-                                self.world.get::<&VoltageSeries>(active_entity)
-                            {
+                            if let Ok(series) = self.world.get::<&VoltageSeries>(active_entity) {
                                 if let Some(last) = series.measurements.last() {
                                     ui.label(format!("Voltage: {:.2} mV", last.voltage));
                                 }
