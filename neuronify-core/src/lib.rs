@@ -270,6 +270,12 @@ struct Compartment {
     injected_current: f64,
 }
 
+/// Evaluate a quadratic Bezier curve at parameter t in [0,1].
+fn quadratic_bezier(p0: Vec3, p1: Vec3, p2: Vec3, t: f32) -> Vec3 {
+    let u = 1.0 - t;
+    u * u * p0 + 2.0 * u * t * p1 + t * t * p2
+}
+
 fn nearest(
     mouse_position: &Vec3,
     (_, x): &(Entity, &Position),
@@ -498,6 +504,11 @@ impl Neuronify {
                 if previous_too_near {
                     return;
                 }
+                let neuron_type = if self.tool == Tool::InhibitoryNeuron {
+                    NeuronType::Inhibitory
+                } else {
+                    NeuronType::Excitatory
+                };
                 let entity = world.spawn((
                     Position {
                         position: mouse_position,
@@ -505,6 +516,7 @@ impl Neuronify {
                     components::LIFNeuron::default(),
                     components::LIFDynamics::default(),
                     components::LeakCurrent::default(),
+                    neuron_type,
                     Deletable {},
                 ));
                 if self.tool == Tool::InhibitoryNeuron {
@@ -943,13 +955,37 @@ impl Neuronify {
             },
             Tool::Axon => match connection_tool {
                 None => {
-                    // Find nearest connectable source (Compartment or HH neuron)
-                    let source_candidates: Vec<(Entity, Vec3)> = world
-                        .query::<&Position>()
-                        .with::<&StaticConnectionSource>()
-                        .iter()
-                        .map(|(e, p)| (e, p.position))
-                        .collect();
+                    // Find nearest connectable source (LIF neuron, generator, current clamp, or HH neuron)
+                    let source_candidates: Vec<(Entity, Vec3)> = {
+                        let mut candidates: Vec<_> = world
+                            .query::<&Position>()
+                            .with::<&StaticConnectionSource>()
+                            .iter()
+                            .map(|(e, p)| (e, p.position))
+                            .collect();
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&components::LIFNeuron>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&components::CurrentClamp>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&components::GeneratorDynamics>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates
+                    };
                     *connection_tool = source_candidates
                         .iter()
                         .min_by(|a, b| {
@@ -975,10 +1011,10 @@ impl Neuronify {
                 }
                 Some(ct) => {
                     ct.end = mouse_position;
-                    // Find nearest connectable target (Compartment)
+                    // Find nearest connectable target (LIF neuron only, not compartments)
                     let target_candidates: Vec<(Entity, Vec3)> = world
                         .query::<&Position>()
-                        .with::<&Compartment>()
+                        .with::<&components::LIFNeuron>()
                         .iter()
                         .map(|(e, p)| (e, p.position))
                         .collect();
@@ -1003,7 +1039,7 @@ impl Neuronify {
                                 from: ct.from,
                                 to: id,
                                 strength: 1.0,
-                                directional: false,
+                                directional: true,
                             };
                             let connection_exists =
                                 world.query::<&Connection>().iter().any(|(_, c)| {
@@ -1185,6 +1221,7 @@ impl visula::Simulation for Neuronify {
             stimulation_tool,
             ..
         } = self;
+        let dt = 0.001;
         let cdt = 0.01;
 
         // Touch sensor stimulation: when Stimulate tool is active near a TouchSensor, fire it
@@ -1209,6 +1246,38 @@ impl visula::Simulation for Neuronify {
             for _ in 0..self.iterations {
                 legacy::step::lif_step(world, lif_dt, *time);
                 *time += lif_dt;
+            }
+        }
+
+        // Bridge: LIF neuron fires → inject current into connected Compartments
+        {
+            let fire_injections: Vec<(Entity, f64)> = world
+                .query::<&Connection>()
+                .iter()
+                .filter_map(|(_, conn)| {
+                    let just_fired = world
+                        .get::<&components::LIFDynamics>(conn.from)
+                        .map(|d| d.time_since_fire == 0.0)
+                        .unwrap_or(false);
+                    if !just_fired {
+                        return None;
+                    }
+                    if world.get::<&Compartment>(conn.to).is_err() {
+                        return None;
+                    }
+                    let current = if world.get::<&components::Inhibitory>(conn.from).is_ok() {
+                        -3000.0
+                    } else {
+                        3000.0
+                    };
+                    Some((conn.to, current * conn.strength))
+                })
+                .collect();
+
+            for (target, current) in fire_injections {
+                if let Ok(mut compartment) = world.get::<&mut Compartment>(target) {
+                    compartment.injected_current += current;
+                }
             }
         }
 
@@ -1406,10 +1475,10 @@ impl visula::Simulation for Neuronify {
             {
                 let gravity = -position.position.y;
                 dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
-                dynamics.velocity += dynamics.acceleration * cdt as f32;
-                position.position += dynamics.velocity * cdt as f32;
+                dynamics.velocity += dynamics.acceleration * dt as f32;
+                position.position += dynamics.velocity * dt as f32;
                 dynamics.acceleration = Vec3::new(0.0, 0.0, 0.0);
-                dynamics.velocity -= dynamics.velocity * cdt as f32;
+                dynamics.velocity -= dynamics.velocity * dt as f32;
             }
         }
 
@@ -1519,63 +1588,105 @@ impl visula::Simulation for Neuronify {
         spheres.extend(compartment_spheres.iter());
         spheres.extend(trigger_spheres.iter());
 
-        let mut connections: Vec<ConnectionData> = world
+        // Collect connection info to detect reciprocal pairs
+        let connection_info: Vec<(Entity, Entity, Entity, f32, bool)> = world
             .query::<&Connection>()
             .iter()
-            .map(|(_, connection)| {
-                let start = world
-                    .get::<&Position>(connection.from)
-                    .expect("Connection from broken")
-                    .position;
-                let end = world
-                    .get::<&Position>(connection.to)
-                    .expect("Connection to broken")
-                    .position;
-                let value = |target: Entity| -> f32 {
-                    if let Ok(compartment) = world.get::<&Compartment>(target) {
-                        ((compartment.voltage + 10.0) / 120.0) as f32
-                    } else if let Ok(dynamics) = world.get::<&components::LIFDynamics>(target) {
-                        let neuron = world.get::<&components::LIFNeuron>(target).ok();
-                        if let Some(neuron) = neuron {
-                            ((dynamics.voltage - neuron.resting_potential)
-                                / (neuron.threshold - neuron.resting_potential))
-                                .clamp(0.0, 1.0) as f32
-                        } else {
-                            0.5
-                        }
+            .map(|(e, c)| (e, c.from, c.to, c.strength as f32, c.directional))
+            .collect();
+
+        // Build a set of (from, to) pairs to detect reciprocals
+        let connection_pairs: std::collections::HashSet<(Entity, Entity)> = connection_info
+            .iter()
+            .map(|(_, from, to, _, _)| (*from, *to))
+            .collect();
+
+        let mut connections: Vec<ConnectionData> = Vec::new();
+
+        for &(_edge_entity, from, to, strength, directional) in &connection_info {
+            let start = world
+                .get::<&Position>(from)
+                .expect("Connection from broken")
+                .position;
+            let end = world
+                .get::<&Position>(to)
+                .expect("Connection to broken")
+                .position;
+            let value = |target: Entity| -> f32 {
+                if let Ok(compartment) = world.get::<&Compartment>(target) {
+                    ((compartment.voltage + 10.0) / 120.0) as f32
+                } else if let Ok(dynamics) = world.get::<&components::LIFDynamics>(target) {
+                    let neuron = world.get::<&components::LIFNeuron>(target).ok();
+                    if let Some(neuron) = neuron {
+                        ((dynamics.voltage - neuron.resting_potential)
+                            / (neuron.threshold - neuron.resting_potential))
+                            .clamp(0.0, 1.0) as f32
                     } else {
-                        1.0
+                        0.5
                     }
+                } else {
+                    1.0
+                }
+            };
+            let start_value = value(to);
+            let end_value = value(from);
+            let (start_color, end_color) =
+                if world.get::<&components::CurrentClamp>(from).is_ok() {
+                    (yellow(), yellow())
+                } else if world.get::<&components::GeneratorDynamics>(from).is_ok() {
+                    (orange(), orange())
+                } else if let Ok(neuron_type) = world.get::<&NeuronType>(from) {
+                    (
+                        neurocolor(&neuron_type, start_value),
+                        neurocolor(&neuron_type, end_value),
+                    )
+                } else {
+                    (crust(), crust())
                 };
-                let start_value = value(connection.to);
-                let end_value = value(connection.from);
-                let (start_color, end_color) =
-                    if world.get::<&components::CurrentClamp>(connection.from).is_ok() {
-                        (yellow(), yellow())
-                    } else if world.get::<&components::GeneratorDynamics>(connection.from).is_ok() {
-                        (orange(), orange())
-                    } else if let Ok(neuron_type) = world.get::<&NeuronType>(connection.from) {
-                        (
-                            neurocolor(&neuron_type, start_value),
-                            neurocolor(&neuron_type, end_value),
-                        )
-                    } else {
-                        (crust(), crust())
-                    };
-                ConnectionData {
+
+            let is_reciprocal = connection_pairs.contains(&(to, from));
+            let dir_val = if directional { 1.0 } else { 0.0 };
+
+            if is_reciprocal {
+                // Bend to the right (relative to start→end direction)
+                let segments = 16;
+                let diff = end - start;
+                // Right perpendicular in the xz ground plane: cross(diff, up)
+                let up = Vec3::new(0.0, 1.0, 0.0);
+                let right = diff.cross(up);
+                let bend_amount = 0.2 * diff.length();
+                let control = (start + end) * 0.5 + right.normalize_or_zero() * bend_amount;
+
+                for i in 0..segments {
+                    let t0 = i as f32 / segments as f32;
+                    let t1 = (i + 1) as f32 / segments as f32;
+                    let p0 = quadratic_bezier(start, control, end, t0);
+                    let p1 = quadratic_bezier(start, control, end, t1);
+                    let c0 = start_color.lerp(end_color, t0);
+                    let c1 = start_color.lerp(end_color, t1);
+                    let is_last = i == segments - 1;
+                    connections.push(ConnectionData {
+                        position_a: p0,
+                        position_b: p1,
+                        strength,
+                        directional: if is_last { dir_val } else { 0.0 },
+                        start_color: c0,
+                        end_color: c1,
+                        _padding: Default::default(),
+                    });
+                }
+            } else {
+                connections.push(ConnectionData {
                     position_a: start,
                     position_b: end,
-                    strength: connection.strength as f32,
-                    directional: match connection.directional {
-                        true => 1.0,
-                        false => 0.0,
-                    },
+                    strength,
+                    directional: dir_val,
                     start_color,
                     end_color,
                     _padding: Default::default(),
-                }
-            })
-            .collect();
+                });
+            }
+        }
 
         if self.tool == Tool::StaticConnection {
             if let Some(connection) = &connection_tool {

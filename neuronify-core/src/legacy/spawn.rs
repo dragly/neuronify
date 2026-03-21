@@ -3,7 +3,7 @@ use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement, VoltageSeries};
-use crate::{Connection, Position, Voltmeter};
+use crate::{Connection, Deletable, NeuronType, Position, Voltmeter};
 
 use super::{LegacyEdge, LegacyNode, LegacySimulation};
 
@@ -60,9 +60,10 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
                 CurrentClamp {
                     current_output: current,
                 },
+                Deletable {},
             ))
         }
-        "sensors/TouchSensor.qml" => world.spawn((pos, TouchSensor, GeneratorDynamics::default())),
+        "sensors/TouchSensor.qml" => world.spawn((pos, TouchSensor, GeneratorDynamics::default(), Deletable {})),
         "meters/Voltmeter.qml" => world.spawn((
             pos,
             Voltmeter {},
@@ -71,6 +72,7 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
                 spike_times: Vec::new(),
             },
             VoltmeterSize::default(),
+            Deletable {},
         )),
         "meters/SpikeDetector.qml" => {
             // Spike detector - just a position for now
@@ -114,7 +116,13 @@ fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> En
         current: 0.0,
     };
 
-    let entity = world.spawn((pos, neuron, dynamics, leak));
+    let neuron_type = if node.inhibitory {
+        NeuronType::Inhibitory
+    } else {
+        NeuronType::Excitatory
+    };
+
+    let entity = world.spawn((pos, neuron, dynamics, leak, neuron_type, Deletable {}));
 
     if node.inhibitory {
         world.insert_one(entity, Inhibitory).unwrap();
@@ -163,10 +171,10 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
                 time: 0.0,
                 current_output: 0.0,
             };
-            world.spawn((connection, synapse));
+            world.spawn((connection, synapse, Deletable {}));
         }
         "edges/ImmediateFireSynapse.qml" => {
-            world.spawn((connection, ImmediateFireSynapse::default()));
+            world.spawn((connection, ImmediateFireSynapse::default(), Deletable {}));
         }
         "edges/MeterEdge.qml" => {
             // In .nfy files, MeterEdge goes FROM voltmeter TO neuron.
@@ -212,11 +220,11 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
                 time: 0.0,
                 current_output: 0.0,
             };
-            world.spawn((connection, synapse));
+            world.spawn((connection, synapse, Deletable {}));
         }
         _ => {
             // Unknown edge type
-            world.spawn((connection,));
+            world.spawn((connection, Deletable {}));
         }
     }
 }
