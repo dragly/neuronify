@@ -221,7 +221,7 @@ mod axon_tests {
                 strength: 1.0,
                 directional: false,
             },
-            CompartmentCurrent { capacitance: 1.0 / 24.0 },
+            CompartmentCurrent { capacitance: 1.0 / 17.0 },
         ));
 
         // Connect comp[i] -> comp[i+1]
@@ -233,7 +233,7 @@ mod axon_tests {
                     strength: 1.0,
                     directional: false,
                 },
-                CompartmentCurrent { capacitance: 1.0 / 24.0 },
+                CompartmentCurrent { capacitance: 1.0 / 17.0 },
             ));
         }
 
@@ -245,7 +245,7 @@ mod axon_tests {
                 strength: 1.0,
                 directional: false,
             },
-            CompartmentCurrent { capacitance: 1.0 / 24.0 },
+            CompartmentCurrent { capacitance: 1.0 / 17.0 },
         ));
 
         let lif_dt = 0.0001;
@@ -1297,7 +1297,7 @@ impl Neuronify {
                                     new_connection,
                                     Deletable {},
                                     CompartmentCurrent {
-                                        capacitance: 1.0 / 24.0,
+                                        capacitance: 1.0 / 17.0,
                                     },
                                 ));
                             }
@@ -1350,7 +1350,7 @@ impl Neuronify {
                                     new_connection,
                                     Deletable {},
                                     CompartmentCurrent {
-                                        capacitance: 1.0 / 24.0,
+                                        capacitance: 1.0 / 17.0,
                                     },
                                 ));
                                 self.previous_creation = Some(PreviousCreation {
@@ -1476,7 +1476,7 @@ impl visula::Simulation for Neuronify {
         let dt = 0.001;
         let cdt = 0.01;
 
-        // Touch sensor stimulation: when Stimulate tool is active near a TouchSensor, fire it
+        // Stimulation: when Stimulate tool is active, fire nearby TouchSensors and LIF neurons
         if let Some(stim) = stimulation_tool {
             let touch_entities: Vec<hecs::Entity> = world
                 .query::<(&Position, &components::TouchSensor)>()
@@ -1488,6 +1488,20 @@ impl visula::Simulation for Neuronify {
                 if let Ok(mut dynamics) = world.get::<&mut components::GeneratorDynamics>(entity) {
                     dynamics.fired = true;
                     dynamics.time_since_fire = 0.0;
+                }
+            }
+
+            // Also stimulate LIF neurons directly
+            let neuron_entities: Vec<hecs::Entity> = world
+                .query::<(&Position, &components::LIFNeuron)>()
+                .iter()
+                .filter(|(_, (pos, _))| pos.position.distance(stim.position) < 2.0 * NODE_RADIUS)
+                .map(|(e, _)| e)
+                .collect();
+            for entity in neuron_entities {
+                if let Ok(mut dynamics) = world.get::<&mut components::LIFDynamics>(entity) {
+                    let neuron = world.get::<&components::LIFNeuron>(entity).unwrap();
+                    dynamics.voltage = neuron.threshold + 0.01;
                 }
             }
         }
