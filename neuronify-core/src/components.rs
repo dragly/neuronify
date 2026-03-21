@@ -1,9 +1,9 @@
+use glam::Vec3;
+use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
-/// Leaky integrate-and-fire neuron parameters (SI units).
-/// Matches C++ NeuronEngine defaults.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct LIFNeuron {
+pub struct LeakyNeuron {
     pub capacitance: f64,
     pub resting_potential: f64,
     pub threshold: f64,
@@ -13,7 +13,7 @@ pub struct LIFNeuron {
     pub maximum_voltage: f64,
 }
 
-impl Default for LIFNeuron {
+impl Default for LeakyNeuron {
     fn default() -> Self {
         Self {
             capacitance: 2e-10,
@@ -27,9 +27,8 @@ impl Default for LIFNeuron {
     }
 }
 
-/// Dynamic state of a LIF neuron.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct LIFDynamics {
+pub struct LeakyDynamics {
     pub voltage: f64,
     pub received_currents: f64,
     pub fired: bool,
@@ -38,7 +37,7 @@ pub struct LIFDynamics {
     pub enabled: bool,
 }
 
-impl Default for LIFDynamics {
+impl Default for LeakyDynamics {
     fn default() -> Self {
         Self {
             voltage: -0.07,
@@ -51,7 +50,6 @@ impl Default for LIFDynamics {
     }
 }
 
-/// Leak current: I = -(V - E_rest) / R
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LeakCurrent {
     pub resistance: f64,
@@ -67,7 +65,6 @@ impl Default for LeakCurrent {
     }
 }
 
-/// Adaptation current with conductance-based dynamics.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AdaptationCurrent {
     pub adaptation: f64,
@@ -87,7 +84,6 @@ impl Default for AdaptationCurrent {
     }
 }
 
-/// Constant DC current source.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CurrentClamp {
     pub current_output: f64,
@@ -101,7 +97,6 @@ impl Default for CurrentClamp {
     }
 }
 
-/// Current synapse with exponential or alpha-function decay.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CurrentSynapse {
     pub tau: f64,
@@ -131,7 +126,6 @@ impl Default for CurrentSynapse {
     }
 }
 
-/// Immediate fire synapse: delivers a huge instantaneous current on fire.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ImmediateFireSynapse {
     pub current_output: f64,
@@ -139,19 +133,18 @@ pub struct ImmediateFireSynapse {
 
 impl Default for ImmediateFireSynapse {
     fn default() -> Self {
-        Self { current_output: 0.0 }
+        Self {
+            current_output: 0.0,
+        }
     }
 }
 
-/// Marker for inhibitory neurons.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Inhibitory;
 
-/// Touch sensor (no auto-fire in headless mode).
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TouchSensor;
 
-/// Size of a voltmeter trace display.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VoltmeterSize {
     pub width: f32,
@@ -167,13 +160,11 @@ impl Default for VoltmeterSize {
     }
 }
 
-/// Annotation/note for display.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Annotation {
     pub text: String,
 }
 
-/// Shared dynamics for generator-type nodes (TouchSensor, RegularSpikeGenerator, PoissonGenerator).
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GeneratorDynamics {
     pub fired: bool,
@@ -189,7 +180,6 @@ impl Default for GeneratorDynamics {
     }
 }
 
-/// A node that fires at a constant configurable frequency.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RegularSpikeGenerator {
     pub frequency: f64,
@@ -201,7 +191,6 @@ impl Default for RegularSpikeGenerator {
     }
 }
 
-/// A node that fires randomly with a configurable average rate.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PoissonGenerator {
     pub rate: f64,
@@ -211,4 +200,58 @@ impl Default for PoissonGenerator {
     fn default() -> Self {
         Self { rate: 20.0 }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum NeuronType {
+    Excitatory,
+    Inhibitory,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CompartmentCurrent {
+    pub capacitance: f64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Selectable {
+    pub selected: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StaticConnectionSource {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Deletable {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Position {
+    pub position: Vec3,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SpatialDynamics {
+    pub velocity: Vec3,
+    pub acceleration: Vec3,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Connection {
+    pub from: Entity,
+    pub to: Entity,
+    pub strength: f64,
+    pub directional: bool,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct Compartment {
+    pub voltage: f64,
+    pub m: f64,
+    pub h: f64,
+    pub n: f64,
+    pub influence: f64,
+    pub capacitance: f64,
+    pub injected_current: f64,
+    #[serde(default)]
+    pub fire_impulse: f64,
 }

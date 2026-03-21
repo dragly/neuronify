@@ -1,12 +1,5 @@
-use crate::{
-    Compartment, CompartmentCurrent, Connection, Deletable, NeuronType, Position, Selectable,
-    SpatialDynamics, StaticConnectionSource, VoltageSeries, Voltmeter,
-    components::{
-        AdaptationCurrent, Annotation, CurrentClamp, CurrentSynapse, GeneratorDynamics,
-        ImmediateFireSynapse, Inhibitory, LIFDynamics, LIFNeuron, LeakCurrent,
-        PoissonGenerator, RegularSpikeGenerator, TouchSensor, VoltmeterSize,
-    },
-};
+use crate::components::*;
+use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use hecs::{serialize::column::*, *};
 use serde::{Deserialize, Serialize};
 use std::any::TypeId;
@@ -111,8 +104,8 @@ macro_rules! component_id {
 
 component_id!(
     Position,
-    LIFNeuron,
-    LIFDynamics,
+    LeakyNeuron,
+    LeakyDynamics,
     LeakCurrent,
     AdaptationCurrent,
     CurrentClamp,

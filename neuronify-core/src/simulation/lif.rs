@@ -1,32 +1,16 @@
 use hecs::World;
 use rand::Rng;
 
-use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries};
-use crate::{Compartment, Connection, Position, Voltmeter};
-
 use crate::components::*;
+use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries, Voltmeter};
 
-/// Records of spike events for testing/analysis.
 #[derive(Clone, Debug)]
 pub struct SpikeRecord {
     pub entity_index: usize,
     pub time: f64,
 }
 
-/// Run the classic C++ simulation step. Reproduces the exact step order from
-/// graphengine.cpp lines 160-216.
-///
-/// Step order:
-/// 1. Step all nodes (checkFire, compute currents, integrate voltage)
-/// 2. Step all edges (synapse dynamics)
-/// 3. Communicate fires through edges
-/// 4. Propagate currents through edges
-/// 5. Finalize (reset fired flags)
 pub fn lif_step(world: &mut World, dt: f64, time: f64) {
-    // =========================================================================
-    // PHASE 0: Step generators (RegularSpikeGenerator, PoissonGenerator)
-    // =========================================================================
-
     for (_, (generator, dynamics)) in
         world.query_mut::<(&RegularSpikeGenerator, &mut GeneratorDynamics)>()
     {
@@ -58,30 +42,22 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         }
     }
 
-    // =========================================================================
-    // PHASE 1: Step all nodes
-    // =========================================================================
-
-    // 1a. checkFire() - BEFORE integration (critical: C++ checks at start of step)
-    // Also handle refractory period enable/disable
     let neuron_entities: Vec<hecs::Entity> = world
-        .query::<&LIFNeuron>()
+        .query::<&LeakyNeuron>()
         .iter()
         .map(|(e, _)| e)
         .collect();
 
     for entity in &neuron_entities {
         let mut query = world
-            .query_one::<(&LIFNeuron, &mut LIFDynamics)>(*entity)
+            .query_one::<(&LeakyNeuron, &mut LeakyDynamics)>(*entity)
             .unwrap();
         let (neuron, dynamics) = query.get().unwrap();
 
-        // Update refractory state
         dynamics.time_since_fire += dt;
         dynamics.enabled = dynamics.time_since_fire >= dynamics.refractory_period;
 
         if dynamics.enabled && dynamics.voltage > neuron.threshold {
-            // Fire!
             dynamics.fired = true;
             dynamics.voltage = neuron.initial_potential;
             dynamics.time_since_fire = 0.0;
@@ -90,9 +66,8 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         drop(query);
     }
 
-    // 1b. Compute leak current for each neuron with a leak component
     for (_, (leak, neuron, dynamics)) in
-        world.query_mut::<(&mut LeakCurrent, &LIFNeuron, &LIFDynamics)>()
+        world.query_mut::<(&mut LeakCurrent, &LeakyNeuron, &LeakyDynamics)>()
     {
         if !dynamics.enabled {
             leak.current = 0.0;
@@ -103,17 +78,14 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         leak.current = -(v - em) / leak.resistance;
     }
 
-    // 1c. Compute adaptation current
     for (_, (adapt, neuron, dynamics)) in
-        world.query_mut::<(&mut AdaptationCurrent, &LIFNeuron, &LIFDynamics)>()
+        world.query_mut::<(&mut AdaptationCurrent, &LeakyNeuron, &LeakyDynamics)>()
     {
         if !dynamics.enabled {
             adapt.current = 0.0;
             continue;
         }
-        // Decay conductance
         adapt.conductance -= adapt.conductance / adapt.time_constant * dt;
-        // If the neuron just fired, increase conductance
         if dynamics.fired {
             adapt.conductance += adapt.adaptation;
         }
@@ -122,20 +94,15 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         adapt.current = -adapt.conductance * (v - em);
     }
 
-    // 1d. Integrate voltage: dV = (leak + adaptation + receivedCurrents) / capacitance * dt
-    // received_currents already holds currents from previous step's phase 4.
-    // We'll add leak and adaptation currents to it before integration.
-
-    // Collect child currents (leak, adaptation) and add to integration
     {
         let leak_currents: Vec<(hecs::Entity, f64)> = world
-            .query::<(&LeakCurrent, &LIFDynamics)>()
+            .query::<(&LeakCurrent, &LeakyDynamics)>()
             .iter()
             .map(|(e, (leak, _))| (e, leak.current))
             .collect();
 
         for (entity, current) in leak_currents {
-            if let Ok(mut dynamics) = world.get::<&mut LIFDynamics>(entity) {
+            if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(entity) {
                 dynamics.received_currents += current;
             }
         }
@@ -143,21 +110,19 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
 
     {
         let adapt_currents: Vec<(hecs::Entity, f64)> = world
-            .query::<(&AdaptationCurrent, &LIFDynamics)>()
+            .query::<(&AdaptationCurrent, &LeakyDynamics)>()
             .iter()
             .map(|(e, (adapt, _))| (e, adapt.current))
             .collect();
 
         for (entity, current) in adapt_currents {
-            if let Ok(mut dynamics) = world.get::<&mut LIFDynamics>(entity) {
+            if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(entity) {
                 dynamics.received_currents += current;
             }
         }
     }
 
-    // Now do the actual voltage integration
-    for (_, (neuron, dynamics)) in world.query_mut::<(&LIFNeuron, &mut LIFDynamics)>()
-    {
+    for (_, (neuron, dynamics)) in world.query_mut::<(&LeakyNeuron, &mut LeakyDynamics)>() {
         if !dynamics.enabled {
             dynamics.received_currents = 0.0;
             continue;
@@ -167,7 +132,6 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         let dv = total_current / neuron.capacitance * dt;
         dynamics.voltage += dv;
 
-        // Clamp voltage
         if neuron.voltage_clamped {
             dynamics.voltage = dynamics
                 .voltage
@@ -177,30 +141,21 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         dynamics.received_currents = 0.0;
     }
 
-    // =========================================================================
-    // PHASE 2: Step all edges (synapse dynamics)
-    // =========================================================================
-
     for (_, synapse) in world.query_mut::<&mut CurrentSynapse>() {
-        // Compute current output
         if synapse.alpha_function {
             synapse.current_output = synapse.maximum_current * synapse.linear * synapse.exponential;
         } else {
             synapse.current_output = synapse.maximum_current * synapse.exponential;
         }
 
-        // Decay exponential
         synapse.exponential -= synapse.exponential * dt / synapse.tau;
 
-        // Linear ramp for alpha function
         if synapse.alpha_function {
             synapse.linear += dt / synapse.tau;
         }
 
-        // Check trigger queue
         while !synapse.triggers.is_empty() && synapse.triggers[0] <= synapse.time {
             synapse.triggers.remove(0);
-            // Trigger the synapse
             if synapse.alpha_function {
                 synapse.linear = 0.0;
                 synapse.exponential = std::f64::consts::E;
@@ -212,29 +167,23 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         synapse.time += dt;
     }
 
-    // ImmediateFireSynapse: reset current to 0 each step
     for (_, synapse) in world.query_mut::<&mut ImmediateFireSynapse>() {
         synapse.current_output = 0.0;
     }
 
-    // =========================================================================
-    // PHASE 3: Communicate fires through edges
-    // =========================================================================
-
-    // Collect fire state and edge info
     let edges_with_fire: Vec<(hecs::Entity, hecs::Entity, hecs::Entity, bool)> = world
         .query::<&Connection>()
         .iter()
-        .filter_map(|(edge_entity, conn)| {
+        .map(|(edge_entity, conn)| {
             let source_fired = world
-                .get::<&LIFDynamics>(conn.from)
+                .get::<&LeakyDynamics>(conn.from)
                 .map(|d| d.fired)
                 .unwrap_or(false)
                 || world
                     .get::<&GeneratorDynamics>(conn.from)
                     .map(|d| d.fired)
                     .unwrap_or(false);
-            Some((edge_entity, conn.from, conn.to, source_fired))
+            (edge_entity, conn.from, conn.to, source_fired)
         })
         .collect();
 
@@ -243,7 +192,6 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
             continue;
         }
 
-        // CurrentSynapse receives fire
         if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(*edge_entity) {
             if synapse.delay > 0.0 {
                 let trigger_time = synapse.time + synapse.delay;
@@ -256,20 +204,14 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
             }
         }
 
-        // ImmediateFireSynapse receives fire
         if let Ok(mut synapse) = world.get::<&mut ImmediateFireSynapse>(*edge_entity) {
             synapse.current_output = 1e6;
         }
     }
 
-    // =========================================================================
-    // PHASE 4: Propagate currents through edges
-    // =========================================================================
-
     let current_deliveries: Vec<(hecs::Entity, f64)> = edges_with_fire
         .iter()
-        .filter_map(|(edge_entity, source, target, _)| {
-            // Determine sign from source inhibitory marker
+        .filter_map(|(edge_entity, source, _target, _)| {
             let sign = if world.get::<&Inhibitory>(*source).is_ok() {
                 -1.0
             } else {
@@ -278,21 +220,18 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
 
             let mut total = 0.0;
 
-            // Current from synapse (CurrentSynapse)
             if let Ok(synapse) = world.get::<&CurrentSynapse>(*edge_entity) {
                 if synapse.current_output != 0.0 {
                     total += sign * synapse.current_output;
                 }
             }
 
-            // Current from ImmediateFireSynapse
             if let Ok(synapse) = world.get::<&ImmediateFireSynapse>(*edge_entity) {
                 if synapse.current_output != 0.0 {
                     total += sign * synapse.current_output;
                 }
             }
 
-            // Current from source node (CurrentClamp via Edge.qml)
             if let Ok(clamp) = world.get::<&CurrentClamp>(*source) {
                 if clamp.current_output != 0.0 {
                     total += sign * clamp.current_output;
@@ -300,7 +239,7 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
             }
 
             if total != 0.0 {
-                Some((*target, total))
+                Some((*_target, total))
             } else {
                 None
             }
@@ -308,24 +247,22 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         .collect();
 
     for (target, current) in current_deliveries {
-        if let Ok(mut dynamics) = world.get::<&mut LIFDynamics>(target) {
+        if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(target) {
             dynamics.received_currents += current;
         }
     }
-
-    // =========================================================================
-    // PHASE 5: Update voltmeters
-    // =========================================================================
 
     let voltmeter_updates: Vec<(hecs::Entity, f64, bool)> = world
         .query::<(&Voltmeter, &Connection)>()
         .iter()
         .filter_map(|(entity, (_, conn))| {
-            // Try LIF neuron first
-            if let Ok(dynamics) = world.get::<&LIFDynamics>(conn.from) {
-                return Some((entity, dynamics.voltage * 1000.0, dynamics.time_since_fire == 0.0));
+            if let Ok(dynamics) = world.get::<&LeakyDynamics>(conn.from) {
+                return Some((
+                    entity,
+                    dynamics.voltage * 1000.0,
+                    dynamics.time_since_fire == 0.0,
+                ));
             }
-            // Try compartment
             if let Ok(compartment) = world.get::<&Compartment>(conn.from) {
                 return Some((entity, compartment.voltage, false));
             }
@@ -335,21 +272,16 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
 
     for (entity, voltage, fired) in voltmeter_updates {
         if let Ok(mut series) = world.get::<&mut VoltageSeries>(entity) {
-            series.measurements.push(VoltageMeasurement {
-                voltage,
-                time,
-            });
+            series
+                .measurements
+                .push(VoltageMeasurement { voltage, time });
             if fired {
                 series.spike_times.push(time);
             }
         }
     }
 
-    // =========================================================================
-    // PHASE 6: Finalize - reset fired flags
-    // =========================================================================
-
-    for (_, dynamics) in world.query_mut::<&mut LIFDynamics>() {
+    for (_, dynamics) in world.query_mut::<&mut LeakyDynamics>() {
         dynamics.fired = false;
     }
 
@@ -358,19 +290,12 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
     }
 }
 
-/// Backwards-compatible alias for `lif_step`.
-pub fn classic_step(world: &mut World, dt: f64, time: f64) {
-    lif_step(world, dt, time);
-}
-
-/// Run a headless simulation for testing.
 pub fn run_headless(world: &mut World, steps: usize, dt: f64) -> Vec<SpikeRecord> {
     let mut spike_records = Vec::new();
     let mut time = 0.0;
 
-    // Build entity-to-index map for neurons
     let neuron_entities: Vec<hecs::Entity> = world
-        .query::<&LIFNeuron>()
+        .query::<&LeakyNeuron>()
         .iter()
         .map(|(e, _)| e)
         .collect();
@@ -379,7 +304,7 @@ pub fn run_headless(world: &mut World, steps: usize, dt: f64) -> Vec<SpikeRecord
         lif_step(world, dt, time);
 
         for (idx, entity) in neuron_entities.iter().enumerate() {
-            if let Ok(dynamics) = world.get::<&LIFDynamics>(*entity) {
+            if let Ok(dynamics) = world.get::<&LeakyDynamics>(*entity) {
                 if dynamics.time_since_fire == 0.0 {
                     spike_records.push(SpikeRecord {
                         entity_index: idx,

@@ -1,7 +1,7 @@
+use super::convert::spawn_legacy_simulation;
 use super::*;
 use crate::components::*;
-use super::spawn::spawn_legacy_simulation;
-use super::step::{lif_step, run_headless, SpikeRecord};
+use crate::simulation::{lif_step, run_headless, SpikeRecord};
 
 const EMPTY_NFY: &str = r#"{"nodes": [], "edges": []}"#;
 
@@ -145,7 +145,7 @@ fn test_adaptation_decreasing_rate() {
     let mut all_spikes = Vec::new();
     let mut time = 0.0;
     let neuron_entities: Vec<hecs::Entity> = world
-        .query::<&LIFNeuron>()
+        .query::<&LeakyNeuron>()
         .iter()
         .map(|(e, _)| e)
         .collect();
@@ -153,7 +153,7 @@ fn test_adaptation_decreasing_rate() {
     for _ in 0..total_steps {
         lif_step(&mut world, dt, time);
         for (idx, entity) in neuron_entities.iter().enumerate() {
-            if let Ok(dynamics) = world.get::<&LIFDynamics>(*entity) {
+            if let Ok(dynamics) = world.get::<&LeakyDynamics>(*entity) {
                 if dynamics.time_since_fire == 0.0 {
                     all_spikes.push(SpikeRecord {
                         entity_index: idx,
@@ -260,4 +260,177 @@ fn test_leaky_simulation() {
 
     // Just verify parsing and stepping doesn't crash
     assert!(sim.nodes.len() > 0);
+}
+
+#[test]
+fn test_current_clamp_drives_neuron() {
+    use crate::{Connection, NeuronType, Position};
+    use glam::Vec3;
+
+    let mut world = hecs::World::new();
+
+    let neuron = world.spawn((
+        LeakyNeuron::default(),
+        LeakyDynamics::default(),
+        LeakCurrent::default(),
+        NeuronType::Excitatory,
+        Position {
+            position: Vec3::ZERO,
+        },
+    ));
+
+    let clamp = world.spawn((
+        CurrentClamp {
+            current_output: 5e-9,
+        },
+        Position {
+            position: Vec3::new(0.0, 0.0, -1.0),
+        },
+    ));
+
+    world.spawn((
+        Connection {
+            from: clamp,
+            to: neuron,
+            strength: 1.0,
+            directional: true,
+        },
+        ImmediateFireSynapse::default(),
+    ));
+
+    let dt = 0.0001;
+    let spikes = run_headless(&mut world, 10_000, dt);
+
+    let neuron_spikes: Vec<_> = spikes.iter().filter(|s| s.entity_index == 0).collect();
+    assert!(
+        neuron_spikes.len() > 10,
+        "Current clamp should drive neuron to fire repeatedly, got {} spikes",
+        neuron_spikes.len()
+    );
+}
+
+#[test]
+fn test_inhibitory_suppresses_firing() {
+    use crate::{Connection, NeuronType, Position};
+    use glam::Vec3;
+
+    let mut world = hecs::World::new();
+
+    let target = world.spawn((
+        LeakyNeuron::default(),
+        LeakyDynamics::default(),
+        LeakCurrent::default(),
+        NeuronType::Excitatory,
+        Position {
+            position: Vec3::ZERO,
+        },
+    ));
+
+    let clamp = world.spawn((
+        CurrentClamp {
+            current_output: 5e-9,
+        },
+        Position {
+            position: Vec3::new(0.0, 0.0, -2.0),
+        },
+    ));
+
+    world.spawn((
+        Connection {
+            from: clamp,
+            to: target,
+            strength: 1.0,
+            directional: true,
+        },
+        ImmediateFireSynapse::default(),
+    ));
+
+    let inhibitor = world.spawn((
+        LeakyNeuron::default(),
+        LeakyDynamics::default(),
+        LeakCurrent::default(),
+        NeuronType::Inhibitory,
+        Inhibitory,
+        Position {
+            position: Vec3::new(0.0, 0.0, 1.0),
+        },
+    ));
+
+    let inhib_clamp = world.spawn((
+        CurrentClamp {
+            current_output: 10e-9,
+        },
+        Position {
+            position: Vec3::new(0.0, 0.0, 2.0),
+        },
+    ));
+
+    world.spawn((
+        Connection {
+            from: inhib_clamp,
+            to: inhibitor,
+            strength: 1.0,
+            directional: true,
+        },
+        ImmediateFireSynapse::default(),
+    ));
+
+    world.spawn((
+        Connection {
+            from: inhibitor,
+            to: target,
+            strength: 1.0,
+            directional: true,
+        },
+        CurrentSynapse {
+            maximum_current: 20e-9,
+            ..CurrentSynapse::default()
+        },
+    ));
+
+    let dt = 0.0001;
+    let spikes = run_headless(&mut world, 10_000, dt);
+
+    // First run without inhibition for comparison
+    let mut world_no_inhib = hecs::World::new();
+    let neuron_alone = world_no_inhib.spawn((
+        LeakyNeuron::default(),
+        LeakyDynamics::default(),
+        LeakCurrent::default(),
+        NeuronType::Excitatory,
+        Position {
+            position: Vec3::ZERO,
+        },
+    ));
+    let clamp_alone = world_no_inhib.spawn((
+        CurrentClamp {
+            current_output: 5e-9,
+        },
+        Position {
+            position: Vec3::new(0.0, 0.0, -2.0),
+        },
+    ));
+    world_no_inhib.spawn((
+        Connection {
+            from: clamp_alone,
+            to: neuron_alone,
+            strength: 1.0,
+            directional: true,
+        },
+        ImmediateFireSynapse::default(),
+    ));
+    let spikes_no_inhib = run_headless(&mut world_no_inhib, 10_000, dt);
+
+    let target_spikes: Vec<_> = spikes.iter().filter(|s| s.entity_index == 0).collect();
+    let alone_spikes: Vec<_> = spikes_no_inhib
+        .iter()
+        .filter(|s| s.entity_index == 0)
+        .collect();
+
+    assert!(
+        target_spikes.len() < alone_spikes.len(),
+        "Inhibition should reduce firing: {} with inhibition vs {} without",
+        target_spikes.len(),
+        alone_spikes.len()
+    );
 }

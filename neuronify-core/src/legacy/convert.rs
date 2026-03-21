@@ -2,8 +2,8 @@ use glam::Vec3;
 use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement, VoltageSeries};
-use crate::{Connection, Deletable, NeuronType, Position, Voltmeter};
+use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
+use crate::{Connection, Deletable, NeuronType, Position};
 
 use super::{LegacyEdge, LegacyNode, LegacySimulation};
 
@@ -16,7 +16,7 @@ fn convert_position(x: f64, y: f64) -> Vec3 {
     let scale = 50.0 / 2.0;
     Vec3::new(
         -(y as f32 - 540.0) / scale, // old y-down → -x (screen up)
-        0.0,                          // ground plane
+        0.0,                         // ground plane
         (x as f32 - 960.0) / scale,  // old x-right → z (screen right)
     )
 }
@@ -63,7 +63,9 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
                 Deletable {},
             ))
         }
-        "sensors/TouchSensor.qml" => world.spawn((pos, TouchSensor, GeneratorDynamics::default(), Deletable {})),
+        "sensors/TouchSensor.qml" => {
+            world.spawn((pos, TouchSensor, GeneratorDynamics::default(), Deletable {}))
+        }
         "meters/Voltmeter.qml" => world.spawn((
             pos,
             Voltmeter {},
@@ -92,7 +94,7 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
 fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> Entity {
     let e = &node.engine;
 
-    let neuron = LIFNeuron {
+    let neuron = LeakyNeuron {
         capacitance: e.capacitance.unwrap_or(2e-10),
         resting_potential: e.resting_potential.unwrap_or(-0.07),
         threshold: e.threshold.unwrap_or(-0.055),
@@ -102,7 +104,7 @@ fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> En
         maximum_voltage: e.maximum_voltage.unwrap_or(0.06),
     };
 
-    let dynamics = LIFDynamics {
+    let dynamics = LeakyDynamics {
         voltage: e.voltage.unwrap_or(neuron.resting_potential),
         received_currents: 0.0,
         fired: false,
@@ -205,7 +207,7 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             // v2 default edge type - could be a synapse or a meter edge.
             // If the target isn't a neuron (e.g. SpikeDetector, annotation),
             // skip spawning this connection.
-            if world.get::<&LIFDynamics>(to).is_err() {
+            if world.get::<&LeakyDynamics>(to).is_err() {
                 return;
             }
             let e = &edge.engine;

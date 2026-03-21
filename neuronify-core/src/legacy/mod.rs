@@ -1,7 +1,4 @@
-pub mod components;
-pub mod spawn;
-pub mod step;
-
+pub mod convert;
 #[cfg(test)]
 mod tests;
 
@@ -68,7 +65,7 @@ pub fn parse_legacy_nfy(json_str: &str) -> Result<LegacySimulation, String> {
     let root: Value = serde_json::from_str(json_str).map_err(|e| format!("JSON parse error: {e}"))?;
 
     let file_format_version = root.get("fileFormatVersion").and_then(|v| v.as_u64()).map(|v| v as u32);
-    let is_v2 = file_format_version.map_or(false, |v| v <= 2);
+    let is_v2 = file_format_version.is_some_and(|v| v <= 2);
 
     let nodes = parse_nodes(&root, is_v2)?;
     let edges = parse_edges(&root, is_v2)?;
