@@ -119,7 +119,7 @@ impl Default for CurrentSynapse {
     fn default() -> Self {
         Self {
             tau: 0.002,
-            maximum_current: 3e-9,
+            maximum_current: 6e-9,
             delay: 0.005,
             alpha_function: false,
             exponential: 0.0,

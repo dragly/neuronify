@@ -114,7 +114,10 @@ pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &std::collect
         *old_compartment = new_compartment;
     }
 
-    // Bridge: compartment → LIF neuron current injection
+    // Bridge: compartment → LIF neuron
+    // Inject current proportional to compartment voltage excess above threshold.
+    // Scaled to be in the same range as synaptic currents (~3-5 nA) so that
+    // inhibitory synapses can effectively counteract it.
     let compartment_to_neuron: Vec<(hecs::Entity, f64)> = world
         .query::<&Connection>()
         .with::<&CompartmentCurrent>()
@@ -125,7 +128,7 @@ pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &std::collect
             if excess == 0.0 {
                 return None;
             }
-            let current = excess / 200.0 * 50e-9;
+            let current = excess / 200.0 * 10e-9;
             world.get::<&components::LIFDynamics>(conn.to).ok()?;
             let sign = match world.get::<&NeuronType>(conn.from) {
                 Ok(nt) => match *nt {
