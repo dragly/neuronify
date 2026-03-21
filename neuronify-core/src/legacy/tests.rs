@@ -5,17 +5,17 @@ use super::step::{lif_step, run_headless, SpikeRecord};
 
 const EMPTY_NFY: &str = r#"{"nodes": [], "edges": []}"#;
 
-const TUTORIAL_1_INTRO_NFY: &str = include_str!("../../test-data/tutorial_1_intro.nfy");
+const TUTORIAL_1_INTRO_NFY: &str = include_str!("../../examples/tutorial_1_intro.nfy");
 
-const TWO_NEURON_OSCILLATOR_NFY: &str = include_str!("../../test-data/two_neuron_oscillator.nfy");
+const TWO_NEURON_OSCILLATOR_NFY: &str = include_str!("../../examples/two_neuron_oscillator.nfy");
 
-const LEAKY_NFY: &str = include_str!("../../test-data/leaky.nfy");
+const LEAKY_NFY: &str = include_str!("../../examples/leaky.nfy");
 
-const ADAPTATION_NFY: &str = include_str!("../../test-data/adaptation.nfy");
+const ADAPTATION_NFY: &str = include_str!("../../examples/adaptation.nfy");
 
-const INHIBITORY_NFY: &str = include_str!("../../test-data/inhibitory.nfy");
+const INHIBITORY_NFY: &str = include_str!("../../examples/inhibitory.nfy");
 
-const TUTORIAL_2_CIRCUITS_NFY: &str = include_str!("../../test-data/tutorial_2_circuits.nfy");
+const TUTORIAL_2_CIRCUITS_NFY: &str = include_str!("../../examples/tutorial_2_circuits.nfy");
 
 #[test]
 fn test_parse_empty() {

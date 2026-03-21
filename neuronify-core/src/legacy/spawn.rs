@@ -13,7 +13,7 @@ use super::{LegacyEdge, LegacyNode, LegacySimulation};
 ///   screen vertical   = x-axis (increasing x goes "up" on screen)
 /// Old pixel coords: x = horizontal (right), y = vertical (down).
 fn convert_position(x: f64, y: f64) -> Vec3 {
-    let scale = 50.0;
+    let scale = 50.0 / 2.0;
     Vec3::new(
         -(y as f32 - 540.0) / scale, // old y-down → -x (screen up)
         0.0,                          // ground plane
@@ -194,7 +194,12 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
                 .unwrap();
         }
         "Edge.qml" => {
-            // v2 default edge type - acts as a CurrentSynapse with defaults
+            // v2 default edge type - could be a synapse or a meter edge.
+            // If the target isn't a neuron (e.g. SpikeDetector, annotation),
+            // skip spawning this connection.
+            if world.get::<&LIFDynamics>(to).is_err() {
+                return;
+            }
             let e = &edge.engine;
             let synapse = CurrentSynapse {
                 tau: e.tau.unwrap_or(0.002),

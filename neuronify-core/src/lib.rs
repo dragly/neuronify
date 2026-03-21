@@ -1093,6 +1093,17 @@ impl Neuronify {
             .unwrap();
     }
 
+    pub fn load_legacy_string(&mut self, contents: &str) {
+        match legacy::parse_legacy_nfy(contents) {
+            Ok(sim) => {
+                self.world.clear();
+                self.time = 0.0;
+                legacy::spawn::spawn_legacy_simulation(&mut self.world, &sim);
+            }
+            Err(e) => log::error!("Failed to parse legacy file: {}", e),
+        }
+    }
+
     pub fn loadfile(&mut self, path: PathBuf) {
         let mut context = LoadContext::new();
         let reader = std::fs::File::open(path).unwrap();
@@ -1745,6 +1756,102 @@ impl visula::Simulation for Neuronify {
                                 self.loadfile(path);
                             }
                         }
+                    });
+                    ui.menu_button("Examples", |ui| {
+                        ui.menu_button("Tutorial", |ui| {
+                            if ui.button("1 - Intro").clicked() {
+                                self.load_legacy_string(include_str!("../examples/tutorial_1_intro.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("2 - Circuits").clicked() {
+                                self.load_legacy_string(include_str!("../examples/tutorial_2_circuits.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("3 - Creation").clicked() {
+                                self.load_legacy_string(include_str!("../examples/tutorial_3_creation.nfy"));
+                                ui.close_menu();
+                            }
+                        });
+                        ui.menu_button("Neurons", |ui| {
+                            if ui.button("Leaky").clicked() {
+                                self.load_legacy_string(include_str!("../examples/leaky.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Inhibitory").clicked() {
+                                self.load_legacy_string(include_str!("../examples/inhibitory.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Adaptation").clicked() {
+                                self.load_legacy_string(include_str!("../examples/adaptation.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Burst").clicked() {
+                                self.load_legacy_string(include_str!("../examples/burst.nfy"));
+                                ui.close_menu();
+                            }
+                        });
+                        ui.menu_button("Circuits", |ui| {
+                            if ui.button("Input Summation").clicked() {
+                                self.load_legacy_string(include_str!("../examples/input_summation.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Prolonged Activity").clicked() {
+                                self.load_legacy_string(include_str!("../examples/prolonged_activity.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Disinhibition").clicked() {
+                                self.load_legacy_string(include_str!("../examples/disinhibition.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Recurrent Inhibition").clicked() {
+                                self.load_legacy_string(include_str!("../examples/recurrent_inhibition.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Reciprocal Inhibition").clicked() {
+                                self.load_legacy_string(include_str!("../examples/reciprocal_inhibition.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Lateral Inhibition").clicked() {
+                                self.load_legacy_string(include_str!("../examples/lateral_inhibition.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Lateral Inhibition 1").clicked() {
+                                self.load_legacy_string(include_str!("../examples/lateral_inhibition_1.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Lateral Inhibition 2").clicked() {
+                                self.load_legacy_string(include_str!("../examples/lateral_inhibition_2.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Two Neuron Oscillator").clicked() {
+                                self.load_legacy_string(include_str!("../examples/two_neuron_oscillator.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Rhythm Transformation").clicked() {
+                                self.load_legacy_string(include_str!("../examples/rythm_transformation.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Types of Inhibition").clicked() {
+                                self.load_legacy_string(include_str!("../examples/types_of_inhibition.nfy"));
+                                ui.close_menu();
+                            }
+                        });
+                        ui.menu_button("Textbook", |ui| {
+                            if ui.button("IF Response").clicked() {
+                                self.load_legacy_string(include_str!("../examples/if_response.nfy"));
+                                ui.close_menu();
+                            }
+                            if ui.button("Refractory Period").clicked() {
+                                self.load_legacy_string(include_str!("../examples/refractory_period.nfy"));
+                                ui.close_menu();
+                            }
+                        });
+                        ui.menu_button("Items", |ui| {
+                            if ui.button("Generators").clicked() {
+                                self.load_legacy_string(include_str!("../examples/generators.nfy"));
+                                ui.close_menu();
+                            }
+                        });
                     });
                 });
             });
