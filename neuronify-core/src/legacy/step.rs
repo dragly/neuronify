@@ -2,7 +2,7 @@ use hecs::World;
 use rand::Rng;
 
 use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries};
-use crate::{Connection, Position, Voltmeter};
+use crate::{Compartment, Connection, Position, Voltmeter};
 
 use crate::components::*;
 
@@ -321,15 +321,22 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         .query::<(&Voltmeter, &Connection)>()
         .iter()
         .filter_map(|(entity, (_, conn))| {
-            let dynamics = world.get::<&LIFDynamics>(conn.from).ok()?;
-            Some((entity, dynamics.voltage, dynamics.time_since_fire == 0.0))
+            // Try LIF neuron first
+            if let Ok(dynamics) = world.get::<&LIFDynamics>(conn.from) {
+                return Some((entity, dynamics.voltage * 1000.0, dynamics.time_since_fire == 0.0));
+            }
+            // Try compartment
+            if let Ok(compartment) = world.get::<&Compartment>(conn.from) {
+                return Some((entity, compartment.voltage, false));
+            }
+            None
         })
         .collect();
 
     for (entity, voltage, fired) in voltmeter_updates {
         if let Ok(mut series) = world.get::<&mut VoltageSeries>(entity) {
             series.measurements.push(VoltageMeasurement {
-                voltage: voltage * 1000.0, // Convert V to mV for display
+                voltage,
                 time,
             });
             if fired {

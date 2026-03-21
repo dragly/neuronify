@@ -52,6 +52,243 @@ pub mod legacy;
 pub mod measurement;
 pub mod serialization;
 
+// FHN parameters (shared between simulation and tests)
+pub const FHN_TAU: f64 = 60.0;
+pub const FHN_A: f64 = 0.7;
+pub const FHN_B: f64 = 0.8;
+pub const FHN_EPS: f64 = 0.08;
+pub const FHN_SCALE: f64 = 50.0;
+pub const FHN_OFFSET: f64 = 50.0;
+pub const FHN_CDT: f64 = 0.01;
+
+/// Run one FHN compartment dynamics step + inter-compartment coupling.
+/// Also handles neuron→compartment fire injection and compartment→neuron current bridge.
+pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &std::collections::HashSet<hecs::Entity>) {
+    // FHN dynamics for each compartment
+    for (_, compartment) in world.query_mut::<&mut Compartment>() {
+        let v = (compartment.voltage - FHN_OFFSET) / FHN_SCALE;
+        let w = compartment.m;
+        let dv = FHN_TAU * (v - v * v * v / 3.0 - w);
+        let dw = FHN_TAU * FHN_EPS * (v + FHN_A - FHN_B * w);
+        let new_v = v + dv * cdt;
+        let new_w = w + dw * cdt;
+        compartment.voltage = new_v * FHN_SCALE + FHN_OFFSET;
+        compartment.m = new_w;
+    }
+
+    // Inter-compartment coupling + neuron→compartment fire
+    let mut new_compartments: std::collections::HashMap<hecs::Entity, Compartment> = world
+        .query::<&Compartment>()
+        .iter()
+        .map(|(entity, &compartment)| (entity, compartment))
+        .collect();
+
+    for (_, (connection, current)) in
+        world.query::<(&Connection, &CompartmentCurrent)>().iter()
+    {
+        if let Ok(_compartment_to) = world.get::<&Compartment>(connection.to) {
+            if recently_fired.contains(&connection.from) {
+                let new_compartment_to = new_compartments
+                    .get_mut(&connection.to)
+                    .expect("Could not get new compartment");
+                new_compartment_to.voltage = 1.0 * FHN_SCALE + FHN_OFFSET;
+            } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from) {
+                let voltage_diff = compartment_from.voltage - _compartment_to.voltage;
+                let delta_voltage = voltage_diff / current.capacitance;
+                let new_compartment_to = new_compartments
+                    .get_mut(&connection.to)
+                    .expect("Could not get new compartment");
+                new_compartment_to.voltage += delta_voltage * cdt;
+                let new_compartment_from = new_compartments
+                    .get_mut(&connection.from)
+                    .expect("Could not get new compartment");
+                new_compartment_from.voltage -= delta_voltage * cdt;
+            }
+        }
+    }
+
+    for (compartment_id, new_compartment) in new_compartments {
+        let mut old_compartment = world
+            .get::<&mut Compartment>(compartment_id)
+            .expect("Could not find compartment");
+        *old_compartment = new_compartment;
+    }
+
+    // Bridge: compartment → LIF neuron current injection
+    let compartment_to_neuron: Vec<(hecs::Entity, f64)> = world
+        .query::<&Connection>()
+        .with::<&CompartmentCurrent>()
+        .iter()
+        .filter_map(|(_, conn)| {
+            let compartment = world.get::<&Compartment>(conn.from).ok()?;
+            let excess = (compartment.voltage - 50.0).clamp(0.0, 200.0);
+            if excess == 0.0 {
+                return None;
+            }
+            let current = excess / 200.0 * 50e-9;
+            world.get::<&components::LIFDynamics>(conn.to).ok()?;
+            let sign = match world.get::<&NeuronType>(conn.from) {
+                Ok(nt) => match *nt {
+                    NeuronType::Excitatory => 1.0,
+                    NeuronType::Inhibitory => -1.0,
+                },
+                Err(_) => 1.0,
+            };
+            Some((conn.to, sign * current))
+        })
+        .collect();
+
+    for (target, current) in compartment_to_neuron {
+        if let Ok(mut dynamics) = world.get::<&mut components::LIFDynamics>(target) {
+            dynamics.received_currents += current;
+        }
+    }
+}
+
+#[cfg(test)]
+mod axon_tests {
+    use super::*;
+    use crate::components::*;
+    use crate::legacy::step::lif_step;
+
+    /// Test that an action potential propagates along a compartment chain
+    /// from a firing neuron and triggers a target neuron to fire.
+    ///
+    /// Setup: neuron_a -> [comp0 -> comp1 -> comp2 -> comp3 -> comp4] -> neuron_b
+    #[test]
+    fn test_axon_action_potential_triggers_target_neuron() {
+        let mut world = hecs::World::new();
+
+        // Source neuron (fires via current clamp)
+        let neuron_a = world.spawn((
+            LIFNeuron::default(),
+            LIFDynamics::default(),
+            LeakCurrent::default(),
+            Position { position: Vec3::new(0.0, 0.0, 0.0) },
+            NeuronType::Excitatory,
+        ));
+
+        // Current clamp to make neuron_a fire
+        let clamp = world.spawn((
+            CurrentClamp { current_output: 5e-9 },
+            Position { position: Vec3::new(0.0, 0.0, -1.0) },
+        ));
+        world.spawn((
+            Connection {
+                from: clamp,
+                to: neuron_a,
+                strength: 1.0,
+                directional: true,
+            },
+            ImmediateFireSynapse::default(),
+        ));
+
+        // Target neuron (should be triggered by axon AP)
+        let neuron_b = world.spawn((
+            LIFNeuron::default(),
+            LIFDynamics::default(),
+            LeakCurrent::default(),
+            Position { position: Vec3::new(0.0, 0.0, 10.0) },
+            NeuronType::Excitatory,
+        ));
+
+        // Chain of 5 compartments
+        let num_compartments = 5;
+        let mut compartment_entities = Vec::new();
+        for i in 0..num_compartments {
+            let comp = world.spawn((
+                Compartment {
+                    voltage: -10.0,
+                    m: -0.625,
+                    h: 0.0,
+                    n: 0.0,
+                    influence: 0.0,
+                    capacitance: 1.0,
+                    injected_current: 0.0,
+                    fire_impulse: 0.0,
+                },
+                Position { position: Vec3::new(0.0, 0.0, 2.0 * (i + 1) as f32) },
+                NeuronType::Excitatory,
+            ));
+            compartment_entities.push(comp);
+        }
+
+        // Connect neuron_a -> comp[0]
+        world.spawn((
+            Connection {
+                from: neuron_a,
+                to: compartment_entities[0],
+                strength: 1.0,
+                directional: false,
+            },
+            CompartmentCurrent { capacitance: 1.0 / 24.0 },
+        ));
+
+        // Connect comp[i] -> comp[i+1]
+        for i in 0..num_compartments - 1 {
+            world.spawn((
+                Connection {
+                    from: compartment_entities[i],
+                    to: compartment_entities[i + 1],
+                    strength: 1.0,
+                    directional: false,
+                },
+                CompartmentCurrent { capacitance: 1.0 / 24.0 },
+            ));
+        }
+
+        // Connect comp[last] -> neuron_b
+        world.spawn((
+            Connection {
+                from: *compartment_entities.last().unwrap(),
+                to: neuron_b,
+                strength: 1.0,
+                directional: false,
+            },
+            CompartmentCurrent { capacitance: 1.0 / 24.0 },
+        ));
+
+        let lif_dt = 0.0001;
+        let cdt = FHN_CDT;
+        let lif_steps_per_frame = 10; // 10 LIF steps per FHN step
+        let total_fhn_steps = 2000;   // enough time for AP to propagate
+
+        let mut time = 0.0;
+        let mut neuron_b_fired = false;
+
+        for _ in 0..total_fhn_steps {
+            // LIF step (multiple sub-steps)
+            for _ in 0..lif_steps_per_frame {
+                lif_step(&mut world, lif_dt, time);
+                time += lif_dt;
+            }
+
+            // Determine which LIF neurons fired
+            let recently_fired: std::collections::HashSet<hecs::Entity> = world
+                .query::<&LIFDynamics>()
+                .iter()
+                .filter(|(_, d)| d.time_since_fire < lif_steps_per_frame as f64 * lif_dt)
+                .map(|(e, _)| e)
+                .collect();
+
+            // FHN step
+            fhn_step(&mut world, cdt, &recently_fired);
+
+            // Check if neuron_b fired
+            if let Ok(dynamics) = world.get::<&LIFDynamics>(neuron_b) {
+                if dynamics.time_since_fire < lif_steps_per_frame as f64 * lif_dt {
+                    neuron_b_fired = true;
+                }
+            }
+        }
+
+        assert!(
+            neuron_b_fired,
+            "Target neuron should fire after action potential propagates through axon compartment chain"
+        );
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tool {
     Select,
@@ -345,7 +582,7 @@ impl Neuronify {
             &LineDelegate {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
-                width: 0.3.into(),
+                width: connection.strength.clone() * 0.3,
                 start_color: connection.start_color.clone(),
                 end_color: connection.end_color.clone(),
             },
@@ -736,7 +973,7 @@ impl Neuronify {
                 if previous_too_near {
                     return;
                 }
-                // Find nearest LIF neuron
+                // Find nearest LIF neuron or compartment
                 let result: Option<(Entity, Vec3)> = world
                     .query::<&Position>()
                     .with::<&components::LIFNeuron>()
@@ -749,7 +986,22 @@ impl Neuronify {
                             None
                         }
                     })
-                    .next();
+                    .next()
+                    .or_else(|| {
+                        world
+                            .query::<&Position>()
+                            .with::<&Compartment>()
+                            .iter()
+                            .filter_map(|(entity, position)| {
+                                let distance = position.position.distance(mouse_position);
+                                if distance < NODE_RADIUS {
+                                    Some((entity, position.position))
+                                } else {
+                                    None
+                                }
+                            })
+                            .next()
+                    });
                 let Some((target, position)) = result else {
                     return;
                 };
@@ -1044,7 +1296,9 @@ impl Neuronify {
                                 world.spawn((
                                     new_connection,
                                     Deletable {},
-                                    CompartmentCurrent { capacitance: 1.0 / 24.0 },
+                                    CompartmentCurrent {
+                                        capacitance: 1.0 / 24.0,
+                                    },
                                 ));
                             }
                             if !self.keyboard.shift_down {
@@ -1095,7 +1349,9 @@ impl Neuronify {
                                 world.spawn((
                                     new_connection,
                                     Deletable {},
-                                    CompartmentCurrent { capacitance: 1.0 / 24.0 },
+                                    CompartmentCurrent {
+                                        capacitance: 1.0 / 24.0,
+                                    },
                                 ));
                                 self.previous_creation = Some(PreviousCreation {
                                     entity: compartment,
@@ -1252,62 +1508,8 @@ impl visula::Simulation for Neuronify {
             .collect();
 
         // FitzHugh-Nagumo compartment simulation
-        // Uses voltage (scaled) and m (as recovery variable w).
-        // FHN v ∈ [-2, 2] is stored as voltage = v * 50 + 50 for display.
-        let fhn_tau = 60.0;
-        let fhn_a = 0.7;
-        let fhn_b = 0.8;
-        let fhn_eps = 0.08;
-        let fhn_scale = 50.0;
-        let fhn_offset = 50.0;
         for _ in 0..self.iterations {
-            for (_, compartment) in world.query_mut::<&mut Compartment>() {
-                // Convert from display voltage to FHN v
-                let v = (compartment.voltage - fhn_offset) / fhn_scale;
-                let w = compartment.m; // m stores the recovery variable
-
-                // FitzHugh-Nagumo equations
-                let dv = fhn_tau * (v - v * v * v / 3.0 - w);
-                let dw = fhn_tau * fhn_eps * (v + fhn_a - fhn_b * w);
-
-                let new_v = v + dv * cdt;
-                let new_w = w + dw * cdt;
-
-                compartment.voltage = new_v * fhn_scale + fhn_offset;
-                compartment.m = new_w;
-            }
-
-            let mut new_compartments: HashMap<Entity, Compartment> = world
-                .query::<&Compartment>()
-                .iter()
-                .map(|(entity, &compartment)| (entity, compartment))
-                .collect();
-            for (_, (connection, current)) in
-                world.query::<(&Connection, &CompartmentCurrent)>().iter()
-            {
-                if let Ok(compartment_to) = world.get::<&Compartment>(connection.to) {
-                    if recently_fired.contains(&connection.from) {
-                        // LIF neuron fired → kick voltage above FHN threshold
-                        // FHN v=1.0 → display voltage = 1.0 * 50 + 50 = 100
-                        let new_compartment_to = new_compartments
-                            .get_mut(&connection.to)
-                            .expect("Could not get new compartment");
-                        new_compartment_to.voltage = 1.0 * fhn_scale + fhn_offset;
-                    } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from)
-                    {
-                        let voltage_diff = compartment_from.voltage - compartment_to.voltage;
-                        let delta_voltage = voltage_diff / current.capacitance;
-                        let new_compartment_to = new_compartments
-                            .get_mut(&connection.to)
-                            .expect("Could not get new compartment");
-                        new_compartment_to.voltage += delta_voltage * cdt;
-                        let new_compartment_from = new_compartments
-                            .get_mut(&connection.from)
-                            .expect("Could not get new compartment");
-                        new_compartment_from.voltage -= delta_voltage * cdt;
-                    }
-                }
-            }
+            fhn_step(world, cdt, &recently_fired);
             let positions: Vec<(Entity, Position)> = world
                 .query::<&Position>()
                 .iter()
@@ -1373,13 +1575,6 @@ impl visula::Simulation for Neuronify {
                 }
             }
 
-            for (compartment_id, new_compartment) in new_compartments {
-                let mut old_compartment = world
-                    .get::<&mut Compartment>(compartment_id)
-                    .expect("Could not find compartment");
-                *old_compartment = new_compartment;
-            }
-
             for (_, connection) in world
                 .query::<&Connection>()
                 .with::<&CompartmentCurrent>()
@@ -1416,40 +1611,6 @@ impl visula::Simulation for Neuronify {
             }
         }
 
-        // Bridge: Compartment → LIF neuron current injection
-        // When a compartment's voltage exceeds the action potential threshold,
-        // inject current into connected LIF neurons via StaticConnection edges.
-        {
-            let compartment_to_neuron: Vec<(Entity, f64)> = world
-                .query::<&Connection>()
-                .with::<&components::CurrentSynapse>()
-                .iter()
-                .filter_map(|(_, conn)| {
-                    let compartment = world.get::<&Compartment>(conn.from).ok()?;
-                    // Only inject when voltage is above action potential threshold
-                    let current = (compartment.voltage - 50.0).clamp(0.0, 200.0);
-                    if current == 0.0 {
-                        return None;
-                    }
-                    // Only target LIF neurons
-                    world.get::<&components::LIFDynamics>(conn.to).ok()?;
-                    let sign = match world.get::<&NeuronType>(conn.from) {
-                        Ok(nt) => match *nt {
-                            NeuronType::Excitatory => 1.0,
-                            NeuronType::Inhibitory => -1.0,
-                        },
-                        Err(_) => 1.0,
-                    };
-                    Some((conn.to, sign * current))
-                })
-                .collect();
-
-            for (target, current) in compartment_to_neuron {
-                if let Ok(mut dynamics) = world.get::<&mut components::LIFDynamics>(target) {
-                    dynamics.received_currents += current;
-                }
-            }
-        }
 
         // LIF neuron spheres
         let lif_neuron_spheres: Vec<Sphere> = world
@@ -1501,7 +1662,7 @@ impl visula::Simulation for Neuronify {
             .query::<(&Compartment, &Position, &NeuronType)>()
             .iter()
             .map(|(_entity, (compartment, position, neuron_type))| {
-                let value = ((compartment.voltage + 10.0) / 120.0) as f32;
+                let value = ((compartment.voltage + 50.0) / 200.0) as f32;
                 Sphere {
                     position: position.position,
                     color: neurocolor(neuron_type, value),
@@ -1554,10 +1715,14 @@ impl visula::Simulation for Neuronify {
         spheres.extend(trigger_spheres.iter());
 
         // Collect connection info to detect reciprocal pairs
+        // Voltmeter connections: keep the line but suppress the end sphere (directional=false)
         let connection_info: Vec<(Entity, Entity, Entity, f32, bool)> = world
             .query::<&Connection>()
             .iter()
-            .map(|(e, c)| (e, c.from, c.to, c.strength as f32, c.directional))
+            .map(|(e, c)| {
+                let is_voltmeter = world.get::<&Voltmeter>(e).is_ok();
+                (e, c.from, c.to, c.strength as f32, if is_voltmeter { false } else { c.directional })
+            })
             .collect();
 
         // Build a set of (from, to) pairs to detect reciprocals
@@ -1579,7 +1744,7 @@ impl visula::Simulation for Neuronify {
                 .position;
             let value = |target: Entity| -> f32 {
                 if let Ok(compartment) = world.get::<&Compartment>(target) {
-                    ((compartment.voltage + 10.0) / 120.0) as f32
+                    ((compartment.voltage + 50.0) / 200.0) as f32
                 } else if let Ok(dynamics) = world.get::<&components::LIFDynamics>(target) {
                     let neuron = world.get::<&components::LIFNeuron>(target).ok();
                     if let Some(neuron) = neuron {
@@ -1669,7 +1834,7 @@ impl visula::Simulation for Neuronify {
         // Voltmeter traces as 3D lines
         for (voltmeter_id, _) in world.query::<&Voltmeter>().iter() {
             // Find the VoltageSeries + Connection on this voltmeter entity
-            let (series, spike_times, voltmeter_pos, trace_width, trace_height) = {
+            let (series, spike_times, voltmeter_pos, trace_width, trace_height, is_compartment) = {
                 let Ok(series) = world.get::<&VoltageSeries>(voltmeter_id) else {
                     continue;
                 };
@@ -1679,6 +1844,12 @@ impl visula::Simulation for Neuronify {
                 let size = world.get::<&components::VoltmeterSize>(voltmeter_id).ok();
                 let tw = size.as_ref().map(|s| s.width).unwrap_or(8.0);
                 let th = size.as_ref().map(|s| s.height).unwrap_or(4.0);
+                // Check if connected to a compartment
+                let is_comp = world
+                    .get::<&Connection>(voltmeter_id)
+                    .ok()
+                    .map(|conn| world.get::<&Compartment>(conn.from).is_ok())
+                    .unwrap_or(false);
                 // Clone the data we need so we can release the borrows
                 let measurements: Vec<_> = series
                     .measurements
@@ -1687,7 +1858,7 @@ impl visula::Simulation for Neuronify {
                     .collect();
                 let spikes = series.spike_times.clone();
                 let vpos = pos.position;
-                (measurements, spikes, vpos, tw, th)
+                (measurements, spikes, vpos, tw, th, is_comp)
             };
 
             if series.len() < 2 {
@@ -1695,9 +1866,12 @@ impl visula::Simulation for Neuronify {
             }
 
             // Trace dimensions in world units
-            let time_window = 1.0_f64 / 3.0; // seconds of data to show
-            let v_min = -100.0_f64; // mV
-            let v_max = 50.0_f64; // mV
+            let time_window = 1.0_f64 / 9.0; // seconds of data to show
+            let (v_min, v_max) = if is_compartment {
+                (-80.0_f64, 160.0_f64) // FHN display voltage range
+            } else {
+                (-100.0_f64, 50.0_f64) // LIF mV range
+            };
 
             let latest_time = series.last().map(|(t, _)| *t).unwrap_or(0.0);
             let start_time = latest_time - time_window;
@@ -1723,7 +1897,7 @@ impl visula::Simulation for Neuronify {
                 connections.push(ConnectionData {
                     position_a: a,
                     position_b: b,
-                    strength: 1.0,
+                    strength: 0.3,
                     directional: 0.0,
                     start_color: frame_color,
                     end_color: frame_color,
@@ -1749,7 +1923,7 @@ impl visula::Simulation for Neuronify {
                 connections.push(ConnectionData {
                     position_a: p0,
                     position_b: p1,
-                    strength: 1.0,
+                    strength: 0.3,
                     directional: 0.0,
                     start_color: green,
                     end_color: green,
@@ -1768,7 +1942,7 @@ impl visula::Simulation for Neuronify {
                 connections.push(ConnectionData {
                     position_a: top,
                     position_b: bottom,
-                    strength: 1.0,
+                    strength: 0.3,
                     directional: 0.0,
                     start_color: green,
                     end_color: green,
