@@ -172,3 +172,43 @@ impl Default for VoltmeterSize {
 pub struct Annotation {
     pub text: String,
 }
+
+/// Shared dynamics for generator-type nodes (TouchSensor, RegularSpikeGenerator, PoissonGenerator).
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct GeneratorDynamics {
+    pub fired: bool,
+    pub time_since_fire: f64,
+}
+
+impl Default for GeneratorDynamics {
+    fn default() -> Self {
+        Self {
+            fired: false,
+            time_since_fire: f64::INFINITY,
+        }
+    }
+}
+
+/// A node that fires at a constant configurable frequency.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RegularSpikeGenerator {
+    pub frequency: f64,
+}
+
+impl Default for RegularSpikeGenerator {
+    fn default() -> Self {
+        Self { frequency: 20.0 }
+    }
+}
+
+/// A node that fires randomly with a configurable average rate.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PoissonGenerator {
+    pub rate: f64,
+}
+
+impl Default for PoissonGenerator {
+    fn default() -> Self {
+        Self { rate: 20.0 }
+    }
+}

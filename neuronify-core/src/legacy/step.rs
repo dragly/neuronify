@@ -1,4 +1,5 @@
 use hecs::World;
+use rand::Rng;
 
 use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries};
 use crate::{Connection, Position, Voltmeter};
@@ -22,6 +23,41 @@ pub struct SpikeRecord {
 /// 4. Propagate currents through edges
 /// 5. Finalize (reset fired flags)
 pub fn lif_step(world: &mut World, dt: f64, time: f64) {
+    // =========================================================================
+    // PHASE 0: Step generators (RegularSpikeGenerator, PoissonGenerator)
+    // =========================================================================
+
+    for (_, (generator, dynamics)) in
+        world.query_mut::<(&RegularSpikeGenerator, &mut GeneratorDynamics)>()
+    {
+        dynamics.time_since_fire += dt;
+        if generator.frequency > 0.0 && dynamics.time_since_fire >= 1.0 / generator.frequency {
+            dynamics.fired = true;
+            dynamics.time_since_fire = 0.0;
+        }
+    }
+
+    {
+        let mut rng = rand::thread_rng();
+        let poisson_entities: Vec<hecs::Entity> = world
+            .query::<&PoissonGenerator>()
+            .iter()
+            .map(|(e, _)| e)
+            .collect();
+        for entity in poisson_entities {
+            let mut query = world
+                .query_one::<(&PoissonGenerator, &mut GeneratorDynamics)>(entity)
+                .unwrap();
+            let (gen, dynamics) = query.get().unwrap();
+            dynamics.time_since_fire += dt;
+            if gen.rate > 0.0 && rng.gen::<f64>() < gen.rate * dt {
+                dynamics.fired = true;
+                dynamics.time_since_fire = 0.0;
+            }
+            drop(query);
+        }
+    }
+
     // =========================================================================
     // PHASE 1: Step all nodes
     // =========================================================================
@@ -193,7 +229,11 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
             let source_fired = world
                 .get::<&LIFDynamics>(conn.from)
                 .map(|d| d.fired)
-                .unwrap_or(false);
+                .unwrap_or(false)
+                || world
+                    .get::<&GeneratorDynamics>(conn.from)
+                    .map(|d| d.fired)
+                    .unwrap_or(false);
             Some((edge_entity, conn.from, conn.to, source_fired))
         })
         .collect();
@@ -303,6 +343,10 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
     // =========================================================================
 
     for (_, dynamics) in world.query_mut::<&mut LIFDynamics>() {
+        dynamics.fired = false;
+    }
+
+    for (_, dynamics) in world.query_mut::<&mut GeneratorDynamics>() {
         dynamics.fired = false;
     }
 }

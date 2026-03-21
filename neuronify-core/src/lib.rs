@@ -58,6 +58,9 @@ pub enum Tool {
     ExcitatoryNeuron,
     InhibitoryNeuron,
     CurrentSource,
+    TouchSensor,
+    RegularSpikeGenerator,
+    PoissonGenerator,
     Voltmeter,
     StaticConnection,
     Axon,
@@ -91,6 +94,9 @@ impl ToolCategory {
                 (Tool::ExcitatoryNeuron, "Excitatory Neuron"),
                 (Tool::InhibitoryNeuron, "Inhibitory Neuron"),
                 (Tool::CurrentSource, "Current Source"),
+                (Tool::TouchSensor, "Touch Sensor"),
+                (Tool::RegularSpikeGenerator, "Spike Generator"),
+                (Tool::PoissonGenerator, "Poisson Generator"),
                 (Tool::Voltmeter, "Voltmeter"),
             ],
             ToolCategory::Connections => vec![
@@ -521,6 +527,48 @@ impl Neuronify {
                 ));
                 self.previous_creation = Some(PreviousCreation { entity });
             }
+            Tool::TouchSensor => {
+                if previous_too_near {
+                    return;
+                }
+                let entity = world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    components::TouchSensor,
+                    components::GeneratorDynamics::default(),
+                    Deletable {},
+                ));
+                self.previous_creation = Some(PreviousCreation { entity });
+            }
+            Tool::RegularSpikeGenerator => {
+                if previous_too_near {
+                    return;
+                }
+                let entity = world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    components::RegularSpikeGenerator::default(),
+                    components::GeneratorDynamics::default(),
+                    Deletable {},
+                ));
+                self.previous_creation = Some(PreviousCreation { entity });
+            }
+            Tool::PoissonGenerator => {
+                if previous_too_near {
+                    return;
+                }
+                let entity = world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    components::PoissonGenerator::default(),
+                    components::GeneratorDynamics::default(),
+                    Deletable {},
+                ));
+                self.previous_creation = Some(PreviousCreation { entity });
+            }
             Tool::StaticConnection => {
                 if let Some(ct) = connection_tool {
                     // Find nearest target (LIF neuron)
@@ -581,6 +629,13 @@ impl Neuronify {
                             world
                                 .query::<&Position>()
                                 .with::<&components::CurrentClamp>()
+                                .iter()
+                                .map(|(e, p)| (e, p.position)),
+                        );
+                        candidates.extend(
+                            world
+                                .query::<&Position>()
+                                .with::<&components::GeneratorDynamics>()
                                 .iter()
                                 .map(|(e, p)| (e, p.position)),
                         );
@@ -1090,6 +1145,9 @@ fn crust() -> Vec3 {
 fn yellow() -> Vec3 {
     srgb(223, 142, 29)
 }
+fn orange() -> Vec3 {
+    srgb(254, 100, 11)
+}
 fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
     let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
     match *neuron_type {
@@ -1117,6 +1175,22 @@ impl visula::Simulation for Neuronify {
             ..
         } = self;
         let cdt = 0.01;
+
+        // Touch sensor stimulation: when Stimulate tool is active near a TouchSensor, fire it
+        if let Some(stim) = stimulation_tool {
+            let touch_entities: Vec<hecs::Entity> = world
+                .query::<(&Position, &components::TouchSensor)>()
+                .iter()
+                .filter(|(_, (pos, _))| pos.position.distance(stim.position) < 2.0 * NODE_RADIUS)
+                .map(|(e, _)| e)
+                .collect();
+            for entity in touch_entities {
+                if let Ok(mut dynamics) = world.get::<&mut components::GeneratorDynamics>(entity) {
+                    dynamics.fired = true;
+                    dynamics.time_since_fire = 0.0;
+                }
+            }
+        }
 
         // LIF simulation step — uses dt=0.0001 (0.1ms) matching old C++ Neuronify
         {
@@ -1367,6 +1441,17 @@ impl visula::Simulation for Neuronify {
             })
             .collect();
 
+        let generator_spheres: Vec<Sphere> = world
+            .query::<(&Position, &components::GeneratorDynamics)>()
+            .iter()
+            .map(|(_entity, (position, _))| Sphere {
+                position: position.position,
+                color: orange(),
+                radius: NODE_RADIUS,
+                _padding: Default::default(),
+            })
+            .collect();
+
         let compartment_spheres: Vec<Sphere> = world
             .query::<(&Compartment, &Position, &NeuronType)>()
             .iter()
@@ -1381,10 +1466,47 @@ impl visula::Simulation for Neuronify {
             })
             .collect();
 
+        // Trigger spheres: small spheres traveling along connections during synaptic delay
+        let trigger_spheres: Vec<Sphere> = world
+            .query::<(&components::CurrentSynapse, &Connection)>()
+            .iter()
+            .flat_map(|(_entity, (synapse, connection))| {
+                let start = world
+                    .get::<&Position>(connection.from)
+                    .map(|p| p.position)
+                    .unwrap_or(Vec3::ZERO);
+                let end = world
+                    .get::<&Position>(connection.to)
+                    .map(|p| p.position)
+                    .unwrap_or(Vec3::ZERO);
+                let diff = end - start;
+                synapse
+                    .triggers
+                    .iter()
+                    .map(move |&trigger_time| {
+                        let fire_time = trigger_time - synapse.delay;
+                        let progress = if synapse.delay > 0.0 {
+                            ((synapse.time - fire_time) / synapse.delay).clamp(0.0, 1.0) as f32
+                        } else {
+                            1.0
+                        };
+                        Sphere {
+                            position: start + diff * progress,
+                            color: crust(),
+                            radius: NODE_RADIUS * 0.5,
+                            _padding: Default::default(),
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
         let mut spheres = Vec::new();
         spheres.extend(lif_neuron_spheres.iter());
         spheres.extend(current_clamp_spheres.iter());
+        spheres.extend(generator_spheres.iter());
         spheres.extend(compartment_spheres.iter());
+        spheres.extend(trigger_spheres.iter());
 
         let mut connections: Vec<ConnectionData> = world
             .query::<&Connection>()
@@ -1419,6 +1541,8 @@ impl visula::Simulation for Neuronify {
                 let (start_color, end_color) =
                     if world.get::<&components::CurrentClamp>(connection.from).is_ok() {
                         (yellow(), yellow())
+                    } else if world.get::<&components::GeneratorDynamics>(connection.from).is_ok() {
+                        (orange(), orange())
                     } else if let Ok(neuron_type) = world.get::<&NeuronType>(connection.from) {
                         (
                             neurocolor(&neuron_type, start_value),
@@ -1487,7 +1611,7 @@ impl visula::Simulation for Neuronify {
             }
 
             // Trace dimensions in world units
-            let time_window = 1.0_f64; // seconds of data to show
+            let time_window = 1.0_f64 / 3.0; // seconds of data to show
             let v_min = -100.0_f64; // mV
             let v_max = 50.0_f64; // mV
 
@@ -1722,6 +1846,38 @@ impl visula::Simulation for Neuronify {
                                 ui.add(
                                     egui::Slider::new(&mut clamp.current_output, 0.0..=1e-8)
                                         .suffix(" A"),
+                                );
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    // Regular Spike Generator
+                    if let Ok(mut gen) = self
+                        .world
+                        .get::<&mut components::RegularSpikeGenerator>(active_entity)
+                    {
+                        ui.collapsing("Spike Generator", |ui| {
+                            egui::Grid::new("spike_gen_settings").show(ui, |ui| {
+                                ui.label("Frequency:");
+                                ui.add(
+                                    egui::Slider::new(&mut gen.frequency, 1.0..=200.0)
+                                        .suffix(" Hz"),
+                                );
+                                ui.end_row();
+                            });
+                        });
+                    }
+                    // Poisson Generator
+                    if let Ok(mut gen) = self
+                        .world
+                        .get::<&mut components::PoissonGenerator>(active_entity)
+                    {
+                        ui.collapsing("Poisson Generator", |ui| {
+                            egui::Grid::new("poisson_gen_settings").show(ui, |ui| {
+                                ui.label("Rate:");
+                                ui.add(
+                                    egui::Slider::new(&mut gen.rate, 1.0..=200.0)
+                                        .suffix(" Hz"),
                                 );
                                 ui.end_row();
                             });

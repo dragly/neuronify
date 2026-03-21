@@ -62,7 +62,7 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
                 },
             ))
         }
-        "sensors/TouchSensor.qml" => world.spawn((pos, TouchSensor)),
+        "sensors/TouchSensor.qml" => world.spawn((pos, TouchSensor, GeneratorDynamics::default())),
         "meters/Voltmeter.qml" => world.spawn((
             pos,
             Voltmeter {},

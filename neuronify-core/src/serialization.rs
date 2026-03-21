@@ -2,8 +2,9 @@ use crate::{
     Compartment, CompartmentCurrent, Connection, Deletable, NeuronType, Position, Selectable,
     SpatialDynamics, StaticConnectionSource, VoltageSeries, Voltmeter,
     components::{
-        AdaptationCurrent, Annotation, CurrentClamp, CurrentSynapse, ImmediateFireSynapse,
-        Inhibitory, LIFDynamics, LIFNeuron, LeakCurrent, TouchSensor, VoltmeterSize,
+        AdaptationCurrent, Annotation, CurrentClamp, CurrentSynapse, GeneratorDynamics,
+        ImmediateFireSynapse, Inhibitory, LIFDynamics, LIFNeuron, LeakCurrent,
+        PoissonGenerator, RegularSpikeGenerator, TouchSensor, VoltmeterSize,
     },
 };
 use hecs::{serialize::column::*, *};
@@ -119,6 +120,9 @@ component_id!(
     ImmediateFireSynapse,
     Inhibitory,
     TouchSensor,
+    GeneratorDynamics,
+    RegularSpikeGenerator,
+    PoissonGenerator,
     VoltmeterSize,
     Annotation,
     StaticConnectionSource,
