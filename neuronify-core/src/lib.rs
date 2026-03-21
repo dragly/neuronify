@@ -21,7 +21,7 @@ use postcard::ser_flavors::Flavor;
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
@@ -1241,45 +1241,19 @@ impl visula::Simulation for Neuronify {
         }
 
         // LIF simulation step — uses dt=0.0001 (0.1ms) matching old C++ Neuronify
-        {
-            let lif_dt = 0.0001;
-            for _ in 0..self.iterations {
-                legacy::step::lif_step(world, lif_dt, *time);
-                *time += lif_dt;
-            }
+        let lif_dt = 0.0001;
+        for _ in 0..self.iterations {
+            legacy::step::lif_step(world, lif_dt, *time);
+            *time += lif_dt;
         }
 
-        // Bridge: LIF neuron fires → inject current into connected Compartments
-        {
-            let fire_injections: Vec<(Entity, f64)> = world
-                .query::<&Connection>()
-                .iter()
-                .filter_map(|(_, conn)| {
-                    let just_fired = world
-                        .get::<&components::LIFDynamics>(conn.from)
-                        .map(|d| d.time_since_fire == 0.0)
-                        .unwrap_or(false);
-                    if !just_fired {
-                        return None;
-                    }
-                    if world.get::<&Compartment>(conn.to).is_err() {
-                        return None;
-                    }
-                    let current = if world.get::<&components::Inhibitory>(conn.from).is_ok() {
-                        -3000.0
-                    } else {
-                        3000.0
-                    };
-                    Some((conn.to, current * conn.strength))
-                })
-                .collect();
-
-            for (target, current) in fire_injections {
-                if let Ok(mut compartment) = world.get::<&mut Compartment>(target) {
-                    compartment.injected_current += current;
-                }
-            }
-        }
+        // Determine which LIF neurons fired this frame (for neuron→compartment bridge)
+        let recently_fired: HashSet<Entity> = world
+            .query::<&components::LIFDynamics>()
+            .iter()
+            .filter(|(_, d)| d.time_since_fire < self.iterations as f64 * lif_dt)
+            .map(|(e, _)| e)
+            .collect();
 
         // HH Compartment simulation
         for _ in 0..self.iterations {
@@ -1359,7 +1333,13 @@ impl visula::Simulation for Neuronify {
                 world.query::<(&Connection, &CompartmentCurrent)>().iter()
             {
                 if let Ok(compartment_to) = world.get::<&Compartment>(connection.to) {
-                    if let Ok(compartment_from) = world.get::<&Compartment>(connection.from)
+                    if recently_fired.contains(&connection.from) {
+                        // LIF neuron fired → inject current into compartment
+                        let new_compartment_to = new_compartments
+                            .get_mut(&connection.to)
+                            .expect("Could not get new compartment");
+                        new_compartment_to.injected_current += 150.0;
+                    } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from)
                     {
                         let voltage_diff = compartment_from.voltage - compartment_to.voltage;
                         let delta_voltage = voltage_diff / current.capacitance;
@@ -1479,6 +1459,41 @@ impl visula::Simulation for Neuronify {
                 position.position += dynamics.velocity * dt as f32;
                 dynamics.acceleration = Vec3::new(0.0, 0.0, 0.0);
                 dynamics.velocity -= dynamics.velocity * dt as f32;
+            }
+        }
+
+        // Bridge: Compartment → LIF neuron current injection
+        // When a compartment's voltage exceeds the action potential threshold,
+        // inject current into connected LIF neurons via StaticConnection edges.
+        {
+            let compartment_to_neuron: Vec<(Entity, f64)> = world
+                .query::<&Connection>()
+                .with::<&components::CurrentSynapse>()
+                .iter()
+                .filter_map(|(_, conn)| {
+                    let compartment = world.get::<&Compartment>(conn.from).ok()?;
+                    // Only inject when voltage is above action potential threshold
+                    let current = (compartment.voltage - 50.0).clamp(0.0, 200.0);
+                    if current == 0.0 {
+                        return None;
+                    }
+                    // Only target LIF neurons
+                    world.get::<&components::LIFDynamics>(conn.to).ok()?;
+                    let sign = match world.get::<&NeuronType>(conn.from) {
+                        Ok(nt) => match *nt {
+                            NeuronType::Excitatory => 1.0,
+                            NeuronType::Inhibitory => -1.0,
+                        },
+                        Err(_) => 1.0,
+                    };
+                    Some((conn.to, sign * current))
+                })
+                .collect();
+
+            for (target, current) in compartment_to_neuron {
+                if let Ok(mut dynamics) = world.get::<&mut components::LIFDynamics>(target) {
+                    dynamics.received_currents += current;
+                }
             }
         }
 
