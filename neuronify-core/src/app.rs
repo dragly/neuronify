@@ -4,7 +4,6 @@ use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
 use crate::rendering::{collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, Sphere};
 use crate::serialization::{LoadContext, SaveContext};
 use crate::tools::*;
-use cgmath::prelude::*;
 use postcard::ser_flavors::Flavor;
 use chrono::{DateTime, Duration, Utc};
 use glam::Vec3;
@@ -21,7 +20,7 @@ use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, WindowEvent};
 use visula::{
     winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer,
-    LineDelegate, Lines, RenderData, Renderable, SphereDelegate, Spheres, Vector3,
+    LineDelegate, Lines, RenderData, Renderable, SphereDelegate, Spheres,
 };
 
 use crate::input::{Keyboard, Mouse};
@@ -81,9 +80,10 @@ fn within_selection_range(
 impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
         application.camera_controller.enabled = false;
-        application.camera_controller.center = Vector3::new(0.0, 0.0, 0.0);
-        application.camera_controller.forward = Vector3::new(1.0, -1.0, 0.0);
-        application.camera_controller.distance = 50.0;
+        application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
+        application.camera_controller.target_transform.forward = Vec3::new(0.3, -1.0, 0.0).normalize();
+        application.camera_controller.target_transform.distance = 50.0;
+        application.camera_controller.current_transform = application.camera_controller.target_transform.clone();
 
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
         let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
@@ -113,8 +113,7 @@ impl Neuronify {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
                 width: connection.strength.clone() * 0.3,
-                start_color: connection.start_color.clone(),
-                end_color: connection.end_color.clone(),
+                color: connection.start_color.clone(),
             },
         )
         .unwrap();
@@ -215,48 +214,27 @@ impl Neuronify {
                 return;
             }
         };
-        let screen_position = cgmath::Vector4 {
-            x: 2.0 * mouse_physical_position.x as f32 / application.config.width as f32 - 1.0,
-            y: 1.0 - 2.0 * mouse_physical_position.y as f32 / application.config.height as f32,
-            z: 1.0,
-            w: 1.0,
-        };
-        let ray_clip = cgmath::Vector4 {
-            x: screen_position.x,
-            y: screen_position.y,
-            z: -1.0,
-            w: 1.0,
-        };
+        let ndc_x = 2.0 * mouse_physical_position.x as f32 / application.config.width as f32 - 1.0;
+        let ndc_y = 1.0 - 2.0 * mouse_physical_position.y as f32 / application.config.height as f32;
+        let ray_clip = glam::Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
         let aspect_ratio = application.config.width as f32 / application.config.height as f32;
         let inv_projection = application
             .camera_controller
             .projection_matrix(aspect_ratio)
-            .invert()
-            .unwrap();
+            .inverse();
 
         let ray_eye = inv_projection * ray_clip;
-        let ray_eye = cgmath::Vector4 {
-            x: ray_eye.x,
-            y: ray_eye.y,
-            z: -1.0,
-            w: 0.0,
-        };
+        let ray_eye = glam::Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
         let inv_view_matrix = application
             .camera_controller
             .view_matrix()
-            .invert()
-            .unwrap();
+            .inverse();
         let ray_world = inv_view_matrix * ray_eye;
-        let ray_world = cgmath::Vector3 {
-            x: ray_world.x,
-            y: ray_world.y,
-            z: ray_world.z,
-        }
-        .normalize();
+        let ray_world = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
         let ray_origin = application.camera_controller.position();
         let t = -ray_origin.y / ray_world.y;
         let intersection = ray_origin + t * ray_world;
-        let mouse_position = Vec3::new(intersection.x, intersection.y, intersection.z);
+        let mouse_position = intersection;
 
         let minimum_distance = match tool {
             Tool::Axon => MIN_CREATION_DISTANCE_AXON,
@@ -630,8 +608,10 @@ impl Neuronify {
                         match *move_origin {
                             Some(origin) => {
                                 let center = mouse_position - origin;
-                                application.camera_controller.center -=
-                                    Vector3::new(center.x, center.y, center.z);
+                                application.camera_controller.target_transform.center -=
+                                    Vec3::new(center.x, center.y, center.z);
+                                application.camera_controller.current_transform.center =
+                                    application.camera_controller.target_transform.center;
                             }
                             None => {
                                 let voltmeter_bounds: Vec<_> = world
@@ -999,7 +979,7 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
-        egui::Area::new("edit_button_area")
+        egui::Area::new("edit_button_area".into())
             .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
             .show(context, |ui| {
                 ui.toggle_value(&mut self.edit_enabled, "Edit").clicked();
@@ -1007,7 +987,7 @@ impl visula::Simulation for Neuronify {
         if self.edit_enabled {
             #[cfg(not(target_arch = "wasm32"))]
             egui::TopBottomPanel::top("top_panel").show(context, |ui| {
-                egui::menu::bar(ui, |ui| {
+                egui::MenuBar::new().ui(ui, |ui| {
                     ui.menu_button("File", |ui| {
                         if ui.button("Save").clicked() {
                             if let Some(path) = rfd::FileDialog::new().save_file() {
@@ -1027,37 +1007,37 @@ impl visula::Simulation for Neuronify {
                                 self.load_legacy_string(include_str!(
                                     "../examples/tutorial_1_intro.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("2 - Circuits").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/tutorial_2_circuits.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("3 - Creation").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/tutorial_3_creation.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                         });
                         ui.menu_button("Neurons", |ui| {
                             if ui.button("Leaky").clicked() {
                                 self.load_legacy_string(include_str!("../examples/leaky.nfy"));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Inhibitory").clicked() {
                                 self.load_legacy_string(include_str!("../examples/inhibitory.nfy"));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Adaptation").clicked() {
                                 self.load_legacy_string(include_str!("../examples/adaptation.nfy"));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Burst").clicked() {
                                 self.load_legacy_string(include_str!("../examples/burst.nfy"));
-                                ui.close_menu();
+                                ui.close();
                             }
                         });
                         ui.menu_button("Circuits", |ui| {
@@ -1065,67 +1045,67 @@ impl visula::Simulation for Neuronify {
                                 self.load_legacy_string(include_str!(
                                     "../examples/input_summation.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Prolonged Activity").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/prolonged_activity.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Disinhibition").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/disinhibition.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Recurrent Inhibition").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/recurrent_inhibition.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Reciprocal Inhibition").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/reciprocal_inhibition.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Lateral Inhibition").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/lateral_inhibition.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Lateral Inhibition 1").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/lateral_inhibition_1.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Lateral Inhibition 2").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/lateral_inhibition_2.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Two Neuron Oscillator").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/two_neuron_oscillator.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Rhythm Transformation").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/rythm_transformation.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Types of Inhibition").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/types_of_inhibition.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                         });
                         ui.menu_button("Textbook", |ui| {
@@ -1133,19 +1113,19 @@ impl visula::Simulation for Neuronify {
                                 self.load_legacy_string(include_str!(
                                     "../examples/if_response.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                             if ui.button("Refractory Period").clicked() {
                                 self.load_legacy_string(include_str!(
                                     "../examples/refractory_period.nfy"
                                 ));
-                                ui.close_menu();
+                                ui.close();
                             }
                         });
                         ui.menu_button("Items", |ui| {
                             if ui.button("Generators").clicked() {
                                 self.load_legacy_string(include_str!("../examples/generators.nfy"));
-                                ui.close_menu();
+                                ui.close();
                             }
                         });
                     });
@@ -1349,9 +1329,9 @@ impl visula::Simulation for Neuronify {
                     winit::event::MouseScrollDelta::LineDelta(_, y) => *y,
                     winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 100.0,
                 };
-                application.camera_controller.distance *= 1.0 - scroll * 0.1;
-                application.camera_controller.distance =
-                    application.camera_controller.distance.clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+                application.camera_controller.target_transform.distance *= 1.0 - scroll * 0.1;
+                application.camera_controller.target_transform.distance =
+                    application.camera_controller.target_transform.distance.clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
             }
             _ => {}
         }

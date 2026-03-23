@@ -1,16 +1,23 @@
+#[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
+#[cfg(target_arch = "wasm32")]
 use std::borrow::BorrowMut;
+#[cfg(target_arch = "wasm32")]
 use std::sync::Arc;
+#[cfg(target_arch = "wasm32")]
 use visula::winit::event::{Event, WindowEvent};
+#[cfg(target_arch = "wasm32")]
 use visula::{
-    create_event_loop, create_window, initialize_logger, Application, CustomEvent, RunConfig,
-    Simulation,
+    create_event_loop, initialize_logger, Application, CustomEvent, RunConfig,
 };
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::JsFuture;
+#[cfg(target_arch = "wasm32")]
 use web_sys::{Request, RequestInit, Response};
+#[cfg(target_arch = "wasm32")]
 use winit::event_loop::EventLoop;
-use winit::event_loop::EventLoopWindowTarget;
 #[cfg(target_arch = "wasm32")]
 use visula::winit::platform::web::EventLoopExtWebSys;
 
@@ -32,17 +39,20 @@ pub use input::{Keyboard, Mouse};
 pub use simulation::{fhn_step, lif_step, run_headless, SpikeRecord};
 pub use tools::*;
 
+#[cfg(target_arch = "wasm32")]
 struct Bundle {
     application: Application,
     simulation: Neuronify,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub struct WasmWrapper {
     event_loop: EventLoop<CustomEvent>,
     bundles: Vec<Bundle>,
 }
 
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub async fn initialize() -> WasmWrapper {
     initialize_logger();
@@ -54,15 +64,18 @@ pub async fn initialize() -> WasmWrapper {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub async fn load(wrapper: &mut WasmWrapper, canvas: &str, url: &str) -> Result<(), JsValue> {
-    let window = create_window(
-        RunConfig {
+    // TODO: Rework for winit 0.30 ApplicationHandler pattern
+    // create_window now requires &ActiveEventLoop which is only available inside ApplicationHandler
+    let window = visula::create_window_with_config(
+        &RunConfig {
             canvas_name: canvas.to_owned(),
         },
-        &wrapper.event_loop,
+        todo!("Need ActiveEventLoop from ApplicationHandler"),
     );
-    let mut application = pollster::block_on(async { Application::new(Arc::new(window)).await });
+    let mut application = Application::new(window).await;
 
     let mut opts = RequestInit::new();
     opts.method("GET");
@@ -81,32 +94,11 @@ pub async fn load(wrapper: &mut WasmWrapper, canvas: &str, url: &str) -> Result<
     Ok(())
 }
 
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub async fn start(mut wrapper: WasmWrapper) -> Result<(), JsValue> {
-    let _event_handler = move |event, target: &EventLoopWindowTarget<CustomEvent>| {
-        for bundle in wrapper.bundles.iter_mut() {
-            let application = &mut bundle.application;
-            let simulation = &mut bundle.simulation;
-            if !application.handle_event(&event) {
-                simulation.handle_event(application, &event);
-            }
-            if let Event::WindowEvent { ref event, .. } = event {
-                match event {
-                    WindowEvent::RedrawRequested => {
-                        application.update();
-                        simulation.update(application);
-                        application.render(simulation);
-
-                        application.window.borrow_mut().request_redraw();
-                    }
-                    WindowEvent::CloseRequested => target.exit(),
-                    _ => {}
-                }
-            }
-        }
-    };
-    #[cfg(target_arch = "wasm32")]
-    wrapper.event_loop.spawn(_event_handler);
+    // TODO: Rework for winit 0.30 ApplicationHandler pattern
+    // The old closure-based event loop API no longer exists
     Ok(())
 }
 
