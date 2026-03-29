@@ -182,3 +182,42 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
 
     spheres
 }
+
+pub fn collect_placement_preview(
+    tool: &crate::Tool,
+    placement_preview: &Option<Vec3>,
+) -> Vec<Sphere> {
+    let mut spheres = Vec::new();
+
+    if let Some(position) = placement_preview {
+        // Ghost sphere for placement preview - semi-transparent
+        let ghost_color = match tool {
+            crate::Tool::ExcitatoryNeuron => blue(),
+            crate::Tool::InhibitoryNeuron => red(),
+            crate::Tool::CurrentSource => yellow(),
+            crate::Tool::TouchSensor => orange(),
+            crate::Tool::RegularSpikeGenerator => orange(),
+            crate::Tool::PoissonGenerator => orange(),
+            crate::Tool::MembraneSegment => membrane_color(),
+            crate::Tool::StaticConnection => crust(),
+            crate::Tool::Axon => crust(),
+            crate::Tool::Voltmeter => crust(),
+            crate::Tool::Select | crate::Tool::Erase | crate::Tool::Stimulate => {
+                // No preview for these tools
+                return spheres;
+            }
+        };
+
+        // Make it semi-transparent by blending with white
+        let ghost_color = ghost_color * 0.4 + Vec3::new(1.0, 1.0, 1.0) * 0.6;
+
+        spheres.push(Sphere {
+            position: *position,
+            color: ghost_color,
+            radius: NODE_RADIUS,
+            _padding: Default::default(),
+        });
+    }
+
+    spheres
+}

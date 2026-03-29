@@ -12,6 +12,7 @@ use crate::rendering::colors::{
     activity_sensor_color, chemical_sensor_color, glial_color, membrane_color, player1_color,
     player2_color, touch_sensor_color,
 };
+use crate::tools::GameTool;
 
 pub fn collect_game_spheres(world: &hecs::World) -> Vec<Sphere> {
     let mut spheres = Vec::new();
@@ -174,6 +175,44 @@ pub fn collect_game_spheres(world: &hecs::World) -> Vec<Sphere> {
     spheres.extend(compartment_spheres.iter());
     spheres.extend(membrane_spheres.iter());
     spheres.extend(glial_spheres.iter());
+
+    spheres
+}
+
+pub fn collect_placement_preview(
+    tool: &GameTool,
+    placement_preview: &Option<glam::Vec3>,
+) -> Vec<Sphere> {
+    let mut spheres = Vec::new();
+
+    if let Some(position) = placement_preview {
+        // Ghost sphere for placement preview - semi-transparent
+        let ghost_color = match tool {
+            GameTool::ExcitatoryNeuron => blue(),
+            GameTool::InhibitoryNeuron => red(),
+            GameTool::MembraneSegment => membrane_color(),
+            GameTool::MotorCilia => membrane_color(),
+            GameTool::SpikeGenerator | GameTool::PoissonGenerator => orange(),
+            GameTool::ActivitySensor => activity_sensor_color(),
+            GameTool::ChemicalSensor => chemical_sensor_color(),
+            GameTool::TouchSensor => touch_sensor_color(),
+            GameTool::GlialCell => glial_color(),
+            GameTool::Select | GameTool::Erase | GameTool::Axon => {
+                // No preview for these tools
+                return spheres;
+            }
+        };
+
+        // Make it semi-transparent by blending with white
+        let ghost_color = ghost_color * 0.4 + glam::Vec3::new(1.0, 1.0, 1.0) * 0.6;
+
+        spheres.push(Sphere {
+            position: *position,
+            color: ghost_color,
+            radius: NODE_RADIUS,
+            _padding: Default::default(),
+        });
+    }
 
     spheres
 }

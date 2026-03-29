@@ -2,7 +2,8 @@ use crate::components::*;
 use crate::constants::*;
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
 use crate::rendering::{
-    collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, Sphere,
+    collect_connections, collect_placement_preview, collect_spheres, collect_voltmeter_traces,
+    ConnectionData, Sphere,
 };
 use crate::serialization::{LoadContext, SaveContext};
 use crate::tools::*;
@@ -61,6 +62,7 @@ pub struct Neuronify {
     pub current_player: PlayerId,
     pub ai_state: Option<AiState>,
     pub pending_new_game: bool,
+    pub placement_preview: Option<Vec3>,
 }
 
 #[derive(Debug)]
@@ -197,6 +199,7 @@ impl Neuronify {
             current_player: PlayerId::Player1,
             ai_state: None,
             pending_new_game: false,
+            placement_preview: None,
         }
     }
 
@@ -215,6 +218,31 @@ impl Neuronify {
         application.camera_controller.target_transform.distance = 150.0;
     }
 
+    fn update_placement_preview(&mut self, application: &mut visula::Application) {
+        let mouse_position = match self.mouse.position {
+            Some(p) => {
+                let ndc_x = 2.0 * p.x as f32 / application.config.width as f32 - 1.0;
+                let ndc_y = 1.0 - 2.0 * p.y as f32 / application.config.height as f32;
+                let ray_clip = glam::Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
+                let aspect_ratio = application.config.width as f32 / application.config.height as f32;
+                let inv_projection = application
+                    .camera_controller
+                    .projection_matrix(aspect_ratio)
+                    .inverse();
+                let ray_eye = inv_projection * ray_clip;
+                let ray_eye = glam::Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
+                let inv_view_matrix = application.camera_controller.view_matrix().inverse();
+                let ray_world = inv_view_matrix * ray_eye;
+                let ray_world = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
+                let ray_origin = application.camera_controller.position();
+                let t = -ray_origin.y / ray_world.y;
+                ray_origin + t * ray_world
+            }
+            None => return,
+        };
+        self.placement_preview = Some(mouse_position);
+    }
+
     fn handle_tool(&mut self, application: &mut visula::Application) {
         let Neuronify {
             tool,
@@ -228,6 +256,7 @@ impl Neuronify {
             dragging_entity,
             drag_offset,
             resizing_voltmeter,
+            placement_preview: _,
             ..
         } = self;
         if !mouse.left_down {
@@ -237,6 +266,7 @@ impl Neuronify {
             *move_origin = None;
             *dragging_entity = None;
             *resizing_voltmeter = None;
+            // Keep placement_preview for hover effect
             return;
         }
         let mouse_physical_position = match mouse.position {
@@ -1081,7 +1111,10 @@ impl visula::Simulation for Neuronify {
             }
         }
 
-        let spheres = collect_spheres(world);
+        let mut spheres = collect_spheres(world);
+        let placement_spheres = collect_placement_preview(&self.tool, &self.placement_preview);
+        spheres.extend(placement_spheres.iter());
+        
         let mut connections = collect_connections(world, &self.tool, connection_tool);
         connections.extend(collect_voltmeter_traces(world));
         if let Some(ref dish) = self.petri_dish {
@@ -1591,6 +1624,7 @@ impl visula::Simulation for Neuronify {
                     PhysicalPosition::new(position.x - previous.x, position.y - previous.y)
                 });
                 self.mouse.position = Some(*position);
+                self.update_placement_preview(application);
                 self.handle_tool(application);
             }
             Event::WindowEvent {

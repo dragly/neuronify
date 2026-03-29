@@ -56,6 +56,7 @@ pub struct GameApp {
     pub pending_exit_game: bool,
     pub p1_economy: PlayerEconomy,
     pub p2_economy: PlayerEconomy,
+    pub placement_preview: Option<Vec3>,
 }
 
 #[derive(Debug)]
@@ -165,6 +166,7 @@ impl GameApp {
             pending_exit_game: false,
             p1_economy: PlayerEconomy::default(),
             p2_economy: PlayerEconomy::default(),
+            placement_preview: None,
         }
     }
 
@@ -194,6 +196,7 @@ impl GameApp {
             self.previous_creation = None;
             self.move_origin = None;
             self.dragging_entity = None;
+            // Keep placement_preview for hover effect
             return;
         }
 
@@ -201,6 +204,9 @@ impl GameApp {
             Some(p) => p,
             None => return,
         };
+
+        // Update placement preview
+        self.placement_preview = Some(mouse_position);
 
         let minimum_distance = match self.tool {
             GameTool::Axon => MIN_CREATION_DISTANCE_AXON,
@@ -772,7 +778,9 @@ impl visula::Simulation for GameApp {
         );
 
         // Collect rendering data
-        let spheres = rendering::collect_game_spheres(&self.world);
+        let mut spheres = rendering::collect_game_spheres(&self.world);
+        let placement_spheres = rendering::collect_placement_preview(&self.tool, &self.placement_preview);
+        spheres.extend(placement_spheres.iter());
 
         // Connections: use core's collect_connections with a neutral tool, then add axon preview
         let mut connections = neuronify_core::rendering::collect_connections(
@@ -897,6 +905,10 @@ impl visula::Simulation for GameApp {
                     PhysicalPosition::new(position.x - previous.x, position.y - previous.y)
                 });
                 self.mouse.position = Some(*position);
+                // Update placement preview on mouse move
+                if let Some(pos) = self.mouse_world_position(application) {
+                    self.placement_preview = Some(pos);
+                }
                 self.handle_tool(application);
             }
             Event::WindowEvent {
