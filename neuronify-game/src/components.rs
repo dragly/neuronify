@@ -119,13 +119,16 @@ pub struct SensorNeuron {
     pub gain: f64,
 }
 
-/// Glial cell — gathers ATP from nearby blood vessels and distributes to nearby neurons.
+/// Glial cell — gathers ATP and building blocks from nearby blood vessels,
+/// distributes ATP to nearby neurons, and contributes blocks to the player economy.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GlialCell {
     pub gather_radius: f32,
     pub distribute_radius: f32,
     pub atp_stored: f64,
     pub max_atp: f64,
+    pub blocks_stored: f64,
+    pub max_blocks: f64,
 }
 
 impl Default for GlialCell {
@@ -135,6 +138,8 @@ impl Default for GlialCell {
             distribute_radius: crate::constants::GLIAL_DISTRIBUTE_RADIUS,
             atp_stored: 0.0,
             max_atp: crate::constants::GLIAL_MAX_ATP,
+            blocks_stored: 0.0,
+            max_blocks: crate::constants::GLIAL_MAX_BLOCKS,
         }
     }
 }

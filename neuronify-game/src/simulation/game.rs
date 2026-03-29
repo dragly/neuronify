@@ -113,29 +113,53 @@ pub fn enforce_petri_boundary(world: &mut hecs::World, dish: &PetriDish) {
     }
 }
 
-/// Generate building blocks from owned blood vessels into player economies.
-pub fn generate_building_blocks(
-    world: &hecs::World,
+/// Glial cells transfer stored building blocks into the player economy.
+pub fn glial_contribute_blocks(
+    world: &mut hecs::World,
     dt: f64,
     p1_economy: &mut PlayerEconomy,
     p2_economy: &mut PlayerEconomy,
 ) {
-    for (_, (vessel, ownership)) in world.query::<(&BloodVessel, &Ownership)>().iter() {
-        let economy = match ownership.player {
+    let glial_entities: Vec<Entity> = world
+        .query::<(&GlialCell, &Ownership)>()
+        .iter()
+        .map(|(e, _)| e)
+        .collect();
+
+    for entity in glial_entities {
+        let player = world.get::<&Ownership>(entity).unwrap().player;
+        let economy = match player {
             PlayerId::Player1 => &mut *p1_economy,
             PlayerId::Player2 => &mut *p2_economy,
         };
-        economy.building_blocks =
-            (economy.building_blocks + vessel.block_rate * dt).min(economy.max_building_blocks);
+        let room = economy.max_building_blocks - economy.building_blocks;
+        if room <= 0.0 {
+            continue;
+        }
+        if let Ok(mut glial) = world.get::<&mut GlialCell>(entity) {
+            let transfer = (GLIAL_BLOCK_TRANSFER_RATE * dt).min(glial.blocks_stored).min(room);
+            if transfer > 0.0 {
+                glial.blocks_stored -= transfer;
+                economy.building_blocks += transfer;
+            }
+        }
     }
 }
 
-/// Glial cells gather ATP from nearby owned blood vessels.
-pub fn glial_gather_atp(world: &mut hecs::World, dt: f64) {
-    let vessels: Vec<(Vec3, f64, f32, PlayerId)> = world
+/// Glial cells gather ATP and building blocks from nearby owned blood vessels.
+pub fn glial_gather_resources(world: &mut hecs::World, dt: f64) {
+    let vessels: Vec<(Vec3, f64, f64, f32, PlayerId)> = world
         .query::<(&BloodVessel, &Position, &Ownership)>()
         .iter()
-        .map(|(_, (v, p, o))| (p.position, v.atp_rate, v.supply_radius, o.player))
+        .map(|(_, (v, p, o))| {
+            (
+                p.position,
+                v.atp_rate,
+                v.block_rate,
+                v.supply_radius,
+                o.player,
+            )
+        })
         .collect();
 
     let glial_entities: Vec<Entity> = world
@@ -149,20 +173,23 @@ pub fn glial_gather_atp(world: &mut hecs::World, dt: f64) {
         let glial_player = world.get::<&Ownership>(entity).map(|o| o.player).ok();
         let gather_radius = world.get::<&GlialCell>(entity).unwrap().gather_radius;
 
-        let mut total_gather = 0.0;
-        for &(vpos, rate, _supply_radius, vessel_player) in &vessels {
+        let mut total_atp = 0.0;
+        let mut total_blocks = 0.0;
+        for &(vpos, atp_rate, block_rate, _supply_radius, vessel_player) in &vessels {
             if glial_player != Some(vessel_player) {
                 continue;
             }
             let dist = Vec3::new(pos.x - vpos.x, 0.0, pos.z - vpos.z).length();
             if dist < gather_radius {
                 let factor = 1.0 - (dist / gather_radius) as f64;
-                total_gather += rate * factor * dt;
+                total_atp += atp_rate * factor * dt;
+                total_blocks += block_rate * factor * dt;
             }
         }
-        if total_gather > 0.0 {
+        if total_atp > 0.0 || total_blocks > 0.0 {
             if let Ok(mut glial) = world.get::<&mut GlialCell>(entity) {
-                glial.atp_stored = (glial.atp_stored + total_gather).min(glial.max_atp);
+                glial.atp_stored = (glial.atp_stored + total_atp).min(glial.max_atp);
+                glial.blocks_stored = (glial.blocks_stored + total_blocks).min(glial.max_blocks);
             }
         }
     }
@@ -925,7 +952,7 @@ pub fn setup_game(world: &mut hecs::World, dish: &PetriDish) {
         LeakyDynamics::default(),
         LeakCurrent::default(),
         NeuronType::Excitatory,
-        RegularSpikeGenerator { frequency: 5.0 },
+        RegularSpikeGenerator { frequency: 20.0 },
         GeneratorDynamics::default(),
         Anchored,
         MetabolicState {
@@ -958,7 +985,7 @@ pub fn setup_game(world: &mut hecs::World, dish: &PetriDish) {
         LeakyDynamics::default(),
         LeakCurrent::default(),
         NeuronType::Excitatory,
-        RegularSpikeGenerator { frequency: 5.0 },
+        RegularSpikeGenerator { frequency: 20.0 },
         GeneratorDynamics::default(),
         Anchored,
         MetabolicState {
@@ -1097,8 +1124,8 @@ pub fn run_headless_game(frames: usize, iterations_per_frame: u32) -> GameResult
         // Game systems
         let frame_dt = iterations_per_frame as f64 * LIF_DT;
         enforce_petri_boundary(&mut world, &dish);
-        generate_building_blocks(&world, frame_dt, &mut p1_economy, &mut p2_economy);
-        glial_gather_atp(&mut world, frame_dt);
+        glial_gather_resources(&mut world, frame_dt);
+        glial_contribute_blocks(&mut world, frame_dt, &mut p1_economy, &mut p2_economy);
         glial_distribute_atp(&mut world, frame_dt);
         metabolic_drain(&mut world, frame_dt);
         apply_dormancy(&mut world);

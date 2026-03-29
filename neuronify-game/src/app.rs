@@ -718,13 +718,19 @@ impl visula::Simulation for GameApp {
         }
 
         // FHN + physics substeps
-        let recently_fired: HashSet<Entity> = self
+        let fire_window = self.iterations as f64 * lif_dt;
+        let mut recently_fired: HashSet<Entity> = self
             .world
             .query::<&LeakyDynamics>()
             .iter()
-            .filter(|(_, d)| d.time_since_fire < self.iterations as f64 * lif_dt)
+            .filter(|(_, d)| d.time_since_fire < fire_window)
             .map(|(e, _)| e)
             .collect();
+        for (e, d) in self.world.query::<&GeneratorDynamics>().iter() {
+            if d.time_since_fire < fire_window {
+                recently_fired.insert(e);
+            }
+        }
 
         for _ in 0..self.iterations {
             neuronify_core::fhn_step(&mut self.world, FHN_CDT, &recently_fired);
@@ -735,14 +741,14 @@ impl visula::Simulation for GameApp {
         // Game systems (once per frame)
         let frame_dt = self.iterations as f64 * LIF_DT;
         game::enforce_petri_boundary(&mut self.world, &self.petri_dish);
-        game::generate_building_blocks(
-            &self.world,
+        game::apply_sensors(&mut self.world);
+        game::glial_gather_resources(&mut self.world, frame_dt);
+        game::glial_contribute_blocks(
+            &mut self.world,
             frame_dt,
             &mut self.p1_economy,
             &mut self.p2_economy,
         );
-        game::apply_sensors(&mut self.world);
-        game::glial_gather_atp(&mut self.world, frame_dt);
         game::glial_distribute_atp(&mut self.world, frame_dt);
         game::metabolic_drain(&mut self.world, frame_dt);
         game::apply_dormancy(&mut self.world);
@@ -793,6 +799,7 @@ impl visula::Simulation for GameApp {
         // Petri dish and decorations
         connections.extend(rendering::collect_petri_dish(&self.petri_dish));
         connections.extend(rendering::collect_vessel_supply_rings(&self.world));
+        connections.extend(rendering::collect_glial_vessel_links(&self.world));
         connections.extend(rendering::collect_substrate_zone_rings(&self.world));
 
         self.sphere_buffer

@@ -4,14 +4,14 @@ pub const PETRI_DISH_SEGMENTS: usize = 128;
 
 // Game constants - blood vessels
 pub const BLOOD_VESSEL_ATP_RATE: f64 = 5.0;
-pub const BLOOD_VESSEL_BLOCK_RATE: f64 = 2.0;
+pub const BLOOD_VESSEL_BLOCK_RATE: f64 = 5.0;
 pub const BLOOD_VESSEL_SUPPLY_RADIUS: f32 = 20.0;
 pub const BLOOD_VESSEL_HEIGHT: f32 = 8.0;
 pub const BLOOD_VESSEL_VISUAL_RADIUS: f32 = 1.5;
 
 // Game constants - building blocks
 pub const MAX_BUILDING_BLOCKS: f64 = 200.0;
-pub const INITIAL_BUILDING_BLOCKS: f64 = 50.0;
+pub const INITIAL_BUILDING_BLOCKS: f64 = 100.0;
 
 // Game constants - metabolism
 pub const RESTING_METABOLIC_COST: f64 = 0.5;
@@ -33,6 +33,8 @@ pub const SENSOR_GAIN: f64 = 5e-9;
 pub const GLIAL_GATHER_RADIUS: f32 = 15.0;
 pub const GLIAL_DISTRIBUTE_RADIUS: f32 = 12.0;
 pub const GLIAL_MAX_ATP: f64 = 100.0;
+pub const GLIAL_MAX_BLOCKS: f64 = 50.0;
+pub const GLIAL_BLOCK_TRANSFER_RATE: f64 = 10.0;
 pub const GLIAL_COST: f64 = 8.0;
 
 // Game constants - building costs
