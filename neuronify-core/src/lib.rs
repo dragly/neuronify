@@ -7,9 +7,9 @@ use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use visula::winit::event::{Event, WindowEvent};
 #[cfg(target_arch = "wasm32")]
-use visula::{
-    create_event_loop, initialize_logger, Application, CustomEvent, RunConfig,
-};
+use visula::winit::platform::web::EventLoopExtWebSys;
+#[cfg(target_arch = "wasm32")]
+use visula::{create_event_loop, initialize_logger, Application, CustomEvent, RunConfig};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
@@ -18,8 +18,6 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, Response};
 #[cfg(target_arch = "wasm32")]
 use winit::event_loop::EventLoop;
-#[cfg(target_arch = "wasm32")]
-use visula::winit::platform::web::EventLoopExtWebSys;
 
 pub mod app;
 pub mod components;
@@ -67,8 +65,6 @@ pub async fn initialize() -> WasmWrapper {
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub async fn load(wrapper: &mut WasmWrapper, canvas: &str, url: &str) -> Result<(), JsValue> {
-    // TODO: Rework for winit 0.30 ApplicationHandler pattern
-    // create_window now requires &ActiveEventLoop which is only available inside ApplicationHandler
     let window = visula::create_window_with_config(
         &RunConfig {
             canvas_name: canvas.to_owned(),
@@ -97,8 +93,6 @@ pub async fn load(wrapper: &mut WasmWrapper, canvas: &str, url: &str) -> Result<
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub async fn start(mut wrapper: WasmWrapper) -> Result<(), JsValue> {
-    // TODO: Rework for winit 0.30 ApplicationHandler pattern
-    // The old closure-based event loop API no longer exists
     Ok(())
 }
 

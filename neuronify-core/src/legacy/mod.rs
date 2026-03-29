@@ -44,7 +44,6 @@ pub struct LegacyEngine {
     pub adaptation: Option<f64>,
     pub time_constant: Option<f64>,
     pub conductance: Option<f64>,
-    // Synapse properties
     pub tau: Option<f64>,
     pub maximum_current: Option<f64>,
     pub delay: Option<f64>,
@@ -62,9 +61,13 @@ pub struct LegacyEdge {
 }
 
 pub fn parse_legacy_nfy(json_str: &str) -> Result<LegacySimulation, String> {
-    let root: Value = serde_json::from_str(json_str).map_err(|e| format!("JSON parse error: {e}"))?;
+    let root: Value =
+        serde_json::from_str(json_str).map_err(|e| format!("JSON parse error: {e}"))?;
 
-    let file_format_version = root.get("fileFormatVersion").and_then(|v| v.as_u64()).map(|v| v as u32);
+    let file_format_version = root
+        .get("fileFormatVersion")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
     let is_v2 = file_format_version.is_some_and(|v| v <= 2);
 
     let nodes = parse_nodes(&root, is_v2)?;
@@ -78,32 +81,41 @@ pub fn parse_legacy_nfy(json_str: &str) -> Result<LegacySimulation, String> {
 }
 
 fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
-    let nodes_array = root.get("nodes").and_then(|v| v.as_array()).ok_or("Missing 'nodes' array")?;
+    let nodes_array = root
+        .get("nodes")
+        .and_then(|v| v.as_array())
+        .ok_or("Missing 'nodes' array")?;
     let mut result = Vec::new();
 
     for node_val in nodes_array {
         let filename = if is_v2 {
-            node_val.get("fileName").or_else(|| node_val.get("filename"))
+            node_val
+                .get("fileName")
+                .or_else(|| node_val.get("filename"))
         } else {
-            node_val.get("filename").or_else(|| node_val.get("fileName"))
+            node_val
+                .get("filename")
+                .or_else(|| node_val.get("fileName"))
         }
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
 
         let (props, engine_val) = if is_v2 {
-            // v2: properties at node level, engine is a direct sub-object
             (node_val, node_val.get("engine"))
         } else {
-            // v3/v4: properties inside savedProperties
             let sp = node_val.get("savedProperties").unwrap_or(node_val);
             (sp, sp.get("engine"))
         };
 
         let engine = parse_engine(engine_val);
 
-        let x = get_f64(props, "x").or_else(|| get_f64(node_val, "x")).unwrap_or(0.0);
-        let y = get_f64(props, "y").or_else(|| get_f64(node_val, "y")).unwrap_or(0.0);
+        let x = get_f64(props, "x")
+            .or_else(|| get_f64(node_val, "x"))
+            .unwrap_or(0.0);
+        let y = get_f64(props, "y")
+            .or_else(|| get_f64(node_val, "y"))
+            .unwrap_or(0.0);
         let inhibitory = props
             .get("inhibitory")
             .and_then(|v| v.as_bool())
@@ -115,7 +127,10 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
             .or_else(|| node_val.get("label").and_then(|v| v.as_str()))
             .unwrap_or("")
             .to_string();
-        let text = props.get("text").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let text = props
+            .get("text")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
         let width = get_f64(props, "width");
         let height = get_f64(props, "height");
         let maximum_value = get_f64(props, "maximumValue");
@@ -140,12 +155,21 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
 }
 
 fn parse_edges(root: &Value, is_v2: bool) -> Result<Vec<LegacyEdge>, String> {
-    let edges_array = root.get("edges").and_then(|v| v.as_array()).ok_or("Missing 'edges' array")?;
+    let edges_array = root
+        .get("edges")
+        .and_then(|v| v.as_array())
+        .ok_or("Missing 'edges' array")?;
     let mut result = Vec::new();
 
     for edge_val in edges_array {
-        let from = edge_val.get("from").and_then(|v| v.as_u64()).ok_or("Edge missing 'from'")? as usize;
-        let to = edge_val.get("to").and_then(|v| v.as_u64()).ok_or("Edge missing 'to'")? as usize;
+        let from = edge_val
+            .get("from")
+            .and_then(|v| v.as_u64())
+            .ok_or("Edge missing 'from'")? as usize;
+        let to = edge_val
+            .get("to")
+            .and_then(|v| v.as_u64())
+            .ok_or("Edge missing 'to'")? as usize;
 
         let (filename, engine_val) = if is_v2 {
             let fname = edge_val
@@ -163,7 +187,9 @@ fn parse_edges(root: &Value, is_v2: bool) -> Result<Vec<LegacyEdge>, String> {
                 .or_else(|| sp.and_then(|s| s.get("filename")).and_then(|v| v.as_str()))
                 .unwrap_or("Edge.qml")
                 .to_string();
-            let eng = sp.and_then(|s| s.get("engine")).or_else(|| edge_val.get("engine"));
+            let eng = sp
+                .and_then(|s| s.get("engine"))
+                .or_else(|| edge_val.get("engine"));
             (fname, eng)
         };
 

@@ -7,22 +7,11 @@ use crate::{Connection, Deletable, NeuronType, Position};
 
 use super::{LegacyEdge, LegacyNode, LegacySimulation};
 
-/// Convert old pixel position to Rust world coordinates.
-/// The 3D camera looks along (1,-1,0) at the y=0 plane, so:
-///   screen horizontal = z-axis
-///   screen vertical   = x-axis (increasing x goes "up" on screen)
-/// Old pixel coords: x = horizontal (right), y = vertical (down).
 fn convert_position(x: f64, y: f64) -> Vec3 {
     let scale = 50.0 / 2.0;
-    Vec3::new(
-        -(y as f32 - 540.0) / scale, // old y-down → -x (screen up)
-        0.0,                         // ground plane
-        (x as f32 - 960.0) / scale,  // old x-right → z (screen right)
-    )
+    Vec3::new(-(y as f32 - 540.0) / scale, 0.0, (x as f32 - 960.0) / scale)
 }
 
-/// Spawn all entities from a parsed legacy simulation.
-/// Returns a Vec of node entities (indexed to match edge from/to references).
 pub fn spawn_legacy_simulation(world: &mut World, sim: &LegacySimulation) -> Vec<Entity> {
     let mut node_entities = Vec::new();
 
@@ -76,18 +65,12 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
             VoltmeterSize::default(),
             Deletable {},
         )),
-        "meters/SpikeDetector.qml" => {
-            // Spike detector - just a position for now
-            world.spawn((pos,))
-        }
+        "meters/SpikeDetector.qml" => world.spawn((pos,)),
         s if s.starts_with("annotations/") => {
             let text = node.text.clone().unwrap_or_default();
             world.spawn((pos, Annotation { text }))
         }
-        _ => {
-            // Unknown node type - spawn as position-only
-            world.spawn((pos,))
-        }
+        _ => world.spawn((pos,)),
     }
 }
 
@@ -179,15 +162,11 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             world.spawn((connection, ImmediateFireSynapse::default(), Deletable {}));
         }
         "edges/MeterEdge.qml" => {
-            // In .nfy files, MeterEdge goes FROM voltmeter TO neuron.
-            // The Rust voltmeter rendering expects Connection on the voltmeter
-            // entity with from=neuron, to=voltmeter. So we swap from/to.
             let (meter, neuron) = if world.get::<&Voltmeter>(from).is_ok() {
                 (from, to)
             } else if world.get::<&Voltmeter>(to).is_ok() {
                 (to, from)
             } else {
-                // Neither end is a voltmeter, just spawn as-is
                 world.spawn((connection,));
                 return;
             };
@@ -204,9 +183,6 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
                 .unwrap();
         }
         "Edge.qml" => {
-            // v2 default edge type - could be a synapse or a meter edge.
-            // If the target isn't a neuron (e.g. SpikeDetector, annotation),
-            // skip spawning this connection.
             if world.get::<&LeakyDynamics>(to).is_err() {
                 return;
             }
@@ -225,7 +201,6 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             world.spawn((connection, synapse, Deletable {}));
         }
         _ => {
-            // Unknown edge type
             world.spawn((connection, Deletable {}));
         }
     }

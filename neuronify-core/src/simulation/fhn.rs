@@ -3,11 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::components::*;
 use crate::constants::*;
 
-pub fn fhn_step(
-    world: &mut hecs::World,
-    cdt: f64,
-    recently_fired: &HashSet<hecs::Entity>,
-) {
+pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &HashSet<hecs::Entity>) {
     for (_, compartment) in world.query_mut::<&mut Compartment>() {
         let v = (compartment.voltage - FHN_OFFSET) / FHN_SCALE;
         let w = compartment.m;
@@ -60,7 +56,8 @@ pub fn fhn_step(
         .iter()
         .filter_map(|(_, conn)| {
             let compartment = world.get::<&Compartment>(conn.from).ok()?;
-            let excess = (compartment.voltage - BRIDGE_VOLTAGE_THRESHOLD).clamp(0.0, BRIDGE_VOLTAGE_CLAMP);
+            let excess =
+                (compartment.voltage - BRIDGE_VOLTAGE_THRESHOLD).clamp(0.0, BRIDGE_VOLTAGE_CLAMP);
             if excess == 0.0 {
                 return None;
             }

@@ -1,42 +1,26 @@
-/// Standalone HH compartment chain simulation for parameter tuning.
-/// Run with: cargo run -p neuronify-core --example hh_chain
-///
-/// Tune the constants below, re-run, and observe propagation speed.
-
-// ─── Tunable parameters ───────────────────────────────────────────
-
 const NUM_COMPARTMENTS: usize = 10;
 const CDT: f64 = 0.01;
 const STEPS: usize = 400;
 const PRINT_EVERY: usize = 5;
 
-// Compartment properties
 const CAPACITANCE: f64 = 1.0;
 
-// Inter-compartment coupling
 const COUPLING_CAPACITANCE: f64 = 0.05;
 
-// Fire impulse
 const FIRE_IMPULSE_INITIAL: f64 = 800.0;
 const FIRE_IMPULSE_DECAY: f64 = 5.0;
 
-// Repeated firing interval (0 = fire only once)
 const FIRE_EVERY: usize = 0;
 
-// Post-AP recovery acceleration (higher = shorter refractory period)
 const RECOVERY_RATE: f64 = 10.0;
 
-// HH conductances
 const G_NA: f64 = 120.0;
 const G_K: f64 = 36.0;
 const LEAK_CONDUCTANCE: f64 = 1.3;
 
-// Reversal potentials
 const E_NA: f64 = 115.0;
 const E_K: f64 = -12.0;
 const E_M: f64 = 10.6;
-
-// ─── Compartment state ────────────────────────────────────────────
 
 #[derive(Clone)]
 struct Compartment {
@@ -63,11 +47,8 @@ impl Compartment {
     }
 }
 
-// ─── Simulation ───────────────────────────────────────────────────
-
 fn fire_compartment(comp: &mut Compartment) {
     comp.fire_impulse = FIRE_IMPULSE_INITIAL;
-    // Reset gating variables to resting state so the AP machinery can fire again
     comp.m = 0.05;
     comp.h = 0.6;
     comp.n = 0.32;
@@ -77,25 +58,21 @@ fn fire_compartment(comp: &mut Compartment) {
 fn hh_step(comp: &mut Compartment) {
     let v = comp.voltage;
 
-    // Sodium activation (m)
     let alpha_m = 0.1 * (25.0 - v) / ((2.5 - 0.1 * v).exp() - 1.0);
     let beta_m = 4.0 * (-v / 18.0).exp();
     let dm = CDT * (alpha_m * (1.0 - comp.m) - beta_m * comp.m);
     comp.m = (comp.m + dm).clamp(0.0, 1.0);
 
-    // Sodium inactivation (h)
     let alpha_h = 0.07 * (-v / 20.0).exp();
     let beta_h = 1.0 / ((3.0 - 0.1 * v).exp() + 1.0);
     let dh = CDT * (alpha_h * (1.0 - comp.h) - beta_h * comp.h);
     comp.h = (comp.h + dh).clamp(0.0, 1.0);
 
-    // Potassium activation (n)
     let alpha_n = 0.01 * (10.0 - v) / ((1.0 - 0.1 * v).exp() - 1.0);
     let beta_n = 0.125 * (-v / 80.0).exp();
     let dn = CDT * (alpha_n * (1.0 - comp.n) - beta_n * comp.n);
     comp.n = (comp.n + dn).clamp(0.0, 1.0);
 
-    // Currents
     let m3 = comp.m * comp.m * comp.m;
     let n4 = comp.n * comp.n * comp.n * comp.n;
     let sodium_current = -G_NA * m3 * comp.h * (comp.voltage - E_NA);
@@ -106,7 +83,6 @@ fn hh_step(comp: &mut Compartment) {
     let delta_voltage = current / comp.capacitance;
     comp.voltage += delta_voltage * CDT;
 
-    // Fire impulse
     if comp.fire_impulse > 1.0 {
         comp.voltage += comp.fire_impulse;
         comp.fire_impulse *= (-FIRE_IMPULSE_DECAY * CDT).exp();
@@ -115,11 +91,6 @@ fn hh_step(comp: &mut Compartment) {
     comp.voltage = comp.voltage.clamp(-50.0, 200.0);
     comp.injected_current -= 1.0 * comp.injected_current * CDT;
 
-    // Accelerate recovery after AP: once voltage drops below resting level,
-    // push gating variables toward resting values faster than normal HH dynamics.
-    // This shortens the refractory period without eliminating it — the compartment
-    // still can't fire during the falling phase of the AP (voltage > 0), which
-    // prevents backward propagation (ping-pong).
     if comp.voltage < 0.0 {
         comp.h += (0.6 - comp.h) * RECOVERY_RATE * CDT;
         comp.n += (0.32 - comp.n) * RECOVERY_RATE * CDT;
@@ -171,7 +142,6 @@ fn main() {
     );
     println!();
 
-    // Header
     print!("{:>14}", "");
     for i in 0..NUM_COMPARTMENTS {
         print!("   C{:<6}", i);
@@ -179,24 +149,25 @@ fn main() {
     println!();
     println!("{}", "-".repeat(14 + NUM_COMPARTMENTS * 10));
 
-    let mut compartments: Vec<Compartment> = (0..NUM_COMPARTMENTS).map(|_| Compartment::new()).collect();
+    let mut compartments: Vec<Compartment> =
+        (0..NUM_COMPARTMENTS).map(|_| Compartment::new()).collect();
 
-    // Fire the first compartment
     fire_compartment(&mut compartments[0]);
 
     for step in 0..STEPS {
-        // Repeated firing
         if FIRE_EVERY > 0 && step > 0 && step % FIRE_EVERY == 0 {
             fire_compartment(&mut compartments[0]);
-            println!("--- RE-FIRE at step {} (t = {:.2} ms) ---", step, step as f64 * CDT);
+            println!(
+                "--- RE-FIRE at step {} (t = {:.2} ms) ---",
+                step,
+                step as f64 * CDT
+            );
         }
 
-        // HH dynamics for each compartment
         for comp in compartments.iter_mut() {
             hh_step(comp);
         }
 
-        // Inter-compartment coupling
         coupling_step(&mut compartments);
 
         if step % PRINT_EVERY == 0 {
@@ -204,10 +175,10 @@ fn main() {
         }
     }
 
-    // Summary: when did each compartment peak?
     println!();
     println!("Peak detection (re-running):");
-    let mut compartments: Vec<Compartment> = (0..NUM_COMPARTMENTS).map(|_| Compartment::new()).collect();
+    let mut compartments: Vec<Compartment> =
+        (0..NUM_COMPARTMENTS).map(|_| Compartment::new()).collect();
     compartments[0].fire_impulse = FIRE_IMPULSE_INITIAL;
     let mut peaks = vec![(0.0_f64, 0_usize); NUM_COMPARTMENTS];
 

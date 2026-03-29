@@ -1,50 +1,31 @@
-/// FitzHugh-Nagumo compartment chain simulation.
-/// Run with: cargo run -p neuronify-core --example fhn_chain
-///
-/// FHN is a 2-variable simplification of HH that produces sharp action
-/// potentials with a natural refractory period — no if-tests needed.
-
-// ─── Tunable parameters ───────────────────────────────────────────
-
 const NUM_COMPARTMENTS: usize = 10;
 const DT: f64 = 0.01;
 const STEPS: usize = 1500;
 const PRINT_EVERY: usize = 5;
 
-// FHN dynamics
-const TAU: f64 = 60.0;  // speed of voltage dynamics (higher = sharper AP, max ~65 for stability)
+const TAU: f64 = 60.0;
 const A: f64 = 0.7;
 const B: f64 = 0.8;
-const EPSILON: f64 = 0.08; // recovery speed: smaller = longer refractory
+const EPSILON: f64 = 0.08;
 
-// Inter-compartment coupling
 const COUPLING: f64 = 24.0;
 
-// Fire: direct voltage kick above threshold
-const FIRE_V: f64 = 1.0; // FHN threshold is around v ≈ -0.4, so v=1.0 is well above
+const FIRE_V: f64 = 1.0;
 
-// Repeated firing interval (0 = fire only once)
 const FIRE_EVERY: usize = 200;
 
-// Voltage scaling for display (FHN v is roughly in [-2, 2])
 const V_SCALE: f64 = 50.0;
 const V_OFFSET: f64 = 50.0;
 
-// ─── Compartment state ────────────────────────────────────────────
-
 #[derive(Clone)]
 struct Compartment {
-    v: f64,    // fast voltage variable
-    w: f64,    // slow recovery variable
+    v: f64,
+    w: f64,
 }
 
 impl Compartment {
     fn new() -> Self {
-        // Resting state of FHN (approximate fixed point for a=0.7, b=0.8)
-        Self {
-            v: -1.2,
-            w: -0.625,
-        }
+        Self { v: -1.2, w: -0.625 }
     }
 
     fn fire(&mut self) {
@@ -56,13 +37,10 @@ impl Compartment {
     }
 }
 
-// ─── Simulation ───────────────────────────────────────────────────
-
 fn fhn_step(comp: &mut Compartment) {
     let v = comp.v;
     let w = comp.w;
 
-    // FitzHugh-Nagumo equations (TAU scales the fast variable speed)
     let dv = TAU * (v - v * v * v / 3.0 - w);
     let dw = TAU * EPSILON * (v + A - B * w);
 
@@ -109,7 +87,6 @@ fn main() {
     );
     println!();
 
-    // Header
     print!("{:>14}", "");
     for i in 0..NUM_COMPARTMENTS {
         print!("   C{:<6}", i);
@@ -120,7 +97,6 @@ fn main() {
     let mut compartments: Vec<Compartment> =
         (0..NUM_COMPARTMENTS).map(|_| Compartment::new()).collect();
 
-    // Fire the first compartment
     compartments[0].fire();
 
     for step in 0..STEPS {
@@ -143,7 +119,6 @@ fn main() {
         }
     }
 
-    // Peak detection
     println!();
     println!("Peak detection (re-running):");
     let mut compartments: Vec<Compartment> =

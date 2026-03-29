@@ -31,15 +31,12 @@ fn test_parse_tutorial_1_intro() {
     assert_eq!(sim.nodes.len(), 8);
     assert_eq!(sim.edges.len(), 2);
 
-    // First node is a LeakyNeuron
     assert_eq!(sim.nodes[0].filename, "neurons/LeakyNeuron.qml");
     assert!((sim.nodes[0].engine.capacitance.unwrap() - 2e-10).abs() < 1e-20);
 
-    // Second node is a CurrentClamp
     assert_eq!(sim.nodes[1].filename, "generators/CurrentClamp.qml");
     assert!((sim.nodes[1].engine.current_output.unwrap() - 3e-10).abs() < 1e-20);
 
-    // Third node is a Voltmeter
     assert_eq!(sim.nodes[2].filename, "meters/Voltmeter.qml");
 }
 
@@ -50,9 +47,7 @@ fn test_parse_v2_format() {
     assert_eq!(sim.nodes.len(), 6);
     assert_eq!(sim.edges.len(), 6);
 
-    // v2 uses fileName (camelCase)
     assert_eq!(sim.nodes[0].filename, "neurons/LeakyNeuron.qml");
-    // v2 edges may lack filename, defaulting to Edge.qml
     assert_eq!(sim.edges[0].filename, "Edge.qml");
 }
 
@@ -62,8 +57,8 @@ fn test_tutorial_1_intro_simulation() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
 
-    let dt = 0.0001; // 0.1 ms
-    let steps = 10_000; // 1 second
+    let dt = 0.0001;
+    let steps = 10_000;
     let spikes = run_headless(&mut world, steps, dt);
 
     assert!(
@@ -77,7 +72,6 @@ fn test_tutorial_1_intro_simulation() {
         spikes.len()
     );
 
-    // All spikes should be from neuron at index 0
     assert!(spikes.iter().all(|s| s.entity_index == 0));
 }
 
@@ -88,11 +82,9 @@ fn test_tutorial_2_circuits_simulation() {
     spawn_legacy_simulation(&mut world, &sim);
 
     let dt = 0.0001;
-    let steps = 10_000; // 1 second
+    let steps = 10_000;
     let spikes = run_headless(&mut world, steps, dt);
 
-    // This has 2 neurons in a chain: current clamp → neuron 1 → neuron 2
-    // Both neurons should fire
     let neuron_0_spikes: Vec<_> = spikes.iter().filter(|s| s.entity_index == 0).collect();
     let neuron_1_spikes: Vec<_> = spikes.iter().filter(|s| s.entity_index == 1).collect();
 
@@ -114,7 +106,6 @@ fn test_adaptation_decreasing_rate() {
     let mut world = hecs::World::new();
     let entities = spawn_legacy_simulation(&mut world, &sim);
 
-    // Find the adaptation neuron
     let adapt_neuron_idx = sim
         .nodes
         .iter()
@@ -127,21 +118,19 @@ fn test_adaptation_decreasing_rate() {
         .position(|n| n.filename == "neurons/LeakyNeuron.qml")
         .unwrap();
 
-    // Make the leaky neuron fire continuously by injecting current
     let leaky_entity = entities[leaky_idx];
     world
         .insert_one(
             leaky_entity,
             CurrentClamp {
-                current_output: 5e-9, // Strong stimulus
+                current_output: 5e-9,
             },
         )
         .unwrap();
 
     let dt = 0.0001;
-    let total_steps = 20_000; // 2 seconds
+    let total_steps = 20_000;
 
-    // Run simulation
     let mut all_spikes = Vec::new();
     let mut time = 0.0;
     let neuron_entities: Vec<hecs::Entity> = world
@@ -165,7 +154,6 @@ fn test_adaptation_decreasing_rate() {
         time += dt;
     }
 
-    // Find adaptation neuron entity index in the neuron_entities vec
     let adapt_entity = entities[adapt_neuron_idx];
     let adapt_neuron_query_idx = neuron_entities
         .iter()
@@ -178,7 +166,6 @@ fn test_adaptation_decreasing_rate() {
         .collect();
 
     if adapt_spikes.len() >= 4 {
-        // Check that firing rate decreases: first half ISI < second half ISI
         let mid_time = time / 2.0;
         let first_half_count = adapt_spikes.iter().filter(|s| s.time < mid_time).count();
         let second_half_count = adapt_spikes.iter().filter(|s| s.time >= mid_time).count();
@@ -191,7 +178,6 @@ fn test_adaptation_decreasing_rate() {
             second_half_count
         );
     }
-    // If not enough spikes, the test still passes - circuit might need stronger stimulus
 }
 
 #[test]
@@ -203,11 +189,9 @@ fn test_two_neuron_oscillator_v2() {
     spawn_legacy_simulation(&mut world, &sim);
 
     let dt = 0.0001;
-    let steps = 10_000; // 1 second
+    let steps = 10_000;
     let spikes = run_headless(&mut world, steps, dt);
 
-    // This circuit has 2 neurons with mutual inhibition and 2 current clamps.
-    // Should produce alternating firing.
     let n0_spikes: Vec<_> = spikes.iter().filter(|s| s.entity_index == 0).collect();
     let n1_spikes: Vec<_> = spikes.iter().filter(|s| s.entity_index == 1).collect();
 
@@ -229,19 +213,15 @@ fn test_inhibitory_simulation() {
     let mut world = hecs::World::new();
     let entities = spawn_legacy_simulation(&mut world, &sim);
 
-    // Verify correct number of entities
     assert_eq!(sim.nodes.len(), 9);
     assert_eq!(sim.edges.len(), 5);
 
-    // The main neuron C is at index 0 and should be excitatory (not inhibitory)
     let c_entity = entities[0];
     assert!(world.get::<&Inhibitory>(c_entity).is_err());
 
-    // Neuron B (index 3) is inhibitory
     let b_entity = entities[3];
     assert!(world.get::<&Inhibitory>(b_entity).is_ok());
 
-    // Run a few steps to make sure nothing crashes
     let dt = 0.0001;
     for i in 0..100 {
         lif_step(&mut world, dt, i as f64 * dt);
@@ -258,7 +238,6 @@ fn test_leaky_simulation() {
     let steps = 10_000;
     let _spikes = run_headless(&mut world, steps, dt);
 
-    // Just verify parsing and stepping doesn't crash
     assert!(sim.nodes.len() > 0);
 }
 
@@ -391,7 +370,6 @@ fn test_inhibitory_suppresses_firing() {
     let dt = 0.0001;
     let spikes = run_headless(&mut world, 10_000, dt);
 
-    // First run without inhibition for comparison
     let mut world_no_inhib = hecs::World::new();
     let neuron_alone = world_no_inhib.spawn((
         LeakyNeuron::default(),

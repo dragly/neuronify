@@ -1,14 +1,16 @@
 use crate::components::*;
 use crate::constants::*;
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
-use crate::rendering::{collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, Sphere};
+use crate::rendering::{
+    collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, Sphere,
+};
 use crate::serialization::{LoadContext, SaveContext};
 use crate::tools::*;
-use postcard::ser_flavors::Flavor;
 use chrono::{DateTime, Duration, Utc};
 use glam::Vec3;
 use hecs::serialize::column::*;
 use hecs::Entity;
+use postcard::ser_flavors::Flavor;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::io::BufReader;
@@ -19,8 +21,8 @@ use std::thread;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, WindowEvent};
 use visula::{
-    winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer,
-    LineDelegate, Lines, RenderData, Renderable, SphereDelegate, Spheres,
+    winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer, LineDelegate, Lines,
+    RenderData, Renderable, SphereDelegate, Spheres,
 };
 
 use crate::input::{Keyboard, Mouse};
@@ -81,9 +83,11 @@ impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
         application.camera_controller.enabled = false;
         application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
-        application.camera_controller.target_transform.forward = Vec3::new(0.3, -1.0, 0.0).normalize();
+        application.camera_controller.target_transform.forward =
+            Vec3::new(0.3, -1.0, 0.0).normalize();
         application.camera_controller.target_transform.distance = 50.0;
-        application.camera_controller.current_transform = application.camera_controller.target_transform.clone();
+        application.camera_controller.current_transform =
+            application.camera_controller.target_transform.clone();
 
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
         let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
@@ -101,7 +105,6 @@ impl Neuronify {
         .unwrap();
 
         let connection_vector = connection.position_b.clone() - connection.position_a.clone();
-        // TODO: Add normalize function to expressions
         let connection_endpoint = connection.position_a.clone() + connection_vector.clone()
             - connection.directional.clone() * connection_vector.clone()
                 / connection_vector.clone().length()
@@ -225,10 +228,7 @@ impl Neuronify {
 
         let ray_eye = inv_projection * ray_clip;
         let ray_eye = glam::Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
-        let inv_view_matrix = application
-            .camera_controller
-            .view_matrix()
-            .inverse();
+        let inv_view_matrix = application.camera_controller.view_matrix().inverse();
         let ray_world = inv_view_matrix * ray_eye;
         let ray_world = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
         let ray_origin = application.camera_controller.position();
@@ -363,11 +363,7 @@ impl Neuronify {
                                 c.from == new_connection.from && c.to == new_connection.to
                             });
                         if !connection_exists && ct.from != id {
-                            world.spawn((
-                                new_connection,
-                                CurrentSynapse::default(),
-                                Deletable {},
-                            ));
+                            world.spawn((new_connection, CurrentSynapse::default(), Deletable {}));
                         }
                         if !self.keyboard.shift_down {
                             ct.start = position;
@@ -594,9 +590,7 @@ impl Neuronify {
                                 }
                             };
                             let new_pos = new_bl + Vec3::new(new_height * 0.5, 0.0, 0.0);
-                            if let Ok(mut size) =
-                                world.get::<&mut VoltmeterSize>(entity)
-                            {
+                            if let Ok(mut size) = world.get::<&mut VoltmeterSize>(entity) {
                                 size.width = new_width;
                                 size.height = new_height;
                             }
@@ -618,9 +612,9 @@ impl Neuronify {
                                     .query::<(&Voltmeter, &Position)>()
                                     .iter()
                                     .filter_map(|(vid, (_, pos))| {
-                                        world.get::<&VoltmeterSize>(vid).ok().map(
-                                            |size| (vid, pos.position, size.width, size.height),
-                                        )
+                                        world.get::<&VoltmeterSize>(vid).ok().map(|size| {
+                                            (vid, pos.position, size.width, size.height)
+                                        })
                                     })
                                     .collect();
 
@@ -1165,14 +1159,8 @@ impl visula::Simulation for Neuronify {
                             });
                         });
                     }
-                    if let Ok(mut neuron) = self
-                        .world
-                        .get::<&mut LeakyNeuron>(active_entity)
-                    {
-                        let is_inhibitory = self
-                            .world
-                            .get::<&Inhibitory>(active_entity)
-                            .is_ok();
+                    if let Ok(mut neuron) = self.world.get::<&mut LeakyNeuron>(active_entity) {
+                        let is_inhibitory = self.world.get::<&Inhibitory>(active_entity).is_ok();
                         let label = if is_inhibitory {
                             "LIF Neuron (Inhibitory)"
                         } else {
@@ -1201,9 +1189,7 @@ impl visula::Simulation for Neuronify {
                             });
                         });
                     }
-                    if let Ok(dynamics) =
-                        self.world.get::<&LeakyDynamics>(active_entity)
-                    {
+                    if let Ok(dynamics) = self.world.get::<&LeakyDynamics>(active_entity) {
                         ui.collapsing("Dynamics", |ui| {
                             egui::Grid::new("neuron_dynamics").show(ui, |ui| {
                                 ui.label("Voltage:");
@@ -1215,10 +1201,7 @@ impl visula::Simulation for Neuronify {
                             });
                         });
                     }
-                    if let Ok(mut clamp) = self
-                        .world
-                        .get::<&mut CurrentClamp>(active_entity)
-                    {
+                    if let Ok(mut clamp) = self.world.get::<&mut CurrentClamp>(active_entity) {
                         ui.collapsing("Current Source", |ui| {
                             egui::Grid::new("clamp_settings").show(ui, |ui| {
                                 ui.label("Current:");
@@ -1230,9 +1213,7 @@ impl visula::Simulation for Neuronify {
                             });
                         });
                     }
-                    if let Ok(mut gen) = self
-                        .world
-                        .get::<&mut RegularSpikeGenerator>(active_entity)
+                    if let Ok(mut gen) = self.world.get::<&mut RegularSpikeGenerator>(active_entity)
                     {
                         ui.collapsing("Spike Generator", |ui| {
                             egui::Grid::new("spike_gen_settings").show(ui, |ui| {
@@ -1245,10 +1226,7 @@ impl visula::Simulation for Neuronify {
                             });
                         });
                     }
-                    if let Ok(mut gen) = self
-                        .world
-                        .get::<&mut PoissonGenerator>(active_entity)
-                    {
+                    if let Ok(mut gen) = self.world.get::<&mut PoissonGenerator>(active_entity) {
                         ui.collapsing("Poisson Generator", |ui| {
                             egui::Grid::new("poisson_gen_settings").show(ui, |ui| {
                                 ui.label("Rate:");
@@ -1259,9 +1237,8 @@ impl visula::Simulation for Neuronify {
                     }
                     if self.world.get::<&Voltmeter>(active_entity).is_ok() {
                         ui.collapsing("Voltmeter", |ui| {
-                            if let Ok(mut size) = self
-                                .world
-                                .get::<&mut VoltmeterSize>(active_entity)
+                            if let Ok(mut size) =
+                                self.world.get::<&mut VoltmeterSize>(active_entity)
                             {
                                 egui::Grid::new("voltmeter_size_settings").show(ui, |ui| {
                                     ui.label("Width:");
@@ -1330,8 +1307,11 @@ impl visula::Simulation for Neuronify {
                     winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 100.0,
                 };
                 application.camera_controller.target_transform.distance *= 1.0 - scroll * 0.1;
-                application.camera_controller.target_transform.distance =
-                    application.camera_controller.target_transform.distance.clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+                application.camera_controller.target_transform.distance = application
+                    .camera_controller
+                    .target_transform
+                    .distance
+                    .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
             }
             _ => {}
         }
