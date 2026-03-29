@@ -238,7 +238,7 @@ fn test_leaky_simulation() {
     let steps = 10_000;
     let _spikes = run_headless(&mut world, steps, dt);
 
-    assert!(sim.nodes.len() > 0);
+    assert!(!sim.nodes.is_empty());
 }
 
 #[test]

@@ -155,7 +155,7 @@ fn main() {
     fire_compartment(&mut compartments[0]);
 
     for step in 0..STEPS {
-        if FIRE_EVERY > 0 && step > 0 && step % FIRE_EVERY == 0 {
+        if FIRE_EVERY != 0 && step > 0 && step % FIRE_EVERY == 0 {
             fire_compartment(&mut compartments[0]);
             println!(
                 "--- RE-FIRE at step {} (t = {:.2} ms) ---",
@@ -180,7 +180,7 @@ fn main() {
     let mut compartments: Vec<Compartment> =
         (0..NUM_COMPARTMENTS).map(|_| Compartment::new()).collect();
     compartments[0].fire_impulse = FIRE_IMPULSE_INITIAL;
-    let mut peaks = vec![(0.0_f64, 0_usize); NUM_COMPARTMENTS];
+    let mut peaks = [(0.0_f64, 0_usize); NUM_COMPARTMENTS];
 
     for step in 0..STEPS {
         for comp in compartments.iter_mut() {

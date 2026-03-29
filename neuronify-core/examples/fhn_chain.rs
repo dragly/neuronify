@@ -124,7 +124,7 @@ fn main() {
     let mut compartments: Vec<Compartment> =
         (0..NUM_COMPARTMENTS).map(|_| Compartment::new()).collect();
     compartments[0].fire();
-    let mut peaks = vec![(f64::MIN, 0_usize); NUM_COMPARTMENTS];
+    let mut peaks = [(f64::MIN, 0_usize); NUM_COMPARTMENTS];
 
     for step in 0..STEPS {
         for comp in compartments.iter_mut() {
