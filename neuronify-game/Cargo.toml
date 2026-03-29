@@ -1,0 +1,20 @@
+[package]
+name = "neuronify-game"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+neuronify-core = { path = "../neuronify-core" }
+visula = { git = "https://github.com/dragly/visula", rev = "3f8486cdb293faf9b95dfc29f69449f5ba5c6f5b" }
+visula_derive = { git = "https://github.com/dragly/visula", rev = "3f8486cdb293faf9b95dfc29f69449f5ba5c6f5b" }
+visula_core = { git = "https://github.com/dragly/visula", rev = "3f8486cdb293faf9b95dfc29f69449f5ba5c6f5b" }
+wgpu = { version = "27", features = ["webgl"] }
+glam = { version = "0.30", features = ["bytemuck", "serde"] }
+bytemuck = { version = "1.24", features = ["derive"] }
+egui = "0.33"
+hecs = { version = "0.10.5", features = ["column-serialize", "serde", "row-serialize"] }
+rand = "0.8.5"
+serde = { version = "1.0.204", features = ["derive"] }
+serde_derive = "1.0.204"
+chrono = { version = "0.4.38", features = ["serde"] }
+log = "0.4"

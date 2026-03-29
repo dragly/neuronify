@@ -14,6 +14,7 @@ pub enum Tool {
     Voltmeter,
     StaticConnection,
     Axon,
+    MembraneSegment,
     Erase,
     Stimulate,
 }
@@ -52,6 +53,7 @@ impl ToolCategory {
             ToolCategory::Connections => vec![
                 (Tool::StaticConnection, "Static Connection"),
                 (Tool::Axon, "Axon"),
+                (Tool::MembraneSegment, "Membrane Segment"),
             ],
         }
     }

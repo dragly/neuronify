@@ -1,5 +1,5 @@
 [workspace]
-members = ["run-wasm", "neuronify", "neuronify-core"]
+members = ["run-wasm", "neuronify", "neuronify-core", "neuronify-game"]
 resolver = "2"
 
 [profile.optimized-dev]

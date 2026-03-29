@@ -2160,6 +2160,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "neuronify-game"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "chrono",
+ "egui",
+ "glam",
+ "hecs",
+ "log",
+ "neuronify-core",
+ "rand 0.8.5",
+ "serde",
+ "serde_derive",
+ "visula",
+ "visula_core",
+ "visula_derive",
+ "wgpu",
+]
+
+[[package]]
 name = "nix"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

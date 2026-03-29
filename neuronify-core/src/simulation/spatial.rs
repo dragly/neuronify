@@ -19,7 +19,7 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
             let to = other_position.position;
             let r2 = from.distance_squared(to);
             let target2 = (2.0 * NODE_RADIUS).powi(2);
-            let d = (to - from).normalize();
+            let d = (to - from).normalize_or_zero();
             let force = REPULSION_STRENGTH * (r2 - target2).min(0.0) * d;
             dynamics.acceleration += force;
         }
@@ -44,8 +44,8 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
             let to_2 = world.get::<&Position>(connection_2.to).unwrap().position;
             let from_2 = world.get::<&Position>(connection_2.from).unwrap().position;
             let target = 1.0;
-            let dir_ab = (to_1 - from_1).normalize();
-            let dir_bc = (to_2 - from_2).normalize();
+            let dir_ab = (to_1 - from_1).normalize_or_zero();
+            let dir_bc = (to_2 - from_2).normalize_or_zero();
             let dot = dir_ab.dot(dir_bc);
             let diff = target - dot;
             let p_a = (dir_ab.cross((dir_ab).cross(dir_bc))).normalize();
@@ -81,7 +81,7 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
             let r2 = from.position.distance_squared(to.position);
             let d = to.position - from.position;
             let target_length = 2.0 * NODE_RADIUS;
-            let force = SPRING_STRENGTH * (r2 - target_length.powi(2)) * d.normalize();
+            let force = SPRING_STRENGTH * (r2 - target_length.powi(2)) * d.normalize_or_zero();
             if let Ok(mut dynamics_from) = world.get::<&mut SpatialDynamics>(connection.from) {
                 dynamics_from.acceleration += force;
             }
@@ -94,11 +94,21 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
 
 pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
     for (_, (position, dynamics)) in world.query_mut::<(&mut Position, &mut SpatialDynamics)>() {
+        // Guard against NaN/Inf from force calculations
+        if !dynamics.acceleration.is_finite() {
+            dynamics.acceleration = Vec3::ZERO;
+        }
+        if !dynamics.velocity.is_finite() {
+            dynamics.velocity = Vec3::ZERO;
+        }
         let gravity = -position.position.y;
         dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
         dynamics.velocity += dynamics.acceleration * dt as f32;
         position.position += dynamics.velocity * dt as f32;
-        dynamics.acceleration = Vec3::new(0.0, 0.0, 0.0);
+        dynamics.acceleration = Vec3::ZERO;
         dynamics.velocity -= dynamics.velocity * dt as f32;
+        if !position.position.is_finite() {
+            position.position = Vec3::ZERO;
+        }
     }
 }

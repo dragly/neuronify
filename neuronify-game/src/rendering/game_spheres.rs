@@ -1,11 +1,19 @@
-use glam::Vec3;
+use neuronify_core::rendering::colors::{
+    base, blue, mantle, neurocolor, orange, red, srgb, yellow,
+};
+use neuronify_core::rendering::gpu_types::Sphere;
+use neuronify_core::{
+    Compartment, CurrentClamp, GeneratorDynamics, Inhibitory, LeakyDynamics, LeakyNeuron,
+    NeuronType, Position, COMPARTMENT_SPHERE_SCALE, NODE_RADIUS,
+};
 
 use crate::components::*;
-use crate::constants::*;
-use crate::rendering::colors::*;
-use crate::rendering::gpu_types::Sphere;
+use crate::rendering::colors::{
+    activity_sensor_color, chemical_sensor_color, glial_color, membrane_color, player1_color,
+    player2_color, touch_sensor_color,
+};
 
-pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
+pub fn collect_game_spheres(world: &hecs::World) -> Vec<Sphere> {
     let mut spheres = Vec::new();
 
     let lif_neuron_spheres: Vec<Sphere> = world
@@ -16,13 +24,20 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
                 / (neuron.threshold - neuron.resting_potential))
                 .clamp(0.0, 1.0) as f32;
             let is_inhibitory = world.get::<&Inhibitory>(entity).is_ok();
-            let mut color = if is_inhibitory {
+            let mut color = if let Ok(sensor) = world.get::<&SensorNeuron>(entity) {
+                let base_color = match sensor.sensor_type {
+                    SensorType::Activity => activity_sensor_color(),
+                    SensorType::Chemical => chemical_sensor_color(),
+                    SensorType::Touch => touch_sensor_color(),
+                };
+                value * base_color + (1.0 - value) * (base_color * 0.4)
+            } else if is_inhibitory {
                 value * mantle() + (1.0 - value) * red()
             } else {
                 value * base() + (1.0 - value) * blue()
             };
 
-            // Depolarization block visual - override with flickering dark
+            // Depolarization block visual
             if let Ok(block) = world.get::<&DepolarizationBlock>(entity) {
                 if block.blocked {
                     color = srgb(80, 20, 20);
@@ -31,17 +46,22 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
 
             // Ownership tinting
             if let Ok(ownership) = world.get::<&Ownership>(entity) {
-                let player_color = match ownership.player {
+                let pc = match ownership.player {
                     PlayerId::Player1 => player1_color(),
                     PlayerId::Player2 => player2_color(),
                 };
-                color = color * 0.6 + player_color * 0.4;
+                color = color * 0.6 + pc * 0.4;
             }
 
-            // Energy dimming
+            // Energy dimming / dormancy
             if let Ok(metab) = world.get::<&MetabolicState>(entity) {
-                let energy_factor = (metab.energy / metab.max_energy).clamp(0.3, 1.0) as f32;
-                color *= energy_factor;
+                let effectiveness = (metab.energy / metab.max_energy).clamp(0.0, 1.0) as f32;
+                if effectiveness < 0.05 {
+                    // Fully dormant — dark gray
+                    color = srgb(40, 40, 50);
+                } else {
+                    color *= effectiveness.max(0.3);
+                }
             }
 
             // Origin neuron is slightly larger
@@ -89,13 +109,12 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
         .map(|(entity, (compartment, position, neuron_type))| {
             let value = ((compartment.voltage + 50.0) / 200.0) as f32;
             let mut color = neurocolor(neuron_type, value);
-            // Ownership tinting for compartments too
             if let Ok(ownership) = world.get::<&Ownership>(entity) {
-                let player_color = match ownership.player {
+                let pc = match ownership.player {
                     PlayerId::Player1 => player1_color(),
                     PlayerId::Player2 => player2_color(),
                 };
-                color = color * 0.7 + player_color * 0.3;
+                color = color * 0.7 + pc * 0.3;
             }
             Sphere {
                 position: position.position,
@@ -112,11 +131,11 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
         .map(|(entity, (_, position))| {
             let mut color = membrane_color();
             if let Ok(ownership) = world.get::<&Ownership>(entity) {
-                let player_color = match ownership.player {
+                let pc = match ownership.player {
                     PlayerId::Player1 => player1_color(),
                     PlayerId::Player2 => player2_color(),
                 };
-                color = color * 0.7 + player_color * 0.3;
+                color = color * 0.7 + pc * 0.3;
             }
             Sphere {
                 position: position.position,
@@ -127,48 +146,25 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
         })
         .collect();
 
-    let trigger_spheres: Vec<Sphere> = world
-        .query::<(&CurrentSynapse, &Connection)>()
+    let glial_spheres: Vec<Sphere> = world
+        .query::<(&GlialCell, &Position)>()
         .iter()
-        .flat_map(|(_, (synapse, connection))| {
-            let start = world
-                .get::<&Position>(connection.from)
-                .map(|p| p.position)
-                .unwrap_or(Vec3::ZERO);
-            let end = world
-                .get::<&Position>(connection.to)
-                .map(|p| p.position)
-                .unwrap_or(Vec3::ZERO);
-            let diff = end - start;
-            synapse
-                .triggers
-                .iter()
-                .map(move |&trigger_time| {
-                    let fire_time = trigger_time - synapse.delay;
-                    let progress = if synapse.delay > 0.0 {
-                        ((synapse.time - fire_time) / synapse.delay).clamp(0.0, 1.0) as f32
-                    } else {
-                        1.0
-                    };
-                    Sphere {
-                        position: start + diff * progress,
-                        color: crust(),
-                        radius: NODE_RADIUS * TRIGGER_SPHERE_SCALE,
-                        _padding: Default::default(),
-                    }
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect();
-
-    let resource_node_spheres: Vec<Sphere> = world
-        .query::<(&ResourceNode, &Position)>()
-        .iter()
-        .map(|(_, (_, position))| Sphere {
-            position: position.position,
-            color: resource_color(),
-            radius: RESOURCE_NODE_VISUAL_RADIUS,
-            _padding: Default::default(),
+        .map(|(entity, (glial, position))| {
+            let atp_factor = (glial.atp_stored / glial.max_atp).clamp(0.3, 1.0) as f32;
+            let mut color = glial_color() * atp_factor;
+            if let Ok(ownership) = world.get::<&Ownership>(entity) {
+                let pc = match ownership.player {
+                    PlayerId::Player1 => player1_color(),
+                    PlayerId::Player2 => player2_color(),
+                };
+                color = color * 0.6 + pc * 0.4;
+            }
+            Sphere {
+                position: position.position,
+                color,
+                radius: NODE_RADIUS * 1.3,
+                _padding: Default::default(),
+            }
         })
         .collect();
 
@@ -177,8 +173,7 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
     spheres.extend(generator_spheres.iter());
     spheres.extend(compartment_spheres.iter());
     spheres.extend(membrane_spheres.iter());
-    spheres.extend(trigger_spheres.iter());
-    spheres.extend(resource_node_spheres.iter());
+    spheres.extend(glial_spheres.iter());
 
     spheres
 }

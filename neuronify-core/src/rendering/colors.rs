@@ -50,6 +50,22 @@ pub fn frame_color() -> Vec3 {
     srgb(80, 80, 100)
 }
 
+pub fn player1_color() -> Vec3 {
+    green()
+}
+
+pub fn player2_color() -> Vec3 {
+    srgb(136, 57, 239)
+}
+
+pub fn resource_color() -> Vec3 {
+    yellow()
+}
+
+pub fn membrane_color() -> Vec3 {
+    srgb(60, 60, 70)
+}
+
 pub fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
     let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
     match *neuron_type {

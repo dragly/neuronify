@@ -255,3 +255,84 @@ pub struct Compartment {
     #[serde(default)]
     pub fire_impulse: f64,
 }
+
+// Game components
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub enum PlayerId {
+    Player1,
+    Player2,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Ownership {
+    pub player: PlayerId,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OriginNeuron {
+    pub player: PlayerId,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MetabolicState {
+    pub energy: f64,
+    pub max_energy: f64,
+}
+
+impl Default for MetabolicState {
+    fn default() -> Self {
+        Self {
+            energy: crate::constants::DEFAULT_NEURON_ENERGY,
+            max_energy: crate::constants::MAX_NEURON_ENERGY,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ResourceNode {
+    pub emission_rate: f64,
+    pub radius: f32,
+    pub remaining: f64,
+}
+
+impl Default for ResourceNode {
+    fn default() -> Self {
+        Self {
+            emission_rate: crate::constants::RESOURCE_EMISSION_RATE,
+            radius: crate::constants::RESOURCE_NODE_RADIUS,
+            remaining: f64::INFINITY,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Dead;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MembraneSegment;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DepolarizationBlock {
+    pub time_above_threshold: f64,
+    pub blocked: bool,
+    pub recovery_timer: f64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum SubstrateZoneType {
+    /// High potassium - lowers firing threshold, making neurons more excitable
+    HighPotassium,
+    /// High magnesium - weakens synaptic transmission (reduces connection strength)
+    HighMagnesium,
+    /// Electrical noise - injects random current into neurons
+    Noise,
+    /// Toxic/damage - drains energy from neurons in the zone
+    Damage,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SubstrateZone {
+    pub zone_type: SubstrateZoneType,
+    pub radius: f32,
+}

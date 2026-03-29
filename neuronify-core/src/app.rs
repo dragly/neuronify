@@ -26,7 +26,12 @@ use visula::{
 };
 
 use crate::input::{Keyboard, Mouse};
+use crate::rendering::{
+    collect_petri_dish, collect_resource_node_rings, collect_substrate_zone_rings,
+};
 use crate::simulation;
+use crate::simulation::ai::AiState;
+use crate::simulation::game::{self, PetriDish};
 
 pub struct Neuronify {
     pub tool: Tool,
@@ -52,6 +57,10 @@ pub struct Neuronify {
     pub dragging_entity: Option<Entity>,
     pub drag_offset: Vec3,
     pub resizing_voltmeter: Option<(Entity, ResizeCorner)>,
+    pub petri_dish: Option<PetriDish>,
+    pub current_player: PlayerId,
+    pub ai_state: Option<AiState>,
+    pub pending_new_game: bool,
 }
 
 #[derive(Debug)]
@@ -184,7 +193,26 @@ impl Neuronify {
             dragging_entity: None,
             drag_offset: Vec3::ZERO,
             resizing_voltmeter: None,
+            petri_dish: None,
+            current_player: PlayerId::Player1,
+            ai_state: None,
+            pending_new_game: false,
         }
+    }
+
+    pub fn start_game(&mut self, application: &mut visula::Application) {
+        let dish = PetriDish {
+            center: Vec3::ZERO,
+            radius: PETRI_DISH_RADIUS,
+        };
+        game::setup_game(&mut self.world, &dish);
+        self.petri_dish = Some(dish);
+        self.current_player = PlayerId::Player1;
+        self.ai_state = Some(AiState::new());
+        self.tool = Tool::Select;
+        self.active_entity = None;
+        // Zoom out to see the larger dish
+        application.camera_controller.target_transform.distance = 150.0;
     }
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
@@ -254,6 +282,20 @@ impl Neuronify {
                 if previous_too_near {
                     return;
                 }
+                // Game mode: check proximity and cost
+                if self.petri_dish.is_some() {
+                    if !game::is_within_build_range(world, mouse_position, self.current_player) {
+                        return;
+                    }
+                    if !game::try_spend_energy(
+                        world,
+                        mouse_position,
+                        self.current_player,
+                        NEURON_SPAWN_COST,
+                    ) {
+                        return;
+                    }
+                }
                 let neuron_type = if self.tool == Tool::InhibitoryNeuron {
                     NeuronType::Inhibitory
                 } else {
@@ -272,6 +314,59 @@ impl Neuronify {
                 if self.tool == Tool::InhibitoryNeuron {
                     world.insert_one(entity, Inhibitory).unwrap();
                 }
+                if self.petri_dish.is_some() {
+                    let _ = world.insert(
+                        entity,
+                        (
+                            MetabolicState::default(),
+                            SpatialDynamics {
+                                velocity: Vec3::ZERO,
+                                acceleration: Vec3::ZERO,
+                            },
+                            Ownership {
+                                player: self.current_player,
+                            },
+                            DepolarizationBlock {
+                                time_above_threshold: 0.0,
+                                blocked: false,
+                                recovery_timer: 0.0,
+                            },
+                        ),
+                    );
+                }
+                self.previous_creation = Some(PreviousCreation { entity });
+            }
+            Tool::MembraneSegment => {
+                if previous_too_near {
+                    return;
+                }
+                if self.petri_dish.is_some() {
+                    if !game::is_within_build_range(world, mouse_position, self.current_player) {
+                        return;
+                    }
+                    if !game::try_spend_energy(
+                        world,
+                        mouse_position,
+                        self.current_player,
+                        MEMBRANE_SPAWN_COST,
+                    ) {
+                        return;
+                    }
+                }
+                let entity = world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    MembraneSegment,
+                    SpatialDynamics {
+                        velocity: Vec3::ZERO,
+                        acceleration: Vec3::ZERO,
+                    },
+                    Ownership {
+                        player: self.current_player,
+                    },
+                    Deletable {},
+                ));
                 self.previous_creation = Some(PreviousCreation { entity });
             }
             Tool::CurrentSource => {
@@ -799,6 +894,27 @@ impl Neuronify {
                             if previous_too_near {
                                 return;
                             }
+                            // Game mode: check cost for compartment
+                            if self.petri_dish.is_some()
+                                && !game::try_spend_energy(
+                                    world,
+                                    mouse_position,
+                                    self.current_player,
+                                    COMPARTMENT_SPAWN_COST,
+                                )
+                            {
+                                return;
+                            }
+                            // Game mode: check membrane blocking
+                            if self.petri_dish.is_some() {
+                                let from_pos = world
+                                    .get::<&Position>(ct.from)
+                                    .map(|p| p.position)
+                                    .unwrap_or(Vec3::ZERO);
+                                if game::membrane_blocks_path(world, from_pos, mouse_position) {
+                                    return;
+                                }
+                            }
                             let neuron_type =
                                 if let Ok(neuron_type) = world.get::<&NeuronType>(ct.from) {
                                     Some((*neuron_type).clone())
@@ -912,6 +1028,11 @@ impl visula::Simulation for Neuronify {
         }
     }
     fn update(&mut self, application: &mut visula::Application) {
+        if self.pending_new_game {
+            self.pending_new_game = false;
+            self.start_game(application);
+        }
+
         let Neuronify {
             connection_tool,
             world,
@@ -941,9 +1062,33 @@ impl visula::Simulation for Neuronify {
             simulation::integrate_motion(world, PHYSICS_DT);
         }
 
+        // Game systems (once per frame)
+        if let Some(ref dish) = self.petri_dish {
+            let frame_dt = self.iterations as f64 * LIF_DT;
+            game::enforce_petri_boundary(world, dish);
+            game::harvest_resources(world, frame_dt);
+            game::metabolic_drain(world, frame_dt);
+            game::resource_flow(world, frame_dt);
+            game::depolarization_block(world, frame_dt);
+            game::apply_substrate_zones(world, frame_dt);
+            game::check_starvation(world);
+            game::cleanup_dead(world);
+            game::update_ownership(world);
+
+            // AI opponent
+            if let Some(ref mut ai) = self.ai_state {
+                simulation::ai::ai_tick(world, ai, dish);
+            }
+        }
+
         let spheres = collect_spheres(world);
         let mut connections = collect_connections(world, &self.tool, connection_tool);
         connections.extend(collect_voltmeter_traces(world));
+        if let Some(ref dish) = self.petri_dish {
+            connections.extend(collect_petri_dish(dish));
+            connections.extend(collect_resource_node_rings(world));
+            connections.extend(collect_substrate_zone_rings(world));
+        }
 
         self.sphere_buffer
             .update(&application.device, &application.queue, &spheres);
@@ -973,12 +1118,149 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
-        egui::Area::new("edit_button_area".into())
-            .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
-            .show(context, |ui| {
-                ui.toggle_value(&mut self.edit_enabled, "Edit").clicked();
-            });
-        if self.edit_enabled {
+        let in_game = self.petri_dish.is_some();
+
+        // RTS-style bottom command panel (game mode)
+        if in_game {
+            // Gather stats
+            let mut p1_neurons = 0u32;
+            let mut p1_energy = 0.0f64;
+            let mut p2_neurons = 0u32;
+            let mut p2_energy = 0.0f64;
+            for (_, (ownership, metab)) in
+                self.world.query::<(&Ownership, &MetabolicState)>().iter()
+            {
+                match ownership.player {
+                    PlayerId::Player1 => {
+                        p1_neurons += 1;
+                        p1_energy += metab.energy;
+                    }
+                    PlayerId::Player2 => {
+                        p2_neurons += 1;
+                        p2_energy += metab.energy;
+                    }
+                }
+            }
+
+            egui::TopBottomPanel::bottom("game_command_panel")
+                .min_height(80.0)
+                .show(context, |ui| {
+                    ui.horizontal(|ui| {
+                        // Left: Status panel
+                        ui.vertical(|ui| {
+                            ui.set_min_width(180.0);
+                            ui.colored_label(
+                                egui::Color32::from_rgb(64, 160, 43),
+                                egui::RichText::new(format!(
+                                    "YOU: {} neurons | {:.0} energy",
+                                    p1_neurons, p1_energy
+                                ))
+                                .strong(),
+                            );
+                            ui.colored_label(
+                                egui::Color32::from_rgb(136, 57, 239),
+                                format!("AI:  {} neurons | {:.0} energy", p2_neurons, p2_energy),
+                            );
+                        });
+
+                        ui.separator();
+
+                        // Center: Build tools as buttons (RTS-style)
+                        ui.vertical(|ui| {
+                            ui.label(
+                                egui::RichText::new("BUILD")
+                                    .strong()
+                                    .color(egui::Color32::GRAY),
+                            );
+                            ui.horizontal(|ui| {
+                                let game_tools: Vec<(Tool, &str, &str)> = vec![
+                                    (Tool::ExcitatoryNeuron, "Excitatory", "25 energy"),
+                                    (Tool::InhibitoryNeuron, "Inhibitory", "25 energy"),
+                                    (Tool::Axon, "Axon", "3/seg"),
+                                    (Tool::MembraneSegment, "Membrane", "15 energy"),
+                                ];
+                                for (tool, label, cost) in game_tools {
+                                    let selected = self.tool == tool;
+                                    let btn = egui::Button::new(
+                                        egui::RichText::new(format!("{}\n{}", label, cost)).small(),
+                                    )
+                                    .min_size(egui::vec2(72.0, 50.0))
+                                    .selected(selected);
+                                    if ui.add(btn).clicked() {
+                                        self.tool = tool;
+                                    }
+                                }
+                            });
+                        });
+
+                        ui.separator();
+
+                        // Right: Action tools
+                        ui.vertical(|ui| {
+                            ui.label(
+                                egui::RichText::new("ACTIONS")
+                                    .strong()
+                                    .color(egui::Color32::GRAY),
+                            );
+                            ui.horizontal(|ui| {
+                                let action_tools: Vec<(Tool, &str)> = vec![
+                                    (Tool::Select, "Select"),
+                                    (Tool::Stimulate, "Stimulate"),
+                                    (Tool::Erase, "Erase"),
+                                ];
+                                for (tool, label) in action_tools {
+                                    let selected = self.tool == tool;
+                                    let btn = egui::Button::new(egui::RichText::new(label).small())
+                                        .min_size(egui::vec2(60.0, 50.0))
+                                        .selected(selected);
+                                    if ui.add(btn).clicked() {
+                                        self.tool = tool;
+                                    }
+                                }
+                            });
+                        });
+
+                        ui.separator();
+
+                        // Far right: Game controls
+                        ui.vertical(|ui| {
+                            ui.label(
+                                egui::RichText::new("GAME")
+                                    .strong()
+                                    .color(egui::Color32::GRAY),
+                            );
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add(
+                                        egui::Button::new("New Game")
+                                            .min_size(egui::vec2(60.0, 30.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    self.pending_new_game = true;
+                                }
+                                if ui
+                                    .add(egui::Button::new("Exit").min_size(egui::vec2(50.0, 30.0)))
+                                    .clicked()
+                                {
+                                    self.petri_dish = None;
+                                    self.world.clear();
+                                }
+                            });
+                        });
+                    });
+                });
+        }
+
+        // Edit button (only in sandbox mode, not game mode)
+        if !in_game {
+            egui::Area::new("edit_button_area".into())
+                .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+                .show(context, |ui| {
+                    ui.toggle_value(&mut self.edit_enabled, "Edit").clicked();
+                });
+        }
+        if self.edit_enabled || in_game {
             #[cfg(not(target_arch = "wasm32"))]
             egui::TopBottomPanel::top("top_panel").show(context, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
@@ -1123,17 +1405,30 @@ impl visula::Simulation for Neuronify {
                             }
                         });
                     });
-                });
-            });
-            egui::Window::new("Elements").show(context, |ui| {
-                for category in &TOOL_CATEGORIES {
-                    ui.collapsing(category.label(), |ui| {
-                        for (tool_value, label) in category.tools() {
-                            ui.selectable_value(&mut self.tool, tool_value, label);
+                    ui.menu_button("Game", |ui| {
+                        if ui.button("New Game").clicked() {
+                            self.pending_new_game = true;
+                            ui.close();
+                        }
+                        if self.petri_dish.is_some() && ui.button("Exit Game").clicked() {
+                            self.petri_dish = None;
+                            self.world.clear();
+                            ui.close();
                         }
                     });
-                }
+                });
             });
+            if !in_game {
+                egui::Window::new("Elements").show(context, |ui| {
+                    for category in &TOOL_CATEGORIES {
+                        ui.collapsing(category.label(), |ui| {
+                            for (tool_value, label) in category.tools() {
+                                ui.selectable_value(&mut self.tool, tool_value, label);
+                            }
+                        });
+                    }
+                });
+            }
             egui::Window::new("Settings").show(context, |ui| {
                 ui.label(format!("FPS: {:.0}", self.fps));
                 ui.label("Simulation speed");

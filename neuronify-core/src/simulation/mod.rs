@@ -1,4 +1,6 @@
+pub mod ai;
 pub mod fhn;
+pub mod game;
 pub mod lif;
 pub mod spatial;
 pub mod stimulation;
