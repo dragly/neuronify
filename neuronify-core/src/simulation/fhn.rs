@@ -379,6 +379,220 @@ mod axon_tests {
         );
     }
 
+    /// Two-hop chain: origin (generator) → B → C, each connected via a bridge compartment.
+    /// Verifies that a neuron excited by an upstream AP can itself propagate downstream.
+    #[test]
+    fn test_two_hop_chain_propagates() {
+        let mut world = hecs::World::new();
+
+        let origin = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            RegularSpikeGenerator { frequency: 20.0 },
+            GeneratorDynamics::default(),
+            Position { position: Vec3::new(0.0, 0.0, 0.0) },
+            NeuronType::Excitatory,
+        ));
+        let neuron_b = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            Position { position: Vec3::new(0.0, 0.0, 5.0) },
+            NeuronType::Excitatory,
+        ));
+        let neuron_c = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            Position { position: Vec3::new(0.0, 0.0, 10.0) },
+            NeuronType::Excitatory,
+        ));
+
+        let bridge_b = world.spawn((
+            Compartment { voltage: -10.0, m: -0.625, h: 0.0, n: 0.0, influence: 0.0, capacitance: 1.0, injected_current: 0.0, fire_impulse: 0.0 },
+            Position { position: Vec3::new(0.0, 0.0, 3.5) },
+            NeuronType::Excitatory,
+        ));
+        let bridge_c = world.spawn((
+            Compartment { voltage: -10.0, m: -0.625, h: 0.0, n: 0.0, influence: 0.0, capacitance: 1.0, injected_current: 0.0, fire_impulse: 0.0 },
+            Position { position: Vec3::new(0.0, 0.0, 8.5) },
+            NeuronType::Excitatory,
+        ));
+
+        // origin → bridge_b → neuron_b
+        world.spawn((Connection { from: origin, to: bridge_b, strength: 1.0, directional: true },
+                     CompartmentCurrent { capacitance: COUPLING_CAPACITANCE }));
+        world.spawn((Connection { from: bridge_b, to: neuron_b, strength: 1.0, directional: true },
+                     CompartmentCurrent { capacitance: COUPLING_CAPACITANCE }));
+        // neuron_b → bridge_c → neuron_c
+        world.spawn((Connection { from: neuron_b, to: bridge_c, strength: 1.0, directional: true },
+                     CompartmentCurrent { capacitance: COUPLING_CAPACITANCE }));
+        world.spawn((Connection { from: bridge_c, to: neuron_c, strength: 1.0, directional: true },
+                     CompartmentCurrent { capacitance: COUPLING_CAPACITANCE }));
+
+        let lif_dt = LIF_DT;
+        let cdt = FHN_CDT;
+        let iterations: u32 = 4;
+        let fire_window = iterations as f64 * lif_dt;
+        // 0.5s is enough: origin fires 10x at 20Hz, C should fire at least once
+        let total_frames = (0.5 / (iterations as f64 * lif_dt)) as usize;
+
+        let mut time = 0.0;
+        let mut c_fired = false;
+
+        for _ in 0..total_frames {
+            for _ in 0..iterations {
+                lif_step(&mut world, lif_dt, time);
+                time += lif_dt;
+            }
+            let mut fired: std::collections::HashSet<hecs::Entity> = world
+                .query::<&LeakyDynamics>()
+                .iter()
+                .filter(|(_, d)| d.time_since_fire < fire_window)
+                .map(|(e, _)| e)
+                .collect();
+            for (e, d) in world.query::<&GeneratorDynamics>().iter() {
+                if d.time_since_fire < fire_window { fired.insert(e); }
+            }
+            for _ in 0..iterations {
+                fhn_step(&mut world, cdt, &fired);
+            }
+            if let Ok(d) = world.get::<&LeakyDynamics>(neuron_c) {
+                if d.time_since_fire < fire_window { c_fired = true; break; }
+            }
+        }
+
+        assert!(c_fired, "Neuron C must fire when excited through origin→B→C two-hop chain");
+    }
+
+    /// Mirrors the exact game loop: 4 LIF steps, build recently_fired (LIF + Generator),
+    /// then 4 FHN steps.  Origin (20 Hz generator) connects directly to target via a single
+    /// bridge compartment — the minimal topology the Axon tool produces.
+    #[test]
+    fn test_bridge_compartment_excites_target_game_loop() {
+        let mut world = hecs::World::new();
+
+        // Origin neuron with RegularSpikeGenerator at 20 Hz
+        let origin = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            RegularSpikeGenerator { frequency: 20.0 },
+            GeneratorDynamics::default(),
+            Position {
+                position: Vec3::new(0.0, 0.0, 0.0),
+            },
+            NeuronType::Excitatory,
+        ));
+
+        // Target neuron — no generator, pure receiver
+        let target = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            Position {
+                position: Vec3::new(0.0, 0.0, 5.0),
+            },
+            NeuronType::Excitatory,
+        ));
+
+        // Bridge compartment — placed just outside target, no SpatialDynamics
+        let bridge = world.spawn((
+            Compartment {
+                voltage: -10.0,
+                m: -0.625,
+                h: 0.0,
+                n: 0.0,
+                influence: 0.0,
+                capacitance: 1.0,
+                injected_current: 0.0,
+                fire_impulse: 0.0,
+            },
+            Position {
+                position: Vec3::new(0.0, 0.0, 3.5),
+            },
+            NeuronType::Excitatory,
+        ));
+
+        // origin → bridge
+        world.spawn((
+            Connection {
+                from: origin,
+                to: bridge,
+                strength: 1.0,
+                directional: true,
+            },
+            CompartmentCurrent {
+                capacitance: COUPLING_CAPACITANCE,
+            },
+        ));
+
+        // bridge → target (bridge mechanism: compartment.voltage > threshold → inject current)
+        world.spawn((
+            Connection {
+                from: bridge,
+                to: target,
+                strength: 1.0,
+                directional: true,
+            },
+            CompartmentCurrent {
+                capacitance: COUPLING_CAPACITANCE,
+            },
+        ));
+
+        let lif_dt = LIF_DT;
+        let cdt = FHN_CDT;
+        let iterations: u32 = 4; // matches GameApp::iterations default
+        let fire_window = iterations as f64 * lif_dt;
+
+        // 0.5s is enough: origin fires 10x at 20Hz; with correct synaptic strength, target fires fast
+        let total_frames = (0.5 / (iterations as f64 * lif_dt)) as usize;
+
+        let mut time = 0.0;
+        let mut target_fired = false;
+
+        for _ in 0..total_frames {
+            // LIF substeps
+            for _ in 0..iterations {
+                lif_step(&mut world, lif_dt, time);
+                time += lif_dt;
+            }
+
+            // Build recently_fired exactly as the game does
+            let mut fired: std::collections::HashSet<hecs::Entity> = world
+                .query::<&LeakyDynamics>()
+                .iter()
+                .filter(|(_, d)| d.time_since_fire < fire_window)
+                .map(|(e, _)| e)
+                .collect();
+            for (e, d) in world.query::<&GeneratorDynamics>().iter() {
+                if d.time_since_fire < fire_window {
+                    fired.insert(e);
+                }
+            }
+
+            // FHN substeps
+            for _ in 0..iterations {
+                fhn_step(&mut world, cdt, &fired);
+            }
+
+            if let Ok(dynamics) = world.get::<&LeakyDynamics>(target) {
+                if dynamics.time_since_fire < fire_window {
+                    target_fired = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(
+            target_fired,
+            "Target neuron must fire when origin generator fires through a bridge compartment \
+             (game loop: {} LIF + {} FHN steps per frame)",
+            iterations, iterations
+        );
+    }
+
     /// This test demonstrates the bug: using only LeakyDynamics for recently_fired
     /// means generator neurons never trigger axon compartments.
     #[test]

@@ -3,12 +3,10 @@ use crate::tools::GameTool;
 pub fn draw_sidebar(
     context: &egui::Context,
     tool: &mut GameTool,
-    p1_neurons: u32,
-    p1_energy: f64,
-    p1_blocks: f64,
-    p2_neurons: u32,
-    p2_energy: f64,
-    p2_blocks: f64,
+    neurons: u32,
+    energy: f64,
+    blocks: f64,
+    funds_flash: bool,
     pending_new_game: &mut bool,
     pending_exit_game: &mut bool,
 ) {
@@ -16,21 +14,18 @@ pub fn draw_sidebar(
         .min_width(180.0)
         .max_width(200.0)
         .show(context, |ui| {
-            // Player stats
+            let stats_color = if funds_flash {
+                egui::Color32::from_rgb(220, 60, 60)
+            } else {
+                egui::Color32::from_rgb(64, 160, 43)
+            };
             ui.colored_label(
-                egui::Color32::from_rgb(64, 160, 43),
+                stats_color,
                 egui::RichText::new(format!(
-                    "YOU: {} neurons | {:.0}E | {:.0}B",
-                    p1_neurons, p1_energy, p1_blocks
+                    "{} neurons | {:.0}E | {:.0}B",
+                    neurons, energy, blocks
                 ))
                 .strong(),
-            );
-            ui.colored_label(
-                egui::Color32::from_rgb(136, 57, 239),
-                format!(
-                    "AI:  {} neurons | {:.0}E | {:.0}B",
-                    p2_neurons, p2_energy, p2_blocks
-                ),
             );
             ui.separator();
 
@@ -50,17 +45,7 @@ pub fn draw_sidebar(
                     tool_button(ui, tool, GameTool::InhibitoryNeuron, "Inhibitory", "25B");
                     tool_button(ui, tool, GameTool::Axon, "Axon", "3B/seg");
                     ui.end_row();
-                    tool_button(ui, tool, GameTool::MembraneSegment, "Membrane", "15B");
-                    tool_button(ui, tool, GameTool::MotorCilia, "Motor", "20B");
-                    ui.end_row();
-                    tool_button(ui, tool, GameTool::SpikeGenerator, "Spike", "15B");
-                    tool_button(ui, tool, GameTool::PoissonGenerator, "Poisson", "15B");
-                    ui.end_row();
-                    tool_button(ui, tool, GameTool::ActivitySensor, "Activity", "20B");
-                    tool_button(ui, tool, GameTool::TouchSensor, "Touch", "20B");
-                    ui.end_row();
-                    tool_button(ui, tool, GameTool::ChemicalSensor, "Chemical", "20B");
-                    ui.label("");
+                    tool_button(ui, tool, GameTool::GlialProcess, "Process", "3B/seg");
                     ui.end_row();
                 });
 

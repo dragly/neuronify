@@ -7,14 +7,9 @@ pub enum GameTool {
     ExcitatoryNeuron,
     InhibitoryNeuron,
     Axon,
-    MembraneSegment,
-    MotorCilia,
-    SpikeGenerator,
-    PoissonGenerator,
     GlialCell,
-    ActivitySensor,
-    ChemicalSensor,
-    TouchSensor,
+    /// Build glial processes — connect glial cells to blood vessels or neurons.
+    GlialProcess,
     Erase,
 }
 

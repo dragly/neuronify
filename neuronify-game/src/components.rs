@@ -1,10 +1,8 @@
-use glam::Vec3;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum PlayerId {
     Player1,
-    Player2,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -34,7 +32,7 @@ impl Default for MetabolicState {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BloodVessel {
-    pub atp_rate: f64,
+    pub glucose_rate: f64,
     pub block_rate: f64,
     pub supply_radius: f32,
 }
@@ -42,7 +40,7 @@ pub struct BloodVessel {
 impl Default for BloodVessel {
     fn default() -> Self {
         Self {
-            atp_rate: crate::constants::BLOOD_VESSEL_ATP_RATE,
+            glucose_rate: crate::constants::BLOOD_VESSEL_GLUCOSE_RATE,
             block_rate: crate::constants::BLOOD_VESSEL_BLOCK_RATE,
             supply_radius: crate::constants::BLOOD_VESSEL_SUPPLY_RADIUS,
         }
@@ -64,71 +62,36 @@ impl Default for PlayerEconomy {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct MembraneSegment;
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct DepolarizationBlock {
-    pub time_above_threshold: f64,
-    pub blocked: bool,
-    pub recovery_timer: f64,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum SubstrateZoneType {
-    HighPotassium,
-    HighMagnesium,
-    Noise,
-    Damage,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SubstrateZone {
-    pub zone_type: SubstrateZoneType,
-    pub radius: f32,
-}
-
-/// Marks an entity as immovable (origin neurons, base structures).
+/// Marks an entity as immovable.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Anchored;
-
-/// Motor cilia attached to a neuron — converts firing into propulsion.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct MotorCilia {
-    pub direction: Vec3,
-    pub strength: f32,
-}
 
 /// Marker for dendrite compartments (visual distinction from axon compartments).
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Dendrite;
 
-/// Sensor neuron type — determines what the sensor detects.
+/// Marks a blood vessel as a valid endpoint for axon/dendrite connections.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum SensorType {
-    Activity, // detects nearby neural firing
-    Chemical, // detects substrate zone proximity
-    Touch,    // detects proximity to other-player entities
-}
+pub struct VesselAnchor;
 
-/// Sensor neuron — detects environmental signals and injects current.
+/// Marker for compartments that belong to a glial cell's process network.
+/// Used to distinguish glial processes from neuronal axons/dendrites.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SensorNeuron {
-    pub sensor_type: SensorType,
-    pub sensitivity: f32,
-    pub gain: f64,
-}
+pub struct GlialProcess;
 
-/// Glial cell — gathers ATP and building blocks from nearby blood vessels,
-/// distributes ATP to nearby neurons, and contributes blocks to the player economy.
+/// Glial cell (astrocyte) — gathers glucose from blood vessels via process connections,
+/// converts it to lactate, and distributes lactate to nearby neurons for energy.
+/// Also contributes building blocks to the player economy.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GlialCell {
     pub gather_radius: f32,
     pub distribute_radius: f32,
-    pub atp_stored: f64,
-    pub max_atp: f64,
+    pub glucose_stored: f64,
+    pub max_glucose: f64,
     pub blocks_stored: f64,
     pub max_blocks: f64,
+    pub packet_timer: f64,
+    pub lactate_timer: f64,
 }
 
 impl Default for GlialCell {
@@ -136,10 +99,45 @@ impl Default for GlialCell {
         Self {
             gather_radius: crate::constants::GLIAL_GATHER_RADIUS,
             distribute_radius: crate::constants::GLIAL_DISTRIBUTE_RADIUS,
-            atp_stored: 0.0,
-            max_atp: crate::constants::GLIAL_MAX_ATP,
+            glucose_stored: 0.0,
+            max_glucose: crate::constants::GLIAL_MAX_GLUCOSE,
             blocks_stored: 0.0,
             max_blocks: crate::constants::GLIAL_MAX_BLOCKS,
+            packet_timer: 0.0,
+            lactate_timer: 0.0,
         }
     }
+}
+
+/// A lactate packet traveling from a glial cell to a neuron along the glial
+/// process chain.  The path mirrors the structure of GlucosePacket: an ordered
+/// list of entities from the glial soma to the neuron soma.
+pub struct LactatePacket {
+    /// Ordered entities from glial soma → process compartments → bridge → neuron soma.
+    pub path: Vec<hecs::Entity>,
+    /// Current segment: traveling from path[path_index] to path[path_index + 1].
+    pub path_index: usize,
+    /// Progress along the current segment, 0.0 to 1.0.
+    pub progress: f32,
+    /// Movement speed in world units per second.
+    pub speed: f32,
+    /// Energy deposited into the target neuron on arrival.
+    pub energy_amount: f64,
+}
+
+/// A glucose packet traveling along glial process connections from a blood vessel
+/// to a glial cell. Physical entity that can be destroyed to disrupt resource flow.
+pub struct GlucosePacket {
+    /// Ordered list of entities from blood vessel to glial cell.
+    pub path: Vec<hecs::Entity>,
+    /// Current segment: traveling from path[path_index] to path[path_index + 1].
+    pub path_index: usize,
+    /// Progress along the current segment, 0.0 to 1.0.
+    pub progress: f32,
+    /// Movement speed in world units per second.
+    pub speed: f32,
+    /// Glucose carried by this packet.
+    pub glucose_amount: f64,
+    /// Building blocks carried by this packet.
+    pub block_amount: f64,
 }

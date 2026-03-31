@@ -224,6 +224,13 @@ pub struct StaticConnectionSource {}
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Deletable {}
 
+/// Overrides the visual sphere radius used for connection endpoint insets.
+/// Attach this to any entity whose rendered radius differs from NODE_RADIUS.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VisualRadius {
+    pub radius: f32,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Position {
     pub position: Vec3,

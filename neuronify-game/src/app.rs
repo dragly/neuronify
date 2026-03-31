@@ -15,20 +15,26 @@ use neuronify_core::rendering::gpu_types::{ConnectionData, Sphere};
 use neuronify_core::simulation::{apply_spatial_forces, integrate_motion};
 use neuronify_core::{
     Compartment, CompartmentCurrent, Connection, Deletable, GeneratorDynamics, Keyboard,
-    LeakyDynamics, LeakyNeuron, Mouse, NeuronType, PoissonGenerator, Position,
-    RegularSpikeGenerator, Selectable, SpatialDynamics, StaticConnectionSource, Tool,
-    CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE, COUPLING_CAPACITANCE, ERASE_RADIUS, FHN_CDT,
-    FPS_LOW_PASS_FACTOR, LIF_DT, MIN_CREATION_DISTANCE_AXON, MIN_CREATION_DISTANCE_DEFAULT,
-    NODE_RADIUS, PHYSICS_DT, SELECTION_RANGE, TARGET_FRAME_MS,
+    LeakyDynamics, LeakyNeuron, Mouse, NeuronType, Position, Selectable, SpatialDynamics,
+    StaticConnectionSource, Tool, VisualRadius, CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE,
+    COUPLING_CAPACITANCE, ERASE_RADIUS, FHN_CDT, FPS_LOW_PASS_FACTOR, LIF_DT,
+    MIN_CREATION_DISTANCE_AXON, MIN_CREATION_DISTANCE_DEFAULT, NODE_RADIUS, PHYSICS_DT,
+    SELECTION_RANGE, TARGET_FRAME_MS,
 };
 
 use crate::components::*;
 use crate::constants::*;
 use crate::rendering;
-use crate::simulation::{ai::AiState, game, motor};
+use crate::simulation::{boundary, cleanup, economy, metabolism, ownership, setup, transport};
 use crate::spawning;
 use crate::tools::*;
 use crate::ui::sidebar;
+
+enum ConnectResult {
+    Done,          // connected to target — stop the chain
+    Continue,      // keep building
+    FundsBlocked,  // can't afford — show feedback, stay put
+}
 
 pub struct GameApp {
     pub spheres: Spheres,
@@ -38,8 +44,7 @@ pub struct GameApp {
     pub connection_buffer: InstanceBuffer<ConnectionData>,
     pub vessel_mesh: MeshPipeline,
     pub world: hecs::World,
-    pub petri_dish: game::PetriDish,
-    pub ai_state: AiState,
+    pub petri_dish: setup::PetriDish,
     pub tool: GameTool,
     pub connection_tool: Option<ConnectionTool>,
     pub previous_creation: Option<PreviousCreation>,
@@ -50,13 +55,15 @@ pub struct GameApp {
     pub fps: f64,
     pub last_update: DateTime<Utc>,
     pub move_origin: Option<Vec3>,
-    pub dragging_entity: Option<Entity>,
-    pub drag_offset: Vec3,
+
     pub pending_new_game: bool,
     pub pending_exit_game: bool,
     pub p1_economy: PlayerEconomy,
-    pub p2_economy: PlayerEconomy,
     pub placement_preview: Option<Vec3>,
+    pub selected_entity: Option<Entity>,
+    pub funds_flash_timer: f64,
+    pub funds_blocked_entity: Option<Entity>,
+    pub connection_consumed_this_press: bool,
 }
 
 #[derive(Debug)]
@@ -71,6 +78,23 @@ fn nearest(
         .distance(x.position)
         .partial_cmp(&mouse_position.distance(y.position))
         .unwrap_or(Ordering::Equal)
+}
+
+/// Find the nearest candidate within a snap radius.
+/// Each candidate has (entity, position, snap_radius).
+fn find_nearest_within(
+    candidates: &[(Entity, Vec3, f32)],
+    mouse_position: Vec3,
+) -> Option<(Entity, Vec3)> {
+    candidates
+        .iter()
+        .filter(|(_, pos, snap)| pos.distance(mouse_position) < *snap)
+        .min_by(|a, b| {
+            a.1.distance(mouse_position)
+                .partial_cmp(&b.1.distance(mouse_position))
+                .unwrap_or(Ordering::Equal)
+        })
+        .map(|(id, pos, _)| (*id, *pos))
 }
 
 impl GameApp {
@@ -129,11 +153,11 @@ impl GameApp {
             rendering::create_vessel_pipeline(&application.rendering_descriptor()).unwrap();
 
         let mut world = hecs::World::new();
-        let dish = game::PetriDish {
+        let dish = setup::PetriDish {
             center: Vec3::ZERO,
             radius: PETRI_DISH_RADIUS,
         };
-        game::setup_game(&mut world, &dish);
+        setup::setup_game(&mut world, &dish);
         rendering::update_vessel_mesh(&mut vessel_mesh, &world, &application.device);
 
         GameApp {
@@ -145,7 +169,6 @@ impl GameApp {
             vessel_mesh,
             world,
             petri_dish: dish,
-            ai_state: AiState::new(),
             tool: GameTool::Select,
             connection_tool: None,
             previous_creation: None,
@@ -160,13 +183,15 @@ impl GameApp {
             fps: 60.0,
             last_update: Utc::now(),
             move_origin: None,
-            dragging_entity: None,
-            drag_offset: Vec3::ZERO,
+
             pending_new_game: false,
             pending_exit_game: false,
             p1_economy: PlayerEconomy::default(),
-            p2_economy: PlayerEconomy::default(),
             placement_preview: None,
+            selected_entity: None,
+            funds_flash_timer: 0.0,
+            funds_blocked_entity: None,
+            connection_consumed_this_press: false,
         }
     }
 
@@ -190,13 +215,278 @@ impl GameApp {
         Some(ray_origin + t * ray_world)
     }
 
+    /// Build an axon or glial process connection chain.
+    fn handle_connection_tool(
+        &mut self,
+        mouse_position: Vec3,
+        previous_too_near: bool,
+        is_glial_process: bool,
+    ) -> ConnectResult {
+        let snap = 2.0 * NODE_RADIUS;
+        let vessel_snap = BLOOD_VESSEL_SNAP_RADIUS;
+        let world = &mut self.world;
+        let economy = &mut self.p1_economy;
+
+        match &mut self.connection_tool {
+            None => {
+                // Source candidates differ by tool
+                let source_candidates: Vec<(Entity, Vec3, f32)> = if is_glial_process {
+                    // GlialProcess tool: start from glial cells or glial process compartments
+                    let mut candidates: Vec<_> = world
+                        .query::<(&Position, &GlialCell)>()
+                        .iter()
+                        .map(|(e, (p, _))| (e, p.position, snap))
+                        .collect();
+                    candidates.extend(
+                        world
+                            .query::<(&Position, &GlialProcess)>()
+                            .iter()
+                            .map(|(e, (p, _))| (e, p.position, snap)),
+                    );
+                    candidates
+                } else {
+                    // Axon tool: start from neurons, generators, or neuronal compartments
+                    // (exclude GlialProcess compartments)
+                    let mut candidates: Vec<_> = world
+                        .query::<&Position>()
+                        .with::<&LeakyNeuron>()
+                        .iter()
+                        .map(|(e, p)| (e, p.position, snap))
+                        .collect();
+                    candidates.extend(
+                        world
+                            .query::<&Position>()
+                            .with::<&GeneratorDynamics>()
+                            .iter()
+                            .map(|(e, p)| (e, p.position, snap)),
+                    );
+                    candidates.extend(
+                        world
+                            .query::<&Position>()
+                            .with::<&StaticConnectionSource>()
+                            .iter()
+                            .filter(|(e, _)| world.get::<&GlialProcess>(*e).is_err())
+                            .filter(|(e, _)| world.get::<&GlialCell>(*e).is_err())
+                            .map(|(e, p)| (e, p.position, snap)),
+                    );
+                    candidates
+                };
+
+                self.connection_tool = find_nearest_within(&source_candidates, mouse_position).map(
+                    |(id, position)| ConnectionTool {
+                        start: position,
+                        end: mouse_position,
+                        from: id,
+                    },
+                );
+                if let Some(ct) = &self.connection_tool {
+                    self.previous_creation = Some(PreviousCreation { entity: ct.from });
+                }
+                ConnectResult::Continue
+            }
+            Some(ct) => {
+                ct.end = mouse_position;
+
+                // Target candidates differ by tool
+                let target_candidates: Vec<(Entity, Vec3, f32)> = if is_glial_process {
+                    // GlialProcess: connect to blood vessels or neurons
+                    let mut targets: Vec<_> = world
+                        .query::<&Position>()
+                        .with::<&VesselAnchor>()
+                        .iter()
+                        .map(|(e, p)| (e, p.position, vessel_snap))
+                        .collect();
+                    targets.extend(
+                        world
+                            .query::<&Position>()
+                            .with::<&LeakyNeuron>()
+                            .iter()
+                            .map(|(e, p)| (e, p.position, snap)),
+                    );
+                    targets
+                } else {
+                    // Axon: connect to neurons only (not vessels, not glial cells)
+                    world
+                        .query::<&Position>()
+                        .with::<&LeakyNeuron>()
+                        .iter()
+                        .map(|(e, p)| (e, p.position, snap))
+                        .collect()
+                };
+
+                let nearest_target = find_nearest_within(&target_candidates, mouse_position);
+
+                match nearest_target {
+                    Some((id, target_pos)) => {
+                        let from_pos = world
+                            .get::<&Position>(ct.from)
+                            .map(|p| p.position)
+                            .unwrap_or(target_pos);
+
+                        // For non-compartment targets (neuron somas, blood vessels) always
+                        // place a fixed bridge compartment just outside the target's surface.
+                        // This compartment has no SpatialDynamics so physics can't drag it in.
+                        let target_is_compartment =
+                            world.get::<&Compartment>(id).is_ok();
+                        let target_vr = world
+                            .get::<&VisualRadius>(id)
+                            .map(|vr| vr.radius)
+                            .unwrap_or(NODE_RADIUS);
+
+                        // Bridge distance: just outside the target surface.
+                        let bridge_dist = target_vr + NODE_RADIUS * 0.5;
+                        // Need a bridge if the target is a soma/vessel OR ct.from is too far away.
+                        let needs_bridge = !target_is_compartment
+                            || from_pos.distance(target_pos) > 2.0 * NODE_RADIUS * 1.5;
+
+                        let final_from = if needs_bridge {
+                            if !economy::try_spend_blocks(economy, COMPARTMENT_SPAWN_COST) {
+                                return ConnectResult::FundsBlocked;
+                            }
+                            let dir = (from_pos - target_pos).normalize_or_zero();
+                            let bridge_pos = target_pos + dir * bridge_dist;
+                            let neuron_type = world
+                                .get::<&NeuronType>(ct.from)
+                                .map(|t| (*t).clone())
+                                .unwrap_or(NeuronType::Excitatory);
+                            // No SpatialDynamics — this compartment sits fixed at the surface.
+                            let bridge = world.spawn((
+                                Position {
+                                    position: bridge_pos,
+                                },
+                                neuron_type,
+                                Compartment {
+                                    voltage: -10.0,
+                                    m: -0.625,
+                                    h: 0.0,
+                                    n: 0.0,
+                                    influence: 0.0,
+                                    capacitance: 1.0,
+                                    injected_current: 0.0,
+                                    fire_impulse: 0.0,
+                                },
+                                StaticConnectionSource {},
+                                Deletable {},
+                                Selectable { selected: false },
+                            ));
+                            if is_glial_process {
+                                let _ = world.insert_one(bridge, GlialProcess);
+                            }
+                            let already = world.query::<&Connection>().iter().any(|(_, c)| {
+                                c.from == ct.from && c.to == bridge
+                            });
+                            if !already && ct.from != bridge {
+                                world.spawn((
+                                    Connection {
+                                        from: ct.from,
+                                        to: bridge,
+                                        strength: 1.0,
+                                        directional: false,
+                                    },
+                                    Deletable {},
+                                    CompartmentCurrent {
+                                        capacitance: COUPLING_CAPACITANCE,
+                                    },
+                                ));
+                            }
+                            bridge
+                        } else {
+                            ct.from
+                        };
+
+                        let new_connection = Connection {
+                            from: final_from,
+                            to: id,
+                            strength: 1.0,
+                            directional: !is_glial_process,
+                        };
+                        let connection_exists =
+                            world.query::<&Connection>().iter().any(|(_, c)| {
+                                c.from == new_connection.from && c.to == new_connection.to
+                            });
+                        if !connection_exists && final_from != id {
+                            world.spawn((
+                                new_connection,
+                                Deletable {},
+                                CompartmentCurrent {
+                                    capacitance: COUPLING_CAPACITANCE,
+                                },
+                            ));
+                        }
+                        ConnectResult::Done
+                    }
+                    None => {
+                        if previous_too_near {
+                            return ConnectResult::Continue;
+                        }
+                        if !economy::try_spend_blocks(economy, COMPARTMENT_SPAWN_COST) {
+                            return ConnectResult::FundsBlocked;
+                        }
+                        let neuron_type = if let Ok(neuron_type) = world.get::<&NeuronType>(ct.from)
+                        {
+                            (*neuron_type).clone()
+                        } else {
+                            NeuronType::Excitatory
+                        };
+                        let compartment_builder = world.spawn((
+                            Position {
+                                position: mouse_position,
+                            },
+                            neuron_type,
+                            Compartment {
+                                voltage: -10.0,
+                                m: -0.625,
+                                h: 0.0,
+                                n: 0.0,
+                                influence: 0.0,
+                                capacitance: 1.0,
+                                injected_current: 0.0,
+                                fire_impulse: 0.0,
+                            },
+                            StaticConnectionSource {},
+                            Deletable {},
+                            Selectable { selected: false },
+                            SpatialDynamics {
+                                velocity: Vec3::ZERO,
+                                acceleration: Vec3::ZERO,
+                            },
+                        ));
+                        // Mark glial process compartments
+                        if is_glial_process {
+                            let _ = world.insert_one(compartment_builder, GlialProcess);
+                        }
+                        world.spawn((
+                            Connection {
+                                from: ct.from,
+                                to: compartment_builder,
+                                strength: 1.0,
+                                directional: false,
+                            },
+                            Deletable {},
+                            CompartmentCurrent {
+                                capacitance: COUPLING_CAPACITANCE,
+                            },
+                        ));
+                        self.previous_creation = Some(PreviousCreation {
+                            entity: compartment_builder,
+                        });
+                        ct.start = mouse_position;
+                        ct.from = compartment_builder;
+                        ConnectResult::Continue
+                    }
+                }
+            }
+        }
+    }
+
     fn handle_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
             self.connection_tool = None;
             self.previous_creation = None;
             self.move_origin = None;
-            self.dragging_entity = None;
-            // Keep placement_preview for hover effect
+
+            self.funds_blocked_entity = None;
+            self.connection_consumed_this_press = false;
             return;
         }
 
@@ -205,11 +495,10 @@ impl GameApp {
             None => return,
         };
 
-        // Update placement preview
         self.placement_preview = Some(mouse_position);
 
         let minimum_distance = match self.tool {
-            GameTool::Axon => MIN_CREATION_DISTANCE_AXON,
+            GameTool::Axon | GameTool::GlialProcess => MIN_CREATION_DISTANCE_AXON,
             _ => MIN_CREATION_DISTANCE_DEFAULT,
         };
         let previous_too_near = if let Some(pc) = &self.previous_creation {
@@ -227,10 +516,7 @@ impl GameApp {
                 if previous_too_near {
                     return;
                 }
-                if !game::is_within_build_range(&self.world, mouse_position, PlayerId::Player1) {
-                    return;
-                }
-                if !game::try_spend_blocks(&mut self.p1_economy, NEURON_SPAWN_COST) {
+                if !economy::try_spend_blocks(&mut self.p1_economy, NEURON_SPAWN_COST) {
                     return;
                 }
                 let neuron_type = if self.tool == GameTool::InhibitoryNeuron {
@@ -246,179 +532,15 @@ impl GameApp {
                 );
                 self.previous_creation = Some(PreviousCreation { entity });
             }
-            GameTool::MembraneSegment => {
-                if previous_too_near {
-                    return;
-                }
-                if !game::is_within_build_range(&self.world, mouse_position, PlayerId::Player1) {
-                    return;
-                }
-                if !game::try_spend_blocks(&mut self.p1_economy, MEMBRANE_SPAWN_COST) {
-                    return;
-                }
-                let entity = self.world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    MembraneSegment,
-                    SpatialDynamics {
-                        velocity: Vec3::ZERO,
-                        acceleration: Vec3::ZERO,
-                    },
-                    Ownership {
-                        player: PlayerId::Player1,
-                    },
-                    Deletable {},
-                ));
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            GameTool::SpikeGenerator | GameTool::PoissonGenerator => {
-                if previous_too_near {
-                    return;
-                }
-                if !game::is_within_build_range(&self.world, mouse_position, PlayerId::Player1) {
-                    return;
-                }
-                if !game::try_spend_blocks(&mut self.p1_economy, GENERATOR_SPAWN_COST) {
-                    return;
-                }
-                let entity = if self.tool == GameTool::SpikeGenerator {
-                    self.world.spawn((
-                        Position {
-                            position: mouse_position,
-                        },
-                        RegularSpikeGenerator::default(),
-                        GeneratorDynamics::default(),
-                        MetabolicState::default(),
-                        Ownership {
-                            player: PlayerId::Player1,
-                        },
-                        SpatialDynamics {
-                            velocity: Vec3::ZERO,
-                            acceleration: Vec3::ZERO,
-                        },
-                        Deletable {},
-                    ))
-                } else {
-                    self.world.spawn((
-                        Position {
-                            position: mouse_position,
-                        },
-                        PoissonGenerator::default(),
-                        GeneratorDynamics::default(),
-                        MetabolicState::default(),
-                        Ownership {
-                            player: PlayerId::Player1,
-                        },
-                        SpatialDynamics {
-                            velocity: Vec3::ZERO,
-                            acceleration: Vec3::ZERO,
-                        },
-                        Deletable {},
-                    ))
-                };
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            GameTool::MotorCilia => {
-                // Attach motor cilia to nearest owned neuron
-                let nearest = self
-                    .world
-                    .query::<(&Position, &Ownership)>()
-                    .with::<&LeakyNeuron>()
-                    .without::<&MotorCilia>()
-                    .iter()
-                    .filter(|(_, (_, o))| o.player == PlayerId::Player1)
-                    .min_by(|a, b| {
-                        a.1 .0
-                            .position
-                            .distance(mouse_position)
-                            .partial_cmp(&b.1 .0.position.distance(mouse_position))
-                            .unwrap_or(Ordering::Equal)
-                    })
-                    .and_then(|(e, (p, _))| {
-                        if p.position.distance(mouse_position) < NODE_RADIUS * 3.0 {
-                            Some(e)
-                        } else {
-                            None
-                        }
-                    });
-                if let Some(entity) = nearest {
-                    let pos = self
-                        .world
-                        .get::<&Position>(entity)
-                        .map(|p| p.position)
-                        .unwrap_or(Vec3::ZERO);
-                    if !game::try_spend_blocks(&mut self.p1_economy, MOTOR_CILIA_COST) {
-                        return;
-                    }
-                    // Direction: from neuron toward mouse click
-                    let dir = (mouse_position - pos).normalize_or_zero();
-                    let _ = self.world.insert_one(
-                        entity,
-                        MotorCilia {
-                            direction: dir,
-                            strength: MOTOR_THRUST_STRENGTH,
-                        },
-                    );
-                }
-            }
-            GameTool::ActivitySensor | GameTool::ChemicalSensor | GameTool::TouchSensor => {
-                if previous_too_near {
-                    return;
-                }
-                if !game::is_within_build_range(&self.world, mouse_position, PlayerId::Player1) {
-                    return;
-                }
-                if !game::try_spend_blocks(&mut self.p1_economy, SENSOR_COST) {
-                    return;
-                }
-                let sensor_type = match self.tool {
-                    GameTool::ActivitySensor => SensorType::Activity,
-                    GameTool::ChemicalSensor => SensorType::Chemical,
-                    GameTool::TouchSensor => SensorType::Touch,
-                    _ => unreachable!(),
-                };
-                let entity = spawning::spawn_neuron(
-                    &mut self.world,
-                    mouse_position,
-                    NeuronType::Excitatory,
-                    PlayerId::Player1,
-                );
-                let _ = self.world.insert_one(
-                    entity,
-                    SensorNeuron {
-                        sensor_type,
-                        sensitivity: SENSOR_SENSITIVITY,
-                        gain: SENSOR_GAIN,
-                    },
-                );
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
             GameTool::GlialCell => {
                 if previous_too_near {
                     return;
                 }
-                // Glial cells must be placed within a blood vessel's supply_radius
-                if !game::is_within_vessel_range(&self.world, mouse_position, PlayerId::Player1) {
+                if !economy::try_spend_blocks(&mut self.p1_economy, GLIAL_COST) {
                     return;
                 }
-                if !game::try_spend_blocks(&mut self.p1_economy, GLIAL_COST) {
-                    return;
-                }
-                let entity = self.world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    GlialCell::default(),
-                    Ownership {
-                        player: PlayerId::Player1,
-                    },
-                    SpatialDynamics {
-                        velocity: Vec3::ZERO,
-                        acceleration: Vec3::ZERO,
-                    },
-                    Deletable {},
-                ));
+                let entity =
+                    spawning::spawn_glial(&mut self.world, mouse_position, PlayerId::Player1, 3);
                 self.previous_creation = Some(PreviousCreation { entity });
             }
             GameTool::Erase => {
@@ -472,215 +594,71 @@ impl GameApp {
                 }
             }
             GameTool::Select => {
-                if let Some(entity) = self.dragging_entity {
-                    // Don't drag anchored entities
-                    if self.world.get::<&Anchored>(entity).is_ok() {
-                        return;
+                match self.move_origin {
+                    Some(origin) => {
+                        let center = mouse_position - origin;
+                        application.camera_controller.target_transform.center -=
+                            Vec3::new(center.x, center.y, center.z);
+                        application.camera_controller.current_transform.center =
+                            application.camera_controller.target_transform.center;
                     }
-                    if let Ok(mut pos) = self.world.get::<&mut Position>(entity) {
-                        pos.position = mouse_position + self.drag_offset;
-                        pos.position.y = 0.0;
-                    }
-                } else {
-                    match self.move_origin {
-                        Some(origin) => {
-                            let center = mouse_position - origin;
-                            application.camera_controller.target_transform.center -=
-                                Vec3::new(center.x, center.y, center.z);
-                            application.camera_controller.current_transform.center =
-                                application.camera_controller.target_transform.center;
-                        }
-                        None => {
-                            if let Some((entity, entity_pos)) = self
-                                .world
-                                .query::<&Position>()
-                                .iter()
-                                .min_by(|a, b| nearest(&mouse_position, a, b))
-                                .and_then(|(id, pos)| {
-                                    if mouse_position.distance(pos.position) < SELECTION_RANGE {
-                                        Some((id, pos.position))
-                                    } else {
-                                        None
-                                    }
-                                })
-                            {
-                                self.dragging_entity = Some(entity);
-                                self.drag_offset = entity_pos - mouse_position;
-                                self.drag_offset.y = 0.0;
-                            } else {
-                                self.move_origin = Some(mouse_position);
-                            }
+                    None => {
+                        if let Some((entity, _entity_pos)) = self
+                            .world
+                            .query::<&Position>()
+                            .iter()
+                            .min_by(|a, b| nearest(&mouse_position, a, b))
+                            .and_then(|(id, pos)| {
+                                if mouse_position.distance(pos.position) < SELECTION_RANGE {
+                                    Some((id, pos.position))
+                                } else {
+                                    None
+                                }
+                            })
+                        {
+                            self.selected_entity = Some(entity);
+                        } else {
+                            self.selected_entity = None;
+                            self.move_origin = Some(mouse_position);
                         }
                     }
                 }
             }
             GameTool::Axon => {
-                let world = &mut self.world;
-                let economy = &mut self.p1_economy;
-                match &mut self.connection_tool {
-                    None => {
-                        let source_candidates: Vec<(Entity, Vec3)> = {
-                            let mut candidates: Vec<_> = world
-                                .query::<&Position>()
-                                .with::<&LeakyNeuron>()
-                                .iter()
-                                .map(|(e, p)| (e, p.position))
-                                .collect();
-                            candidates.extend(
-                                world
-                                    .query::<&Position>()
-                                    .with::<&GeneratorDynamics>()
-                                    .iter()
-                                    .map(|(e, p)| (e, p.position)),
-                            );
-                            candidates.extend(
-                                world
-                                    .query::<&Position>()
-                                    .with::<&StaticConnectionSource>()
-                                    .iter()
-                                    .map(|(e, p)| (e, p.position)),
-                            );
-                            candidates
-                        };
-                        self.connection_tool = source_candidates
-                            .iter()
-                            .min_by(|a, b| {
-                                a.1.distance(mouse_position)
-                                    .partial_cmp(&b.1.distance(mouse_position))
-                                    .unwrap_or(Ordering::Equal)
-                            })
-                            .and_then(|(id, pos)| {
-                                if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
-                                    Some((*id, *pos))
-                                } else {
-                                    None
-                                }
-                            })
-                            .map(|(id, position)| ConnectionTool {
-                                start: position,
-                                end: mouse_position,
-                                from: id,
-                            });
-                        if let Some(ct) = &self.connection_tool {
-                            self.previous_creation = Some(PreviousCreation { entity: ct.from });
-                        }
+                if self.connection_consumed_this_press && self.connection_tool.is_none() {
+                    return;
+                }
+                match self.handle_connection_tool(mouse_position, previous_too_near, false) {
+                    ConnectResult::Done => {
+                        self.connection_tool = None;
+                        self.funds_blocked_entity = None;
+                        self.connection_consumed_this_press = true;
                     }
-                    Some(ct) => {
-                        ct.end = mouse_position;
-                        // Check if near an existing neuron to connect to
-                        let target_candidates: Vec<(Entity, Vec3)> = world
-                            .query::<&Position>()
-                            .with::<&LeakyNeuron>()
-                            .iter()
-                            .map(|(e, p)| (e, p.position))
-                            .collect();
-                        let nearest_target = target_candidates
-                            .iter()
-                            .min_by(|a, b| {
-                                a.1.distance(mouse_position)
-                                    .partial_cmp(&b.1.distance(mouse_position))
-                                    .unwrap_or(Ordering::Equal)
-                            })
-                            .and_then(|(id, pos)| {
-                                if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
-                                    Some((*id, *pos))
-                                } else {
-                                    None
-                                }
-                            });
-
-                        match nearest_target {
-                            Some((id, position)) => {
-                                let new_connection = Connection {
-                                    from: ct.from,
-                                    to: id,
-                                    strength: 1.0,
-                                    directional: true,
-                                };
-                                let connection_exists =
-                                    world.query::<&Connection>().iter().any(|(_, c)| {
-                                        c.from == new_connection.from && c.to == new_connection.to
-                                    });
-                                if !connection_exists && ct.from != id {
-                                    world.spawn((
-                                        new_connection,
-                                        Deletable {},
-                                        CompartmentCurrent {
-                                            capacitance: COUPLING_CAPACITANCE,
-                                        },
-                                    ));
-                                }
-                                if !self.keyboard.shift_down {
-                                    ct.start = position;
-                                    ct.from = id;
-                                }
-                            }
-                            None => {
-                                if previous_too_near {
-                                    return;
-                                }
-                                // Cost for compartment
-                                if !game::try_spend_blocks(economy, COMPARTMENT_SPAWN_COST) {
-                                    return;
-                                }
-                                // Membrane blocking
-                                let from_pos = world
-                                    .get::<&Position>(ct.from)
-                                    .map(|p| p.position)
-                                    .unwrap_or(Vec3::ZERO);
-                                if game::membrane_blocks_path(world, from_pos, mouse_position) {
-                                    return;
-                                }
-                                let neuron_type =
-                                    if let Ok(neuron_type) = world.get::<&NeuronType>(ct.from) {
-                                        Some((*neuron_type).clone())
-                                    } else {
-                                        None
-                                    };
-                                if let Some(neuron_type) = neuron_type {
-                                    let compartment = world.spawn((
-                                        Position {
-                                            position: mouse_position,
-                                        },
-                                        neuron_type,
-                                        Compartment {
-                                            voltage: -10.0,
-                                            m: -0.625,
-                                            h: 0.0,
-                                            n: 0.0,
-                                            influence: 0.0,
-                                            capacitance: 1.0,
-                                            injected_current: 0.0,
-                                            fire_impulse: 0.0,
-                                        },
-                                        StaticConnectionSource {},
-                                        Deletable {},
-                                        Selectable { selected: false },
-                                        SpatialDynamics {
-                                            velocity: Vec3::ZERO,
-                                            acceleration: Vec3::ZERO,
-                                        },
-                                    ));
-                                    world.spawn((
-                                        Connection {
-                                            from: ct.from,
-                                            to: compartment,
-                                            strength: 1.0,
-                                            directional: false,
-                                        },
-                                        Deletable {},
-                                        CompartmentCurrent {
-                                            capacitance: COUPLING_CAPACITANCE,
-                                        },
-                                    ));
-                                    self.previous_creation = Some(PreviousCreation {
-                                        entity: compartment,
-                                    });
-                                    ct.start = mouse_position;
-                                    ct.from = compartment;
-                                }
-                            }
-                        }
+                    ConnectResult::FundsBlocked => {
+                        self.funds_flash_timer = 0.5;
+                        self.funds_blocked_entity = self.previous_creation.as_ref().map(|pc| pc.entity);
+                    }
+                    ConnectResult::Continue => {
+                        self.funds_blocked_entity = None;
+                    }
+                }
+            }
+            GameTool::GlialProcess => {
+                if self.connection_consumed_this_press && self.connection_tool.is_none() {
+                    return;
+                }
+                match self.handle_connection_tool(mouse_position, previous_too_near, true) {
+                    ConnectResult::Done => {
+                        self.connection_tool = None;
+                        self.funds_blocked_entity = None;
+                        self.connection_consumed_this_press = true;
+                    }
+                    ConnectResult::FundsBlocked => {
+                        self.funds_flash_timer = 0.5;
+                        self.funds_blocked_entity = self.previous_creation.as_ref().map(|pc| pc.entity);
+                    }
+                    ConnectResult::Continue => {
+                        self.funds_blocked_entity = None;
                     }
                 }
             }
@@ -704,12 +682,11 @@ impl visula::Simulation for GameApp {
         if self.pending_new_game {
             self.pending_new_game = false;
             self.world.clear();
-            game::setup_game(&mut self.world, &self.petri_dish);
+            setup::setup_game(&mut self.world, &self.petri_dish);
             rendering::update_vessel_mesh(&mut self.vessel_mesh, &self.world, &application.device);
-            self.ai_state = AiState::new();
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
-            self.p2_economy = PlayerEconomy::default();
+            self.selected_entity = None;
         }
 
         if self.pending_exit_game {
@@ -746,59 +723,56 @@ impl visula::Simulation for GameApp {
 
         // Game systems (once per frame)
         let frame_dt = self.iterations as f64 * LIF_DT;
-        game::enforce_petri_boundary(&mut self.world, &self.petri_dish);
-        game::apply_sensors(&mut self.world);
-        game::glial_gather_resources(&mut self.world, frame_dt);
-        game::glial_contribute_blocks(
-            &mut self.world,
-            frame_dt,
-            &mut self.p1_economy,
-            &mut self.p2_economy,
-        );
-        game::glial_distribute_atp(&mut self.world, frame_dt);
-        game::metabolic_drain(&mut self.world, frame_dt);
-        game::apply_dormancy(&mut self.world);
-        game::resource_flow(&mut self.world, frame_dt);
-        game::depolarization_block(&mut self.world, frame_dt);
-        game::apply_substrate_zones(&mut self.world, frame_dt);
-        game::cleanup_orphans(&mut self.world);
-        game::update_ownership(&mut self.world);
-
-        // Motor systems
-        motor::apply_motor_forces(&mut self.world, frame_dt);
-        motor::enforce_anchored(&mut self.world);
-
-        // AI opponent
-        crate::simulation::ai::ai_tick_for_player(
-            &mut self.world,
-            &mut self.ai_state,
-            &self.petri_dish,
-            PlayerId::Player2,
-            &mut self.p2_economy,
-        );
+        self.funds_flash_timer = (self.funds_flash_timer - frame_dt).max(0.0);
+        boundary::enforce_petri_boundary(&mut self.world, &self.petri_dish);
+        transport::spawn_glucose_packets(&mut self.world, frame_dt);
+        transport::move_glucose_packets(&mut self.world, frame_dt);
+        transport::spawn_lactate_packets(&mut self.world, frame_dt);
+        transport::move_lactate_packets(&mut self.world, frame_dt);
+        economy::glial_contribute_blocks(&mut self.world, frame_dt, &mut self.p1_economy);
+        metabolism::metabolic_drain(&mut self.world, frame_dt);
+        metabolism::apply_dormancy(&mut self.world);
+        metabolism::resource_flow(&mut self.world, frame_dt);
+        cleanup::cleanup_orphans(&mut self.world);
+        ownership::update_ownership(&mut self.world);
 
         // Collect rendering data
-        let mut spheres = rendering::collect_game_spheres(&self.world);
-        let placement_spheres = rendering::collect_placement_preview(&self.tool, &self.placement_preview);
+        let connection_preview_end = if matches!(self.tool, GameTool::Axon | GameTool::GlialProcess) {
+            self.connection_tool.as_ref().map(|ct| ct.end)
+        } else {
+            None
+        };
+        let mut spheres = rendering::collect_game_spheres(&self.world, self.funds_blocked_entity);
+        let placement_spheres = rendering::collect_placement_preview(
+            &self.tool,
+            &self.placement_preview,
+            connection_preview_end,
+        );
         spheres.extend(placement_spheres.iter());
 
-        // Connections: use core's collect_connections with a neutral tool, then add axon preview
-        let mut connections = neuronify_core::rendering::collect_connections(
-            &self.world,
-            &Tool::Select, // won't draw any tool preview
-            &None,
-        );
+        let mut connections =
+            neuronify_core::rendering::collect_connections(&self.world, &Tool::Select, &None);
 
-        // Add axon tool preview line
-        if self.tool == GameTool::Axon {
+        // Connection tool preview line — no directional arrow; ghost sphere (above) marks the end.
+        if matches!(self.tool, GameTool::Axon | GameTool::GlialProcess) {
             if let Some(ref ct) = self.connection_tool {
+                let from_pos = self
+                    .world
+                    .get::<&Position>(ct.from)
+                    .map(|p| p.position)
+                    .unwrap_or(ct.start);
+                let preview_color = if self.tool == GameTool::GlialProcess {
+                    Vec3::new(0.4, 0.8, 0.4)
+                } else {
+                    Vec3::new(0.8, 0.8, 0.8)
+                };
                 connections.push(ConnectionData {
-                    position_a: ct.start,
+                    position_a: from_pos,
                     position_b: ct.end,
                     strength: 1.0,
-                    directional: 1.0,
-                    start_color: Vec3::new(0.8, 0.8, 0.8),
-                    end_color: Vec3::new(0.8, 0.8, 0.8),
+                    directional: 0.0, // ghost sphere handles the endpoint marker
+                    start_color: preview_color,
+                    end_color: preview_color,
                     _padding: Default::default(),
                 });
             }
@@ -806,9 +780,6 @@ impl visula::Simulation for GameApp {
 
         // Petri dish and decorations
         connections.extend(rendering::collect_petri_dish(&self.petri_dish));
-        connections.extend(rendering::collect_vessel_supply_rings(&self.world));
-        connections.extend(rendering::collect_glial_vessel_links(&self.world));
-        connections.extend(rendering::collect_substrate_zone_rings(&self.world));
 
         self.sphere_buffer
             .update(&application.device, &application.queue, &spheres);
@@ -838,21 +809,12 @@ impl visula::Simulation for GameApp {
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
-        // Gather stats
         let mut p1_neurons = 0u32;
         let mut p1_energy = 0.0f64;
-        let mut p2_neurons = 0u32;
-        let mut p2_energy = 0.0f64;
         for (_, (ownership, metab)) in self.world.query::<(&Ownership, &MetabolicState)>().iter() {
-            match ownership.player {
-                PlayerId::Player1 => {
-                    p1_neurons += 1;
-                    p1_energy += metab.energy;
-                }
-                PlayerId::Player2 => {
-                    p2_neurons += 1;
-                    p2_energy += metab.energy;
-                }
+            if ownership.player == PlayerId::Player1 {
+                p1_neurons += 1;
+                p1_energy += metab.energy;
             }
         }
 
@@ -862,12 +824,19 @@ impl visula::Simulation for GameApp {
             p1_neurons,
             p1_energy,
             self.p1_economy.building_blocks,
-            p2_neurons,
-            p2_energy,
-            self.p2_economy.building_blocks,
+            self.funds_flash_timer > 0.0,
             &mut self.pending_new_game,
             &mut self.pending_exit_game,
         );
+
+        // Info panel for selected entity
+        if let Some(entity) = self.selected_entity {
+            if self.world.contains(entity) {
+                crate::ui::info_panel::draw_info_panel(context, &self.world, entity);
+            } else {
+                self.selected_entity = None;
+            }
+        }
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
@@ -905,7 +874,6 @@ impl visula::Simulation for GameApp {
                     PhysicalPosition::new(position.x - previous.x, position.y - previous.y)
                 });
                 self.mouse.position = Some(*position);
-                // Update placement preview on mouse move
                 if let Some(pos) = self.mouse_world_position(application) {
                     self.placement_preview = Some(pos);
                 }

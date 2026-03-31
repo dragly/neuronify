@@ -43,6 +43,19 @@ pub fn collect_connections(
 
     let mut connections: Vec<ConnectionData> = Vec::new();
 
+    // Visual radius of an entity — use VisualRadius if present, else infer from components.
+    let visual_radius = |entity: Entity| -> f32 {
+        if let Ok(vr) = world.get::<&VisualRadius>(entity) {
+            vr.radius
+        } else if world.get::<&Compartment>(entity).is_ok() {
+            COMPARTMENT_SPHERE_SCALE * NODE_RADIUS
+        } else {
+            NODE_RADIUS
+        }
+    };
+
+    const SYNAPSE_GAP: f32 = 0.25;
+
     for &(_edge_entity, from, to, strength, directional) in &connection_info {
         let start = world
             .get::<&Position>(from)
@@ -52,6 +65,21 @@ pub fn collect_connections(
             .get::<&Position>(to)
             .expect("Connection to broken")
             .position;
+
+        // Only add a gap where a process/axon meets a soma or vessel (non-compartment).
+        // Compartment-to-compartment links stay flush so the chain looks continuous.
+        let from_is_compartment = world.get::<&Compartment>(from).is_ok();
+        let to_is_compartment = world.get::<&Compartment>(to).is_ok();
+        let start_inset = if from_is_compartment { 0.0 } else { visual_radius(from) + SYNAPSE_GAP };
+        let end_inset   = if to_is_compartment   { 0.0 } else { visual_radius(to)   + SYNAPSE_GAP };
+        let dir = (end - start).normalize_or_zero();
+        let length = start.distance(end);
+        let (start, end) = if length > start_inset + end_inset {
+            (start + dir * start_inset, end - dir * end_inset)
+        } else {
+            let mid = (start + end) * 0.5;
+            (mid, mid)
+        };
         let value = |target: Entity| -> f32 {
             if let Ok(compartment) = world.get::<&Compartment>(target) {
                 ((compartment.voltage + 50.0) / 200.0) as f32
