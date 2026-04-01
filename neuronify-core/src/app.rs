@@ -193,7 +193,7 @@ impl Neuronify {
                 position: None,
                 delta_position: None,
             },
-            keyboard: Keyboard { shift_down: false },
+            keyboard: Keyboard { shift_down: false, ctrl_down: false },
             iterations: 4,
             last_update: Utc::now(),
             fps: 60.0,

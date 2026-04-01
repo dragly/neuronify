@@ -9,4 +9,5 @@ pub struct Mouse {
 
 pub struct Keyboard {
     pub shift_down: bool,
+    pub ctrl_down: bool,
 }

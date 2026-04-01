@@ -1,4 +1,5 @@
 pub mod blood_vessels;
+mod tests;
 pub mod colors;
 pub mod game_spheres;
 pub mod petri_dish;

@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Duration, Utc};
 use glam::Vec3;
 use hecs::Entity;
 use visula::winit::dpi::PhysicalPosition;
-use visula::winit::event::{ElementState, Event, MouseButton, WindowEvent};
+use visula::winit::event::{ElementState, Event, MouseButton, Touch, TouchPhase, WindowEvent};
 use visula::{
     winit::keyboard::ModifiersKeyState, CustomEvent, Expression, InstanceBuffer, LineGeometry,
     LineMaterial, Lines, MeshPipeline, RenderData, Renderable, SphereGeometry, SphereMaterial,
@@ -70,6 +70,8 @@ pub struct GameApp {
     pub funds_flash_timer: f64,
     pub funds_blocked_entity: Option<Entity>,
     pub connection_consumed_this_press: bool,
+    /// Active touch points by touch ID → current screen position.
+    pub touches: HashMap<u64, PhysicalPosition<f64>>,
 }
 
 #[derive(Debug)]
@@ -182,7 +184,7 @@ impl GameApp {
             radius: PETRI_DISH_RADIUS,
         };
         setup::setup_game(&mut world, &dish);
-        rendering::update_vessel_mesh(&mut vessel_mesh, &world, &application.device);
+        rendering::update_vessel_mesh(&mut vessel_mesh, &world, &application.device, 0.0);
 
         let particles = rendering::generate_vessel_particles(&world);
         particle_buffer.update(&application.device, &application.queue, &particles);
@@ -207,7 +209,7 @@ impl GameApp {
                 position: None,
                 delta_position: None,
             },
-            keyboard: Keyboard { shift_down: false },
+            keyboard: Keyboard { shift_down: false, ctrl_down: false },
             time: 0.0,
             iterations: 4,
             fps: 60.0,
@@ -222,13 +224,14 @@ impl GameApp {
             funds_flash_timer: 0.0,
             funds_blocked_entity: None,
             connection_consumed_this_press: false,
+            touches: HashMap::new(),
         }
     }
 
-    fn mouse_world_position(&self, application: &visula::Application) -> Option<Vec3> {
-        let mouse_physical_position = self.mouse.position?;
-        let ndc_x = 2.0 * mouse_physical_position.x as f32 / application.config.width as f32 - 1.0;
-        let ndc_y = 1.0 - 2.0 * mouse_physical_position.y as f32 / application.config.height as f32;
+    /// Unproject a screen-space pixel position (physical pixels) onto the y=0 world plane.
+    fn screen_to_world(application: &visula::Application, px: f32, py: f32) -> Option<Vec3> {
+        let ndc_x = 2.0 * px / application.config.width as f32 - 1.0;
+        let ndc_y = 1.0 - 2.0 * py / application.config.height as f32;
         let ray_clip = glam::Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
         let aspect_ratio = application.config.width as f32 / application.config.height as f32;
         let inv_projection = application
@@ -241,8 +244,31 @@ impl GameApp {
         let ray_world = inv_view_matrix * ray_eye;
         let ray_world = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
         let ray_origin = application.camera_controller.position();
+        if ray_world.y >= 0.0 {
+            return None;
+        }
         let t = -ray_origin.y / ray_world.y;
         Some(ray_origin + t * ray_world)
+    }
+
+    fn mouse_world_position(&self, application: &visula::Application) -> Option<Vec3> {
+        let p = self.mouse.position?;
+        Self::screen_to_world(application, p.x as f32, p.y as f32)
+    }
+
+    /// Pan the camera by a touchpad pixel delta, converting to world-space offset.
+    fn pan_camera_by_pixels(application: &mut visula::Application, dx: f32, dy: f32) {
+        let cx = application.config.width as f32 / 2.0;
+        let cy = application.config.height as f32 / 2.0;
+        if let (Some(p0), Some(p1)) = (
+            Self::screen_to_world(application, cx, cy),
+            Self::screen_to_world(application, cx + dx, cy + dy),
+        ) {
+            let offset = p1 - p0;
+            application.camera_controller.target_transform.center -= offset;
+            application.camera_controller.current_transform.center =
+                application.camera_controller.target_transform.center;
+        }
     }
 
     /// Build an axon or glial process connection chain.
@@ -317,13 +343,18 @@ impl GameApp {
             Some(ct) => {
                 ct.end = mouse_position;
 
-                // Target candidates differ by tool
+                // Target candidates differ by tool.
+                // Always exclude the source entity to prevent self-connections: when the source
+                // is a neuron soma, it would otherwise be the nearest target on the very first
+                // frame, immediately completing a self-loop and locking out further drawing.
+                let source_entity = ct.from;
                 let target_candidates: Vec<(Entity, Vec3, f32)> = if is_glial_process {
                     // GlialProcess: connect to blood vessels or neurons
                     let mut targets: Vec<_> = world
                         .query::<&Position>()
                         .with::<&VesselAnchor>()
                         .iter()
+                        .filter(|(e, _)| *e != source_entity)
                         .map(|(e, p)| (e, p.position, vessel_snap))
                         .collect();
                     targets.extend(
@@ -331,6 +362,7 @@ impl GameApp {
                             .query::<&Position>()
                             .with::<&LeakyNeuron>()
                             .iter()
+                            .filter(|(e, _)| *e != source_entity)
                             .map(|(e, p)| (e, p.position, snap)),
                     );
                     targets
@@ -340,6 +372,7 @@ impl GameApp {
                         .query::<&Position>()
                         .with::<&LeakyNeuron>()
                         .iter()
+                        .filter(|(e, _)| *e != source_entity)
                         .map(|(e, p)| (e, p.position, snap))
                         .collect()
                 };
@@ -715,7 +748,7 @@ impl visula::Simulation for GameApp {
             self.pending_new_game = false;
             self.world.clear();
             setup::setup_game(&mut self.world, &self.petri_dish);
-            rendering::update_vessel_mesh(&mut self.vessel_mesh, &self.world, &application.device);
+            rendering::update_vessel_mesh(&mut self.vessel_mesh, &self.world, &application.device, self.time as f32);
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
             self.selected_entity = None;
@@ -809,6 +842,14 @@ impl visula::Simulation for GameApp {
                 });
             }
         }
+
+        // Animate vessel walls each frame (cheap: ~50 verts; sine/cosine noise on CPU).
+        rendering::update_vessel_mesh(
+            &mut self.vessel_mesh,
+            &self.world,
+            &application.device,
+            self.time as f32,
+        );
 
         // Petri dish and decorations
         connections.extend(rendering::collect_petri_dish(&self.petri_dish));
@@ -906,6 +947,8 @@ impl visula::Simulation for GameApp {
             } => {
                 self.keyboard.shift_down = state.lshift_state() == ModifiersKeyState::Pressed
                     || state.rshift_state() == ModifiersKeyState::Pressed;
+                self.keyboard.ctrl_down = state.lcontrol_state() == ModifiersKeyState::Pressed
+                    || state.rcontrol_state() == ModifiersKeyState::Pressed;
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
@@ -924,16 +967,111 @@ impl visula::Simulation for GameApp {
                 event: WindowEvent::MouseWheel { delta, .. },
                 ..
             } => {
-                let scroll = match delta {
-                    visula::winit::event::MouseScrollDelta::LineDelta(_, y) => *y,
-                    visula::winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 100.0,
-                };
-                application.camera_controller.target_transform.distance *= 1.0 - scroll * 0.1;
+                match delta {
+                    // Physical mouse wheel → zoom.
+                    visula::winit::event::MouseScrollDelta::LineDelta(_, y) => {
+                        let scroll = *y;
+                        application.camera_controller.target_transform.distance *=
+                            1.0 - scroll * 0.1;
+                        application.camera_controller.target_transform.distance = application
+                            .camera_controller
+                            .target_transform
+                            .distance
+                            .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+                    }
+                    // Touchpad two-finger swipe → pan; Ctrl+swipe → zoom (pinch workaround).
+                    visula::winit::event::MouseScrollDelta::PixelDelta(pos) => {
+                        if self.keyboard.ctrl_down {
+                            // Ctrl+scroll is the standard compositor mapping for touchpad pinch
+                            // on Linux (e.g. via libinput-gestures or KDE/GNOME settings).
+                            let scroll = pos.y as f32 / 100.0;
+                            application.camera_controller.target_transform.distance *=
+                                1.0 - scroll * 0.5;
+                            application.camera_controller.target_transform.distance = application
+                                .camera_controller
+                                .target_transform
+                                .distance
+                                .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+                        } else {
+                            Self::pan_camera_by_pixels(application, pos.x as f32, pos.y as f32);
+                        }
+                    }
+                }
+            }
+            // Touchpad pinch gesture (macOS / iOS) → zoom.
+            Event::WindowEvent {
+                event: WindowEvent::PinchGesture { delta, .. },
+                ..
+            } => {
+                let zoom = *delta as f32;
+                application.camera_controller.target_transform.distance *= 1.0 - zoom * 0.5;
                 application.camera_controller.target_transform.distance = application
                     .camera_controller
                     .target_transform
                     .distance
                     .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+            }
+            // Touchscreen multi-touch: two fingers pan + pinch zoom.
+            Event::WindowEvent {
+                event: WindowEvent::Touch(Touch { id, phase, location, .. }),
+                ..
+            } => {
+                match phase {
+                    TouchPhase::Started => {
+                        self.touches.insert(*id, *location);
+                    }
+                    TouchPhase::Moved => {
+                        if let Some(&prev) = self.touches.get(id) {
+                            if self.touches.len() == 2 {
+                                // Find the other finger's current position.
+                                let other = self
+                                    .touches
+                                    .iter()
+                                    .find(|(&fid, _)| fid != *id)
+                                    .map(|(_, &pos)| pos);
+
+                                if let Some(other) = other {
+                                    // Pan: centroid delta.
+                                    let old_cx = (prev.x + other.x) / 2.0;
+                                    let old_cy = (prev.y + other.y) / 2.0;
+                                    let new_cx = (location.x + other.x) / 2.0;
+                                    let new_cy = (location.y + other.y) / 2.0;
+                                    let dx = (new_cx - old_cx) as f32;
+                                    let dy = (new_cy - old_cy) as f32;
+                                    Self::pan_camera_by_pixels(application, dx, dy);
+
+                                    // Pinch: distance ratio.
+                                    let old_d = ((prev.x - other.x).powi(2)
+                                        + (prev.y - other.y).powi(2))
+                                    .sqrt();
+                                    let new_d = ((location.x - other.x).powi(2)
+                                        + (location.y - other.y).powi(2))
+                                    .sqrt();
+                                    if old_d > 0.0 {
+                                        let scale = (new_d / old_d) as f32;
+                                        application.camera_controller.target_transform.distance /=
+                                            scale;
+                                        application.camera_controller.target_transform.distance =
+                                            application
+                                                .camera_controller
+                                                .target_transform
+                                                .distance
+                                                .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+                                        application.camera_controller.current_transform.distance =
+                                            application
+                                                .camera_controller
+                                                .target_transform
+                                                .distance;
+                                    }
+                                }
+                            }
+                            self.touches.insert(*id, *location);
+                        }
+                    }
+                    TouchPhase::Ended | TouchPhase::Cancelled => {
+                        self.touches.remove(id);
+                    }
+                }
             }
             _ => {}
         }

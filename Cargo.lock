@@ -2170,6 +2170,7 @@ dependencies = [
  "hecs",
  "log",
  "neuronify-core",
+ "pollster 0.4.0",
  "rand 0.8.5",
  "serde",
  "serde_derive",
