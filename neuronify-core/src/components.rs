@@ -2,6 +2,12 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
+/// Optional per-entity color override for connection lines.
+/// When present on the `from` entity of a Connection, this color is used
+/// instead of the default voltage-based color.
+#[derive(Clone, Debug)]
+pub struct ConnectionColor(pub Vec3);
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LeakyNeuron {
     pub capacitance: f64,

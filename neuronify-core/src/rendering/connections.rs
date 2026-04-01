@@ -98,7 +98,9 @@ pub fn collect_connections(
         };
         let start_value = value(to);
         let end_value = value(from);
-        let (start_color, end_color) = if world.get::<&CurrentClamp>(from).is_ok() {
+        let (start_color, end_color) = if let Ok(cc) = world.get::<&ConnectionColor>(from) {
+            (cc.0, cc.0)
+        } else if world.get::<&CurrentClamp>(from).is_ok() {
             (yellow(), yellow())
         } else if world.get::<&GeneratorDynamics>(from).is_ok() {
             (orange(), orange())

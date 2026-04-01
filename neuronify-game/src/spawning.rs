@@ -2,10 +2,11 @@ use glam::Vec3;
 use hecs::Entity;
 
 use neuronify_core::{
-    Compartment, CompartmentCurrent, Connection, Deletable, Inhibitory, LeakCurrent, LeakyDynamics,
-    LeakyNeuron, NeuronType, Position, Selectable, SpatialDynamics, StaticConnectionSource,
-    VisualRadius, COUPLING_CAPACITANCE, NODE_RADIUS,
+    Compartment, CompartmentCurrent, Connection, ConnectionColor, Deletable, Inhibitory,
+    LeakCurrent, LeakyDynamics, LeakyNeuron, NeuronType, Position, Selectable, SpatialDynamics,
+    StaticConnectionSource, VisualRadius, COUPLING_CAPACITANCE, NODE_RADIUS,
 };
+use crate::rendering::colors::glial_color;
 
 use crate::components::*;
 
@@ -27,6 +28,7 @@ pub fn spawn_glial(
         Ownership { player },
         Deletable {},
         VisualRadius { radius: NODE_RADIUS * 1.3 },
+        ConnectionColor(glial_color()),
     ));
 
     for i in 0..num_processes {
@@ -60,6 +62,7 @@ pub fn spawn_glial(
                     velocity: Vec3::ZERO,
                     acceleration: Vec3::ZERO,
                 },
+                ConnectionColor(glial_color()),
             ));
 
             world.spawn((

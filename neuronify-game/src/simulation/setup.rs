@@ -2,10 +2,12 @@ use glam::Vec3;
 use hecs::Entity;
 
 use neuronify_core::{
-    Compartment, CompartmentCurrent, Connection, Deletable, GeneratorDynamics, LeakCurrent,
-    LeakyDynamics, LeakyNeuron, NeuronType, Position, RegularSpikeGenerator, Selectable,
-    SpatialDynamics, StaticConnectionSource, VisualRadius, COUPLING_CAPACITANCE, NODE_RADIUS,
+    Compartment, CompartmentCurrent, Connection, ConnectionColor, Deletable, GeneratorDynamics,
+    LeakCurrent, LeakyDynamics, LeakyNeuron, NeuronType, Position, RegularSpikeGenerator,
+    Selectable, SpatialDynamics, StaticConnectionSource, VisualRadius, COUPLING_CAPACITANCE,
+    NODE_RADIUS,
 };
+use crate::rendering::colors::glial_color;
 
 use crate::components::*;
 use crate::constants::*;
@@ -113,6 +115,7 @@ fn spawn_glial_process_comp(world: &mut hecs::World, pos: Vec3) -> Entity {
             velocity: Vec3::ZERO,
             acceleration: Vec3::ZERO,
         },
+        ConnectionColor(glial_color()),
     ))
 }
 
@@ -134,6 +137,7 @@ fn spawn_glial_bridge_comp(world: &mut hecs::World, pos: Vec3) -> Entity {
         StaticConnectionSource {},
         Deletable {},
         Selectable { selected: false },
+        ConnectionColor(glial_color()),
     ))
 }
 

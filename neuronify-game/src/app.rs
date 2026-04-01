@@ -7,20 +7,22 @@ use hecs::Entity;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, WindowEvent};
 use visula::{
-    winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer, LineDelegate, Lines,
-    MeshPipeline, RenderData, Renderable, SphereDelegate, Spheres,
+    winit::keyboard::ModifiersKeyState, CustomEvent, Expression, InstanceBuffer, LineGeometry,
+    LineMaterial, Lines, MeshPipeline, RenderData, Renderable, SphereGeometry, SphereMaterial,
+    Spheres, UniformBuffer,
 };
 
 use neuronify_core::rendering::gpu_types::{ConnectionData, Sphere};
 use neuronify_core::simulation::{apply_spatial_forces, integrate_motion};
 use neuronify_core::{
-    Compartment, CompartmentCurrent, Connection, Deletable, GeneratorDynamics, Keyboard,
-    LeakyDynamics, LeakyNeuron, Mouse, NeuronType, Position, Selectable, SpatialDynamics,
+    Compartment, CompartmentCurrent, Connection, ConnectionColor, Deletable, GeneratorDynamics,
+    Keyboard, LeakyDynamics, LeakyNeuron, Mouse, NeuronType, Position, Selectable, SpatialDynamics,
     StaticConnectionSource, Tool, VisualRadius, CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE,
     COUPLING_CAPACITANCE, ERASE_RADIUS, FHN_CDT, FPS_LOW_PASS_FACTOR, LIF_DT,
     MIN_CREATION_DISTANCE_AXON, MIN_CREATION_DISTANCE_DEFAULT, NODE_RADIUS, PHYSICS_DT,
     SELECTION_RANGE, TARGET_FRAME_MS,
 };
+use crate::rendering::colors::glial_color;
 
 use crate::components::*;
 use crate::constants::*;
@@ -43,6 +45,10 @@ pub struct GameApp {
     pub connection_spheres: Spheres,
     pub connection_buffer: InstanceBuffer<ConnectionData>,
     pub vessel_mesh: MeshPipeline,
+    pub particle_spheres: Spheres,
+    #[allow(dead_code)]
+    pub particle_buffer: InstanceBuffer<rendering::BloodParticle>,
+    pub vessel_time_buffer: UniformBuffer<rendering::VesselTime>,
     pub world: hecs::World,
     pub petri_dish: setup::PetriDish,
     pub tool: GameTool,
@@ -114,10 +120,13 @@ impl GameApp {
 
         let spheres = Spheres::new(
             &application.rendering_descriptor(),
-            &SphereDelegate {
+            &SphereGeometry {
                 position: sphere.position.clone(),
                 radius: sphere.radius,
                 color: sphere.color,
+            },
+            &SphereMaterial {
+                color: Expression::InstanceColor.lit(),
             },
         )
         .unwrap();
@@ -130,27 +139,42 @@ impl GameApp {
                 * 2.0;
         let connection_lines = Lines::new(
             &application.rendering_descriptor(),
-            &LineDelegate {
+            &LineGeometry {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
                 width: connection.strength.clone() * 0.3,
                 color: connection.start_color.clone(),
+            },
+            &LineMaterial {
+                color: Expression::InstanceColor.lit(),
             },
         )
         .unwrap();
 
         let connection_spheres = Spheres::new(
             &application.rendering_descriptor(),
-            &SphereDelegate {
+            &SphereGeometry {
                 position: connection_endpoint,
                 radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
                 color: Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0).into(),
+            },
+            &SphereMaterial {
+                color: Expression::InstanceColor.lit(),
             },
         )
         .unwrap();
 
         let mut vessel_mesh =
             rendering::create_vessel_pipeline(&application.rendering_descriptor()).unwrap();
+
+        let vessel_time_buffer = UniformBuffer::<rendering::VesselTime>::new(&application.device);
+        let particle_buffer = InstanceBuffer::<rendering::BloodParticle>::new(&application.device);
+        let particle_spheres = rendering::create_particle_pipeline(
+            &application.rendering_descriptor(),
+            &particle_buffer,
+            &vessel_time_buffer,
+        )
+        .unwrap();
 
         let mut world = hecs::World::new();
         let dish = setup::PetriDish {
@@ -160,6 +184,9 @@ impl GameApp {
         setup::setup_game(&mut world, &dish);
         rendering::update_vessel_mesh(&mut vessel_mesh, &world, &application.device);
 
+        let particles = rendering::generate_vessel_particles(&world);
+        particle_buffer.update(&application.device, &application.queue, &particles);
+
         GameApp {
             spheres,
             sphere_buffer,
@@ -167,6 +194,9 @@ impl GameApp {
             connection_spheres,
             connection_buffer,
             vessel_mesh,
+            particle_spheres,
+            particle_buffer,
+            vessel_time_buffer,
             world,
             petri_dish: dish,
             tool: GameTool::Select,
@@ -371,6 +401,7 @@ impl GameApp {
                             ));
                             if is_glial_process {
                                 let _ = world.insert_one(bridge, GlialProcess);
+                                let _ = world.insert_one(bridge, ConnectionColor(glial_color()));
                             }
                             let already = world.query::<&Connection>().iter().any(|(_, c)| {
                                 c.from == ct.from && c.to == bridge
@@ -454,6 +485,7 @@ impl GameApp {
                         // Mark glial process compartments
                         if is_glial_process {
                             let _ = world.insert_one(compartment_builder, GlialProcess);
+                            let _ = world.insert_one(compartment_builder, ConnectionColor(glial_color()));
                         }
                         world.spawn((
                             Connection {
@@ -786,6 +818,14 @@ impl visula::Simulation for GameApp {
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
 
+        self.vessel_time_buffer.update(
+            &application.queue,
+            &rendering::VesselTime {
+                time: self.time as f32,
+                _padding: Default::default(),
+            },
+        );
+
         // FPS tracking
         let time_diff = Utc::now() - self.last_update;
         #[cfg(not(target_arch = "wasm32"))]
@@ -803,6 +843,7 @@ impl visula::Simulation for GameApp {
 
     fn render(&mut self, data: &mut RenderData) {
         self.vessel_mesh.render(data);
+        self.particle_spheres.render(data);
         self.spheres.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
