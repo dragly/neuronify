@@ -1,7 +1,9 @@
 pub mod boundary;
 pub mod cleanup;
+pub mod combat;
 pub mod economy;
 pub mod metabolism;
 pub mod ownership;
+pub mod scenarios;
 pub mod setup;
 pub mod transport;

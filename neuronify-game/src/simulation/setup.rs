@@ -264,6 +264,7 @@ pub fn setup_game(world: &mut hecs::World, _dish: &PetriDish) {
             energy: MAX_NEURON_ENERGY,
             max_energy: MAX_NEURON_ENERGY,
         },
+        Health::new(NEURON_HEALTH),
         OriginNeuron {
             player: PlayerId::Player1,
         },

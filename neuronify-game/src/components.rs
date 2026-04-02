@@ -5,6 +5,152 @@ pub enum PlayerId {
     Player1,
 }
 
+/// Faction affiliation for combat units. All three factions are playable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub enum Faction {
+    Biological,
+    Tech,
+    Tumor,
+}
+
+/// Health for combat units (microglia, macrophages, astrocytes, etc.).
+/// Neurons use MetabolicState instead.
+#[derive(Clone, Debug)]
+pub struct Health {
+    pub current: f32,
+    pub max: f32,
+}
+
+impl Health {
+    pub fn new(max: f32) -> Self {
+        Self { current: max, max }
+    }
+    pub fn fraction(&self) -> f32 {
+        (self.current / self.max).clamp(0.0, 1.0)
+    }
+    pub fn is_dead(&self) -> bool {
+        self.current <= 0.0
+    }
+}
+
+/// Structural health of an axon compartment.
+/// When drained to zero the compartment is despawned, severing connections.
+#[derive(Clone, Debug)]
+pub struct AxonHealth {
+    pub current: f32,
+    pub max: f32,
+}
+
+impl AxonHealth {
+    pub fn new(max: f32) -> Self {
+        Self { current: max, max }
+    }
+    pub fn is_dead(&self) -> bool {
+        self.current <= 0.0
+    }
+}
+
+/// Shared movement state for all mobile combat units.
+#[derive(Clone, Debug)]
+pub struct MobileUnit {
+    pub speed: f32,
+    pub target: Option<hecs::Entity>,
+    pub faction: Faction,
+}
+
+// ── Unit-specific behavior components ────────────────────────────────────────
+
+/// Targets Compartment entities and fires projectiles to drain AxonHealth (connection cutter role).
+#[derive(Clone, Debug)]
+pub struct AxonCutter {
+    pub shot_damage: f32,
+    pub shoot_cooldown: f32,
+    pub shoot_timer: f32,
+}
+
+/// Targets LeakyNeuron somas and fires projectiles to drain MetabolicState.energy (neuron destroyer role).
+#[derive(Clone, Debug)]
+pub struct NeuronEngulfment {
+    pub shot_damage: f32,
+    pub target: Option<hecs::Entity>,
+    pub shoot_cooldown: f32,
+    pub shoot_timer: f32,
+    /// Unit must be within this distance of its target to open fire (prevents long-range sniping).
+    pub fire_range: f32,
+}
+
+/// A visible projectile fired by a combat unit toward its target.
+/// Travels through space; applies damage and despawns on arrival.
+#[derive(Clone, Debug)]
+pub struct AttackProjectile {
+    pub target: hecs::Entity,
+    pub speed: f32,
+    /// Structural damage applied to Health on arrival (macrophage attacks).
+    pub health_damage: f32,
+    /// Axon damage applied to AxonHealth on arrival (microglia attacks).
+    pub axon_damage: f32,
+    pub color: glam::Vec3,
+    pub radius: f32,
+}
+
+/// Delivers a burst of damage on contact, then waits for cooldown (fast raider role).
+#[derive(Clone, Debug)]
+pub struct BurstAttack {
+    pub damage: f32,
+    pub range: f32,
+    pub cooldown: f32,
+    pub cooldown_timer: f32,
+}
+
+/// Stationary area control: drains Health of all enemy MobileUnits within radius.
+#[derive(Clone, Debug)]
+pub struct GlialAbsorption {
+    pub absorb_radius: f32,
+    pub absorb_rate: f32,
+}
+
+// ── Unit type markers ─────────────────────────────────────────────────────────
+// Each marker drives rendering (mesh shape/color) and target-selection behavior.
+
+/// Biological connection cutter — spiky cyan star mesh.
+#[derive(Clone, Debug)]
+pub struct MicroglialCell;
+/// Biological neuron destroyer — large purple sphere.
+#[derive(Clone, Debug)]
+pub struct MacrophageUnit;
+/// Biological fast raider — small lime-green sphere.
+#[derive(Clone, Debug)]
+pub struct TCellUnit;
+/// Biological area control — gold six-pointed star mesh, stationary.
+#[derive(Clone, Debug)]
+pub struct ReactiveAstrocyte;
+
+/// Tech connection cutter.
+#[derive(Clone, Debug)]
+pub struct DisruptorDrone;
+/// Tech neuron destroyer.
+#[derive(Clone, Debug)]
+pub struct SiegeSynapse;
+/// Tech fast raider.
+#[derive(Clone, Debug)]
+pub struct NanoProbe;
+/// Tech area control.
+#[derive(Clone, Debug)]
+pub struct FirewallNode;
+
+/// Tumor connection cutter.
+#[derive(Clone, Debug)]
+pub struct SeveringClaw;
+/// Tumor neuron destroyer.
+#[derive(Clone, Debug)]
+pub struct MetastaticBud;
+/// Tumor fast raider.
+#[derive(Clone, Debug)]
+pub struct Invadopod;
+/// Tumor area control.
+#[derive(Clone, Debug)]
+pub struct TumorBarrier;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Ownership {
     pub player: PlayerId,

@@ -8,7 +8,7 @@ use neuronify_core::{
     NeuronType, Position, COMPARTMENT_SPHERE_SCALE, NODE_RADIUS,
 };
 
-use crate::components::{GlialCell, GlialProcess, GlucosePacket, LactatePacket, MetabolicState, OriginNeuron, Ownership};
+use crate::components::{AttackProjectile, GlialCell, GlialProcess, GlucosePacket, LactatePacket, MetabolicState, OriginNeuron, Ownership, TCellUnit};
 use crate::rendering::colors::{glial_color, player1_color};
 use crate::tools::GameTool;
 
@@ -34,13 +34,19 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 color = color * 0.6 + player1_color() * 0.4;
             }
 
-            // Energy dimming / dormancy
+            // Energy dimming / dormancy + red stress tint when under attack
             if let Ok(metab) = world.get::<&MetabolicState>(entity) {
                 let effectiveness = (metab.energy / metab.max_energy).clamp(0.0, 1.0) as f32;
                 if effectiveness < 0.05 {
                     color = srgb(40, 40, 50);
                 } else {
                     color *= effectiveness.max(0.3);
+                    // Below 60% energy: shift toward red so the player can see the neuron is dying
+                    if effectiveness < 0.6 {
+                        let stress = (0.6 - effectiveness) / 0.6; // 0 at 60%, 1.0 at 0%
+                        color = color * (1.0 - stress * 0.6)
+                            + glam::Vec3::new(0.8, 0.05, 0.05) * (stress * 0.6);
+                    }
                 }
             }
 
@@ -177,6 +183,30 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
         })
         .collect();
 
+    // AttackProjectile — small fast-moving spheres, color from component
+    let attack_projectile_spheres: Vec<Sphere> = world
+        .query::<(&AttackProjectile, &Position)>()
+        .iter()
+        .map(|(_, (proj, position))| Sphere {
+            position: position.position,
+            color: proj.color,
+            radius: proj.radius,
+            _padding: Default::default(),
+        })
+        .collect();
+
+    // TCellUnit — lime green sphere, radius 1.2
+    let tcell_spheres: Vec<Sphere> = world
+        .query::<(&TCellUnit, &Position)>()
+        .iter()
+        .map(|(_, (_, position))| Sphere {
+            position: position.position,
+            color: srgb(80, 255, 60),
+            radius: 1.2,
+            _padding: Default::default(),
+        })
+        .collect();
+
     spheres.extend(lif_neuron_spheres.iter());
     spheres.extend(current_clamp_spheres.iter());
     spheres.extend(generator_spheres.iter());
@@ -185,6 +215,8 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
     spheres.extend(glial_spheres.iter());
     spheres.extend(glucose_packet_spheres.iter());
     spheres.extend(lactate_packet_spheres.iter());
+    spheres.extend(attack_projectile_spheres.iter());
+    spheres.extend(tcell_spheres.iter());
 
     spheres
 }
@@ -216,6 +248,7 @@ pub fn collect_placement_preview(
             GameTool::ExcitatoryNeuron => blue(),
             GameTool::InhibitoryNeuron => red(),
             GameTool::GlialCell => glial_color(),
+            GameTool::ReactiveAstrocyte => glam::Vec3::new(1.0, 0.69, 0.12),
             GameTool::Select | GameTool::Erase | GameTool::Axon | GameTool::GlialProcess => {
                 return spheres;
             }

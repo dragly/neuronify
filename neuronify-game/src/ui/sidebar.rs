@@ -1,3 +1,4 @@
+use crate::simulation::scenarios::ScenarioId;
 use crate::tools::GameTool;
 
 pub fn draw_sidebar(
@@ -9,6 +10,7 @@ pub fn draw_sidebar(
     funds_flash: bool,
     pending_new_game: &mut bool,
     pending_exit_game: &mut bool,
+    current_scenario: &mut ScenarioId,
 ) {
     egui::SidePanel::right("rts_sidebar")
         .min_width(180.0)
@@ -46,6 +48,7 @@ pub fn draw_sidebar(
                     tool_button(ui, tool, GameTool::Axon, "Axon", "3B/seg");
                     ui.end_row();
                     tool_button(ui, tool, GameTool::GlialProcess, "Process", "3B/seg");
+                    tool_button(ui, tool, GameTool::ReactiveAstrocyte, "Astrocyte", "20B");
                     ui.end_row();
                 });
 
@@ -65,6 +68,26 @@ pub fn draw_sidebar(
                     tool_button(ui, tool, GameTool::Erase, "Erase", "");
                     ui.end_row();
                 });
+
+            ui.separator();
+
+            // SCENARIO section
+            ui.label(
+                egui::RichText::new("SCENARIO")
+                    .strong()
+                    .color(egui::Color32::GRAY),
+            );
+            let mut changed = false;
+            for &scenario in ScenarioId::all() {
+                let selected = *current_scenario == scenario;
+                if ui.radio(selected, scenario.label()).clicked() && !selected {
+                    *current_scenario = scenario;
+                    changed = true;
+                }
+            }
+            if changed {
+                *pending_new_game = true;
+            }
 
             ui.separator();
 

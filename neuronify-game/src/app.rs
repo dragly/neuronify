@@ -27,7 +27,8 @@ use crate::rendering::colors::glial_color;
 use crate::components::*;
 use crate::constants::*;
 use crate::rendering;
-use crate::simulation::{boundary, cleanup, economy, metabolism, ownership, setup, transport};
+use crate::simulation::{boundary, cleanup, combat, economy, metabolism, ownership, scenarios, setup, transport};
+use crate::simulation::scenarios::ScenarioId;
 use crate::spawning;
 use crate::tools::*;
 use crate::ui::sidebar;
@@ -72,6 +73,12 @@ pub struct GameApp {
     pub connection_consumed_this_press: bool,
     /// Active touch points by touch ID → current screen position.
     pub touches: HashMap<u64, PhysicalPosition<f64>>,
+    pub current_scenario: ScenarioId,
+    pub microglia_mesh: MeshPipeline,
+    pub astrocyte_mesh: MeshPipeline,
+    pub macrophage_mesh: MeshPipeline,
+    pub health_bar_meshes: [MeshPipeline; 4],
+    pub energy_bar_meshes: [MeshPipeline; 2],
 }
 
 #[derive(Debug)]
@@ -168,6 +175,16 @@ impl GameApp {
 
         let mut vessel_mesh =
             rendering::create_vessel_pipeline(&application.rendering_descriptor()).unwrap();
+        let microglia_mesh =
+            rendering::create_microglia_pipeline(&application.rendering_descriptor()).unwrap();
+        let astrocyte_mesh =
+            rendering::create_astrocyte_pipeline(&application.rendering_descriptor()).unwrap();
+        let macrophage_mesh =
+            rendering::create_macrophage_pipeline(&application.rendering_descriptor()).unwrap();
+        let health_bar_meshes =
+            rendering::create_health_bar_pipelines(&application.rendering_descriptor()).unwrap();
+        let energy_bar_meshes =
+            rendering::create_energy_bar_pipelines(&application.rendering_descriptor()).unwrap();
 
         let vessel_time_buffer = UniformBuffer::<rendering::VesselTime>::new(&application.device);
         let particle_buffer = InstanceBuffer::<rendering::BloodParticle>::new(&application.device);
@@ -225,6 +242,12 @@ impl GameApp {
             funds_blocked_entity: None,
             connection_consumed_this_press: false,
             touches: HashMap::new(),
+            current_scenario: ScenarioId::Default,
+            microglia_mesh,
+            astrocyte_mesh,
+            macrophage_mesh,
+            health_bar_meshes,
+            energy_bar_meshes,
         }
     }
 
@@ -608,6 +631,20 @@ impl GameApp {
                     spawning::spawn_glial(&mut self.world, mouse_position, PlayerId::Player1, 3);
                 self.previous_creation = Some(PreviousCreation { entity });
             }
+            GameTool::ReactiveAstrocyte => {
+                if previous_too_near {
+                    return;
+                }
+                if !economy::try_spend_blocks(&mut self.p1_economy, REACTIVE_ASTROCYTE_COST) {
+                    return;
+                }
+                let entity = spawning::spawn_reactive_astrocyte(
+                    &mut self.world,
+                    mouse_position,
+                    crate::components::Faction::Biological,
+                );
+                self.previous_creation = Some(PreviousCreation { entity });
+            }
             GameTool::Erase => {
                 let to_delete: Vec<Entity> = self
                     .world
@@ -747,7 +784,7 @@ impl visula::Simulation for GameApp {
         if self.pending_new_game {
             self.pending_new_game = false;
             self.world.clear();
-            setup::setup_game(&mut self.world, &self.petri_dish);
+            scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
             rendering::update_vessel_mesh(&mut self.vessel_mesh, &self.world, &application.device, self.time as f32);
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
@@ -801,6 +838,18 @@ impl visula::Simulation for GameApp {
         cleanup::cleanup_orphans(&mut self.world);
         ownership::update_ownership(&mut self.world);
 
+        // Combat systems run on wall-clock time, not neural-simulation time.
+        // frame_dt = iterations * LIF_DT ≈ 0.0004 s — far too small for combat timers.
+        // TARGET_FRAME_MS gives the actual intended frame duration (~16 ms).
+        let combat_dt = (TARGET_FRAME_MS as f32 * 1e-3).min(0.1);
+        combat::move_mobile_units(&mut self.world, combat_dt);
+        combat::apply_axon_cutting(&mut self.world, combat_dt);
+        combat::apply_neuron_engulfment(&mut self.world, combat_dt);
+        combat::apply_burst_attacks(&mut self.world, combat_dt);
+        combat::advance_attack_projectiles(&mut self.world, combat_dt);
+        combat::apply_glial_absorption(&mut self.world, combat_dt);
+        combat::despawn_dead(&mut self.world);
+
         // Collect rendering data
         let connection_preview_end = if matches!(self.tool, GameTool::Axon | GameTool::GlialProcess) {
             self.connection_tool.as_ref().map(|ct| ct.end)
@@ -850,6 +899,34 @@ impl visula::Simulation for GameApp {
             &application.device,
             self.time as f32,
         );
+        rendering::update_microglia_mesh(
+            &mut self.microglia_mesh,
+            &self.world,
+            &application.device,
+            self.time as f32,
+        );
+        rendering::update_astrocyte_mesh(
+            &mut self.astrocyte_mesh,
+            &self.world,
+            &application.device,
+        );
+        rendering::update_macrophage_mesh(
+            &mut self.macrophage_mesh,
+            &self.world,
+            &application.device,
+            self.time as f32,
+        );
+        rendering::update_health_bar_meshes(
+            &mut self.health_bar_meshes,
+            &self.world,
+            &application.device,
+        );
+        rendering::update_energy_bar_meshes(
+            &mut self.energy_bar_meshes,
+            &self.world,
+            &application.device,
+            self.selected_entity,
+        );
 
         // Petri dish and decorations
         connections.extend(rendering::collect_petri_dish(&self.petri_dish));
@@ -888,6 +965,15 @@ impl visula::Simulation for GameApp {
         self.spheres.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
+        self.microglia_mesh.render(data);
+        self.astrocyte_mesh.render(data);
+        self.macrophage_mesh.render(data);
+        for mesh in &mut self.health_bar_meshes {
+            mesh.render(data);
+        }
+        for mesh in &mut self.energy_bar_meshes {
+            mesh.render(data);
+        }
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
@@ -909,6 +995,7 @@ impl visula::Simulation for GameApp {
             self.funds_flash_timer > 0.0,
             &mut self.pending_new_game,
             &mut self.pending_exit_game,
+            &mut self.current_scenario,
         );
 
         // Info panel for selected entity

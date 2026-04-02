@@ -10,6 +10,8 @@ pub enum GameTool {
     GlialCell,
     /// Build glial processes — connect glial cells to blood vessels or neurons.
     GlialProcess,
+    /// Place a reactive astrocyte (biological area-control defender).
+    ReactiveAstrocyte,
     Erase,
 }
 

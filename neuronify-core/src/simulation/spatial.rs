@@ -39,10 +39,10 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
             if connection_1.to != connection_2.from {
                 continue;
             }
-            let to_1 = world.get::<&Position>(connection_1.to).unwrap().position;
-            let from_1 = world.get::<&Position>(connection_1.from).unwrap().position;
-            let to_2 = world.get::<&Position>(connection_2.to).unwrap().position;
-            let from_2 = world.get::<&Position>(connection_2.from).unwrap().position;
+            let Some(to_1) = world.get::<&Position>(connection_1.to).ok().map(|p| p.position) else { continue };
+            let Some(from_1) = world.get::<&Position>(connection_1.from).ok().map(|p| p.position) else { continue };
+            let Some(to_2) = world.get::<&Position>(connection_2.to).ok().map(|p| p.position) else { continue };
+            let Some(from_2) = world.get::<&Position>(connection_2.from).ok().map(|p| p.position) else { continue };
             let target = 1.0;
             let dir_ab = (to_1 - from_1).normalize_or_zero();
             let dir_bc = (to_2 - from_2).normalize_or_zero();

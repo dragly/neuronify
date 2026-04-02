@@ -57,14 +57,12 @@ pub fn collect_connections(
     const SYNAPSE_GAP: f32 = 0.25;
 
     for &(_edge_entity, from, to, strength, directional) in &connection_info {
-        let start = world
-            .get::<&Position>(from)
-            .expect("Connection from broken")
-            .position;
-        let end = world
-            .get::<&Position>(to)
-            .expect("Connection to broken")
-            .position;
+        let Some(start) = world.get::<&Position>(from).ok().map(|p| p.position) else {
+            continue;
+        };
+        let Some(end) = world.get::<&Position>(to).ok().map(|p| p.position) else {
+            continue;
+        };
 
         // Only add a gap where a process/axon meets a soma or vessel (non-compartment).
         // Compartment-to-compartment links stay flush so the chain looks continuous.
