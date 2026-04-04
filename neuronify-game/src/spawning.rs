@@ -133,6 +133,11 @@ pub fn spawn_glial(
         Deletable {},
         VisualRadius { radius: NODE_RADIUS * 1.3 },
         ConnectionColor(glial_color()),
+        GlialAbsorption {
+            absorb_radius: REACTIVE_ASTROCYTE_ABSORB_RADIUS,
+            absorb_rate: REACTIVE_ASTROCYTE_ABSORB_RATE,
+            stagger_timer: 0.0,
+        },
     ));
 
     for i in 0..num_processes {

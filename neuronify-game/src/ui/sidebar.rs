@@ -144,14 +144,13 @@ pub fn draw_sidebar(
                 .num_columns(2)
                 .spacing([4.0, 4.0])
                 .show(ui, |ui| {
-                    tool_button(ui, tool, GameTool::GlialCell,        "Glial",      "8B",     Some(&icons.glial));
+                    tool_button(ui, tool, GameTool::GlialCell,        "Astrocyte",  "8B",     Some(&icons.astrocyte));
                     tool_button(ui, tool, GameTool::ExcitatoryNeuron, "Excitatory", "25B",    Some(&icons.excitatory));
                     ui.end_row();
                     tool_button(ui, tool, GameTool::InhibitoryNeuron, "Inhibitory", "25B",    Some(&icons.inhibitory));
                     tool_button(ui, tool, GameTool::Axon,             "Axon",       "3B/seg", Some(&icons.axon));
                     ui.end_row();
                     tool_button(ui, tool, GameTool::GlialProcess,     "Process",    "3B/seg", Some(&icons.process));
-                    tool_button(ui, tool, GameTool::ReactiveAstrocyte,"Astrocyte",  "20B",    Some(&icons.astrocyte));
                     ui.end_row();
                 });
 

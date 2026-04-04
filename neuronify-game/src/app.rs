@@ -669,20 +669,6 @@ impl GameApp {
                     spawning::spawn_glial(&mut self.world, mouse_position, PlayerId::Player1, 3);
                 self.previous_creation = Some(PreviousCreation { entity });
             }
-            GameTool::ReactiveAstrocyte => {
-                if previous_too_near {
-                    return;
-                }
-                if !economy::try_spend_blocks(&mut self.p1_economy, REACTIVE_ASTROCYTE_COST) {
-                    return;
-                }
-                let entity = spawning::spawn_reactive_astrocyte(
-                    &mut self.world,
-                    mouse_position,
-                    crate::components::Faction::Biological,
-                );
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
             GameTool::Erase => {
                 let to_delete: Vec<Entity> = self
                     .world
@@ -1216,37 +1202,45 @@ impl visula::Simulation for GameApp {
                                     .map(|(_, &pos)| pos);
 
                                 if let Some(other) = other {
-                                    // Pan: centroid delta.
-                                    let old_cx = (prev.x + other.x) / 2.0;
-                                    let old_cy = (prev.y + other.y) / 2.0;
-                                    let new_cx = (location.x + other.x) / 2.0;
-                                    let new_cy = (location.y + other.y) / 2.0;
-                                    let dx = (new_cx - old_cx) as f32;
-                                    let dy = (new_cy - old_cy) as f32;
-                                    Self::pan_camera_by_pixels(application, dx, dy);
-
-                                    // Pinch: distance ratio.
-                                    let old_d = ((prev.x - other.x).powi(2)
-                                        + (prev.y - other.y).powi(2))
-                                    .sqrt();
-                                    let new_d = ((location.x - other.x).powi(2)
-                                        + (location.y - other.y).powi(2))
-                                    .sqrt();
-                                    if old_d > 0.0 {
-                                        let scale = (new_d / old_d) as f32;
-                                        application.camera_controller.target_transform.distance /=
-                                            scale;
-                                        application.camera_controller.target_transform.distance =
+                                    if self.keyboard.ctrl_down {
+                                        // Ctrl + two fingers = zoom (pinch distance ratio).
+                                        let old_d = ((prev.x - other.x).powi(2)
+                                            + (prev.y - other.y).powi(2))
+                                        .sqrt();
+                                        let new_d = ((location.x - other.x).powi(2)
+                                            + (location.y - other.y).powi(2))
+                                        .sqrt();
+                                        if old_d > 0.0 {
+                                            let scale = (new_d / old_d) as f32;
                                             application
+                                                .camera_controller
+                                                .target_transform
+                                                .distance /= scale;
+                                            application
+                                                .camera_controller
+                                                .target_transform
+                                                .distance = application
                                                 .camera_controller
                                                 .target_transform
                                                 .distance
                                                 .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
-                                        application.camera_controller.current_transform.distance =
                                             application
+                                                .camera_controller
+                                                .current_transform
+                                                .distance = application
                                                 .camera_controller
                                                 .target_transform
                                                 .distance;
+                                        }
+                                    } else {
+                                        // Two fingers without Ctrl = pan (centroid delta).
+                                        let old_cx = (prev.x + other.x) / 2.0;
+                                        let old_cy = (prev.y + other.y) / 2.0;
+                                        let new_cx = (location.x + other.x) / 2.0;
+                                        let new_cy = (location.y + other.y) / 2.0;
+                                        let dx = (new_cx - old_cx) as f32;
+                                        let dy = (new_cy - old_cy) as f32;
+                                        Self::pan_camera_by_pixels(application, dx, dy);
                                     }
                                 }
                             }

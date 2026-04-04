@@ -148,6 +148,9 @@ fn draw_single_entity(
                 .strong()
                 .color(egui::Color32::from_rgb(100, 180, 100)),
         );
+        if let Ok(health) = world.get::<&Health>(entity) {
+            health_bar(ui, &health);
+        }
         ui.label(format!(
             "Glucose: {:.1} / {:.0}",
             glial.glucose_stored, glial.max_glucose
@@ -165,6 +168,11 @@ fn draw_single_entity(
         } else {
             ui.colored_label(egui::Color32::GRAY, "Not connected to vessel");
         }
+        ui.separator();
+        ui.colored_label(
+            egui::Color32::from_rgb(100, 180, 100),
+            "Absorbs nearby enemies",
+        );
     } else if let Ok(vessel) = world.get::<&BloodVessel>(entity) {
         ui.label(
             egui::RichText::new("Blood Vessel")
@@ -288,23 +296,6 @@ fn draw_single_entity(
             health_bar(ui, &health);
         }
         return draw_attack_section(ui, world, &[entity], attack_mode);
-    } else if world.get::<&ReactiveAstrocyte>(entity).is_ok() {
-        ui.label(
-            egui::RichText::new("Reactive Astrocyte")
-                .strong()
-                .color(egui::Color32::from_rgb(220, 160, 20)),
-        );
-        let faction = if world.get::<&Ownership>(entity).is_ok() {
-            "Biological (yours)"
-        } else {
-            "Enemy"
-        };
-        ui.label(format!("Faction: {}", faction));
-        ui.label("Role: Area Control");
-        ui.label("Drains health of nearby enemy units.");
-        if let Ok(health) = world.get::<&Health>(entity) {
-            health_bar(ui, &health);
-        }
     } else if let Ok(comp) = world.get::<&Compartment>(entity) {
         let is_process = world.get::<&GlialProcess>(entity).is_ok();
         let is_dendrite = world.get::<&Dendrite>(entity).is_ok();

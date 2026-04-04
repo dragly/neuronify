@@ -248,7 +248,6 @@ pub fn collect_placement_preview(
             GameTool::ExcitatoryNeuron => blue(),
             GameTool::InhibitoryNeuron => red(),
             GameTool::GlialCell => glial_color(),
-            GameTool::ReactiveAstrocyte => glam::Vec3::new(1.0, 0.69, 0.12),
             GameTool::Select | GameTool::Erase | GameTool::Axon | GameTool::GlialProcess => {
                 return spheres;
             }

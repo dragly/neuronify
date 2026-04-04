@@ -10,7 +10,7 @@ use neuronify_core::{Compartment, LeakyDynamics, LeakyNeuron, OriginNeuron, Gene
 use crate::components::{
     AttackProjectile, AxonCutter, AxonHealth, BurstAttack, Dying, Faction, GlialAbsorption,
     Health, MacrophageUnit, MetabolicState, MicroglialCell, MobileUnit, NeuronEngulfment,
-    EnemySpawnPoint, NeuronSpawnType, NeuronSpawner, Ownership, PlayerId, ReactiveAstrocyte, SlowEffect,
+    EnemySpawnPoint, NeuronSpawnType, NeuronSpawner, Ownership, PlayerId, SlowEffect,
 };
 use crate::spawning;
 use crate::constants::{
@@ -94,7 +94,7 @@ fn enemy_mobile_positions(world: &hecs::World, my_faction: Faction) -> Vec<(hecs
 
 fn player_astrocyte_positions(world: &hecs::World) -> Vec<(hecs::Entity, Vec3)> {
     world
-        .query::<(&Position, &ReactiveAstrocyte, &Ownership)>()
+        .query::<(&Position, &GlialAbsorption, &Ownership)>()
         .iter()
         .filter(|(_, (_, _, o))| o.player == PlayerId::Player1)
         .map(|(e, (p, _, _))| (e, p.position))
@@ -177,7 +177,7 @@ pub fn move_mobile_units(world: &mut hecs::World, dt: f32) {
             // the bodies don't visually overlap (combined radii ≈ 5.0 units,
             // gap = ABSORB_RADIUS − 1.5 − 5.0 ≈ 1.5 units clear).
             // For all other targets: halt just inside fire_range as before.
-            let is_astrocyte_target = world.get::<&ReactiveAstrocyte>(target_entity).is_ok();
+            let is_astrocyte_target = world.get::<&GlialAbsorption>(target_entity).is_ok();
             let standoff = if is_astrocyte_target {
                 (REACTIVE_ASTROCYTE_ABSORB_RADIUS - 1.5).max(0.0)
             } else {
@@ -445,7 +445,7 @@ pub fn apply_neuron_engulfment(world: &mut hecs::World, dt: f32) {
         // Range check: fire at neurons only within fire_range;
         // astrocytes (already inside absorb zone) use the full absorb radius as effective range.
         let Some(target_pos) = entity_pos(world, target_entity) else { continue };
-        let effective_range = if world.get::<&ReactiveAstrocyte>(target_entity).is_ok() {
+        let effective_range = if world.get::<&GlialAbsorption>(target_entity).is_ok() {
             REACTIVE_ASTROCYTE_ABSORB_RADIUS
         } else {
             fire_range
@@ -720,8 +720,7 @@ pub fn despawn_dead(world: &mut hecs::World) {
             h.is_dead()
                 && world.get::<&Dying>(*e).is_err()
                 && (world.get::<&MicroglialCell>(*e).is_ok()
-                    || world.get::<&MacrophageUnit>(*e).is_ok()
-                    || world.get::<&ReactiveAstrocyte>(*e).is_ok())
+                    || world.get::<&MacrophageUnit>(*e).is_ok())
         })
         .map(|(e, _)| e)
         .collect();
