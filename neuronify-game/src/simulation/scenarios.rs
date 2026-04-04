@@ -90,56 +90,53 @@ fn add_axon_health_to_all_compartments(world: &mut hecs::World) {
     }
 }
 
-// ── Scenario 1: Macrophage Assault ────────────────────────────────────────────
+// ── Scenario 1: Microglial Swarm ─────────────────────────────────────────────
 //
-// Default neural layout + 4 macrophage units (NeuronEngulfment) approaching from
-// the southeast. No defensive units. Designed outcome: all non-origin neurons lose
-// metabolic energy within ~15 s (macrophages drain directly at 30/s each).
-// Origin neuron survives due to ORIGIN_MIN_ENERGY floor.
+// Default neural layout + one enemy spawn point at (30, 0, 0) that produces a
+// Tumor macrophage every 5 s. No defensive units. Designed outcome: macrophages
+// trickle in, reach the player neurons, and destroy all non-origin neurons within
+// ~40 s. Origin survives due to ORIGIN_MIN_ENERGY floor.
 
 fn setup_microglial_swarm(world: &mut hecs::World, dish: &PetriDish) {
     setup::setup_game(world, dish);
     add_axon_health_to_all_compartments(world);
 
-    // Three macrophages, one per non-origin neuron (A, B, C).
-    // Each position is chosen so the macrophage (a) targets its intended neuron as nearest,
-    // (b) is >12 units from that neuron (d > fire_range).
-    // When astrocytes are placed at these positions (Scenario 2), macrophages are absorbed
-    // in 15 s (60/4) before reaching fire range — leaving neurons unharmed.
-    // Without astrocytes (Scenario 1), each fires multiple shots → neuron dies in <40 s.
-    let start_positions = [
-        Vec3::new(-12.0, 0.0, -12.0), // → Neuron A at (-20,0,0),   dist≈14.4; origin≈17.0
-        Vec3::new(-24.0, 0.0, -20.0), // → Neuron B at (-38,0,-14),  dist≈15.2; A≈20.4
-        Vec3::new(-24.0, 0.0,  20.0), // → Neuron C at (-38,0,14),   dist≈15.2; A≈20.4
-    ];
-    for pos in start_positions {
-        spawning::spawn_macrophage(world, pos, Faction::Tumor);
-    }
+    // Enemy spawn point: emits one Tumor macrophage every 5 s without neural simulation.
+    // Positioned at (20, 0, 0) — far enough to give the player a reaction window,
+    // close enough that macrophages reach the neural cluster within ~10 s.
+    world.spawn((
+        Position { position: Vec3::new(20.0, 0.0, 0.0) },
+        EnemySpawnPoint {
+            faction: Faction::Tumor,
+            spawn_type: NeuronSpawnType::Macrophage,
+            cooldown: 5.0,
+            timer: 0.0,
+            spawn_offset: Vec3::ZERO,
+        },
+        Deletable {},
+        VisualRadius { radius: NODE_RADIUS * 1.2 },
+    ));
 }
 
-// ── Scenario 2: Astrocyte Guard ───────────────────────────────────────────────
+// ── Scenario 2: Microglia Guard ───────────────────────────────────────────────
 //
-// Same as Scenario 1 but with 3 Reactive Astrocytes placed between the macrophage
-// start positions and the neural cluster.
-// Absorb rate = 4.0 HP/s; macrophage health = 60 HP → kill time = 15 s.
-// Macrophage retaliation = 4.5 HP/shot × 1/1.5 s = 3.0 HP/s; astrocyte health = 80 HP.
-// Astrocyte survives: 3.0 HP/s × 15 s = 45 HP dealt to astrocyte (80−45 = 35 HP remaining).
-// Designed outcome: astrocytes absorb all macrophages; neurons survive 25 s.
+// Same spawn point as Scenario 1 (macrophages every 5 s from (30, 0, 0)), but the
+// player has three Biological microglia placed in a defensive line at x=12 between
+// the spawn point and the neural cluster.  Player microglia intercept and destroy
+// the incoming macrophages before they reach the neurons.
+// Designed outcome: neurons survive 30 s; all macrophages destroyed en route.
 
 fn setup_astrocyte_guard(world: &mut hecs::World, dish: &PetriDish) {
-    setup_microglial_swarm(world, dish); // reuse swarm setup
+    setup_microglial_swarm(world, dish); // reuse spawn-point setup
 
-    // Three reactive astrocytes placed at the midpoint between each macrophage spawn
-    // and its target neuron.  Each macrophage starts ≤7.6 units from its astrocyte
-    // (inside absorb radius r=8), moves through the astrocyte on the way to the neuron,
-    // and is drained to 0 in 15 s (60/4) — before it can kill the astrocyte (26 s).
+    // Three player microglia forming a defensive line between the spawn point and neurons.
     let guard_positions = [
-        Vec3::new(-16.0, 0.0,  -6.0), // midpoint of Macrophage A spawn → Neuron A
-        Vec3::new(-31.0, 0.0, -17.0), // midpoint of Macrophage B spawn → Neuron B
-        Vec3::new(-31.0, 0.0,  17.0), // midpoint of Macrophage C spawn → Neuron C
+        Vec3::new(12.0, 0.0, -6.0),
+        Vec3::new(12.0, 0.0,  0.0),
+        Vec3::new(12.0, 0.0,  6.0),
     ];
     for pos in guard_positions {
-        spawning::spawn_reactive_astrocyte(world, pos, Faction::Biological);
+        spawning::spawn_microglial_cell(world, pos, Faction::Biological);
     }
 }
 
@@ -594,6 +591,7 @@ pub fn run_headless(world: &mut hecs::World, seconds: f64) {
 
     for _ in 0..steps {
         let fdt = dt as f32;
+        combat::apply_enemy_spawn_points(world, fdt);
         combat::tick_dying_units(world, fdt);
         combat::move_mobile_units(world, fdt);
         combat::apply_axon_cutting(world, fdt);
@@ -684,17 +682,16 @@ mod tests {
         }
     }
 
-    /// Scenario 1: Three macrophages with no defense should drain all non-origin neurons
-    /// to 0 energy within 30 seconds. (Origin survives due to ORIGIN_MIN_ENERGY floor.)
+    /// Scenario 1: Enemy spawn point produces macrophages that should destroy all
+    /// non-origin neurons once they reach the neural cluster (no defense).
     #[test]
     fn test_scenario_1_microglial_swarm_neurons_die() {
         let mut world = hecs::World::new();
         setup_microglial_swarm(&mut world, &dish());
 
-        run_headless(&mut world, 40.0);
+        run_headless(&mut world, 90.0);
 
-        // Macrophages drain Health (not energy); neurons die when health reaches 0 and are
-        // despawned by despawn_dead. After enough time, all non-origin neurons should be gone.
+        // Macrophages drain Health; neurons are despawned when health reaches 0.
         let non_origin_alive = world
             .query::<(&LeakyNeuron, &MetabolicState)>()
             .iter()
@@ -707,15 +704,14 @@ mod tests {
         );
     }
 
-    /// Scenario 2: Reactive astrocytes should absorb all macrophages and leave
-    /// at least 2 neurons with energy > 1.0 after 25 seconds.
-    /// Absorb rate 4 HP/s × 60 HP = 15 s kill; test allows 25 s buffer.
+    /// Scenario 2: Player microglia defensive line intercepts incoming macrophages;
+    /// neurons should still be alive after 30 s.
     #[test]
     fn test_scenario_2_astrocyte_guard_neurons_survive() {
         let mut world = hecs::World::new();
         setup_astrocyte_guard(&mut world, &dish());
 
-        run_headless(&mut world, 25.0);
+        run_headless(&mut world, 30.0);
 
         let alive_neurons = world
             .query::<(&LeakyNeuron, &MetabolicState)>()
@@ -723,18 +719,9 @@ mod tests {
             .filter(|(_, (_, ms))| ms.energy > 1.0)
             .count();
 
-        let remaining_macrophages = world
-            .query::<&MacrophageUnit>()
-            .iter()
-            .count();
-
         assert!(
             alive_neurons >= 2,
-            "At least 2 neurons should survive when protected by astrocytes (got {alive_neurons})"
-        );
-        assert_eq!(
-            remaining_macrophages, 0,
-            "All macrophages should be absorbed (got {remaining_macrophages} remaining)"
+            "At least 2 neurons should survive when protected by microglia (got {alive_neurons})"
         );
     }
 

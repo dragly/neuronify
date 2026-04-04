@@ -318,6 +318,21 @@ pub struct GlucosePacket {
 pub enum NeuronSpawnType {
     MicroglialCell,
     TCell,
+    Macrophage,
+}
+
+/// A standalone spawn point that emits combat units on a timer, independent of
+/// neural firing.  Suitable for enemy spawn points in scenarios where the neural
+/// simulation is not running.
+#[derive(Clone, Debug)]
+pub struct EnemySpawnPoint {
+    pub faction: Faction,
+    pub spawn_type: NeuronSpawnType,
+    /// Seconds between spawns.
+    pub cooldown: f32,
+    /// Countdown; zero means ready to spawn immediately.
+    pub timer: f32,
+    pub spawn_offset: glam::Vec3,
 }
 
 /// Attached to a neuron soma. Each time that neuron fires AND the spawn cooldown

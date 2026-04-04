@@ -10,7 +10,7 @@ use neuronify_core::{Compartment, LeakyDynamics, LeakyNeuron, OriginNeuron, Gene
 use crate::components::{
     AttackProjectile, AxonCutter, AxonHealth, BurstAttack, Dying, Faction, GlialAbsorption,
     Health, MacrophageUnit, MetabolicState, MicroglialCell, MobileUnit, NeuronEngulfment,
-    NeuronSpawnType, NeuronSpawner, Ownership, PlayerId, ReactiveAstrocyte, SlowEffect,
+    EnemySpawnPoint, NeuronSpawnType, NeuronSpawner, Ownership, PlayerId, ReactiveAstrocyte, SlowEffect,
 };
 use crate::spawning;
 use crate::constants::{
@@ -300,7 +300,34 @@ pub fn apply_neuron_spawning(world: &mut hecs::World, dt: f32) {
             NeuronSpawnType::TCell => {
                 spawning::spawn_tCell(world, pos, faction);
             }
+            NeuronSpawnType::Macrophage => {
+                spawning::spawn_macrophage(world, pos, faction);
+            }
         }
+    }
+}
+
+// ── 1b. Timer-based enemy spawn points ───────────────────────────────────────
+
+/// Ticks `EnemySpawnPoint` timers and spawns units when ready.
+/// Works without the neural simulation (no LIF step required).
+pub fn apply_enemy_spawn_points(world: &mut hecs::World, dt: f32) {
+    let mut to_spawn: Vec<(glam::Vec3, Faction, NeuronSpawnType)> = Vec::new();
+
+    for (_, (point, pos)) in world.query_mut::<(&mut EnemySpawnPoint, &Position)>() {
+        point.timer = (point.timer - dt).max(0.0);
+        if point.timer <= 0.0 {
+            to_spawn.push((pos.position + point.spawn_offset, point.faction, point.spawn_type.clone()));
+            point.timer = point.cooldown;
+        }
+    }
+
+    for (pos, faction, spawn_type) in to_spawn {
+        match spawn_type {
+            NeuronSpawnType::MicroglialCell => spawning::spawn_microglial_cell(world, pos, faction),
+            NeuronSpawnType::TCell => spawning::spawn_tCell(world, pos, faction),
+            NeuronSpawnType::Macrophage => spawning::spawn_macrophage(world, pos, faction),
+        };
     }
 }
 
@@ -319,7 +346,7 @@ pub fn apply_axon_cutting(world: &mut hecs::World, dt: f32) {
         })
         .collect();
 
-    let mut to_spawn: Vec<(Vec3, hecs::Entity, f32, f32)> = Vec::new(); // pos, target, damage, speed
+    let mut to_spawn: Vec<(Vec3, hecs::Entity, f32, f32, f32)> = Vec::new(); // pos, target, health_dmg, axon_dmg, speed
 
     for (entity, pos, damage, cooldown, timer, mobile_target) in cutters {
         let new_timer = timer - dt;
@@ -331,9 +358,12 @@ pub fn apply_axon_cutting(world: &mut hecs::World, dt: f32) {
             continue;
         }
 
-        // Target: use movement target if valid, else nearest axon.
+        // Target: use movement target if valid (axon OR mobile unit), else nearest axon.
         let target = mobile_target
-            .filter(|&t| is_alive(world, t) && world.get::<&AxonHealth>(t).is_ok())
+            .filter(|&t| is_alive(world, t))
+            .filter(|&t| {
+                world.get::<&AxonHealth>(t).is_ok() || world.get::<&Health>(t).is_ok()
+            })
             .or_else(|| nearest_of(&axon_targets, pos).map(|(e, _)| e));
 
         let Some(target_entity) = target else { continue };
@@ -341,17 +371,23 @@ pub fn apply_axon_cutting(world: &mut hecs::World, dt: f32) {
         if let Ok(mut c) = world.get::<&mut AxonCutter>(entity) {
             c.shoot_timer = cooldown;
         }
-        to_spawn.push((pos, target_entity, damage, ATTACK_PROJECTILE_SPEED * 1.2));
+        // Route damage to health or axon depending on what the target has.
+        let (health_dmg, axon_dmg) = if world.get::<&AxonHealth>(target_entity).is_ok() {
+            (0.0, damage)
+        } else {
+            (damage, 0.0)
+        };
+        to_spawn.push((pos, target_entity, health_dmg, axon_dmg, ATTACK_PROJECTILE_SPEED * 1.2));
     }
 
-    for (pos, target, damage, speed) in to_spawn {
+    for (pos, target, health_dmg, axon_dmg, speed) in to_spawn {
         world.spawn((
             Position { position: pos },
             AttackProjectile {
                 target,
                 speed,
-                health_damage: 0.0,
-                axon_damage: damage,
+                health_damage: health_dmg,
+                axon_damage: axon_dmg,
                 slow_duration: 0.0,
                 // Bright cyan sparks — matches microglia color palette.
                 color: glam::Vec3::new(0.0, 1.0, 0.92),

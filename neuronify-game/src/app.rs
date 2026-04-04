@@ -75,6 +75,7 @@ pub struct GameApp {
     /// Active touch points by touch ID → current screen position.
     pub touches: HashMap<u64, PhysicalPosition<f64>>,
     pub current_scenario: ScenarioId,
+    pub sidebar_icons: Option<crate::ui::sidebar::SidebarIcons>,
     pub microglia_mesh: MeshPipeline,
     pub astrocyte_mesh: MeshPipeline,
     pub macrophage_mesh: MeshPipeline,
@@ -245,6 +246,7 @@ impl GameApp {
             connection_consumed_this_press: false,
             touches: HashMap::new(),
             current_scenario: ScenarioId::Default,
+            sidebar_icons: None,
             microglia_mesh,
             astrocyte_mesh,
             macrophage_mesh,
@@ -901,6 +903,7 @@ impl visula::Simulation for GameApp {
         combat::tick_dying_units(&mut self.world, combat_dt);
         combat::tick_slow_effects(&mut self.world, combat_dt);
         combat::apply_neuron_spawning(&mut self.world, combat_dt);
+        combat::apply_enemy_spawn_points(&mut self.world, combat_dt);
         combat::move_mobile_units(&mut self.world, combat_dt);
         combat::apply_unit_repulsion(&mut self.world);
         combat::apply_unit_repulsion(&mut self.world); // second pass for complete separation
@@ -1048,6 +1051,9 @@ impl visula::Simulation for GameApp {
             }
         }
 
+        if self.sidebar_icons.is_none() {
+            self.sidebar_icons = Some(sidebar::SidebarIcons::new(context));
+        }
         sidebar::draw_sidebar(
             context,
             &mut self.tool,
@@ -1058,6 +1064,7 @@ impl visula::Simulation for GameApp {
             &mut self.pending_new_game,
             &mut self.pending_exit_game,
             &mut self.current_scenario,
+            self.sidebar_icons.as_ref().unwrap(),
         );
 
         // Remove any stale selected entities (despawned during combat).
