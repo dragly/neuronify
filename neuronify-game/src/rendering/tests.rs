@@ -7,7 +7,7 @@
 /// are skipped gracefully.
 #[cfg(test)]
 mod tests {
-    use visula::{Camera, InstanceBuffer, RenderingDescriptor, UniformBuffer};
+    use visula::{Camera, DirectionalLight, InstanceBuffer, RenderingDescriptor, UniformBuffer};
 
     use crate::rendering::blood_vessels::{
         BloodParticle, VesselTime, create_particle_pipeline, create_vessel_pipeline,
@@ -37,11 +37,12 @@ mod tests {
             return;
         };
         let camera = Camera::new(&device);
-        let format = wgpu::TextureFormat::Bgra8UnormSrgb;
+        let light = DirectionalLight::new(&device);
         let desc = RenderingDescriptor {
             device: &device,
-            format: &format,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
             camera: &camera,
+            light: &light,
             sample_count: 1,
         };
         create_vessel_pipeline(&desc).expect("vessel pipeline should compile without errors");
@@ -59,11 +60,12 @@ mod tests {
             return;
         };
         let camera = Camera::new(&device);
-        let format = wgpu::TextureFormat::Bgra8UnormSrgb;
+        let light = DirectionalLight::new(&device);
         let desc = RenderingDescriptor {
             device: &device,
-            format: &format,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
             camera: &camera,
+            light: &light,
             sample_count: 1,
         };
         let particle_buffer = InstanceBuffer::<BloodParticle>::new(&device);

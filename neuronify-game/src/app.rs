@@ -67,7 +67,8 @@ pub struct GameApp {
     pub pending_exit_game: bool,
     pub p1_economy: PlayerEconomy,
     pub placement_preview: Option<Vec3>,
-    pub selected_entity: Option<Entity>,
+    pub selected_entities: Vec<Entity>,
+    pub attack_mode: bool,
     pub funds_flash_timer: f64,
     pub funds_blocked_entity: Option<Entity>,
     pub connection_consumed_this_press: bool,
@@ -135,7 +136,7 @@ impl GameApp {
                 color: sphere.color,
             },
             &SphereMaterial {
-                color: Expression::InstanceColor.lit(),
+                color: Expression::InputColor.lit(),
             },
         )
         .unwrap();
@@ -155,7 +156,7 @@ impl GameApp {
                 color: connection.start_color.clone(),
             },
             &LineMaterial {
-                color: Expression::InstanceColor.lit(),
+                color: Expression::InputColor.lit(),
             },
         )
         .unwrap();
@@ -168,7 +169,7 @@ impl GameApp {
                 color: Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0).into(),
             },
             &SphereMaterial {
-                color: Expression::InstanceColor.lit(),
+                color: Expression::InputColor.lit(),
             },
         )
         .unwrap();
@@ -237,7 +238,8 @@ impl GameApp {
             pending_exit_game: false,
             p1_economy: PlayerEconomy::default(),
             placement_preview: None,
-            selected_entity: None,
+            selected_entities: Vec::new(),
+            attack_mode: false,
             funds_flash_timer: 0.0,
             funds_blocked_entity: None,
             connection_consumed_this_press: false,
@@ -567,6 +569,40 @@ impl GameApp {
         }
     }
 
+    /// Set `entity` as the manual attack target for all selected player-owned `MobileUnit`s.
+    fn apply_attack_target(&mut self, target: Entity) {
+        for &e in &self.selected_entities {
+            if let Ok(ownership) = self.world.get::<&Ownership>(e) {
+                if ownership.player == PlayerId::Player1 {
+                    if let Ok(mut m) = self.world.get::<&mut MobileUnit>(e) {
+                        m.manual_target = Some(target);
+                        m.target = None; // reset AI target so next frame picks up manual_target
+                    }
+                }
+            }
+        }
+    }
+
+    /// Handle right-click: set attack target for selected player units.
+    fn handle_right_click(&mut self, mouse_pos: Vec3) {
+        let clicked = self
+            .world
+            .query::<&Position>()
+            .iter()
+            .min_by(|a, b| nearest(&mouse_pos, a, b))
+            .and_then(|(id, pos)| {
+                if mouse_pos.distance(pos.position) < SELECTION_RANGE {
+                    Some(id)
+                } else {
+                    None
+                }
+            });
+        if let Some(entity) = clicked {
+            self.apply_attack_target(entity);
+        }
+        self.attack_mode = false;
+    }
+
     fn handle_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
             self.connection_tool = None;
@@ -705,22 +741,41 @@ impl GameApp {
                             application.camera_controller.target_transform.center;
                     }
                     None => {
-                        if let Some((entity, _entity_pos)) = self
+                        let clicked = self
                             .world
                             .query::<&Position>()
                             .iter()
                             .min_by(|a, b| nearest(&mouse_position, a, b))
                             .and_then(|(id, pos)| {
                                 if mouse_position.distance(pos.position) < SELECTION_RANGE {
-                                    Some((id, pos.position))
+                                    Some(id)
                                 } else {
                                     None
                                 }
-                            })
-                        {
-                            self.selected_entity = Some(entity);
+                            });
+                        if let Some(entity) = clicked {
+                            // Consume the click so mouse-drag doesn't re-trigger selection.
+                            self.move_origin = Some(mouse_position);
+                            if self.attack_mode {
+                                // Attack-mode: set as manual target for all selected player units.
+                                self.apply_attack_target(entity);
+                                self.attack_mode = false;
+                            } else if self.keyboard.shift_down {
+                                // Shift-click: toggle entity in/out of selection.
+                                if self.selected_entities.contains(&entity) {
+                                    self.selected_entities.retain(|&e| e != entity);
+                                } else {
+                                    self.selected_entities.push(entity);
+                                }
+                            } else {
+                                // Plain click: replace selection.
+                                self.selected_entities = vec![entity];
+                            }
                         } else {
-                            self.selected_entity = None;
+                            if !self.attack_mode {
+                                self.selected_entities.clear();
+                            }
+                            self.attack_mode = false;
                             self.move_origin = Some(mouse_position);
                         }
                     }
@@ -788,7 +843,8 @@ impl visula::Simulation for GameApp {
             rendering::update_vessel_mesh(&mut self.vessel_mesh, &self.world, &application.device, self.time as f32);
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
-            self.selected_entity = None;
+            self.selected_entities.clear();
+            self.attack_mode = false;
         }
 
         if self.pending_exit_game {
@@ -842,7 +898,12 @@ impl visula::Simulation for GameApp {
         // frame_dt = iterations * LIF_DT ≈ 0.0004 s — far too small for combat timers.
         // TARGET_FRAME_MS gives the actual intended frame duration (~16 ms).
         let combat_dt = (TARGET_FRAME_MS as f32 * 1e-3).min(0.1);
+        combat::tick_dying_units(&mut self.world, combat_dt);
+        combat::tick_slow_effects(&mut self.world, combat_dt);
+        combat::apply_neuron_spawning(&mut self.world, combat_dt);
         combat::move_mobile_units(&mut self.world, combat_dt);
+        combat::apply_unit_repulsion(&mut self.world);
+        combat::apply_unit_repulsion(&mut self.world); // second pass for complete separation
         combat::apply_axon_cutting(&mut self.world, combat_dt);
         combat::apply_neuron_engulfment(&mut self.world, combat_dt);
         combat::apply_burst_attacks(&mut self.world, combat_dt);
@@ -909,6 +970,7 @@ impl visula::Simulation for GameApp {
             &mut self.astrocyte_mesh,
             &self.world,
             &application.device,
+            self.time as f32,
         );
         rendering::update_macrophage_mesh(
             &mut self.macrophage_mesh,
@@ -925,7 +987,7 @@ impl visula::Simulation for GameApp {
             &mut self.energy_bar_meshes,
             &self.world,
             &application.device,
-            self.selected_entity,
+            self.selected_entities.first().copied(),
         );
 
         // Petri dish and decorations
@@ -998,12 +1060,29 @@ impl visula::Simulation for GameApp {
             &mut self.current_scenario,
         );
 
-        // Info panel for selected entity
-        if let Some(entity) = self.selected_entity {
-            if self.world.contains(entity) {
-                crate::ui::info_panel::draw_info_panel(context, &self.world, entity);
-            } else {
-                self.selected_entity = None;
+        // Remove any stale selected entities (despawned during combat).
+        self.selected_entities.retain(|&e| self.world.contains(e));
+
+        // Info panel for selected entities.
+        if !self.selected_entities.is_empty() {
+            let action = crate::ui::info_panel::draw_info_panel(
+                context,
+                &self.world,
+                &self.selected_entities,
+                self.attack_mode,
+            );
+            match action {
+                crate::ui::info_panel::InfoPanelAction::EnterAttackMode => {
+                    self.attack_mode = true;
+                }
+                crate::ui::info_panel::InfoPanelAction::ClearManualTargets => {
+                    for &e in &self.selected_entities {
+                        if let Ok(mut m) = self.world.get::<&mut MobileUnit>(e) {
+                            m.manual_target = None;
+                        }
+                    }
+                }
+                crate::ui::info_panel::InfoPanelAction::None => {}
             }
         }
     }
@@ -1027,6 +1106,18 @@ impl visula::Simulation for GameApp {
                 self.mouse.left_down = *state == ElementState::Pressed;
                 self.mouse.delta_position = None;
                 self.handle_tool(application);
+            }
+            Event::WindowEvent {
+                event: WindowEvent::MouseInput {
+                    state: ElementState::Pressed,
+                    button: MouseButton::Right,
+                    ..
+                },
+                ..
+            } => {
+                if let Some(mouse_pos) = self.mouse_world_position(application) {
+                    self.handle_right_click(mouse_pos);
+                }
             }
             Event::WindowEvent {
                 event: WindowEvent::ModifiersChanged(state),

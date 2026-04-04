@@ -113,7 +113,7 @@ impl Neuronify {
                 color: sphere.color,
             },
             &SphereMaterial {
-                color: Expression::InstanceColor.lit(),
+                color: Expression::InputColor.lit(),
             },
         )
         .unwrap();
@@ -133,7 +133,7 @@ impl Neuronify {
                 color: connection.start_color.clone(),
             },
             &LineMaterial {
-                color: Expression::InstanceColor.lit(),
+                color: Expression::InputColor.lit(),
             },
         )
         .unwrap();
@@ -146,7 +146,7 @@ impl Neuronify {
                 color: Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0).into(),
             },
             &SphereMaterial {
-                color: Expression::InstanceColor.lit(),
+                color: Expression::InputColor.lit(),
             },
         )
         .unwrap();

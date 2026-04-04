@@ -56,6 +56,8 @@ pub struct MobileUnit {
     pub speed: f32,
     pub target: Option<hecs::Entity>,
     pub faction: Faction,
+    /// Player-assigned attack target. Takes priority over AI-selected target when set.
+    pub manual_target: Option<hecs::Entity>,
 }
 
 // ── Unit-specific behavior components ────────────────────────────────────────
@@ -89,8 +91,19 @@ pub struct AttackProjectile {
     pub health_damage: f32,
     /// Axon damage applied to AxonHealth on arrival (microglia attacks).
     pub axon_damage: f32,
+    /// If > 0, applies a SlowEffect of this duration (seconds) to the target on arrival.
+    pub slow_duration: f32,
     pub color: glam::Vec3,
     pub radius: f32,
+}
+
+/// Temporary speed debuff applied by absorption stagger bolts.
+/// While timer > 0 the unit moves at reduced speed.
+#[derive(Clone, Debug)]
+pub struct SlowEffect {
+    pub timer: f32,
+    /// Speed multiplier while slowed (e.g. 0.25 = 25% of normal speed).
+    pub factor: f32,
 }
 
 /// Delivers a burst of damage on contact, then waits for cooldown (fast raider role).
@@ -102,11 +115,14 @@ pub struct BurstAttack {
     pub cooldown_timer: f32,
 }
 
-/// Stationary area control: drains Health of all enemy MobileUnits within radius.
+/// Stationary area control: drains Health of all enemy MobileUnits within radius,
+/// and periodically fires stagger bolts that apply SlowEffect on hit.
 #[derive(Clone, Debug)]
 pub struct GlialAbsorption {
     pub absorb_radius: f32,
     pub absorb_rate: f32,
+    /// Countdown until the next stagger bolt volley.
+    pub stagger_timer: f32,
 }
 
 // ── Unit type markers ─────────────────────────────────────────────────────────
@@ -212,6 +228,15 @@ impl Default for PlayerEconomy {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Anchored;
 
+/// Marks a unit currently playing its death animation before final despawn.
+/// Added by `despawn_dead` when a combat unit's health reaches zero.
+#[derive(Clone, Debug)]
+pub struct Dying {
+    pub timer: f32,    // seconds elapsed since death
+    pub duration: f32, // total animation duration
+    pub seed: f32,     // per-unit scatter variety (from entity ID)
+}
+
 /// Marker for dendrite compartments (visual distinction from axon compartments).
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Dendrite;
@@ -286,4 +311,28 @@ pub struct GlucosePacket {
     pub glucose_amount: f64,
     /// Building blocks carried by this packet.
     pub block_amount: f64,
+}
+
+/// Which unit type a NeuronSpawner produces when the neuron fires.
+#[derive(Clone, Debug)]
+pub enum NeuronSpawnType {
+    MicroglialCell,
+    TCell,
+}
+
+/// Attached to a neuron soma. Each time that neuron fires AND the spawn cooldown
+/// has elapsed, a combat unit is spawned at `spawn_offset` from the soma.
+///
+/// Fire detection uses `LeakyDynamics.time_since_fire` or `GeneratorDynamics.time_since_fire`:
+/// a value below `combat_dt × 1.5` means the neuron fired this combat frame.
+#[derive(Clone, Debug)]
+pub struct NeuronSpawner {
+    pub faction: Faction,
+    pub spawn_type: NeuronSpawnType,
+    /// Minimum wall-clock seconds between successive spawns.
+    pub cooldown: f32,
+    /// Countdown timer; zero means ready to spawn.
+    pub timer: f32,
+    /// World-space offset from soma where the new unit appears.
+    pub spawn_offset: glam::Vec3,
 }

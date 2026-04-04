@@ -5,13 +5,13 @@ edition = "2021"
 
 [dependencies]
 neuronify-core = { path = "../neuronify-core" }
-visula = { git = "https://github.com/dragly/visula", rev = "62dcd36c65816bb5055806f9de466499b3e6d5cd" }
-visula_derive = { git = "https://github.com/dragly/visula", rev = "62dcd36c65816bb5055806f9de466499b3e6d5cd" }
-visula_core = { git = "https://github.com/dragly/visula", rev = "62dcd36c65816bb5055806f9de466499b3e6d5cd" }
-wgpu = { version = "27", features = ["webgl"] }
+visula = { git = "https://github.com/dragly/visula", rev = "1033decf0df0cc097cc10991c201922cf46f8527" }
+visula_derive = { git = "https://github.com/dragly/visula", rev = "1033decf0df0cc097cc10991c201922cf46f8527" }
+visula_core = { git = "https://github.com/dragly/visula", rev = "1033decf0df0cc097cc10991c201922cf46f8527" }
+wgpu = { version = "29", features = ["webgl"] }
 glam = { version = "0.30", features = ["bytemuck", "serde"] }
 bytemuck = { version = "1.24", features = ["derive"] }
-egui = "0.33"
+egui = "0.34"
 hecs = { version = "0.10.5", features = ["column-serialize", "serde", "row-serialize"] }
 rand = "0.8.5"
 serde = { version = "1.0.204", features = ["derive"] }

@@ -23,6 +23,7 @@ pub fn spawn_microglial_cell(world: &mut hecs::World, position: Vec3, faction: F
             speed: MICROGLIA_SPEED,
             target: None,
             faction,
+            manual_target: None,
         },
         AxonCutter {
             shot_damage: MICROGLIA_SHOT_DAMAGE,
@@ -45,6 +46,7 @@ pub fn spawn_macrophage(world: &mut hecs::World, position: Vec3, faction: Factio
             speed: MACROPHAGE_SPEED,
             target: None,
             faction,
+            manual_target: None,
         },
         NeuronEngulfment {
             shot_damage: MACROPHAGE_SHOT_DAMAGE,
@@ -56,6 +58,31 @@ pub fn spawn_macrophage(world: &mut hecs::World, position: Vec3, faction: Factio
         Health::new(MACROPHAGE_HEALTH),
         Deletable {},
         VisualRadius { radius: 3.5 },
+    ))
+}
+
+/// Spawn a T-cell — biological fast raider.
+/// Moves at high speed toward the nearest enemy mobile unit; delivers a burst of
+/// damage on contact, then enters a cooldown window of vulnerability.
+pub fn spawn_tCell(world: &mut hecs::World, position: Vec3, faction: Faction) -> Entity {
+    world.spawn((
+        Position { position },
+        TCellUnit,
+        MobileUnit {
+            speed: TCELL_SPEED,
+            target: None,
+            faction,
+            manual_target: None,
+        },
+        BurstAttack {
+            damage: TCELL_BURST_DAMAGE,
+            range: TCELL_BURST_RANGE,
+            cooldown: TCELL_BURST_COOLDOWN,
+            cooldown_timer: 0.0,
+        },
+        Health::new(TCELL_HEALTH),
+        Deletable {},
+        VisualRadius { radius: 1.2 },
     ))
 }
 
@@ -73,6 +100,7 @@ pub fn spawn_reactive_astrocyte(
     builder.add(GlialAbsorption {
         absorb_radius: REACTIVE_ASTROCYTE_ABSORB_RADIUS,
         absorb_rate: REACTIVE_ASTROCYTE_ABSORB_RATE,
+        stagger_timer: 0.0,
     });
     builder.add(Health::new(REACTIVE_ASTROCYTE_HEALTH));
     builder.add(Deletable {});

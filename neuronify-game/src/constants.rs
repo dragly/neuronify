@@ -83,7 +83,18 @@ pub const TCELL_BURST_COOLDOWN: f32 = 3.0;
 // Game constants - combat: area control (Reactive Astrocyte / Firewall Node / Tumor Barrier)
 pub const REACTIVE_ASTROCYTE_HEALTH: f32 = 80.0;
 pub const REACTIVE_ASTROCYTE_ABSORB_RADIUS: f32 = 8.0;
-pub const REACTIVE_ASTROCYTE_ABSORB_RATE: f32 = 20.0;
+/// Absorption drain rate, HP/s. At 4.0 HP/s a 60 HP macrophage dies in 15 s (~5× the old 3 s).
+pub const REACTIVE_ASTROCYTE_ABSORB_RATE: f32 = 4.0;
+/// Enemy AI will attack nearby player combat units (within this range) before targeting neurons.
+pub const COMBAT_PRIORITY_RANGE: f32 = 15.0;
+/// Duration (seconds) of the death break-apart animation before final despawn.
+pub const DEATH_DURATION: f32 = 1.5;
+/// Seconds between stagger bolt volleys fired by GlialAbsorption.
+pub const ASTROCYTE_STAGGER_COOLDOWN: f32 = 1.2;
+/// Speed multiplier applied to a unit while its SlowEffect is active.
+pub const ASTROCYTE_STAGGER_SLOW_FACTOR: f32 = 0.28;
+/// Duration (seconds) of the SlowEffect applied by a stagger bolt hit.
+pub const ASTROCYTE_STAGGER_SLOW_DURATION: f32 = 1.8;
 
 // Game constants - axon structural health (added to compartments in combat scenarios)
 pub const AXON_COMPARTMENT_HEALTH: f32 = 50.0;

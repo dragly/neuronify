@@ -214,7 +214,7 @@ pub fn create_particle_pipeline(
             color: Vec3::new(1.0, 0.78, 0.2).into(),
         },
         &SphereMaterial {
-            color: Expression::InstanceColor.lit(),
+            color: Expression::InputColor.lit(),
         },
     )?)
 }
