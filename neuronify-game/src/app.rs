@@ -33,12 +33,18 @@ use crate::simulation::{boundary, cleanup, combat, economy, metabolism, ownershi
 use crate::simulation::pathfinding::HexGrid;
 use crate::simulation::scenarios::ScenarioId;
 use crate::tools::*;
-use crate::ui::sidebar;
+use crate::ui::{main_menu, sidebar};
 
 enum ConnectResult {
     Done,          // connected to target — stop the chain
     Continue,      // keep building
     FundsBlocked,  // can't afford — show feedback, stay put
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GameState {
+    MainMenu,
+    InGame,
 }
 
 pub struct GameApp {
@@ -78,6 +84,11 @@ pub struct GameApp {
     pub touches: HashMap<u64, PhysicalPosition<f64>>,
     pub current_scenario: ScenarioId,
     pub sidebar_icons: Option<crate::ui::sidebar::SidebarIcons>,
+    pub game_state: GameState,
+    pub menu_scenarios: Vec<main_menu::ScenarioEntry>,
+    pub menu_selected: Option<usize>,
+    /// Path of the SVG map that will be loaded when `pending_new_game` fires.
+    pub pending_svg_path: Option<std::path::PathBuf>,
     /// Pathfinding grid rebuilt each frame from current neuroblast positions.
     pub hex_grid: HexGrid,
     /// When true, the next right-click or left-click sets the move destination
@@ -92,6 +103,35 @@ pub struct GameApp {
     pub dendrite_buffer: InstanceBuffer<rendering::CylinderData>,
     pub health_bar_meshes: [MeshPipeline; 4],
     pub energy_bar_meshes: [MeshPipeline; 2],
+}
+
+/// Load scenario metadata from all SVG files in the `maps/` directory.
+fn load_menu_scenarios() -> Vec<main_menu::ScenarioEntry> {
+    let maps_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("maps");
+    let mut entries = Vec::new();
+
+    let Ok(read_dir) = std::fs::read_dir(&maps_dir) else {
+        return entries;
+    };
+
+    let mut paths: Vec<_> = read_dir
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("svg"))
+        .collect();
+    paths.sort();
+
+    for path in paths {
+        match crate::map::load_scenario(&path) {
+            Ok(map) => entries.push(main_menu::ScenarioEntry {
+                meta: map.meta,
+                svg_path: path,
+            }),
+            Err(e) => log::warn!("Failed to load scenario {:?}: {}", path, e),
+        }
+    }
+
+    entries
 }
 
 #[derive(Debug)]
@@ -129,9 +169,12 @@ impl GameApp {
     pub fn new(application: &mut visula::Application) -> GameApp {
         application.camera_controller.enabled = false;
         application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
+        // 30° below horizontal, looking along +z. SVG scenarios map their wider axis to z
+        // (after the 90° rotation), so this gives a good landscape view.
+        // sin(30°) = 0.5, cos(30°) ≈ 0.866 — already a unit vector.
         application.camera_controller.target_transform.forward =
-            Vec3::new(0.3, -1.0, 0.0).normalize();
-        application.camera_controller.target_transform.distance = 150.0;
+            Vec3::new(0.0, -0.5, 0.866);
+        application.camera_controller.target_transform.distance = 300.0;
         application.camera_controller.current_transform =
             application.camera_controller.target_transform.clone();
 
@@ -186,7 +229,7 @@ impl GameApp {
         )
         .unwrap();
 
-        let mut vessel_mesh =
+        let vessel_mesh =
             rendering::create_vessel_pipeline(&application.rendering_descriptor()).unwrap();
         let microglia_mesh =
             rendering::create_microglia_pipeline(&application.rendering_descriptor()).unwrap();
@@ -211,16 +254,14 @@ impl GameApp {
         )
         .unwrap();
 
-        let mut world = hecs::World::new();
+        let world = hecs::World::new();
         let dish = setup::PetriDish {
             center: Vec3::ZERO,
             radius: PETRI_DISH_RADIUS,
         };
-        setup::setup_game(&mut world, &dish);
-        rendering::update_vessel_mesh(&mut vessel_mesh, &world, &application.device, 0.0);
 
-        let particles = rendering::generate_vessel_particles(&world);
-        particle_buffer.update(&application.device, &application.queue, &particles);
+        // Load scenario metadata from SVG files for the main menu.
+        let menu_scenarios = load_menu_scenarios();
 
         GameApp {
             spheres,
@@ -261,6 +302,10 @@ impl GameApp {
             touches: HashMap::new(),
             current_scenario: ScenarioId::Default,
             sidebar_icons: None,
+            game_state: GameState::MainMenu,
+            menu_scenarios,
+            menu_selected: None,
+            pending_svg_path: None,
             hex_grid: HexGrid::new(HEX_GRID_CELL_SIZE),
             awaiting_move_destination: false,
             combat_accumulator: 0.0,
@@ -541,6 +586,7 @@ impl GameApp {
                                 Some(id),
                                 neuron_type,
                                 ct.waypoints.clone(),
+                                crate::components::PlayerId::Player1,
                             );
                             ConnectResult::Done
                         }
@@ -731,6 +777,7 @@ impl GameApp {
                             target_entity,
                             neuron_type,
                             ct.waypoints,
+                            crate::components::PlayerId::Player1,
                         );
                     }
                 }
@@ -924,16 +971,37 @@ impl visula::Simulation for GameApp {
         if self.pending_new_game {
             self.pending_new_game = false;
             self.world.clear();
-            scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
+            if let Some(svg_path) = self.pending_svg_path.take() {
+                if let Err(e) = scenarios::setup_scenario_from_svg(&mut self.world, &mut self.petri_dish, &svg_path) {
+                    log::error!("Failed to load SVG scenario {:?}: {}", svg_path, e);
+                    scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
+                }
+                // Aim camera along +z at 30° below horizontal to show the rotated SVG map.
+                application.camera_controller.target_transform.center = Vec3::ZERO;
+                application.camera_controller.target_transform.forward = Vec3::new(0.0, -0.5, 0.866);
+                application.camera_controller.target_transform.distance = 300.0;
+                application.camera_controller.current_transform =
+                    application.camera_controller.target_transform.clone();
+            } else {
+                scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
+            }
             rendering::update_vessel_mesh(&mut self.vessel_mesh, &self.world, &application.device, self.time as f32);
+            let particles = rendering::generate_vessel_particles(&self.world);
+            self.particle_buffer.update(&application.device, &application.queue, &particles);
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
             self.selected_entities.clear();
             self.attack_mode = false;
+            self.game_state = GameState::InGame;
         }
 
         if self.pending_exit_game {
             std::process::exit(0);
+        }
+
+        // Pause all simulation while in the main menu.
+        if self.game_state == GameState::MainMenu {
+            return;
         }
 
         // LIF substeps
@@ -1163,6 +1231,21 @@ impl visula::Simulation for GameApp {
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
+        // Main menu: show scenario selector, skip game UI.
+        if self.game_state == GameState::MainMenu {
+            match main_menu::draw_main_menu(context, &self.menu_scenarios, &mut self.menu_selected) {
+                main_menu::MenuAction::StartScenario(svg_path) => {
+                    self.pending_svg_path = Some(svg_path);
+                    self.pending_new_game = true;
+                }
+                main_menu::MenuAction::Exit => {
+                    self.pending_exit_game = true;
+                }
+                main_menu::MenuAction::None => {}
+            }
+            return;
+        }
+
         let mut p1_neurons = 0u32;
         let mut p1_energy = 0.0f64;
         for (_, (ownership, metab)) in self.world.query::<(&Ownership, &MetabolicState)>().iter() {
@@ -1177,6 +1260,7 @@ impl visula::Simulation for GameApp {
         }
         let mut pending_produce: Option<ProducibleItem> = None;
         let mut pending_cancel = false;
+        let mut pending_menu = false;
         let queue_snapshot = production::queue_snapshot(&self.world);
         let tool_before = self.tool.clone();
         sidebar::draw_sidebar(
@@ -1186,14 +1270,17 @@ impl visula::Simulation for GameApp {
             p1_energy,
             self.p1_economy.building_blocks,
             self.funds_flash_timer > 0.0,
-            &mut self.pending_new_game,
+            &mut pending_menu,
             &mut self.pending_exit_game,
-            &mut self.current_scenario,
             self.sidebar_icons.as_ref().unwrap(),
             &mut pending_produce,
             &mut pending_cancel,
             &queue_snapshot,
         );
+
+        if pending_menu {
+            self.game_state = GameState::MainMenu;
+        }
 
         // Cancel in-progress connection drawing if the tool changed.
         if self.tool != tool_before {

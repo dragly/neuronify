@@ -10,7 +10,7 @@ use neuronify_core::{
 };
 
 use crate::components::{
-    Faction, GrowthCone, MaturingNeuron, MovePath, Neuroblast, OriginNeuron,
+    DendriteDepth, Faction, GrowthCone, MaturingNeuron, MovePath, Neuroblast, OriginNeuron,
     Ownership, PlayerEconomy, PlayerId, ProducibleCell, ProducibleItem, ProductionQueue, QueuedItem,
 };
 use crate::simulation::pathfinding::HexGrid;
@@ -473,6 +473,8 @@ pub fn advance_growth_cones(
 
                 if economy::try_spend_blocks(economy, constants::COMPARTMENT_SPAWN_COST) {
                     let neuron_type = snap.cone.neuron_type.clone();
+                    let depth = snap.cone.depth;
+                    let owner = snap.cone.owner;
                     let compartment = world.spawn((
                         Position { position: wp },
                         neuron_type,
@@ -486,6 +488,8 @@ pub fn advance_growth_cones(
                             injected_current: 0.0,
                             fire_impulse: 0.0,
                         },
+                        DendriteDepth(depth),
+                        Ownership { player: owner },
                         StaticConnectionSource {},
                         Deletable {},
                         Selectable { selected: false },
@@ -505,6 +509,7 @@ pub fn advance_growth_cones(
                         gc.last_comp = compartment;
                         gc.last_comp_pos = wp;
                         gc.waypoints.pop_front();
+                        gc.depth += 1;
                     }
                     snap.cone.last_comp = compartment;
                     snap.cone.last_comp_pos = wp;
@@ -573,6 +578,8 @@ pub fn advance_growth_cones(
             && economy::try_spend_blocks(economy, constants::COMPARTMENT_SPAWN_COST)
         {
             let neuron_type = snap.cone.neuron_type.clone();
+            let depth = snap.cone.depth;
+            let owner = snap.cone.owner;
             let compartment = world.spawn((
                 Position { position: new_pos },
                 neuron_type,
@@ -586,6 +593,8 @@ pub fn advance_growth_cones(
                     injected_current: 0.0,
                     fire_impulse: 0.0,
                 },
+                DendriteDepth(depth),
+                Ownership { player: owner },
                 StaticConnectionSource {},
                 Deletable {},
                 Selectable { selected: false },
@@ -604,6 +613,7 @@ pub fn advance_growth_cones(
             if let Ok(mut gc) = world.get::<&mut GrowthCone>(snap.entity) {
                 gc.last_comp = compartment;
                 gc.last_comp_pos = new_pos;
+                gc.depth += 1;
             }
             snap.cone.last_comp = compartment;
             snap.cone.last_comp_pos = new_pos;

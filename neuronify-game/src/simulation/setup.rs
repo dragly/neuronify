@@ -33,7 +33,7 @@ const NEURON_C_POS: Vec3 = Vec3::new(-38.0, 0.0, 14.0);
 /// Generate evenly-spaced waypoint positions between `from` and `to` (exclusive).
 /// Spacing is as close to `2 * NODE_RADIUS` (the spring equilibrium length) as
 /// possible given the total distance.
-fn equilibrium_waypoints(from: Vec3, to: Vec3) -> Vec<Vec3> {
+pub fn equilibrium_waypoints(from: Vec3, to: Vec3) -> Vec<Vec3> {
     let total = from.distance(to);
     if total < NODE_RADIUS * 2.1 {
         return vec![];
@@ -48,7 +48,7 @@ fn equilibrium_waypoints(from: Vec3, to: Vec3) -> Vec<Vec3> {
     (1..=n).map(|i| from + dir * step * i as f32).collect()
 }
 
-fn spawn_axon_comp(world: &mut hecs::World, pos: Vec3, neuron_type: NeuronType) -> Entity {
+pub fn spawn_axon_comp(world: &mut hecs::World, pos: Vec3, neuron_type: NeuronType) -> Entity {
     world.spawn((
         Position { position: pos },
         neuron_type,
@@ -72,7 +72,7 @@ fn spawn_axon_comp(world: &mut hecs::World, pos: Vec3, neuron_type: NeuronType) 
     ))
 }
 
-fn spawn_bridge_comp(world: &mut hecs::World, pos: Vec3, neuron_type: NeuronType) -> Entity {
+pub fn spawn_bridge_comp(world: &mut hecs::World, pos: Vec3, neuron_type: NeuronType) -> Entity {
     // No SpatialDynamics — bridge sits fixed just outside the target soma surface.
     world.spawn((
         Position { position: pos },
@@ -141,7 +141,7 @@ fn spawn_glial_bridge_comp(world: &mut hecs::World, pos: Vec3) -> Entity {
     ))
 }
 
-fn link(world: &mut hecs::World, from: Entity, to: Entity, directional: bool) {
+pub fn link(world: &mut hecs::World, from: Entity, to: Entity, directional: bool) {
     world.spawn((
         Connection {
             from,
@@ -159,7 +159,7 @@ fn link(world: &mut hecs::World, from: Entity, to: Entity, directional: bool) {
 /// Connect `from` to a neuron soma via a straight axon chain.
 /// Compartments are auto-spaced at equilibrium distance; a fixed bridge
 /// compartment is placed just outside the target surface.
-fn connect_axon(
+pub fn connect_axon(
     world: &mut hecs::World,
     from: Entity,
     from_pos: Vec3,

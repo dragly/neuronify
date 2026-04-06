@@ -397,6 +397,10 @@ pub struct GrowthCone {
     /// Intermediate waypoints the cone must pass through before reaching the final target.
     /// The cone travels to `waypoints.front()` first, popping each on arrival.
     pub waypoints: std::collections::VecDeque<glam::Vec3>,
+    /// How many compartments deep the next spawned compartment will be.
+    pub depth: u32,
+    /// Player that owns this growth cone and spawned compartments.
+    pub owner: PlayerId,
 }
 
 /// Which unit type a NeuronSpawner produces when the neuron fires.

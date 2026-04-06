@@ -292,6 +292,7 @@ pub fn spawn_growth_cone(
     target_entity: Option<hecs::Entity>,
     neuron_type: NeuronType,
     waypoints: Vec<Vec3>,
+    owner: crate::components::PlayerId,
 ) -> hecs::Entity {
     world.spawn((
         Position { position: source_pos },
@@ -303,6 +304,8 @@ pub fn spawn_growth_cone(
             neuron_type,
             speed: crate::constants::GROWTH_CONE_SPEED,
             waypoints: waypoints.into_iter().collect(),
+            depth: 1,
+            owner,
         },
         Deletable {},
     ))

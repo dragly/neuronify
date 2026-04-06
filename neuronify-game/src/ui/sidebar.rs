@@ -1,5 +1,4 @@
 use crate::components::{ProducibleItem, QueuedItem};
-use crate::simulation::scenarios::ScenarioId;
 use crate::tools::GameTool;
 
 // ── Programmatic cell-type icons ──────────────────────────────────────────────
@@ -91,9 +90,8 @@ pub fn draw_sidebar(
     energy: f64,
     blocks: f64,
     funds_flash: bool,
-    pending_new_game: &mut bool,
+    pending_menu: &mut bool,
     pending_exit_game: &mut bool,
-    current_scenario: &mut ScenarioId,
     icons: &SidebarIcons,
     pending_produce: &mut Option<ProducibleItem>,
     pending_cancel: &mut bool,
@@ -227,33 +225,13 @@ pub fn draw_sidebar(
 
             ui.separator();
 
-            // SCENARIO section
-            ui.label(
-                egui::RichText::new("SCENARIO")
-                    .strong()
-                    .color(egui::Color32::GRAY),
-            );
-            let mut changed = false;
-            for &scenario in ScenarioId::all() {
-                let selected = *current_scenario == scenario;
-                if ui.radio(selected, scenario.label()).clicked() && !selected {
-                    *current_scenario = scenario;
-                    changed = true;
-                }
-            }
-            if changed {
-                *pending_new_game = true;
-            }
-
-            ui.separator();
-
             // GAME section
             ui.horizontal(|ui| {
                 if ui
-                    .add(egui::Button::new("New Game").min_size(egui::vec2(80.0, 30.0)))
+                    .add(egui::Button::new("Menu").min_size(egui::vec2(80.0, 30.0)))
                     .clicked()
                 {
-                    *pending_new_game = true;
+                    *pending_menu = true;
                 }
                 if ui
                     .add(egui::Button::new("Exit").min_size(egui::vec2(60.0, 30.0)))

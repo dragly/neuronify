@@ -1,0 +1,638 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1116 812" style="background:#faf8f4">
+<!--
+  NEURONIFY RTS — SCENARIO: EXCITOTOXIC WAVE
+  Hex map. Borders = biology (vessels, CSF, scars). Any hex adjacent to a vessel is harvestable by astrocytes.
+  Parse <g data-entity> for entities, <polygon data-terrain> for hex terrain.
+-->
+<g data-scenario="excitotoxic_wave" data-name="Excitotoxic Wave" data-objective="Destroy all three TGT neurons via calcium overload" data-victory="all_neurons_dead:e1,e2,e3" data-briefing="Macrophages guard the outpost. Disable drivers to deactivate them. Inhibitory suppressor blocks single inputs — use convergent summation."/>
+<text x="558" y="25" text-anchor="middle" fill="#444" font-size="14" font-family="monospace" font-weight="bold" letter-spacing="3">EXCITOTOXIC WAVE</text>
+<text x="558" y="40" text-anchor="middle" fill="#999" font-size="8" font-family="monospace" letter-spacing="2">convergence · summation · macrophage deactivation</text>
+<g id="hex-grid">
+  <polygon points="100.8,58.0 100.8,82.0 80.0,94.0 59.2,82.0 59.2,58.0 80.0,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="0" data-row="0" data-terrain="csf" data-passable="false"/>
+  <text x="80.0" y="72.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="142.4,58.0 142.4,82.0 121.6,94.0 100.8,82.0 100.8,58.0 121.6,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="1" data-row="0" data-terrain="csf" data-passable="false"/>
+  <polygon points="183.9,58.0 183.9,82.0 163.1,94.0 142.3,82.0 142.3,58.0 163.1,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="2" data-row="0" data-terrain="csf" data-passable="false"/>
+  <polygon points="225.5,58.0 225.5,82.0 204.7,94.0 183.9,82.0 183.9,58.0 204.7,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="3" data-row="0" data-terrain="csf" data-passable="false"/>
+  <polygon points="267.1,58.0 267.1,82.0 246.3,94.0 225.5,82.0 225.5,58.0 246.3,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="4" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="246.3" y="72.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="308.6,58.0 308.6,82.0 287.8,94.0 267.0,82.0 267.0,58.0 287.8,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="5" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="350.2,58.0 350.2,82.0 329.4,94.0 308.6,82.0 308.6,58.0 329.4,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="6" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="391.8,58.0 391.8,82.0 371.0,94.0 350.2,82.0 350.2,58.0 371.0,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="7" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="433.4,58.0 433.4,82.0 412.6,94.0 391.8,82.0 391.8,58.0 412.6,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="8" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="412.6" y="72.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="474.9,58.0 474.9,82.0 454.1,94.0 433.3,82.0 433.3,58.0 454.1,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="9" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="516.5,58.0 516.5,82.0 495.7,94.0 474.9,82.0 474.9,58.0 495.7,46.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="10" data-row="0" data-terrain="glial_scar" data-passable="false"/>
+  <text x="495.7" y="72.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="558.1,58.0 558.1,82.0 537.3,94.0 516.5,82.0 516.5,58.0 537.3,46.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="11" data-row="0" data-terrain="glial_scar" data-passable="false"/>
+  <text x="537.3" y="72.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="599.6,58.0 599.6,82.0 578.8,94.0 558.0,82.0 558.0,58.0 578.8,46.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="12" data-row="0" data-terrain="glial_scar" data-passable="false"/>
+  <text x="578.8" y="72.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="641.2,58.0 641.2,82.0 620.4,94.0 599.6,82.0 599.6,58.0 620.4,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="13" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="682.8,58.0 682.8,82.0 662.0,94.0 641.2,82.0 641.2,58.0 662.0,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="14" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="724.3,58.0 724.3,82.0 703.5,94.0 682.7,82.0 682.7,58.0 703.5,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="15" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="765.9,58.0 765.9,82.0 745.1,94.0 724.3,82.0 724.3,58.0 745.1,46.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="16" data-row="0" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="745.1" y="72.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="807.5,58.0 807.5,82.0 786.7,94.0 765.9,82.0 765.9,58.0 786.7,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="17" data-row="0" data-terrain="csf" data-passable="false"/>
+  <polygon points="849.0,58.0 849.0,82.0 828.2,94.0 807.4,82.0 807.4,58.0 828.2,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="18" data-row="0" data-terrain="csf" data-passable="false"/>
+  <polygon points="890.6,58.0 890.6,82.0 869.8,94.0 849.0,82.0 849.0,58.0 869.8,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="19" data-row="0" data-terrain="csf" data-passable="false"/>
+  <polygon points="932.2,58.0 932.2,82.0 911.4,94.0 890.6,82.0 890.6,58.0 911.4,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="0" data-terrain="csf" data-passable="false"/>
+  <text x="911.4" y="72.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="973.8,58.0 973.8,82.0 953.0,94.0 932.2,82.0 932.2,58.0 953.0,46.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="21" data-row="0" data-terrain="csf" data-passable="false"/>
+  <polygon points="121.6,94.0 121.6,118.0 100.8,130.0 80.0,118.0 80.0,94.0 100.8,82.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="0" data-row="1" data-terrain="csf" data-passable="false"/>
+  <polygon points="163.2,94.0 163.2,118.0 142.4,130.0 121.6,118.0 121.6,94.0 142.4,82.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="1" data-row="1" data-terrain="csf" data-passable="false"/>
+  <polygon points="204.7,94.0 204.7,118.0 183.9,130.0 163.1,118.0 163.1,94.0 183.9,82.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="2" data-row="1" data-terrain="csf" data-passable="false"/>
+  <polygon points="246.3,94.0 246.3,118.0 225.5,130.0 204.7,118.0 204.7,94.0 225.5,82.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="1" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="287.9,94.0 287.9,118.0 267.1,130.0 246.3,118.0 246.3,94.0 267.1,82.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="4" data-row="1" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="329.4,94.0 329.4,118.0 308.6,130.0 287.8,118.0 287.8,94.0 308.6,82.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="5" data-row="1" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="371.0,94.0 371.0,118.0 350.2,130.0 329.4,118.0 329.4,94.0 350.2,82.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="6" data-row="1" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="412.6,94.0 412.6,118.0 391.8,130.0 371.0,118.0 371.0,94.0 391.8,82.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="7" data-row="1" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <text x="391.8" y="108.0" text-anchor="middle" fill="#b8a888" font-size="4.5" font-family="monospace" opacity="0.7">ECM</text>
+  <polygon points="454.1,94.0 454.1,118.0 433.3,130.0 412.5,118.0 412.5,94.0 433.3,82.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="8" data-row="1" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="495.7,94.0 495.7,118.0 474.9,130.0 454.1,118.0 454.1,94.0 474.9,82.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="9" data-row="1" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="537.3,94.0 537.3,118.0 516.5,130.0 495.7,118.0 495.7,94.0 516.5,82.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="1" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="578.8,94.0 578.8,118.0 558.0,130.0 537.2,118.0 537.2,94.0 558.0,82.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="11" data-row="1" data-terrain="glial_scar" data-passable="false"/>
+  <text x="558.0" y="108.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="620.4,94.0 620.4,118.0 599.6,130.0 578.8,118.0 578.8,94.0 599.6,82.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="12" data-row="1" data-terrain="glial_scar" data-passable="false"/>
+  <text x="599.6" y="108.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="662.0,94.0 662.0,118.0 641.2,130.0 620.4,118.0 620.4,94.0 641.2,82.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="13" data-row="1" data-terrain="glial_scar" data-passable="false"/>
+  <text x="641.2" y="108.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="703.6,94.0 703.6,118.0 682.8,130.0 662.0,118.0 662.0,94.0 682.8,82.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="1" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="745.1,94.0 745.1,118.0 724.3,130.0 703.5,118.0 703.5,94.0 724.3,82.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="1" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="786.7,94.0 786.7,118.0 765.9,130.0 745.1,118.0 745.1,94.0 765.9,82.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="1" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="828.3,94.0 828.3,118.0 807.5,130.0 786.7,118.0 786.7,94.0 807.5,82.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="17" data-row="1" data-terrain="glial_scar" data-passable="false"/>
+  <text x="807.5" y="108.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="869.8,94.0 869.8,118.0 849.0,130.0 828.2,118.0 828.2,94.0 849.0,82.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="18" data-row="1" data-terrain="glial_scar" data-passable="false"/>
+  <text x="849.0" y="108.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="911.4,94.0 911.4,118.0 890.6,130.0 869.8,118.0 869.8,94.0 890.6,82.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="19" data-row="1" data-terrain="csf" data-passable="false"/>
+  <text x="890.6" y="108.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="953.0,94.0 953.0,118.0 932.2,130.0 911.4,118.0 911.4,94.0 932.2,82.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="1" data-terrain="csf" data-passable="false"/>
+  <polygon points="100.8,130.0 100.8,154.0 80.0,166.0 59.2,154.0 59.2,130.0 80.0,118.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="0" data-row="2" data-terrain="csf" data-passable="false"/>
+  <polygon points="142.4,130.0 142.4,154.0 121.6,166.0 100.8,154.0 100.8,130.0 121.6,118.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="1" data-row="2" data-terrain="csf" data-passable="false"/>
+  <polygon points="183.9,130.0 183.9,154.0 163.1,166.0 142.3,154.0 142.3,130.0 163.1,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="225.5,130.0 225.5,154.0 204.7,166.0 183.9,154.0 183.9,130.0 204.7,118.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="3" data-row="2" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="267.1,130.0 267.1,154.0 246.3,166.0 225.5,154.0 225.5,130.0 246.3,118.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="4" data-row="2" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="308.6,130.0 308.6,154.0 287.8,166.0 267.0,154.0 267.0,130.0 287.8,118.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="5" data-row="2" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="350.2,130.0 350.2,154.0 329.4,166.0 308.6,154.0 308.6,130.0 329.4,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="391.8,130.0 391.8,154.0 371.0,166.0 350.2,154.0 350.2,130.0 371.0,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="433.4,130.0 433.4,154.0 412.6,166.0 391.8,154.0 391.8,130.0 412.6,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="474.9,130.0 474.9,154.0 454.1,166.0 433.3,154.0 433.3,130.0 454.1,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="516.5,130.0 516.5,154.0 495.7,166.0 474.9,154.0 474.9,130.0 495.7,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="558.1,130.0 558.1,154.0 537.3,166.0 516.5,154.0 516.5,130.0 537.3,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="599.6,130.0 599.6,154.0 578.8,166.0 558.0,154.0 558.0,130.0 578.8,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="641.2,130.0 641.2,154.0 620.4,166.0 599.6,154.0 599.6,130.0 620.4,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="682.8,130.0 682.8,154.0 662.0,166.0 641.2,154.0 641.2,130.0 662.0,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="724.3,130.0 724.3,154.0 703.5,166.0 682.7,154.0 682.7,130.0 703.5,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="765.9,130.0 765.9,154.0 745.1,166.0 724.3,154.0 724.3,130.0 745.1,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="807.5,130.0 807.5,154.0 786.7,166.0 765.9,154.0 765.9,130.0 786.7,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="849.0,130.0 849.0,154.0 828.2,166.0 807.4,154.0 807.4,130.0 828.2,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="890.6,130.0 890.6,154.0 869.8,166.0 849.0,154.0 849.0,130.0 869.8,118.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="2" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="932.2,130.0 932.2,154.0 911.4,166.0 890.6,154.0 890.6,130.0 911.4,118.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="20" data-row="2" data-terrain="glial_scar" data-passable="false"/>
+  <text x="911.4" y="144.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="973.8,130.0 973.8,154.0 953.0,166.0 932.2,154.0 932.2,130.0 953.0,118.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="21" data-row="2" data-terrain="glial_scar" data-passable="false"/>
+  <text x="953.0" y="144.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="121.6,166.0 121.6,190.0 100.8,202.0 80.0,190.0 80.0,166.0 100.8,154.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="0" data-row="3" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="163.2,166.0 163.2,190.0 142.4,202.0 121.6,190.0 121.6,166.0 142.4,154.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="1" data-row="3" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="142.4" y="180.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="204.7,166.0 204.7,190.0 183.9,202.0 163.1,190.0 163.1,166.0 183.9,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="246.3,166.0 246.3,190.0 225.5,202.0 204.7,190.0 204.7,166.0 225.5,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="287.9,166.0 287.9,190.0 267.1,202.0 246.3,190.0 246.3,166.0 267.1,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="329.4,166.0 329.4,190.0 308.6,202.0 287.8,190.0 287.8,166.0 308.6,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="371.0,166.0 371.0,190.0 350.2,202.0 329.4,190.0 329.4,166.0 350.2,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="412.6,166.0 412.6,190.0 391.8,202.0 371.0,190.0 371.0,166.0 391.8,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="454.1,166.0 454.1,190.0 433.3,202.0 412.5,190.0 412.5,166.0 433.3,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="495.7,166.0 495.7,190.0 474.9,202.0 454.1,190.0 454.1,166.0 474.9,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="537.3,166.0 537.3,190.0 516.5,202.0 495.7,190.0 495.7,166.0 516.5,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="578.8,166.0 578.8,190.0 558.0,202.0 537.2,190.0 537.2,166.0 558.0,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="620.4,166.0 620.4,190.0 599.6,202.0 578.8,190.0 578.8,166.0 599.6,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="662.0,166.0 662.0,190.0 641.2,202.0 620.4,190.0 620.4,166.0 641.2,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="703.6,166.0 703.6,190.0 682.8,202.0 662.0,190.0 662.0,166.0 682.8,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="745.1,166.0 745.1,190.0 724.3,202.0 703.5,190.0 703.5,166.0 724.3,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="786.7,166.0 786.7,190.0 765.9,202.0 745.1,190.0 745.1,166.0 765.9,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="828.3,166.0 828.3,190.0 807.5,202.0 786.7,190.0 786.7,166.0 807.5,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="869.8,166.0 869.8,190.0 849.0,202.0 828.2,190.0 828.2,166.0 849.0,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="911.4,166.0 911.4,190.0 890.6,202.0 869.8,190.0 869.8,166.0 890.6,154.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="3" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="953.0,166.0 953.0,190.0 932.2,202.0 911.4,190.0 911.4,166.0 932.2,154.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="20" data-row="3" data-terrain="glial_scar" data-passable="false"/>
+  <text x="932.2" y="180.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="100.8,202.0 100.8,226.0 80.0,238.0 59.2,226.0 59.2,202.0 80.0,190.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="0" data-row="4" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="80.0" y="216.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="142.4,202.0 142.4,226.0 121.6,238.0 100.8,226.0 100.8,202.0 121.6,190.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="1" data-row="4" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="183.9,202.0 183.9,226.0 163.1,238.0 142.3,226.0 142.3,202.0 163.1,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="225.5,202.0 225.5,226.0 204.7,238.0 183.9,226.0 183.9,202.0 204.7,190.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="3" data-row="4" data-terrain="csf" data-passable="false"/>
+  <polygon points="267.1,202.0 267.1,226.0 246.3,238.0 225.5,226.0 225.5,202.0 246.3,190.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="4" data-row="4" data-terrain="csf" data-passable="false"/>
+  <text x="246.3" y="216.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="308.6,202.0 308.6,226.0 287.8,238.0 267.0,226.0 267.0,202.0 287.8,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="350.2,202.0 350.2,226.0 329.4,238.0 308.6,226.0 308.6,202.0 329.4,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="391.8,202.0 391.8,226.0 371.0,238.0 350.2,226.0 350.2,202.0 371.0,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="433.4,202.0 433.4,226.0 412.6,238.0 391.8,226.0 391.8,202.0 412.6,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="474.9,202.0 474.9,226.0 454.1,238.0 433.3,226.0 433.3,202.0 454.1,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="516.5,202.0 516.5,226.0 495.7,238.0 474.9,226.0 474.9,202.0 495.7,190.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="10" data-row="4" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="558.1,202.0 558.1,226.0 537.3,238.0 516.5,226.0 516.5,202.0 537.3,190.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="11" data-row="4" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="599.6,202.0 599.6,226.0 578.8,238.0 558.0,226.0 558.0,202.0 578.8,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="641.2,202.0 641.2,226.0 620.4,238.0 599.6,226.0 599.6,202.0 620.4,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="682.8,202.0 682.8,226.0 662.0,238.0 641.2,226.0 641.2,202.0 662.0,190.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="14" data-row="4" data-terrain="glial_scar" data-passable="false"/>
+  <text x="662.0" y="216.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="724.3,202.0 724.3,226.0 703.5,238.0 682.7,226.0 682.7,202.0 703.5,190.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="15" data-row="4" data-terrain="glial_scar" data-passable="false"/>
+  <text x="703.5" y="216.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="765.9,202.0 765.9,226.0 745.1,238.0 724.3,226.0 724.3,202.0 745.1,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="807.5,202.0 807.5,226.0 786.7,238.0 765.9,226.0 765.9,202.0 786.7,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="849.0,202.0 849.0,226.0 828.2,238.0 807.4,226.0 807.4,202.0 828.2,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="890.6,202.0 890.6,226.0 869.8,238.0 849.0,226.0 849.0,202.0 869.8,190.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="4" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="932.2,202.0 932.2,226.0 911.4,238.0 890.6,226.0 890.6,202.0 911.4,190.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="20" data-row="4" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="911.4" y="216.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="973.8,202.0 973.8,226.0 953.0,238.0 932.2,226.0 932.2,202.0 953.0,190.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="21" data-row="4" data-terrain="glial_scar" data-passable="false"/>
+  <text x="953.0" y="216.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="121.6,238.0 121.6,262.0 100.8,274.0 80.0,262.0 80.0,238.0 100.8,226.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="0" data-row="5" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="163.2,238.0 163.2,262.0 142.4,274.0 121.6,262.0 121.6,238.0 142.4,226.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="1" data-row="5" data-terrain="glial_scar" data-passable="false"/>
+  <text x="142.4" y="252.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="204.7,238.0 204.7,262.0 183.9,274.0 163.1,262.0 163.1,238.0 183.9,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="246.3,238.0 246.3,262.0 225.5,274.0 204.7,262.0 204.7,238.0 225.5,226.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="3" data-row="5" data-terrain="csf" data-passable="false"/>
+  <text x="225.5" y="252.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="287.9,238.0 287.9,262.0 267.1,274.0 246.3,262.0 246.3,238.0 267.1,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="329.4,238.0 329.4,262.0 308.6,274.0 287.8,262.0 287.8,238.0 308.6,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="371.0,238.0 371.0,262.0 350.2,274.0 329.4,262.0 329.4,238.0 350.2,226.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="6" data-row="5" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="412.6,238.0 412.6,262.0 391.8,274.0 371.0,262.0 371.0,238.0 391.8,226.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="7" data-row="5" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <text x="391.8" y="252.0" text-anchor="middle" fill="#b8a888" font-size="4.5" font-family="monospace" opacity="0.7">ECM</text>
+  <polygon points="454.1,238.0 454.1,262.0 433.3,274.0 412.5,262.0 412.5,238.0 433.3,226.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="8" data-row="5" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="495.7,238.0 495.7,262.0 474.9,274.0 454.1,262.0 454.1,238.0 474.9,226.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="9" data-row="5" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="537.3,238.0 537.3,262.0 516.5,274.0 495.7,262.0 495.7,238.0 516.5,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="578.8,238.0 578.8,262.0 558.0,274.0 537.2,262.0 537.2,238.0 558.0,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="620.4,238.0 620.4,262.0 599.6,274.0 578.8,262.0 578.8,238.0 599.6,226.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="12" data-row="5" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="662.0,238.0 662.0,262.0 641.2,274.0 620.4,262.0 620.4,238.0 641.2,226.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="13" data-row="5" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="703.6,238.0 703.6,262.0 682.8,274.0 662.0,262.0 662.0,238.0 682.8,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="745.1,238.0 745.1,262.0 724.3,274.0 703.5,262.0 703.5,238.0 724.3,226.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="15" data-row="5" data-terrain="glial_scar" data-passable="false"/>
+  <text x="724.3" y="252.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="786.7,238.0 786.7,262.0 765.9,274.0 745.1,262.0 745.1,238.0 765.9,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="828.3,238.0 828.3,262.0 807.5,274.0 786.7,262.0 786.7,238.0 807.5,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="869.8,238.0 869.8,262.0 849.0,274.0 828.2,262.0 828.2,238.0 849.0,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="911.4,238.0 911.4,262.0 890.6,274.0 869.8,262.0 869.8,238.0 890.6,226.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="5" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="953.0,238.0 953.0,262.0 932.2,274.0 911.4,262.0 911.4,238.0 932.2,226.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="5" data-terrain="csf" data-passable="false"/>
+  <polygon points="100.8,274.0 100.8,298.0 80.0,310.0 59.2,298.0 59.2,274.0 80.0,262.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="0" data-row="6" data-terrain="glial_scar" data-passable="false"/>
+  <text x="80.0" y="288.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="142.4,274.0 142.4,298.0 121.6,310.0 100.8,298.0 100.8,274.0 121.6,262.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="1" data-row="6" data-terrain="glial_scar" data-passable="false"/>
+  <text x="121.6" y="288.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="183.9,274.0 183.9,298.0 163.1,310.0 142.3,298.0 142.3,274.0 163.1,262.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="2" data-row="6" data-terrain="glial_scar" data-passable="false"/>
+  <text x="163.1" y="288.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="225.5,274.0 225.5,298.0 204.7,310.0 183.9,298.0 183.9,274.0 204.7,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="267.1,274.0 267.1,298.0 246.3,310.0 225.5,298.0 225.5,274.0 246.3,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="308.6,274.0 308.6,298.0 287.8,310.0 267.0,298.0 267.0,274.0 287.8,262.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="5" data-row="6" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="350.2,274.0 350.2,298.0 329.4,310.0 308.6,298.0 308.6,274.0 329.4,262.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="6" data-row="6" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <text x="329.4" y="288.0" text-anchor="middle" fill="#b8a888" font-size="4.5" font-family="monospace" opacity="0.7">ECM</text>
+  <polygon points="391.8,274.0 391.8,298.0 371.0,310.0 350.2,298.0 350.2,274.0 371.0,262.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="7" data-row="6" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="433.4,274.0 433.4,298.0 412.6,310.0 391.8,298.0 391.8,274.0 412.6,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="474.9,274.0 474.9,298.0 454.1,310.0 433.3,298.0 433.3,274.0 454.1,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="516.5,274.0 516.5,298.0 495.7,310.0 474.9,298.0 474.9,274.0 495.7,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="558.1,274.0 558.1,298.0 537.3,310.0 516.5,298.0 516.5,274.0 537.3,262.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="11" data-row="6" data-terrain="glial_scar" data-passable="false"/>
+  <text x="537.3" y="288.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="599.6,274.0 599.6,298.0 578.8,310.0 558.0,298.0 558.0,274.0 578.8,262.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="12" data-row="6" data-terrain="glial_scar" data-passable="false"/>
+  <text x="578.8" y="288.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="641.2,274.0 641.2,298.0 620.4,310.0 599.6,298.0 599.6,274.0 620.4,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="682.8,274.0 682.8,298.0 662.0,310.0 641.2,298.0 641.2,274.0 662.0,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="724.3,274.0 724.3,298.0 703.5,310.0 682.7,298.0 682.7,274.0 703.5,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="765.9,274.0 765.9,298.0 745.1,310.0 724.3,298.0 724.3,274.0 745.1,262.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="6" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="807.5,274.0 807.5,298.0 786.7,310.0 765.9,298.0 765.9,274.0 786.7,262.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="17" data-row="6" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="849.0,274.0 849.0,298.0 828.2,310.0 807.4,298.0 807.4,274.0 828.2,262.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="18" data-row="6" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="828.2" y="288.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="890.6,274.0 890.6,298.0 869.8,310.0 849.0,298.0 849.0,274.0 869.8,262.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="19" data-row="6" data-terrain="csf" data-passable="false"/>
+  <polygon points="932.2,274.0 932.2,298.0 911.4,310.0 890.6,298.0 890.6,274.0 911.4,262.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="6" data-terrain="csf" data-passable="false"/>
+  <polygon points="973.8,274.0 973.8,298.0 953.0,310.0 932.2,298.0 932.2,274.0 953.0,262.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="21" data-row="6" data-terrain="csf" data-passable="false"/>
+  <polygon points="121.6,310.0 121.6,334.0 100.8,346.0 80.0,334.0 80.0,310.0 100.8,298.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="0" data-row="7" data-terrain="glial_scar" data-passable="false"/>
+  <text x="100.8" y="324.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="163.2,310.0 163.2,334.0 142.4,346.0 121.6,334.0 121.6,310.0 142.4,298.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="1" data-row="7" data-terrain="glial_scar" data-passable="false"/>
+  <text x="142.4" y="324.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="204.7,310.0 204.7,334.0 183.9,346.0 163.1,334.0 163.1,310.0 183.9,298.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="2" data-row="7" data-terrain="glial_scar" data-passable="false"/>
+  <text x="183.9" y="324.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="246.3,310.0 246.3,334.0 225.5,346.0 204.7,334.0 204.7,310.0 225.5,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="287.9,310.0 287.9,334.0 267.1,346.0 246.3,334.0 246.3,310.0 267.1,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="329.4,310.0 329.4,334.0 308.6,346.0 287.8,334.0 287.8,310.0 308.6,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="371.0,310.0 371.0,334.0 350.2,346.0 329.4,334.0 329.4,310.0 350.2,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="412.6,310.0 412.6,334.0 391.8,346.0 371.0,334.0 371.0,310.0 391.8,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="454.1,310.0 454.1,334.0 433.3,346.0 412.5,334.0 412.5,310.0 433.3,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="495.7,310.0 495.7,334.0 474.9,346.0 454.1,334.0 454.1,310.0 474.9,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="537.3,310.0 537.3,334.0 516.5,346.0 495.7,334.0 495.7,310.0 516.5,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="578.8,310.0 578.8,334.0 558.0,346.0 537.2,334.0 537.2,310.0 558.0,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="620.4,310.0 620.4,334.0 599.6,346.0 578.8,334.0 578.8,310.0 599.6,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="662.0,310.0 662.0,334.0 641.2,346.0 620.4,334.0 620.4,310.0 641.2,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="703.6,310.0 703.6,334.0 682.8,346.0 662.0,334.0 662.0,310.0 682.8,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="745.1,310.0 745.1,334.0 724.3,346.0 703.5,334.0 703.5,310.0 724.3,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="786.7,310.0 786.7,334.0 765.9,346.0 745.1,334.0 745.1,310.0 765.9,298.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="16" data-row="7" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="828.3,310.0 828.3,334.0 807.5,346.0 786.7,334.0 786.7,310.0 807.5,298.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="17" data-row="7" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="807.5" y="324.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="869.8,310.0 869.8,334.0 849.0,346.0 828.2,334.0 828.2,310.0 849.0,298.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="7" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="911.4,310.0 911.4,334.0 890.6,346.0 869.8,334.0 869.8,310.0 890.6,298.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="19" data-row="7" data-terrain="csf" data-passable="false"/>
+  <polygon points="953.0,310.0 953.0,334.0 932.2,346.0 911.4,334.0 911.4,310.0 932.2,298.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="7" data-terrain="csf" data-passable="false"/>
+  <polygon points="100.8,346.0 100.8,370.0 80.0,382.0 59.2,370.0 59.2,346.0 80.0,334.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="0" data-row="8" data-terrain="csf" data-passable="false"/>
+  <text x="80.0" y="360.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="142.4,346.0 142.4,370.0 121.6,382.0 100.8,370.0 100.8,346.0 121.6,334.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="1" data-row="8" data-terrain="csf" data-passable="false"/>
+  <polygon points="183.9,346.0 183.9,370.0 163.1,382.0 142.3,370.0 142.3,346.0 163.1,334.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="2" data-row="8" data-terrain="csf" data-passable="false"/>
+  <polygon points="225.5,346.0 225.5,370.0 204.7,382.0 183.9,370.0 183.9,346.0 204.7,334.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="8" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="267.1,346.0 267.1,370.0 246.3,382.0 225.5,370.0 225.5,346.0 246.3,334.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="8" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="308.6,346.0 308.6,370.0 287.8,382.0 267.0,370.0 267.0,346.0 287.8,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="5" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="350.2,346.0 350.2,370.0 329.4,382.0 308.6,370.0 308.6,346.0 329.4,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="6" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="391.8,346.0 391.8,370.0 371.0,382.0 350.2,370.0 350.2,346.0 371.0,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="7" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="433.4,346.0 433.4,370.0 412.6,382.0 391.8,370.0 391.8,346.0 412.6,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="8" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="412.6" y="360.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="474.9,346.0 474.9,370.0 454.1,382.0 433.3,370.0 433.3,346.0 454.1,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="9" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="516.5,346.0 516.5,370.0 495.7,382.0 474.9,370.0 474.9,346.0 495.7,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="10" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="558.1,346.0 558.1,370.0 537.3,382.0 516.5,370.0 516.5,346.0 537.3,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="11" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="599.6,346.0 599.6,370.0 578.8,382.0 558.0,370.0 558.0,346.0 578.8,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="12" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="578.8" y="360.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="641.2,346.0 641.2,370.0 620.4,382.0 599.6,370.0 599.6,346.0 620.4,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="13" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="682.8,346.0 682.8,370.0 662.0,382.0 641.2,370.0 641.2,346.0 662.0,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="14" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="724.3,346.0 724.3,370.0 703.5,382.0 682.7,370.0 682.7,346.0 703.5,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="15" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="765.9,346.0 765.9,370.0 745.1,382.0 724.3,370.0 724.3,346.0 745.1,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="16" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="745.1" y="360.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="807.5,346.0 807.5,370.0 786.7,382.0 765.9,370.0 765.9,346.0 786.7,334.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="8" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="849.0,346.0 849.0,370.0 828.2,382.0 807.4,370.0 807.4,346.0 828.2,334.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="8" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="890.6,346.0 890.6,370.0 869.8,382.0 849.0,370.0 849.0,346.0 869.8,334.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="8" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="932.2,346.0 932.2,370.0 911.4,382.0 890.6,370.0 890.6,346.0 911.4,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="20" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="911.4" y="360.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="973.8,346.0 973.8,370.0 953.0,382.0 932.2,370.0 932.2,346.0 953.0,334.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="21" data-row="8" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="121.6,382.0 121.6,406.0 100.8,418.0 80.0,406.0 80.0,382.0 100.8,370.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="0" data-row="9" data-terrain="csf" data-passable="false"/>
+  <polygon points="163.2,382.0 163.2,406.0 142.4,418.0 121.6,406.0 121.6,382.0 142.4,370.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="1" data-row="9" data-terrain="csf" data-passable="false"/>
+  <polygon points="204.7,382.0 204.7,406.0 183.9,418.0 163.1,406.0 163.1,382.0 183.9,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="246.3,382.0 246.3,406.0 225.5,418.0 204.7,406.0 204.7,382.0 225.5,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="287.9,382.0 287.9,406.0 267.1,418.0 246.3,406.0 246.3,382.0 267.1,370.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="4" data-row="9" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="329.4,382.0 329.4,406.0 308.6,418.0 287.8,406.0 287.8,382.0 308.6,370.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="5" data-row="9" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="371.0,382.0 371.0,406.0 350.2,418.0 329.4,406.0 329.4,382.0 350.2,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="412.6,382.0 412.6,406.0 391.8,418.0 371.0,406.0 371.0,382.0 391.8,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="454.1,382.0 454.1,406.0 433.3,418.0 412.5,406.0 412.5,382.0 433.3,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="495.7,382.0 495.7,406.0 474.9,418.0 454.1,406.0 454.1,382.0 474.9,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="537.3,382.0 537.3,406.0 516.5,418.0 495.7,406.0 495.7,382.0 516.5,370.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="10" data-row="9" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="578.8,382.0 578.8,406.0 558.0,418.0 537.2,406.0 537.2,382.0 558.0,370.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="11" data-row="9" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="558.0" y="396.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="620.4,382.0 620.4,406.0 599.6,418.0 578.8,406.0 578.8,382.0 599.6,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="662.0,382.0 662.0,406.0 641.2,418.0 620.4,406.0 620.4,382.0 641.2,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="703.6,382.0 703.6,406.0 682.8,418.0 662.0,406.0 662.0,382.0 682.8,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="745.1,382.0 745.1,406.0 724.3,418.0 703.5,406.0 703.5,382.0 724.3,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="786.7,382.0 786.7,406.0 765.9,418.0 745.1,406.0 745.1,382.0 765.9,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="828.3,382.0 828.3,406.0 807.5,418.0 786.7,406.0 786.7,382.0 807.5,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="869.8,382.0 869.8,406.0 849.0,418.0 828.2,406.0 828.2,382.0 849.0,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="911.4,382.0 911.4,406.0 890.6,418.0 869.8,406.0 869.8,382.0 890.6,370.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="9" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="953.0,382.0 953.0,406.0 932.2,418.0 911.4,406.0 911.4,382.0 932.2,370.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="20" data-row="9" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="100.8,418.0 100.8,442.0 80.0,454.0 59.2,442.0 59.2,418.0 80.0,406.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="0" data-row="10" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="142.4,418.0 142.4,442.0 121.6,454.0 100.8,442.0 100.8,418.0 121.6,406.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="1" data-row="10" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="183.9,418.0 183.9,442.0 163.1,454.0 142.3,442.0 142.3,418.0 163.1,406.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="2" data-row="10" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <text x="163.1" y="432.0" text-anchor="middle" fill="#b8a888" font-size="4.5" font-family="monospace" opacity="0.7">ECM</text>
+  <polygon points="225.5,418.0 225.5,442.0 204.7,454.0 183.9,442.0 183.9,418.0 204.7,406.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="3" data-row="10" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="267.1,418.0 267.1,442.0 246.3,454.0 225.5,442.0 225.5,418.0 246.3,406.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="4" data-row="10" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="308.6,418.0 308.6,442.0 287.8,454.0 267.0,442.0 267.0,418.0 287.8,406.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="10" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="350.2,418.0 350.2,442.0 329.4,454.0 308.6,442.0 308.6,418.0 329.4,406.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="10" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="391.8,418.0 391.8,442.0 371.0,454.0 350.2,442.0 350.2,418.0 371.0,406.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="7" data-row="10" data-terrain="glial_scar" data-passable="false"/>
+  <text x="371.0" y="432.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="433.4,418.0 433.4,442.0 412.6,454.0 391.8,442.0 391.8,418.0 412.6,406.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="8" data-row="10" data-terrain="glial_scar" data-passable="false"/>
+  <text x="412.6" y="432.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="474.9,418.0 474.9,442.0 454.1,454.0 433.3,442.0 433.3,418.0 454.1,406.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="10" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="516.5,418.0 516.5,442.0 495.7,454.0 474.9,442.0 474.9,418.0 495.7,406.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="10" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="558.1,418.0 558.1,442.0 537.3,454.0 516.5,442.0 516.5,418.0 537.3,406.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="10" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="599.6,418.0 599.6,442.0 578.8,454.0 558.0,442.0 558.0,418.0 578.8,406.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="10" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="641.2,418.0 641.2,442.0 620.4,454.0 599.6,442.0 599.6,418.0 620.4,406.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="13" data-row="10" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="682.8,418.0 682.8,442.0 662.0,454.0 641.2,442.0 641.2,418.0 662.0,406.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="14" data-row="10" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <text x="662.0" y="432.0" text-anchor="middle" fill="#b8a888" font-size="4.5" font-family="monospace" opacity="0.7">ECM</text>
+  <polygon points="724.3,418.0 724.3,442.0 703.5,454.0 682.7,442.0 682.7,418.0 703.5,406.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="15" data-row="10" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="765.9,418.0 765.9,442.0 745.1,454.0 724.3,442.0 724.3,418.0 745.1,406.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="10" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="807.5,418.0 807.5,442.0 786.7,454.0 765.9,442.0 765.9,418.0 786.7,406.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="17" data-row="10" data-terrain="csf" data-passable="false"/>
+  <polygon points="849.0,418.0 849.0,442.0 828.2,454.0 807.4,442.0 807.4,418.0 828.2,406.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="18" data-row="10" data-terrain="csf" data-passable="false"/>
+  <text x="828.2" y="432.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="890.6,418.0 890.6,442.0 869.8,454.0 849.0,442.0 849.0,418.0 869.8,406.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="19" data-row="10" data-terrain="glial_scar" data-passable="false"/>
+  <text x="869.8" y="432.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="932.2,418.0 932.2,442.0 911.4,454.0 890.6,442.0 890.6,418.0 911.4,406.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="20" data-row="10" data-terrain="glial_scar" data-passable="false"/>
+  <text x="911.4" y="432.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="973.8,418.0 973.8,442.0 953.0,454.0 932.2,442.0 932.2,418.0 953.0,406.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="21" data-row="10" data-terrain="glial_scar" data-passable="false"/>
+  <text x="953.0" y="432.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="121.6,454.0 121.6,478.0 100.8,490.0 80.0,478.0 80.0,454.0 100.8,442.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="0" data-row="11" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="163.2,454.0 163.2,478.0 142.4,490.0 121.6,478.0 121.6,454.0 142.4,442.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="1" data-row="11" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="142.4" y="468.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="204.7,454.0 204.7,478.0 183.9,490.0 163.1,478.0 163.1,454.0 183.9,442.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="2" data-row="11" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="246.3,454.0 246.3,478.0 225.5,490.0 204.7,478.0 204.7,454.0 225.5,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="287.9,454.0 287.9,478.0 267.1,490.0 246.3,478.0 246.3,454.0 267.1,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="329.4,454.0 329.4,478.0 308.6,490.0 287.8,478.0 287.8,454.0 308.6,442.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="5" data-row="11" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="371.0,454.0 371.0,478.0 350.2,490.0 329.4,478.0 329.4,454.0 350.2,442.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="6" data-row="11" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="412.6,454.0 412.6,478.0 391.8,490.0 371.0,478.0 371.0,454.0 391.8,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="454.1,454.0 454.1,478.0 433.3,490.0 412.5,478.0 412.5,454.0 433.3,442.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="8" data-row="11" data-terrain="glial_scar" data-passable="false"/>
+  <text x="433.3" y="468.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="495.7,454.0 495.7,478.0 474.9,490.0 454.1,478.0 454.1,454.0 474.9,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="537.3,454.0 537.3,478.0 516.5,490.0 495.7,478.0 495.7,454.0 516.5,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="578.8,454.0 578.8,478.0 558.0,490.0 537.2,478.0 537.2,454.0 558.0,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="620.4,454.0 620.4,478.0 599.6,490.0 578.8,478.0 578.8,454.0 599.6,442.0" fill="#e8e0d0" stroke="#ccc4b0" stroke-width="0.5" data-col="12" data-row="11" data-terrain="ecm_sparse" data-passable="true" data-speed-mult="0.7"/>
+  <polygon points="662.0,454.0 662.0,478.0 641.2,490.0 620.4,478.0 620.4,454.0 641.2,442.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="13" data-row="11" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <text x="641.2" y="468.0" text-anchor="middle" fill="#b8a888" font-size="4.5" font-family="monospace" opacity="0.7">ECM</text>
+  <polygon points="703.6,454.0 703.6,478.0 682.8,490.0 662.0,478.0 662.0,454.0 682.8,442.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="14" data-row="11" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="745.1,454.0 745.1,478.0 724.3,490.0 703.5,478.0 703.5,454.0 724.3,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="786.7,454.0 786.7,478.0 765.9,490.0 745.1,478.0 745.1,454.0 765.9,442.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="16" data-row="11" data-terrain="glial_scar" data-passable="false"/>
+  <text x="765.9" y="468.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="828.3,454.0 828.3,478.0 807.5,490.0 786.7,478.0 786.7,454.0 807.5,442.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="17" data-row="11" data-terrain="csf" data-passable="false"/>
+  <text x="807.5" y="468.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="869.8,454.0 869.8,478.0 849.0,490.0 828.2,478.0 828.2,454.0 849.0,442.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="11" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="911.4,454.0 911.4,478.0 890.6,490.0 869.8,478.0 869.8,454.0 890.6,442.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="19" data-row="11" data-terrain="glial_scar" data-passable="false"/>
+  <text x="890.6" y="468.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="953.0,454.0 953.0,478.0 932.2,490.0 911.4,478.0 911.4,454.0 932.2,442.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="20" data-row="11" data-terrain="glial_scar" data-passable="false"/>
+  <text x="932.2" y="468.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="100.8,490.0 100.8,514.0 80.0,526.0 59.2,514.0 59.2,490.0 80.0,478.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="0" data-row="12" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="80.0" y="504.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="142.4,490.0 142.4,514.0 121.6,526.0 100.8,514.0 100.8,490.0 121.6,478.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="1" data-row="12" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="183.9,490.0 183.9,514.0 163.1,526.0 142.3,514.0 142.3,490.0 163.1,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="225.5,490.0 225.5,514.0 204.7,526.0 183.9,514.0 183.9,490.0 204.7,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="267.1,490.0 267.1,514.0 246.3,526.0 225.5,514.0 225.5,490.0 246.3,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="308.6,490.0 308.6,514.0 287.8,526.0 267.0,514.0 267.0,490.0 287.8,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="350.2,490.0 350.2,514.0 329.4,526.0 308.6,514.0 308.6,490.0 329.4,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="391.8,490.0 391.8,514.0 371.0,526.0 350.2,514.0 350.2,490.0 371.0,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="433.4,490.0 433.4,514.0 412.6,526.0 391.8,514.0 391.8,490.0 412.6,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="474.9,490.0 474.9,514.0 454.1,526.0 433.3,514.0 433.3,490.0 454.1,478.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="9" data-row="12" data-terrain="csf" data-passable="false"/>
+  <polygon points="516.5,490.0 516.5,514.0 495.7,526.0 474.9,514.0 474.9,490.0 495.7,478.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="10" data-row="12" data-terrain="csf" data-passable="false"/>
+  <polygon points="558.1,490.0 558.1,514.0 537.3,526.0 516.5,514.0 516.5,490.0 537.3,478.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="11" data-row="12" data-terrain="csf" data-passable="false"/>
+  <polygon points="599.6,490.0 599.6,514.0 578.8,526.0 558.0,514.0 558.0,490.0 578.8,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="641.2,490.0 641.2,514.0 620.4,526.0 599.6,514.0 599.6,490.0 620.4,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="682.8,490.0 682.8,514.0 662.0,526.0 641.2,514.0 641.2,490.0 662.0,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="724.3,490.0 724.3,514.0 703.5,526.0 682.7,514.0 682.7,490.0 703.5,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="765.9,490.0 765.9,514.0 745.1,526.0 724.3,514.0 724.3,490.0 745.1,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="807.5,490.0 807.5,514.0 786.7,526.0 765.9,514.0 765.9,490.0 786.7,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="849.0,490.0 849.0,514.0 828.2,526.0 807.4,514.0 807.4,490.0 828.2,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="890.6,490.0 890.6,514.0 869.8,526.0 849.0,514.0 849.0,490.0 869.8,478.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="12" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="932.2,490.0 932.2,514.0 911.4,526.0 890.6,514.0 890.6,490.0 911.4,478.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="20" data-row="12" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="911.4" y="504.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="973.8,490.0 973.8,514.0 953.0,526.0 932.2,514.0 932.2,490.0 953.0,478.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="21" data-row="12" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="121.6,526.0 121.6,550.0 100.8,562.0 80.0,550.0 80.0,526.0 100.8,514.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="0" data-row="13" data-terrain="csf" data-passable="false"/>
+  <polygon points="163.2,526.0 163.2,550.0 142.4,562.0 121.6,550.0 121.6,526.0 142.4,514.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="1" data-row="13" data-terrain="csf" data-passable="false"/>
+  <polygon points="204.7,526.0 204.7,550.0 183.9,562.0 163.1,550.0 163.1,526.0 183.9,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="246.3,526.0 246.3,550.0 225.5,562.0 204.7,550.0 204.7,526.0 225.5,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="287.9,526.0 287.9,550.0 267.1,562.0 246.3,550.0 246.3,526.0 267.1,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="329.4,526.0 329.4,550.0 308.6,562.0 287.8,550.0 287.8,526.0 308.6,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="371.0,526.0 371.0,550.0 350.2,562.0 329.4,550.0 329.4,526.0 350.2,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="412.6,526.0 412.6,550.0 391.8,562.0 371.0,550.0 371.0,526.0 391.8,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="454.1,526.0 454.1,550.0 433.3,562.0 412.5,550.0 412.5,526.0 433.3,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="495.7,526.0 495.7,550.0 474.9,562.0 454.1,550.0 454.1,526.0 474.9,514.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="9" data-row="13" data-terrain="csf" data-passable="false"/>
+  <polygon points="537.3,526.0 537.3,550.0 516.5,562.0 495.7,550.0 495.7,526.0 516.5,514.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="10" data-row="13" data-terrain="csf" data-passable="false"/>
+  <polygon points="578.8,526.0 578.8,550.0 558.0,562.0 537.2,550.0 537.2,526.0 558.0,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="620.4,526.0 620.4,550.0 599.6,562.0 578.8,550.0 578.8,526.0 599.6,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="662.0,526.0 662.0,550.0 641.2,562.0 620.4,550.0 620.4,526.0 641.2,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="703.6,526.0 703.6,550.0 682.8,562.0 662.0,550.0 662.0,526.0 682.8,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="745.1,526.0 745.1,550.0 724.3,562.0 703.5,550.0 703.5,526.0 724.3,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="786.7,526.0 786.7,550.0 765.9,562.0 745.1,550.0 745.1,526.0 765.9,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="828.3,526.0 828.3,550.0 807.5,562.0 786.7,550.0 786.7,526.0 807.5,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="869.8,526.0 869.8,550.0 849.0,562.0 828.2,550.0 828.2,526.0 849.0,514.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="13" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="911.4,526.0 911.4,550.0 890.6,562.0 869.8,550.0 869.8,526.0 890.6,514.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="19" data-row="13" data-terrain="csf" data-passable="false"/>
+  <text x="890.6" y="540.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="953.0,526.0 953.0,550.0 932.2,562.0 911.4,550.0 911.4,526.0 932.2,514.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="13" data-terrain="csf" data-passable="false"/>
+  <polygon points="100.8,562.0 100.8,586.0 80.0,598.0 59.2,586.0 59.2,562.0 80.0,550.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="0" data-row="14" data-terrain="csf" data-passable="false"/>
+  <polygon points="142.4,562.0 142.4,586.0 121.6,598.0 100.8,586.0 100.8,562.0 121.6,550.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="1" data-row="14" data-terrain="glial_scar" data-passable="false"/>
+  <text x="121.6" y="576.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="183.9,562.0 183.9,586.0 163.1,598.0 142.3,586.0 142.3,562.0 163.1,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="2" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="225.5,562.0 225.5,586.0 204.7,598.0 183.9,586.0 183.9,562.0 204.7,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="267.1,562.0 267.1,586.0 246.3,598.0 225.5,586.0 225.5,562.0 246.3,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="308.6,562.0 308.6,586.0 287.8,598.0 267.0,586.0 267.0,562.0 287.8,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="350.2,562.0 350.2,586.0 329.4,598.0 308.6,586.0 308.6,562.0 329.4,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="391.8,562.0 391.8,586.0 371.0,598.0 350.2,586.0 350.2,562.0 371.0,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="433.4,562.0 433.4,586.0 412.6,598.0 391.8,586.0 391.8,562.0 412.6,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="474.9,562.0 474.9,586.0 454.1,598.0 433.3,586.0 433.3,562.0 454.1,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="516.5,562.0 516.5,586.0 495.7,598.0 474.9,586.0 474.9,562.0 495.7,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="558.1,562.0 558.1,586.0 537.3,598.0 516.5,586.0 516.5,562.0 537.3,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="599.6,562.0 599.6,586.0 578.8,598.0 558.0,586.0 558.0,562.0 578.8,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="641.2,562.0 641.2,586.0 620.4,598.0 599.6,586.0 599.6,562.0 620.4,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="682.8,562.0 682.8,586.0 662.0,598.0 641.2,586.0 641.2,562.0 662.0,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="724.3,562.0 724.3,586.0 703.5,598.0 682.7,586.0 682.7,562.0 703.5,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="765.9,562.0 765.9,586.0 745.1,598.0 724.3,586.0 724.3,562.0 745.1,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="807.5,562.0 807.5,586.0 786.7,598.0 765.9,586.0 765.9,562.0 786.7,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="849.0,562.0 849.0,586.0 828.2,598.0 807.4,586.0 807.4,562.0 828.2,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="890.6,562.0 890.6,586.0 869.8,598.0 849.0,586.0 849.0,562.0 869.8,550.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="14" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="932.2,562.0 932.2,586.0 911.4,598.0 890.6,586.0 890.6,562.0 911.4,550.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="14" data-terrain="csf" data-passable="false"/>
+  <polygon points="973.8,562.0 973.8,586.0 953.0,598.0 932.2,586.0 932.2,562.0 953.0,550.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="21" data-row="14" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="121.6,598.0 121.6,622.0 100.8,634.0 80.0,622.0 80.0,598.0 100.8,586.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="0" data-row="15" data-terrain="glial_scar" data-passable="false"/>
+  <text x="100.8" y="612.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="163.2,598.0 163.2,622.0 142.4,634.0 121.6,622.0 121.6,598.0 142.4,586.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="1" data-row="15" data-terrain="glial_scar" data-passable="false"/>
+  <text x="142.4" y="612.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="204.7,598.0 204.7,622.0 183.9,634.0 163.1,622.0 163.1,598.0 183.9,586.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="2" data-row="15" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="246.3,598.0 246.3,622.0 225.5,634.0 204.7,622.0 204.7,598.0 225.5,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="3" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="287.9,598.0 287.9,622.0 267.1,634.0 246.3,622.0 246.3,598.0 267.1,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="329.4,598.0 329.4,622.0 308.6,634.0 287.8,622.0 287.8,598.0 308.6,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="371.0,598.0 371.0,622.0 350.2,634.0 329.4,622.0 329.4,598.0 350.2,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="412.6,598.0 412.6,622.0 391.8,634.0 371.0,622.0 371.0,598.0 391.8,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="454.1,598.0 454.1,622.0 433.3,634.0 412.5,622.0 412.5,598.0 433.3,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="495.7,598.0 495.7,622.0 474.9,634.0 454.1,622.0 454.1,598.0 474.9,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="537.3,598.0 537.3,622.0 516.5,634.0 495.7,622.0 495.7,598.0 516.5,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="578.8,598.0 578.8,622.0 558.0,634.0 537.2,622.0 537.2,598.0 558.0,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="11" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="620.4,598.0 620.4,622.0 599.6,634.0 578.8,622.0 578.8,598.0 599.6,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="12" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="662.0,598.0 662.0,622.0 641.2,634.0 620.4,622.0 620.4,598.0 641.2,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="13" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="703.6,598.0 703.6,622.0 682.8,634.0 662.0,622.0 662.0,598.0 682.8,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="14" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="745.1,598.0 745.1,622.0 724.3,634.0 703.5,622.0 703.5,598.0 724.3,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="15" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="786.7,598.0 786.7,622.0 765.9,634.0 745.1,622.0 745.1,598.0 765.9,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="828.3,598.0 828.3,622.0 807.5,634.0 786.7,622.0 786.7,598.0 807.5,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="869.8,598.0 869.8,622.0 849.0,634.0 828.2,622.0 828.2,598.0 849.0,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="911.4,598.0 911.4,622.0 890.6,634.0 869.8,622.0 869.8,598.0 890.6,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="19" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="953.0,598.0 953.0,622.0 932.2,634.0 911.4,622.0 911.4,598.0 932.2,586.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="20" data-row="15" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="100.8,634.0 100.8,658.0 80.0,670.0 59.2,658.0 59.2,634.0 80.0,622.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="0" data-row="16" data-terrain="glial_scar" data-passable="false"/>
+  <text x="80.0" y="648.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="142.4,634.0 142.4,658.0 121.6,670.0 100.8,658.0 100.8,634.0 121.6,622.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="1" data-row="16" data-terrain="glial_scar" data-passable="false"/>
+  <text x="121.6" y="648.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="183.9,634.0 183.9,658.0 163.1,670.0 142.3,658.0 142.3,634.0 163.1,622.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="2" data-row="16" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="225.5,634.0 225.5,658.0 204.7,670.0 183.9,658.0 183.9,634.0 204.7,622.0" fill="#d8ceb8" stroke="#b8a888" stroke-width="0.5" data-col="3" data-row="16" data-terrain="ecm_dense" data-passable="true" data-speed-mult="0.4"/>
+  <polygon points="267.1,634.0 267.1,658.0 246.3,670.0 225.5,658.0 225.5,634.0 246.3,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="4" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="308.6,634.0 308.6,658.0 287.8,670.0 267.0,658.0 267.0,634.0 287.8,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="5" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="350.2,634.0 350.2,658.0 329.4,670.0 308.6,658.0 308.6,634.0 329.4,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="6" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="391.8,634.0 391.8,658.0 371.0,670.0 350.2,658.0 350.2,634.0 371.0,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="7" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="433.4,634.0 433.4,658.0 412.6,670.0 391.8,658.0 391.8,634.0 412.6,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="8" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="474.9,634.0 474.9,658.0 454.1,670.0 433.3,658.0 433.3,634.0 454.1,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="9" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="516.5,634.0 516.5,658.0 495.7,670.0 474.9,658.0 474.9,634.0 495.7,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="10" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="558.1,634.0 558.1,658.0 537.3,670.0 516.5,658.0 516.5,634.0 537.3,622.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="11" data-row="16" data-terrain="csf" data-passable="false"/>
+  <polygon points="599.6,634.0 599.6,658.0 578.8,670.0 558.0,658.0 558.0,634.0 578.8,622.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="12" data-row="16" data-terrain="csf" data-passable="false"/>
+  <text x="578.8" y="648.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="641.2,634.0 641.2,658.0 620.4,670.0 599.6,658.0 599.6,634.0 620.4,622.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="13" data-row="16" data-terrain="csf" data-passable="false"/>
+  <polygon points="682.8,634.0 682.8,658.0 662.0,670.0 641.2,658.0 641.2,634.0 662.0,622.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="14" data-row="16" data-terrain="glial_scar" data-passable="false"/>
+  <text x="662.0" y="648.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="724.3,634.0 724.3,658.0 703.5,670.0 682.7,658.0 682.7,634.0 703.5,622.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="15" data-row="16" data-terrain="glial_scar" data-passable="false"/>
+  <text x="703.5" y="648.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="765.9,634.0 765.9,658.0 745.1,670.0 724.3,658.0 724.3,634.0 745.1,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="16" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="807.5,634.0 807.5,658.0 786.7,670.0 765.9,658.0 765.9,634.0 786.7,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="17" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="849.0,634.0 849.0,658.0 828.2,670.0 807.4,658.0 807.4,634.0 828.2,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="18" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="890.6,634.0 890.6,658.0 869.8,670.0 849.0,658.0 849.0,634.0 869.8,622.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="19" data-row="16" data-terrain="csf" data-passable="false"/>
+  <polygon points="932.2,634.0 932.2,658.0 911.4,670.0 890.6,658.0 890.6,634.0 911.4,622.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="16" data-terrain="csf" data-passable="false"/>
+  <text x="911.4" y="648.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="973.8,634.0 973.8,658.0 953.0,670.0 932.2,658.0 932.2,634.0 953.0,622.0" fill="#f0ede6" stroke="#d8d2c8" stroke-width="0.5" data-col="21" data-row="16" data-terrain="open" data-passable="true" data-speed-mult="1.0"/>
+  <polygon points="121.6,670.0 121.6,694.0 100.8,706.0 80.0,694.0 80.0,670.0 100.8,658.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="0" data-row="17" data-terrain="glial_scar" data-passable="false"/>
+  <text x="100.8" y="684.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="163.2,670.0 163.2,694.0 142.4,706.0 121.6,694.0 121.6,670.0 142.4,658.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="1" data-row="17" data-terrain="glial_scar" data-passable="false"/>
+  <text x="142.4" y="684.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="204.7,670.0 204.7,694.0 183.9,706.0 163.1,694.0 163.1,670.0 183.9,658.0" fill="#8a7860" stroke="#6a5840" stroke-width="0.8" data-col="2" data-row="17" data-terrain="glial_scar" data-passable="false"/>
+  <text x="183.9" y="684.0" text-anchor="middle" fill="#6a5840" font-size="4.5" font-family="monospace" opacity="0.7">SCAR</text>
+  <polygon points="246.3,670.0 246.3,694.0 225.5,706.0 204.7,694.0 204.7,670.0 225.5,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="3" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="225.5" y="684.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="287.9,670.0 287.9,694.0 267.1,706.0 246.3,694.0 246.3,670.0 267.1,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="4" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="329.4,670.0 329.4,694.0 308.6,706.0 287.8,694.0 287.8,670.0 308.6,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="5" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="371.0,670.0 371.0,694.0 350.2,706.0 329.4,694.0 329.4,670.0 350.2,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="6" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="412.6,670.0 412.6,694.0 391.8,706.0 371.0,694.0 371.0,670.0 391.8,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="7" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="391.8" y="684.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="454.1,670.0 454.1,694.0 433.3,706.0 412.5,694.0 412.5,670.0 433.3,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="8" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="495.7,670.0 495.7,694.0 474.9,706.0 454.1,694.0 454.1,670.0 474.9,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="9" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="537.3,670.0 537.3,694.0 516.5,706.0 495.7,694.0 495.7,670.0 516.5,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="10" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="578.8,670.0 578.8,694.0 558.0,706.0 537.2,694.0 537.2,670.0 558.0,658.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="11" data-row="17" data-terrain="csf" data-passable="false"/>
+  <text x="558.0" y="684.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="620.4,670.0 620.4,694.0 599.6,706.0 578.8,694.0 578.8,670.0 599.6,658.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="12" data-row="17" data-terrain="csf" data-passable="false"/>
+  <polygon points="662.0,670.0 662.0,694.0 641.2,706.0 620.4,694.0 620.4,670.0 641.2,658.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="13" data-row="17" data-terrain="csf" data-passable="false"/>
+  <polygon points="703.6,670.0 703.6,694.0 682.8,706.0 662.0,694.0 662.0,670.0 682.8,658.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="14" data-row="17" data-terrain="csf" data-passable="false"/>
+  <polygon points="745.1,670.0 745.1,694.0 724.3,706.0 703.5,694.0 703.5,670.0 724.3,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="15" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <text x="724.3" y="684.0" text-anchor="middle" fill="#c07070" font-size="4.5" font-family="monospace" opacity="0.7">VESSEL</text>
+  <polygon points="786.7,670.0 786.7,694.0 765.9,706.0 745.1,694.0 745.1,670.0 765.9,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="16" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="828.3,670.0 828.3,694.0 807.5,706.0 786.7,694.0 786.7,670.0 807.5,658.0" fill="#e0a0a0" stroke="#c07070" stroke-width="0.8" data-col="17" data-row="17" data-terrain="vessel" data-passable="false" data-resource="glucose"/>
+  <polygon points="869.8,670.0 869.8,694.0 849.0,706.0 828.2,694.0 828.2,670.0 849.0,658.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="18" data-row="17" data-terrain="csf" data-passable="false"/>
+  <polygon points="911.4,670.0 911.4,694.0 890.6,706.0 869.8,694.0 869.8,670.0 890.6,658.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="19" data-row="17" data-terrain="csf" data-passable="false"/>
+  <text x="890.6" y="684.0" text-anchor="middle" fill="#a0b8d0" font-size="4.5" font-family="monospace" opacity="0.7">CSF</text>
+  <polygon points="953.0,670.0 953.0,694.0 932.2,706.0 911.4,694.0 911.4,670.0 932.2,658.0" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="0.5" data-col="20" data-row="17" data-terrain="csf" data-passable="false"/>
+</g>
+<g id="axons" fill="none">
+  <g data-entity="axon" data-id="ax_p_origin_p1" data-from="p_origin" data-to="p1" data-excitatory="true"><line x1="225.5" y1="610.0" x2="163.1" y2="574.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p_origin_p2" data-from="p_origin" data-to="p2" data-excitatory="true"><line x1="225.5" y1="610.0" x2="204.7" y2="574.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p_origin_p_gen" data-from="p_origin" data-to="p_gen" data-excitatory="true"><line x1="225.5" y1="610.0" x2="267.1" y2="610.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p_gen_p3" data-from="p_gen" data-to="p3" data-excitatory="true"><line x1="267.1" y1="610.0" x2="246.3" y2="574.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p1_p4" data-from="p1" data-to="p4" data-excitatory="true"><line x1="163.1" y1="574.0" x2="183.9" y2="538.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p2_p4" data-from="p2" data-to="p4" data-excitatory="true"><line x1="204.7" y1="574.0" x2="183.9" y2="538.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p2_p5" data-from="p2" data-to="p5" data-excitatory="true"><line x1="204.7" y1="574.0" x2="225.5" y2="538.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p3_p5" data-from="p3" data-to="p5" data-excitatory="true"><line x1="246.3" y1="574.0" x2="225.5" y2="538.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p3_p6" data-from="p3" data-to="p6" data-excitatory="true"><line x1="246.3" y1="574.0" x2="308.6" y2="538.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p4_p7" data-from="p4" data-to="p7" data-excitatory="true"><line x1="183.9" y1="538.0" x2="204.7" y2="502.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p5_p7" data-from="p5" data-to="p7" data-excitatory="true"><line x1="225.5" y1="538.0" x2="204.7" y2="502.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p5_p8" data-from="p5" data-to="p8" data-excitatory="true"><line x1="225.5" y1="538.0" x2="246.3" y2="502.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_p6_p8" data-from="p6" data-to="p8" data-excitatory="true"><line x1="308.6" y1="538.0" x2="246.3" y2="502.0" stroke="#2860b8" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_e_inh_e1" data-from="e_inh" data-to="e1" data-excitatory="false"><line x1="849.0" y1="178.0" x2="828.2" y2="142.0" stroke="#b83030" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_e_inh_e2" data-from="e_inh" data-to="e2" data-excitatory="false"><line x1="849.0" y1="178.0" x2="890.6" y2="178.0" stroke="#b83030" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_e_inh_e3" data-from="e_inh" data-to="e3" data-excitatory="false"><line x1="849.0" y1="178.0" x2="807.5" y2="178.0" stroke="#b83030" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_e_drv1_mac1" data-from="e_drv1" data-to="mac1" data-excitatory="true"><line x1="745.1" y1="142.0" x2="662.0" y2="286.0" stroke="#c89020" stroke-width="1.5" opacity="0.3"/></g>
+  <g data-entity="axon" data-id="ax_e_drv2_mac2" data-from="e_drv2" data-to="mac2" data-excitatory="true"><line x1="869.8" y1="214.0" x2="890.6" y2="250.0" stroke="#c89020" stroke-width="1.5" opacity="0.3"/></g>
+</g>
+<g id="neurons">
+  <g data-entity="neuron" data-id="p_origin" data-team="1" data-type="excitatory" data-x="225.5" data-y="610.0" data-col="3" data-row="15" data-auto-fire="true" data-is-origin="true" data-fire-hz="3">
+    <circle cx="225.5" cy="610.0" r="16" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="225.5" cy="610.0" r="13" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="225.5" y="614.0" text-anchor="middle" fill="#c33" font-size="11" font-weight="bold">&#x2605;</text>
+    <text x="225.5" y="593.0" text-anchor="middle" fill="#c33" font-size="6" font-family="monospace" font-weight="bold">ORIGIN</text>
+    <text x="225.5" y="632.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p_origin</text>
+  </g>
+  <g data-entity="neuron" data-id="p_gen" data-team="1" data-type="excitatory" data-x="267.1" data-y="610.0" data-col="4" data-row="15" data-auto-fire="true" data-is-origin="false" data-fire-hz="5">
+    <circle cx="267.1" cy="610.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="267.1" cy="610.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8" stroke-dasharray="3,2"/>
+    <text x="267.1" y="596.0" text-anchor="middle" fill="#c33" font-size="6" font-family="monospace" font-weight="bold">5Hz</text>
+    <text x="267.1" y="629.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p_gen</text>
+  </g>
+  <g data-entity="neuron" data-id="p1" data-team="1" data-type="excitatory" data-x="163.1" data-y="574.0" data-col="2" data-row="14" data-auto-fire="false" data-is-origin="false">
+    <circle cx="163.1" cy="574.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="163.1" cy="574.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="163.1" y="593.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p1</text>
+  </g>
+  <g data-entity="neuron" data-id="p2" data-team="1" data-type="excitatory" data-x="204.7" data-y="574.0" data-col="3" data-row="14" data-auto-fire="false" data-is-origin="false">
+    <circle cx="204.7" cy="574.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="204.7" cy="574.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="204.7" y="593.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p2</text>
+  </g>
+  <g data-entity="neuron" data-id="p3" data-team="1" data-type="excitatory" data-x="246.3" data-y="574.0" data-col="4" data-row="14" data-auto-fire="false" data-is-origin="false">
+    <circle cx="246.3" cy="574.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="246.3" cy="574.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="246.3" y="593.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p3</text>
+  </g>
+  <g data-entity="neuron" data-id="p4" data-team="1" data-type="excitatory" data-x="183.9" data-y="538.0" data-col="2" data-row="13" data-auto-fire="false" data-is-origin="false">
+    <circle cx="183.9" cy="538.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="183.9" cy="538.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="183.9" y="557.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p4</text>
+  </g>
+  <g data-entity="neuron" data-id="p5" data-team="1" data-type="excitatory" data-x="225.5" data-y="538.0" data-col="3" data-row="13" data-auto-fire="false" data-is-origin="false">
+    <circle cx="225.5" cy="538.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="225.5" cy="538.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="225.5" y="557.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p5</text>
+  </g>
+  <g data-entity="neuron" data-id="p6" data-team="1" data-type="excitatory" data-x="308.6" data-y="538.0" data-col="5" data-row="13" data-auto-fire="false" data-is-origin="false">
+    <circle cx="308.6" cy="538.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="308.6" cy="538.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="308.6" y="557.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p6</text>
+  </g>
+  <g data-entity="neuron" data-id="p7" data-team="1" data-type="excitatory" data-x="204.7" data-y="502.0" data-col="3" data-row="12" data-auto-fire="false" data-is-origin="false">
+    <circle cx="204.7" cy="502.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="204.7" cy="502.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="204.7" y="521.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p7</text>
+  </g>
+  <g data-entity="neuron" data-id="p8" data-team="1" data-type="excitatory" data-x="246.3" data-y="502.0" data-col="4" data-row="12" data-auto-fire="false" data-is-origin="false">
+    <circle cx="246.3" cy="502.0" r="13" fill="none" stroke="rgba(200,50,50,0.45)" stroke-width="1"/>
+    <circle cx="246.3" cy="502.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="246.3" y="521.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">p8</text>
+  </g>
+  <g data-entity="neuron" data-id="e1" data-team="2" data-type="excitatory" data-x="828.2" data-y="142.0" data-col="18" data-row="2" data-auto-fire="false" data-is-origin="false">
+    <circle cx="828.2" cy="142.0" r="13" fill="none" stroke="rgba(210,140,20,0.45)" stroke-width="1"/>
+    <circle cx="828.2" cy="142.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="828.2" y="128.0" text-anchor="middle" fill="#c07000" font-size="6" font-family="monospace" font-weight="bold">TGT</text>
+    <text x="828.2" y="161.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">e1</text>
+  </g>
+  <g data-entity="neuron" data-id="e2" data-team="2" data-type="excitatory" data-x="890.6" data-y="178.0" data-col="19" data-row="3" data-auto-fire="false" data-is-origin="false">
+    <circle cx="890.6" cy="178.0" r="13" fill="none" stroke="rgba(210,140,20,0.45)" stroke-width="1"/>
+    <circle cx="890.6" cy="178.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="890.6" y="164.0" text-anchor="middle" fill="#c07000" font-size="6" font-family="monospace" font-weight="bold">TGT</text>
+    <text x="890.6" y="197.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">e2</text>
+  </g>
+  <g data-entity="neuron" data-id="e3" data-team="2" data-type="excitatory" data-x="807.5" data-y="178.0" data-col="17" data-row="3" data-auto-fire="false" data-is-origin="false">
+    <circle cx="807.5" cy="178.0" r="13" fill="none" stroke="rgba(210,140,20,0.45)" stroke-width="1"/>
+    <circle cx="807.5" cy="178.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8"/>
+    <text x="807.5" y="164.0" text-anchor="middle" fill="#c07000" font-size="6" font-family="monospace" font-weight="bold">TGT</text>
+    <text x="807.5" y="197.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">e3</text>
+  </g>
+  <g data-entity="neuron" data-id="e_inh" data-team="2" data-type="inhibitory" data-x="849.0" data-y="178.0" data-col="18" data-row="3" data-auto-fire="true" data-is-origin="false" data-fire-hz="8">
+    <circle cx="849.0" cy="178.0" r="13" fill="none" stroke="rgba(210,140,20,0.45)" stroke-width="1"/>
+    <circle cx="849.0" cy="178.0" r="10" fill="#f5e8e8" stroke="#b83030" stroke-width="1.8" stroke-dasharray="3,2"/>
+    <text x="849.0" y="164.0" text-anchor="middle" fill="#c07000" font-size="6" font-family="monospace" font-weight="bold">8Hz</text>
+    <text x="849.0" y="197.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">e_inh</text>
+  </g>
+  <g data-entity="neuron" data-id="e_drv1" data-team="2" data-type="excitatory" data-x="745.1" data-y="142.0" data-col="16" data-row="2" data-auto-fire="true" data-is-origin="false" data-fire-hz="4">
+    <circle cx="745.1" cy="142.0" r="13" fill="none" stroke="rgba(210,140,20,0.45)" stroke-width="1"/>
+    <circle cx="745.1" cy="142.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8" stroke-dasharray="3,2"/>
+    <text x="745.1" y="128.0" text-anchor="middle" fill="#c07000" font-size="6" font-family="monospace" font-weight="bold">4Hz</text>
+    <text x="745.1" y="161.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">e_drv1</text>
+  </g>
+  <g data-entity="neuron" data-id="e_drv2" data-team="2" data-type="excitatory" data-x="869.8" data-y="214.0" data-col="19" data-row="4" data-auto-fire="true" data-is-origin="false" data-fire-hz="4">
+    <circle cx="869.8" cy="214.0" r="13" fill="none" stroke="rgba(210,140,20,0.45)" stroke-width="1"/>
+    <circle cx="869.8" cy="214.0" r="10" fill="#e8edf5" stroke="#2860b8" stroke-width="1.8" stroke-dasharray="3,2"/>
+    <text x="869.8" y="200.0" text-anchor="middle" fill="#c07000" font-size="6" font-family="monospace" font-weight="bold">4Hz</text>
+    <text x="869.8" y="233.0" text-anchor="middle" fill="#aaa" font-size="4.5" font-family="monospace">e_drv2</text>
+  </g>
+</g>
+<g id="macrophages">
+  <g data-entity="macrophage" data-id="mac1" data-team="2" data-x="662.0" data-y="286.0" data-driver-id="e_drv1" data-patrol-radius="125" data-state="active">
+    <circle cx="662.0" cy="286.0" r="125" fill="rgba(200,140,30,0.04)" stroke="rgba(200,140,30,0.15)" stroke-width="0.8" stroke-dasharray="4,3"/>
+    <circle cx="662.0" cy="286.0" r="12" fill="#fff5e0" stroke="#d4a030" stroke-width="1.8"/>
+    <circle cx="662.0" cy="286.0" r="5" fill="#f0d080"/>
+    <text x="662.0" y="305.0" text-anchor="middle" fill="#a08020" font-size="5.5" font-family="monospace" font-weight="bold">MACROPHAGE</text>
+    <text x="662.0" y="313.0" text-anchor="middle" fill="#b09030" font-size="4.5" font-family="monospace">mac1</text>
+  </g>
+  <g data-entity="macrophage" data-id="mac2" data-team="2" data-x="890.6" data-y="250.0" data-driver-id="e_drv2" data-patrol-radius="125" data-state="active">
+    <circle cx="890.6" cy="250.0" r="125" fill="rgba(200,140,30,0.04)" stroke="rgba(200,140,30,0.15)" stroke-width="0.8" stroke-dasharray="4,3"/>
+    <circle cx="890.6" cy="250.0" r="12" fill="#fff5e0" stroke="#d4a030" stroke-width="1.8"/>
+    <circle cx="890.6" cy="250.0" r="5" fill="#f0d080"/>
+    <text x="890.6" y="269.0" text-anchor="middle" fill="#a08020" font-size="5.5" font-family="monospace" font-weight="bold">MACROPHAGE</text>
+    <text x="890.6" y="277.0" text-anchor="middle" fill="#b09030" font-size="4.5" font-family="monospace">mac2</text>
+  </g>
+</g>
+<g data-entity="toxin_spawner" data-id="tox1" data-x="537.3" data-y="430.0" data-rate="0.12"><circle cx="537.3" cy="430.0" r="12" fill="rgba(140,60,160,0.06)" stroke="rgba(140,60,160,0.2)" stroke-width="0.8" stroke-dasharray="3,3"/><text x="537.3" y="448.0" text-anchor="middle" fill="#886098" font-size="4.5" font-family="monospace">TOXIN</text></g>
+<g id="annotations">
+<text x="214.7" y="646.0" fill="#c33" font-size="8" font-family="monospace" font-weight="bold" letter-spacing="2">PLAYER BASE</text>
+<text x="849.0" y="98.0" text-anchor="middle" fill="#c07000" font-size="8" font-family="monospace" font-weight="bold" letter-spacing="2">ENEMY OUTPOST</text>
+<rect x="15" y="48" width="225" height="88" rx="3" fill="#fff" stroke="#ccc" stroke-width="0.8"/>
+<text x="24" y="60" fill="#c33" font-size="7" font-family="monospace" font-weight="bold">SCENARIO</text>
+<text x="24" y="72" fill="#555" font-size="6" font-family="monospace">1. Single axon → macrophage eats it</text>
+<text x="24" y="82" fill="#555" font-size="6" font-family="monospace">2. Disable drivers → deactivate macs</text>
+<text x="24" y="92" fill="#555" font-size="6" font-family="monospace">3. Suppressor blocks single inputs</text>
+<text x="24" y="102" fill="#555" font-size="6" font-family="monospace">4. Convergent fan overwhelms inhibition</text>
+<text x="24" y="112" fill="#555" font-size="6" font-family="monospace">5. Drivers depol-blocked → macs dormant</text>
+<text x="24" y="126" fill="#c33" font-size="6.5" font-family="monospace" font-weight="bold">WIN: All 3 TGT neurons calcium-dead</text>
+<text x="24" y="134" fill="#888" font-size="5" font-family="monospace">Astrocytes harvest from any hex adjacent to a vessel</text>
+<rect x="15" y="780" width="520" height="26" rx="3" fill="#fff" stroke="#ccc" stroke-width="0.8"/>
+<circle cx="25" cy="792" r="5" fill="#e8edf5" stroke="#2860b8" stroke-width="1"/>
+<text x="34" y="795" fill="#666" font-size="5.5" font-family="monospace">Excitatory</text>
+<circle cx="100" cy="792" r="5" fill="#f5e8e8" stroke="#b83030" stroke-width="1"/>
+<text x="109" y="795" fill="#666" font-size="5.5" font-family="monospace">Inhibitory</text>
+<circle cx="180" cy="792" r="5" fill="#fff5e0" stroke="#d4a030" stroke-width="1"/>
+<text x="189" y="795" fill="#666" font-size="5.5" font-family="monospace">Macrophage</text>
+<circle cx="265" cy="792" r="5" fill="#f0ede6" stroke="#d8d2c8" stroke-width="1"/>
+<text x="274" y="795" fill="#666" font-size="5.5" font-family="monospace">Open</text>
+<circle cx="315" cy="792" r="5" fill="#d8ceb8" stroke="#b8a888" stroke-width="1"/>
+<text x="324" y="795" fill="#666" font-size="5.5" font-family="monospace">Dense ECM</text>
+<circle cx="390" cy="792" r="5" fill="#c8d8e8" stroke="#a0b8d0" stroke-width="1"/>
+<text x="399" y="795" fill="#666" font-size="5.5" font-family="monospace">CSF Pool</text>
+<circle cx="450" cy="792" r="5" fill="#8a7860" stroke="#6a5840" stroke-width="1"/>
+<text x="459" y="795" fill="#666" font-size="5.5" font-family="monospace">Scar</text>
+<circle cx="495" cy="792" r="5" fill="#e0a0a0" stroke="#c07070" stroke-width="1"/>
+<text x="504" y="795" fill="#666" font-size="5.5" font-family="monospace">Vessel</text>
+</g>
+</svg>

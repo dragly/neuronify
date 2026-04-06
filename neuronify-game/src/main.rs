@@ -1,6 +1,7 @@
 mod app;
 mod components;
 mod constants;
+pub mod map;
 mod rendering;
 mod simulation;
 mod spawning;

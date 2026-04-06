@@ -20,6 +20,7 @@ use crate::spawning;
 // ── ScenarioId ────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[allow(dead_code)]
 pub enum ScenarioId {
     #[default]
     Default,
@@ -32,6 +33,7 @@ pub enum ScenarioId {
 }
 
 impl ScenarioId {
+    #[allow(dead_code)]
     pub fn label(&self) -> &'static str {
         match self {
             ScenarioId::Default => "Default Map",
@@ -44,6 +46,7 @@ impl ScenarioId {
         }
     }
 
+    #[allow(dead_code)]
     pub fn all() -> &'static [ScenarioId] {
         &[
             ScenarioId::Default,
@@ -69,6 +72,141 @@ pub fn setup_scenario(world: &mut hecs::World, dish: &PetriDish, scenario: Scena
         ScenarioId::InhibitoryGate => setup_inhibitory_gate(world, dish),
         ScenarioId::NeuralAssault => setup_neural_assault(world, dish),
     }
+}
+
+/// Load a scenario from an SVG map file into the world.
+/// Returns an error string if the file could not be loaded.
+///
+/// ## Hex tile scales
+/// Two coordinate levels are in play:
+/// - **Map hexes** (large): the SVG terrain cells, each ~24 SVG-px radius → `HEX_RADIUS_WORLD`
+///   world units after scaling. These define terrain type, passability, and resource locations.
+/// - **Pathfinding hexes** (fine): the A* grid (`HexGrid`, cell size `HEX_GRID_CELL_SIZE = 4.0`).
+///   Several fine cells fit inside each large map hex, giving unit movement sub-hex granularity.
+pub fn setup_scenario_from_svg(
+    world: &mut hecs::World,
+    dish: &mut PetriDish,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    use crate::map::{load_scenario, NeuronDefType};
+    use std::collections::HashMap;
+
+    let map = load_scenario(path).map_err(|e| e.to_string())?;
+    world.clear();
+
+    // ── Coordinate transform ──────────────────────────────────────────────────
+    // SVG viewBox is 0 0 1116 812. Map centre → world origin.
+    //
+    // Scale: SVG hex radius = 24 px → HEX_RADIUS_WORLD world units.
+    // With SCALE = 0.28 each large map hex is ~6.7 world units radius.
+    // The fine A* pathfinding grid (cell size 4.0) gives ~1.7 cells per hex
+    // radius — several pathfinding cells per map hex for sub-hex granularity.
+    //
+    // Rotation: the SVG is laid out landscape (wider in x). Mapping SVG-y → world-x
+    // and SVG-x → world-(-z) rotates the map 90° so it lies flat when the camera
+    // looks along +z.
+    const SVG_CX: f32 = 558.0;
+    const SVG_CY: f32 = 406.0;
+    const SCALE: f32 = 0.28;
+
+    let svg_to_world = |svg_x: f32, svg_y: f32| -> Vec3 {
+        Vec3::new(
+            -(svg_x - SVG_CX) * SCALE,
+            0.0,
+            -(svg_y - SVG_CY) * SCALE,
+        )
+    };
+
+    // Expand the petri dish to contain the full map (SVG extents after scaling:
+    // x: ±406*0.28 ≈ ±114, z: ±558*0.28 ≈ ±156 → max radius ~194).
+    dish.radius = 220.0;
+
+    // ── Spawn neurons ─────────────────────────────────────────────────────────
+    let mut neuron_entities: HashMap<String, (hecs::Entity, Vec3)> = HashMap::new();
+
+    for n in &map.neurons {
+        let pos = svg_to_world(n.x, n.y);
+        let neuron_type = match n.neuron_type {
+            NeuronDefType::Inhibitory => NeuronType::Inhibitory,
+            NeuronDefType::Excitatory => NeuronType::Excitatory,
+        };
+        let is_player = n.team == 1;
+
+        let mut builder = hecs::EntityBuilder::new();
+        builder.add(Position { position: pos });
+        builder.add(LeakyNeuron::default());
+        builder.add(LeakyDynamics::default());
+        builder.add(LeakCurrent::default());
+        builder.add(neuron_type.clone());
+        builder.add(MetabolicState::default());
+        builder.add(Health::new(NEURON_HEALTH));
+        builder.add(Deletable {});
+        builder.add(neuronify_core::VisualRadius { radius: NODE_RADIUS });
+        builder.add(Selectable { selected: false });
+
+        if matches!(neuron_type, NeuronType::Inhibitory) {
+            builder.add(Inhibitory);
+        }
+
+        if is_player {
+            builder.add(Ownership { player: PlayerId::Player1 });
+            if n.is_origin {
+                builder.add(OriginNeuron { player: PlayerId::Player1 });
+                builder.add(ProductionQueue::default());
+                builder.add(Anchored);
+                builder.add(neuronify_core::VisualRadius { radius: NODE_RADIUS * 1.5 });
+            }
+        }
+
+        // Auto-firing neurons use a RegularSpikeGenerator.
+        if n.auto_fire && n.fire_hz > 0.0 {
+            builder.add(RegularSpikeGenerator {
+                frequency: n.fire_hz as f64,
+            });
+            builder.add(GeneratorDynamics::default());
+        }
+
+        let entity = world.spawn(builder.build());
+        neuron_entities.insert(n.id.clone(), (entity, pos));
+    }
+
+    // ── Spawn dendrites on player neurons ─────────────────────────────────────
+    // Collect player neurons first to avoid borrow issues.
+    let player_neurons: Vec<(hecs::Entity, Vec3, NeuronType)> = map.neurons.iter()
+        .filter(|n| n.team == 1)
+        .filter_map(|n| {
+            let (entity, pos) = neuron_entities.get(&n.id)?;
+            let nt = match n.neuron_type {
+                NeuronDefType::Inhibitory => NeuronType::Inhibitory,
+                NeuronDefType::Excitatory => NeuronType::Excitatory,
+            };
+            Some((*entity, *pos, nt))
+        })
+        .collect();
+
+    for (entity, pos, nt) in player_neurons {
+        spawning::spawn_neuron_dendrites(world, pos, &nt, PlayerId::Player1, entity, 5);
+    }
+
+    // ── Spawn axon compartment chains ─────────────────────────────────────────
+    for axon in &map.axons {
+        let Some(&(from_entity, from_pos)) = neuron_entities.get(&axon.from) else { continue };
+        let Some(&(to_entity, to_pos)) = neuron_entities.get(&axon.to) else { continue };
+        let neuron_type = if axon.excitatory {
+            NeuronType::Excitatory
+        } else {
+            NeuronType::Inhibitory
+        };
+        setup::connect_axon(world, from_entity, from_pos, to_entity, to_pos, neuron_type);
+    }
+
+    // ── Spawn enemy macrophages ───────────────────────────────────────────────
+    for mac in &map.macrophages {
+        let pos = svg_to_world(mac.x, mac.y);
+        spawning::spawn_macrophage(world, pos, Faction::Tumor);
+    }
+
+    Ok(())
 }
 
 // ── Helper: add AxonHealth to all existing Compartments ──────────────────────
