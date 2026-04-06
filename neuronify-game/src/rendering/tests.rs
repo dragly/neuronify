@@ -73,4 +73,26 @@ mod tests {
         create_particle_pipeline(&desc, &particle_buffer, &time_buffer)
             .expect("particle pipeline should compile without errors");
     }
+
+    /// Verify that the neuron and glial toon-mesh pipelines compile without shader errors.
+    #[test]
+    fn test_toon_neuron_pipelines_compile() {
+        let Some((device, _queue)) = pollster::block_on(try_headless_device()) else {
+            eprintln!("No wgpu adapter available – skipping test_toon_neuron_pipelines_compile");
+            return;
+        };
+        let camera = Camera::new(&device);
+        let light = DirectionalLight::new(&device);
+        let desc = RenderingDescriptor {
+            device: &device,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            camera: &camera,
+            light: &light,
+            sample_count: 1,
+        };
+        crate::rendering::create_neuron_pipeline(&desc)
+            .expect("neuron pipeline should compile without errors");
+        crate::rendering::create_glial_pipeline(&desc)
+            .expect("glial pipeline should compile without errors");
+    }
 }

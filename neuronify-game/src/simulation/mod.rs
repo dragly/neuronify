@@ -4,6 +4,8 @@ pub mod combat;
 pub mod economy;
 pub mod metabolism;
 pub mod ownership;
+pub mod pathfinding;
+pub mod production;
 pub mod scenarios;
 pub mod setup;
 pub mod transport;

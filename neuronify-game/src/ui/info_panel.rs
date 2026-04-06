@@ -1,5 +1,5 @@
 use hecs::Entity;
-use neuronify_core::{Compartment, GeneratorDynamics, Inhibitory, LeakyDynamics, LeakyNeuron, RegularSpikeGenerator};
+use neuronify_core::{Compartment, Inhibitory, LeakyDynamics, LeakyNeuron};
 
 use crate::components::*;
 
@@ -11,6 +11,10 @@ pub enum InfoPanelAction {
     EnterAttackMode,
     /// User clicked "Clear target" — app should clear manual targets.
     ClearManualTargets,
+    /// User clicked "Go to" on a selected neuroblast — enter move-destination mode.
+    GoToDestination,
+    /// User clicked "Plant here" — mature selected neuroblast at its current position.
+    PlantNeuroblast,
 }
 
 fn health_bar(ui: &mut egui::Ui, health: &Health) {
@@ -73,8 +77,6 @@ fn draw_attack_section(
                 "Macrophage"
             } else if world.get::<&MicroglialCell>(*t).is_ok() {
                 "Microglia"
-            } else if world.get::<&ReactiveAstrocyte>(*t).is_ok() {
-                "Astrocyte"
             } else if world.get::<&LeakyNeuron>(*t).is_ok() {
                 "Neuron"
             } else {
@@ -185,35 +187,54 @@ fn draw_single_entity(
             egui::Color32::GRAY,
             "Connect glial processes to extract resources",
         );
-    } else if let (Ok(gen), Ok(dyn_)) = (
-        world.get::<&RegularSpikeGenerator>(entity),
-        world.get::<&GeneratorDynamics>(entity),
-    ) {
+    } else if world.get::<&Neuroblast>(entity).is_ok() {
+        let cell_name = if let Ok(nb) = world.get::<&Neuroblast>(entity) {
+            match nb.cell_type {
+                ProducibleCell::ExcitatoryNeuroblast => "Excitatory Neuroblast",
+                ProducibleCell::InhibitoryNeuroblast => "Inhibitory Neuroblast",
+            }
+        } else {
+            "Neuroblast"
+        };
         ui.label(
-            egui::RichText::new("Spike Generator")
+            egui::RichText::new(cell_name)
                 .strong()
-                .color(egui::Color32::from_rgb(255, 160, 30)),
+                .color(egui::Color32::from_rgb(180, 180, 80)),
         );
-        let faction = if world.get::<&Ownership>(entity).is_ok() {
-            "Player"
+        if let Ok(health) = world.get::<&Health>(entity) {
+            health_bar(ui, &health);
+        }
+        let is_idle = world.get::<&MovePath>(entity).is_err();
+        if is_idle {
+            ui.colored_label(egui::Color32::GRAY, "Idle — right-click to move");
+            if ui.button("Plant here").clicked() {
+                return InfoPanelAction::PlantNeuroblast;
+            }
         } else {
-            "Enemy"
-        };
-        ui.label(format!("Faction: {}", faction));
-        ui.label(format!("Frequency: {:.1} Hz", gen.frequency));
-        let period = if gen.frequency > 0.0 { 1.0 / gen.frequency as f64 } else { f64::INFINITY };
-        let elapsed = dyn_.time_since_fire.min(period);
-        let progress = if period > 0.0 && period.is_finite() {
-            (elapsed / period).clamp(0.0, 1.0) as f32
-        } else {
-            1.0
-        };
-        ui.label("Next fire:");
-        ui.add(
-            egui::ProgressBar::new(progress)
-                .fill(egui::Color32::from_rgb(255, 160, 30))
-                .desired_width(160.0),
-        );
+            ui.colored_label(egui::Color32::from_rgb(100, 200, 100), "Migrating...");
+        }
+        if ui.button("Go to").clicked() {
+            return InfoPanelAction::GoToDestination;
+        }
+    } else if world.get::<&MaturingNeuron>(entity).is_ok() {
+        if let Ok(maturing) = world.get::<&MaturingNeuron>(entity) {
+            let name = match maturing.cell_type {
+                ProducibleCell::ExcitatoryNeuroblast => "Excitatory Neuron",
+                ProducibleCell::InhibitoryNeuroblast => "Inhibitory Neuron",
+            };
+            ui.label(
+                egui::RichText::new(name)
+                    .strong()
+                    .color(egui::Color32::from_rgb(120, 120, 200)),
+            );
+            ui.colored_label(egui::Color32::from_rgb(120, 200, 120), "Maturing...");
+            let pct = (maturing.timer / maturing.duration).clamp(0.0, 1.0);
+            ui.add(
+                egui::ProgressBar::new(pct)
+                    .fill(egui::Color32::from_rgb(80, 160, 80))
+                    .desired_width(160.0),
+            );
+        }
     } else if world.get::<&LeakyNeuron>(entity).is_ok() {
         let is_inhibitory = world.get::<&Inhibitory>(entity).is_ok();
         let is_origin = world.get::<&OriginNeuron>(entity).is_ok();
@@ -266,6 +287,31 @@ fn draw_single_entity(
                     egui::Color32::from_rgb(200, 100, 100),
                     "Dormant (no energy)",
                 );
+            }
+        }
+
+        // Production status — only for the origin (radial glial) neuron.
+        if is_origin {
+            if let Ok(queue) = world.get::<&ProductionQueue>(entity) {
+                if let Some(front) = queue.items.front() {
+                    ui.separator();
+                    ui.colored_label(
+                        egui::Color32::from_rgb(80, 200, 255),
+                        format!("Building: {}…", front.item.label()),
+                    );
+                    let pct = (front.timer / front.duration).clamp(0.0, 1.0);
+                    ui.add(
+                        egui::ProgressBar::new(pct)
+                            .fill(egui::Color32::from_rgb(80, 160, 220))
+                            .desired_width(160.0),
+                    );
+                    if queue.items.len() > 1 {
+                        ui.colored_label(
+                            egui::Color32::GRAY,
+                            format!("{} more queued", queue.items.len() - 1),
+                        );
+                    }
+                }
             }
         }
     } else if world.get::<&MacrophageUnit>(entity).is_ok() {
@@ -341,9 +387,8 @@ fn draw_multi_entity(
     // Count unit types.
     let n_macro = entities.iter().filter(|&&e| world.get::<&MacrophageUnit>(e).is_ok()).count();
     let n_micro = entities.iter().filter(|&&e| world.get::<&MicroglialCell>(e).is_ok()).count();
-    let n_astro = entities.iter().filter(|&&e| world.get::<&ReactiveAstrocyte>(e).is_ok()).count();
     let n_neuron = entities.iter().filter(|&&e| world.get::<&LeakyNeuron>(e).is_ok()).count();
-    let n_other = entities.len() - n_macro - n_micro - n_astro - n_neuron;
+    let n_other = entities.len() - n_macro - n_micro - n_neuron;
 
     ui.label(
         egui::RichText::new(format!("{} units selected", entities.len()))
@@ -355,7 +400,6 @@ fn draw_multi_entity(
     let mut parts = Vec::new();
     if n_macro > 0 { parts.push(format!("{n_macro}× Macrophage")); }
     if n_micro > 0 { parts.push(format!("{n_micro}× Microglia")); }
-    if n_astro > 0 { parts.push(format!("{n_astro}× Astrocyte")); }
     if n_neuron > 0 { parts.push(format!("{n_neuron}× Neuron")); }
     if n_other > 0 { parts.push(format!("{n_other}× Other")); }
     ui.label(parts.join(", "));

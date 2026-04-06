@@ -268,6 +268,7 @@ pub fn setup_game(world: &mut hecs::World, _dish: &PetriDish) {
         OriginNeuron {
             player: PlayerId::Player1,
         },
+        ProductionQueue::default(),
         Ownership {
             player: PlayerId::Player1,
         },

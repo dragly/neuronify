@@ -166,6 +166,7 @@ fn setup_the_severing(world: &mut hecs::World, _dish: &PetriDish) {
         },
         Health::new(NEURON_HEALTH),
         OriginNeuron { player: PlayerId::Player1 },
+        ProductionQueue::default(),
         Ownership { player: PlayerId::Player1 },
         Anchored,
         Deletable {},
@@ -239,8 +240,8 @@ fn setup_the_severing(world: &mut hecs::World, _dish: &PetriDish) {
     spawning::spawn_microglial_cell(world, Vec3::new(24.0, 0.0, -6.0), Faction::Tumor);
     spawning::spawn_microglial_cell(world, Vec3::new(28.0, 0.0, 5.0), Faction::Tumor);
 
-    // One reactive astrocyte guards the origin-side (covers x ≈ 0–16).
-    spawning::spawn_reactive_astrocyte(world, Vec3::new(10.0, 0.0, 0.0), Faction::Biological);
+    // One glial cell supports the origin-side neurons.
+    spawning::spawn_glial(world, Vec3::new(10.0, 0.0, 0.0), PlayerId::Player1, 4);
 }
 
 // ── Helper: build excitatory axon chain between two neuron entities ───────────
@@ -333,6 +334,7 @@ fn setup_excitatory_overload(world: &mut hecs::World, _dish: &PetriDish) {
         Health::new(NEURON_HEALTH),
         Ownership { player: PlayerId::Player1 },
         OriginNeuron { player: PlayerId::Player1 },
+        ProductionQueue::default(),
         Deletable {},
         VisualRadius { radius: NODE_RADIUS * 1.5 },
         RegularSpikeGenerator { frequency: 20.0 },
@@ -444,6 +446,7 @@ fn setup_inhibitory_gate(world: &mut hecs::World, _dish: &PetriDish) {
         Health::new(NEURON_HEALTH),
         Ownership { player: PlayerId::Player1 },
         OriginNeuron { player: PlayerId::Player1 },
+        ProductionQueue::default(),
         Deletable {},
         VisualRadius { radius: NODE_RADIUS * 1.5 },
         RegularSpikeGenerator { frequency: 20.0 },
@@ -598,7 +601,7 @@ pub fn run_headless(world: &mut hecs::World, seconds: f64) {
         combat::apply_neuron_engulfment(world, fdt);
         combat::apply_burst_attacks(world, fdt);
         combat::advance_attack_projectiles(world, fdt);
-        combat::apply_glial_absorption(world, fdt);
+
         combat::despawn_dead(world);
         metabolism::metabolic_drain(world, dt);
         metabolism::apply_dormancy(world);
@@ -658,7 +661,7 @@ pub fn run_headless_neural(world: &mut hecs::World, seconds: f64) {
         combat::apply_neuron_engulfment(world, fdt);
         combat::apply_burst_attacks(world, fdt);
         combat::advance_attack_projectiles(world, fdt);
-        combat::apply_glial_absorption(world, fdt);
+
         combat::despawn_dead(world);
         metabolism::metabolic_drain(world, combat_dt);
         metabolism::apply_dormancy(world);

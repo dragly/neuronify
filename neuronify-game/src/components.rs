@@ -115,16 +115,6 @@ pub struct BurstAttack {
     pub cooldown_timer: f32,
 }
 
-/// Stationary area control: drains Health of all enemy MobileUnits within radius,
-/// and periodically fires stagger bolts that apply SlowEffect on hit.
-#[derive(Clone, Debug)]
-pub struct GlialAbsorption {
-    pub absorb_radius: f32,
-    pub absorb_rate: f32,
-    /// Countdown until the next stagger bolt volley.
-    pub stagger_timer: f32,
-}
-
 // ── Unit type markers ─────────────────────────────────────────────────────────
 // Each marker drives rendering (mesh shape/color) and target-selection behavior.
 
@@ -137,9 +127,6 @@ pub struct MacrophageUnit;
 /// Biological fast raider — small lime-green sphere.
 #[derive(Clone, Debug)]
 pub struct TCellUnit;
-/// Biological area control — gold six-pointed star mesh, stationary.
-#[derive(Clone, Debug)]
-pub struct ReactiveAstrocyte;
 
 /// Tech connection cutter.
 #[derive(Clone, Debug)]
@@ -311,6 +298,139 @@ pub struct GlucosePacket {
     pub glucose_amount: f64,
     /// Building blocks carried by this packet.
     pub block_amount: f64,
+}
+
+// ── Production / migration / maturation ──────────────────────────────────────
+
+/// What type of neuron a Neuroblast will become on maturation.
+/// Used by the Neuroblast component and the maturation system.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProducibleCell {
+    ExcitatoryNeuroblast,
+    InhibitoryNeuroblast,
+}
+
+/// Everything the player can queue for production at the origin neuron.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProducibleItem {
+    // Neurons — spawns a Neuroblast that migrates and matures
+    ExcitatoryNeuron,
+    InhibitoryNeuron,
+    // Combat units — direct spawn near origin on completion
+    MicroglialCell,
+    Macrophage,
+    TCell,
+}
+
+impl ProducibleItem {
+    pub fn label(self) -> &'static str {
+        match self {
+            ProducibleItem::ExcitatoryNeuron   => "Excitatory",
+            ProducibleItem::InhibitoryNeuron   => "Inhibitory",
+            ProducibleItem::MicroglialCell     => "Microglia",
+            ProducibleItem::Macrophage         => "Macrophage",
+            ProducibleItem::TCell              => "T-Cell",
+        }
+    }
+
+    pub fn cost(self) -> f64 {
+        match self {
+            ProducibleItem::ExcitatoryNeuron   => crate::constants::NEURON_PRODUCE_COST,
+            ProducibleItem::InhibitoryNeuron   => crate::constants::NEURON_PRODUCE_COST,
+            ProducibleItem::MicroglialCell     => crate::constants::MICROGLIA_PRODUCE_COST,
+            ProducibleItem::Macrophage         => crate::constants::MACROPHAGE_PRODUCE_COST,
+            ProducibleItem::TCell              => crate::constants::TCELL_PRODUCE_COST,
+        }
+    }
+
+    pub fn build_duration(self) -> f32 {
+        match self {
+            ProducibleItem::ExcitatoryNeuron   => crate::constants::NEURON_BUILD_DURATION,
+            ProducibleItem::InhibitoryNeuron   => crate::constants::NEURON_BUILD_DURATION,
+            ProducibleItem::MicroglialCell     => crate::constants::MICROGLIA_BUILD_DURATION,
+            ProducibleItem::Macrophage         => crate::constants::MACROPHAGE_BUILD_DURATION,
+            ProducibleItem::TCell              => crate::constants::TCELL_BUILD_DURATION,
+        }
+    }
+
+    /// Returns the ProducibleCell variant for neuron items; None for combat units.
+    pub fn to_producible_cell(self) -> Option<ProducibleCell> {
+        match self {
+            ProducibleItem::ExcitatoryNeuron  => Some(ProducibleCell::ExcitatoryNeuroblast),
+            ProducibleItem::InhibitoryNeuron  => Some(ProducibleCell::InhibitoryNeuroblast),
+            _ => None,
+        }
+    }
+}
+
+/// One item in the production queue.
+#[derive(Clone, Debug)]
+pub struct QueuedItem {
+    pub item: ProducibleItem,
+    pub timer: f32,
+    pub duration: f32,
+}
+
+/// Build queue attached to the origin neuron.
+/// Items are processed front-to-back; clicking a produce button appends to back.
+#[derive(Clone, Debug, Default)]
+pub struct ProductionQueue {
+    pub items: std::collections::VecDeque<QueuedItem>,
+}
+
+/// Attached to the origin neuron while it is producing a cell.
+/// Removed and replaced by a spawned Neuroblast when `timer >= duration`.
+#[derive(Clone, Debug)]
+pub struct Production {
+    pub cell_type: ProducibleCell,
+    pub timer: f32,
+    pub duration: f32,
+}
+
+/// An immature cell traveling through the soup toward a destination.
+/// Produced at the radial glial cell; becomes a neuron when it arrives.
+/// No MovePath means the unit is idle at spawn.
+#[derive(Clone, Debug)]
+pub struct Neuroblast {
+    pub cell_type: ProducibleCell,
+    pub speed: f32,
+}
+
+/// Ordered list of world-space waypoints for a moving entity.
+/// The entity moves toward `waypoints[0]`, pops it on arrival, repeats.
+#[derive(Clone, Debug)]
+pub struct MovePath {
+    /// Remaining world-space waypoints, front = next target.
+    pub waypoints: Vec<glam::Vec3>,
+    /// Countdown until A* is re-run to account for new obstacles.
+    pub replan_timer: f32,
+}
+
+/// A neuroblast that has arrived at its destination and is maturing into a full neuron.
+#[derive(Clone, Debug)]
+pub struct MaturingNeuron {
+    pub timer: f32,
+    pub duration: f32,
+    pub cell_type: ProducibleCell,
+}
+
+
+/// An in-flight growth cone that lays axon compartments as it advances.
+/// Spawned when the player designates an axon destination; self-destructs on arrival.
+#[derive(Clone, Debug)]
+pub struct GrowthCone {
+    /// Entity of the last compartment placed (starts as the source neuron).
+    pub last_comp: hecs::Entity,
+    /// World position of `last_comp` (cached to avoid repeated lookups).
+    pub last_comp_pos: glam::Vec3,
+    /// Final destination world position.
+    pub target: glam::Vec3,
+    /// If the axon should terminate at a specific neuron soma, its entity.
+    pub target_entity: Option<hecs::Entity>,
+    /// NeuronType of the source neuron (determines axon color/behavior).
+    pub neuron_type: neuronify_core::NeuronType,
+    /// Advance speed in world units per second.
+    pub speed: f32,
 }
 
 /// Which unit type a NeuronSpawner produces when the neuron fires.

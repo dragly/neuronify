@@ -22,14 +22,16 @@ use neuronify_core::{
     MIN_CREATION_DISTANCE_AXON, MIN_CREATION_DISTANCE_DEFAULT, NODE_RADIUS, PHYSICS_DT,
     SELECTION_RANGE, TARGET_FRAME_MS,
 };
+use crate::constants::{COMBAT_DT, GAME_SPEED};
 use crate::rendering::colors::glial_color;
 
 use crate::components::*;
 use crate::constants::*;
-use crate::rendering;
-use crate::simulation::{boundary, cleanup, combat, economy, metabolism, ownership, scenarios, setup, transport};
-use crate::simulation::scenarios::ScenarioId;
 use crate::spawning;
+use crate::rendering;
+use crate::simulation::{boundary, cleanup, combat, economy, metabolism, ownership, production, scenarios, setup, transport};
+use crate::simulation::pathfinding::HexGrid;
+use crate::simulation::scenarios::ScenarioId;
 use crate::tools::*;
 use crate::ui::sidebar;
 
@@ -76,9 +78,18 @@ pub struct GameApp {
     pub touches: HashMap<u64, PhysicalPosition<f64>>,
     pub current_scenario: ScenarioId,
     pub sidebar_icons: Option<crate::ui::sidebar::SidebarIcons>,
+    /// Pathfinding grid rebuilt each frame from current neuroblast positions.
+    pub hex_grid: HexGrid,
+    /// When true, the next right-click or left-click sets the move destination
+    /// for all selected neuroblasts.
+    pub awaiting_move_destination: bool,
+    /// Accumulated wall-clock seconds not yet consumed by combat ticks.
+    pub combat_accumulator: f32,
     pub microglia_mesh: MeshPipeline,
     pub astrocyte_mesh: MeshPipeline,
     pub macrophage_mesh: MeshPipeline,
+    pub neuron_mesh: MeshPipeline,
+    pub glial_mesh: MeshPipeline,
     pub health_bar_meshes: [MeshPipeline; 4],
     pub energy_bar_meshes: [MeshPipeline; 2],
 }
@@ -183,6 +194,10 @@ impl GameApp {
             rendering::create_astrocyte_pipeline(&application.rendering_descriptor()).unwrap();
         let macrophage_mesh =
             rendering::create_macrophage_pipeline(&application.rendering_descriptor()).unwrap();
+        let neuron_mesh =
+            rendering::create_neuron_pipeline(&application.rendering_descriptor()).unwrap();
+        let glial_mesh =
+            rendering::create_glial_pipeline(&application.rendering_descriptor()).unwrap();
         let health_bar_meshes =
             rendering::create_health_bar_pipelines(&application.rendering_descriptor()).unwrap();
         let energy_bar_meshes =
@@ -230,7 +245,7 @@ impl GameApp {
             },
             keyboard: Keyboard { shift_down: false, ctrl_down: false },
             time: 0.0,
-            iterations: 4,
+            iterations: 2,
             fps: 60.0,
             last_update: Utc::now(),
             move_origin: None,
@@ -247,9 +262,14 @@ impl GameApp {
             touches: HashMap::new(),
             current_scenario: ScenarioId::Default,
             sidebar_icons: None,
+            hex_grid: HexGrid::new(HEX_GRID_CELL_SIZE),
+            awaiting_move_destination: false,
+            combat_accumulator: 0.0,
             microglia_mesh,
             astrocyte_mesh,
             macrophage_mesh,
+            neuron_mesh,
+            glial_mesh,
             health_bar_meshes,
             energy_bar_meshes,
         }
@@ -408,42 +428,133 @@ impl GameApp {
 
                 match nearest_target {
                     Some((id, target_pos)) => {
-                        let from_pos = world
-                            .get::<&Position>(ct.from)
-                            .map(|p| p.position)
-                            .unwrap_or(target_pos);
+                        if is_glial_process {
+                            let from_pos = world
+                                .get::<&Position>(ct.from)
+                                .map(|p| p.position)
+                                .unwrap_or(target_pos);
 
-                        // For non-compartment targets (neuron somas, blood vessels) always
-                        // place a fixed bridge compartment just outside the target's surface.
-                        // This compartment has no SpatialDynamics so physics can't drag it in.
-                        let target_is_compartment =
-                            world.get::<&Compartment>(id).is_ok();
-                        let target_vr = world
-                            .get::<&VisualRadius>(id)
-                            .map(|vr| vr.radius)
-                            .unwrap_or(NODE_RADIUS);
+                            // For non-compartment targets (neuron somas, blood vessels) always
+                            // place a fixed bridge compartment just outside the target's surface.
+                            let target_is_compartment = world.get::<&Compartment>(id).is_ok();
+                            let target_vr = world
+                                .get::<&VisualRadius>(id)
+                                .map(|vr| vr.radius)
+                                .unwrap_or(NODE_RADIUS);
+                            let bridge_dist = target_vr + NODE_RADIUS * 0.5;
+                            let needs_bridge = !target_is_compartment
+                                || from_pos.distance(target_pos) > 2.0 * NODE_RADIUS * 1.5;
 
-                        // Bridge distance: just outside the target surface.
-                        let bridge_dist = target_vr + NODE_RADIUS * 0.5;
-                        // Need a bridge if the target is a soma/vessel OR ct.from is too far away.
-                        let needs_bridge = !target_is_compartment
-                            || from_pos.distance(target_pos) > 2.0 * NODE_RADIUS * 1.5;
+                            let final_from = if needs_bridge {
+                                if !economy::try_spend_blocks(economy, COMPARTMENT_SPAWN_COST) {
+                                    return ConnectResult::FundsBlocked;
+                                }
+                                let dir = (from_pos - target_pos).normalize_or_zero();
+                                let bridge_pos = target_pos + dir * bridge_dist;
+                                let neuron_type = world
+                                    .get::<&NeuronType>(ct.from)
+                                    .map(|t| (*t).clone())
+                                    .unwrap_or(NeuronType::Excitatory);
+                                let bridge = world.spawn((
+                                    Position { position: bridge_pos },
+                                    neuron_type,
+                                    Compartment {
+                                        voltage: -10.0,
+                                        m: -0.625,
+                                        h: 0.0,
+                                        n: 0.0,
+                                        influence: 0.0,
+                                        capacitance: 1.0,
+                                        injected_current: 0.0,
+                                        fire_impulse: 0.0,
+                                    },
+                                    StaticConnectionSource {},
+                                    Deletable {},
+                                    Selectable { selected: false },
+                                    GlialProcess,
+                                    ConnectionColor(glial_color()),
+                                ));
+                                let already = world
+                                    .query::<&Connection>()
+                                    .iter()
+                                    .any(|(_, c)| c.from == ct.from && c.to == bridge);
+                                if !already && ct.from != bridge {
+                                    world.spawn((
+                                        Connection {
+                                            from: ct.from,
+                                            to: bridge,
+                                            strength: 1.0,
+                                            directional: false,
+                                        },
+                                        Deletable {},
+                                        CompartmentCurrent {
+                                            capacitance: COUPLING_CAPACITANCE,
+                                        },
+                                    ));
+                                }
+                                bridge
+                            } else {
+                                ct.from
+                            };
 
-                        let final_from = if needs_bridge {
-                            if !economy::try_spend_blocks(economy, COMPARTMENT_SPAWN_COST) {
-                                return ConnectResult::FundsBlocked;
+                            let new_connection = Connection {
+                                from: final_from,
+                                to: id,
+                                strength: 1.0,
+                                directional: false,
+                            };
+                            let connection_exists =
+                                world.query::<&Connection>().iter().any(|(_, c)| {
+                                    c.from == new_connection.from && c.to == new_connection.to
+                                });
+                            if !connection_exists && final_from != id {
+                                world.spawn((
+                                    new_connection,
+                                    Deletable {},
+                                    CompartmentCurrent {
+                                        capacitance: COUPLING_CAPACITANCE,
+                                    },
+                                ));
                             }
-                            let dir = (from_pos - target_pos).normalize_or_zero();
-                            let bridge_pos = target_pos + dir * bridge_dist;
+                            ConnectResult::Done
+                        } else {
+                            // Axon tool: spawn a growth cone that travels to the target.
+                            let from_pos = world
+                                .get::<&Position>(ct.from)
+                                .map(|p| p.position)
+                                .unwrap_or(target_pos);
                             let neuron_type = world
                                 .get::<&NeuronType>(ct.from)
                                 .map(|t| (*t).clone())
                                 .unwrap_or(NeuronType::Excitatory);
-                            // No SpatialDynamics — this compartment sits fixed at the surface.
-                            let bridge = world.spawn((
-                                Position {
-                                    position: bridge_pos,
-                                },
+                            spawning::spawn_growth_cone(
+                                world,
+                                ct.from,
+                                from_pos,
+                                target_pos,
+                                Some(id),
+                                neuron_type,
+                            );
+                            ConnectResult::Done
+                        }
+                    }
+                    None => {
+                        if is_glial_process {
+                            // GlialProcess: click in empty space to lay a process compartment.
+                            if previous_too_near {
+                                return ConnectResult::Continue;
+                            }
+                            if !economy::try_spend_blocks(economy, COMPARTMENT_SPAWN_COST) {
+                                return ConnectResult::FundsBlocked;
+                            }
+                            let neuron_type =
+                                if let Ok(neuron_type) = world.get::<&NeuronType>(ct.from) {
+                                    (*neuron_type).clone()
+                                } else {
+                                    NeuronType::Excitatory
+                                };
+                            let compartment_builder = world.spawn((
+                                Position { position: mouse_position },
                                 neuron_type,
                                 Compartment {
                                     voltage: -10.0,
@@ -458,113 +569,35 @@ impl GameApp {
                                 StaticConnectionSource {},
                                 Deletable {},
                                 Selectable { selected: false },
+                                SpatialDynamics {
+                                    velocity: Vec3::ZERO,
+                                    acceleration: Vec3::ZERO,
+                                },
+                                GlialProcess,
+                                ConnectionColor(glial_color()),
                             ));
-                            if is_glial_process {
-                                let _ = world.insert_one(bridge, GlialProcess);
-                                let _ = world.insert_one(bridge, ConnectionColor(glial_color()));
-                            }
-                            let already = world.query::<&Connection>().iter().any(|(_, c)| {
-                                c.from == ct.from && c.to == bridge
-                            });
-                            if !already && ct.from != bridge {
-                                world.spawn((
-                                    Connection {
-                                        from: ct.from,
-                                        to: bridge,
-                                        strength: 1.0,
-                                        directional: false,
-                                    },
-                                    Deletable {},
-                                    CompartmentCurrent {
-                                        capacitance: COUPLING_CAPACITANCE,
-                                    },
-                                ));
-                            }
-                            bridge
-                        } else {
-                            ct.from
-                        };
-
-                        let new_connection = Connection {
-                            from: final_from,
-                            to: id,
-                            strength: 1.0,
-                            directional: !is_glial_process,
-                        };
-                        let connection_exists =
-                            world.query::<&Connection>().iter().any(|(_, c)| {
-                                c.from == new_connection.from && c.to == new_connection.to
-                            });
-                        if !connection_exists && final_from != id {
                             world.spawn((
-                                new_connection,
+                                Connection {
+                                    from: ct.from,
+                                    to: compartment_builder,
+                                    strength: 1.0,
+                                    directional: false,
+                                },
                                 Deletable {},
                                 CompartmentCurrent {
                                     capacitance: COUPLING_CAPACITANCE,
                                 },
                             ));
-                        }
-                        ConnectResult::Done
-                    }
-                    None => {
-                        if previous_too_near {
-                            return ConnectResult::Continue;
-                        }
-                        if !economy::try_spend_blocks(economy, COMPARTMENT_SPAWN_COST) {
-                            return ConnectResult::FundsBlocked;
-                        }
-                        let neuron_type = if let Ok(neuron_type) = world.get::<&NeuronType>(ct.from)
-                        {
-                            (*neuron_type).clone()
+                            self.previous_creation =
+                                Some(PreviousCreation { entity: compartment_builder });
+                            ct.start = mouse_position;
+                            ct.from = compartment_builder;
+                            ConnectResult::Continue
                         } else {
-                            NeuronType::Excitatory
-                        };
-                        let compartment_builder = world.spawn((
-                            Position {
-                                position: mouse_position,
-                            },
-                            neuron_type,
-                            Compartment {
-                                voltage: -10.0,
-                                m: -0.625,
-                                h: 0.0,
-                                n: 0.0,
-                                influence: 0.0,
-                                capacitance: 1.0,
-                                injected_current: 0.0,
-                                fire_impulse: 0.0,
-                            },
-                            StaticConnectionSource {},
-                            Deletable {},
-                            Selectable { selected: false },
-                            SpatialDynamics {
-                                velocity: Vec3::ZERO,
-                                acceleration: Vec3::ZERO,
-                            },
-                        ));
-                        // Mark glial process compartments
-                        if is_glial_process {
-                            let _ = world.insert_one(compartment_builder, GlialProcess);
-                            let _ = world.insert_one(compartment_builder, ConnectionColor(glial_color()));
+                            // Axon tool: clicking in empty space does nothing — the growth cone
+                            // handles compartment placement automatically.
+                            ConnectResult::Continue
                         }
-                        world.spawn((
-                            Connection {
-                                from: ct.from,
-                                to: compartment_builder,
-                                strength: 1.0,
-                                directional: false,
-                            },
-                            Deletable {},
-                            CompartmentCurrent {
-                                capacitance: COUPLING_CAPACITANCE,
-                            },
-                        ));
-                        self.previous_creation = Some(PreviousCreation {
-                            entity: compartment_builder,
-                        });
-                        ct.start = mouse_position;
-                        ct.from = compartment_builder;
-                        ConnectResult::Continue
                     }
                 }
             }
@@ -585,8 +618,35 @@ impl GameApp {
         }
     }
 
-    /// Handle right-click: set attack target for selected player units.
+    /// Handle right-click:
+    /// - If selected entities include neuroblasts → set their move destination.
+    /// - Otherwise → set attack target for selected player mobile units.
     fn handle_right_click(&mut self, mouse_pos: Vec3) {
+        // Check if any selected entities are neuroblasts.
+        let has_neuroblasts = self
+            .selected_entities
+            .iter()
+            .any(|&e| self.world.get::<&Neuroblast>(e).is_ok());
+
+        if has_neuroblasts || self.awaiting_move_destination {
+            self.awaiting_move_destination = false;
+            let neuroblasts: Vec<Entity> = self
+                .selected_entities
+                .iter()
+                .copied()
+                .filter(|&e| self.world.get::<&Neuroblast>(e).is_ok())
+                .collect();
+            for entity in neuroblasts {
+                production::set_neuroblast_destination(
+                    &mut self.world,
+                    &self.hex_grid,
+                    entity,
+                    mouse_pos,
+                );
+            }
+            return;
+        }
+
         let clicked = self
             .world
             .query::<&Position>()
@@ -638,37 +698,6 @@ impl GameApp {
         };
 
         match &self.tool {
-            GameTool::ExcitatoryNeuron | GameTool::InhibitoryNeuron => {
-                if previous_too_near {
-                    return;
-                }
-                if !economy::try_spend_blocks(&mut self.p1_economy, NEURON_SPAWN_COST) {
-                    return;
-                }
-                let neuron_type = if self.tool == GameTool::InhibitoryNeuron {
-                    NeuronType::Inhibitory
-                } else {
-                    NeuronType::Excitatory
-                };
-                let entity = spawning::spawn_neuron(
-                    &mut self.world,
-                    mouse_position,
-                    neuron_type,
-                    PlayerId::Player1,
-                );
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            GameTool::GlialCell => {
-                if previous_too_near {
-                    return;
-                }
-                if !economy::try_spend_blocks(&mut self.p1_economy, GLIAL_COST) {
-                    return;
-                }
-                let entity =
-                    spawning::spawn_glial(&mut self.world, mouse_position, PlayerId::Player1, 3);
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
             GameTool::Erase => {
                 let to_delete: Vec<Entity> = self
                     .world
@@ -871,6 +900,7 @@ impl visula::Simulation for GameApp {
         let frame_dt = self.iterations as f64 * LIF_DT;
         self.funds_flash_timer = (self.funds_flash_timer - frame_dt).max(0.0);
         boundary::enforce_petri_boundary(&mut self.world, &self.petri_dish);
+        transport::tick_glial_auto_connect(&mut self.world);
         transport::spawn_glucose_packets(&mut self.world, frame_dt);
         transport::move_glucose_packets(&mut self.world, frame_dt);
         transport::spawn_lactate_packets(&mut self.world, frame_dt);
@@ -882,23 +912,42 @@ impl visula::Simulation for GameApp {
         cleanup::cleanup_orphans(&mut self.world);
         ownership::update_ownership(&mut self.world);
 
-        // Combat systems run on wall-clock time, not neural-simulation time.
-        // frame_dt = iterations * LIF_DT ≈ 0.0004 s — far too small for combat timers.
-        // TARGET_FRAME_MS gives the actual intended frame duration (~16 ms).
-        let combat_dt = (TARGET_FRAME_MS as f32 * 1e-3).min(0.1);
-        combat::tick_dying_units(&mut self.world, combat_dt);
-        combat::tick_slow_effects(&mut self.world, combat_dt);
-        combat::apply_neuron_spawning(&mut self.world, combat_dt);
-        combat::apply_enemy_spawn_points(&mut self.world, combat_dt);
-        combat::move_mobile_units(&mut self.world, combat_dt);
-        combat::apply_unit_repulsion(&mut self.world);
-        combat::apply_unit_repulsion(&mut self.world); // second pass for complete separation
-        combat::apply_axon_cutting(&mut self.world, combat_dt);
-        combat::apply_neuron_engulfment(&mut self.world, combat_dt);
-        combat::apply_burst_attacks(&mut self.world, combat_dt);
-        combat::advance_attack_projectiles(&mut self.world, combat_dt);
-        combat::apply_glial_absorption(&mut self.world, combat_dt);
-        combat::despawn_dead(&mut self.world);
+        // Combat systems use a fixed timestep (COMBAT_DT) so simulation speed is
+        // identical on every machine regardless of display refresh rate.
+        // Elapsed wall-clock time is accumulated and consumed in whole ticks;
+        // the remainder carries over to the next frame.
+        let elapsed = (Utc::now() - self.last_update)
+            .num_microseconds()
+            .unwrap_or(0) as f32
+            * 1e-6;
+        // Cap accumulated time to 200 ms to prevent a spiral of death after stalls.
+        self.combat_accumulator = (self.combat_accumulator + elapsed).min(0.2);
+
+        while self.combat_accumulator >= COMBAT_DT {
+            self.combat_accumulator -= COMBAT_DT;
+            let sim_dt = COMBAT_DT * GAME_SPEED;
+
+            // Production / migration / maturation systems
+            self.hex_grid.rebuild(&self.world);
+            production::tick_production(&mut self.world, sim_dt);
+            production::move_neuroblasts(&mut self.world, &mut self.hex_grid, sim_dt);
+            production::tick_neuroblast_repulsion(&mut self.world, sim_dt);
+            production::tick_maturation(&mut self.world, sim_dt);
+            production::advance_growth_cones(&mut self.world, &mut self.p1_economy, sim_dt);
+
+            combat::tick_dying_units(&mut self.world, sim_dt);
+            combat::tick_slow_effects(&mut self.world, sim_dt);
+            combat::apply_neuron_spawning(&mut self.world, sim_dt);
+            combat::apply_enemy_spawn_points(&mut self.world, sim_dt);
+            combat::move_mobile_units(&mut self.world, sim_dt);
+            combat::apply_unit_repulsion(&mut self.world);
+            combat::apply_unit_repulsion(&mut self.world); // second pass for complete separation
+            combat::apply_axon_cutting(&mut self.world, sim_dt);
+            combat::apply_neuron_engulfment(&mut self.world, sim_dt);
+            combat::apply_burst_attacks(&mut self.world, sim_dt);
+            combat::advance_attack_projectiles(&mut self.world, sim_dt);
+            combat::despawn_dead(&mut self.world);
+        }
 
         // Collect rendering data
         let connection_preview_end = if matches!(self.tool, GameTool::Axon | GameTool::GlialProcess) {
@@ -967,6 +1016,16 @@ impl visula::Simulation for GameApp {
             &application.device,
             self.time as f32,
         );
+        rendering::update_neuron_mesh(
+            &mut self.neuron_mesh,
+            &self.world,
+            &application.device,
+        );
+        rendering::update_glial_mesh(
+            &mut self.glial_mesh,
+            &self.world,
+            &application.device,
+        );
         rendering::update_health_bar_meshes(
             &mut self.health_bar_meshes,
             &self.world,
@@ -996,13 +1055,6 @@ impl visula::Simulation for GameApp {
         );
 
         // FPS tracking
-        let time_diff = Utc::now() - self.last_update;
-        #[cfg(not(target_arch = "wasm32"))]
-        if time_diff < Duration::milliseconds(TARGET_FRAME_MS) {
-            std::thread::sleep(std::time::Duration::from_millis(
-                (Duration::milliseconds(TARGET_FRAME_MS) - time_diff).num_milliseconds() as u64,
-            ))
-        }
         let new_fps = 1.0
             / ((Utc::now() - self.last_update).num_nanoseconds().unwrap() as f64 * 1e-9)
                 .max(0.0000001);
@@ -1016,6 +1068,8 @@ impl visula::Simulation for GameApp {
         self.spheres.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
+        self.neuron_mesh.render(data);
+        self.glial_mesh.render(data);
         self.microglia_mesh.render(data);
         self.astrocyte_mesh.render(data);
         self.macrophage_mesh.render(data);
@@ -1040,6 +1094,9 @@ impl visula::Simulation for GameApp {
         if self.sidebar_icons.is_none() {
             self.sidebar_icons = Some(sidebar::SidebarIcons::new(context));
         }
+        let mut pending_produce: Option<ProducibleItem> = None;
+        let mut pending_cancel = false;
+        let queue_snapshot = production::queue_snapshot(&self.world);
         sidebar::draw_sidebar(
             context,
             &mut self.tool,
@@ -1051,7 +1108,44 @@ impl visula::Simulation for GameApp {
             &mut self.pending_exit_game,
             &mut self.current_scenario,
             self.sidebar_icons.as_ref().unwrap(),
+            &mut pending_produce,
+            &mut pending_cancel,
+            &queue_snapshot,
         );
+
+        // Handle produce button click — append to queue if room and funds available.
+        if let Some(item) = pending_produce {
+            if let Some(origin) = production::origin_entity(&self.world) {
+                let queue_len = self.world
+                    .get::<&ProductionQueue>(origin)
+                    .map(|q| q.items.len())
+                    .unwrap_or(0);
+                if queue_len < QUEUE_MAX_SIZE {
+                    if economy::try_spend_blocks(&mut self.p1_economy, item.cost()) {
+                        if let Ok(mut queue) = self.world.get::<&mut ProductionQueue>(origin) {
+                            queue.items.push_back(QueuedItem {
+                                item,
+                                timer: 0.0,
+                                duration: item.build_duration(),
+                            });
+                        }
+                    } else {
+                        self.funds_flash_timer = 0.5;
+                    }
+                }
+            }
+        }
+
+        // Handle cancel — remove last queued item and refund cost.
+        if pending_cancel {
+            if let Some(origin) = production::origin_entity(&self.world) {
+                if let Ok(mut queue) = self.world.get::<&mut ProductionQueue>(origin) {
+                    if let Some(last) = queue.items.pop_back() {
+                        economy::add_blocks(&mut self.p1_economy, last.item.cost());
+                    }
+                }
+            }
+        }
 
         // Remove any stale selected entities (despawned during combat).
         self.selected_entities.retain(|&e| self.world.contains(e));
@@ -1072,6 +1166,28 @@ impl visula::Simulation for GameApp {
                     for &e in &self.selected_entities {
                         if let Ok(mut m) = self.world.get::<&mut MobileUnit>(e) {
                             m.manual_target = None;
+                        }
+                    }
+                }
+                crate::ui::info_panel::InfoPanelAction::GoToDestination => {
+                    self.awaiting_move_destination = true;
+                }
+                crate::ui::info_panel::InfoPanelAction::PlantNeuroblast => {
+                    for &e in &self.selected_entities {
+                        if self.world.get::<&Neuroblast>(e).is_ok()
+                            && self.world.get::<&MovePath>(e).is_err()
+                        {
+                            let cell_type = self.world
+                                .get::<&Neuroblast>(e)
+                                .ok()
+                                .map(|nb| nb.cell_type)
+                                .unwrap_or(ProducibleCell::ExcitatoryNeuroblast);
+                            let _ = self.world.remove_one::<Neuroblast>(e);
+                            let _ = self.world.insert(e, (MaturingNeuron {
+                                timer: 0.0,
+                                duration: 2.0,
+                                cell_type,
+                            },));
                         }
                     }
                 }

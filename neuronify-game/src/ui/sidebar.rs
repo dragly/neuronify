@@ -1,3 +1,4 @@
+use crate::components::{ProducibleItem, QueuedItem};
 use crate::simulation::scenarios::ScenarioId;
 use crate::tools::GameTool;
 
@@ -76,12 +77,8 @@ fn make_icon(
 }
 
 pub struct SidebarIcons {
-    pub glial:      egui::TextureHandle,
-    pub excitatory: egui::TextureHandle,
-    pub inhibitory: egui::TextureHandle,
     pub axon:       egui::TextureHandle,
     pub process:    egui::TextureHandle,
-    pub astrocyte:  egui::TextureHandle,
     pub select:     egui::TextureHandle,
     pub erase:      egui::TextureHandle,
 }
@@ -89,12 +86,8 @@ pub struct SidebarIcons {
 impl SidebarIcons {
     pub fn new(ctx: &egui::Context) -> Self {
         Self {
-            glial:      make_icon(ctx, "icon_glial",      egui::Color32::from_rgb(0,   180,  60), IconShape::Circle { radius: 10.0 }),
-            excitatory: make_icon(ctx, "icon_excitatory", egui::Color32::from_rgb(80,  120, 200), IconShape::Circle { radius: 13.0 }),
-            inhibitory: make_icon(ctx, "icon_inhibitory", egui::Color32::from_rgb(200,  80,  80), IconShape::Circle { radius: 13.0 }),
             axon:       make_icon(ctx, "icon_axon",       egui::Color32::from_rgb(150, 150, 150), IconShape::HBar),
             process:    make_icon(ctx, "icon_process",    egui::Color32::from_rgb(0,   180,  60), IconShape::HBar),
-            astrocyte:  make_icon(ctx, "icon_astrocyte",  egui::Color32::from_rgb(220, 140,  30), IconShape::Ring),
             select:     make_icon(ctx, "icon_select",     egui::Color32::from_rgb(180, 180, 180), IconShape::Circle { radius: 10.0 }),
             erase:      make_icon(ctx, "icon_erase",      egui::Color32::from_rgb(220,  80,  80), IconShape::Cross),
         }
@@ -114,6 +107,9 @@ pub fn draw_sidebar(
     pending_exit_game: &mut bool,
     current_scenario: &mut ScenarioId,
     icons: &SidebarIcons,
+    pending_produce: &mut Option<ProducibleItem>,
+    pending_cancel: &mut bool,
+    queue: &[QueuedItem],
 ) {
     egui::SidePanel::right("rts_sidebar")
         .min_width(180.0)
@@ -140,19 +136,89 @@ pub fn draw_sidebar(
                     .strong()
                     .color(egui::Color32::GRAY),
             );
+            ui.colored_label(
+                egui::Color32::GRAY,
+                egui::RichText::new("Select origin neuron to produce cells").small(),
+            );
             egui::Grid::new("build_grid")
                 .num_columns(2)
                 .spacing([4.0, 4.0])
                 .show(ui, |ui| {
-                    tool_button(ui, tool, GameTool::GlialCell,        "Astrocyte",  "8B",     Some(&icons.astrocyte));
-                    tool_button(ui, tool, GameTool::ExcitatoryNeuron, "Excitatory", "25B",    Some(&icons.excitatory));
-                    ui.end_row();
-                    tool_button(ui, tool, GameTool::InhibitoryNeuron, "Inhibitory", "25B",    Some(&icons.inhibitory));
-                    tool_button(ui, tool, GameTool::Axon,             "Axon",       "3B/seg", Some(&icons.axon));
-                    ui.end_row();
-                    tool_button(ui, tool, GameTool::GlialProcess,     "Process",    "3B/seg", Some(&icons.process));
+                    tool_button(ui, tool, GameTool::Axon,         "Axon",    "3B/seg", Some(&icons.axon));
+                    tool_button(ui, tool, GameTool::GlialProcess, "Process", "3B/seg", Some(&icons.process));
                     ui.end_row();
                 });
+
+            ui.separator();
+
+            // PRODUCE section — C&C-style always-accessible build queue
+            ui.label(
+                egui::RichText::new("PRODUCE")
+                    .strong()
+                    .color(egui::Color32::GRAY),
+            );
+
+            const ALL_ITEMS: &[ProducibleItem] = &[
+                ProducibleItem::ExcitatoryNeuron,
+                ProducibleItem::InhibitoryNeuron,
+                ProducibleItem::MicroglialCell,
+                ProducibleItem::Macrophage,
+                ProducibleItem::TCell,
+            ];
+
+            // Count how many of each item are queued.
+            let queued_count = |item: ProducibleItem| -> usize {
+                queue.iter().filter(|q| q.item == item).count()
+            };
+
+            egui::Grid::new("produce_grid")
+                .num_columns(2)
+                .spacing([4.0, 4.0])
+                .show(ui, |ui| {
+                    for (i, &item) in ALL_ITEMS.iter().enumerate() {
+                        let count = queued_count(item);
+                        let label = if count > 0 {
+                            format!("{}\n{:.0}B ({})", item.label(), item.cost(), count)
+                        } else {
+                            format!("{}\n{:.0}B", item.label(), item.cost())
+                        };
+                        let btn = ui.add(
+                            egui::Button::new(egui::RichText::new(label).small())
+                                .min_size(egui::vec2(82.0, 44.0)),
+                        );
+                        if btn.clicked() {
+                            *pending_produce = Some(item);
+                        }
+                        if i % 2 == 1 {
+                            ui.end_row();
+                        }
+                    }
+                });
+
+            // Current build progress.
+            if let Some(front) = queue.first() {
+                let pct = (front.timer / front.duration).clamp(0.0, 1.0);
+                ui.colored_label(
+                    egui::Color32::from_rgb(80, 200, 255),
+                    format!("Building: {}…", front.item.label()),
+                );
+                ui.add(
+                    egui::ProgressBar::new(pct)
+                        .fill(egui::Color32::from_rgb(50, 140, 220))
+                        .desired_width(160.0),
+                );
+                ui.horizontal(|ui| {
+                    if queue.len() > 1 {
+                        ui.colored_label(
+                            egui::Color32::GRAY,
+                            format!("{} in queue", queue.len() - 1),
+                        );
+                    }
+                    if ui.small_button("Cancel").clicked() {
+                        *pending_cancel = true;
+                    }
+                });
+            }
 
             ui.separator();
 

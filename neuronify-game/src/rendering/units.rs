@@ -26,10 +26,9 @@ use visula::primitives::mesh_primitive::MeshVertexAttributes;
 use wgpu::util::DeviceExt;
 
 use crate::components::{
-    Dying, GlialAbsorption, Health, MacrophageUnit, MicroglialCell, MobileUnit, Ownership,
-    PlayerId, ReactiveAstrocyte,
+    Dying, GlialCell, Health, MacrophageUnit, MicroglialCell, MobileUnit, Ownership, PlayerId,
 };
-use neuronify_core::Position;
+use neuronify_core::{Inhibitory, LeakyNeuron, Position};
 
 // ── Vertex helpers ────────────────────────────────────────────────────────────
 
@@ -783,49 +782,9 @@ pub fn update_astrocyte_mesh(
     device: &wgpu::Device,
     time: f32,
 ) {
-    let mut verts = Vec::new();
-    let mut idx   = Vec::new();
-
-    // Body + nucleus for each astrocyte.
-    for (entity, (_, pos)) in world.query::<(&ReactiveAstrocyte, &Position)>().iter() {
-        let seed = (entity.id() as f32) * 2.718;
-        let health_frac = world.get::<&Health>(entity).map(|h| h.fraction()).unwrap_or(1.0);
-        let death_t = world.get::<&Dying>(entity).ok().map(|d| d.timer / d.duration);
-        generate_astrocyte_body(pos.position, time, seed, death_t, ASTROCYTE_BODY_COLOR, &mut verts, &mut idx);
-        generate_astrocyte_nucleus(pos.position, health_frac, time, seed, death_t, ASTROCYTE_NUCLEUS_COLOR, &mut verts, &mut idx);
-    }
-
-    // Tendrils toward enemy mobile units (living player-owned astrocytes only).
-    let mobiles: Vec<(Vec3, bool)> = world
-        .query::<(&MobileUnit, &Position)>()
-        .iter()
-        .map(|(e, (_, p))| {
-            let owned = world
-                .get::<&Ownership>(e)
-                .map(|o| o.player == PlayerId::Player1)
-                .unwrap_or(false);
-            (p.position, owned)
-        })
-        .collect();
-
-    for (entity, (_, absorb, pos)) in world
-        .query::<(&ReactiveAstrocyte, &GlialAbsorption, &Position)>()
-        .iter()
-    {
-        if world.get::<&Dying>(entity).is_ok() { continue; }
-        let Ok(own) = world.get::<&Ownership>(entity) else { continue };
-        if own.player != PlayerId::Player1 { continue; }
-        let a_pos = pos.position;
-        for &(enemy_pos, enemy_owned) in &mobiles {
-            if enemy_owned { continue; }
-            let dist = a_pos.distance(enemy_pos);
-            if dist <= absorb.absorb_radius {
-                generate_tendril(a_pos, enemy_pos, dist, absorb.absorb_radius, ASTROCYTE_TENDRIL_COLOR, &mut verts, &mut idx);
-            }
-        }
-    }
-    flush(mesh, verts, idx, device, "astrocyte");
-    let _ = time;
+    // ReactiveAstrocyte has been removed; clear any leftover geometry.
+    flush(mesh, Vec::new(), Vec::new(), device, "astrocyte");
+    let _ = (world, time);
 }
 
 pub fn update_macrophage_mesh(mesh: &mut MeshPipeline, world: &hecs::World, device: &wgpu::Device, time: f32) {
@@ -839,4 +798,281 @@ pub fn update_macrophage_mesh(mesh: &mut MeshPipeline, world: &hecs::World, devi
         generate_macrophage_cap(pos.position, seed, time, health_frac, death_t, MACROPHAGE_CAP_COLOR, &mut verts, &mut idx);
     }
     flush(mesh, verts, idx, device, "macrophage");
+}
+
+// ── Toon neuron / glial geometry ──────────────────────────────────────────────
+//
+// Soma sphere + dendrite arms built from tapered cylinder segments with wander.
+// Matches the aesthetic of the toon_neurons.rs example but uses MeshPipeline
+// since the game's visula version has no Cylinders primitive.
+
+/// Deterministic pseudo-random float in [-1, 1] given a position in (seed, arm, seg, component).
+fn pseudo_rng(seed: f32, arm: usize, seg: usize, component: usize) -> f32 {
+    let s = seed * 7.3 + arm as f32 * 13.7 + seg as f32 * 17.3 + component as f32 * 23.1;
+    (s.sin() * 43758.5453_f32).fract() * 2.0 - 1.0
+}
+
+/// Low-poly lat-long sphere emitted as triangles.
+fn generate_sphere_low(
+    center: Vec3,
+    radius: f32,
+    rings: usize,
+    sectors: usize,
+    color: [u8; 4],
+    vertices: &mut Vec<MeshVertexAttributes>,
+    indices: &mut Vec<u32>,
+) {
+    if radius <= 0.001 || rings == 0 || sectors < 3 { return; }
+    let base = vertices.len() as u32;
+    let s = sectors as u32;
+
+    // Top pole
+    vertices.push(vert_c([center.x, center.y + radius, center.z], [0.0, 1.0, 0.0], color));
+
+    // Ring vertices (rings bands, not counting poles)
+    for r in 1..=(rings) {
+        let phi = std::f32::consts::PI * r as f32 / (rings + 1) as f32;
+        let y = center.y + radius * phi.cos();
+        let ring_r = radius * phi.sin();
+        for sc in 0..sectors {
+            let theta = std::f32::consts::TAU * sc as f32 / sectors as f32;
+            let (ct, st) = (theta.cos(), theta.sin());
+            let ny = phi.cos();
+            let nxz = phi.sin();
+            vertices.push(vert_c(
+                [center.x + ring_r * ct, y, center.z + ring_r * st],
+                [nxz * ct, ny, nxz * st],
+                color,
+            ));
+        }
+    }
+
+    // Bottom pole
+    vertices.push(vert_c([center.x, center.y - radius, center.z], [0.0, -1.0, 0.0], color));
+
+    let top_pole = base;
+    let bot_pole = base + 1 + (rings * sectors) as u32;
+
+    // Top cap
+    for sc in 0..s {
+        let a = base + 1 + sc;
+        let b = base + 1 + (sc + 1) % s;
+        indices.extend_from_slice(&[top_pole, a, b]);
+    }
+
+    // Middle quads
+    for r in 0..(rings.saturating_sub(1)) {
+        let row_a = base + 1 + (r * sectors) as u32;
+        let row_b = base + 1 + ((r + 1) * sectors) as u32;
+        for sc in 0..s {
+            let a0 = row_a + sc;
+            let a1 = row_a + (sc + 1) % s;
+            let b0 = row_b + sc;
+            let b1 = row_b + (sc + 1) % s;
+            indices.extend_from_slice(&[a0, a1, b1, a0, b1, b0]);
+        }
+    }
+
+    // Bottom cap
+    let last_row = base + 1 + ((rings - 1) * sectors) as u32;
+    for sc in 0..s {
+        let a = last_row + sc;
+        let b = last_row + (sc + 1) % s;
+        indices.extend_from_slice(&[bot_pole, b, a]);
+    }
+}
+
+/// Low-poly tapered cylinder from `start` (radius `r_start`) to `end` (radius `r_end`).
+/// Orientation is computed from the axis, so arms can point in any direction.
+fn generate_tapered_cylinder(
+    start: Vec3,
+    end: Vec3,
+    r_start: f32,
+    r_end: f32,
+    sides: usize,
+    color: [u8; 4],
+    vertices: &mut Vec<MeshVertexAttributes>,
+    indices: &mut Vec<u32>,
+) {
+    let axis = end - start;
+    let len = axis.length();
+    if len < 0.001 || sides < 3 { return; }
+    let axis_n = axis / len;
+
+    // Build two perpendicular vectors via Gram-Schmidt
+    let perp = if axis_n.x.abs() < 0.9 {
+        Vec3::X
+    } else {
+        Vec3::Y
+    };
+    let u = axis_n.cross(perp).normalize_or_zero();
+    let v = axis_n.cross(u);
+
+    let base = vertices.len() as u32;
+    let s = sides as u32;
+
+    // Start ring
+    for i in 0..sides {
+        let a = std::f32::consts::TAU * i as f32 / sides as f32;
+        let (ca, sa) = (a.cos(), a.sin());
+        let p = start + u * (r_start * ca) + v * (r_start * sa);
+        let n = (u * ca + v * sa).normalize_or_zero();
+        vertices.push(vert_c([p.x, p.y, p.z], [n.x, n.y, n.z], color));
+    }
+
+    // End ring
+    for i in 0..sides {
+        let a = std::f32::consts::TAU * i as f32 / sides as f32;
+        let (ca, sa) = (a.cos(), a.sin());
+        let p = end + u * (r_end * ca) + v * (r_end * sa);
+        let n = (u * ca + v * sa).normalize_or_zero();
+        vertices.push(vert_c([p.x, p.y, p.z], [n.x, n.y, n.z], color));
+    }
+
+    // Side quads
+    let top_ring = base;
+    let bot_ring = base + s;
+    for i in 0..s {
+        let t0 = top_ring + i;
+        let t1 = top_ring + (i + 1) % s;
+        let b0 = bot_ring + i;
+        let b1 = bot_ring + (i + 1) % s;
+        indices.extend_from_slice(&[t0, t1, b1, t0, b1, b0]);
+    }
+}
+
+// ── Constants for toon neurons and glia ───────────────────────────────────────
+
+const NEURON_SOMA_RADIUS: f32 = 1.3;
+const NEURON_BASE_RADIUS: f32 = 0.28;
+const NEURON_TIP_RADIUS:  f32 = 0.07;
+const NEURON_ARM_LENGTH:  f32 = 4.5;
+const NEURON_SEGMENTS:    usize = 4;
+const NEURON_CYL_SIDES:   usize = 6;
+const NEURON_WANDER:      f32 = 0.06;
+
+const EXCITATORY_SOMA_COLOR: [u8; 4] = [80, 140, 255, 255];
+const EXCITATORY_ARM_COLOR:  [u8; 4] = [55, 105, 220, 255];
+const INHIBITORY_SOMA_COLOR: [u8; 4] = [220, 65, 65, 255];
+const INHIBITORY_ARM_COLOR:  [u8; 4] = [175, 40, 40, 255];
+
+const GLIAL_SOMA_RADIUS: f32 = 1.8;
+const GLIAL_BASE_RADIUS: f32 = 0.32;
+const GLIAL_TIP_RADIUS:  f32 = 0.08;
+const GLIAL_ARM_LENGTH:  f32 = 5.5;
+const GLIAL_SEGMENTS:    usize = 4;
+const GLIAL_SOMA_COLOR:  [u8; 4] = [210, 140,  10, 255]; // amber
+const GLIAL_ARM_COLOR:   [u8; 4] = [235, 185,  30, 255]; // gold-yellow
+
+/// Generate toon-style soma + dendrite arms for a single entity.
+///
+/// Arms are evenly spaced in the XZ plane with slight random elevation.
+/// Each arm wanders with `wander` radians of random perturbation per segment.
+fn generate_toon_unit(
+    center: Vec3,
+    seed: f32,
+    arm_count: usize,
+    arm_length: f32,
+    segments: usize,
+    soma_radius: f32,
+    base_radius: f32,
+    tip_radius: f32,
+    wander: f32,
+    cyl_sides: usize,
+    soma_color: [u8; 4],
+    arm_color: [u8; 4],
+    vertices: &mut Vec<MeshVertexAttributes>,
+    indices: &mut Vec<u32>,
+) {
+    generate_sphere_low(center, soma_radius, 4, 8, soma_color, vertices, indices);
+
+    let seg_len = arm_length / segments as f32;
+
+    for arm in 0..arm_count {
+        let base_angle = std::f32::consts::TAU * arm as f32 / arm_count as f32 + seed * 0.5;
+        let y_tilt = pseudo_rng(seed, arm, 0, 2) * 0.3;
+        let horiz = Vec3::new(base_angle.cos(), 0.0, base_angle.sin());
+        let mut dir = (horiz + Vec3::Y * y_tilt).normalize_or_zero();
+        if dir.length_squared() < 0.01 { dir = horiz; }
+
+        let mut pos = center + dir * soma_radius;
+
+        for seg in 0..segments {
+            let t_start = seg as f32 / segments as f32;
+            let t_end   = (seg + 1) as f32 / segments as f32;
+            let r_start = base_radius + (tip_radius - base_radius) * t_start;
+            let r_end   = base_radius + (tip_radius - base_radius) * t_end;
+
+            let next_pos = pos + dir * seg_len;
+            generate_tapered_cylinder(pos, next_pos, r_start, r_end, cyl_sides, arm_color, vertices, indices);
+
+            // Joint sphere between segments (not at the very tip)
+            if seg + 1 < segments {
+                generate_sphere_low(next_pos, r_end * 1.3, 3, 6, arm_color, vertices, indices);
+            }
+
+            pos = next_pos;
+
+            // Wander: perturb direction by small random amounts
+            let wx = pseudo_rng(seed, arm, seg, 0) * wander;
+            let wy = pseudo_rng(seed, arm, seg, 1) * wander * 0.4;
+            let wz = pseudo_rng(seed, arm, seg, 2) * wander;
+            dir = (dir + Vec3::new(wx, wy, wz)).normalize_or_zero();
+            if dir.length_squared() < 0.01 { dir = horiz; }
+        }
+    }
+}
+
+// ── Pipeline creation ─────────────────────────────────────────────────────────
+
+pub fn create_neuron_pipeline(rd: &RenderingDescriptor) -> Result<MeshPipeline, Box<dyn std::error::Error>> {
+    make_vertex_color_pipeline(rd)
+}
+
+pub fn create_glial_pipeline(rd: &RenderingDescriptor) -> Result<MeshPipeline, Box<dyn std::error::Error>> {
+    make_vertex_color_pipeline(rd)
+}
+
+// ── Per-frame buffer updates ──────────────────────────────────────────────────
+
+pub fn update_neuron_mesh(mesh: &mut MeshPipeline, world: &hecs::World, device: &wgpu::Device) {
+    let mut verts = Vec::new();
+    let mut idx   = Vec::new();
+    for (entity, (_, pos)) in world.query::<(&LeakyNeuron, &Position)>().iter() {
+        let seed = entity.id() as f32 * 1.618_034;
+        let arm_count = 4 + (entity.id() % 4) as usize; // 4–7
+        let is_inhibitory = world.get::<&Inhibitory>(entity).is_ok();
+        let (soma_color, arm_color) = if is_inhibitory {
+            (INHIBITORY_SOMA_COLOR, INHIBITORY_ARM_COLOR)
+        } else {
+            (EXCITATORY_SOMA_COLOR, EXCITATORY_ARM_COLOR)
+        };
+        generate_toon_unit(
+            pos.position, seed, arm_count,
+            NEURON_ARM_LENGTH, NEURON_SEGMENTS,
+            NEURON_SOMA_RADIUS, NEURON_BASE_RADIUS, NEURON_TIP_RADIUS,
+            NEURON_WANDER, NEURON_CYL_SIDES,
+            soma_color, arm_color,
+            &mut verts, &mut idx,
+        );
+    }
+    flush(mesh, verts, idx, device, "neuron");
+}
+
+pub fn update_glial_mesh(mesh: &mut MeshPipeline, world: &hecs::World, device: &wgpu::Device) {
+    let mut verts = Vec::new();
+    let mut idx   = Vec::new();
+    for (entity, (_, pos)) in world.query::<(&GlialCell, &Position)>().iter() {
+        let seed = entity.id() as f32 * 2.399_963;
+        let arm_count = 5 + (entity.id() % 3) as usize; // 5–7
+        generate_toon_unit(
+            pos.position, seed, arm_count,
+            GLIAL_ARM_LENGTH, GLIAL_SEGMENTS,
+            GLIAL_SOMA_RADIUS, GLIAL_BASE_RADIUS, GLIAL_TIP_RADIUS,
+            NEURON_WANDER, NEURON_CYL_SIDES,
+            GLIAL_SOMA_COLOR, GLIAL_ARM_COLOR,
+            &mut verts, &mut idx,
+        );
+    }
+    flush(mesh, verts, idx, device, "glial");
 }

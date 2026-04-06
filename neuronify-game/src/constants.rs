@@ -33,6 +33,14 @@ pub const GLIAL_MAX_BLOCKS: f64 = 50.0;
 pub const GLIAL_BLOCK_TRANSFER_RATE: f64 = 10.0;
 pub const GLIAL_COST: f64 = 8.0;
 
+/// Fixed timestep for all combat / movement / production systems.
+/// Using a fixed dt means simulation speed is identical on every machine.
+pub const COMBAT_DT: f32 = 1.0 / 60.0;
+
+/// Global game speed multiplier applied to the dt passed to every combat /
+/// movement / production system.  1.0 = real time, 0.5 = half speed.
+pub const GAME_SPEED: f32 = 1.0;
+
 // Game constants - glucose transport (blood vessel → glial)
 pub const GLUCOSE_PACKET_SPEED: f32 = 60.0;
 pub const GLUCOSE_PACKET_INTERVAL: f64 = 0.15;
@@ -80,17 +88,10 @@ pub const TCELL_BURST_DAMAGE: f32 = 50.0;
 pub const TCELL_BURST_RANGE: f32 = 1.8;
 pub const TCELL_BURST_COOLDOWN: f32 = 3.0;
 
-// Game constants - combat: area control (Reactive Astrocyte / Firewall Node / Tumor Barrier)
-pub const REACTIVE_ASTROCYTE_HEALTH: f32 = 80.0;
-pub const REACTIVE_ASTROCYTE_ABSORB_RADIUS: f32 = 8.0;
-/// Absorption drain rate, HP/s. At 4.0 HP/s a 60 HP macrophage dies in 15 s (~5× the old 3 s).
-pub const REACTIVE_ASTROCYTE_ABSORB_RATE: f32 = 4.0;
 /// Enemy AI will attack nearby player combat units (within this range) before targeting neurons.
 pub const COMBAT_PRIORITY_RANGE: f32 = 15.0;
 /// Duration (seconds) of the death break-apart animation before final despawn.
 pub const DEATH_DURATION: f32 = 1.5;
-/// Seconds between stagger bolt volleys fired by GlialAbsorption.
-pub const ASTROCYTE_STAGGER_COOLDOWN: f32 = 1.2;
 /// Speed multiplier applied to a unit while its SlowEffect is active.
 pub const ASTROCYTE_STAGGER_SLOW_FACTOR: f32 = 0.28;
 /// Duration (seconds) of the SlowEffect applied by a stagger bolt hit.
@@ -99,6 +100,42 @@ pub const ASTROCYTE_STAGGER_SLOW_DURATION: f32 = 1.8;
 // Game constants - axon structural health (added to compartments in combat scenarios)
 pub const AXON_COMPARTMENT_HEALTH: f32 = 50.0;
 
-// Game constants - combat unit build costs (building blocks)
-pub const REACTIVE_ASTROCYTE_COST: f64 = 20.0;
+// Game constants - production queue
+pub const QUEUE_MAX_SIZE: usize = 5;
+
+// Production costs and build durations for all producible items.
+// "PRODUCE" costs are what the player pays; separate from old constants kept for compatibility.
+pub const NEURON_PRODUCE_COST: f64 = 25.0;
+pub const MICROGLIA_PRODUCE_COST: f64 = 15.0;
+pub const MACROPHAGE_PRODUCE_COST: f64 = 20.0;
+pub const TCELL_PRODUCE_COST: f64 = 12.0;
+
+pub const NEURON_BUILD_DURATION: f32 = 3.0;
+pub const MICROGLIA_BUILD_DURATION: f32 = 2.0;
+pub const MACROPHAGE_BUILD_DURATION: f32 = 3.0;
+pub const TCELL_BUILD_DURATION: f32 = 1.5;
+
+// Legacy combat unit build costs (kept for backward compatibility)
 pub const TCELL_COST: f64 = 18.0;
+
+// Game constants - neuroblast production and migration
+/// Building-block cost to produce a neuroblast.
+pub const NEUROBLAST_COST: f64 = 25.0;
+/// Time (seconds) to produce a neuroblast at the radial glial cell.
+pub const NEUROBLAST_PRODUCTION_DURATION: f32 = 2.5;
+/// World-units per second for a migrating neuroblast.
+pub const NEUROBLAST_SPEED: f32 = 25.0;
+/// Health of a neuroblast while migrating.
+pub const NEUROBLAST_HEALTH: f32 = 30.0;
+/// Snap radius (world units): neuroblast stops and begins maturation.
+pub const NEUROBLAST_SNAP_RADIUS: f32 = 15.0;
+/// Side length of each hex cell in the pathfinding grid.
+pub const HEX_GRID_CELL_SIZE: f32 = 4.0;
+
+// Game constants - growth cone (axon building)
+/// World-units per second a growth cone advances.
+pub const GROWTH_CONE_SPEED: f32 = 15.0;
+/// Distance (world units) between successive compartments laid by a growth cone.
+pub const GROWTH_CONE_COMP_SPACING: f32 = 3.5;
+/// How close (world units) a growth cone must be to its target before it completes.
+pub const GROWTH_CONE_SNAP_RADIUS: f32 = 3.0;

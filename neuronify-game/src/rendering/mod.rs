@@ -20,4 +20,6 @@ pub use petri_dish::collect_petri_dish;
 pub use units::{
     create_microglia_pipeline, create_astrocyte_pipeline, create_macrophage_pipeline,
     update_microglia_mesh, update_astrocyte_mesh, update_macrophage_mesh,
+    create_neuron_pipeline, create_glial_pipeline,
+    update_neuron_mesh, update_glial_mesh,
 };

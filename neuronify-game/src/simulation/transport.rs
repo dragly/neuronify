@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use hecs::Entity;
 
-use neuronify_core::{CompartmentCurrent, Connection, Deletable, LeakyNeuron, Position};
+use neuronify_core::{CompartmentCurrent, Connection, Deletable, LeakyNeuron, Position, COUPLING_CAPACITANCE};
 
 use crate::components::*;
 use crate::constants::*;
@@ -450,5 +450,78 @@ pub fn move_glucose_packets(world: &mut hecs::World, dt: f64) {
     // Destroy packets with broken paths
     for packet_entity in destroyed {
         let _ = world.despawn(packet_entity);
+    }
+}
+
+/// Automatically wire each GlialCell to nearby blood vessels and neurons with
+/// Connection + CompartmentCurrent edges so that the glucose/lactate packet
+/// systems can route resources without any manual axon drawing by the player.
+///
+/// Connections are created once and then left in place; they are cleaned up by
+/// the normal `cleanup_orphans` pass when either endpoint is despawned.
+pub fn tick_glial_auto_connect(world: &mut hecs::World) {
+    // Snapshot glial cells.
+    let glial_entities: Vec<hecs::Entity> =
+        world.query::<&GlialCell>().iter().map(|(e, _)| e).collect();
+
+    // Snapshot blood vessel positions.
+    let vessels: Vec<(hecs::Entity, glam::Vec3)> = world
+        .query::<(&BloodVessel, &Position)>()
+        .iter()
+        .map(|(e, (_, p))| (e, p.position))
+        .collect();
+
+    // Snapshot neuron positions (LeakyNeuron = mature neuron soma).
+    let neurons: Vec<(hecs::Entity, glam::Vec3)> = world
+        .query::<(&LeakyNeuron, &Position)>()
+        .iter()
+        .map(|(e, (_, p))| (e, p.position))
+        .collect();
+
+    // Build a set of existing (from, to) connection pairs to avoid duplicates.
+    let existing: std::collections::HashSet<(hecs::Entity, hecs::Entity)> = world
+        .query::<&Connection>()
+        .iter()
+        .map(|(_, c)| (c.from, c.to))
+        .collect();
+
+    let mut to_spawn: Vec<(hecs::Entity, hecs::Entity)> = Vec::new();
+
+    for glial_entity in glial_entities {
+        let (glial_pos, gather_r, distribute_r) =
+            match world.get::<&GlialCell>(glial_entity).ok() {
+                Some(g) => (
+                    world.get::<&Position>(glial_entity).map(|p| p.position).unwrap_or_default(),
+                    g.gather_radius as f32,
+                    g.distribute_radius as f32,
+                ),
+                None => continue,
+            };
+
+        // Connect to blood vessels within gather radius (vessel → glial).
+        for &(vessel_entity, vessel_pos) in &vessels {
+            if glial_pos.distance(vessel_pos) <= gather_r {
+                if !existing.contains(&(vessel_entity, glial_entity)) {
+                    to_spawn.push((vessel_entity, glial_entity));
+                }
+            }
+        }
+
+        // Connect to neurons within distribute radius (glial → neuron).
+        for &(neuron_entity, neuron_pos) in &neurons {
+            if glial_pos.distance(neuron_pos) <= distribute_r {
+                if !existing.contains(&(glial_entity, neuron_entity)) {
+                    to_spawn.push((glial_entity, neuron_entity));
+                }
+            }
+        }
+    }
+
+    for (from, to) in to_spawn {
+        world.spawn((
+            Connection { from, to, strength: 1.0, directional: true },
+            CompartmentCurrent { capacitance: COUPLING_CAPACITANCE },
+            Deletable {},
+        ));
     }
 }

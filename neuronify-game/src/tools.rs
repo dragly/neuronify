@@ -4,10 +4,7 @@ use hecs::Entity;
 #[derive(Clone, Debug, PartialEq)]
 pub enum GameTool {
     Select,
-    ExcitatoryNeuron,
-    InhibitoryNeuron,
     Axon,
-    GlialCell,
     /// Build glial processes — connect glial cells to blood vessels or neurons.
     GlialProcess,
     Erase,

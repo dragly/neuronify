@@ -5,18 +5,18 @@
 //! move → fire (axon/engulf/burst) → advance_projectiles → absorption → despawn.
 
 use glam::Vec3;
-use neuronify_core::{Compartment, LeakyDynamics, LeakyNeuron, OriginNeuron, GeneratorDynamics, Position, VisualRadius};
+use neuronify_core::{Compartment, LeakyDynamics, LeakyNeuron, GeneratorDynamics, Position, VisualRadius};
+use crate::components::OriginNeuron;
 
 use crate::components::{
-    AttackProjectile, AxonCutter, AxonHealth, BurstAttack, Dying, Faction, GlialAbsorption,
+    AttackProjectile, AxonCutter, AxonHealth, BurstAttack, Dying, Faction,
     Health, MacrophageUnit, MetabolicState, MicroglialCell, MobileUnit, NeuronEngulfment,
     EnemySpawnPoint, NeuronSpawnType, NeuronSpawner, Ownership, PlayerId, SlowEffect,
 };
 use crate::spawning;
 use crate::constants::{
-    ASTROCYTE_STAGGER_COOLDOWN, ASTROCYTE_STAGGER_SLOW_DURATION, ASTROCYTE_STAGGER_SLOW_FACTOR,
+    ASTROCYTE_STAGGER_SLOW_DURATION, ASTROCYTE_STAGGER_SLOW_FACTOR,
     ATTACK_PROJECTILE_SPEED, COMBAT_PRIORITY_RANGE, DEATH_DURATION,
-    REACTIVE_ASTROCYTE_ABSORB_RADIUS,
 };
 
 // ── Target finders ────────────────────────────────────────────────────────────
@@ -92,21 +92,11 @@ fn enemy_mobile_positions(world: &hecs::World, my_faction: Faction) -> Vec<(hecs
         .collect()
 }
 
-fn player_astrocyte_positions(world: &hecs::World) -> Vec<(hecs::Entity, Vec3)> {
-    world
-        .query::<(&Position, &GlialAbsorption, &Ownership)>()
-        .iter()
-        .filter(|(_, (_, _, o))| o.player == PlayerId::Player1)
-        .map(|(e, (p, _, _))| (e, p.position))
-        .collect()
-}
-
 // ── 1. Move mobile units ──────────────────────────────────────────────────────
 
 pub fn move_mobile_units(world: &mut hecs::World, dt: f32) {
     let axon_targets = player_axon_positions(world);
     let neuron_targets = player_neuron_positions(world);
-    let astrocyte_targets = player_astrocyte_positions(world);
 
     let mut moves: Vec<(hecs::Entity, Vec3)> = Vec::new();
     let mut target_updates: Vec<(hecs::Entity, Option<hecs::Entity>)> = Vec::new();
@@ -136,34 +126,21 @@ pub fn move_mobile_units(world: &mut hecs::World, dt: f32) {
             let has_burst = world.get::<&BurstAttack>(entity).is_ok();
 
             if faction != Faction::Biological {
-                // Priority 1: If being drained by an astrocyte, attack it.
-                let inside_astrocyte = astrocyte_targets.iter()
-                    .find(|(ae, ap)| {
-                        let r = world.get::<&GlialAbsorption>(*ae)
-                            .map(|g| g.absorb_radius)
-                            .unwrap_or(0.0);
-                        from.distance(*ap) <= r
-                    })
-                    .copied();
-                if let Some((ae, ap)) = inside_astrocyte {
-                    Some((ae, ap))
+                // Priority 1: Nearby player combat units (within COMBAT_PRIORITY_RANGE).
+                let nearby_bio = enemy_mobile_positions(world, faction)
+                    .into_iter()
+                    .filter(|(_, p)| from.distance(*p) <= COMBAT_PRIORITY_RANGE)
+                    .collect::<Vec<_>>();
+                if !nearby_bio.is_empty() {
+                    nearest_of(&nearby_bio, from)
+                } else if has_axon_cutter {
+                    nearest_of(&axon_targets, from)
+                } else if has_engulfment {
+                    nearest_of(&neuron_targets, from)
+                } else if has_burst {
+                    priority_neuron(world, from)
                 } else {
-                    // Priority 2: Nearby player combat units (within COMBAT_PRIORITY_RANGE).
-                    let nearby_bio = enemy_mobile_positions(world, faction)
-                        .into_iter()
-                        .filter(|(_, p)| from.distance(*p) <= COMBAT_PRIORITY_RANGE)
-                        .collect::<Vec<_>>();
-                    if !nearby_bio.is_empty() {
-                        nearest_of(&nearby_bio, from)
-                    } else if has_axon_cutter {
-                        nearest_of(&axon_targets, from)
-                    } else if has_engulfment {
-                        nearest_of(&neuron_targets, from)
-                    } else if has_burst {
-                        priority_neuron(world, from)
-                    } else {
-                        nearest_of(&neuron_targets, from)
-                    }
+                    nearest_of(&neuron_targets, from)
                 }
             } else {
                 let enemies = enemy_mobile_positions(world, Faction::Biological);
@@ -172,20 +149,10 @@ pub fn move_mobile_units(world: &mut hecs::World, dt: f32) {
         };
 
         if let Some((target_entity, target_pos)) = target {
-            // When targeting an astrocyte: stop at absorb_radius − 1.5 so the
-            // macrophage is still inside the absorb field (getting drained) but
-            // the bodies don't visually overlap (combined radii ≈ 5.0 units,
-            // gap = ABSORB_RADIUS − 1.5 − 5.0 ≈ 1.5 units clear).
-            // For all other targets: halt just inside fire_range as before.
-            let is_astrocyte_target = world.get::<&GlialAbsorption>(target_entity).is_ok();
-            let standoff = if is_astrocyte_target {
-                (REACTIVE_ASTROCYTE_ABSORB_RADIUS - 1.5).max(0.0)
-            } else {
-                world
-                    .get::<&NeuronEngulfment>(entity)
-                    .map(|e| (e.fire_range - 0.5).max(0.0))
-                    .unwrap_or(0.0)
-            };
+            let standoff = world
+                .get::<&NeuronEngulfment>(entity)
+                .map(|e| (e.fire_range - 0.5).max(0.0))
+                .unwrap_or(0.0);
             let dist = from.distance(target_pos);
             if dist > standoff {
                 let dir = (target_pos - from).normalize_or_zero();
@@ -204,6 +171,39 @@ pub fn move_mobile_units(world: &mut hecs::World, dt: f32) {
             }
             target_updates.push((entity, Some(target_entity)));
         } else {
+            // No combat target: player-owned biological units drift outward from the
+            // origin so they spread naturally into a perimeter rather than stacking.
+            if faction == Faction::Biological {
+                const SPREAD_RADIUS: f32 = 18.0;
+                if let Some(origin_pos) = world
+                    .query::<&Position>()
+                    .with::<&OriginNeuron>()
+                    .iter()
+                    .next()
+                    .map(|(_, p)| p.position)
+                {
+                    let to_unit = from - origin_pos;
+                    let dist = to_unit.length();
+                    if dist < SPREAD_RADIUS {
+                        let dir = if dist > 0.01 {
+                            to_unit / dist
+                        } else {
+                            // Exactly on the origin: pick a deterministic outward direction
+                            // using the entity's bits so stacked units diverge differently.
+                            let bits = entity.id() as f32;
+                            let a = bits * 2.399_963; // golden angle
+                            Vec3::new(a.cos(), 0.0, a.sin())
+                        };
+                        let speed_scale = world
+                            .get::<&SlowEffect>(entity)
+                            .map(|s| s.factor)
+                            .unwrap_or(1.0);
+                        let step = mobile.speed * speed_scale * dt * 0.5;
+                        let new_pos = from + dir * step;
+                        moves.push((entity, new_pos));
+                    }
+                }
+            }
             target_updates.push((entity, None));
         }
     }
@@ -417,20 +417,9 @@ pub fn apply_neuron_engulfment(world: &mut hecs::World, dt: f32) {
             eng.shoot_timer = new_timer;
         }
 
-        // Retaliation: if this macrophage is inside an astrocyte absorb zone, shoot the astrocyte.
-        let astro_targets = player_astrocyte_positions(world);
-        let threatening = astro_targets.iter()
-            .find(|(ae, ap)| {
-                let r = world.get::<&GlialAbsorption>(*ae)
-                    .map(|g| g.absorb_radius)
-                    .unwrap_or(0.0);
-                pos.distance(*ap) <= r
-            })
-            .map(|(ae, _)| *ae);
-
-        // Find/validate target: retaliation > stored > nearest neuron.
-        let target = threatening
-            .or_else(|| stored_target.filter(|&t| is_alive(world, t)))
+        // Find/validate target: stored > nearest neuron.
+        let target = stored_target
+            .filter(|&t| is_alive(world, t))
             .or_else(|| nearest_of(&player_neuron_positions(world), pos).map(|(e, _)| e));
         let Some(target_entity) = target else { continue };
 
@@ -442,15 +431,8 @@ pub fn apply_neuron_engulfment(world: &mut hecs::World, dt: f32) {
             continue;
         }
 
-        // Range check: fire at neurons only within fire_range;
-        // astrocytes (already inside absorb zone) use the full absorb radius as effective range.
         let Some(target_pos) = entity_pos(world, target_entity) else { continue };
-        let effective_range = if world.get::<&GlialAbsorption>(target_entity).is_ok() {
-            REACTIVE_ASTROCYTE_ABSORB_RADIUS
-        } else {
-            fire_range
-        };
-        if pos.distance(target_pos) > effective_range {
+        if pos.distance(target_pos) > fire_range {
             continue;
         }
 
@@ -598,82 +580,6 @@ pub fn advance_attack_projectiles(world: &mut hecs::World, dt: f32) {
 }
 
 // ── 6. Glial absorption ───────────────────────────────────────────────────────
-
-pub fn apply_glial_absorption(world: &mut hecs::World, dt: f32) {
-    // Snapshot absorbers: (entity, pos, radius, rate, owned, stagger_timer)
-    let absorbers: Vec<(hecs::Entity, Vec3, f32, f32, bool, f32)> = world
-        .query::<(&Position, &GlialAbsorption)>()
-        .iter()
-        .map(|(e, (p, a))| {
-            let owned = world
-                .get::<&Ownership>(e)
-                .map(|o| o.player == PlayerId::Player1)
-                .unwrap_or(false);
-            (e, p.position, a.absorb_radius, a.absorb_rate, owned, a.stagger_timer)
-        })
-        .collect();
-
-    let mobiles: Vec<(hecs::Entity, Vec3, bool)> = world
-        .query::<(&Position, &MobileUnit)>()
-        .iter()
-        .map(|(e, (p, _))| {
-            let owned = world
-                .get::<&Ownership>(e)
-                .map(|o| o.player == PlayerId::Player1)
-                .unwrap_or(false);
-            (e, p.position, owned)
-        })
-        .collect();
-
-    // (astrocyte_pos, target_entity) — stagger bolts to spawn this frame
-    let mut stagger_bolts: Vec<(Vec3, hecs::Entity)> = Vec::new();
-
-    for (absorber_entity, absorber_pos, radius, rate, absorber_owned, timer) in &absorbers {
-        let new_timer = (timer - dt).max(-1.0);
-        if let Ok(mut ga) = world.get::<&mut GlialAbsorption>(*absorber_entity) {
-            ga.stagger_timer = new_timer;
-        }
-
-        for (mobile_entity, mobile_pos, mobile_owned) in &mobiles {
-            if absorber_owned == mobile_owned {
-                continue;
-            }
-            if absorber_pos.distance(*mobile_pos) <= *radius {
-                // Continuous passive drain (non-stagger component).
-                if let Ok(mut health) = world.get::<&mut Health>(*mobile_entity) {
-                    health.current -= rate * dt;
-                }
-                // When the stagger cooldown expires, queue a bolt toward this enemy.
-                if new_timer <= 0.0 {
-                    stagger_bolts.push((*absorber_pos, *mobile_entity));
-                }
-            }
-        }
-
-        // Reset timer once per absorber (after we've queued all bolts for it).
-        if new_timer <= 0.0 && stagger_bolts.iter().any(|(ap, _)| *ap == *absorber_pos) {
-            if let Ok(mut ga) = world.get::<&mut GlialAbsorption>(*absorber_entity) {
-                ga.stagger_timer = ASTROCYTE_STAGGER_COOLDOWN;
-            }
-        }
-    }
-
-    for (from_pos, target) in stagger_bolts {
-        world.spawn((
-            Position { position: from_pos },
-            AttackProjectile {
-                target,
-                speed: ATTACK_PROJECTILE_SPEED * 0.9,
-                health_damage: 0.0,
-                axon_damage: 0.0,
-                slow_duration: ASTROCYTE_STAGGER_SLOW_DURATION,
-                // Warm gold — visually distinct from cyan (microglia) and magenta (macrophage).
-                color: glam::Vec3::new(1.0, 0.82, 0.1),
-                radius: 0.6,
-            },
-        ));
-    }
-}
 
 // ── 7. Tick slow effects ──────────────────────────────────────────────────────
 

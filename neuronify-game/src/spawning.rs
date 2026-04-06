@@ -16,49 +16,45 @@ use crate::constants::*;
 /// Spawn a microglial cell — biological connection cutter.
 /// Moves toward nearest enemy Compartment and drains AxonHealth.
 pub fn spawn_microglial_cell(world: &mut hecs::World, position: Vec3, faction: Faction) -> Entity {
-    world.spawn((
-        Position { position },
-        MicroglialCell,
-        MobileUnit {
-            speed: MICROGLIA_SPEED,
-            target: None,
-            faction,
-            manual_target: None,
-        },
-        AxonCutter {
-            shot_damage: MICROGLIA_SHOT_DAMAGE,
-            shoot_cooldown: MICROGLIA_SHOOT_COOLDOWN,
-            shoot_timer: 0.0,
-        },
-        Health::new(MICROGLIA_HEALTH),
-        Deletable {},
-        VisualRadius { radius: 2.0 },
-    ))
+    let mut builder = hecs::EntityBuilder::new();
+    builder.add(Position { position });
+    builder.add(MicroglialCell);
+    builder.add(MobileUnit { speed: MICROGLIA_SPEED, target: None, faction, manual_target: None });
+    builder.add(AxonCutter {
+        shot_damage: MICROGLIA_SHOT_DAMAGE,
+        shoot_cooldown: MICROGLIA_SHOOT_COOLDOWN,
+        shoot_timer: 0.0,
+    });
+    builder.add(Health::new(MICROGLIA_HEALTH));
+    builder.add(Deletable {});
+    builder.add(VisualRadius { radius: 2.0 });
+    if faction == Faction::Biological {
+        builder.add(Ownership { player: PlayerId::Player1 });
+    }
+    world.spawn(builder.build())
 }
 
 /// Spawn a macrophage — biological neuron destroyer.
 /// Locks onto a single neuron soma and rapidly drains its metabolic energy.
 pub fn spawn_macrophage(world: &mut hecs::World, position: Vec3, faction: Faction) -> Entity {
-    world.spawn((
-        Position { position },
-        MacrophageUnit,
-        MobileUnit {
-            speed: MACROPHAGE_SPEED,
-            target: None,
-            faction,
-            manual_target: None,
-        },
-        NeuronEngulfment {
-            shot_damage: MACROPHAGE_SHOT_DAMAGE,
-            target: None,
-            shoot_cooldown: MACROPHAGE_SHOOT_COOLDOWN,
-            shoot_timer: 0.0,
-            fire_range: MACROPHAGE_FIRE_RANGE,
-        },
-        Health::new(MACROPHAGE_HEALTH),
-        Deletable {},
-        VisualRadius { radius: 3.5 },
-    ))
+    let mut builder = hecs::EntityBuilder::new();
+    builder.add(Position { position });
+    builder.add(MacrophageUnit);
+    builder.add(MobileUnit { speed: MACROPHAGE_SPEED, target: None, faction, manual_target: None });
+    builder.add(NeuronEngulfment {
+        shot_damage: MACROPHAGE_SHOT_DAMAGE,
+        target: None,
+        shoot_cooldown: MACROPHAGE_SHOOT_COOLDOWN,
+        shoot_timer: 0.0,
+        fire_range: MACROPHAGE_FIRE_RANGE,
+    });
+    builder.add(Health::new(MACROPHAGE_HEALTH));
+    builder.add(Deletable {});
+    builder.add(VisualRadius { radius: 3.5 });
+    if faction == Faction::Biological {
+        builder.add(Ownership { player: PlayerId::Player1 });
+    }
+    world.spawn(builder.build())
 }
 
 /// Spawn a T-cell — biological fast raider.
@@ -86,31 +82,6 @@ pub fn spawn_tCell(world: &mut hecs::World, position: Vec3, faction: Faction) ->
     ))
 }
 
-/// Spawn a reactive astrocyte — biological area control, stationary.
-/// Continuously drains Health of all enemy MobileUnits within absorb_radius.
-pub fn spawn_reactive_astrocyte(
-    world: &mut hecs::World,
-    position: Vec3,
-    faction: Faction,
-) -> Entity {
-    let mut builder = hecs::EntityBuilder::new();
-    builder.add(Position { position });
-    builder.add(ReactiveAstrocyte);
-    builder.add(Anchored);
-    builder.add(GlialAbsorption {
-        absorb_radius: REACTIVE_ASTROCYTE_ABSORB_RADIUS,
-        absorb_rate: REACTIVE_ASTROCYTE_ABSORB_RATE,
-        stagger_timer: 0.0,
-    });
-    builder.add(Health::new(REACTIVE_ASTROCYTE_HEALTH));
-    builder.add(Deletable {});
-    builder.add(VisualRadius { radius: 2.8 });
-    if faction == Faction::Biological {
-        builder.add(Ownership { player: PlayerId::Player1 });
-    }
-    world.spawn(builder.build())
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DENDRITE_LENGTH: f32 = 2.5;
@@ -133,11 +104,6 @@ pub fn spawn_glial(
         Deletable {},
         VisualRadius { radius: NODE_RADIUS * 1.3 },
         ConnectionColor(glial_color()),
-        GlialAbsorption {
-            absorb_radius: REACTIVE_ASTROCYTE_ABSORB_RADIUS,
-            absorb_rate: REACTIVE_ASTROCYTE_ABSORB_RATE,
-            stagger_timer: 0.0,
-        },
     ));
 
     for i in 0..num_processes {
@@ -192,6 +158,137 @@ pub fn spawn_glial(
     }
 
     soma
+}
+
+// ── Neuroblast / maturation ───────────────────────────────────────────────────
+
+/// Spawn an immature neuroblast at `pos`.
+/// It stays idle (no `MovePath`) until the player issues a move order.
+pub fn spawn_neuroblast(
+    world: &mut hecs::World,
+    pos: Vec3,
+    cell_type: crate::components::ProducibleCell,
+) -> Entity {
+    world.spawn((
+        Position { position: pos },
+        crate::components::Neuroblast {
+            cell_type,
+            speed: crate::constants::NEUROBLAST_SPEED,
+        },
+        Health::new(crate::constants::NEUROBLAST_HEALTH),
+        Ownership { player: PlayerId::Player1 },
+        Deletable {},
+        Selectable { selected: false },
+        VisualRadius { radius: NODE_RADIUS * 0.6 },
+    ))
+}
+
+/// Convert an existing entity (a matured `MaturingNeuron`) into a full neuron
+/// in-place.  Adds LeakyNeuron, LeakyDynamics, MetabolicState, and dendrites
+/// without touching `Position` or `Ownership`.
+pub fn mature_neuroblast(world: &mut hecs::World, entity: Entity, neuron_type: NeuronType) {
+    let position = world
+        .get::<&Position>(entity)
+        .ok()
+        .map(|p| p.position)
+        .unwrap_or(Vec3::ZERO);
+
+    let is_inhibitory = matches!(neuron_type, NeuronType::Inhibitory);
+
+    let _ = world.insert(
+        entity,
+        (
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            neuron_type.clone(),
+            MetabolicState::default(),
+            VisualRadius { radius: NODE_RADIUS },
+        ),
+    );
+
+    if is_inhibitory {
+        let _ = world.insert_one(entity, Inhibitory);
+    }
+
+    let player = world
+        .get::<&Ownership>(entity)
+        .ok()
+        .map(|o| o.player)
+        .unwrap_or(PlayerId::Player1);
+
+    for i in 0..5usize {
+        let angle = 2.0 * std::f32::consts::PI * i as f32 / 5.0;
+        let direction = Vec3::new(angle.cos(), 0.0, angle.sin());
+
+        let mut prev_entity = entity;
+        for seg in 0..DENDRITE_COMPARTMENTS {
+            let offset = direction * DENDRITE_LENGTH * (seg + 1) as f32;
+            let comp_pos = position + offset;
+
+            let compartment = world.spawn((
+                Position { position: comp_pos },
+                neuron_type.clone(),
+                Compartment {
+                    voltage: -10.0,
+                    m: -0.625,
+                    h: 0.0,
+                    n: 0.0,
+                    influence: 0.0,
+                    capacitance: 1.0,
+                    injected_current: 0.0,
+                    fire_impulse: 0.0,
+                },
+                Dendrite,
+                Ownership { player },
+                StaticConnectionSource {},
+                Deletable {},
+                Selectable { selected: false },
+                SpatialDynamics {
+                    velocity: Vec3::ZERO,
+                    acceleration: Vec3::ZERO,
+                },
+            ));
+
+            world.spawn((
+                Connection {
+                    from: prev_entity,
+                    to: compartment,
+                    strength: 1.0,
+                    directional: false,
+                },
+                Deletable {},
+                CompartmentCurrent {
+                    capacitance: COUPLING_CAPACITANCE,
+                },
+            ));
+
+            prev_entity = compartment;
+        }
+    }
+}
+/// Spawn a growth cone that will travel from `source_pos` toward `target` (or
+/// the live position of `target_entity`), laying axon compartments as it goes.
+pub fn spawn_growth_cone(
+    world: &mut hecs::World,
+    source: hecs::Entity,
+    source_pos: Vec3,
+    target: Vec3,
+    target_entity: Option<hecs::Entity>,
+    neuron_type: NeuronType,
+) -> hecs::Entity {
+    world.spawn((
+        Position { position: source_pos },
+        crate::components::GrowthCone {
+            last_comp: source,
+            last_comp_pos: source_pos,
+            target,
+            target_entity,
+            neuron_type,
+            speed: crate::constants::GROWTH_CONE_SPEED,
+        },
+        Deletable {},
+    ))
 }
 
 /// Spawn a neuron with dendrites arranged radially around the soma.

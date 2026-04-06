@@ -3,6 +3,11 @@ use hecs::Entity;
 use crate::components::{GlialCell, Ownership, PlayerId, PlayerEconomy};
 use crate::constants::GLIAL_BLOCK_TRANSFER_RATE;
 
+/// Refund building blocks into a player's economy (capped at max).
+pub fn add_blocks(economy: &mut PlayerEconomy, amount: f64) {
+    economy.building_blocks = (economy.building_blocks + amount).min(economy.max_building_blocks);
+}
+
 /// Try to deduct building blocks from a player's economy. Returns true if successful.
 pub fn try_spend_blocks(economy: &mut PlayerEconomy, cost: f64) -> bool {
     if economy.building_blocks >= cost {

@@ -8,7 +8,10 @@ use neuronify_core::{
     NeuronType, Position, COMPARTMENT_SPHERE_SCALE, NODE_RADIUS,
 };
 
-use crate::components::{AttackProjectile, GlialCell, GlialProcess, GlucosePacket, LactatePacket, MetabolicState, OriginNeuron, Ownership, TCellUnit};
+use crate::components::{
+    AttackProjectile, GlialCell, GlialProcess, GlucosePacket, GrowthCone, LactatePacket,
+    MaturingNeuron, MetabolicState, Neuroblast, OriginNeuron, Ownership, ProducibleCell, TCellUnit,
+};
 use crate::rendering::colors::{glial_color, player1_color};
 use crate::tools::GameTool;
 
@@ -29,8 +32,11 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 value * base() + (1.0 - value) * blue()
             };
 
-            // Ownership tinting
-            if world.get::<&Ownership>(entity).is_ok() {
+            // Origin neuron: gold/amber so the player can spot their base.
+            if world.get::<&OriginNeuron>(entity).is_ok() {
+                color = srgb(220, 160, 30);
+            } else if world.get::<&Ownership>(entity).is_ok() {
+                // Ownership tinting for other player neurons.
                 color = color * 0.6 + player1_color() * 0.4;
             }
 
@@ -207,6 +213,57 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
         })
         .collect();
 
+    // Neuroblasts — small dim spheres migrating through the soup
+    let neuroblast_spheres: Vec<Sphere> = world
+        .query::<(&Neuroblast, &Position)>()
+        .iter()
+        .map(|(_, (nb, position))| {
+            let color = match nb.cell_type {
+                ProducibleCell::ExcitatoryNeuroblast => srgb(80, 130, 255),
+                ProducibleCell::InhibitoryNeuroblast => srgb(255, 80, 80),
+            };
+            Sphere {
+                position: position.position,
+                color,
+                radius: NODE_RADIUS * 0.8,
+                _padding: Default::default(),
+            }
+        })
+        .collect();
+
+    // Maturing neurons — grow from neuroblast size to full size over maturation time
+    let maturing_spheres: Vec<Sphere> = world
+        .query::<(&MaturingNeuron, &Position)>()
+        .iter()
+        .map(|(_, (maturing, position))| {
+            let t = (maturing.timer / maturing.duration).clamp(0.0, 1.0);
+            let radius = NODE_RADIUS * (0.6 + 0.4 * t);
+            let base_color = match maturing.cell_type {
+                ProducibleCell::ExcitatoryNeuroblast => blue(),
+                ProducibleCell::InhibitoryNeuroblast => red(),
+            };
+            let color = base_color * (0.4 + 0.6 * t);
+            Sphere {
+                position: position.position,
+                color,
+                radius,
+                _padding: Default::default(),
+            }
+        })
+        .collect();
+
+    // Growth cones — bright white-yellow sphere indicating an axon under construction.
+    let growth_cone_spheres: Vec<Sphere> = world
+        .query::<(&GrowthCone, &Position)>()
+        .iter()
+        .map(|(_, (_, position))| Sphere {
+            position: position.position,
+            color: srgb(255, 240, 80),
+            radius: NODE_RADIUS * 0.5,
+            _padding: Default::default(),
+        })
+        .collect();
+
     spheres.extend(lif_neuron_spheres.iter());
     spheres.extend(current_clamp_spheres.iter());
     spheres.extend(generator_spheres.iter());
@@ -217,6 +274,9 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
     spheres.extend(lactate_packet_spheres.iter());
     spheres.extend(attack_projectile_spheres.iter());
     spheres.extend(tcell_spheres.iter());
+    spheres.extend(neuroblast_spheres.iter());
+    spheres.extend(maturing_spheres.iter());
+    spheres.extend(growth_cone_spheres.iter());
 
     spheres
 }
@@ -243,24 +303,9 @@ pub fn collect_placement_preview(
         return spheres;
     }
 
-    if let Some(position) = placement_preview {
-        let ghost_color = match tool {
-            GameTool::ExcitatoryNeuron => blue(),
-            GameTool::InhibitoryNeuron => red(),
-            GameTool::GlialCell => glial_color(),
-            GameTool::Select | GameTool::Erase | GameTool::Axon | GameTool::GlialProcess => {
-                return spheres;
-            }
-        };
-
-        let ghost_color = ghost_color * 0.4 + glam::Vec3::new(1.0, 1.0, 1.0) * 0.6;
-
-        spheres.push(Sphere {
-            position: *position,
-            color: ghost_color,
-            radius: NODE_RADIUS,
-            _padding: Default::default(),
-        });
+    if let Some(_position) = placement_preview {
+        // No direct placement tools remain — all cells are produced via the origin neuron.
+        // Ghost sphere is only shown for connection tools (handled above via connection_preview_end).
     }
 
     spheres
