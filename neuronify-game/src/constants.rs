@@ -31,7 +31,6 @@ pub const GLIAL_DISTRIBUTE_RADIUS: f32 = 12.0;
 pub const GLIAL_MAX_GLUCOSE: f64 = 100.0;
 pub const GLIAL_MAX_BLOCKS: f64 = 50.0;
 pub const GLIAL_BLOCK_TRANSFER_RATE: f64 = 10.0;
-pub const GLIAL_COST: f64 = 8.0;
 
 /// Fixed timestep for all combat / movement / production systems.
 /// Using a fixed dt means simulation speed is identical on every machine.
@@ -50,7 +49,6 @@ pub const LACTATE_PACKET_SPEED: f32 = 50.0;
 pub const LACTATE_PACKET_INTERVAL: f64 = 0.25;
 
 // Game constants - building costs
-pub const NEURON_SPAWN_COST: f64 = 25.0;
 pub const COMPARTMENT_SPAWN_COST: f64 = 3.0;
 
 // Game constants - neurons and glial cells (structural health under attack)
@@ -94,8 +92,6 @@ pub const COMBAT_PRIORITY_RANGE: f32 = 15.0;
 pub const DEATH_DURATION: f32 = 1.5;
 /// Speed multiplier applied to a unit while its SlowEffect is active.
 pub const ASTROCYTE_STAGGER_SLOW_FACTOR: f32 = 0.28;
-/// Duration (seconds) of the SlowEffect applied by a stagger bolt hit.
-pub const ASTROCYTE_STAGGER_SLOW_DURATION: f32 = 1.8;
 
 // Game constants - axon structural health (added to compartments in combat scenarios)
 pub const AXON_COMPARTMENT_HEALTH: f32 = 50.0;
@@ -115,20 +111,11 @@ pub const MICROGLIA_BUILD_DURATION: f32 = 2.0;
 pub const MACROPHAGE_BUILD_DURATION: f32 = 3.0;
 pub const TCELL_BUILD_DURATION: f32 = 1.5;
 
-// Legacy combat unit build costs (kept for backward compatibility)
-pub const TCELL_COST: f64 = 18.0;
-
 // Game constants - neuroblast production and migration
-/// Building-block cost to produce a neuroblast.
-pub const NEUROBLAST_COST: f64 = 25.0;
-/// Time (seconds) to produce a neuroblast at the radial glial cell.
-pub const NEUROBLAST_PRODUCTION_DURATION: f32 = 2.5;
 /// World-units per second for a migrating neuroblast.
 pub const NEUROBLAST_SPEED: f32 = 25.0;
 /// Health of a neuroblast while migrating.
 pub const NEUROBLAST_HEALTH: f32 = 30.0;
-/// Snap radius (world units): neuroblast stops and begins maturation.
-pub const NEUROBLAST_SNAP_RADIUS: f32 = 15.0;
 /// Side length of each hex cell in the pathfinding grid.
 pub const HEX_GRID_CELL_SIZE: f32 = 4.0;
 

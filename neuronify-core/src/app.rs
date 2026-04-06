@@ -1159,6 +1159,7 @@ impl visula::Simulation for Neuronify {
         self.connection_spheres.render(data);
     }
 
+    #[allow(deprecated)]
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
         let in_game = self.petri_dish.is_some();
 
@@ -1184,8 +1185,8 @@ impl visula::Simulation for Neuronify {
                 }
             }
 
-            egui::TopBottomPanel::bottom("game_command_panel")
-                .min_height(80.0)
+            egui::Panel::bottom("game_command_panel")
+                .min_size(80.0)
                 .show(context, |ui| {
                     ui.horizontal(|ui| {
                         // Left: Status panel
@@ -1304,7 +1305,7 @@ impl visula::Simulation for Neuronify {
         }
         if self.edit_enabled || in_game {
             #[cfg(not(target_arch = "wasm32"))]
-            egui::TopBottomPanel::top("top_panel").show(context, |ui| {
+            egui::Panel::top("top_panel").show(context, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.menu_button("File", |ui| {
                         if ui.button("Save").clicked() {

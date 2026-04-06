@@ -128,31 +128,6 @@ pub struct MacrophageUnit;
 #[derive(Clone, Debug)]
 pub struct TCellUnit;
 
-/// Tech connection cutter.
-#[derive(Clone, Debug)]
-pub struct DisruptorDrone;
-/// Tech neuron destroyer.
-#[derive(Clone, Debug)]
-pub struct SiegeSynapse;
-/// Tech fast raider.
-#[derive(Clone, Debug)]
-pub struct NanoProbe;
-/// Tech area control.
-#[derive(Clone, Debug)]
-pub struct FirewallNode;
-
-/// Tumor connection cutter.
-#[derive(Clone, Debug)]
-pub struct SeveringClaw;
-/// Tumor neuron destroyer.
-#[derive(Clone, Debug)]
-pub struct MetastaticBud;
-/// Tumor fast raider.
-#[derive(Clone, Debug)]
-pub struct Invadopod;
-/// Tumor area control.
-#[derive(Clone, Debug)]
-pub struct TumorBarrier;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Ownership {
@@ -221,7 +196,6 @@ pub struct Anchored;
 pub struct Dying {
     pub timer: f32,    // seconds elapsed since death
     pub duration: f32, // total animation duration
-    pub seed: f32,     // per-unit scatter variety (from entity ID)
 }
 
 /// Marker for dendrite compartments (visual distinction from axon compartments).
@@ -353,14 +327,6 @@ impl ProducibleItem {
         }
     }
 
-    /// Returns the ProducibleCell variant for neuron items; None for combat units.
-    pub fn to_producible_cell(self) -> Option<ProducibleCell> {
-        match self {
-            ProducibleItem::ExcitatoryNeuron  => Some(ProducibleCell::ExcitatoryNeuroblast),
-            ProducibleItem::InhibitoryNeuron  => Some(ProducibleCell::InhibitoryNeuroblast),
-            _ => None,
-        }
-    }
 }
 
 /// One item in the production queue.
@@ -378,14 +344,6 @@ pub struct ProductionQueue {
     pub items: std::collections::VecDeque<QueuedItem>,
 }
 
-/// Attached to the origin neuron while it is producing a cell.
-/// Removed and replaced by a spawned Neuroblast when `timer >= duration`.
-#[derive(Clone, Debug)]
-pub struct Production {
-    pub cell_type: ProducibleCell,
-    pub timer: f32,
-    pub duration: f32,
-}
 
 /// An immature cell traveling through the soup toward a destination.
 /// Produced at the radial glial cell; becomes a neuron when it arrives.

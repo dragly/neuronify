@@ -60,7 +60,7 @@ pub fn spawn_macrophage(world: &mut hecs::World, position: Vec3, faction: Factio
 /// Spawn a T-cell — biological fast raider.
 /// Moves at high speed toward the nearest enemy mobile unit; delivers a burst of
 /// damage on contact, then enters a cooldown window of vulnerability.
-pub fn spawn_tCell(world: &mut hecs::World, position: Vec3, faction: Faction) -> Entity {
+pub fn spawn_t_cell(world: &mut hecs::World, position: Vec3, faction: Faction) -> Entity {
     world.spawn((
         Position { position },
         TCellUnit,
@@ -308,15 +308,6 @@ pub fn spawn_growth_cone(
     ))
 }
 
-/// Spawn a neuron with dendrites arranged radially around the soma.
-pub fn spawn_neuron(
-    world: &mut hecs::World,
-    position: Vec3,
-    neuron_type: NeuronType,
-    player: PlayerId,
-) -> Entity {
-    spawn_neuron_with_dendrites(world, position, neuron_type, player, 5)
-}
 
 /// Spawn a neuron soma with `num_dendrites` dendrite branches.
 pub fn spawn_neuron_with_dendrites(

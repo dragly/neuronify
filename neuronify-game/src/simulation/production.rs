@@ -72,7 +72,7 @@ fn spawn_produced_item(world: &mut hecs::World, item: ProducibleItem, origin_pos
             spawning::spawn_macrophage(world, origin_pos + offset, Faction::Biological);
         }
         ProducibleItem::TCell => {
-            spawning::spawn_tCell(world, origin_pos + offset, Faction::Biological);
+            spawning::spawn_t_cell(world, origin_pos + offset, Faction::Biological);
         }
     }
 }
@@ -403,6 +403,7 @@ pub fn tick_maturation(world: &mut hecs::World, dt: f32) {
 
 
 /// Query: does the origin neuron have anything in its production queue?
+#[cfg(test)]
 pub fn is_producing(world: &hecs::World) -> bool {
     world
         .query::<&ProductionQueue>()
@@ -629,7 +630,7 @@ mod tests {
     use neuronify_core::{LeakCurrent, LeakyDynamics, LeakyNeuron, NeuronType, Position, VisualRadius, NODE_RADIUS};
     use crate::components::Anchored;
     use crate::components::{
-        Faction, MetabolicState, MobileUnit, OriginNeuron, Ownership, PlayerId,
+        MetabolicState, OriginNeuron, Ownership, PlayerId,
         ProducibleItem, ProductionQueue, QueuedItem,
     };
     use crate::constants::{NEURON_HEALTH, MAX_NEURON_ENERGY};
@@ -806,7 +807,7 @@ mod tests {
     #[test]
     fn test_set_destination_creates_movepath() {
         let mut world = hecs::World::new();
-        let mut grid = HexGrid::new(HEX_GRID_CELL_SIZE);
+        let grid = HexGrid::new(HEX_GRID_CELL_SIZE);
         let e = spawn_neuroblast_at(&mut world, Vec3::ZERO);
         let goal = Vec3::new(20.0, 0.0, 0.0);
         set_neuroblast_destination(&mut world, &grid, e, goal);

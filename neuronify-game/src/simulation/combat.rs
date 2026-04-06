@@ -298,7 +298,7 @@ pub fn apply_neuron_spawning(world: &mut hecs::World, dt: f32) {
                 spawning::spawn_microglial_cell(world, pos, faction);
             }
             NeuronSpawnType::TCell => {
-                spawning::spawn_tCell(world, pos, faction);
+                spawning::spawn_t_cell(world, pos, faction);
             }
             NeuronSpawnType::Macrophage => {
                 spawning::spawn_macrophage(world, pos, faction);
@@ -325,7 +325,7 @@ pub fn apply_enemy_spawn_points(world: &mut hecs::World, dt: f32) {
     for (pos, faction, spawn_type) in to_spawn {
         match spawn_type {
             NeuronSpawnType::MicroglialCell => spawning::spawn_microglial_cell(world, pos, faction),
-            NeuronSpawnType::TCell => spawning::spawn_tCell(world, pos, faction),
+            NeuronSpawnType::TCell => spawning::spawn_t_cell(world, pos, faction),
             NeuronSpawnType::Macrophage => spawning::spawn_macrophage(world, pos, faction),
         };
     }
@@ -636,12 +636,9 @@ pub fn despawn_dead(world: &mut hecs::World) {
         world.remove_one::<Health>(entity).ok();
         // Also stop it from moving or acting.
         world.remove_one::<MobileUnit>(entity).ok();
-        // Seed for scatter variety: entity ID gives stable per-unit variety.
-        let seed = (entity.id() as f32) * 2.399_f32;
         let _ = world.insert_one(entity, Dying {
             timer: 0.0,
             duration: DEATH_DURATION,
-            seed,
         });
     }
 

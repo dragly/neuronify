@@ -7,7 +7,6 @@ use crate::tools::GameTool;
 enum IconShape {
     Circle { radius: f32 },
     HBar,   // three small circles in a row (axon / process)
-    Ring,   // hollow circle (astrocyte)
     Cross,  // diagonal X (erase)
 }
 
@@ -40,18 +39,6 @@ fn make_icon(
                         if dx * dx + dy * dy <= 5.0 * 5.0 {
                             pixels[y * S + x] = color;
                         }
-                    }
-                }
-            }
-        }
-        IconShape::Ring => {
-            for y in 0..S {
-                for x in 0..S {
-                    let dx = x as f32 - 15.5;
-                    let dy = y as f32 - 15.5;
-                    let r2 = dx * dx + dy * dy;
-                    if r2 <= 14.0 * 14.0 && r2 >= 7.0 * 7.0 {
-                        pixels[y * S + x] = color;
                     }
                 }
             }
@@ -96,6 +83,7 @@ impl SidebarIcons {
 
 // ── Sidebar drawing ───────────────────────────────────────────────────────────
 
+#[allow(deprecated)]
 pub fn draw_sidebar(
     context: &egui::Context,
     tool: &mut GameTool,
@@ -111,9 +99,9 @@ pub fn draw_sidebar(
     pending_cancel: &mut bool,
     queue: &[QueuedItem],
 ) {
-    egui::SidePanel::right("rts_sidebar")
-        .min_width(180.0)
-        .max_width(200.0)
+    egui::Panel::right("rts_sidebar")
+        .min_size(180.0)
+        .max_size(200.0)
         .show(context, |ui| {
             let stats_color = if funds_flash {
                 egui::Color32::from_rgb(220, 60, 60)
