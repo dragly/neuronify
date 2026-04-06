@@ -89,6 +89,7 @@ pub fn setup_scenario_from_svg(
     path: &std::path::Path,
 ) -> Result<(), String> {
     use crate::map::{load_scenario, NeuronDefType};
+    use crate::map::hex::{SVG_CX, SVG_CY, MAP_SCALE};
     use std::collections::HashMap;
 
     let map = load_scenario(path).map_err(|e| e.to_string())?;
@@ -98,22 +99,18 @@ pub fn setup_scenario_from_svg(
     // SVG viewBox is 0 0 1116 812. Map centre → world origin.
     //
     // Scale: SVG hex radius = 24 px → HEX_RADIUS_WORLD world units.
-    // With SCALE = 0.28 each large map hex is ~6.7 world units radius.
+    // With MAP_SCALE = 0.28 each large map hex is ~6.7 world units radius.
     // The fine A* pathfinding grid (cell size 4.0) gives ~1.7 cells per hex
     // radius — several pathfinding cells per map hex for sub-hex granularity.
     //
     // Rotation: the SVG is laid out landscape (wider in x). Mapping SVG-y → world-x
     // and SVG-x → world-(-z) rotates the map 90° so it lies flat when the camera
     // looks along +z.
-    const SVG_CX: f32 = 558.0;
-    const SVG_CY: f32 = 406.0;
-    const SCALE: f32 = 0.28;
-
     let svg_to_world = |svg_x: f32, svg_y: f32| -> Vec3 {
         Vec3::new(
-            -(svg_x - SVG_CX) * SCALE,
+            -(svg_x - SVG_CX) * MAP_SCALE,
             0.0,
-            -(svg_y - SVG_CY) * SCALE,
+            -(svg_y - SVG_CY) * MAP_SCALE,
         )
     };
 

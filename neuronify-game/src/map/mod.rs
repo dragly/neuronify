@@ -3,6 +3,8 @@
 //! Parses a Neuronify RTS scenario SVG file into structured data.
 //! Pure data — no ECS world mutation. Callers convert the result into entities.
 
+pub mod hex;
+
 use std::collections::HashMap;
 use std::path::Path;
 
