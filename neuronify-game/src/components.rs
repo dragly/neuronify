@@ -202,6 +202,11 @@ pub struct Dying {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Dendrite;
 
+/// How many connection hops this compartment is from the soma (1 = directly connected to soma).
+/// Used for depth-based taper in cylinder rendering.
+#[derive(Clone, Copy, Debug)]
+pub struct DendriteDepth(pub u32);
+
 /// Marks a blood vessel as a valid endpoint for axon/dendrite connections.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VesselAnchor;

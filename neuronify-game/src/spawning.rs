@@ -84,29 +84,64 @@ pub fn spawn_t_cell(world: &mut hecs::World, position: Vec3, faction: Faction) -
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DENDRITE_LENGTH: f32 = 2.5;
-const DENDRITE_COMPARTMENTS: usize = 2;
-/// How strongly each arm's direction wanders per segment (radians of random offset per unit length).
-const DENDRITE_WANDER: f32 = 0.5;
+/// Spacing between successive compartments. Must equal spring rest length (2×NODE_RADIUS)
+/// so compartments sit at physics equilibrium after spawning.
+const DENDRITE_LENGTH: f32 = 2.0;
+/// Number of compartments along each primary arm.
+const DENDRITE_COMPARTMENTS: usize = 4;
+/// Number of compartments on each secondary branch.
+const DENDRITE_BRANCH_COMPARTMENTS: usize = 2;
+/// Per-segment wander strength (fraction of step length deflected laterally).
+const DENDRITE_WANDER: f32 = 0.45;
 
-/// Compute deterministic wander-based compartment positions for one dendrite arm.
-/// Returns `DENDRITE_COMPARTMENTS` successive positions along the arm.
-fn arm_positions(soma_pos: Vec3, arm_idx: usize, num_arms: usize, seed: f32) -> Vec<Vec3> {
-    let base_angle = std::f32::consts::TAU * arm_idx as f32 / num_arms as f32 + seed * 0.5;
-    let mut dir = Vec3::new(base_angle.cos(), 0.0, base_angle.sin());
-    let mut pos = soma_pos;
-    let mut out = Vec::with_capacity(DENDRITE_COMPARTMENTS);
-    for seg in 0..DENDRITE_COMPARTMENTS {
-        let wx = (seed * 7.3 + arm_idx as f32 * 13.7 + seg as f32 * 17.3).sin() * DENDRITE_WANDER;
-        let wz = (seed * 11.1 + arm_idx as f32 * 7.7 + seg as f32 * 23.1).cos() * DENDRITE_WANDER;
-        dir = (dir + Vec3::new(wx, 0.0, wz)).normalize_or_zero();
-        if dir.length_squared() < 0.01 {
-            dir = Vec3::new(base_angle.cos(), 0.0, base_angle.sin());
-        }
-        pos += dir * DENDRITE_LENGTH;
-        out.push(pos);
+/// Compute a single wander-perturbed step direction deterministically.
+fn wander_dir(base_dir: Vec3, base_angle: f32, seed: f32, arm_idx: usize, seg: usize, sx: f32, sz: f32) -> Vec3 {
+    let wx = (seed * sx + arm_idx as f32 * 13.7 + seg as f32 * 17.3).sin() * DENDRITE_WANDER;
+    let wz = (seed * sz + arm_idx as f32 * 7.7  + seg as f32 * 23.1).cos() * DENDRITE_WANDER;
+    let d = (base_dir + Vec3::new(wx, 0.0, wz)).normalize_or_zero();
+    if d.length_squared() < 0.01 {
+        Vec3::new(base_angle.cos(), 0.0, base_angle.sin())
+    } else {
+        d
     }
-    out
+}
+
+/// Spawn a sequence of dendrite compartments from `parent_entity`, following a wander path,
+/// and connect them with `Connection + CompartmentCurrent`. Returns the spawned entities.
+fn spawn_dendrite_chain<F>(
+    world: &mut hecs::World,
+    origin: Vec3,
+    base_angle: f32,
+    seed: f32,
+    arm_idx: usize,
+    num_steps: usize,
+    start_depth: u32,
+    parent_entity: hecs::Entity,
+    sx: f32, sz: f32,
+    mut spawn_compartment: F,
+) -> Vec<(hecs::Entity, Vec3, u32)>
+where
+    F: FnMut(&mut hecs::World, Vec3, u32) -> hecs::Entity,
+{
+    let mut dir = Vec3::new(base_angle.cos(), 0.0, base_angle.sin());
+    let mut pos = origin;
+    let mut prev = parent_entity;
+    let mut chain = Vec::with_capacity(num_steps);
+
+    for seg in 0..num_steps {
+        dir = wander_dir(dir, base_angle, seed, arm_idx, seg, sx, sz);
+        pos += dir * DENDRITE_LENGTH;
+        let depth = start_depth + seg as u32 + 1;
+        let entity = spawn_compartment(world, pos, depth);
+        world.spawn((
+            Connection { from: prev, to: entity, strength: 1.0, directional: false },
+            Deletable {},
+            CompartmentCurrent { capacitance: COUPLING_CAPACITANCE },
+        ));
+        chain.push((entity, pos, depth));
+        prev = entity;
+    }
+    chain
 }
 
 /// Spawn a glial cell (astrocyte) with processes arranged radially.
@@ -130,48 +165,58 @@ pub fn spawn_glial(
 
     let seed = soma.id() as f32 * 2.399_963;
     for i in 0..num_processes {
-        let positions = arm_positions(position, i, num_processes, seed);
-        let mut prev_entity = soma;
-        for comp_pos in positions {
-            let compartment = world.spawn((
-                Position { position: comp_pos },
-                NeuronType::Excitatory,
-                Compartment {
-                    voltage: -10.0,
-                    m: -0.625,
-                    h: 0.0,
-                    n: 0.0,
-                    influence: 0.0,
-                    capacitance: 1.0,
-                    injected_current: 0.0,
-                    fire_impulse: 0.0,
-                },
-                GlialProcess,
-                Ownership { player },
-                StaticConnectionSource {},
-                Deletable {},
-                Selectable { selected: false },
-                SpatialDynamics {
-                    velocity: Vec3::ZERO,
-                    acceleration: Vec3::ZERO,
-                },
-                ConnectionColor(glial_color()),
-            ));
+        let base_angle = std::f32::consts::TAU * i as f32 / num_processes as f32 + seed * 0.5;
 
-            world.spawn((
-                Connection {
-                    from: prev_entity,
-                    to: compartment,
-                    strength: 1.0,
-                    directional: false,
-                },
-                Deletable {},
-                CompartmentCurrent {
-                    capacitance: COUPLING_CAPACITANCE,
-                },
-            ));
+        let main_chain = spawn_dendrite_chain(
+            world, position, base_angle, seed, i,
+            DENDRITE_COMPARTMENTS, 0, soma, 7.3, 11.1,
+            |world, pos, depth| {
+                world.spawn((
+                    Position { position: pos },
+                    NeuronType::Excitatory,
+                    Compartment {
+                        voltage: -10.0, m: -0.625, h: 0.0, n: 0.0,
+                        influence: 0.0, capacitance: 1.0,
+                        injected_current: 0.0, fire_impulse: 0.0,
+                    },
+                    GlialProcess,
+                    DendriteDepth(depth),
+                    Ownership { player },
+                    StaticConnectionSource {},
+                    Deletable {},
+                    Selectable { selected: false },
+                    SpatialDynamics { velocity: Vec3::ZERO, acceleration: Vec3::ZERO },
+                    ConnectionColor(glial_color()),
+                ))
+            },
+        );
 
-            prev_entity = compartment;
+        // One branch off the 3rd compartment of each process arm.
+        if let Some(&(branch_parent, branch_origin, branch_depth)) = main_chain.get(2) {
+            let branch_angle = base_angle + 1.1 + (seed * 3.1 + i as f32 * 2.7).sin() * 0.6;
+            spawn_dendrite_chain(
+                world, branch_origin, branch_angle, seed + i as f32 * 5.0, i,
+                DENDRITE_BRANCH_COMPARTMENTS, branch_depth, branch_parent, 5.9, 8.7,
+                |world, pos, depth| {
+                    world.spawn((
+                        Position { position: pos },
+                        NeuronType::Excitatory,
+                        Compartment {
+                            voltage: -10.0, m: -0.625, h: 0.0, n: 0.0,
+                            influence: 0.0, capacitance: 1.0,
+                            injected_current: 0.0, fire_impulse: 0.0,
+                        },
+                        GlialProcess,
+                        DendriteDepth(depth),
+                        Ownership { player },
+                        StaticConnectionSource {},
+                        Deletable {},
+                        Selectable { selected: false },
+                        SpatialDynamics { velocity: Vec3::ZERO, acceleration: Vec3::ZERO },
+                        ConnectionColor(glial_color()),
+                    ))
+                },
+            );
         }
     }
 
@@ -235,52 +280,7 @@ pub fn mature_neuroblast(world: &mut hecs::World, entity: Entity, neuron_type: N
         .map(|o| o.player)
         .unwrap_or(PlayerId::Player1);
 
-    const NUM_DENDRITES: usize = 5;
-    let seed = entity.id() as f32 * 1.618_034;
-    for i in 0..NUM_DENDRITES {
-        let positions = arm_positions(position, i, NUM_DENDRITES, seed);
-        let mut prev_entity = entity;
-        for comp_pos in positions {
-            let compartment = world.spawn((
-                Position { position: comp_pos },
-                neuron_type.clone(),
-                Compartment {
-                    voltage: -10.0,
-                    m: -0.625,
-                    h: 0.0,
-                    n: 0.0,
-                    influence: 0.0,
-                    capacitance: 1.0,
-                    injected_current: 0.0,
-                    fire_impulse: 0.0,
-                },
-                Dendrite,
-                Ownership { player },
-                StaticConnectionSource {},
-                Deletable {},
-                Selectable { selected: false },
-                SpatialDynamics {
-                    velocity: Vec3::ZERO,
-                    acceleration: Vec3::ZERO,
-                },
-            ));
-
-            world.spawn((
-                Connection {
-                    from: prev_entity,
-                    to: compartment,
-                    strength: 1.0,
-                    directional: false,
-                },
-                Deletable {},
-                CompartmentCurrent {
-                    capacitance: COUPLING_CAPACITANCE,
-                },
-            ));
-
-            prev_entity = compartment;
-        }
-    }
+    spawn_neuron_dendrites(world, position, &neuron_type, player, entity, 5);
 }
 /// Spawn a growth cone that will travel from `source_pos` toward `target` (or
 /// the live position of `target_entity`), laying axon compartments as it goes.
@@ -334,51 +334,73 @@ pub fn spawn_neuron_with_dendrites(
         let _ = world.insert_one(soma, Inhibitory);
     }
 
+    spawn_neuron_dendrites(world, position, &neuron_type, player, soma, num_dendrites);
+    soma
+}
+
+/// Shared helper: spawn dendrite arms (with branches) onto an already-spawned soma entity.
+pub fn spawn_neuron_dendrites(
+    world: &mut hecs::World,
+    position: Vec3,
+    neuron_type: &NeuronType,
+    player: PlayerId,
+    soma: hecs::Entity,
+    num_dendrites: usize,
+) {
     let seed = soma.id() as f32 * 1.618_034;
     for i in 0..num_dendrites {
-        let positions = arm_positions(position, i, num_dendrites, seed);
-        let mut prev_entity = soma;
-        for comp_pos in positions {
-            let compartment = world.spawn((
-                Position { position: comp_pos },
-                neuron_type.clone(),
-                Compartment {
-                    voltage: -10.0,
-                    m: -0.625,
-                    h: 0.0,
-                    n: 0.0,
-                    influence: 0.0,
-                    capacitance: 1.0,
-                    injected_current: 0.0,
-                    fire_impulse: 0.0,
-                },
-                Dendrite,
-                Ownership { player },
-                StaticConnectionSource {},
-                Deletable {},
-                Selectable { selected: false },
-                SpatialDynamics {
-                    velocity: Vec3::ZERO,
-                    acceleration: Vec3::ZERO,
-                },
-            ));
+        let base_angle = std::f32::consts::TAU * i as f32 / num_dendrites as f32 + seed * 0.5;
 
-            world.spawn((
-                Connection {
-                    from: prev_entity,
-                    to: compartment,
-                    strength: 1.0,
-                    directional: false,
-                },
-                Deletable {},
-                CompartmentCurrent {
-                    capacitance: COUPLING_CAPACITANCE,
-                },
-            ));
+        let nt = neuron_type.clone();
+        let main_chain = spawn_dendrite_chain(
+            world, position, base_angle, seed, i,
+            DENDRITE_COMPARTMENTS, 0, soma, 7.3, 11.1,
+            |world, pos, depth| {
+                world.spawn((
+                    Position { position: pos },
+                    nt.clone(),
+                    Compartment {
+                        voltage: -10.0, m: -0.625, h: 0.0, n: 0.0,
+                        influence: 0.0, capacitance: 1.0,
+                        injected_current: 0.0, fire_impulse: 0.0,
+                    },
+                    Dendrite,
+                    DendriteDepth(depth),
+                    Ownership { player },
+                    StaticConnectionSource {},
+                    Deletable {},
+                    Selectable { selected: false },
+                    SpatialDynamics { velocity: Vec3::ZERO, acceleration: Vec3::ZERO },
+                ))
+            },
+        );
 
-            prev_entity = compartment;
+        // One branch off the 3rd compartment of each arm.
+        if let Some(&(branch_parent, branch_origin, branch_depth)) = main_chain.get(2) {
+            let branch_angle = base_angle + 1.1 + (seed * 3.1 + i as f32 * 2.7).sin() * 0.6;
+            let nt = neuron_type.clone();
+            spawn_dendrite_chain(
+                world, branch_origin, branch_angle, seed + i as f32 * 5.0, i,
+                DENDRITE_BRANCH_COMPARTMENTS, branch_depth, branch_parent, 5.9, 8.7,
+                |world, pos, depth| {
+                    world.spawn((
+                        Position { position: pos },
+                        nt.clone(),
+                        Compartment {
+                            voltage: -10.0, m: -0.625, h: 0.0, n: 0.0,
+                            influence: 0.0, capacitance: 1.0,
+                            injected_current: 0.0, fire_impulse: 0.0,
+                        },
+                        Dendrite,
+                        DendriteDepth(depth),
+                        Ownership { player },
+                        StaticConnectionSource {},
+                        Deletable {},
+                        Selectable { selected: false },
+                        SpatialDynamics { velocity: Vec3::ZERO, acceleration: Vec3::ZERO },
+                    ))
+                },
+            );
         }
     }
-
-    soma
 }

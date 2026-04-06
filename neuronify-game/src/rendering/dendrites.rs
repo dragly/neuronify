@@ -12,7 +12,7 @@ use visula_derive::Instance;
 use neuronify_core::rendering::colors::neurocolor;
 use neuronify_core::{Compartment, CompartmentCurrent, Connection, NeuronType, Position};
 
-use crate::components::{GlialProcess, Ownership};
+use crate::components::{DendriteDepth, GlialProcess, Ownership};
 use crate::rendering::colors::glial_color;
 
 // ── Data struct ───────────────────────────────────────────────────────────────
@@ -52,8 +52,16 @@ pub fn create_dendrite_pipeline(
 
 // ── Per-frame data collection ─────────────────────────────────────────────────
 
-const DENDRITE_BASE_RADIUS: f32 = 0.28;
-const DENDRITE_TIP_RADIUS:  f32 = 0.08;
+/// Radius at depth 0 (soma surface). Each depth step multiplies by TAPER.
+const DENDRITE_ROOT_RADIUS: f32 = 0.30;
+/// Radius shrinks by this factor per depth hop.
+const DENDRITE_TAPER: f32 = 0.72;
+/// Floor so cylinders never disappear entirely.
+const DENDRITE_MIN_RADIUS: f32 = 0.04;
+
+fn depth_radius(depth: u32) -> f32 {
+    (DENDRITE_ROOT_RADIUS * DENDRITE_TAPER.powi(depth as i32)).max(DENDRITE_MIN_RADIUS)
+}
 
 pub fn collect_dendrite_cylinders(world: &hecs::World) -> Vec<CylinderData> {
     let mut result = Vec::new();
@@ -68,6 +76,12 @@ pub fn collect_dendrite_cylinders(world: &hecs::World) -> Vec<CylinderData> {
             Err(_) => continue,
         };
 
+        // Depth-based taper: from_depth drives start_radius, to_depth drives end_radius.
+        let from_depth = world.get::<&DendriteDepth>(conn.from).map(|d| d.0).unwrap_or(0);
+        let to_depth   = world.get::<&DendriteDepth>(conn.to).map(|d| d.0).unwrap_or(1);
+        let start_radius = depth_radius(from_depth);
+        let end_radius   = depth_radius(to_depth);
+
         // Determine color from the destination compartment's voltage and type.
         let color: Vec3 = if world.get::<&GlialProcess>(conn.to).is_ok() {
             glial_color()
@@ -79,7 +93,6 @@ pub fn collect_dendrite_cylinders(world: &hecs::World) -> Vec<CylinderData> {
             let value = ((comp.voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32;
             neurocolor(&neuron_type, value)
         } else {
-            // Connection from soma to first compartment: color by soma's type at 0.5 value
             let neuron_type = match world.get::<&NeuronType>(conn.from) {
                 Ok(nt) => (*nt).clone(),
                 Err(_) => NeuronType::Excitatory,
@@ -87,20 +100,13 @@ pub fn collect_dendrite_cylinders(world: &hecs::World) -> Vec<CylinderData> {
             neurocolor(&neuron_type, 0.3)
         };
 
-        // Ownership tint (same 30% blend as sphere rendering)
-        let color = if world.get::<&Ownership>(conn.to).is_ok() {
-            color
-        } else {
-            color
-        };
+        let _ = world.get::<&Ownership>(conn.to); // ownership tinting handled by color pipeline
 
-        // Taper: fatter at start (closer to soma), thinner at tip.
-        // We use a fixed taper regardless of depth since depth isn't tracked here.
         result.push(CylinderData {
             start: [from_pos.x, from_pos.y, from_pos.z],
-            start_radius: DENDRITE_BASE_RADIUS,
+            start_radius,
             end: [to_pos.x, to_pos.y, to_pos.z],
-            end_radius: DENDRITE_TIP_RADIUS,
+            end_radius,
             color: [color.x, color.y, color.z],
             _padding: 0.0,
         });
