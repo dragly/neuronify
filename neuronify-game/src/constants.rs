@@ -136,6 +136,8 @@ pub const HEX_GRID_CELL_SIZE: f32 = 4.0;
 /// World-units per second a growth cone advances.
 pub const GROWTH_CONE_SPEED: f32 = 15.0;
 /// Distance (world units) between successive compartments laid by a growth cone.
-pub const GROWTH_CONE_COMP_SPACING: f32 = 3.5;
+/// Must equal the spring rest length (2.0 * NODE_RADIUS = 2.0) so painted compartments
+/// sit at the physics equilibrium and don't contract after building.
+pub const GROWTH_CONE_COMP_SPACING: f32 = 2.0;
 /// How close (world units) a growth cone must be to its target before it completes.
 pub const GROWTH_CONE_SNAP_RADIUS: f32 = 3.0;

@@ -431,6 +431,9 @@ pub struct GrowthCone {
     pub neuron_type: neuronify_core::NeuronType,
     /// Advance speed in world units per second.
     pub speed: f32,
+    /// Intermediate waypoints the cone must pass through before reaching the final target.
+    /// The cone travels to `waypoints.front()` first, popping each on arrival.
+    pub waypoints: std::collections::VecDeque<glam::Vec3>,
 }
 
 /// Which unit type a NeuronSpawner produces when the neuron fires.

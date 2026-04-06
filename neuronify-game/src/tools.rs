@@ -15,6 +15,8 @@ pub struct ConnectionTool {
     pub start: Vec3,
     pub end: Vec3,
     pub from: Entity,
+    /// Intermediate waypoints placed by clicking empty space with the Axon tool.
+    pub waypoints: Vec<Vec3>,
 }
 
 #[derive(Clone, Debug)]

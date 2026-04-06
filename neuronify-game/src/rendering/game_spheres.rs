@@ -56,6 +56,14 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 }
             }
 
+            // Action potential flash: bright yellow-white burst lasting 0.2 sim-seconds.
+            const SOMA_FLASH_DURATION: f64 = 0.2;
+            if dynamics.time_since_fire < SOMA_FLASH_DURATION {
+                let flash = (1.0 - dynamics.time_since_fire as f32 / SOMA_FLASH_DURATION as f32)
+                    .max(0.0);
+                color = color * (1.0 - flash * 0.85) + glam::Vec3::new(1.0, 1.0, 0.55) * (flash * 0.85);
+            }
+
             let radius = if world.get::<&OriginNeuron>(entity).is_ok() {
                 NODE_RADIUS * 1.5
             } else {

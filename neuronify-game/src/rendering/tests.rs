@@ -74,11 +74,11 @@ mod tests {
             .expect("particle pipeline should compile without errors");
     }
 
-    /// Verify that the neuron and glial toon-mesh pipelines compile without shader errors.
+    /// Verify that the dendrite Cylinders pipeline compiles without shader errors.
     #[test]
-    fn test_toon_neuron_pipelines_compile() {
+    fn test_dendrite_pipeline_compiles() {
         let Some((device, _queue)) = pollster::block_on(try_headless_device()) else {
-            eprintln!("No wgpu adapter available – skipping test_toon_neuron_pipelines_compile");
+            eprintln!("No wgpu adapter available – skipping test_dendrite_pipeline_compiles");
             return;
         };
         let camera = Camera::new(&device);
@@ -90,9 +90,9 @@ mod tests {
             light: &light,
             sample_count: 1,
         };
-        crate::rendering::create_neuron_pipeline(&desc)
-            .expect("neuron pipeline should compile without errors");
-        crate::rendering::create_glial_pipeline(&desc)
-            .expect("glial pipeline should compile without errors");
+        use visula::InstanceBuffer;
+        let cylinder_buffer = InstanceBuffer::<crate::rendering::CylinderData>::new(&device);
+        crate::rendering::create_dendrite_pipeline(&desc, &cylinder_buffer)
+            .expect("dendrite pipeline should compile without errors");
     }
 }

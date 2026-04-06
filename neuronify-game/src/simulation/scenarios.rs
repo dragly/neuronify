@@ -6,7 +6,7 @@
 use glam::Vec3;
 
 use neuronify_core::{
-    Compartment, CompartmentCurrent, Connection, CurrentClamp, CurrentSynapse, Deletable,
+    Compartment, CompartmentCurrent, Connection, CurrentSynapse, Deletable,
     GeneratorDynamics, Inhibitory, LeakCurrent, LeakyDynamics, LeakyNeuron, NeuronType, Position,
     RegularSpikeGenerator, Selectable, SpatialDynamics, StaticConnectionSource, VisualRadius,
     COUPLING_CAPACITANCE, NODE_RADIUS,

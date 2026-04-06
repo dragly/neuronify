@@ -455,7 +455,76 @@ pub fn advance_growth_cones(
     let mut to_despawn: Vec<hecs::Entity> = Vec::new();
 
     for mut snap in snapshots {
-        // Resolve live target position (follow moving target somas if needed).
+        if !snap.cone.waypoints.is_empty() {
+            // ── Waypoint mode ─────────────────────────────────────────────────────
+            // Snap to each painted waypoint in turn and place a compartment exactly
+            // there.  No distance-based interpolation: the built path matches the
+            // painted path waypoint for waypoint.
+            let wp = *snap.cone.waypoints.front().unwrap();
+            let dist_to_wp = snap.pos.distance(wp);
+            let wp_snap = constants::GROWTH_CONE_COMP_SPACING * 0.5;
+
+            if dist_to_wp <= wp_snap {
+                // Arrived — snap cone to the waypoint position.
+                if let Ok(mut pos) = world.get::<&mut Position>(snap.entity) {
+                    pos.position = wp;
+                }
+
+                if economy::try_spend_blocks(economy, constants::COMPARTMENT_SPAWN_COST) {
+                    let neuron_type = snap.cone.neuron_type.clone();
+                    let compartment = world.spawn((
+                        Position { position: wp },
+                        neuron_type,
+                        Compartment {
+                            voltage: -10.0,
+                            m: -0.625,
+                            h: 0.0,
+                            n: 0.0,
+                            influence: 0.0,
+                            capacitance: 1.0,
+                            injected_current: 0.0,
+                            fire_impulse: 0.0,
+                        },
+                        StaticConnectionSource {},
+                        Deletable {},
+                        Selectable { selected: false },
+                        SpatialDynamics { velocity: Vec3::ZERO, acceleration: Vec3::ZERO },
+                    ));
+                    world.spawn((
+                        Connection {
+                            from: snap.cone.last_comp,
+                            to: compartment,
+                            strength: 1.0,
+                            directional: true,
+                        },
+                        Deletable {},
+                        CompartmentCurrent { capacitance: COUPLING_CAPACITANCE },
+                    ));
+                    if let Ok(mut gc) = world.get::<&mut GrowthCone>(snap.entity) {
+                        gc.last_comp = compartment;
+                        gc.last_comp_pos = wp;
+                        gc.waypoints.pop_front();
+                    }
+                    snap.cone.last_comp = compartment;
+                    snap.cone.last_comp_pos = wp;
+                } else {
+                    // Can't afford — pop waypoint anyway to avoid stalling.
+                    if let Ok(mut gc) = world.get::<&mut GrowthCone>(snap.entity) {
+                        gc.waypoints.pop_front();
+                    }
+                }
+            } else {
+                // Move toward waypoint.
+                let dir = (wp - snap.pos).normalize_or_zero();
+                let step = (snap.cone.speed * dt).min(dist_to_wp);
+                if let Ok(mut pos) = world.get::<&mut Position>(snap.entity) {
+                    pos.position = snap.pos + dir * step;
+                }
+            }
+            continue;
+        }
+
+        // ── Final-target mode (no waypoints remaining) ────────────────────────
         let target_pos = snap
             .cone
             .target_entity
@@ -465,9 +534,7 @@ pub fn advance_growth_cones(
         let to_target = target_pos - snap.pos;
         let dist_to_target = to_target.length();
 
-        // Arrived?
         if dist_to_target <= constants::GROWTH_CONE_SNAP_RADIUS {
-            // Create final connection from last compartment to target entity.
             if let Some(target_entity) = snap.cone.target_entity {
                 let already = world
                     .query::<&Connection>()
@@ -482,9 +549,7 @@ pub fn advance_growth_cones(
                             directional: true,
                         },
                         Deletable {},
-                        CompartmentCurrent {
-                            capacitance: COUPLING_CAPACITANCE,
-                        },
+                        CompartmentCurrent { capacitance: COUPLING_CAPACITANCE },
                     ));
                 }
             }
@@ -492,7 +557,7 @@ pub fn advance_growth_cones(
             continue;
         }
 
-        // Move cone forward.
+        // Move cone forward and lay compartments by distance.
         let dir = to_target / dist_to_target;
         let step = (snap.cone.speed * dt).min(dist_to_target);
         let new_pos = snap.pos + dir * step;
@@ -502,7 +567,6 @@ pub fn advance_growth_cones(
         }
         snap.pos = new_pos;
 
-        // Lay a compartment if we have moved far enough from the last one.
         let dist_since_last = new_pos.distance(snap.cone.last_comp_pos);
         if dist_since_last >= constants::GROWTH_CONE_COMP_SPACING
             && economy::try_spend_blocks(economy, constants::COMPARTMENT_SPAWN_COST)
@@ -524,13 +588,8 @@ pub fn advance_growth_cones(
                 StaticConnectionSource {},
                 Deletable {},
                 Selectable { selected: false },
-                SpatialDynamics {
-                    velocity: Vec3::ZERO,
-                    acceleration: Vec3::ZERO,
-                },
+                SpatialDynamics { velocity: Vec3::ZERO, acceleration: Vec3::ZERO },
             ));
-
-            // Connect new compartment to the previous one.
             world.spawn((
                 Connection {
                     from: snap.cone.last_comp,
@@ -539,12 +598,8 @@ pub fn advance_growth_cones(
                     directional: true,
                 },
                 Deletable {},
-                CompartmentCurrent {
-                    capacitance: COUPLING_CAPACITANCE,
-                },
+                CompartmentCurrent { capacitance: COUPLING_CAPACITANCE },
             ));
-
-            // Update cone's last-compartment tracking.
             if let Ok(mut gc) = world.get::<&mut GrowthCone>(snap.entity) {
                 gc.last_comp = compartment;
                 gc.last_comp_pos = new_pos;

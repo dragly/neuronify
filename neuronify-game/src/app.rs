@@ -1,15 +1,15 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use glam::Vec3;
 use hecs::Entity;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, Touch, TouchPhase, WindowEvent};
 use visula::{
-    winit::keyboard::ModifiersKeyState, CustomEvent, Expression, InstanceBuffer, LineGeometry,
-    LineMaterial, Lines, MeshPipeline, RenderData, Renderable, SphereGeometry, SphereMaterial,
-    Spheres, UniformBuffer,
+    winit::keyboard::ModifiersKeyState, CustomEvent, Expression, InstanceBuffer,
+    LineGeometry, LineMaterial, Lines, MeshPipeline, RenderData, Renderable, SphereGeometry,
+    SphereMaterial, Spheres, UniformBuffer,
 };
 
 use neuronify_core::rendering::gpu_types::{ConnectionData, Sphere};
@@ -20,7 +20,7 @@ use neuronify_core::{
     StaticConnectionSource, Tool, VisualRadius, CAMERA_MAX_DISTANCE, CAMERA_MIN_DISTANCE,
     COUPLING_CAPACITANCE, ERASE_RADIUS, FHN_CDT, FPS_LOW_PASS_FACTOR, LIF_DT,
     MIN_CREATION_DISTANCE_AXON, MIN_CREATION_DISTANCE_DEFAULT, NODE_RADIUS, PHYSICS_DT,
-    SELECTION_RANGE, TARGET_FRAME_MS,
+    SELECTION_RANGE,
 };
 use crate::constants::{COMBAT_DT, GAME_SPEED};
 use crate::rendering::colors::glial_color;
@@ -88,8 +88,8 @@ pub struct GameApp {
     pub microglia_mesh: MeshPipeline,
     pub astrocyte_mesh: MeshPipeline,
     pub macrophage_mesh: MeshPipeline,
-    pub neuron_mesh: MeshPipeline,
-    pub glial_mesh: MeshPipeline,
+    pub dendrite_cylinders: visula::Cylinders,
+    pub dendrite_buffer: InstanceBuffer<rendering::CylinderData>,
     pub health_bar_meshes: [MeshPipeline; 4],
     pub energy_bar_meshes: [MeshPipeline; 2],
 }
@@ -194,10 +194,9 @@ impl GameApp {
             rendering::create_astrocyte_pipeline(&application.rendering_descriptor()).unwrap();
         let macrophage_mesh =
             rendering::create_macrophage_pipeline(&application.rendering_descriptor()).unwrap();
-        let neuron_mesh =
-            rendering::create_neuron_pipeline(&application.rendering_descriptor()).unwrap();
-        let glial_mesh =
-            rendering::create_glial_pipeline(&application.rendering_descriptor()).unwrap();
+        let dendrite_buffer = InstanceBuffer::<rendering::CylinderData>::new(&application.device);
+        let dendrite_cylinders =
+            rendering::create_dendrite_pipeline(&application.rendering_descriptor(), &dendrite_buffer).unwrap();
         let health_bar_meshes =
             rendering::create_health_bar_pipelines(&application.rendering_descriptor()).unwrap();
         let energy_bar_meshes =
@@ -268,8 +267,8 @@ impl GameApp {
             microglia_mesh,
             astrocyte_mesh,
             macrophage_mesh,
-            neuron_mesh,
-            glial_mesh,
+            dendrite_cylinders,
+            dendrite_buffer,
             health_bar_meshes,
             energy_bar_meshes,
         }
@@ -324,6 +323,7 @@ impl GameApp {
         mouse_position: Vec3,
         previous_too_near: bool,
         is_glial_process: bool,
+        just_pressed: bool,
     ) -> ConnectResult {
         let snap = 2.0 * NODE_RADIUS;
         let vessel_snap = BLOOD_VESSEL_SNAP_RADIUS;
@@ -375,15 +375,20 @@ impl GameApp {
                     candidates
                 };
 
-                self.connection_tool = find_nearest_within(&source_candidates, mouse_position).map(
-                    |(id, position)| ConnectionTool {
-                        start: position,
-                        end: mouse_position,
-                        from: id,
-                    },
-                );
-                if let Some(ct) = &self.connection_tool {
-                    self.previous_creation = Some(PreviousCreation { entity: ct.from });
+                // Only snap to a source on an explicit click — not on cursor movement.
+                if just_pressed {
+                    self.connection_tool =
+                        find_nearest_within(&source_candidates, mouse_position).map(
+                            |(id, position)| ConnectionTool {
+                                start: position,
+                                end: mouse_position,
+                                from: id,
+                                waypoints: Vec::new(),
+                            },
+                        );
+                    if let Some(ct) = &self.connection_tool {
+                        self.previous_creation = Some(PreviousCreation { entity: ct.from });
+                    }
                 }
                 ConnectResult::Continue
             }
@@ -518,7 +523,8 @@ impl GameApp {
                             }
                             ConnectResult::Done
                         } else {
-                            // Axon tool: spawn a growth cone that travels to the target.
+                            // Axon tool: spawn a growth cone that travels to the target,
+                            // passing through any intermediate waypoints the player painted.
                             let from_pos = world
                                 .get::<&Position>(ct.from)
                                 .map(|p| p.position)
@@ -534,6 +540,7 @@ impl GameApp {
                                 target_pos,
                                 Some(id),
                                 neuron_type,
+                                ct.waypoints.clone(),
                             );
                             ConnectResult::Done
                         }
@@ -594,8 +601,18 @@ impl GameApp {
                             ct.from = compartment_builder;
                             ConnectResult::Continue
                         } else {
-                            // Axon tool: clicking in empty space does nothing — the growth cone
-                            // handles compartment placement automatically.
+                            // Axon tool: add a waypoint when the cursor has moved far enough
+                            // from the last one, giving meaningful spacing between paint marks.
+                            let axon_paint_spacing = GROWTH_CONE_COMP_SPACING;
+                            let last_pos = ct.waypoints.last().copied().unwrap_or_else(|| {
+                                world
+                                    .get::<&Position>(ct.from)
+                                    .map(|p| p.position)
+                                    .unwrap_or(ct.start)
+                            });
+                            if mouse_position.distance(last_pos) >= axon_paint_spacing {
+                                ct.waypoints.push(mouse_position);
+                            }
                             ConnectResult::Continue
                         }
                     }
@@ -619,9 +636,16 @@ impl GameApp {
     }
 
     /// Handle right-click:
+    /// - If a connection is in progress (axon/glial) → cancel it.
     /// - If selected entities include neuroblasts → set their move destination.
     /// - Otherwise → set attack target for selected player mobile units.
     fn handle_right_click(&mut self, mouse_pos: Vec3) {
+        // Right-click cancels any in-progress connection drawing.
+        if self.connection_tool.is_some() {
+            self.connection_tool = None;
+            self.previous_creation = None;
+            return;
+        }
         // Check if any selected entities are neuroblasts.
         let has_neuroblasts = self
             .selected_entities
@@ -665,12 +689,56 @@ impl GameApp {
         self.attack_mode = false;
     }
 
-    fn handle_tool(&mut self, application: &mut visula::Application) {
+    fn handle_tool(&mut self, application: &mut visula::Application, just_pressed: bool) {
         if !self.mouse.left_down {
+            // Mouse released — if we were painting an axon, spawn the growth cone now.
+            if matches!(self.tool, GameTool::Axon) {
+                if let Some(ct) = self.connection_tool.take() {
+                    if !ct.waypoints.is_empty() {
+                        let from_pos = self
+                            .world
+                            .get::<&Position>(ct.from)
+                            .map(|p| p.position)
+                            .unwrap_or(ct.start);
+                        let neuron_type = self
+                            .world
+                            .get::<&NeuronType>(ct.from)
+                            .map(|t| (*t).clone())
+                            .unwrap_or(NeuronType::Excitatory);
+
+                        // Snap endpoint to a nearby neuron if in range.
+                        let last_pos = ct.end;
+                        let target_snap = 2.0 * NODE_RADIUS;
+                        let source = ct.from;
+                        let target_candidates: Vec<(Entity, Vec3, f32)> = self
+                            .world
+                            .query::<&Position>()
+                            .with::<&LeakyNeuron>()
+                            .iter()
+                            .filter(|(e, _)| *e != source)
+                            .map(|(e, p)| (e, p.position, target_snap))
+                            .collect();
+                        let (target_pos, target_entity) =
+                            find_nearest_within(&target_candidates, last_pos)
+                                .map(|(id, pos)| (pos, Some(id)))
+                                .unwrap_or((last_pos, None));
+
+                        spawning::spawn_growth_cone(
+                            &mut self.world,
+                            ct.from,
+                            from_pos,
+                            target_pos,
+                            target_entity,
+                            neuron_type,
+                            ct.waypoints,
+                        );
+                    }
+                }
+            }
+
             self.connection_tool = None;
             self.previous_creation = None;
             self.move_origin = None;
-
             self.funds_blocked_entity = None;
             self.connection_consumed_this_press = false;
             return;
@@ -802,7 +870,7 @@ impl GameApp {
                 if self.connection_consumed_this_press && self.connection_tool.is_none() {
                     return;
                 }
-                match self.handle_connection_tool(mouse_position, previous_too_near, false) {
+                match self.handle_connection_tool(mouse_position, previous_too_near, false, just_pressed) {
                     ConnectResult::Done => {
                         self.connection_tool = None;
                         self.funds_blocked_entity = None;
@@ -821,7 +889,7 @@ impl GameApp {
                 if self.connection_consumed_this_press && self.connection_tool.is_none() {
                     return;
                 }
-                match self.handle_connection_tool(mouse_position, previous_too_near, true) {
+                match self.handle_connection_tool(mouse_position, previous_too_near, true, just_pressed) {
                     ConnectResult::Done => {
                         self.connection_tool = None;
                         self.funds_blocked_entity = None;
@@ -979,8 +1047,30 @@ impl visula::Simulation for GameApp {
                 } else {
                     Vec3::new(0.8, 0.8, 0.8)
                 };
+
+                // Draw each segment: source → waypoints → cursor.
+                let mut prev = from_pos;
+                for &wp in &ct.waypoints {
+                    connections.push(ConnectionData {
+                        position_a: prev,
+                        position_b: wp,
+                        strength: 1.0,
+                        directional: 0.0,
+                        start_color: preview_color,
+                        end_color: preview_color,
+                        _padding: Default::default(),
+                    });
+                    // Ghost sphere at each intermediate waypoint.
+                    spheres.push(Sphere {
+                        position: wp,
+                        color: preview_color * 0.6,
+                        radius: NODE_RADIUS * 0.35,
+                        _padding: Default::default(),
+                    });
+                    prev = wp;
+                }
                 connections.push(ConnectionData {
-                    position_a: from_pos,
+                    position_a: prev,
                     position_b: ct.end,
                     strength: 1.0,
                     directional: 0.0, // ghost sphere handles the endpoint marker
@@ -1016,16 +1106,8 @@ impl visula::Simulation for GameApp {
             &application.device,
             self.time as f32,
         );
-        rendering::update_neuron_mesh(
-            &mut self.neuron_mesh,
-            &self.world,
-            &application.device,
-        );
-        rendering::update_glial_mesh(
-            &mut self.glial_mesh,
-            &self.world,
-            &application.device,
-        );
+        let dendrite_cyls = rendering::collect_dendrite_cylinders(&self.world);
+        self.dendrite_buffer.update(&application.device, &application.queue, &dendrite_cyls);
         rendering::update_health_bar_meshes(
             &mut self.health_bar_meshes,
             &self.world,
@@ -1068,8 +1150,7 @@ impl visula::Simulation for GameApp {
         self.spheres.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
-        self.neuron_mesh.render(data);
-        self.glial_mesh.render(data);
+        self.dendrite_cylinders.render(data);
         self.microglia_mesh.render(data);
         self.astrocyte_mesh.render(data);
         self.macrophage_mesh.render(data);
@@ -1097,6 +1178,7 @@ impl visula::Simulation for GameApp {
         let mut pending_produce: Option<ProducibleItem> = None;
         let mut pending_cancel = false;
         let queue_snapshot = production::queue_snapshot(&self.world);
+        let tool_before = self.tool.clone();
         sidebar::draw_sidebar(
             context,
             &mut self.tool,
@@ -1112,6 +1194,12 @@ impl visula::Simulation for GameApp {
             &mut pending_cancel,
             &queue_snapshot,
         );
+
+        // Cancel in-progress connection drawing if the tool changed.
+        if self.tool != tool_before {
+            self.connection_tool = None;
+            self.previous_creation = None;
+        }
 
         // Handle produce button click — append to queue if room and funds available.
         if let Some(item) = pending_produce {
@@ -1214,7 +1302,8 @@ impl visula::Simulation for GameApp {
             } => {
                 self.mouse.left_down = *state == ElementState::Pressed;
                 self.mouse.delta_position = None;
-                self.handle_tool(application);
+                // just_pressed is true only on the initial press, not on release.
+                self.handle_tool(application, self.mouse.left_down);
             }
             Event::WindowEvent {
                 event: WindowEvent::MouseInput {
@@ -1248,7 +1337,7 @@ impl visula::Simulation for GameApp {
                 if let Some(pos) = self.mouse_world_position(application) {
                     self.placement_preview = Some(pos);
                 }
-                self.handle_tool(application);
+                self.handle_tool(application, false);
             }
             Event::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },

@@ -86,6 +86,28 @@ pub fn spawn_tCell(world: &mut hecs::World, position: Vec3, faction: Faction) ->
 
 const DENDRITE_LENGTH: f32 = 2.5;
 const DENDRITE_COMPARTMENTS: usize = 2;
+/// How strongly each arm's direction wanders per segment (radians of random offset per unit length).
+const DENDRITE_WANDER: f32 = 0.5;
+
+/// Compute deterministic wander-based compartment positions for one dendrite arm.
+/// Returns `DENDRITE_COMPARTMENTS` successive positions along the arm.
+fn arm_positions(soma_pos: Vec3, arm_idx: usize, num_arms: usize, seed: f32) -> Vec<Vec3> {
+    let base_angle = std::f32::consts::TAU * arm_idx as f32 / num_arms as f32 + seed * 0.5;
+    let mut dir = Vec3::new(base_angle.cos(), 0.0, base_angle.sin());
+    let mut pos = soma_pos;
+    let mut out = Vec::with_capacity(DENDRITE_COMPARTMENTS);
+    for seg in 0..DENDRITE_COMPARTMENTS {
+        let wx = (seed * 7.3 + arm_idx as f32 * 13.7 + seg as f32 * 17.3).sin() * DENDRITE_WANDER;
+        let wz = (seed * 11.1 + arm_idx as f32 * 7.7 + seg as f32 * 23.1).cos() * DENDRITE_WANDER;
+        dir = (dir + Vec3::new(wx, 0.0, wz)).normalize_or_zero();
+        if dir.length_squared() < 0.01 {
+            dir = Vec3::new(base_angle.cos(), 0.0, base_angle.sin());
+        }
+        pos += dir * DENDRITE_LENGTH;
+        out.push(pos);
+    }
+    out
+}
 
 /// Spawn a glial cell (astrocyte) with processes arranged radially.
 pub fn spawn_glial(
@@ -106,15 +128,11 @@ pub fn spawn_glial(
         ConnectionColor(glial_color()),
     ));
 
+    let seed = soma.id() as f32 * 2.399_963;
     for i in 0..num_processes {
-        let angle = 2.0 * std::f32::consts::PI * i as f32 / num_processes as f32;
-        let direction = Vec3::new(angle.cos(), 0.0, angle.sin());
-
+        let positions = arm_positions(position, i, num_processes, seed);
         let mut prev_entity = soma;
-        for seg in 0..DENDRITE_COMPARTMENTS {
-            let offset = direction * DENDRITE_LENGTH * (seg + 1) as f32;
-            let comp_pos = position + offset;
-
+        for comp_pos in positions {
             let compartment = world.spawn((
                 Position { position: comp_pos },
                 NeuronType::Excitatory,
@@ -217,15 +235,12 @@ pub fn mature_neuroblast(world: &mut hecs::World, entity: Entity, neuron_type: N
         .map(|o| o.player)
         .unwrap_or(PlayerId::Player1);
 
-    for i in 0..5usize {
-        let angle = 2.0 * std::f32::consts::PI * i as f32 / 5.0;
-        let direction = Vec3::new(angle.cos(), 0.0, angle.sin());
-
+    const NUM_DENDRITES: usize = 5;
+    let seed = entity.id() as f32 * 1.618_034;
+    for i in 0..NUM_DENDRITES {
+        let positions = arm_positions(position, i, NUM_DENDRITES, seed);
         let mut prev_entity = entity;
-        for seg in 0..DENDRITE_COMPARTMENTS {
-            let offset = direction * DENDRITE_LENGTH * (seg + 1) as f32;
-            let comp_pos = position + offset;
-
+        for comp_pos in positions {
             let compartment = world.spawn((
                 Position { position: comp_pos },
                 neuron_type.clone(),
@@ -276,6 +291,7 @@ pub fn spawn_growth_cone(
     target: Vec3,
     target_entity: Option<hecs::Entity>,
     neuron_type: NeuronType,
+    waypoints: Vec<Vec3>,
 ) -> hecs::Entity {
     world.spawn((
         Position { position: source_pos },
@@ -286,6 +302,7 @@ pub fn spawn_growth_cone(
             target_entity,
             neuron_type,
             speed: crate::constants::GROWTH_CONE_SPEED,
+            waypoints: waypoints.into_iter().collect(),
         },
         Deletable {},
     ))
@@ -326,15 +343,11 @@ pub fn spawn_neuron_with_dendrites(
         let _ = world.insert_one(soma, Inhibitory);
     }
 
+    let seed = soma.id() as f32 * 1.618_034;
     for i in 0..num_dendrites {
-        let angle = 2.0 * std::f32::consts::PI * i as f32 / num_dendrites as f32;
-        let direction = Vec3::new(angle.cos(), 0.0, angle.sin());
-
+        let positions = arm_positions(position, i, num_dendrites, seed);
         let mut prev_entity = soma;
-        for seg in 0..DENDRITE_COMPARTMENTS {
-            let offset = direction * DENDRITE_LENGTH * (seg + 1) as f32;
-            let comp_pos = position + offset;
-
+        for comp_pos in positions {
             let compartment = world.spawn((
                 Position { position: comp_pos },
                 neuron_type.clone(),
