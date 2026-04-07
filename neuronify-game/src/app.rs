@@ -1186,16 +1186,19 @@ impl visula::Simulation for GameApp {
         );
         let dendrite_cyls = rendering::collect_dendrite_cylinders(&self.world);
         self.dendrite_buffer.update(&application.device, &application.queue, &dendrite_cyls);
+        let cam_forward = application.camera_controller.current_transform.forward;
         rendering::update_health_bar_meshes(
             &mut self.health_bar_meshes,
             &self.world,
             &application.device,
+            cam_forward,
         );
         rendering::update_energy_bar_meshes(
             &mut self.energy_bar_meshes,
             &self.world,
             &application.device,
             self.selected_entities.first().copied(),
+            cam_forward,
         );
 
         // Petri dish and decorations
