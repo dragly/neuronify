@@ -156,10 +156,14 @@ pub fn setup_scenario_from_svg(
         }
 
         // Auto-firing neurons use a RegularSpikeGenerator.
+        // The origin neuron fires 5× faster than its base SVG rate.
         if n.auto_fire && n.fire_hz > 0.0 {
-            builder.add(RegularSpikeGenerator {
-                frequency: n.fire_hz as f64,
-            });
+            let freq = if n.is_origin {
+                n.fire_hz as f64 * 5.0
+            } else {
+                n.fire_hz as f64
+            };
+            builder.add(RegularSpikeGenerator { frequency: freq });
             builder.add(GeneratorDynamics::default());
         }
 

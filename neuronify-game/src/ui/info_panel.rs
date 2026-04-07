@@ -1,5 +1,5 @@
 use hecs::Entity;
-use neuronify_core::{Compartment, Inhibitory, LeakyDynamics, LeakyNeuron};
+use neuronify_core::{Compartment, GeneratorDynamics, Inhibitory, LeakyDynamics, LeakyNeuron, RegularSpikeGenerator};
 
 use crate::components::*;
 
@@ -274,6 +274,30 @@ fn draw_single_entity(
                 ui.colored_label(
                     egui::Color32::from_rgb(200, 100, 100),
                     "Dormant (no energy)",
+                );
+            }
+        }
+
+        // Fire charge indicator — auto-firing neurons show a buildup bar.
+        if let (Ok(gen), Ok(spike)) = (
+            world.get::<&GeneratorDynamics>(entity),
+            world.get::<&RegularSpikeGenerator>(entity),
+        ) {
+            if spike.frequency > 0.0 {
+                let period = 1.0 / spike.frequency;
+                let charge = (gen.time_since_fire / period).clamp(0.0, 1.0) as f32;
+                ui.separator();
+                let charge_color = egui::Color32::from_rgb(
+                    (255.0 * charge) as u8,
+                    (200.0 * (1.0 - charge * 0.5)) as u8,
+                    (50.0 + 180.0 * (1.0 - charge)) as u8,
+                );
+                ui.label(format!("Fire rate: {:.0} Hz", spike.frequency));
+                ui.add(
+                    egui::ProgressBar::new(charge)
+                        .text("Charge")
+                        .fill(charge_color)
+                        .desired_width(160.0),
                 );
             }
         }

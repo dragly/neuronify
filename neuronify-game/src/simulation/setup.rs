@@ -230,7 +230,7 @@ pub fn setup_game(world: &mut hecs::World, _dish: &PetriDish) {
         LeakyDynamics::default(),
         LeakCurrent::default(),
         NeuronType::Excitatory,
-        RegularSpikeGenerator { frequency: 20.0 },
+        RegularSpikeGenerator { frequency: 100.0 },
         GeneratorDynamics::default(),
         Anchored,
         MetabolicState {
