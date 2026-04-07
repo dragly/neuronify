@@ -44,6 +44,12 @@ enum ConnectResult {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GameState {
     MainMenu,
+    /// Showing the scenario briefing overlay before gameplay begins.
+    Briefing {
+        name: String,
+        briefing: String,
+        objective: String,
+    },
     InGame,
 }
 
@@ -952,16 +958,24 @@ impl visula::Simulation for GameApp {
                     scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
                 }
                 // Build terrain mesh and store terrain data for movement lookups.
-                match crate::map::parse_scenario_svg(svg_content) {
+                let briefing_state = match crate::map::parse_scenario_svg(svg_content) {
                     Ok(map) => {
                         rendering::build_terrain_mesh(
                             &mut self.terrain_mesh, &map, &application.device,
                         );
                         self.victory_condition = victory::parse_victory(&map.meta.victory);
                         self.scenario_terrain = map.terrain;
+                        GameState::Briefing {
+                            name: map.meta.name,
+                            briefing: map.meta.briefing,
+                            objective: map.meta.objective,
+                        }
                     }
-                    Err(e) => log::warn!("Terrain mesh skipped: {}", e),
-                }
+                    Err(e) => {
+                        log::warn!("Terrain mesh skipped: {}", e);
+                        GameState::InGame
+                    }
+                };
                 self.victory_achieved = false;
                 self.victory_check_timer = 1.0;
                 self.game_elapsed = 0.0;
@@ -971,22 +985,23 @@ impl visula::Simulation for GameApp {
                 application.camera_controller.target_transform.distance = 300.0;
                 application.camera_controller.current_transform =
                     application.camera_controller.target_transform.clone();
+                self.game_state = briefing_state;
             } else {
                 scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
+                self.game_state = GameState::InGame;
             }
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
             self.selected_entities.clear();
             self.attack_mode = false;
-            self.game_state = GameState::InGame;
         }
 
         if self.pending_exit_game {
             std::process::exit(0);
         }
 
-        // Pause all simulation while in the main menu.
-        if self.game_state == GameState::MainMenu {
+        // Pause all simulation while in the main menu or showing the briefing.
+        if matches!(self.game_state, GameState::MainMenu | GameState::Briefing { .. }) {
             return;
         }
 
@@ -1229,6 +1244,76 @@ impl visula::Simulation for GameApp {
                 }
                 main_menu::MenuAction::None => {}
             }
+            return;
+        }
+
+        // Briefing overlay — shown before gameplay begins; sim is paused.
+        if let GameState::Briefing { name, briefing, objective } = self.game_state.clone() {
+            let dark = egui::Color32::from_rgba_premultiplied(10, 12, 18, 230);
+            let amber = egui::Color32::from_rgb(255, 190, 60);
+            let dim = egui::Color32::from_rgb(160, 160, 160);
+            egui::Area::new(egui::Id::new("briefing_overlay"))
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .show(context, |ui| {
+                    egui::Frame::new()
+                        .fill(dark)
+                        .inner_margin(egui::Margin::symmetric(32, 24))
+                        .corner_radius(egui::CornerRadius::same(4))
+                        .show(ui, |ui| {
+                            ui.set_max_width(520.0);
+                            // Title
+                            ui.label(
+                                egui::RichText::new(name.to_uppercase())
+                                    .color(amber)
+                                    .size(22.0)
+                                    .monospace(),
+                            );
+                            ui.add_space(12.0);
+                            // Briefing section
+                            ui.label(
+                                egui::RichText::new("SITUATION")
+                                    .color(dim)
+                                    .size(11.0)
+                                    .monospace(),
+                            );
+                            ui.add_space(4.0);
+                            ui.label(
+                                egui::RichText::new(&briefing)
+                                    .color(egui::Color32::from_rgb(210, 210, 210))
+                                    .size(14.0)
+                                    .monospace(),
+                            );
+                            ui.add_space(14.0);
+                            // Objective section
+                            ui.label(
+                                egui::RichText::new("OBJECTIVE")
+                                    .color(dim)
+                                    .size(11.0)
+                                    .monospace(),
+                            );
+                            ui.add_space(4.0);
+                            ui.label(
+                                egui::RichText::new(&objective)
+                                    .color(egui::Color32::from_rgb(120, 220, 80))
+                                    .size(14.0)
+                                    .monospace(),
+                            );
+                            ui.add_space(20.0);
+                            ui.vertical_centered(|ui| {
+                                let btn = egui::Button::new(
+                                    egui::RichText::new("[ BEGIN ]")
+                                        .color(egui::Color32::BLACK)
+                                        .size(15.0)
+                                        .monospace(),
+                                )
+                                .fill(amber)
+                                .min_size(egui::Vec2::new(140.0, 36.0));
+                                if ui.add(btn).clicked() {
+                                    self.game_state = GameState::InGame;
+                                }
+                            });
+                        });
+                });
             return;
         }
 
