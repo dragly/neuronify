@@ -8,6 +8,16 @@ pub mod hex;
 use std::collections::HashMap;
 use std::path::Path;
 
+// ── Embedded scenario data ────────────────────────────────────────────────────
+
+/// All scenario SVG files compiled into the binary.
+/// Add new scenarios here as `include_str!("../../maps/<name>.svg")`.
+pub fn embedded_scenario_svgs() -> &'static [&'static str] {
+    &[
+        include_str!("../../maps/excitotoxic-wave.svg"),
+    ]
+}
+
 // ── Terrain ───────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, PartialEq, Eq)]

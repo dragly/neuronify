@@ -3,8 +3,46 @@ use std::cmp::Reverse;
 
 use hecs::Entity;
 
+use crate::map::{HexTerrain, TerrainType};
+
 /// Axial hex coordinate.
 pub type HexCoord = (i32, i32);
+
+// ── Terrain helpers ───────────────────────────────────────────────────────────
+
+/// Integer step cost (×10 base) for moving through a terrain cell.
+/// Returns `None` if the terrain is impassable.
+pub fn terrain_step_cost(terrain: &HexTerrain) -> Option<i32> {
+    if !terrain.passable {
+        return None;
+    }
+    // Base cost = 10; scaled by 1/speed_mult so slow terrain costs more.
+    let cost = (10.0 / terrain.speed_mult.max(0.01)).round() as i32;
+    Some(cost)
+}
+
+/// Axon-growth speed multiplier derived from terrain type.
+/// Returns 0.0 for impassable terrain.
+pub fn axon_speed_mult(terrain: &HexTerrain) -> f32 {
+    if !terrain.passable {
+        return 0.0;
+    }
+    match terrain.terrain {
+        TerrainType::Open      => 1.0,
+        TerrainType::EcmSparse => 0.7,
+        TerrainType::EcmDense  => 0.3,
+        _                      => 0.0, // should not be passable, but be safe
+    }
+}
+
+/// Look up the terrain at a world-space position.
+pub fn terrain_at(
+    pos: glam::Vec3,
+    terrain: &HashMap<(i32, i32), HexTerrain>,
+) -> Option<&HexTerrain> {
+    let h = crate::map::hex::world_to_hex(pos.x, pos.z);
+    terrain.get(&(h.col, h.row))
+}
 
 /// Sparse infinite hex grid used only for pathfinding / occupancy.
 /// All world positions are mapped onto flat-top hex cells.
@@ -73,19 +111,29 @@ impl HexGrid {
 
     /// Run A* from `start` to `goal`.  Returns an empty vec if no path exists.
     /// The returned vec does NOT include the start cell; it ends with `goal`.
-    pub fn a_star(&self, mover: Entity, start: HexCoord, goal: HexCoord) -> Vec<HexCoord> {
-        // Cost type: u32 avoids float hashing issues.
-        // Priority queue: (f, g, coord)  — min-heap on f via Reverse.
+    ///
+    /// `terrain` — if provided, impassable hex cells are blocked and edge costs
+    /// are weighted by `1 / speed_mult` (open=10, ecm_sparse≈14, ecm_dense=25).
+    /// Without terrain the cost is a uniform 10 per step.
+    pub fn a_star(
+        &self,
+        mover: Entity,
+        start: HexCoord,
+        goal: HexCoord,
+        terrain: &HashMap<(i32, i32), HexTerrain>,
+    ) -> Vec<HexCoord> {
+        // All costs are scaled ×10 so integer arithmetic stays admissible.
+        const BASE_COST: i32 = 10;
+
         let mut open: BinaryHeap<(Reverse<i32>, i32, HexCoord)> = BinaryHeap::new();
         let mut g_score: HashMap<HexCoord, i32> = HashMap::new();
         let mut came_from: HashMap<HexCoord, HexCoord> = HashMap::new();
 
         g_score.insert(start, 0);
-        open.push((Reverse(Self::hex_distance(start, goal)), 0, start));
+        open.push((Reverse(Self::hex_distance(start, goal) * BASE_COST), 0, start));
 
         while let Some((_, g, current)) = open.pop() {
             if current == goal {
-                // Reconstruct path
                 let mut path = Vec::new();
                 let mut c = current;
                 while c != start {
@@ -96,7 +144,6 @@ impl HexGrid {
                 return path;
             }
 
-            // Skip if we already found a cheaper route to `current`.
             if g_score.get(&current).copied().unwrap_or(i32::MAX) < g {
                 continue;
             }
@@ -105,17 +152,32 @@ impl HexGrid {
                 if !self.is_passable(nb, mover) && nb != goal {
                     continue;
                 }
-                let tentative_g = g + 1;
+
+                // Terrain passability + weighted cost.
+                let step_cost = {
+                    let nb_world = self.hex_to_world(nb);
+                    let map_hex = crate::map::hex::world_to_hex(nb_world.x, nb_world.z);
+                    match terrain.get(&(map_hex.col, map_hex.row)) {
+                        Some(t) if nb != goal => {
+                            match terrain_step_cost(t) {
+                                Some(c) => c,
+                                None    => continue, // impassable terrain — skip
+                            }
+                        }
+                        _ => BASE_COST, // outside map or at the goal: use base cost
+                    }
+                };
+
+                let tentative_g = g + step_cost;
                 if tentative_g < g_score.get(&nb).copied().unwrap_or(i32::MAX) {
                     g_score.insert(nb, tentative_g);
                     came_from.insert(nb, current);
-                    let f = tentative_g + Self::hex_distance(nb, goal);
+                    let f = tentative_g + Self::hex_distance(nb, goal) * BASE_COST;
                     open.push((Reverse(f), tentative_g, nb));
                 }
             }
         }
 
-        // No path found
         Vec::new()
     }
 

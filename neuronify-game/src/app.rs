@@ -87,8 +87,8 @@ pub struct GameApp {
     pub game_state: GameState,
     pub menu_scenarios: Vec<main_menu::ScenarioEntry>,
     pub menu_selected: Option<usize>,
-    /// Path of the SVG map that will be loaded when `pending_new_game` fires.
-    pub pending_svg_path: Option<std::path::PathBuf>,
+    /// Embedded SVG content that will be loaded when `pending_new_game` fires.
+    pub pending_svg_content: Option<&'static str>,
     /// Pathfinding grid rebuilt each frame from current neuroblast positions.
     pub hex_grid: HexGrid,
     /// When true, the next right-click or left-click sets the move destination
@@ -103,34 +103,24 @@ pub struct GameApp {
     pub dendrite_buffer: InstanceBuffer<rendering::CylinderData>,
     pub health_bar_meshes: [MeshPipeline; 4],
     pub energy_bar_meshes: [MeshPipeline; 2],
+    pub terrain_mesh: MeshPipeline,
+    /// Terrain hex data for the loaded scenario, used for movement speed/passability.
+    /// Empty map = no terrain effects (e.g. in the non-SVG default scenario).
+    pub scenario_terrain: std::collections::HashMap<(i32,i32), crate::map::HexTerrain>,
 }
 
-/// Load scenario metadata from all SVG files in the `maps/` directory.
+/// Build the main-menu scenario list from SVG content embedded in the binary.
 fn load_menu_scenarios() -> Vec<main_menu::ScenarioEntry> {
-    let maps_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("maps");
     let mut entries = Vec::new();
-
-    let Ok(read_dir) = std::fs::read_dir(&maps_dir) else {
-        return entries;
-    };
-
-    let mut paths: Vec<_> = read_dir
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("svg"))
-        .collect();
-    paths.sort();
-
-    for path in paths {
-        match crate::map::load_scenario(&path) {
+    for &content in crate::map::embedded_scenario_svgs() {
+        match crate::map::parse_scenario_svg(content) {
             Ok(map) => entries.push(main_menu::ScenarioEntry {
                 meta: map.meta,
-                svg_path: path,
+                svg_content: content,
             }),
-            Err(e) => log::warn!("Failed to load scenario {:?}: {}", path, e),
+            Err(e) => log::warn!("Failed to parse embedded scenario: {}", e),
         }
     }
-
     entries
 }
 
@@ -169,11 +159,9 @@ impl GameApp {
     pub fn new(application: &mut visula::Application) -> GameApp {
         application.camera_controller.enabled = false;
         application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
-        // 30° below horizontal, looking along +z. SVG scenarios map their wider axis to z
-        // (after the 90° rotation), so this gives a good landscape view.
-        // sin(30°) = 0.5, cos(30°) ≈ 0.866 — already a unit vector.
+        // 45° below horizontal, looking along +z. sin(45°) = cos(45°) ≈ 0.7071.
         application.camera_controller.target_transform.forward =
-            Vec3::new(0.0, -0.5, 0.866);
+            Vec3::new(-0.3536, -0.7071, 0.6124);
         application.camera_controller.target_transform.distance = 300.0;
         application.camera_controller.current_transform =
             application.camera_controller.target_transform.clone();
@@ -244,6 +232,8 @@ impl GameApp {
             rendering::create_health_bar_pipelines(&application.rendering_descriptor()).unwrap();
         let energy_bar_meshes =
             rendering::create_energy_bar_pipelines(&application.rendering_descriptor()).unwrap();
+        let terrain_mesh =
+            rendering::create_terrain_pipeline(&application.rendering_descriptor()).unwrap();
 
         let vessel_time_buffer = UniformBuffer::<rendering::VesselTime>::new(&application.device);
         let particle_buffer = InstanceBuffer::<rendering::BloodParticle>::new(&application.device);
@@ -305,7 +295,7 @@ impl GameApp {
             game_state: GameState::MainMenu,
             menu_scenarios,
             menu_selected: None,
-            pending_svg_path: None,
+            pending_svg_content: None,
             hex_grid: HexGrid::new(HEX_GRID_CELL_SIZE),
             awaiting_move_destination: false,
             combat_accumulator: 0.0,
@@ -316,6 +306,8 @@ impl GameApp {
             dendrite_buffer,
             health_bar_meshes,
             energy_bar_meshes,
+            terrain_mesh,
+            scenario_terrain: std::collections::HashMap::new(),
         }
     }
 
@@ -712,6 +704,7 @@ impl GameApp {
                     &self.hex_grid,
                     entity,
                     mouse_pos,
+                    &self.scenario_terrain,
                 );
             }
             return;
@@ -971,14 +964,24 @@ impl visula::Simulation for GameApp {
         if self.pending_new_game {
             self.pending_new_game = false;
             self.world.clear();
-            if let Some(svg_path) = self.pending_svg_path.take() {
-                if let Err(e) = scenarios::setup_scenario_from_svg(&mut self.world, &mut self.petri_dish, &svg_path) {
-                    log::error!("Failed to load SVG scenario {:?}: {}", svg_path, e);
+            if let Some(svg_content) = self.pending_svg_content.take() {
+                if let Err(e) = scenarios::setup_scenario_from_svg(&mut self.world, &mut self.petri_dish, svg_content) {
+                    log::error!("Failed to load SVG scenario: {}", e);
                     scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
+                }
+                // Build terrain mesh and store terrain data for movement lookups.
+                match crate::map::parse_scenario_svg(svg_content) {
+                    Ok(map) => {
+                        rendering::build_terrain_mesh(
+                            &mut self.terrain_mesh, &map, &application.device,
+                        );
+                        self.scenario_terrain = map.terrain;
+                    }
+                    Err(e) => log::warn!("Terrain mesh skipped: {}", e),
                 }
                 // Aim camera along +z at 30° below horizontal to show the rotated SVG map.
                 application.camera_controller.target_transform.center = Vec3::ZERO;
-                application.camera_controller.target_transform.forward = Vec3::new(0.0, -0.5, 0.866);
+                application.camera_controller.target_transform.forward = Vec3::new(-0.3536, -0.7071, 0.6124);
                 application.camera_controller.target_transform.distance = 300.0;
                 application.camera_controller.current_transform =
                     application.camera_controller.target_transform.clone();
@@ -1066,16 +1069,16 @@ impl visula::Simulation for GameApp {
             // Production / migration / maturation systems
             self.hex_grid.rebuild(&self.world);
             production::tick_production(&mut self.world, sim_dt);
-            production::move_neuroblasts(&mut self.world, &mut self.hex_grid, sim_dt);
+            production::move_neuroblasts(&mut self.world, &mut self.hex_grid, &self.scenario_terrain, sim_dt);
             production::tick_neuroblast_repulsion(&mut self.world, sim_dt);
             production::tick_maturation(&mut self.world, sim_dt);
-            production::advance_growth_cones(&mut self.world, &mut self.p1_economy, sim_dt);
+            production::advance_growth_cones(&mut self.world, &mut self.p1_economy, &self.scenario_terrain, sim_dt);
 
             combat::tick_dying_units(&mut self.world, sim_dt);
             combat::tick_slow_effects(&mut self.world, sim_dt);
             combat::apply_neuron_spawning(&mut self.world, sim_dt);
             combat::apply_enemy_spawn_points(&mut self.world, sim_dt);
-            combat::move_mobile_units(&mut self.world, sim_dt);
+            combat::move_mobile_units(&mut self.world, &self.scenario_terrain, sim_dt);
             combat::apply_unit_repulsion(&mut self.world);
             combat::apply_unit_repulsion(&mut self.world); // second pass for complete separation
             combat::apply_axon_cutting(&mut self.world, sim_dt);
@@ -1213,6 +1216,7 @@ impl visula::Simulation for GameApp {
     }
 
     fn render(&mut self, data: &mut RenderData) {
+        self.terrain_mesh.render(data);
         self.vessel_mesh.render(data);
         self.particle_spheres.render(data);
         self.spheres.render(data);
@@ -1234,8 +1238,8 @@ impl visula::Simulation for GameApp {
         // Main menu: show scenario selector, skip game UI.
         if self.game_state == GameState::MainMenu {
             match main_menu::draw_main_menu(context, &self.menu_scenarios, &mut self.menu_selected) {
-                main_menu::MenuAction::StartScenario(svg_path) => {
-                    self.pending_svg_path = Some(svg_path);
+                main_menu::MenuAction::StartScenario(svg_content) => {
+                    self.pending_svg_content = Some(svg_content);
                     self.pending_new_game = true;
                 }
                 main_menu::MenuAction::Exit => {

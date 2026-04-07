@@ -13,6 +13,8 @@ use crate::components::{
     Health, MacrophageUnit, MetabolicState, MicroglialCell, MobileUnit, NeuronEngulfment,
     EnemySpawnPoint, NeuronSpawnType, NeuronSpawner, Ownership, PlayerId, SlowEffect,
 };
+use crate::map::HexTerrain;
+use crate::simulation::pathfinding::terrain_at;
 use crate::spawning;
 use crate::constants::{
     ASTROCYTE_STAGGER_SLOW_FACTOR,
@@ -94,7 +96,11 @@ fn enemy_mobile_positions(world: &hecs::World, my_faction: Faction) -> Vec<(hecs
 
 // ── 1. Move mobile units ──────────────────────────────────────────────────────
 
-pub fn move_mobile_units(world: &mut hecs::World, dt: f32) {
+pub fn move_mobile_units(
+    world: &mut hecs::World,
+    terrain: &std::collections::HashMap<(i32,i32), HexTerrain>,
+    dt: f32,
+) {
     let axon_targets = player_axon_positions(world);
     let neuron_targets = player_neuron_positions(world);
 
@@ -160,7 +166,10 @@ pub fn move_mobile_units(world: &mut hecs::World, dt: f32) {
                     .get::<&SlowEffect>(entity)
                     .map(|s| s.factor)
                     .unwrap_or(1.0);
-                let step = mobile.speed * speed_scale * dt;
+                let terrain_mult = terrain_at(from, terrain)
+                    .map(|t| if t.passable { t.speed_mult } else { 0.0 })
+                    .unwrap_or(1.0);
+                let step = mobile.speed * speed_scale * terrain_mult * dt;
                 // Don't overshoot the standoff ring.
                 let new_pos = if step >= dist - standoff {
                     from + dir * (dist - standoff).max(0.0)

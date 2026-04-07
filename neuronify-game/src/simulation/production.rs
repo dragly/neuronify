@@ -13,7 +13,8 @@ use crate::components::{
     DendriteDepth, Faction, GrowthCone, MaturingNeuron, MovePath, Neuroblast, OriginNeuron,
     Ownership, PlayerEconomy, PlayerId, ProducibleCell, ProducibleItem, ProductionQueue, QueuedItem,
 };
-use crate::simulation::pathfinding::HexGrid;
+use crate::map::HexTerrain;
+use crate::simulation::pathfinding::{axon_speed_mult, terrain_at, HexGrid};
 use crate::spawning;
 use crate::constants;
 use crate::simulation::economy;
@@ -115,7 +116,12 @@ fn path_lookahead(current: Vec3, waypoints: &[Vec3], lookahead: f32) -> Vec3 {
 /// Move all neuroblasts with an active `MovePath`.
 /// Uses a short lookahead to steer smoothly through Chaikin waypoints,
 /// with proximity-based waypoint popping and snap-to-destination to stop cleanly.
-pub fn move_neuroblasts(world: &mut hecs::World, grid: &mut HexGrid, dt: f32) {
+pub fn move_neuroblasts(
+    world: &mut hecs::World,
+    grid: &mut HexGrid,
+    terrain: &std::collections::HashMap<(i32,i32), HexTerrain>,
+    dt: f32,
+) {
     const REPLAN_INTERVAL: f32 = 0.5;
     // Lookahead: steer toward a point ~1 hex width ahead on the path.
     // Short enough that the entity actually curves through each waypoint,
@@ -160,7 +166,14 @@ pub fn move_neuroblasts(world: &mut hecs::World, grid: &mut HexGrid, dt: f32) {
                 continue;
             }
 
-            let step = speed * dt;
+            // Apply terrain speed multiplier. Impassable terrain (mult=0) stops movement.
+            let terrain_mult = terrain_at(current_pos, terrain)
+                .map(|t| if t.passable { t.speed_mult } else { 0.0 })
+                .unwrap_or(1.0);
+            let step = speed * terrain_mult * dt;
+            if step <= 0.0 {
+                continue;
+            }
 
             // Pop intermediate waypoints (all but the last) using three criteria:
             // 1. Proximity: already within ARRIVAL_RADIUS.
@@ -253,6 +266,7 @@ pub fn set_neuroblast_destination(
     grid: &HexGrid,
     entity: hecs::Entity,
     goal: Vec3,
+    terrain: &std::collections::HashMap<(i32,i32), HexTerrain>,
 ) {
     let current_pos = match world.get::<&Position>(entity).ok() {
         Some(p) => p.position,
@@ -262,7 +276,7 @@ pub fn set_neuroblast_destination(
     let start_hex = grid.world_to_hex(current_pos);
     let goal_hex = grid.world_to_hex(goal);
 
-    let hex_path = grid.a_star(entity, start_hex, goal_hex);
+    let hex_path = grid.a_star(entity, start_hex, goal_hex, terrain);
 
     // Convert hex path to world positions; append the exact goal position.
     let mut waypoints: Vec<Vec3> = hex_path
@@ -434,6 +448,7 @@ pub fn queue_snapshot(world: &hecs::World) -> Vec<QueuedItem> {
 pub fn advance_growth_cones(
     world: &mut hecs::World,
     economy: &mut PlayerEconomy,
+    terrain: &std::collections::HashMap<(i32,i32), HexTerrain>,
     dt: f32,
 ) {
     #[derive(Clone)]
@@ -520,9 +535,12 @@ pub fn advance_growth_cones(
                     }
                 }
             } else {
-                // Move toward waypoint.
+                // Move toward waypoint, scaled by terrain axon growth multiplier.
+                let axon_mult = terrain_at(snap.pos, terrain)
+                    .map(|t| axon_speed_mult(t))
+                    .unwrap_or(1.0);
                 let dir = (wp - snap.pos).normalize_or_zero();
-                let step = (snap.cone.speed * dt).min(dist_to_wp);
+                let step = (snap.cone.speed * axon_mult * dt).min(dist_to_wp);
                 if let Ok(mut pos) = world.get::<&mut Position>(snap.entity) {
                     pos.position = snap.pos + dir * step;
                 }
@@ -564,8 +582,11 @@ pub fn advance_growth_cones(
         }
 
         // Move cone forward and lay compartments by distance.
+        let axon_mult = terrain_at(snap.pos, terrain)
+            .map(|t| axon_speed_mult(t))
+            .unwrap_or(1.0);
         let dir = to_target / dist_to_target;
-        let step = (snap.cone.speed * dt).min(dist_to_target);
+        let step = (snap.cone.speed * axon_mult * dt).min(dist_to_target);
         let new_pos = snap.pos + dir * step;
 
         if let Ok(mut pos) = world.get::<&mut Position>(snap.entity) {
@@ -809,7 +830,8 @@ mod tests {
         let mover = world.reserve_entity();
         let start = grid.world_to_hex(Vec3::new(0.0, 0.0, 0.0));
         let goal  = grid.world_to_hex(Vec3::new(20.0, 0.0, 0.0));
-        let path  = grid.a_star(mover, start, goal);
+        let empty_terrain = std::collections::HashMap::new();
+        let path  = grid.a_star(mover, start, goal, &empty_terrain);
         assert!(!path.is_empty(), "A* must find a path in an empty grid");
         assert_eq!(*path.last().unwrap(), goal, "path must end at goal hex");
     }
@@ -820,7 +842,8 @@ mod tests {
         let grid = HexGrid::new(HEX_GRID_CELL_SIZE);
         let e = spawn_neuroblast_at(&mut world, Vec3::ZERO);
         let goal = Vec3::new(20.0, 0.0, 0.0);
-        set_neuroblast_destination(&mut world, &grid, e, goal);
+        let empty_terrain = std::collections::HashMap::new();
+        set_neuroblast_destination(&mut world, &grid, e, goal, &empty_terrain);
 
         let has_path = world.get::<&MovePath>(e).is_ok();
         assert!(has_path, "neuroblast should have a MovePath after set_destination");
@@ -845,10 +868,11 @@ mod tests {
         let start = Vec3::ZERO;
         let goal  = Vec3::new(20.0, 0.0, 0.0);
         let e = spawn_neuroblast_at(&mut world, start);
-        set_neuroblast_destination(&mut world, &grid, e, goal);
+        let empty_terrain = std::collections::HashMap::new();
+        set_neuroblast_destination(&mut world, &grid, e, goal, &empty_terrain);
 
         let dt = 0.016_f32;
-        move_neuroblasts(&mut world, &mut grid, dt);
+        move_neuroblasts(&mut world, &mut grid, &empty_terrain, dt);
 
         let pos = world.get::<&Position>(e).map(|p| p.position).unwrap();
         let dist_after  = pos.distance(goal);
@@ -867,7 +891,8 @@ mod tests {
         let start = Vec3::ZERO;
         let goal  = Vec3::new(20.0, 0.0, 0.0);
         let e = spawn_neuroblast_at(&mut world, start);
-        set_neuroblast_destination(&mut world, &grid, e, goal);
+        let empty_terrain = std::collections::HashMap::new();
+        set_neuroblast_destination(&mut world, &grid, e, goal, &empty_terrain);
 
         // Run up to 5 seconds of simulation (plenty for 20 units at speed 25).
         let dt = 0.016_f32;
@@ -875,7 +900,7 @@ mod tests {
         let mut arrived = false;
         for _tick in 0..max_ticks {
             grid.rebuild(&world);
-            move_neuroblasts(&mut world, &mut grid, dt);
+            move_neuroblasts(&mut world, &mut grid, &empty_terrain, dt);
             // Arrived = no longer has a MovePath
             if world.get::<&MovePath>(e).is_err() {
                 arrived = true;

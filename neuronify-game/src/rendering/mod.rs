@@ -5,6 +5,7 @@ mod tests;
 pub mod colors;
 pub mod game_spheres;
 pub mod petri_dish;
+pub mod terrain;
 pub mod units;
 
 pub use blood_vessels::{
@@ -19,6 +20,7 @@ pub use health_bars::{
     update_energy_bar_meshes, update_health_bar_meshes,
 };
 pub use petri_dish::collect_petri_dish;
+pub use terrain::{build_terrain_mesh, create_terrain_pipeline};
 pub use units::{
     create_microglia_pipeline, create_astrocyte_pipeline, create_macrophage_pipeline,
     update_microglia_mesh, update_astrocyte_mesh, update_macrophage_mesh,

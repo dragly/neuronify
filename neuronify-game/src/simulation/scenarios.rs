@@ -86,13 +86,13 @@ pub fn setup_scenario(world: &mut hecs::World, dish: &PetriDish, scenario: Scena
 pub fn setup_scenario_from_svg(
     world: &mut hecs::World,
     dish: &mut PetriDish,
-    path: &std::path::Path,
+    content: &str,
 ) -> Result<(), String> {
-    use crate::map::{load_scenario, NeuronDefType};
+    use crate::map::{parse_scenario_svg, NeuronDefType};
     use crate::map::hex::{SVG_CX, SVG_CY, MAP_SCALE};
     use std::collections::HashMap;
 
-    let map = load_scenario(path).map_err(|e| e.to_string())?;
+    let map = parse_scenario_svg(content).map_err(|e| e.to_string())?;
     world.clear();
 
     // ── Coordinate transform ──────────────────────────────────────────────────
@@ -729,9 +729,10 @@ pub fn run_headless(world: &mut hecs::World, seconds: f64) {
 
     for _ in 0..steps {
         let fdt = dt as f32;
+        let empty_terrain = std::collections::HashMap::new();
         combat::apply_enemy_spawn_points(world, fdt);
         combat::tick_dying_units(world, fdt);
-        combat::move_mobile_units(world, fdt);
+        combat::move_mobile_units(world, &empty_terrain, fdt);
         combat::apply_axon_cutting(world, fdt);
         combat::apply_neuron_engulfment(world, fdt);
         combat::apply_burst_attacks(world, fdt);
@@ -789,9 +790,10 @@ pub fn run_headless_neural(world: &mut hecs::World, seconds: f64) {
         }
 
         // Combat + metabolism.
+        let empty_terrain = std::collections::HashMap::new();
         combat::tick_dying_units(world, fdt);
         combat::apply_neuron_spawning(world, fdt);
-        combat::move_mobile_units(world, fdt);
+        combat::move_mobile_units(world, &empty_terrain, fdt);
         combat::apply_axon_cutting(world, fdt);
         combat::apply_neuron_engulfment(world, fdt);
         combat::apply_burst_attacks(world, fdt);

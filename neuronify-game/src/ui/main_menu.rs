@@ -5,14 +5,15 @@ use crate::map::ScenarioMeta;
 /// A playable scenario entry shown in the main menu.
 pub struct ScenarioEntry {
     pub meta: ScenarioMeta,
-    pub svg_path: std::path::PathBuf,
+    /// Embedded SVG content (compiled into the binary via `include_str!`).
+    pub svg_content: &'static str,
 }
 
 /// Return value from `draw_main_menu`.
 pub enum MenuAction {
     None,
-    /// Player selected a scenario and pressed Play. Carries the SVG file path.
-    StartScenario(std::path::PathBuf),
+    /// Player selected a scenario and pressed Play. Carries the embedded SVG content.
+    StartScenario(&'static str),
     Exit,
 }
 
@@ -137,7 +138,7 @@ pub fn draw_main_menu(
                         {
                             if let Some(idx) = *selected {
                                 action = MenuAction::StartScenario(
-                                    scenarios[idx].svg_path.clone(),
+                                    scenarios[idx].svg_content,
                                 );
                             }
                         }
