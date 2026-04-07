@@ -161,31 +161,19 @@ fn draw_single_entity(
             "Blocks: {:.1} / {:.0}",
             glial.blocks_stored, glial.max_blocks
         ));
-        let connected = glial.glucose_stored > 0.01;
-        if connected {
+        let harvesting = glial.glucose_stored > 0.01;
+        if harvesting {
             ui.colored_label(
                 egui::Color32::from_rgb(220, 160, 30),
-                "Receiving glucose from vessel",
+                "Harvesting glucose from vessel terrain",
             );
         } else {
-            ui.colored_label(egui::Color32::GRAY, "Not connected to vessel");
+            ui.colored_label(egui::Color32::GRAY, "Not adjacent to vessel terrain");
         }
         ui.separator();
         ui.colored_label(
             egui::Color32::from_rgb(100, 180, 100),
             "Absorbs nearby enemies",
-        );
-    } else if let Ok(vessel) = world.get::<&BloodVessel>(entity) {
-        ui.label(
-            egui::RichText::new("Blood Vessel")
-                .strong()
-                .color(egui::Color32::from_rgb(180, 30, 30)),
-        );
-        ui.label(format!("Glucose supply: {:.1}/s", vessel.glucose_rate));
-        ui.label(format!("Block supply: {:.1}/s", vessel.block_rate));
-        ui.colored_label(
-            egui::Color32::GRAY,
-            "Connect glial processes to extract resources",
         );
     } else if world.get::<&Neuroblast>(entity).is_ok() {
         let cell_name = if let Ok(nb) = world.get::<&Neuroblast>(entity) {

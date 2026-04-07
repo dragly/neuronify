@@ -1,4 +1,3 @@
-pub mod blood_vessels;
 pub mod dendrites;
 pub mod health_bars;
 mod tests;
@@ -8,11 +7,6 @@ pub mod petri_dish;
 pub mod terrain;
 pub mod units;
 
-pub use blood_vessels::{
-    create_particle_pipeline, create_vessel_pipeline, generate_vessel_particles, update_vessel_mesh,
-    BloodParticle,
-};
-pub(crate) use blood_vessels::VesselTime;
 pub use dendrites::{CylinderData, create_dendrite_pipeline, collect_dendrite_cylinders};
 pub use game_spheres::{collect_game_spheres, collect_placement_preview};
 pub use health_bars::{

@@ -22,7 +22,6 @@ pub struct PetriDish {
 // ── Layout constants ──────────────────────────────────────────────────────────
 
 const ORIGIN_POS: Vec3 = Vec3::new(0.0, 0.0, 0.0);
-const VESSEL_POS: Vec3 = Vec3::new(-14.0, 0.0, 26.0);
 const GLIAL_POS: Vec3 = Vec3::new(-28.0, 0.0, 12.0);
 const NEURON_A_POS: Vec3 = Vec3::new(-20.0, 0.0, 0.0);
 const NEURON_B_POS: Vec3 = Vec3::new(-38.0, 0.0, -14.0);
@@ -187,32 +186,6 @@ pub fn connect_axon(
     link(world, bridge, target, true);
 }
 
-/// Connect a glial cell to a blood vessel via glial process compartments.
-fn connect_glial_to_vessel(
-    world: &mut hecs::World,
-    from: Entity,
-    from_pos: Vec3,
-    vessel: Entity,
-    vessel_pos: Vec3,
-) {
-    let bridge_dist = BLOOD_VESSEL_VISUAL_RADIUS + NODE_RADIUS * 0.5;
-    let dir_out = (from_pos - vessel_pos).normalize_or_zero();
-    let bridge_pos = vessel_pos + dir_out * bridge_dist;
-
-    let waypoints = equilibrium_waypoints(from_pos, bridge_pos);
-
-    let mut prev = from;
-    for wp in waypoints {
-        let comp = spawn_glial_process_comp(world, wp);
-        link(world, prev, comp, false);
-        prev = comp;
-    }
-
-    let bridge = spawn_glial_bridge_comp(world, bridge_pos);
-    link(world, prev, bridge, false);
-    link(world, bridge, vessel, false);
-}
-
 /// Connect a glial cell to a neuron soma via glial process compartments.
 /// The bridge near the neuron carries the GlialProcess marker so that
 /// lactate-distribution BFS can follow this path to reach the neuron.
@@ -277,21 +250,7 @@ pub fn setup_game(world: &mut hecs::World, _dish: &PetriDish) {
         },
     ));
 
-    // Blood vessel — resource supply point
-    let vessel = world.spawn((
-        Position {
-            position: VESSEL_POS,
-        },
-        BloodVessel::default(),
-        VesselAnchor,
-        Anchored,
-        Selectable { selected: false },
-        VisualRadius {
-            radius: BLOOD_VESSEL_VISUAL_RADIUS,
-        },
-    ));
-
-    // Glial cell — metabolic support, connected to vessel and to all three neurons
+    // Glial cell — metabolic support, harvests from adjacent vessel terrain hexes
     let glial = spawning::spawn_glial(world, GLIAL_POS, PlayerId::Player1, 0);
 
     // Spawn neurons without initial dendrites so the pre-built axon bridges don't
@@ -324,9 +283,6 @@ pub fn setup_game(world: &mut hecs::World, _dish: &PetriDish) {
     connect_axon(world, neuron_c, NEURON_C_POS, neuron_b, NEURON_B_POS, NeuronType::Inhibitory);
 
     // ── Glial process connections ─────────────────────────────────────────────
-
-    // Glial → blood vessel (glucose/blocks intake)
-    connect_glial_to_vessel(world, glial, GLIAL_POS, vessel, VESSEL_POS);
 
     // Glial → Neuron A, B, C (lactate delivery)
     connect_glial_to_neuron(world, glial, GLIAL_POS, neuron_a, NEURON_A_POS);

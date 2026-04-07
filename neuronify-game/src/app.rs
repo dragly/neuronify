@@ -9,7 +9,7 @@ use visula::winit::event::{ElementState, Event, MouseButton, Touch, TouchPhase, 
 use visula::{
     winit::keyboard::ModifiersKeyState, CustomEvent, Expression, InstanceBuffer,
     LineGeometry, LineMaterial, Lines, MeshPipeline, RenderData, Renderable, SphereGeometry,
-    SphereMaterial, Spheres, UniformBuffer,
+    SphereMaterial, Spheres,
 };
 
 use neuronify_core::rendering::gpu_types::{ConnectionData, Sphere};
@@ -29,7 +29,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::spawning;
 use crate::rendering;
-use crate::simulation::{boundary, cleanup, combat, economy, metabolism, ownership, production, scenarios, setup, transport};
+use crate::simulation::{boundary, cleanup, combat, cytokines, economy, metabolism, ownership, production, scenarios, setup, transport};
 use crate::simulation::pathfinding::HexGrid;
 use crate::simulation::scenarios::ScenarioId;
 use crate::tools::*;
@@ -53,11 +53,6 @@ pub struct GameApp {
     pub connection_lines: Lines,
     pub connection_spheres: Spheres,
     pub connection_buffer: InstanceBuffer<ConnectionData>,
-    pub vessel_mesh: MeshPipeline,
-    pub particle_spheres: Spheres,
-    #[allow(dead_code)]
-    pub particle_buffer: InstanceBuffer<rendering::BloodParticle>,
-    pub vessel_time_buffer: UniformBuffer<rendering::VesselTime>,
     pub world: hecs::World,
     pub petri_dish: setup::PetriDish,
     pub tool: GameTool,
@@ -217,8 +212,6 @@ impl GameApp {
         )
         .unwrap();
 
-        let vessel_mesh =
-            rendering::create_vessel_pipeline(&application.rendering_descriptor()).unwrap();
         let microglia_mesh =
             rendering::create_microglia_pipeline(&application.rendering_descriptor()).unwrap();
         let astrocyte_mesh =
@@ -235,15 +228,6 @@ impl GameApp {
         let terrain_mesh =
             rendering::create_terrain_pipeline(&application.rendering_descriptor()).unwrap();
 
-        let vessel_time_buffer = UniformBuffer::<rendering::VesselTime>::new(&application.device);
-        let particle_buffer = InstanceBuffer::<rendering::BloodParticle>::new(&application.device);
-        let particle_spheres = rendering::create_particle_pipeline(
-            &application.rendering_descriptor(),
-            &particle_buffer,
-            &vessel_time_buffer,
-        )
-        .unwrap();
-
         let world = hecs::World::new();
         let dish = setup::PetriDish {
             center: Vec3::ZERO,
@@ -259,10 +243,6 @@ impl GameApp {
             connection_lines,
             connection_spheres,
             connection_buffer,
-            vessel_mesh,
-            particle_spheres,
-            particle_buffer,
-            vessel_time_buffer,
             world,
             petri_dish: dish,
             tool: GameTool::Select,
@@ -363,7 +343,6 @@ impl GameApp {
         just_pressed: bool,
     ) -> ConnectResult {
         let snap = 2.0 * NODE_RADIUS;
-        let vessel_snap = BLOOD_VESSEL_SNAP_RADIUS;
         let world = &mut self.world;
         let economy = &mut self.p1_economy;
 
@@ -438,23 +417,14 @@ impl GameApp {
                 // frame, immediately completing a self-loop and locking out further drawing.
                 let source_entity = ct.from;
                 let target_candidates: Vec<(Entity, Vec3, f32)> = if is_glial_process {
-                    // GlialProcess: connect to blood vessels or neurons
-                    let mut targets: Vec<_> = world
+                    // GlialProcess: connect to neurons only (vessels are now terrain, not entities)
+                    world
                         .query::<&Position>()
-                        .with::<&VesselAnchor>()
+                        .with::<&LeakyNeuron>()
                         .iter()
                         .filter(|(e, _)| *e != source_entity)
-                        .map(|(e, p)| (e, p.position, vessel_snap))
-                        .collect();
-                    targets.extend(
-                        world
-                            .query::<&Position>()
-                            .with::<&LeakyNeuron>()
-                            .iter()
-                            .filter(|(e, _)| *e != source_entity)
-                            .map(|(e, p)| (e, p.position, snap)),
-                    );
-                    targets
+                        .map(|(e, p)| (e, p.position, snap))
+                        .collect()
                 } else {
                     // Axon: connect to neurons only (not vessels, not glial cells)
                     world
@@ -988,9 +958,6 @@ impl visula::Simulation for GameApp {
             } else {
                 scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
             }
-            rendering::update_vessel_mesh(&mut self.vessel_mesh, &self.world, &application.device, self.time as f32);
-            let particles = rendering::generate_vessel_particles(&self.world);
-            self.particle_buffer.update(&application.device, &application.queue, &particles);
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
             self.selected_entities.clear();
@@ -1039,10 +1006,12 @@ impl visula::Simulation for GameApp {
         let frame_dt = self.iterations as f64 * LIF_DT;
         self.funds_flash_timer = (self.funds_flash_timer - frame_dt).max(0.0);
         boundary::enforce_petri_boundary(&mut self.world, &self.petri_dish);
-        transport::tick_glial_auto_connect(&mut self.world);
-        transport::spawn_glucose_packets(&mut self.world, frame_dt);
-        transport::move_glucose_packets(&mut self.world, frame_dt);
+        transport::tick_glial_connect_neurons(&mut self.world);
+        transport::harvest_glucose(&mut self.world, &self.scenario_terrain, frame_dt);
         transport::spawn_lactate_packets(&mut self.world, frame_dt);
+        cytokines::emit_cytokines(&mut self.world, frame_dt as f32);
+        cytokines::tick_cytokines(&mut self.world, frame_dt as f32);
+        cytokines::activate_macrophages(&mut self.world);
         transport::move_lactate_packets(&mut self.world, frame_dt);
         economy::glial_contribute_blocks(&mut self.world, frame_dt, &mut self.p1_economy);
         metabolism::metabolic_drain(&mut self.world, frame_dt);
@@ -1152,13 +1121,6 @@ impl visula::Simulation for GameApp {
             }
         }
 
-        // Animate vessel walls each frame (cheap: ~50 verts; sine/cosine noise on CPU).
-        rendering::update_vessel_mesh(
-            &mut self.vessel_mesh,
-            &self.world,
-            &application.device,
-            self.time as f32,
-        );
         rendering::update_microglia_mesh(
             &mut self.microglia_mesh,
             &self.world,
@@ -1199,14 +1161,6 @@ impl visula::Simulation for GameApp {
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
 
-        self.vessel_time_buffer.update(
-            &application.queue,
-            &rendering::VesselTime {
-                time: self.time as f32,
-                _padding: Default::default(),
-            },
-        );
-
         // FPS tracking
         let new_fps = 1.0
             / ((Utc::now() - self.last_update).num_nanoseconds().unwrap() as f64 * 1e-9)
@@ -1217,8 +1171,6 @@ impl visula::Simulation for GameApp {
 
     fn render(&mut self, data: &mut RenderData) {
         self.terrain_mesh.render(data);
-        self.vessel_mesh.render(data);
-        self.particle_spheres.render(data);
         self.spheres.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);

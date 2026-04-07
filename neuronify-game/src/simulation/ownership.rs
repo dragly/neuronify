@@ -41,8 +41,7 @@ pub fn update_ownership(world: &mut hecs::World) {
                     let is_neuron = world.get::<&LeakyNeuron>(neighbor).is_ok();
                     let is_compartment = world.get::<&Compartment>(neighbor).is_ok();
                     let is_glial = world.get::<&GlialCell>(neighbor).is_ok();
-                    let is_vessel = world.get::<&VesselAnchor>(neighbor).is_ok();
-                    if is_neuron || is_compartment || is_glial || is_vessel {
+                    if is_neuron || is_compartment || is_glial {
                         visited.insert(neighbor);
                         queue.push_back(neighbor);
                     }

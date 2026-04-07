@@ -10,8 +10,9 @@ use crate::components::OriginNeuron;
 
 use crate::components::{
     AttackProjectile, AxonCutter, AxonHealth, BurstAttack, Dying, Faction,
-    Health, MacrophageUnit, MetabolicState, MicroglialCell, MobileUnit, NeuronEngulfment,
-    EnemySpawnPoint, NeuronSpawnType, NeuronSpawner, Ownership, PlayerId, SlowEffect,
+    Health, MacrophageActivation, MacrophageUnit, MetabolicState, MicroglialCell, MobileUnit,
+    NeuronEngulfment, EnemySpawnPoint, NeuronSpawnType, NeuronSpawner, Ownership, PlayerId,
+    SlowEffect,
 };
 use crate::map::HexTerrain;
 use crate::simulation::pathfinding::terrain_at;
@@ -108,6 +109,13 @@ pub fn move_mobile_units(
     let mut target_updates: Vec<(hecs::Entity, Option<hecs::Entity>)> = Vec::new();
 
     for (entity, (pos, mobile)) in world.query::<(&Position, &MobileUnit)>().iter() {
+        // Dormant macrophages don't pursue targets.
+        if let Ok(activation) = world.get::<&MacrophageActivation>(entity) {
+            if !activation.active {
+                continue;
+            }
+        }
+
         let from = pos.position;
         let faction = mobile.faction;
 
@@ -413,6 +421,12 @@ pub fn apply_neuron_engulfment(world: &mut hecs::World, dt: f32) {
     let engulfers: Vec<(hecs::Entity, Vec3, f32, f32, f32, f32, Option<hecs::Entity>)> = world
         .query::<(&Position, &NeuronEngulfment)>()
         .iter()
+        .filter(|(e, _)| {
+            // Dormant macrophages do not fire.
+            world.get::<&MacrophageActivation>(*e)
+                .map(|a| a.active)
+                .unwrap_or(true) // no MacrophageActivation = always active
+        })
         .map(|(e, (p, eng))| {
             (e, p.position, eng.shot_damage, eng.shoot_cooldown, eng.shoot_timer, eng.fire_range, eng.target)
         })

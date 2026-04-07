@@ -197,10 +197,24 @@ pub fn setup_scenario_from_svg(
         setup::connect_axon(world, from_entity, from_pos, to_entity, to_pos, neuron_type);
     }
 
-    // ── Spawn enemy macrophages ───────────────────────────────────────────────
+    // ── Spawn enemy macrophages + mast cells ─────────────────────────────────
     for mac in &map.macrophages {
-        let pos = svg_to_world(mac.x, mac.y);
-        spawning::spawn_macrophage(world, pos, Faction::Tumor);
+        let mac_pos = svg_to_world(mac.x, mac.y);
+
+        // Resolve driver neuron entity (if specified).
+        let driver_entity = neuron_entities.get(&mac.driver_id).map(|(e, _)| *e);
+
+        let mac_entity = spawning::spawn_macrophage(world, mac_pos, Faction::Tumor);
+
+        if let Some(driver) = driver_entity {
+            // Add activation component: starts dormant; cytokines will activate it.
+            world.insert_one(mac_entity, MacrophageActivation { active: false }).ok();
+
+            // Spawn mast cell between driver neuron and macrophage.
+            let driver_pos = neuron_entities[&mac.driver_id].1;
+            let mast_pos = driver_pos + (mac_pos - driver_pos) * 0.4;
+            spawning::spawn_mast_cell(world, mast_pos, driver);
+        }
     }
 
     Ok(())

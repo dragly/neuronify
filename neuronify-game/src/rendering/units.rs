@@ -26,7 +26,7 @@ use visula::primitives::mesh_primitive::MeshVertexAttributes;
 use wgpu::util::DeviceExt;
 
 use crate::components::{
-    Dying, Health, MacrophageUnit, MicroglialCell,
+    Dying, Health, MacrophageActivation, MacrophageUnit, MicroglialCell,
 };
 use neuronify_core::Position;
 
@@ -39,8 +39,10 @@ fn vert_c(pos: [f32; 3], normal: [f32; 3], color: [u8; 4]) -> MeshVertexAttribut
 // Per-vertex color constants for each unit part.
 const MICROGLIA_BODY_COLOR:    [u8; 4] = [0,   209, 230, 255]; // cyan
 const MICROGLIA_NUCLEUS_COLOR: [u8; 4] = [220, 46,  13,  255]; // red-orange
-const MACROPHAGE_BODY_COLOR:   [u8; 4] = [97,  5,   77,  255]; // dark purple
-const MACROPHAGE_CAP_COLOR:    [u8; 4] = [242, 71,  209, 255]; // hot pink
+const MACROPHAGE_BODY_COLOR:   [u8; 4] = [97,  5,   77,  255]; // dark purple (dormant)
+const MACROPHAGE_CAP_COLOR:    [u8; 4] = [242, 71,  209, 255]; // hot pink (dormant)
+const MACROPHAGE_BODY_ACTIVE:  [u8; 4] = [200, 20,  160, 255]; // vivid magenta (active)
+const MACROPHAGE_CAP_ACTIVE:   [u8; 4] = [255, 160,  80, 255]; // bright orange (active)
 
 // ── Death animation curve ─────────────────────────────────────────────────────
 
@@ -447,8 +449,14 @@ pub fn update_macrophage_mesh(mesh: &mut MeshPipeline, world: &hecs::World, devi
         let seed = (entity.id() as f32) * 2.399;
         let health_frac = world.get::<&Health>(entity).map(|h| h.fraction()).unwrap_or(1.0);
         let death_t = world.get::<&Dying>(entity).ok().map(|d| d.timer / d.duration);
-        generate_macrophage_body(pos.position, seed, time, death_t, MACROPHAGE_BODY_COLOR, &mut verts, &mut idx);
-        generate_macrophage_cap(pos.position, seed, time, health_frac, death_t, MACROPHAGE_CAP_COLOR, &mut verts, &mut idx);
+        // Active macrophages use brighter colors; dormant ones use dark muted palette.
+        let active = world.get::<&MacrophageActivation>(entity)
+            .map(|a| a.active)
+            .unwrap_or(true); // no component = always active
+        let body_color = if active { MACROPHAGE_BODY_ACTIVE } else { MACROPHAGE_BODY_COLOR };
+        let cap_color  = if active { MACROPHAGE_CAP_ACTIVE  } else { MACROPHAGE_CAP_COLOR  };
+        generate_macrophage_body(pos.position, seed, time, death_t, body_color, &mut verts, &mut idx);
+        generate_macrophage_cap(pos.position, seed, time, health_frac, death_t, cap_color, &mut verts, &mut idx);
     }
     flush(mesh, verts, idx, device, "macrophage");
 }

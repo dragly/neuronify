@@ -2,14 +2,11 @@
 pub const PETRI_DISH_RADIUS: f32 = 120.0;
 pub const PETRI_DISH_SEGMENTS: usize = 128;
 
-// Game constants - blood vessels
-pub const BLOOD_VESSEL_GLUCOSE_RATE: f64 = 5.0;
-pub const BLOOD_VESSEL_BLOCK_RATE: f64 = 5.0;
-pub const BLOOD_VESSEL_SUPPLY_RADIUS: f32 = 20.0;
-pub const BLOOD_VESSEL_HEIGHT: f32 = 8.0;
-pub const BLOOD_VESSEL_VISUAL_RADIUS: f32 = 3.0;
-/// Snap distance for connecting to blood vessels (larger than neurons).
-pub const BLOOD_VESSEL_SNAP_RADIUS: f32 = BLOOD_VESSEL_VISUAL_RADIUS + 1.0;
+// Game constants - vessel terrain harvesting
+/// Glucose gained per adjacent vessel hex per second.
+pub const VESSEL_GLUCOSE_RATE: f64 = 5.0;
+/// Building blocks gained per adjacent vessel hex per second.
+pub const VESSEL_BLOCK_RATE: f64 = 5.0;
 
 // Game constants - building blocks
 pub const MAX_BUILDING_BLOCKS: f64 = 1000.0;
@@ -26,7 +23,6 @@ pub const DEFAULT_NEURON_ENERGY: f64 = 80.0;
 pub const MAX_NEURON_ENERGY: f64 = 150.0;
 
 // Game constants - glial cells (astrocytes)
-pub const GLIAL_GATHER_RADIUS: f32 = 15.0;
 pub const GLIAL_DISTRIBUTE_RADIUS: f32 = 12.0;
 pub const GLIAL_MAX_GLUCOSE: f64 = 100.0;
 pub const GLIAL_MAX_BLOCKS: f64 = 50.0;
@@ -39,10 +35,6 @@ pub const COMBAT_DT: f32 = 1.0 / 60.0;
 /// Global game speed multiplier applied to the dt passed to every combat /
 /// movement / production system.  1.0 = real time, 0.5 = half speed.
 pub const GAME_SPEED: f32 = 1.0;
-
-// Game constants - glucose transport (blood vessel → glial)
-pub const GLUCOSE_PACKET_SPEED: f32 = 60.0;
-pub const GLUCOSE_PACKET_INTERVAL: f64 = 0.15;
 
 // Game constants - lactate transport (glial → neuron)
 pub const LACTATE_PACKET_SPEED: f32 = 50.0;
@@ -62,6 +54,18 @@ pub const MICROGLIA_SPEED: f32 = 6.0;
 pub const MICROGLIA_SHOT_DAMAGE: f32 = 2.0;
 /// Seconds between projectile shots.
 pub const MICROGLIA_SHOOT_COOLDOWN: f32 = 1.0;
+
+// Game constants - mast cells and cytokines
+/// World-unit radius within which cytokine particles activate macrophages.
+pub const MAST_CELL_CYTOKINE_RADIUS: f32 = 28.0;
+/// Seconds between cytokine bursts emitted by a mast cell while its driver is firing.
+pub const MAST_CELL_EMIT_INTERVAL: f32 = 0.25;
+/// Number of cytokine particles per burst.
+pub const MAST_CELL_PARTICLES_PER_BURST: usize = 8;
+/// Seconds a cytokine particle lives before fading out.
+pub const CYTOKINE_LIFETIME: f32 = 3.5;
+/// World-units per second a cytokine particle drifts outward from its origin.
+pub const CYTOKINE_SPEED: f32 = 5.0;
 
 // Game constants - combat: neuron destroyers (Macrophage / Siege Synapse / Metastatic Bud)
 pub const MACROPHAGE_HEALTH: f32 = 60.0;

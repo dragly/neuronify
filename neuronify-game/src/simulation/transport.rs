@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 
 use hecs::Entity;
 
@@ -6,120 +6,44 @@ use neuronify_core::{CompartmentCurrent, Connection, Deletable, LeakyNeuron, Pos
 
 use crate::components::*;
 use crate::constants::*;
+use crate::map::{HexTerrain, TerrainType};
 
-/// Spawn glucose packets at blood vessels connected to glial cells.
-/// Each glial cell has a timer; when it fires, packets are spawned at each
-/// connected vessel and travel along the process chain to the glial cell.
-pub fn spawn_glucose_packets(world: &mut hecs::World, dt: f64) {
-    // Build undirected adjacency from CompartmentCurrent connections
-    let mut adjacency: HashMap<Entity, Vec<Entity>> = HashMap::new();
-    for (_, conn) in world
-        .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
-        .iter()
-    {
-        adjacency.entry(conn.from).or_default().push(conn.to);
-        adjacency.entry(conn.to).or_default().push(conn.from);
-    }
-
-    // Collect vessel data
-    let vessel_data: HashMap<Entity, (f64, f64)> = world
-        .query::<&BloodVessel>()
-        .iter()
-        .map(|(e, v)| (e, (v.glucose_rate, v.block_rate)))
-        .collect();
-
-    // Collect glial cells that need to spawn packets
+/// Directly harvest glucose from vessel terrain hexes adjacent to each glial cell.
+/// No packet entities are created — resources are credited instantly each tick.
+/// Harvest rate scales with the number of adjacent vessel hexes.
+pub fn harvest_glucose(
+    world: &mut hecs::World,
+    terrain: &HashMap<(i32, i32), HexTerrain>,
+    dt: f64,
+) {
     let glial_entities: Vec<Entity> = world.query::<&GlialCell>().iter().map(|(e, _)| e).collect();
 
-    let mut packets_to_spawn = Vec::new();
-
-    for glial_entity in glial_entities {
-        // Decrement timer
-        let should_spawn = if let Ok(mut glial) = world.get::<&mut GlialCell>(glial_entity) {
-            glial.packet_timer -= dt;
-            if glial.packet_timer <= 0.0 {
-                glial.packet_timer = GLUCOSE_PACKET_INTERVAL;
-                true
-            } else {
-                false
-            }
-        } else {
-            false
+    for entity in glial_entities {
+        let pos = match world.get::<&Position>(entity) {
+            Ok(p) => p.position,
+            Err(_) => continue,
         };
 
-        if !should_spawn {
+        let hex = crate::map::hex::world_to_hex(pos.x, pos.z);
+        let neighbors = crate::map::hex::hex_neighbors(hex.col, hex.row);
+
+        let vessel_count = neighbors.iter().filter(|nb| {
+            terrain.get(&(nb.col, nb.row))
+                .map(|t| t.terrain == TerrainType::Vessel)
+                .unwrap_or(false)
+        }).count();
+
+        if vessel_count == 0 {
             continue;
         }
 
-        // BFS from glial cell to find connected vessels and their paths
-        let mut visited: HashMap<Entity, Option<Entity>> = HashMap::new();
-        let mut queue = VecDeque::new();
-        visited.insert(glial_entity, None);
-        queue.push_back(glial_entity);
+        let glucose_gain = VESSEL_GLUCOSE_RATE * vessel_count as f64 * dt;
+        let block_gain   = VESSEL_BLOCK_RATE   * vessel_count as f64 * dt;
 
-        let mut reached_vessels = Vec::new();
-
-        while let Some(current) = queue.pop_front() {
-            if vessel_data.contains_key(&current) && current != glial_entity {
-                reached_vessels.push(current);
-                continue; // Don't traverse through vessels
-            }
-            if let Some(neighbors) = adjacency.get(&current) {
-                for &neighbor in neighbors {
-                    if let std::collections::hash_map::Entry::Vacant(e) = visited.entry(neighbor) {
-                        e.insert(Some(current));
-                        queue.push_back(neighbor);
-                    }
-                }
-            }
+        if let Ok(mut glial) = world.get::<&mut GlialCell>(entity) {
+            glial.glucose_stored = (glial.glucose_stored + glucose_gain).min(glial.max_glucose);
+            glial.blocks_stored  = (glial.blocks_stored  + block_gain  ).min(glial.max_blocks);
         }
-
-        // For each reached vessel, reconstruct path from vessel to glial
-        for vessel_entity in reached_vessels {
-            let (glucose_rate, block_rate) = vessel_data[&vessel_entity];
-
-            // Trace path from vessel back to glial cell via parent pointers
-            let mut path = Vec::new();
-            let mut current = vessel_entity;
-            path.push(current);
-            while let Some(Some(parent)) = visited.get(&current) {
-                path.push(*parent);
-                current = *parent;
-            }
-            // path is now [vessel, ..., glial_cell]
-
-            if path.len() < 2 {
-                continue;
-            }
-
-            let glucose_amount = glucose_rate * GLUCOSE_PACKET_INTERVAL;
-            let block_amount = block_rate * GLUCOSE_PACKET_INTERVAL;
-
-            // Get vessel position for initial spawn
-            let vessel_pos = world
-                .get::<&Position>(vessel_entity)
-                .map(|p| p.position)
-                .unwrap_or(glam::Vec3::ZERO);
-
-            packets_to_spawn.push((vessel_pos, path, glucose_amount, block_amount));
-        }
-    }
-
-    // Spawn packet entities
-    for (pos, path, glucose, blocks) in packets_to_spawn {
-        world.spawn((
-            Position { position: pos },
-            GlucosePacket {
-                path,
-                path_index: 0,
-                progress: 0.0,
-                speed: GLUCOSE_PACKET_SPEED,
-                glucose_amount: glucose,
-                block_amount: blocks,
-            },
-            Deletable {},
-        ));
     }
 }
 
@@ -332,153 +256,20 @@ pub fn move_lactate_packets(world: &mut hecs::World, dt: f64) {
     }
 }
 
-/// Move glucose packets along their paths. When a packet reaches its
-/// destination (the glial cell), deposit resources. If the path is broken
-/// (an entity in the chain was destroyed), destroy the packet.
-pub fn move_glucose_packets(world: &mut hecs::World, dt: f64) {
-    // Check which connections still exist (for path validation)
-    let mut connection_set: HashSet<(Entity, Entity)> = HashSet::new();
-    for (_, conn) in world
-        .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
-        .iter()
-    {
-        connection_set.insert((conn.from, conn.to));
-        connection_set.insert((conn.to, conn.from));
-    }
-
-    // Collect packet updates
-    let mut arrived: Vec<(Entity, Entity, f64, f64)> = Vec::new(); // (packet, glial, glucose, blocks)
-    let mut destroyed: Vec<Entity> = Vec::new();
-
-    let packet_entities: Vec<Entity> = world
-        .query::<&GlucosePacket>()
-        .iter()
-        .map(|(e, _)| e)
-        .collect();
-
-    for packet_entity in packet_entities {
-        let update = if let Ok(mut packet) = world.get::<&mut GlucosePacket>(packet_entity) {
-            let from_entity = packet.path[packet.path_index];
-            let to_entity = packet.path[packet.path_index + 1];
-
-            // Check if both entities still exist
-            if !world.contains(from_entity) || !world.contains(to_entity) {
-                Some(Err(packet_entity))
-            } else {
-                // Check if connection still exists
-                if !connection_set.contains(&(from_entity, to_entity))
-                    && from_entity != to_entity
-                    // Allow direct vessel→first-hop even without connection lookup
-                    // (the vessel itself isn't in the connection graph as a compartment)
-                    && world.get::<&BloodVessel>(from_entity).is_err()
-                {
-                    Some(Err(packet_entity))
-                } else {
-                    // Compute edge length and advance
-                    let from_pos = world
-                        .get::<&Position>(from_entity)
-                        .map(|p| p.position)
-                        .unwrap_or(glam::Vec3::ZERO);
-                    let to_pos = world
-                        .get::<&Position>(to_entity)
-                        .map(|p| p.position)
-                        .unwrap_or(glam::Vec3::ZERO);
-                    let edge_length = from_pos.distance(to_pos).max(0.01);
-                    packet.progress += packet.speed * dt as f32 / edge_length;
-
-                    if packet.progress >= 1.0 {
-                        // Reached next node
-                        if packet.path_index + 2 >= packet.path.len() {
-                            // Arrived at destination (glial cell)
-                            let glial_entity = *packet.path.last().unwrap();
-                            Some(Ok((
-                                packet_entity,
-                                glial_entity,
-                                packet.glucose_amount,
-                                packet.block_amount,
-                            )))
-                        } else {
-                            // Move to next edge
-                            packet.path_index += 1;
-                            packet.progress = 0.0;
-                            // Update position to the new from-node
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                }
-            }
-        } else {
-            None
-        };
-
-        match update {
-            Some(Ok(arrival)) => arrived.push(arrival),
-            Some(Err(dead)) => destroyed.push(dead),
-            None => {}
-        }
-
-        // Update position by interpolating along current edge
-        if let Ok(packet) = world.get::<&GlucosePacket>(packet_entity) {
-            if packet.path_index + 1 < packet.path.len() {
-                let from_entity = packet.path[packet.path_index];
-                let to_entity = packet.path[packet.path_index + 1];
-                let progress = packet.progress;
-                let from_pos = world.get::<&Position>(from_entity).map(|p| p.position).ok();
-                let to_pos = world.get::<&Position>(to_entity).map(|p| p.position).ok();
-                if let (Some(a), Some(b)) = (from_pos, to_pos) {
-                    let interpolated = a + (b - a) * progress;
-                    if let Ok(mut pos) = world.get::<&mut Position>(packet_entity) {
-                        pos.position = interpolated;
-                    }
-                }
-            }
-        }
-    }
-
-    // Deposit resources from arrived packets
-    for (packet_entity, glial_entity, glucose, blocks) in arrived {
-        if let Ok(mut glial) = world.get::<&mut GlialCell>(glial_entity) {
-            glial.glucose_stored = (glial.glucose_stored + glucose).min(glial.max_glucose);
-            glial.blocks_stored = (glial.blocks_stored + blocks).min(glial.max_blocks);
-        }
-        let _ = world.despawn(packet_entity);
-    }
-
-    // Destroy packets with broken paths
-    for packet_entity in destroyed {
-        let _ = world.despawn(packet_entity);
-    }
-}
-
-/// Automatically wire each GlialCell to nearby blood vessels and neurons with
-/// Connection + CompartmentCurrent edges so that the glucose/lactate packet
-/// systems can route resources without any manual axon drawing by the player.
-///
-/// Connections are created once and then left in place; they are cleaned up by
-/// the normal `cleanup_orphans` pass when either endpoint is despawned.
-pub fn tick_glial_auto_connect(world: &mut hecs::World) {
-    // Snapshot glial cells.
+/// Automatically wire each GlialCell to nearby neurons with Connection +
+/// CompartmentCurrent edges so that lactate packets can travel to them.
+/// Connections are created once and cleaned up by `cleanup_orphans` when
+/// either endpoint is despawned.
+pub fn tick_glial_connect_neurons(world: &mut hecs::World) {
     let glial_entities: Vec<hecs::Entity> =
         world.query::<&GlialCell>().iter().map(|(e, _)| e).collect();
 
-    // Snapshot blood vessel positions.
-    let vessels: Vec<(hecs::Entity, glam::Vec3)> = world
-        .query::<(&BloodVessel, &Position)>()
-        .iter()
-        .map(|(e, (_, p))| (e, p.position))
-        .collect();
-
-    // Snapshot neuron positions (LeakyNeuron = mature neuron soma).
     let neurons: Vec<(hecs::Entity, glam::Vec3)> = world
         .query::<(&LeakyNeuron, &Position)>()
         .iter()
         .map(|(e, (_, p))| (e, p.position))
         .collect();
 
-    // Build a set of existing (from, to) connection pairs to avoid duplicates.
     let existing: std::collections::HashSet<(hecs::Entity, hecs::Entity)> = world
         .query::<&Connection>()
         .iter()
@@ -488,31 +279,19 @@ pub fn tick_glial_auto_connect(world: &mut hecs::World) {
     let mut to_spawn: Vec<(hecs::Entity, hecs::Entity)> = Vec::new();
 
     for glial_entity in glial_entities {
-        let (glial_pos, gather_r, distribute_r) =
-            match world.get::<&GlialCell>(glial_entity).ok() {
-                Some(g) => (
-                    world.get::<&Position>(glial_entity).map(|p| p.position).unwrap_or_default(),
-                    g.gather_radius as f32,
-                    g.distribute_radius as f32,
-                ),
-                None => continue,
-            };
+        let (glial_pos, distribute_r) = match world.get::<&GlialCell>(glial_entity).ok() {
+            Some(g) => (
+                world.get::<&Position>(glial_entity).map(|p| p.position).unwrap_or_default(),
+                g.distribute_radius as f32,
+            ),
+            None => continue,
+        };
 
-        // Connect to blood vessels within gather radius (vessel → glial).
-        for &(vessel_entity, vessel_pos) in &vessels {
-            if glial_pos.distance(vessel_pos) <= gather_r {
-                if !existing.contains(&(vessel_entity, glial_entity)) {
-                    to_spawn.push((vessel_entity, glial_entity));
-                }
-            }
-        }
-
-        // Connect to neurons within distribute radius (glial → neuron).
         for &(neuron_entity, neuron_pos) in &neurons {
-            if glial_pos.distance(neuron_pos) <= distribute_r {
-                if !existing.contains(&(glial_entity, neuron_entity)) {
-                    to_spawn.push((glial_entity, neuron_entity));
-                }
+            if glial_pos.distance(neuron_pos) <= distribute_r
+                && !existing.contains(&(glial_entity, neuron_entity))
+            {
+                to_spawn.push((glial_entity, neuron_entity));
             }
         }
     }
@@ -523,5 +302,122 @@ pub fn tick_glial_auto_connect(world: &mut hecs::World) {
             CompartmentCurrent { capacitance: COUPLING_CAPACITANCE },
             Deletable {},
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::map::{HexTerrain, TerrainType};
+    use crate::map::hex::{world_to_hex, hex_neighbors};
+    use neuronify_core::Position;
+    use glam::Vec3;
+
+    fn vessel_terrain(col: i32, row: i32) -> HexTerrain {
+        HexTerrain {
+            col,
+            row,
+            terrain: TerrainType::Vessel,
+            passable: false,
+            speed_mult: 0.0,
+            resource_glucose: true,
+        }
+    }
+
+    fn spawn_glial_at(world: &mut hecs::World, pos: Vec3) -> hecs::Entity {
+        world.spawn((
+            Position { position: pos },
+            GlialCell::default(),
+        ))
+    }
+
+    /// Glial with no adjacent vessel hexes should receive zero glucose.
+    #[test]
+    fn test_no_harvest_far_from_vessel() {
+        let mut world = hecs::World::new();
+        let pos = Vec3::new(0.0, 0.0, 0.0);
+        let entity = spawn_glial_at(&mut world, pos);
+
+        // Terrain has only open hexes — no vessel
+        let terrain: HashMap<(i32, i32), HexTerrain> = HashMap::new();
+
+        harvest_glucose(&mut world, &terrain, 1.0);
+
+        let glial = world.get::<&GlialCell>(entity).unwrap();
+        assert_eq!(glial.glucose_stored, 0.0, "no glucose when not adjacent to vessel");
+        assert_eq!(glial.blocks_stored, 0.0);
+    }
+
+    /// Glial with exactly one adjacent vessel hex should harvest at base rate.
+    #[test]
+    fn test_harvest_one_adjacent_vessel() {
+        let mut world = hecs::World::new();
+        let pos = Vec3::new(0.0, 0.0, 0.0);
+        let entity = spawn_glial_at(&mut world, pos);
+
+        // Put a vessel in the first neighbour of the glial's hex
+        let hex = world_to_hex(pos.x, pos.z);
+        let nb = hex_neighbors(hex.col, hex.row)[0];
+        let mut terrain: HashMap<(i32, i32), HexTerrain> = HashMap::new();
+        terrain.insert((nb.col, nb.row), vessel_terrain(nb.col, nb.row));
+
+        harvest_glucose(&mut world, &terrain, 1.0);
+
+        let glial = world.get::<&GlialCell>(entity).unwrap();
+        assert!(
+            (glial.glucose_stored - VESSEL_GLUCOSE_RATE).abs() < 1e-6,
+            "expected base rate glucose, got {}", glial.glucose_stored
+        );
+        assert!(
+            (glial.blocks_stored - VESSEL_BLOCK_RATE).abs() < 1e-6,
+            "expected base rate blocks, got {}", glial.blocks_stored
+        );
+    }
+
+    /// Glial at a vessel bend/intersection (2 adjacent vessel hexes) should harvest at 2× rate.
+    #[test]
+    fn test_harvest_two_adjacent_vessels_doubles_rate() {
+        let mut world = hecs::World::new();
+        let pos = Vec3::new(0.0, 0.0, 0.0);
+        let entity = spawn_glial_at(&mut world, pos);
+
+        let hex = world_to_hex(pos.x, pos.z);
+        let nbs = hex_neighbors(hex.col, hex.row);
+        let mut terrain: HashMap<(i32, i32), HexTerrain> = HashMap::new();
+        terrain.insert((nbs[0].col, nbs[0].row), vessel_terrain(nbs[0].col, nbs[0].row));
+        terrain.insert((nbs[1].col, nbs[1].row), vessel_terrain(nbs[1].col, nbs[1].row));
+
+        harvest_glucose(&mut world, &terrain, 1.0);
+
+        let glial = world.get::<&GlialCell>(entity).unwrap();
+        assert!(
+            (glial.glucose_stored - 2.0 * VESSEL_GLUCOSE_RATE).abs() < 1e-6,
+            "expected 2× rate glucose, got {}", glial.glucose_stored
+        );
+    }
+
+    /// Glucose is capped at max_glucose even with many vessel neighbors over many ticks.
+    #[test]
+    fn test_harvest_caps_at_max_glucose() {
+        let mut world = hecs::World::new();
+        let pos = Vec3::new(0.0, 0.0, 0.0);
+        let entity = spawn_glial_at(&mut world, pos);
+
+        let hex = world_to_hex(pos.x, pos.z);
+        let nb = hex_neighbors(hex.col, hex.row)[0];
+        let mut terrain: HashMap<(i32, i32), HexTerrain> = HashMap::new();
+        terrain.insert((nb.col, nb.row), vessel_terrain(nb.col, nb.row));
+
+        // Run for a very long time — should cap at max_glucose
+        for _ in 0..10000 {
+            harvest_glucose(&mut world, &terrain, 1.0);
+        }
+
+        let glial = world.get::<&GlialCell>(entity).unwrap();
+        assert!(
+            glial.glucose_stored <= glial.max_glucose + 1e-6,
+            "glucose exceeded cap: {} > {}", glial.glucose_stored, glial.max_glucose
+        );
+        assert_eq!(glial.glucose_stored, glial.max_glucose);
     }
 }

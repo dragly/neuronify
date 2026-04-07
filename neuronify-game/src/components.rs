@@ -128,6 +128,34 @@ pub struct MacrophageUnit;
 #[derive(Clone, Debug)]
 pub struct TCellUnit;
 
+/// Stationary immune effector — releases cytokine particles when its driver neuron fires.
+/// The driver neuron's `LeakyDynamics.time_since_fire` is polled each tick.
+#[derive(Clone, Debug)]
+pub struct MastCell {
+    /// The neuron entity that drives this mast cell.
+    pub driver: hecs::Entity,
+    /// Countdown (seconds) until the next cytokine burst.
+    pub emit_timer: f32,
+}
+
+/// A cytokine particle drifting outward from a mast cell.
+/// When a `MacrophageUnit` entity is within `MAST_CELL_CYTOKINE_RADIUS` of a living
+/// particle, it becomes active.
+#[derive(Clone, Debug)]
+pub struct CytokineParticle {
+    pub age: f32,
+    pub lifetime: f32,
+    pub velocity: glam::Vec3,
+}
+
+/// Runtime active / dormant state for a `MacrophageUnit`.
+/// Macrophages without this component are treated as permanently active
+/// (backwards-compatible for scenarios that don't use mast cells).
+#[derive(Clone, Debug)]
+pub struct MacrophageActivation {
+    pub active: bool,
+}
+
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Ownership {
@@ -154,22 +182,6 @@ impl Default for MetabolicState {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct BloodVessel {
-    pub glucose_rate: f64,
-    pub block_rate: f64,
-    pub supply_radius: f32,
-}
-
-impl Default for BloodVessel {
-    fn default() -> Self {
-        Self {
-            glucose_rate: crate::constants::BLOOD_VESSEL_GLUCOSE_RATE,
-            block_rate: crate::constants::BLOOD_VESSEL_BLOCK_RATE,
-            supply_radius: crate::constants::BLOOD_VESSEL_SUPPLY_RADIUS,
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct PlayerEconomy {
@@ -207,48 +219,39 @@ pub struct Dendrite;
 #[derive(Clone, Copy, Debug)]
 pub struct DendriteDepth(pub u32);
 
-/// Marks a blood vessel as a valid endpoint for axon/dendrite connections.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct VesselAnchor;
-
 /// Marker for compartments that belong to a glial cell's process network.
 /// Used to distinguish glial processes from neuronal axons/dendrites.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GlialProcess;
 
-/// Glial cell (astrocyte) — gathers glucose from blood vessels via process connections,
+/// Glial cell (astrocyte) — harvests glucose from adjacent vessel terrain hexes,
 /// converts it to lactate, and distributes lactate to nearby neurons for energy.
 /// Also contributes building blocks to the player economy.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GlialCell {
-    pub gather_radius: f32,
     pub distribute_radius: f32,
     pub glucose_stored: f64,
     pub max_glucose: f64,
     pub blocks_stored: f64,
     pub max_blocks: f64,
-    pub packet_timer: f64,
     pub lactate_timer: f64,
 }
 
 impl Default for GlialCell {
     fn default() -> Self {
         Self {
-            gather_radius: crate::constants::GLIAL_GATHER_RADIUS,
             distribute_radius: crate::constants::GLIAL_DISTRIBUTE_RADIUS,
             glucose_stored: 0.0,
             max_glucose: crate::constants::GLIAL_MAX_GLUCOSE,
             blocks_stored: 0.0,
             max_blocks: crate::constants::GLIAL_MAX_BLOCKS,
-            packet_timer: 0.0,
             lactate_timer: 0.0,
         }
     }
 }
 
 /// A lactate packet traveling from a glial cell to a neuron along the glial
-/// process chain.  The path mirrors the structure of GlucosePacket: an ordered
-/// list of entities from the glial soma to the neuron soma.
+/// process chain.
 pub struct LactatePacket {
     /// Ordered entities from glial soma → process compartments → bridge → neuron soma.
     pub path: Vec<hecs::Entity>,
@@ -260,23 +263,6 @@ pub struct LactatePacket {
     pub speed: f32,
     /// Energy deposited into the target neuron on arrival.
     pub energy_amount: f64,
-}
-
-/// A glucose packet traveling along glial process connections from a blood vessel
-/// to a glial cell. Physical entity that can be destroyed to disrupt resource flow.
-pub struct GlucosePacket {
-    /// Ordered list of entities from blood vessel to glial cell.
-    pub path: Vec<hecs::Entity>,
-    /// Current segment: traveling from path[path_index] to path[path_index + 1].
-    pub path_index: usize,
-    /// Progress along the current segment, 0.0 to 1.0.
-    pub progress: f32,
-    /// Movement speed in world units per second.
-    pub speed: f32,
-    /// Glucose carried by this packet.
-    pub glucose_amount: f64,
-    /// Building blocks carried by this packet.
-    pub block_amount: f64,
 }
 
 // ── Production / migration / maturation ──────────────────────────────────────

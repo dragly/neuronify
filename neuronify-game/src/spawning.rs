@@ -57,6 +57,17 @@ pub fn spawn_macrophage(world: &mut hecs::World, position: Vec3, faction: Factio
     world.spawn(builder.build())
 }
 
+/// Spawn a mast cell — stationary immune effector driven by a neuron.
+/// Emits cytokine particles when its driver neuron fires, activating nearby macrophages.
+pub fn spawn_mast_cell(world: &mut hecs::World, position: Vec3, driver: Entity) -> Entity {
+    world.spawn((
+        Position { position },
+        MastCell { driver, emit_timer: 0.0 },
+        Deletable {},
+        VisualRadius { radius: 2.5 },
+    ))
+}
+
 /// Spawn a T-cell — biological fast raider.
 /// Moves at high speed toward the nearest enemy mobile unit; delivers a burst of
 /// damage on contact, then enters a cooldown window of vulnerability.

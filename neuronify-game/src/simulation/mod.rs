@@ -1,6 +1,7 @@
 pub mod boundary;
 pub mod cleanup;
 pub mod combat;
+pub mod cytokines;
 pub mod economy;
 pub mod metabolism;
 pub mod ownership;

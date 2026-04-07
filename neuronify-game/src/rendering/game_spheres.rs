@@ -9,8 +9,9 @@ use neuronify_core::{
 };
 
 use crate::components::{
-    AttackProjectile, GlialCell, GlialProcess, GlucosePacket, GrowthCone, LactatePacket,
-    MaturingNeuron, MetabolicState, Neuroblast, OriginNeuron, Ownership, ProducibleCell, TCellUnit,
+    AttackProjectile, CytokineParticle, GlialCell, GlialProcess, GrowthCone, LactatePacket,
+    MastCell, MaturingNeuron, MetabolicState, Neuroblast, OriginNeuron, Ownership, ProducibleCell,
+    TCellUnit,
 };
 use crate::rendering::colors::{glial_color, player1_color};
 use crate::tools::GameTool;
@@ -167,21 +168,6 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
         })
         .collect();
 
-    // Glucose packets — small amber spheres traveling along glial processes (vessel → glial)
-    let glucose_packet_spheres: Vec<Sphere> = world
-        .query::<(&GlucosePacket, &Position)>()
-        .iter()
-        .map(|(_, (_, position))| {
-            let color = srgb(220, 160, 30);
-            Sphere {
-                position: position.position,
-                color,
-                radius: NODE_RADIUS * 0.4,
-                _padding: Default::default(),
-            }
-        })
-        .collect();
-
     // Lactate packets — small green spheres flying from glial cells to neurons
     let lactate_packet_spheres: Vec<Sphere> = world
         .query::<(&LactatePacket, &Position)>()
@@ -192,6 +178,36 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 position: position.position,
                 color,
                 radius: NODE_RADIUS * 0.35,
+                _padding: Default::default(),
+            }
+        })
+        .collect();
+
+    // MastCell — amber sphere indicating an immune effector driven by a neuron
+    let mast_cell_spheres: Vec<Sphere> = world
+        .query::<(&MastCell, &Position)>()
+        .iter()
+        .map(|(_, (_, position))| Sphere {
+            position: position.position,
+            color: srgb(230, 140, 20),
+            radius: NODE_RADIUS * 1.3,
+            _padding: Default::default(),
+        })
+        .collect();
+
+    // CytokineParticle — tiny warm-orange drifting particles showing the activation cloud
+    let cytokine_spheres: Vec<Sphere> = world
+        .query::<(&CytokineParticle, &Position)>()
+        .iter()
+        .map(|(_, (particle, position))| {
+            let fade = 1.0 - (particle.age / particle.lifetime).clamp(0.0, 1.0);
+            let r = (255.0 * fade) as u8;
+            let g = (120.0 * fade) as u8;
+            let b = (10.0 * fade) as u8;
+            Sphere {
+                position: position.position,
+                color: glam::Vec3::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0),
+                radius: NODE_RADIUS * 0.3,
                 _padding: Default::default(),
             }
         })
@@ -278,7 +294,8 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
     spheres.extend(compartment_spheres.iter());
     spheres.extend(glial_process_spheres.iter());
     spheres.extend(glial_spheres.iter());
-    spheres.extend(glucose_packet_spheres.iter());
+    spheres.extend(mast_cell_spheres.iter());
+    spheres.extend(cytokine_spheres.iter());
     spheres.extend(lactate_packet_spheres.iter());
     spheres.extend(attack_projectile_spheres.iter());
     spheres.extend(tcell_spheres.iter());

@@ -3,7 +3,7 @@ use visula::primitives::mesh_primitive::MeshVertexAttributes;
 use visula::{MeshGeometry, MeshMaterial, MeshPipeline, RenderingDescriptor};
 use wgpu::util::DeviceExt;
 
-use crate::components::{BloodVessel, GlialCell, Ownership, PlayerId};
+use crate::components::{GlialCell, Ownership, PlayerId};
 use crate::constants::PETRI_DISH_RADIUS;
 use crate::simulation::game::{is_within_build_range, is_within_glial_range};
 use neuronify_core::Position;
