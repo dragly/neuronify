@@ -354,6 +354,43 @@ fn draw_single_entity(
             health_bar(ui, &health);
         }
         return draw_attack_section(ui, world, &[entity], attack_mode);
+    } else if world.get::<&TCellUnit>(entity).is_ok() {
+        ui.label(
+            egui::RichText::new("T-Cell")
+                .strong()
+                .color(egui::Color32::from_rgb(120, 220, 50)),
+        );
+        if let Ok(mobile) = world.get::<&MobileUnit>(entity) {
+            ui.label(format!("Faction: {:?}", mobile.faction));
+        }
+        ui.label("Role: Fast Raider");
+        if let Ok(health) = world.get::<&Health>(entity) {
+            health_bar(ui, &health);
+        }
+        return draw_attack_section(ui, world, &[entity], attack_mode);
+    } else if let Ok(mast) = world.get::<&MastCell>(entity) {
+        ui.label(
+            egui::RichText::new("Mast Cell")
+                .strong()
+                .color(egui::Color32::from_rgb(220, 170, 50)),
+        );
+        ui.label("Role: Immune Relay");
+        if let Ok(health) = world.get::<&Health>(entity) {
+            health_bar(ui, &health);
+        }
+        // Show driver neuron status.
+        let driver_alive = world.get::<&neuronify_core::Position>(mast.driver).is_ok();
+        if driver_alive {
+            ui.colored_label(
+                egui::Color32::from_rgb(100, 200, 100),
+                "Driver neuron: alive",
+            );
+        } else {
+            ui.colored_label(
+                egui::Color32::from_rgb(200, 100, 100),
+                "Driver neuron: dead",
+            );
+        }
     } else if let Ok(comp) = world.get::<&Compartment>(entity) {
         let is_process = world.get::<&GlialProcess>(entity).is_ok();
         let is_dendrite = world.get::<&Dendrite>(entity).is_ok();
