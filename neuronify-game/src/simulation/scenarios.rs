@@ -1016,4 +1016,261 @@ mod tests {
             "All tumor macrophages should be destroyed by T-cells (got {remaining_macrophages} remaining)"
         );
     }
+
+    // ── Excitotoxic Wave SVG integration tests ────────────────────────────────
+
+    const EXCITOTOXIC_WAVE_SVG: &str =
+        include_str!("../../maps/excitotoxic-wave.svg");
+
+    /// Test 1 — Parse: verify entity counts and terrain grid dimensions.
+    #[test]
+    fn test_svg_parse_entity_counts() {
+        use crate::map::parse_scenario_svg;
+
+        let map = parse_scenario_svg(EXCITOTOXIC_WAVE_SVG)
+            .expect("SVG should parse without error");
+
+        assert_eq!(map.neurons.len(), 16,
+            "expected 16 neurons (p_origin, p_gen, p1-p8, e1-e3, e_inh, e_drv1, e_drv2)");
+        assert_eq!(map.macrophages.len(), 2,
+            "expected 2 macrophages (mac1, mac2)");
+        assert_eq!(map.axons.len(), 18,
+            "expected 18 axon definitions (13 player + 3 inhibitory + 2 driver visual)");
+        assert!(map.grid_cols() >= 22,
+            "terrain grid should span at least 22 columns (got {})", map.grid_cols());
+        assert!(map.grid_rows() >= 16,
+            "terrain grid should span at least 16 rows (got {})", map.grid_rows());
+    }
+
+    /// Test 2 — Terrain placement: no entity placed on an impassable hex.
+    #[test]
+    fn test_svg_no_entity_on_impassable_terrain() {
+        use crate::map::parse_scenario_svg;
+        use crate::map::hex::{SVG_CX, SVG_CY, MAP_SCALE};
+
+        let map = parse_scenario_svg(EXCITOTOXIC_WAVE_SVG).unwrap();
+
+        for n in &map.neurons {
+            if let Some(hex) = map.terrain.get(&(n.col, n.row)) {
+                assert!(
+                    hex.passable,
+                    "neuron '{}' at ({},{}) sits on impassable terrain {:?}",
+                    n.id, n.col, n.row, hex.terrain
+                );
+            }
+        }
+
+        for m in &map.macrophages {
+            let world_x = -(m.x - SVG_CX) * MAP_SCALE;
+            let world_z = -(m.y - SVG_CY) * MAP_SCALE;
+            let hx = crate::map::hex::world_to_hex(world_x, world_z);
+            if let Some(t) = map.terrain.get(&(hx.col, hx.row)) {
+                assert!(
+                    t.passable,
+                    "macrophage '{}' maps to impassable hex ({},{}) {:?}",
+                    m.id, hx.col, hx.row, t.terrain
+                );
+            }
+        }
+    }
+
+    /// Test 3 — Pathfinding: path from player origin (3,15) to enemy cluster
+    /// (18,2) is non-empty and every intermediate step is on passable terrain.
+    #[test]
+    fn test_svg_pathfinding_avoids_impassable() {
+        use crate::map::parse_scenario_svg;
+        use crate::map::hex::{hex_center, SVG_CX, SVG_CY, MAP_SCALE};
+        use crate::simulation::pathfinding::HexGrid;
+        use crate::constants::HEX_GRID_CELL_SIZE;
+
+        let map = parse_scenario_svg(EXCITOTOXIC_WAVE_SVG).unwrap();
+        let mut world = hecs::World::new();
+        let mover = world.spawn((neuronify_core::Position { position: Vec3::ZERO },));
+        let grid = HexGrid::new(HEX_GRID_CELL_SIZE);
+
+        let svg_to_world = |col: i32, row: i32| {
+            let (sx, sy) = hex_center(col, row);
+            Vec3::new(-(sx - SVG_CX) * MAP_SCALE, 0.0, -(sy - SVG_CY) * MAP_SCALE)
+        };
+
+        // p_origin is at hex (3,15); enemy cluster near e1 at hex (18,2).
+        let start = grid.world_to_hex(svg_to_world(3, 15));
+        let goal  = grid.world_to_hex(svg_to_world(18, 2));
+
+        let path = grid.a_star(mover, start, goal, &map.terrain);
+
+        assert!(
+            !path.is_empty(),
+            "A* should find a path from (3,15) to (18,2) through the map"
+        );
+
+        // Every intermediate waypoint must lie on passable terrain (goal exempt
+        // because the tile may be solid but the game allows arrival there).
+        for &step in path.iter().take(path.len().saturating_sub(1)) {
+            let wp = grid.hex_to_world(step);
+            let mh = crate::map::hex::world_to_hex(wp.x, wp.z);
+            if let Some(t) = map.terrain.get(&(mh.col, mh.row)) {
+                assert!(
+                    t.passable,
+                    "path passes through impassable hex ({},{}) {:?}",
+                    mh.col, mh.row, t.terrain
+                );
+            }
+        }
+    }
+
+    /// Test 4 — Signal propagation: after forcing p_origin to fire and running
+    /// 200 combat ticks, the directly connected neuron p1 should have fired.
+    #[test]
+    fn test_svg_signal_propagates_from_origin() {
+        use neuronify_core::{GeneratorDynamics, LeakyDynamics};
+        use crate::map::parse_scenario_svg;
+
+        let _ = parse_scenario_svg(EXCITOTOXIC_WAVE_SVG).unwrap(); // pre-check
+
+        let mut world = hecs::World::new();
+        let mut dish = PetriDish { center: Vec3::ZERO, radius: 220.0 };
+        setup_scenario_from_svg(&mut world, &mut dish, EXCITOTOXIC_WAVE_SVG)
+            .expect("SVG scenario should set up without error");
+
+        // Force-fire p_origin by resetting its generator clock so it fires
+        // immediately at tick 1.
+        for (_, (gen, _)) in world
+            .query::<(&mut GeneratorDynamics, &NeuronScenarioId)>()
+            .iter()
+            .filter(|(_, (_, sid))| sid.0 == "p_origin")
+        {
+            gen.time_since_fire = f64::INFINITY; // ensure the generator re-arms
+        }
+        for (_, (dyn_, _)) in world
+            .query::<(&mut LeakyDynamics, &NeuronScenarioId)>()
+            .iter()
+            .filter(|(_, (_, sid))| sid.0 == "p_origin")
+        {
+            dyn_.voltage = 0.0; // prime just below threshold — generator will push it over
+        }
+
+        // 200 combat ticks at 0.016 s = 3.2 s of simulation.
+        // p_origin auto-fires at 3 Hz → ~9 spikes; p1 receives direct excitatory input.
+        run_headless_neural(&mut world, 200.0 * 0.016);
+
+        let p1_fired = world
+            .query::<(&LeakyDynamics, &NeuronScenarioId)>()
+            .iter()
+            .any(|(_, (d, sid))| sid.0 == "p1" && d.time_since_fire < 3.5);
+
+        assert!(
+            p1_fired,
+            "p1 should have fired within 3.2 s after p_origin auto-fires at 3 Hz"
+        );
+    }
+
+    /// Test 5 — Macrophage activation: mac1 activates when its driver neuron
+    /// (e_drv1) has fired recently, and goes dormant once cytokines dissipate.
+    #[test]
+    fn test_svg_macrophage_activates_and_deactivates() {
+        use neuronify_core::GeneratorDynamics;
+
+        let mut world = hecs::World::new();
+        let mut dish = PetriDish { center: Vec3::ZERO, radius: 220.0 };
+        setup_scenario_from_svg(&mut world, &mut dish, EXCITOTOXIC_WAVE_SVG)
+            .expect("SVG scenario should set up without error");
+
+        // Macrophages with a driver start dormant.
+        let any_mac_entity = world
+            .query::<&MacrophageActivation>()
+            .iter()
+            .map(|(e, _)| e)
+            .next()
+            .expect("at least one MacrophageActivation entity should exist");
+        assert!(
+            !world.get::<&MacrophageActivation>(any_mac_entity).unwrap().active,
+            "macrophage should start dormant"
+        );
+
+        // Simulate the driver firing: set GeneratorDynamics.time_since_fire = 0 for
+        // all auto-firing enemy neurons so their mast cells emit immediately.
+        for (_, gen) in world.query::<&mut GeneratorDynamics>().iter() {
+            gen.time_since_fire = 0.0;
+        }
+
+        // Tick enough for the mast cell to emit (need emit_timer to expire).
+        // MAST_CELL_EMIT_INTERVAL = 0.25 s; use dt = 0.3 s > interval.
+        crate::simulation::cytokines::emit_cytokines(&mut world, 0.3);
+        crate::simulation::cytokines::tick_cytokines(&mut world, 0.01);
+        crate::simulation::cytokines::activate_macrophages(&mut world);
+
+        let mac_active = world
+            .get::<&MacrophageActivation>(any_mac_entity)
+            .map(|a| a.active)
+            .unwrap_or(false);
+        assert!(mac_active, "macrophage should be active when driver fires and cytokines are present");
+
+        // Now block the driver: set time_since_fire >> RECENT_FIRE_WINDOW (0.5 s)
+        // so no new cytokines are emitted.
+        for (_, gen) in world.query::<&mut GeneratorDynamics>().iter() {
+            gen.time_since_fire = 10.0;
+        }
+
+        // Age all existing cytokines past CYTOKINE_LIFETIME (3.5 s).
+        // 500 ticks × 0.01 s = 5.0 s > 3.5 s lifetime.
+        for _ in 0..500 {
+            crate::simulation::cytokines::tick_cytokines(&mut world, 0.01);
+        }
+        crate::simulation::cytokines::activate_macrophages(&mut world);
+
+        let mac_dormant = world
+            .get::<&MacrophageActivation>(any_mac_entity)
+            .map(|a| !a.active)
+            .unwrap_or(false);
+        assert!(mac_dormant, "macrophage should be dormant after cytokines dissipate");
+    }
+
+    /// Test 6 — Victory: despawning all three target neurons (e1, e2, e3)
+    /// triggers the parsed victory condition.
+    #[test]
+    fn test_svg_victory_triggers_when_targets_dead() {
+        use crate::map::parse_scenario_svg;
+        use crate::simulation::victory;
+
+        let map = parse_scenario_svg(EXCITOTOXIC_WAVE_SVG).unwrap();
+        let cond = victory::parse_victory(&map.meta.victory)
+            .expect("scenario should have a valid victory condition");
+
+        let mut world = hecs::World::new();
+        let mut dish = PetriDish { center: Vec3::ZERO, radius: 220.0 };
+        setup_scenario_from_svg(&mut world, &mut dish, EXCITOTOXIC_WAVE_SVG).unwrap();
+
+        // Victory should NOT be satisfied while all neurons are alive.
+        assert!(
+            !victory::check_victory(&world, &cond),
+            "victory should not be satisfied while e1/e2/e3 are alive"
+        );
+
+        // Despawn each target neuron in turn.
+        let targets = ["e1", "e2", "e3"];
+        for target_id in &targets {
+            let entity = world
+                .query::<&NeuronScenarioId>()
+                .iter()
+                .find(|(_, sid)| &sid.0 == target_id)
+                .map(|(e, _)| e)
+                .unwrap_or_else(|| panic!("target neuron '{}' not found in world", target_id));
+
+            world.despawn(entity).unwrap();
+
+            if *target_id != "e3" {
+                assert!(
+                    !victory::check_victory(&world, &cond),
+                    "victory should not trigger until all three targets are dead (after killing {})", target_id
+                );
+            }
+        }
+
+        // All three dead → victory.
+        assert!(
+            victory::check_victory(&world, &cond),
+            "victory should trigger after all three target neurons are despawned"
+        );
+    }
 }
