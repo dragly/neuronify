@@ -29,7 +29,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::spawning;
 use crate::rendering;
-use crate::simulation::{boundary, cleanup, combat, cytokines, economy, metabolism, ownership, production, scenarios, setup, transport, victory};
+use crate::simulation::{boundary, cleanup, combat, cytokines, dev_scenarios, economy, metabolism, ownership, production, scenarios, setup, transport, victory};
 use crate::simulation::pathfinding::HexGrid;
 use crate::simulation::scenarios::ScenarioId;
 use crate::tools::*;
@@ -116,6 +116,10 @@ pub struct GameApp {
     pub victory_achieved: bool,
     /// Elapsed in-game seconds since the scenario started.
     pub game_elapsed: f64,
+    /// Dev mode enabled via `--dev` CLI flag.
+    pub dev_mode: bool,
+    /// Pending dev stage to apply after the base SVG loads.
+    pub pending_dev_stage: Option<dev_scenarios::DevStage>,
 }
 
 /// Build the main-menu scenario list from SVG content embedded in the binary.
@@ -126,6 +130,7 @@ fn load_menu_scenarios() -> Vec<main_menu::ScenarioEntry> {
             Ok(map) => entries.push(main_menu::ScenarioEntry {
                 meta: map.meta,
                 svg_content: content,
+                dev_stage: None,
             }),
             Err(e) => log::warn!("Failed to parse embedded scenario: {}", e),
         }
@@ -165,7 +170,7 @@ fn find_nearest_within(
 }
 
 impl GameApp {
-    pub fn new(application: &mut visula::Application) -> GameApp {
+    pub fn new(application: &mut visula::Application, dev_mode: bool) -> GameApp {
         application.camera_controller.enabled = false;
         application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
         // 45° below horizontal, looking along +z. sin(45°) = cos(45°) ≈ 0.7071.
@@ -249,7 +254,10 @@ impl GameApp {
         };
 
         // Load scenario metadata from SVG files for the main menu.
-        let menu_scenarios = load_menu_scenarios();
+        let mut menu_scenarios = load_menu_scenarios();
+        if dev_mode {
+            menu_scenarios.extend(dev_scenarios::load_dev_scenario_entries());
+        }
 
         GameApp {
             spheres,
@@ -306,6 +314,8 @@ impl GameApp {
             victory_check_timer: 1.0,
             victory_achieved: false,
             game_elapsed: 0.0,
+            dev_mode,
+            pending_dev_stage: None,
         }
     }
 
@@ -637,7 +647,16 @@ impl GameApp {
                                     .unwrap_or(ct.start)
                             });
                             if mouse_position.distance(last_pos) >= axon_paint_spacing {
-                                ct.waypoints.push(mouse_position);
+                                // Block building through impassable terrain (vessels, scars, CSF).
+                                let passable = crate::simulation::pathfinding::terrain_at(
+                                    mouse_position,
+                                    &self.scenario_terrain,
+                                )
+                                .map(|t| t.passable)
+                                .unwrap_or(true);
+                                if passable {
+                                    ct.waypoints.push(mouse_position);
+                                }
                             }
                             ConnectResult::Continue
                         }
@@ -976,6 +995,14 @@ impl visula::Simulation for GameApp {
                         GameState::InGame
                     }
                 };
+                // Apply dev stage modifications on top of the base SVG.
+                if let Some(stage) = self.pending_dev_stage.take() {
+                    dev_scenarios::apply_dev_stage(
+                        &mut self.world,
+                        &mut self.p1_economy,
+                        stage,
+                    );
+                }
                 self.victory_achieved = false;
                 self.victory_check_timer = 1.0;
                 self.game_elapsed = 0.0;
@@ -1237,9 +1264,15 @@ impl visula::Simulation for GameApp {
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
         // Main menu: show scenario selector, skip game UI.
         if self.game_state == GameState::MainMenu {
-            match main_menu::draw_main_menu(context, &self.menu_scenarios, &mut self.menu_selected) {
+            match main_menu::draw_main_menu(context, &self.menu_scenarios, &mut self.menu_selected, self.dev_mode) {
                 main_menu::MenuAction::StartScenario(svg_content) => {
                     self.pending_svg_content = Some(svg_content);
+                    self.pending_dev_stage = None;
+                    self.pending_new_game = true;
+                }
+                main_menu::MenuAction::StartDevScenario(svg_content, stage) => {
+                    self.pending_svg_content = Some(svg_content);
+                    self.pending_dev_stage = Some(stage);
                     self.pending_new_game = true;
                 }
                 main_menu::MenuAction::Exit => {

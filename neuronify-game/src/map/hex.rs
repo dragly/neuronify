@@ -47,6 +47,14 @@ pub fn hex_center(col: i32, row: i32) -> (f32, f32) {
     (x, y)
 }
 
+/// Convert a hex cell `(col, row)` to its world-space centre position (y = 0).
+///
+/// Composes `hex_center` (→ SVG pixels) with the SVG→world transform.
+pub fn hex_to_world(col: i32, row: i32) -> glam::Vec3 {
+    let (sx, sy) = hex_center(col, row);
+    glam::Vec3::new(-(sx - SVG_CX) * MAP_SCALE, 0.0, -(sy - SVG_CY) * MAP_SCALE)
+}
+
 /// Convert a world-space position (ECS x/z) to the nearest hex cell.
 ///
 /// Inverts the SVG→world transform, then snaps to the closest hex centre.

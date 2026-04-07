@@ -1,12 +1,15 @@
 //! Main menu screen shown before gameplay begins.
 
 use crate::map::ScenarioMeta;
+use crate::simulation::dev_scenarios::DevStage;
 
 /// A playable scenario entry shown in the main menu.
 pub struct ScenarioEntry {
     pub meta: ScenarioMeta,
     /// Embedded SVG content (compiled into the binary via `include_str!`).
     pub svg_content: &'static str,
+    /// If `Some`, this is a dev-only stage scenario.
+    pub dev_stage: Option<DevStage>,
 }
 
 /// Return value from `draw_main_menu`.
@@ -14,6 +17,8 @@ pub enum MenuAction {
     None,
     /// Player selected a scenario and pressed Play. Carries the embedded SVG content.
     StartScenario(&'static str),
+    /// Player selected a dev scenario. Carries SVG content + stage.
+    StartDevScenario(&'static str, DevStage),
     Exit,
 }
 
@@ -23,6 +28,7 @@ pub fn draw_main_menu(
     context: &egui::Context,
     scenarios: &[ScenarioEntry],
     selected: &mut Option<usize>,
+    dev_mode: bool,
 ) -> MenuAction {
     let mut action = MenuAction::None;
 
@@ -57,67 +63,55 @@ pub fn draw_main_menu(
 
                 ui.add_space(16.0);
 
-                // Scenario cards — selection disabled so clicks register on the card, not the text.
-                ui.style_mut().interaction.selectable_labels = false;
+                // Split entries into regular and dev scenarios.
+                let regular: Vec<(usize, &ScenarioEntry)> = scenarios
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, e)| e.dev_stage.is_none())
+                    .collect();
+                let dev: Vec<(usize, &ScenarioEntry)> = scenarios
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, e)| e.dev_stage.is_some())
+                    .collect();
 
-                for (i, entry) in scenarios.iter().enumerate() {
-                    let is_selected = *selected == Some(i);
+                // Scrollable area for scenario cards.
+                egui::ScrollArea::vertical()
+                    .max_height(ui.available_height() - 70.0) // reserve space for buttons
+                    .show(ui, |ui| {
+                        // Scenario cards — selection disabled so clicks register on the card.
+                        ui.style_mut().interaction.selectable_labels = false;
 
-                    let card_color = if is_selected {
-                        egui::Color32::from_rgb(30, 50, 70)
-                    } else {
-                        egui::Color32::from_rgb(22, 22, 28)
-                    };
+                        for &(i, entry) in &regular {
+                            if draw_scenario_card(ui, entry, *selected == Some(i), false) {
+                                *selected = Some(i);
+                            }
+                            ui.add_space(8.0);
+                        }
 
-                    let border_color = if is_selected {
-                        egui::Color32::from_rgb(80, 160, 240)
-                    } else {
-                        egui::Color32::from_rgb(50, 50, 60)
-                    };
+                        // Dev scenario section — only when --dev was passed.
+                        if dev_mode && !dev.is_empty() {
+                            ui.add_space(16.0);
+                            ui.separator();
+                            ui.add_space(8.0);
+                            ui.label(
+                                egui::RichText::new("DEV SCENARIOS")
+                                    .font(egui::FontId::monospace(12.0))
+                                    .color(egui::Color32::from_rgb(255, 190, 60))
+                                    .strong(),
+                            );
+                            ui.add_space(8.0);
 
-                    let frame = egui::Frame::new()
-                        .fill(card_color)
-                        .stroke(egui::Stroke::new(1.5, border_color))
-                        .inner_margin(egui::Margin::symmetric(16, 12))
-                        .corner_radius(egui::CornerRadius::same(6));
-
-                    let resp = frame.show(ui, |ui| {
-                        ui.set_min_width(480.0);
-                        ui.set_max_width(560.0);
-
-                        ui.horizontal(|ui| {
-                            ui.vertical(|ui| {
-                                ui.label(
-                                    egui::RichText::new(&entry.meta.name)
-                                        .font(egui::FontId::monospace(15.0))
-                                        .color(egui::Color32::from_rgb(220, 220, 255))
-                                        .strong(),
-                                );
-                                ui.add_space(4.0);
-                                ui.label(
-                                    egui::RichText::new(&entry.meta.objective)
-                                        .font(egui::FontId::monospace(11.0))
-                                        .color(egui::Color32::from_rgb(140, 200, 140)),
-                                );
-                                ui.add_space(6.0);
-                                ui.label(
-                                    egui::RichText::new(&entry.meta.briefing)
-                                        .font(egui::FontId::monospace(10.0))
-                                        .color(egui::Color32::from_rgb(140, 140, 160)),
-                                );
-                            });
-                        });
+                            for &(i, entry) in &dev {
+                                if draw_scenario_card(ui, entry, *selected == Some(i), true) {
+                                    *selected = Some(i);
+                                }
+                                ui.add_space(8.0);
+                            }
+                        }
                     });
 
-                    // Clicking anywhere on the card selects it
-                    if resp.response.interact(egui::Sense::click()).clicked() {
-                        *selected = Some(i);
-                    }
-
-                    ui.add_space(8.0);
-                }
-
-                ui.add_space(24.0);
+                ui.add_space(12.0);
 
                 // Play / Exit buttons
                 ui.horizontal(|ui| {
@@ -137,9 +131,12 @@ pub fn draw_main_menu(
                             .clicked()
                         {
                             if let Some(idx) = *selected {
-                                action = MenuAction::StartScenario(
-                                    scenarios[idx].svg_content,
-                                );
+                                let entry = &scenarios[idx];
+                                if let Some(stage) = entry.dev_stage {
+                                    action = MenuAction::StartDevScenario(entry.svg_content, stage);
+                                } else {
+                                    action = MenuAction::StartScenario(entry.svg_content);
+                                }
                             }
                         }
                     });
@@ -167,4 +164,72 @@ pub fn draw_main_menu(
         });
 
     action
+}
+
+/// Render a single scenario card. `is_dev` adds an amber "DEV" badge.
+/// Returns `true` if the card was clicked.
+#[allow(deprecated)]
+fn draw_scenario_card(
+    ui: &mut egui::Ui,
+    entry: &ScenarioEntry,
+    is_selected: bool,
+    is_dev: bool,
+) -> bool {
+    let card_color = if is_selected {
+        egui::Color32::from_rgb(30, 50, 70)
+    } else {
+        egui::Color32::from_rgb(22, 22, 28)
+    };
+    let border_color = if is_selected {
+        egui::Color32::from_rgb(80, 160, 240)
+    } else if is_dev {
+        egui::Color32::from_rgb(80, 60, 30)
+    } else {
+        egui::Color32::from_rgb(50, 50, 60)
+    };
+
+    let resp = egui::Frame::new()
+        .fill(card_color)
+        .stroke(egui::Stroke::new(1.5, border_color))
+        .inner_margin(egui::Margin::symmetric(16, 12))
+        .corner_radius(egui::CornerRadius::same(6))
+        .show(ui, |ui| {
+            ui.set_min_width(480.0);
+            ui.set_max_width(560.0);
+
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            egui::RichText::new(&entry.meta.name)
+                                .font(egui::FontId::monospace(15.0))
+                                .color(egui::Color32::from_rgb(220, 220, 255))
+                                .strong(),
+                        );
+                        if is_dev {
+                            ui.label(
+                                egui::RichText::new(" DEV")
+                                    .font(egui::FontId::monospace(10.0))
+                                    .color(egui::Color32::from_rgb(255, 190, 60))
+                                    .strong(),
+                            );
+                        }
+                    });
+                    ui.add_space(4.0);
+                    ui.label(
+                        egui::RichText::new(&entry.meta.objective)
+                            .font(egui::FontId::monospace(11.0))
+                            .color(egui::Color32::from_rgb(140, 200, 140)),
+                    );
+                    ui.add_space(6.0);
+                    ui.label(
+                        egui::RichText::new(&entry.meta.briefing)
+                            .font(egui::FontId::monospace(10.0))
+                            .color(egui::Color32::from_rgb(140, 140, 160)),
+                    );
+                });
+            });
+        });
+
+    resp.response.interact(egui::Sense::click()).clicked()
 }

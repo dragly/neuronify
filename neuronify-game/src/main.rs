@@ -11,5 +11,6 @@ mod ui;
 use app::GameApp;
 
 fn main() {
-    visula::run(GameApp::new);
+    let dev_mode = std::env::args().any(|a| a == "--dev");
+    visula::run(move |app| GameApp::new(app, dev_mode));
 }

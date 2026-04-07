@@ -480,6 +480,15 @@ pub fn advance_growth_cones(
             let dist_to_wp = snap.pos.distance(wp);
             let wp_snap = constants::GROWTH_CONE_COMP_SPACING * 0.5;
 
+            // Despawn if the next waypoint is on impassable terrain.
+            let wp_passable = terrain_at(wp, terrain)
+                .map(|t| t.passable)
+                .unwrap_or(true);
+            if !wp_passable {
+                to_despawn.push(snap.entity);
+                continue;
+            }
+
             if dist_to_wp <= wp_snap {
                 // Arrived — snap cone to the waypoint position.
                 if let Ok(mut pos) = world.get::<&mut Position>(snap.entity) {
@@ -585,6 +594,11 @@ pub fn advance_growth_cones(
         let axon_mult = terrain_at(snap.pos, terrain)
             .map(|t| axon_speed_mult(t))
             .unwrap_or(1.0);
+        // Despawn if stuck on impassable terrain instead of stalling forever.
+        if axon_mult <= 0.0 {
+            to_despawn.push(snap.entity);
+            continue;
+        }
         let dir = to_target / dist_to_target;
         let step = (snap.cone.speed * axon_mult * dt).min(dist_to_target);
         let new_pos = snap.pos + dir * step;
