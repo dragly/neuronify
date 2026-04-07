@@ -10,3 +10,4 @@ pub mod production;
 pub mod scenarios;
 pub mod setup;
 pub mod transport;
+pub mod victory;

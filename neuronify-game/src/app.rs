@@ -29,7 +29,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::spawning;
 use crate::rendering;
-use crate::simulation::{boundary, cleanup, combat, cytokines, economy, metabolism, ownership, production, scenarios, setup, transport};
+use crate::simulation::{boundary, cleanup, combat, cytokines, economy, metabolism, ownership, production, scenarios, setup, transport, victory};
 use crate::simulation::pathfinding::HexGrid;
 use crate::simulation::scenarios::ScenarioId;
 use crate::tools::*;
@@ -102,6 +102,14 @@ pub struct GameApp {
     /// Terrain hex data for the loaded scenario, used for movement speed/passability.
     /// Empty map = no terrain effects (e.g. in the non-SVG default scenario).
     pub scenario_terrain: std::collections::HashMap<(i32,i32), crate::map::HexTerrain>,
+    /// Parsed win condition for the current SVG scenario, if any.
+    pub victory_condition: Option<victory::VictoryCondition>,
+    /// Countdown (seconds) until the next victory check.
+    pub victory_check_timer: f64,
+    /// True once the victory condition has been satisfied.
+    pub victory_achieved: bool,
+    /// Elapsed in-game seconds since the scenario started.
+    pub game_elapsed: f64,
 }
 
 /// Build the main-menu scenario list from SVG content embedded in the binary.
@@ -288,6 +296,10 @@ impl GameApp {
             energy_bar_meshes,
             terrain_mesh,
             scenario_terrain: std::collections::HashMap::new(),
+            victory_condition: None,
+            victory_check_timer: 1.0,
+            victory_achieved: false,
+            game_elapsed: 0.0,
         }
     }
 
@@ -945,10 +957,14 @@ impl visula::Simulation for GameApp {
                         rendering::build_terrain_mesh(
                             &mut self.terrain_mesh, &map, &application.device,
                         );
+                        self.victory_condition = victory::parse_victory(&map.meta.victory);
                         self.scenario_terrain = map.terrain;
                     }
                     Err(e) => log::warn!("Terrain mesh skipped: {}", e),
                 }
+                self.victory_achieved = false;
+                self.victory_check_timer = 1.0;
+                self.game_elapsed = 0.0;
                 // Aim camera along +z at 30° below horizontal to show the rotated SVG map.
                 application.camera_controller.target_transform.center = Vec3::ZERO;
                 application.camera_controller.target_transform.forward = Vec3::new(-0.3536, -0.7071, 0.6124);
@@ -1012,6 +1028,20 @@ impl visula::Simulation for GameApp {
         cytokines::emit_cytokines(&mut self.world, frame_dt as f32);
         cytokines::tick_cytokines(&mut self.world, frame_dt as f32);
         cytokines::activate_macrophages(&mut self.world);
+
+        // Victory condition — checked once per second for performance.
+        self.game_elapsed += frame_dt;
+        self.victory_check_timer -= frame_dt;
+        if self.victory_check_timer <= 0.0 {
+            self.victory_check_timer = 1.0;
+            if !self.victory_achieved {
+                if let Some(cond) = &self.victory_condition {
+                    if victory::check_victory(&self.world, cond) {
+                        self.victory_achieved = true;
+                    }
+                }
+            }
+        }
         transport::move_lactate_packets(&mut self.world, frame_dt);
         economy::glial_contribute_blocks(&mut self.world, frame_dt, &mut self.p1_economy);
         metabolism::metabolic_drain(&mut self.world, frame_dt);
@@ -1200,6 +1230,32 @@ impl visula::Simulation for GameApp {
                 main_menu::MenuAction::None => {}
             }
             return;
+        }
+
+        // Victory screen overlay — shown on top of the normal game UI.
+        if self.victory_achieved {
+            egui::Window::new("Victory!")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .show(context, |ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.heading(
+                            egui::RichText::new("OBJECTIVE COMPLETE")
+                                .color(egui::Color32::from_rgb(120, 220, 80))
+                                .size(24.0),
+                        );
+                        ui.add_space(6.0);
+                        let mins = (self.game_elapsed / 60.0) as u32;
+                        let secs = (self.game_elapsed % 60.0) as u32;
+                        ui.label(format!("Time: {:02}:{:02}", mins, secs));
+                        ui.add_space(10.0);
+                        if ui.button("Return to Menu").clicked() {
+                            self.game_state = GameState::MainMenu;
+                            self.victory_achieved = false;
+                        }
+                    });
+                });
         }
 
         let mut p1_neurons = 0u32;

@@ -115,6 +115,11 @@ pub struct BurstAttack {
     pub cooldown_timer: f32,
 }
 
+/// Stores the SVG `data-id` of a neuron spawned from a scenario file.
+/// Used by the victory checker to look up specific entities by scenario ID.
+#[derive(Clone, Debug)]
+pub struct NeuronScenarioId(pub String);
+
 // ── Unit type markers ─────────────────────────────────────────────────────────
 // Each marker drives rendering (mesh shape/color) and target-selection behavior.
 

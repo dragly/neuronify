@@ -163,6 +163,7 @@ pub fn setup_scenario_from_svg(
             builder.add(GeneratorDynamics::default());
         }
 
+        builder.add(NeuronScenarioId(n.id.clone()));
         let entity = world.spawn(builder.build());
         neuron_entities.insert(n.id.clone(), (entity, pos));
     }
