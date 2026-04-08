@@ -1,0 +1,388 @@
+//! Terrain types, edge/interior profiles, and the complete editable map model.
+
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
+use super::voronoi::Point2;
+
+/// Subdivision level: each triangle edge is divided into N segments.
+pub const N: usize = 6;
+pub const UNIT_H: f32 = 0.866025404; // sqrt(3)/2
+
+// ── Terrain types ────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum EditorTerrain {
+    Csf,
+    GlialScar,
+    Open,
+    Vessel,
+}
+
+impl EditorTerrain {
+    pub const ALL: [EditorTerrain; 4] = [
+        EditorTerrain::Csf,
+        EditorTerrain::GlialScar,
+        EditorTerrain::Open,
+        EditorTerrain::Vessel,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            EditorTerrain::Open => "open",
+            EditorTerrain::Vessel => "vessel",
+            EditorTerrain::GlialScar => "scar",
+            EditorTerrain::Csf => "csf",
+        }
+    }
+
+    pub fn height(self) -> f32 {
+        match self {
+            EditorTerrain::Open => 0.0,
+            EditorTerrain::Vessel => 12.0,
+            EditorTerrain::GlialScar => 20.0,
+            EditorTerrain::Csf => -6.0,
+        }
+    }
+
+    /// Color as [R, G, B] in 0..255.
+    pub fn color_u8(self) -> [u8; 3] {
+        match self {
+            EditorTerrain::Open => [232, 228, 219],
+            EditorTerrain::Vessel => [224, 152, 152],
+            EditorTerrain::GlialScar => [138, 120, 96],
+            EditorTerrain::Csf => [140, 175, 210],
+        }
+    }
+
+    /// Color as [R, G, B] in 0.0..1.0.
+    pub fn color_f32(self) -> [f32; 3] {
+        let [r, g, b] = self.color_u8();
+        [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0]
+    }
+}
+
+// ── Canonical keys ───────────────────────────────────────────────────────────
+
+/// Canonical key for a pair of terrain types (sorted).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct EdgeKey(pub EditorTerrain, pub EditorTerrain);
+
+impl EdgeKey {
+    pub fn new(a: EditorTerrain, b: EditorTerrain) -> Self {
+        if a <= b {
+            EdgeKey(a, b)
+        } else {
+            EdgeKey(b, a)
+        }
+    }
+}
+
+/// Canonical key for a triple of terrain types (sorted).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct TripleKey(pub EditorTerrain, pub EditorTerrain, pub EditorTerrain);
+
+impl TripleKey {
+    pub fn new(a: EditorTerrain, b: EditorTerrain, c: EditorTerrain) -> Self {
+        let mut arr = [a, b, c];
+        arr.sort();
+        TripleKey(arr[0], arr[1], arr[2])
+    }
+}
+
+// ── Interior point ───────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct InteriorPoint {
+    pub i: usize,
+    pub j: usize,
+    pub k: usize,
+    pub z: f32,
+}
+
+// ── Vertex classification ────────────────────────────────────────────────────
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum VertexClassification {
+    /// A cell-center vertex shared by all triangles meeting at that cell.
+    CellCenter {
+        cell_idx: usize,
+    },
+    Edge {
+        key: EdgeKey,
+        param_idx: usize,
+    },
+    Interior {
+        key: TripleKey,
+        i: usize,
+        j: usize,
+        k: usize,
+    },
+}
+
+// ── Edge parameterisation helper ──────────────────────────────────────────────
+
+/// Compute the canonical `param_idx` for an edge vertex.
+///
+/// `t_from` / `t_to` are the terrain types at the two endpoints (in the
+/// triangle's sorted slot order), and `cell_from` / `cell_to` are their
+/// cell-centre positions.  `raw` is the barycentric step count along the
+/// `from→to` direction (0 at `from`, N at `to`).
+///
+/// The EdgeKey is always stored with the lesser terrain first.  When the two
+/// terrains differ, `param_idx` increases toward the *greater* terrain.
+/// When they are equal, we use a spatial tie-break (smaller `(x,y)` is the
+/// 0-end) so that every triangle sharing the same physical Delaunay edge
+/// agrees on the direction.
+fn edge_param_idx(
+    t_from: EditorTerrain,
+    t_to: EditorTerrain,
+    cell_from: super::voronoi::Point2,
+    cell_to: super::voronoi::Point2,
+    raw: usize,
+) -> usize {
+    if t_from == t_to {
+        // Same terrain — coordinate tie-break.
+        // "Forward" = from the cell with smaller (x, y) to the larger one.
+        let from_is_canonical_start =
+            cell_from.x < cell_to.x || (cell_from.x == cell_to.x && cell_from.y <= cell_to.y);
+        if from_is_canonical_start { raw } else { N - raw }
+    } else if t_from < t_to {
+        // from is the lesser terrain → forward direction matches canonical
+        raw
+    } else {
+        // from is the greater terrain → reverse
+        N - raw
+    }
+}
+
+// ── Map model ────────────────────────────────────────────────────────────────
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MapModel {
+    pub cell_centers: Vec<Point2>,
+    pub cell_terrains: Vec<EditorTerrain>,
+    pub triangles: Vec<[usize; 3]>,
+    pub edge_profiles: HashMap<EdgeKey, Vec<f32>>,
+    pub interior_profiles: HashMap<TripleKey, Vec<InteriorPoint>>,
+    /// Per-cell height offset (added on top of the terrain base height).
+    #[serde(default)]
+    pub cell_height_offsets: Vec<f32>,
+}
+
+impl MapModel {
+    /// Initialize all edge profiles with smoothstep interpolation.
+    pub fn init_edge_profiles(&mut self) {
+        for &t1 in &EditorTerrain::ALL {
+            for &t2 in &EditorTerrain::ALL {
+                let key = EdgeKey::new(t1, t2);
+                self.edge_profiles.entry(key).or_insert_with(|| {
+                    let h1 = key.0.height();
+                    let h2 = key.1.height();
+                    (0..=N)
+                        .map(|i| {
+                            let f = i as f32 / N as f32;
+                            let s = f * f * (3.0 - 2.0 * f); // smoothstep
+                            h1 * (1.0 - s) + h2 * s
+                        })
+                        .collect()
+                });
+            }
+        }
+    }
+
+    /// Initialize all interior profiles with dominant-terrain heights.
+    pub fn init_interiors(&mut self) {
+        let terrains = &EditorTerrain::ALL;
+        for (ai, &ta) in terrains.iter().enumerate() {
+            for (bi, &tb) in terrains.iter().enumerate() {
+                if bi < ai {
+                    continue;
+                }
+                for &tc in &terrains[bi..] {
+                    let key = TripleKey::new(ta, tb, tc);
+                    self.interior_profiles.entry(key).or_insert_with(|| {
+                        let heights = [key.0.height(), key.1.height(), key.2.height()];
+                        let mut pts = Vec::new();
+                        for i in 0..=N {
+                            for j in 0..=(N - i) {
+                                let k = N - i - j;
+                                if i == 0 || j == 0 || k == 0 {
+                                    continue;
+                                }
+                                let wa = i as f32 / N as f32;
+                                let wb = j as f32 / N as f32;
+                                let wc = k as f32 / N as f32;
+                                let dom = if wa >= wb && wa >= wc {
+                                    0
+                                } else if wb >= wc {
+                                    1
+                                } else {
+                                    2
+                                };
+                                pts.push(InteriorPoint {
+                                    i,
+                                    j,
+                                    k,
+                                    z: heights[dom],
+                                });
+                            }
+                        }
+                        pts
+                    });
+                }
+            }
+        }
+    }
+
+    /// Ensure all needed profiles exist for the current set of triangles.
+    pub fn ensure_profiles(&mut self) {
+        self.init_edge_profiles();
+        self.init_interiors();
+        // Ensure cell_height_offsets has the right length.
+        self.cell_height_offsets.resize(self.cell_centers.len(), 0.0);
+    }
+
+    /// Classify a subdivision vertex within a canonical triple (ta <= tb <= tc).
+    ///
+    /// `cell_a`, `cell_b`, `cell_c` are the cell-centre positions for ta, tb, tc
+    /// respectively.  They are needed to break ties when two adjacent terrains
+    /// are the same type (e.g. Open–Open) so that the edge parameterisation is
+    /// consistent across all triangles sharing that Delaunay edge.
+    /// `cell_idx_a`, `cell_idx_b`, `cell_idx_c` are the indices into the
+    /// `cell_centers` array for the three corners (ta, tb, tc).
+    pub fn classify_vertex(
+        ta: EditorTerrain,
+        tb: EditorTerrain,
+        tc: EditorTerrain,
+        cell_a: super::voronoi::Point2,
+        cell_b: super::voronoi::Point2,
+        cell_c: super::voronoi::Point2,
+        cell_idx_a: usize,
+        cell_idx_b: usize,
+        cell_idx_c: usize,
+        i: usize,
+        j: usize,
+        k: usize,
+    ) -> VertexClassification {
+        if i == N {
+            return VertexClassification::CellCenter { cell_idx: cell_idx_a };
+        }
+        if j == N {
+            return VertexClassification::CellCenter { cell_idx: cell_idx_b };
+        }
+        if k == N {
+            return VertexClassification::CellCenter { cell_idx: cell_idx_c };
+        }
+        if k == 0 {
+            let ek = EdgeKey::new(ta, tb);
+            let raw = j; // raw param along the ta→tb direction
+            let idx = edge_param_idx(ta, tb, cell_a, cell_b, raw);
+            return VertexClassification::Edge {
+                key: ek,
+                param_idx: idx,
+            };
+        }
+        if i == 0 {
+            let ek = EdgeKey::new(tb, tc);
+            let raw = k; // raw param along the tb→tc direction
+            let idx = edge_param_idx(tb, tc, cell_b, cell_c, raw);
+            return VertexClassification::Edge {
+                key: ek,
+                param_idx: idx,
+            };
+        }
+        if j == 0 {
+            let ek = EdgeKey::new(ta, tc);
+            let raw = k; // raw param along the ta→tc direction
+            let idx = edge_param_idx(ta, tc, cell_a, cell_c, raw);
+            return VertexClassification::Edge {
+                key: ek,
+                param_idx: idx,
+            };
+        }
+        VertexClassification::Interior {
+            key: TripleKey::new(ta, tb, tc),
+            i,
+            j,
+            k,
+        }
+    }
+
+    /// Get the height of a subdivision vertex from profiles.
+    ///
+    /// `cell_a`, `cell_b`, `cell_c` are the cell positions for ta, tb, tc.
+    /// `cell_idx_a`, `cell_idx_b`, `cell_idx_c` are their indices into cell_centers.
+    pub fn vertex_height(
+        &self,
+        ta: EditorTerrain,
+        tb: EditorTerrain,
+        tc: EditorTerrain,
+        cell_a: super::voronoi::Point2,
+        cell_b: super::voronoi::Point2,
+        cell_c: super::voronoi::Point2,
+        cell_idx_a: usize,
+        cell_idx_b: usize,
+        cell_idx_c: usize,
+        i: usize,
+        j: usize,
+        k: usize,
+    ) -> f32 {
+        let cell_offset = |idx: usize| -> f32 {
+            self.cell_height_offsets.get(idx).copied().unwrap_or(0.0)
+        };
+        if i == N {
+            return ta.height() + cell_offset(cell_idx_a);
+        }
+        if j == N {
+            return tb.height() + cell_offset(cell_idx_b);
+        }
+        if k == N {
+            return tc.height() + cell_offset(cell_idx_c);
+        }
+        // Edge k==0: edge between ta and tb
+        if k == 0 {
+            let ek = EdgeKey::new(ta, tb);
+            if let Some(prof) = self.edge_profiles.get(&ek) {
+                let idx = edge_param_idx(ta, tb, cell_a, cell_b, j);
+                return prof[idx.min(N)];
+            }
+        }
+        // Edge i==0: edge between tb and tc
+        if i == 0 {
+            let ek = EdgeKey::new(tb, tc);
+            if let Some(prof) = self.edge_profiles.get(&ek) {
+                let idx = edge_param_idx(tb, tc, cell_b, cell_c, k);
+                return prof[idx.min(N)];
+            }
+        }
+        // Edge j==0: edge between ta and tc
+        if j == 0 {
+            let ek = EdgeKey::new(ta, tc);
+            if let Some(prof) = self.edge_profiles.get(&ek) {
+                let idx = edge_param_idx(ta, tc, cell_a, cell_c, k);
+                return prof[idx.min(N)];
+            }
+        }
+        // Interior
+        let key = TripleKey::new(ta, tb, tc);
+        if let Some(int_pts) = self.interior_profiles.get(&key) {
+            if let Some(found) = int_pts.iter().find(|p| p.i == i && p.j == j && p.k == k) {
+                return found.z;
+            }
+        }
+        // Fallback: dominant terrain height
+        let wa = i as f32 / N as f32;
+        let wb = j as f32 / N as f32;
+        let wc = k as f32 / N as f32;
+        let dom = if wa >= wb && wa >= wc {
+            0
+        } else if wb >= wc {
+            1
+        } else {
+            2
+        };
+        [ta.height(), tb.height(), tc.height()][dom]
+    }
+}

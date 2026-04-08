@@ -3,6 +3,18 @@ name = "neuronify-game"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "neuronify_game_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "neuronify-game"
+path = "src/main.rs"
+
+[[bin]]
+name = "map-editor"
+path = "src/bin/map_editor/main.rs"
+
 [dependencies]
 neuronify-core = { path = "../neuronify-core" }
 visula = { git = "https://github.com/dragly/visula", rev = "73aaa820b1127362415c2cfa5200e4703e55a3aa" }
@@ -19,6 +31,7 @@ serde_derive = "1.0.204"
 chrono = { version = "0.4.38", features = ["serde"] }
 log = "0.4"
 roxmltree = "0.20"
+serde_json = "1.0"
 
 [dev-dependencies]
 pollster = "0.4"

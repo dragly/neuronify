@@ -90,6 +90,8 @@ pub struct GameApp {
     pub menu_selected: Option<usize>,
     /// Embedded SVG content that will be loaded when `pending_new_game` fires.
     pub pending_svg_content: Option<&'static str>,
+    /// When true, the next update loads the Voronoi terrain scenario.
+    pub pending_voronoi_scenario: bool,
     /// Pathfinding grid rebuilt each frame from current neuroblast positions.
     pub hex_grid: HexGrid,
     /// When true, the next right-click or left-click sets the move destination
@@ -298,6 +300,7 @@ impl GameApp {
             menu_scenarios,
             menu_selected: None,
             pending_svg_content: None,
+            pending_voronoi_scenario: false,
             hex_grid: HexGrid::new(HEX_GRID_CELL_SIZE),
             awaiting_move_destination: false,
             combat_accumulator: 0.0,
@@ -971,7 +974,86 @@ impl visula::Simulation for GameApp {
         if self.pending_new_game {
             self.pending_new_game = false;
             self.world.clear();
-            if let Some(svg_content) = self.pending_svg_content.take() {
+            if self.pending_voronoi_scenario {
+                self.pending_voronoi_scenario = false;
+                // Load the Voronoi terrain model and build the mesh.
+                use neuronify_game_lib::voronoi_map::game_integration;
+                let model = game_integration::load_voronoi_model();
+                game_integration::build_voronoi_terrain_mesh(
+                    &mut self.terrain_mesh, &model, &application.device,
+                );
+                // Build hex terrain lookup by sampling Voronoi cells onto the hex grid.
+                self.scenario_terrain.clear();
+                // Sample a grid of hex coordinates covering the map.
+                for row in 0..18 {
+                    for col in 0..22 {
+                        use crate::map::hex::hex_to_world;
+                        let wp = hex_to_world(col, row);
+                        let et = game_integration::sample_terrain_at(&model, wp.x, wp.z);
+                        let (passable, speed_mult, resource_glucose) = match et {
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::Open => (true, 1.0, false),
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::Vessel => (false, 1.0, true),
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::GlialScar => (false, 1.0, false),
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::Csf => (false, 1.0, false),
+                        };
+                        let terrain_type = match et {
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::Open => crate::map::TerrainType::Open,
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::Vessel => crate::map::TerrainType::Vessel,
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::GlialScar => crate::map::TerrainType::GlialScar,
+                            neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain::Csf => crate::map::TerrainType::Csf,
+                        };
+                        self.scenario_terrain.insert((col, row), crate::map::HexTerrain {
+                            col,
+                            row,
+                            terrain: terrain_type,
+                            passable,
+                            speed_mult,
+                            resource_glucose,
+                        });
+                    }
+                }
+                // Spawn player origin neuron in lower-left, enemy in upper-right.
+                {
+                    use neuronify_core::{LeakyNeuron, LeakyDynamics, LeakCurrent, NeuronType, Position, Selectable, VisualRadius, RegularSpikeGenerator, GeneratorDynamics, NODE_RADIUS};
+                    let spawn_origin = |world: &mut hecs::World, pos: Vec3, player: PlayerId| {
+                        let mut b = hecs::EntityBuilder::new();
+                        b.add(Position { position: pos });
+                        b.add(LeakyNeuron::default());
+                        b.add(LeakyDynamics::default());
+                        b.add(LeakCurrent::default());
+                        b.add(NeuronType::Excitatory);
+                        b.add(MetabolicState::default());
+                        b.add(Health::new(NEURON_HEALTH));
+                        b.add(neuronify_core::Deletable {});
+                        b.add(VisualRadius { radius: NODE_RADIUS * 1.5 });
+                        b.add(Selectable { selected: false });
+                        b.add(Ownership { player });
+                        b.add(OriginNeuron { player });
+                        b.add(ProductionQueue::default());
+                        b.add(Anchored);
+                        b.add(RegularSpikeGenerator { frequency: 10.0 });
+                        b.add(GeneratorDynamics::default());
+                        b.add(NeuronScenarioId(format!("origin_{:?}", player)));
+                        world.spawn(b.build());
+                    };
+                    spawn_origin(&mut self.world, Vec3::new(-80.0, 0.0, -50.0), PlayerId::Player1);
+                }
+                self.petri_dish.radius = 220.0;
+                self.victory_condition = None;
+                self.victory_achieved = false;
+                self.victory_check_timer = 1.0;
+                self.game_elapsed = 0.0;
+                application.camera_controller.target_transform.center = Vec3::ZERO;
+                application.camera_controller.target_transform.forward = Vec3::new(-0.3536, -0.7071, 0.6124);
+                application.camera_controller.target_transform.distance = 350.0;
+                application.camera_controller.current_transform =
+                    application.camera_controller.target_transform.clone();
+                self.game_state = GameState::Briefing {
+                    name: "Voronoi Terrain".to_string(),
+                    briefing: "An experimental battlefield with organic Voronoi-cell terrain. Blood vessels wind through the center, scar tissue blocks key routes, and cerebrospinal fluid pools dot the landscape. Build your neural network and overwhelm the enemy base.".to_string(),
+                    objective: "Destroy the enemy origin neuron".to_string(),
+                };
+            } else if let Some(svg_content) = self.pending_svg_content.take() {
                 if let Err(e) = scenarios::setup_scenario_from_svg(&mut self.world, &mut self.petri_dish, svg_content) {
                     log::error!("Failed to load SVG scenario: {}", e);
                     scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
@@ -1273,6 +1355,10 @@ impl visula::Simulation for GameApp {
                 main_menu::MenuAction::StartDevScenario(svg_content, stage) => {
                     self.pending_svg_content = Some(svg_content);
                     self.pending_dev_stage = Some(stage);
+                    self.pending_new_game = true;
+                }
+                main_menu::MenuAction::StartVoronoiScenario => {
+                    self.pending_voronoi_scenario = true;
                     self.pending_new_game = true;
                 }
                 main_menu::MenuAction::Exit => {

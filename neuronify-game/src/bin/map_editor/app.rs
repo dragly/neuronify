@@ -1,0 +1,518 @@
+use glam::{Quat, Vec3};
+use visula::winit::event::{ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
+use visula::{
+    CustomEvent, Expression, InstanceBuffer, MeshGeometry,
+    MeshMaterial, MeshPipeline, RenderData, Renderable, SphereGeometry, SphereMaterial, Spheres,
+};
+use wgpu::util::DeviceExt;
+
+use neuronify_core::rendering::gpu_types::Sphere;
+use neuronify_game_lib::voronoi_map::{
+    map_gen,
+    mesh_builder,
+    terrain_model::*,
+};
+
+use super::editor;
+use super::ui;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mode {
+    Orbit,
+    EditVertex,
+    PaintTerrain,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum View {
+    FullMap,
+    TopDown,
+    TileCatalog,
+}
+
+#[derive(Debug)]
+pub struct Error {}
+
+pub struct MapEditorApp {
+    // Data model
+    pub model: MapModel,
+
+    // Rendering
+    pub terrain_mesh: MeshPipeline,
+    pub catalog_mesh: MeshPipeline,
+    pub edit_spheres: Spheres,
+    pub edit_sphere_buffer: InstanceBuffer<Sphere>,
+
+    // Editor state
+    pub mode: Mode,
+    pub view: View,
+    pub selected_terrain: EditorTerrain,
+    pub show_wireframe: bool,
+    pub show_triangle_ids: bool,
+
+    // Camera
+    pub theta: f32,
+    pub phi: f32,
+    pub dist: f32,
+    pub camera_center: Vec3,
+    pub dragging_camera: bool,
+    pub panning_camera: bool,
+    /// World-space grab point on the ground plane when right-click started.
+    pub pan_grab_point: Option<Vec3>,
+    pub last_mouse_x: f64,
+    pub last_mouse_y: f64,
+
+    // Edit state
+    pub picked_world_key: Option<String>,
+    pub pick_y: f64,
+    pub mesh_dirty: bool,
+    pub dots_dirty: bool,
+    pub catalog_dirty: bool,
+
+    // Mouse tracking
+    pub mouse_pos: Option<(f64, f64)>,
+    pub mouse_left_down: bool,
+
+    // Cached mesh data for editing
+    pub cached_mesh_data: Option<mesh_builder::MeshData>,
+}
+
+impl MapEditorApp {
+    pub fn new(application: &mut visula::Application) -> Self {
+        application.camera_controller.enabled = false;
+        application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
+        application.camera_controller.target_transform.forward =
+            Vec3::new(-0.3536, -0.7071, 0.6124);
+        application.camera_controller.target_transform.distance = 350.0;
+        application.camera_controller.current_transform =
+            application.camera_controller.target_transform.clone();
+
+        let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
+        let sphere = sphere_buffer.instance();
+        let edit_spheres = Spheres::new(
+            &application.rendering_descriptor(),
+            &SphereGeometry {
+                position: sphere.position.clone(),
+                radius: sphere.radius,
+                color: sphere.color,
+            },
+            &SphereMaterial {
+                color: Expression::InputColor.lit(),
+            },
+        )
+        .unwrap();
+
+        let terrain_mesh = MeshPipeline::new(
+            &application.rendering_descriptor(),
+            &MeshGeometry {
+                position: Vec3::ZERO.into(),
+                rotation: Quat::IDENTITY.into(),
+                scale: Vec3::ONE.into(),
+            },
+            &MeshMaterial {
+                color: Expression::InputColor.lit(),
+            },
+        )
+        .unwrap();
+
+        let catalog_mesh = MeshPipeline::new(
+            &application.rendering_descriptor(),
+            &MeshGeometry {
+                position: Vec3::ZERO.into(),
+                rotation: Quat::IDENTITY.into(),
+                scale: Vec3::ONE.into(),
+            },
+            &MeshMaterial {
+                color: Expression::InputColor.lit(),
+            },
+        )
+        .unwrap();
+
+        let model = map_gen::generate_scenario_map();
+
+        let mut app = MapEditorApp {
+            model,
+            terrain_mesh,
+            catalog_mesh,
+            edit_spheres,
+            edit_sphere_buffer: sphere_buffer,
+            mode: Mode::Orbit,
+            view: View::FullMap,
+            selected_terrain: EditorTerrain::Vessel,
+            show_wireframe: false,
+            show_triangle_ids: false,
+            theta: 0.8,
+            phi: 0.6,
+            dist: 350.0,
+            camera_center: Vec3::ZERO,
+            dragging_camera: false,
+            panning_camera: false,
+            pan_grab_point: None,
+            last_mouse_x: 0.0,
+            last_mouse_y: 0.0,
+            picked_world_key: None,
+            pick_y: 0.0,
+            mesh_dirty: true,
+            dots_dirty: true,
+            catalog_dirty: true,
+            mouse_pos: None,
+            mouse_left_down: false,
+            cached_mesh_data: None,
+        };
+
+        app
+    }
+
+    fn rebuild_mesh(&mut self, device: &wgpu::Device) {
+        let data = mesh_builder::build_map_mesh(
+            &self.model,
+            map_gen::MAP_W,
+            map_gen::MAP_H,
+            map_gen::CELL_SPACING,
+        );
+
+        if data.vertices.is_empty() {
+            self.terrain_mesh.vertex_count = 0;
+            return;
+        }
+
+        self.terrain_mesh.vertex_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("voronoi_terrain"),
+                contents: bytemuck::cast_slice(&data.vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        self.terrain_mesh.index_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("voronoi_terrain_idx"),
+                contents: bytemuck::cast_slice(&data.indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+        self.terrain_mesh.vertex_count = data.indices.len();
+
+        self.cached_mesh_data = Some(data);
+        self.mesh_dirty = false;
+        self.dots_dirty = true;
+        self.catalog_dirty = true;
+    }
+
+    fn rebuild_catalog(&mut self, device: &wgpu::Device) {
+        let (verts, idx) = mesh_builder::build_tile_catalog(&self.model);
+        if verts.is_empty() {
+            self.catalog_mesh.vertex_count = 0;
+            self.catalog_dirty = false;
+            return;
+        }
+        self.catalog_mesh.vertex_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("catalog"),
+                contents: bytemuck::cast_slice(&verts),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        self.catalog_mesh.index_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("catalog_idx"),
+                contents: bytemuck::cast_slice(&idx),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+        self.catalog_mesh.vertex_count = idx.len();
+        self.catalog_dirty = false;
+    }
+
+    fn rebuild_edit_dots(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) {
+        if self.mode != Mode::EditVertex {
+            self.edit_sphere_buffer.update(device, queue, &[]);
+            self.dots_dirty = false;
+            return;
+        }
+
+        let data = match &self.cached_mesh_data {
+            Some(d) => d,
+            None => {
+                self.dots_dirty = false;
+                return;
+            }
+        };
+
+        let mut seen = std::collections::HashSet::new();
+        let mut spheres = Vec::new();
+
+        for vi in 0..data.vertex_world_keys.len() {
+            let wk = &data.vertex_world_keys[vi];
+            if wk == "wall" || seen.contains(wk) {
+                continue;
+            }
+            let cls = match data.world_vert_cls.get(wk) {
+                Some(c) if !c.is_empty() => c,
+                _ => continue,
+            };
+            seen.insert(wk.clone());
+
+            let v = &data.vertices[vi];
+            let is_cell_center = cls
+                .iter()
+                .any(|c| matches!(c, VertexClassification::CellCenter { .. }));
+            let is_edge = cls
+                .iter()
+                .any(|c| matches!(c, VertexClassification::Edge { .. }));
+            let color = if is_cell_center {
+                Vec3::new(0.4, 0.9, 1.0) // cyan for cell centers
+            } else if is_edge {
+                Vec3::new(1.0, 0.8, 0.2) // yellow for edge vertices
+            } else {
+                Vec3::new(1.0, 1.0, 1.0) // white for interior
+            };
+
+            spheres.push(Sphere {
+                position: Vec3::new(v.position[0], v.position[1] + 0.5, v.position[2]),
+                color,
+                radius: 1.2,
+                _padding: 0.0,
+            });
+        }
+
+        self.edit_sphere_buffer.update(device, queue, &spheres);
+        self.dots_dirty = false;
+    }
+
+    fn update_camera(&self, application: &mut visula::Application) {
+        let sin_phi = self.phi.sin();
+        let cos_phi = self.phi.cos();
+        let sin_theta = self.theta.sin();
+        let cos_theta = self.theta.cos();
+
+        let forward = Vec3::new(
+            -sin_phi * cos_theta,
+            -cos_phi,
+            -sin_phi * sin_theta,
+        );
+
+        application.camera_controller.target_transform.center = self.camera_center;
+        application.camera_controller.target_transform.forward = forward;
+        application.camera_controller.target_transform.distance = self.dist;
+        application.camera_controller.current_transform =
+            application.camera_controller.target_transform.clone();
+    }
+
+    fn screen_to_world(application: &visula::Application, px: f32, py: f32) -> Option<Vec3> {
+        let ndc_x = 2.0 * px / application.config.width as f32 - 1.0;
+        let ndc_y = 1.0 - 2.0 * py / application.config.height as f32;
+        let ray_clip = glam::Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
+        let aspect = application.config.width as f32 / application.config.height as f32;
+        let inv_proj = application
+            .camera_controller
+            .projection_matrix(aspect)
+            .inverse();
+        let ray_eye = inv_proj * ray_clip;
+        let ray_eye = glam::Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
+        let inv_view = application.camera_controller.view_matrix().inverse();
+        let ray_world = inv_view * ray_eye;
+        let ray_dir = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
+        let ray_origin = application.camera_controller.position();
+
+        if ray_dir.y >= 0.0 {
+            return None;
+        }
+        let t = -ray_origin.y / ray_dir.y;
+        Some(ray_origin + t * ray_dir)
+    }
+}
+
+impl visula::Simulation for MapEditorApp {
+    type Error = Error;
+
+    fn clear_color(&self) -> wgpu::Color {
+        wgpu::Color {
+            r: 0.094,
+            g: 0.094,
+            b: 0.11,
+            a: 1.0,
+        }
+    }
+
+    fn update(&mut self, application: &mut visula::Application) {
+        if self.mesh_dirty {
+            self.rebuild_mesh(&application.device);
+        }
+        if self.catalog_dirty && self.view == View::TileCatalog {
+            self.rebuild_catalog(&application.device);
+        }
+        if self.dots_dirty {
+            self.rebuild_edit_dots(&application.device, &application.queue);
+        }
+        self.update_camera(application);
+    }
+
+    fn render(&mut self, data: &mut RenderData) {
+        match self.view {
+            View::FullMap | View::TopDown => {
+                self.terrain_mesh.render(data);
+                if self.mode == Mode::EditVertex {
+                    self.edit_spheres.render(data);
+                }
+            }
+            View::TileCatalog => {
+                self.catalog_mesh.render(data);
+            }
+        }
+    }
+
+    fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
+        ui::draw_ui(self, application, context);
+    }
+
+    fn handle_event(
+        &mut self,
+        application: &mut visula::Application,
+        event: &Event<CustomEvent>,
+    ) {
+        match event {
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::MouseInput { state, button, .. } => {
+                    let pressed = *state == ElementState::Pressed;
+
+                    if *button == MouseButton::Right {
+                        if pressed {
+                            self.panning_camera = true;
+                            self.pan_grab_point = self.mouse_pos.and_then(|(mx, my)| {
+                                Self::screen_to_world(application, mx as f32, my as f32)
+                            });
+                        } else {
+                            self.panning_camera = false;
+                            self.pan_grab_point = None;
+                        }
+                    }
+
+                    if *button == MouseButton::Left {
+                        self.mouse_left_down = pressed;
+
+                        if pressed {
+                            if self.mode == Mode::EditVertex {
+                                // Try to pick a vertex.
+                                if let Some((mx, my)) = self.mouse_pos {
+                                    if let Some(wk) = editor::pick_vertex(
+                                        application,
+                                        &self.cached_mesh_data,
+                                        mx as f32,
+                                        my as f32,
+                                    ) {
+                                        self.picked_world_key = Some(wk);
+                                        self.pick_y = my;
+                                        return;
+                                    }
+                                }
+                            }
+
+                            if self.mode == Mode::PaintTerrain {
+                                if let Some((mx, my)) = self.mouse_pos {
+                                    if let Some(world_pos) =
+                                        Self::screen_to_world(application, mx as f32, my as f32)
+                                    {
+                                        editor::paint_cell(
+                                            &mut self.model,
+                                            world_pos,
+                                            self.selected_terrain,
+                                            map_gen::MAP_W,
+                                            map_gen::MAP_H,
+                                        );
+                                        self.mesh_dirty = true;
+                                    }
+                                }
+                                return;
+                            }
+
+                            // Start camera orbit.
+                            self.dragging_camera = true;
+                            if let Some((mx, my)) = self.mouse_pos {
+                                self.last_mouse_x = mx;
+                                self.last_mouse_y = my;
+                            }
+                        } else {
+                            self.dragging_camera = false;
+                            self.picked_world_key = None;
+                        }
+                    }
+                }
+
+                WindowEvent::CursorMoved { position, .. } => {
+                    let mx = position.x;
+                    let my = position.y;
+                    self.mouse_pos = Some((mx, my));
+
+                    // Height dragging in edit mode.
+                    if self.mode == Mode::EditVertex {
+                        if let Some(ref wk) = self.picked_world_key {
+                            let dy = my - self.pick_y;
+                            let delta = -dy as f32 * 0.4;
+                            self.pick_y = my;
+
+                            editor::drag_vertex(
+                                &mut self.model,
+                                wk,
+                                delta,
+                                &self.cached_mesh_data,
+                            );
+                            self.mesh_dirty = true;
+                            return;
+                        }
+                    }
+
+                    // Terrain painting while dragging.
+                    if self.mode == Mode::PaintTerrain && self.mouse_left_down {
+                        if let Some(world_pos) =
+                            Self::screen_to_world(application, mx as f32, my as f32)
+                        {
+                            editor::paint_cell(
+                                &mut self.model,
+                                world_pos,
+                                self.selected_terrain,
+                                map_gen::MAP_W,
+                                map_gen::MAP_H,
+                            );
+                            self.mesh_dirty = true;
+                        }
+                        return;
+                    }
+
+                    // Camera pan (right-click drag): keep the grab point
+                    // pinned under the cursor so the terrain feels "grabbed".
+                    if self.panning_camera {
+                        if let Some(grab) = self.pan_grab_point {
+                            if let Some(current) = Self::screen_to_world(application, mx as f32, my as f32) {
+                                let delta = grab - current;
+                                self.camera_center += delta;
+                                // Don't update pan_grab_point — it stays fixed
+                                // in world space, which is what makes the grab feel solid.
+                            }
+                        }
+                    }
+
+                    // Camera orbit (left-click drag).
+                    if self.dragging_camera {
+                        let dx = mx - self.last_mouse_x;
+                        let dy = my - self.last_mouse_y;
+                        self.theta += dx as f32 * 0.008;
+                        self.phi = (self.phi - dy as f32 * 0.008).clamp(0.15, 1.4);
+                        self.last_mouse_x = mx;
+                        self.last_mouse_y = my;
+                    }
+                }
+
+                WindowEvent::MouseWheel { delta, .. } => {
+                    let scroll = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => *y * 20.0,
+                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
+                    };
+                    self.dist = (self.dist - scroll * 0.4).clamp(50.0, 1200.0);
+                }
+
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+}
