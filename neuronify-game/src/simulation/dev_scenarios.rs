@@ -79,19 +79,23 @@ pub fn apply_dev_stage(
 
 // ── Relay neuron positions along the verified passable corridor ──────────────
 
-const RELAY_HEXES: [(i32, i32); 7] = [
-    (6, 12),
-    (7, 11),
-    (9, 9),
-    (11, 7),
-    (13, 6),
-    (14, 5),
-    (16, 4),
+// Relay path verified to avoid all impassable terrain (vessels, scars, CSF).
+// Each consecutive pair has a straight-line connection that stays in passable hexes.
+// Route: go left to col 2 to cross the vessel band at rows 9-10, then east along row 7.
+const RELAY_HEXES: [(i32, i32); 8] = [
+    (2, 11),  // open — cross above vessel row via col 2
+    (2, 9),   // open — past vessels (col 2 rows 9-11 all passable)
+    (4, 7),   // open — diagonal into the clear row-7 corridor
+    (7, 7),   // open — east along row 7
+    (10, 7),  // open — continuing east
+    (13, 6),  // open — angle toward enemy cluster
+    (15, 6),  // open — detour around glial scar at (15,5)
+    (16, 5),  // open — approaching enemy outpost
 ];
 
 const GLIAL_HEXES: [(i32, i32); 2] = [
-    (7, 9),  // open, adjacent to vessel hexes at row 8
-    (8, 9),
+    (3, 9),   // open, adjacent to vessel hexes at (3,10) and (4,9)
+    (6, 7),   // open, adjacent to vessel hex at (6,8)
 ];
 
 // ── Late stage ───────────────────────────────────────────────────────────────
