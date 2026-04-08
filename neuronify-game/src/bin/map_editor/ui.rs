@@ -167,6 +167,49 @@ pub fn draw_ui(
             ui.separator();
             ui.add_space(4.0);
 
+            // Transition bias sliders.
+            ui.label(
+                egui::RichText::new("Transition Bias")
+                    .color(egui::Color32::from_rgb(170, 170, 170))
+                    .size(13.0),
+            );
+            ui.label(
+                egui::RichText::new("Shift terrain boundaries")
+                    .color(egui::Color32::from_rgb(100, 100, 100))
+                    .size(9.0),
+            );
+            ui.add_space(2.0);
+            {
+                use neuronify_game_lib::voronoi_map::terrain_model::{EdgeKey, EditorTerrain};
+                let pairs: &[(EditorTerrain, EditorTerrain, &str)] = &[
+                    (EditorTerrain::Open, EditorTerrain::Vessel, "open/vessel"),
+                    (EditorTerrain::Open, EditorTerrain::GlialScar, "open/scar"),
+                    (EditorTerrain::Open, EditorTerrain::Csf, "open/csf"),
+                    (EditorTerrain::Vessel, EditorTerrain::GlialScar, "vessel/scar"),
+                    (EditorTerrain::Vessel, EditorTerrain::Csf, "vessel/csf"),
+                    (EditorTerrain::GlialScar, EditorTerrain::Csf, "scar/csf"),
+                ];
+                for &(a, b, label) in pairs {
+                    let key = EdgeKey::new(a, b);
+                    let mut val = *app.model.transition_biases.get(&key).unwrap_or(&0.5);
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            egui::RichText::new(label)
+                                .color(egui::Color32::from_rgb(140, 140, 140))
+                                .size(9.0),
+                        );
+                        if ui.add(egui::Slider::new(&mut val, 0.0..=1.0).show_value(false)).changed() {
+                            app.model.transition_biases.insert(key, val);
+                            app.mesh_dirty = true;
+                        }
+                    });
+                }
+            }
+
+            ui.add_space(12.0);
+            ui.separator();
+            ui.add_space(4.0);
+
             // Save/load buttons.
             if ui
                 .add(egui::Button::new(
@@ -219,6 +262,8 @@ pub fn draw_ui(
             {
                 app.model.edge_profiles.clear();
                 app.model.interior_profiles.clear();
+                app.model.transition_biases.clear();
+                app.model.cell_height_offsets.fill(0.0);
                 app.model.ensure_profiles();
                 app.mesh_dirty = true;
             }

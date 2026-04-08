@@ -244,7 +244,7 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
                 let cwa = (3 * i + 1) as f32 / (3 * N) as f32;
                 let cwb = (3 * j + 1) as f32 / (3 * N) as f32;
                 let cwc = 1.0 - cwa - cwb;
-                let fdom = dominant(cwa, cwb, cwc);
+                let fdom = model.biased_dominant(cwa, cwb, cwc, ta, tb, tc);
 
                 push_tri(
                     &r0.wp, &r1.wp, &r2.wp,
@@ -267,7 +267,7 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
                     let dwa = (3 * (i + 1)) as f32 / (3 * N) as f32 - 1.0 / (3 * N) as f32;
                     let dwb = (3 * j + 2) as f32 / (3 * N) as f32;
                     let dwc = 1.0 - dwa - dwb;
-                    let fdom2 = dominant(dwa, dwb, dwc);
+                    let fdom2 = model.biased_dominant(dwa, dwb, dwc, ta, tb, tc);
 
                     push_tri(
                         &r3.wp, &r4.wp, &r5.wp,

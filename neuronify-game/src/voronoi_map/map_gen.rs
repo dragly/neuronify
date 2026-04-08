@@ -78,6 +78,7 @@ pub fn generate_scenario_map() -> MapModel {
         edge_profiles: HashMap::new(),
         interior_profiles: HashMap::new(),
         cell_height_offsets: vec![0.0; n_cells],
+        transition_biases: HashMap::new(),
     };
 
     model.ensure_profiles();

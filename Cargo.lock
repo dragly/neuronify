@@ -2201,6 +2201,7 @@ dependencies = [
  "roxmltree",
  "serde",
  "serde_derive",
+ "serde_json",
  "visula",
  "visula_core",
  "visula_derive",

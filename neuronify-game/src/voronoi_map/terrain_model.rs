@@ -169,10 +169,21 @@ pub struct MapModel {
     /// Per-cell height offset (added on top of the terrain base height).
     #[serde(default)]
     pub cell_height_offsets: Vec<f32>,
+    /// Transition bias per terrain pair. Controls where the boundary between
+    /// two terrains falls within the tile.
+    /// 0.5 = midpoint (default), <0.5 = terrain A wins more area,
+    /// >0.5 = terrain B wins more area.
+    /// Key is EdgeKey (sorted pair), value is bias 0.0..1.0.
+    #[serde(default)]
+    pub transition_biases: HashMap<EdgeKey, f32>,
 }
 
 impl MapModel {
-    /// Initialize all edge profiles with smoothstep interpolation.
+    /// Initialize edge profiles with a sharp step transition.
+    ///
+    /// The profile holds at h1 for the first ~40%, transitions steeply
+    /// over the middle ~20%, then holds at h2 for the last ~40%.
+    /// This gives an extruded cliff look rather than a smooth ramp.
     pub fn init_edge_profiles(&mut self) {
         for &t1 in &EditorTerrain::ALL {
             for &t2 in &EditorTerrain::ALL {
@@ -183,7 +194,13 @@ impl MapModel {
                     (0..=N)
                         .map(|i| {
                             let f = i as f32 / N as f32;
-                            let s = f * f * (3.0 - 2.0 * f); // smoothstep
+                            // Remap to a steep transition in the middle.
+                            // Hold at h1 for f < 0.35, hold at h2 for f > 0.65,
+                            // steep linear ramp between 0.35 and 0.65.
+                            let s = ((f - 0.35) / 0.3).clamp(0.0, 1.0);
+                            // Apply smoothstep to the remapped value for
+                            // a slight ease at the cliff edges.
+                            let s = s * s * (3.0 - 2.0 * s);
                             h1 * (1.0 - s) + h2 * s
                         })
                         .collect()
@@ -234,6 +251,55 @@ impl MapModel {
                 }
             }
         }
+    }
+
+    /// Get the transition bias for a terrain pair (default 0.5).
+    pub fn bias(&self, a: EditorTerrain, b: EditorTerrain) -> f32 {
+        *self.transition_biases.get(&EdgeKey::new(a, b)).unwrap_or(&0.5)
+    }
+
+    /// Determine the dominant terrain for a sub-face at barycentric weights
+    /// (wa, wb, wc) for terrains (ta, tb, tc), taking transition biases
+    /// into account.
+    pub fn biased_dominant(
+        &self,
+        wa: f32,
+        wb: f32,
+        wc: f32,
+        ta: EditorTerrain,
+        tb: EditorTerrain,
+        tc: EditorTerrain,
+    ) -> usize {
+        let bias_ab = self.bias(ta, tb);
+        let bias_bc = self.bias(tb, tc);
+        let bias_ac = self.bias(ta, tc);
+
+        // Shift weights based on biases.
+        // bias < 0.5 → the lesser terrain (first in EdgeKey) wins more area.
+        // bias > 0.5 → the greater terrain wins more area.
+        // We determine direction based on which terrain is "first" in the key.
+        let mut aw = wa;
+        let mut bw = wb;
+        let mut cw = wc;
+
+        // ta vs tb
+        let shift_ab = (0.5 - bias_ab) * 0.6;
+        if ta <= tb { aw += shift_ab; bw -= shift_ab; }
+        else        { bw += shift_ab; aw -= shift_ab; }
+
+        // tb vs tc
+        let shift_bc = (0.5 - bias_bc) * 0.6;
+        if tb <= tc { bw += shift_bc; cw -= shift_bc; }
+        else        { cw += shift_bc; bw -= shift_bc; }
+
+        // ta vs tc
+        let shift_ac = (0.5 - bias_ac) * 0.6;
+        if ta <= tc { aw += shift_ac; cw -= shift_ac; }
+        else        { cw += shift_ac; aw -= shift_ac; }
+
+        if aw >= bw && aw >= cw { 0 }
+        else if bw >= cw { 1 }
+        else { 2 }
     }
 
     /// Ensure all needed profiles exist for the current set of triangles.
