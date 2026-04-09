@@ -49,10 +49,10 @@ impl EditorTerrain {
     /// Color as [R, G, B] in 0..255.
     pub fn color_u8(self) -> [u8; 3] {
         match self {
-            EditorTerrain::Open => [232, 228, 219],
-            EditorTerrain::Vessel => [224, 152, 152],
-            EditorTerrain::GlialScar => [138, 120, 96],
-            EditorTerrain::Csf => [140, 175, 210],
+            EditorTerrain::Open => [190, 178, 148],       // warm sandy tan
+            EditorTerrain::Vessel => [185, 62, 72],       // deep arterial red
+            EditorTerrain::GlialScar => [105, 88, 58],    // dark earthy brown
+            EditorTerrain::Csf => [68, 128, 178],         // saturated steel blue
         }
     }
 

@@ -520,12 +520,10 @@ fn push_wall_tri(
 
 /// Build a tile catalog mesh: each unique terrain triple rendered as a
 /// standalone equilateral triangle, laid out in a grid.
-///
-/// Returns `(vertices, indices, grid_cols, grid_rows)`.
-pub fn build_tile_catalog(model: &MapModel) -> (Vec<MeshVertexAttributes>, Vec<u32>) {
+/// Returns full `MeshData` with vertex classifications for editing.
+pub fn build_tile_catalog(model: &MapModel) -> MeshData {
     use std::collections::BTreeSet;
 
-    // Collect unique triples actually present on the map.
     let mut triples = BTreeSet::new();
     let pts = &model.cell_centers;
     let cell_spacing = 42.0f32;
@@ -550,17 +548,28 @@ pub fn build_tile_catalog(model: &MapModel) -> (Vec<MeshVertexAttributes>, Vec<u
     let triples: Vec<(EditorTerrain, EditorTerrain, EditorTerrain)> =
         triples.into_iter().collect();
     if triples.is_empty() {
-        return (Vec::new(), Vec::new());
+        return MeshData {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            vertex_world_keys: Vec::new(),
+            world_vert_cls: HashMap::new(),
+        };
     }
 
     let cols = (triples.len() as f32).sqrt().ceil() as usize;
-    let tile_size = 40.0f32; // world-unit size of each tile
+    let tile_size = 40.0f32;
     let spacing = tile_size * 1.4;
+    let total_w = cols as f32 * spacing;
+    let total_h = ((triples.len() + cols - 1) / cols) as f32 * spacing;
+    let off_x = -total_w * 0.5 + tile_size * 0.5;
+    let off_z = -total_h * 0.5 + tile_size * 0.3;
 
-    let mut all_verts: Vec<MeshVertexAttributes> = Vec::new();
-    let mut all_idx: Vec<u32> = Vec::new();
+    let mut all_pos: Vec<[f32; 3]> = Vec::new();
+    let mut all_col: Vec<[u8; 3]> = Vec::new();
+    let mut all_nrm: Vec<[f32; 3]> = Vec::new();
+    let mut vertex_world_keys: Vec<String> = Vec::new();
+    let mut world_vert_cls: HashMap<String, Vec<VertexClassification>> = HashMap::new();
 
-    // Fake cell positions for an equilateral triangle of `tile_size`.
     let base_a = super::voronoi::Point2::new(0.0, 0.0);
     let base_b = super::voronoi::Point2::new(tile_size, 0.0);
     let base_c = super::voronoi::Point2::new(tile_size * 0.5, tile_size * UNIT_H);
@@ -582,12 +591,6 @@ pub fn build_tile_catalog(model: &MapModel) -> (Vec<MeshVertexAttributes>, Vec<u
         let c2x = (cell_c.x - cell_a.x - 0.5 * c1x) / UNIT_H;
         let c2y = (cell_c.y - cell_a.y - 0.5 * c1y) / UNIT_H;
 
-        // Center the grid around the origin.
-        let total_w = cols as f32 * spacing;
-        let total_h = ((triples.len() + cols - 1) / cols) as f32 * spacing;
-        let off_x = -total_w * 0.5 + tile_size * 0.5;
-        let off_z = -total_h * 0.5 + tile_size * 0.3;
-
         let to_world = |lx: f32, ly: f32, lz: f32| -> [f32; 3] {
             let ux = lx;
             let uy = -lz;
@@ -599,97 +602,91 @@ pub fn build_tile_catalog(model: &MapModel) -> (Vec<MeshVertexAttributes>, Vec<u
         };
 
         let vert_height = |i: usize, j: usize, k: usize| -> f32 {
-            // Use profiles but with zero cell offsets for the catalog.
             model.vertex_height(ta, tb, tc, cell_a, cell_b, cell_c, usize::MAX, usize::MAX, usize::MAX, i, j, k)
         };
 
-        // Generate sub-triangles.
+        let classify_vert = |i: usize, j: usize, k: usize| -> VertexClassification {
+            MapModel::classify_vertex(ta, tb, tc, cell_a, cell_b, cell_c, usize::MAX, usize::MAX, usize::MAX, i, j, k)
+        };
+
+        // Register a vertex: compute position, classify, and track for editing.
+        let mut register_vert = |i: usize, j: usize, k: usize| -> ([f32; 3], String) {
+            let lx = j as f32 / N as f32 + (k as f32 / N as f32) * 0.5;
+            let ly = (k as f32 / N as f32) * UNIT_H;
+            let z = vert_height(i, j, k);
+            let wp = to_world(lx, z, -ly);
+
+            // Use classification-based key (tile-local position doesn't matter
+            // for sharing — what matters is the classification).
+            let cls = classify_vert(i, j, k);
+            let wk = format!("cat_{:.2},{:.2}", wp[0], wp[2]);
+
+            let entry = world_vert_cls.entry(wk.clone()).or_default();
+            if !entry.iter().any(|c| *c == cls) {
+                entry.push(cls);
+            }
+            (wp, wk)
+        };
+
         for i in 0..N {
             for j in 0..(N - i) {
                 let k = N - i - j;
 
-                let emit_sub_tri = |ii0: usize,
-                                     jj0: usize,
-                                     kk0: usize,
-                                     ii1: usize,
-                                     jj1: usize,
-                                     kk1: usize,
-                                     ii2: usize,
-                                     jj2: usize,
-                                     kk2: usize,
-                                     verts: &mut Vec<MeshVertexAttributes>,
-                                     idx: &mut Vec<u32>| {
-                    let pos = |ii: usize, jj: usize, kk: usize| -> [f32; 3] {
-                        let lx = jj as f32 / N as f32 + (kk as f32 / N as f32) * 0.5;
-                        let ly = (kk as f32 / N as f32) * UNIT_H;
-                        to_world(lx, vert_height(ii, jj, kk), -ly)
-                    };
-
-                    let p0 = pos(ii0, jj0, kk0);
-                    let p1 = pos(ii1, jj1, kk1);
-                    let p2 = pos(ii2, jj2, kk2);
-
-                    let cwa = (3 * ii0 + 3 * ii1 + 3 * ii2 + 3) as f32 / (9 * N) as f32;
-                    let cwb = (3 * jj0 + 3 * jj1 + 3 * jj2 + 3) as f32 / (9 * N) as f32;
-                    let cwc = 1.0 - cwa - cwb;
-                    let fdom = dominant(cwa, cwb, cwc);
-                    let col = sorted_colors[fdom];
-
-                    let e1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
-                    let e2 = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
-                    let mut nx = e1[1] * e2[2] - e1[2] * e2[1];
-                    let mut ny = e1[2] * e2[0] - e1[0] * e2[2];
-                    let mut nz = e1[0] * e2[1] - e1[1] * e2[0];
-                    let len = (nx * nx + ny * ny + nz * nz).sqrt().max(1e-10);
-                    nx /= len;
-                    ny /= len;
-                    nz /= len;
-
-                    let base = verts.len() as u32;
-                    let (v0, v1, v2) = if ny < 0.0 {
-                        nx = -nx;
-                        ny = -ny;
-                        nz = -nz;
-                        (p0, p2, p1)
-                    } else {
-                        (p0, p1, p2)
-                    };
-
-                    for p in [v0, v1, v2] {
-                        verts.push(MeshVertexAttributes {
-                            position: p,
-                            normal: [nx, ny, nz],
-                            uv: [0.0, 0.0],
-                            color: [col[0], col[1], col[2], 255],
-                        });
-                    }
-                    idx.extend_from_slice(&[base, base + 1, base + 2]);
-                };
-
                 // Upward triangle.
-                emit_sub_tri(
-                    i, j, k,
-                    i, j + 1, k - 1,
-                    i + 1, j, k - 1,
-                    &mut all_verts,
-                    &mut all_idx,
+                let (p0, wk0) = register_vert(i, j, k);
+                let (p1, wk1) = register_vert(i, j + 1, k - 1);
+                let (p2, wk2) = register_vert(i + 1, j, k - 1);
+
+                let cwa = (3 * i + 1) as f32 / (3 * N) as f32;
+                let cwb = (3 * j + 1) as f32 / (3 * N) as f32;
+                let cwc = 1.0 - cwa - cwb;
+                let fdom = model.biased_dominant(cwa, cwb, cwc, ta, tb, tc);
+
+                push_tri(
+                    &p0, &p1, &p2,
+                    sorted_colors[fdom],
+                    &wk0, &wk1, &wk2,
+                    &mut all_pos, &mut all_col, &mut all_nrm, &mut vertex_world_keys,
                 );
 
                 // Downward triangle.
                 if j + 1 <= N - i - 1 {
-                    emit_sub_tri(
-                        i + 1, j, k - 1,
-                        i, j + 1, k - 1,
-                        i + 1, j + 1, k - 2,
-                        &mut all_verts,
-                        &mut all_idx,
+                    let (p3, wk3) = register_vert(i + 1, j, k - 1);
+                    let (p4, wk4) = register_vert(i, j + 1, k - 1);
+                    let (p5, wk5) = register_vert(i + 1, j + 1, k - 2);
+
+                    let dwa = (3 * (i + 1)) as f32 / (3 * N) as f32 - 1.0 / (3 * N) as f32;
+                    let dwb = (3 * j + 2) as f32 / (3 * N) as f32;
+                    let dwc = 1.0 - dwa - dwb;
+                    let fdom2 = model.biased_dominant(dwa, dwb, dwc, ta, tb, tc);
+
+                    push_tri(
+                        &p3, &p4, &p5,
+                        sorted_colors[fdom2],
+                        &wk3, &wk4, &wk5,
+                        &mut all_pos, &mut all_col, &mut all_nrm, &mut vertex_world_keys,
                     );
                 }
             }
         }
     }
 
-    (all_verts, all_idx)
+    let vertices: Vec<MeshVertexAttributes> = (0..all_pos.len())
+        .map(|i| MeshVertexAttributes {
+            position: all_pos[i],
+            normal: all_nrm[i],
+            uv: [0.0, 0.0],
+            color: [all_col[i][0], all_col[i][1], all_col[i][2], 255],
+        })
+        .collect();
+    let indices: Vec<u32> = (0..vertices.len() as u32).collect();
+
+    MeshData {
+        vertices,
+        indices,
+        vertex_world_keys,
+        world_vert_cls,
+    }
 }
 
 /// Build wireframe edge data for Delaunay triangle boundaries.

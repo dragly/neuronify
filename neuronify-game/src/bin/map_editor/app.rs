@@ -78,6 +78,7 @@ pub struct MapEditorApp {
 
     // Cached mesh data for editing
     pub cached_mesh_data: Option<mesh_builder::MeshData>,
+    pub cached_catalog_data: Option<mesh_builder::MeshData>,
 }
 
 impl MapEditorApp {
@@ -180,6 +181,7 @@ impl MapEditorApp {
             mouse_pos: None,
             mouse_left_down: false,
             cached_mesh_data: None,
+            cached_catalog_data: None,
         };
 
         app
@@ -220,26 +222,29 @@ impl MapEditorApp {
     }
 
     fn rebuild_catalog(&mut self, device: &wgpu::Device) {
-        let (verts, idx) = mesh_builder::build_tile_catalog(&self.model);
-        if verts.is_empty() {
+        let data = mesh_builder::build_tile_catalog(&self.model);
+        if data.vertices.is_empty() {
             self.catalog_mesh.vertex_count = 0;
+            self.cached_catalog_data = None;
             self.catalog_dirty = false;
             return;
         }
         self.catalog_mesh.vertex_buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("catalog"),
-                contents: bytemuck::cast_slice(&verts),
+                contents: bytemuck::cast_slice(&data.vertices),
                 usage: wgpu::BufferUsages::VERTEX,
             });
         self.catalog_mesh.index_buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("catalog_idx"),
-                contents: bytemuck::cast_slice(&idx),
+                contents: bytemuck::cast_slice(&data.indices),
                 usage: wgpu::BufferUsages::INDEX,
             });
-        self.catalog_mesh.vertex_count = idx.len();
+        self.catalog_mesh.vertex_count = data.indices.len();
+        self.cached_catalog_data = Some(data);
         self.catalog_dirty = false;
+        self.dots_dirty = true;
     }
 
     fn rebuild_wireframe(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
@@ -277,7 +282,11 @@ impl MapEditorApp {
             return;
         }
 
-        let data = match &self.cached_mesh_data {
+        let data = match self.view {
+            View::TileCatalog => self.cached_catalog_data.as_ref(),
+            _ => self.cached_mesh_data.as_ref(),
+        };
+        let data = match data {
             Some(d) => d,
             None => {
                 self.dots_dirty = false;
@@ -410,6 +419,9 @@ impl visula::Simulation for MapEditorApp {
             }
             View::TileCatalog => {
                 self.catalog_mesh.render(data);
+                if self.mode == Mode::EditVertex {
+                    self.edit_spheres.render(data);
+                }
             }
         }
     }
@@ -445,11 +457,15 @@ impl visula::Simulation for MapEditorApp {
 
                         if pressed {
                             if self.mode == Mode::EditVertex {
-                                // Try to pick a vertex.
+                                // Try to pick a vertex from the active view's mesh data.
+                                let active_data = match self.view {
+                                    View::TileCatalog => &self.cached_catalog_data,
+                                    _ => &self.cached_mesh_data,
+                                };
                                 if let Some((mx, my)) = self.mouse_pos {
                                     if let Some(wk) = editor::pick_vertex(
                                         application,
-                                        &self.cached_mesh_data,
+                                        active_data,
                                         mx as f32,
                                         my as f32,
                                     ) {
@@ -503,11 +519,15 @@ impl visula::Simulation for MapEditorApp {
                             let delta = -dy as f32 * 0.4;
                             self.pick_y = my;
 
+                            let active_data = match self.view {
+                                View::TileCatalog => &self.cached_catalog_data,
+                                _ => &self.cached_mesh_data,
+                            };
                             editor::drag_vertex(
                                 &mut self.model,
                                 wk,
                                 delta,
-                                &self.cached_mesh_data,
+                                active_data,
                             );
                             self.mesh_dirty = true;
                             return;
