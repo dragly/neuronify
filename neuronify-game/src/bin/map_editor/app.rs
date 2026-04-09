@@ -66,7 +66,13 @@ pub struct MapEditorApp {
 
     // Edit state
     pub picked_world_key: Option<String>,
-    pub pick_y: f64,
+    pub pick_screen_y: f64,
+    /// The tile's affine transform at pick time: c1=(pb-pa), c2 computed from pc.
+    /// Used to convert world XZ deltas to local (lx, ly) deltas.
+    pub pick_c1: [f32; 2],
+    pub pick_c2: [f32; 2],
+    /// Previous world-space ground hit for incremental XZ delta.
+    pub pick_prev_world: Option<Vec3>,
     pub mesh_dirty: bool,
     pub dots_dirty: bool,
     pub catalog_dirty: bool,
@@ -173,7 +179,10 @@ impl MapEditorApp {
             last_mouse_x: 0.0,
             last_mouse_y: 0.0,
             picked_world_key: None,
-            pick_y: 0.0,
+            pick_screen_y: 0.0,
+            pick_c1: [0.0; 2],
+            pick_c2: [0.0; 2],
+            pick_prev_world: None,
             mesh_dirty: true,
             dots_dirty: true,
             catalog_dirty: true,
@@ -469,8 +478,21 @@ impl visula::Simulation for MapEditorApp {
                                         mx as f32,
                                         my as f32,
                                     ) {
-                                        self.picked_world_key = Some(wk);
-                                        self.pick_y = my;
+                                        self.picked_world_key = Some(wk.clone());
+                                        self.pick_screen_y = my;
+                                        self.pick_prev_world = Self::screen_to_world(
+                                            application, mx as f32, my as f32,
+                                        );
+                                        // Store the tile's affine transform for
+                                        // world → local conversion.
+                                        if let Some(d) = active_data.as_ref() {
+                                            if let Some(c1) = d.world_key_c1.get(&wk) {
+                                                self.pick_c1 = *c1;
+                                            }
+                                            if let Some(c2) = d.world_key_c2.get(&wk) {
+                                                self.pick_c2 = *c2;
+                                            }
+                                        }
                                         return;
                                     }
                                 }
@@ -512,12 +534,41 @@ impl visula::Simulation for MapEditorApp {
                     let my = position.y;
                     self.mouse_pos = Some((mx, my));
 
-                    // Height dragging in edit mode.
+                    // Vertex dragging in edit mode.
+                    // Height: from screen Y delta.
+                    // XZ: raycast to ground, get world delta, invert the
+                    //     tile's affine transform to get local (dlx, dly).
                     if self.mode == Mode::EditVertex {
                         if let Some(ref wk) = self.picked_world_key {
-                            let dy = my - self.pick_y;
-                            let delta = -dy as f32 * 0.4;
-                            self.pick_y = my;
+                            // Height from screen Y.
+                            let screen_dy = (my - self.pick_screen_y) as f32;
+                            self.pick_screen_y = my;
+                            let delta_height = -screen_dy * 0.4;
+
+                            // XZ from world raycast + inverse affine.
+                            let mut delta_local_x = 0.0f32;
+                            let mut delta_local_y = 0.0f32;
+                            if let Some(prev) = self.pick_prev_world {
+                                if let Some(curr) = Self::screen_to_world(
+                                    application, mx as f32, my as f32,
+                                ) {
+                                    self.pick_prev_world = Some(curr);
+                                    // World delta in the map's 2D plane.
+                                    // world_x corresponds to map +X,
+                                    // world_z corresponds to map -Y (negated).
+                                    let dwx = curr.x - prev.x;
+                                    let dwy = -(curr.z - prev.z); // map Y
+                                    // Invert the 2x2 affine [c1x c2x; c1y c2y]
+                                    // to get (dlx, dly) from (dwx, dwy).
+                                    let [c1x, c1y] = self.pick_c1;
+                                    let [c2x, c2y] = self.pick_c2;
+                                    let det = c1x * c2y - c2x * c1y;
+                                    if det.abs() > 1e-6 {
+                                        delta_local_x = ( c2y * dwx - c2x * dwy) / det;
+                                        delta_local_y = (-c1y * dwx + c1x * dwy) / det;
+                                    }
+                                }
+                            }
 
                             let active_data = match self.view {
                                 View::TileCatalog => &self.cached_catalog_data,
@@ -526,7 +577,9 @@ impl visula::Simulation for MapEditorApp {
                             editor::drag_vertex(
                                 &mut self.model,
                                 wk,
-                                delta,
+                                delta_height,
+                                delta_local_x,
+                                delta_local_y,
                                 active_data,
                             );
                             self.mesh_dirty = true;

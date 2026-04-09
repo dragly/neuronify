@@ -62,11 +62,17 @@ pub fn pick_vertex(
     closest_wk
 }
 
-/// Drag a picked vertex by a height delta, updating edge/interior profiles.
+/// Drag a picked vertex.
+///
+/// `delta_height`: vertical (Y) change from mouse Y movement.
+/// `delta_local_x`, `delta_local_y`: horizontal change in local tile space
+/// from mouse X movement. Only applied to interior vertices.
 pub fn drag_vertex(
     model: &mut MapModel,
     world_key: &str,
-    delta: f32,
+    delta_height: f32,
+    delta_local_x: f32,
+    delta_local_y: f32,
     cached_mesh_data: &Option<MeshData>,
 ) {
     let data = match cached_mesh_data {
@@ -82,24 +88,29 @@ pub fn drag_vertex(
     for cls in cls_list {
         match cls {
             VertexClassification::Edge { key, param_idx } => {
+                // Edge vertices: height only.
                 if let Some(profile) = model.edge_profiles.get_mut(key) {
                     if *param_idx < profile.len() {
-                        profile[*param_idx] += delta;
+                        profile[*param_idx] += delta_height;
                     }
                 }
             }
             VertexClassification::Interior { key, i, j, k } => {
+                // Interior vertices: height + local XY.
                 if let Some(pts) = model.interior_profiles.get_mut(key) {
                     for p in pts.iter_mut() {
                         if p.i == *i && p.j == *j && p.k == *k {
-                            p.z += delta;
+                            p.z += delta_height;
+                            p.dlx += delta_local_x;
+                            p.dly += delta_local_y;
                             break;
                         }
                     }
                 }
             }
             VertexClassification::Corner { terrain } => {
-                *model.terrain_height_offsets.entry(*terrain).or_insert(0.0) += delta;
+                // Corner vertices: height only (shared per terrain type).
+                *model.terrain_height_offsets.entry(*terrain).or_insert(0.0) += delta_height;
             }
         }
     }

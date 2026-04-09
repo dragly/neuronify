@@ -18,6 +18,11 @@ pub struct MeshData {
     pub vertex_world_keys: Vec<String>,
     /// Map from world-position key to list of vertex classifications.
     pub world_vert_cls: HashMap<String, Vec<VertexClassification>>,
+    /// For each world key, the tile's affine c1 vector (pb - pa) in 2D map space.
+    /// Used for converting world deltas to local tile coords.
+    pub world_key_c1: HashMap<String, [f32; 2]>,
+    /// For each world key, the tile's affine c2 vector.
+    pub world_key_c2: HashMap<String, [f32; 2]>,
 }
 
 fn dominant(wa: f32, wb: f32, wc: f32) -> usize {
@@ -71,6 +76,8 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
     let mut all_nrm: Vec<[f32; 3]> = Vec::new();
     let mut vertex_world_keys: Vec<String> = Vec::new();
     let mut world_vert_cls: HashMap<String, Vec<VertexClassification>> = HashMap::new();
+    let mut world_key_c1: HashMap<String, [f32; 2]> = HashMap::new();
+    let mut world_key_c2: HashMap<String, [f32; 2]> = HashMap::new();
 
     let cen_x: f32 = pts.iter().map(|p| p.x).sum::<f32>() / pts.len() as f32;
     let cen_y: f32 = pts.iter().map(|p| p.y).sum::<f32>() / pts.len() as f32;
@@ -144,8 +151,14 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
         }
 
         let mut register_vert = |i: usize, j: usize, k: usize| -> RegVert {
-            let lx = j as f32 / N as f32 + (k as f32 / N as f32) * 0.5;
-            let ly = (k as f32 / N as f32) * UNIT_H;
+            let mut lx = j as f32 / N as f32 + (k as f32 / N as f32) * 0.5;
+            let mut ly = (k as f32 / N as f32) * UNIT_H;
+            // Apply local XY offset for interior vertices.
+            if i > 0 && j > 0 && k > 0 && i < N && j < N && k < N {
+                let (dlx, dly) = model.interior_local_offset(ta, tb, tc, i, j, k);
+                lx += dlx;
+                ly += dly;
+            }
             let z = vert_height(i, j, k);
             let wp = to_world(lx, z, -ly);
 
@@ -217,6 +230,10 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
                     entry.push(cls);
                 }
             }
+            // Store the tile's affine transform for this vertex so the
+            // editor can convert world deltas to local coords.
+            world_key_c1.entry(wk.clone()).or_insert([c1x, c1y]);
+            world_key_c2.entry(wk.clone()).or_insert([c2x, c2y]);
             RegVert { wp, wk }
         };
 
@@ -228,8 +245,13 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
         let mut sub_faces: Vec<SubFace> = Vec::new();
 
         let vl = |ii: usize, jj: usize, kk: usize| -> ([f32; 2], f32) {
-            let lx = jj as f32 / N as f32 + (kk as f32 / N as f32) * 0.5;
-            let ly = (kk as f32 / N as f32) * UNIT_H;
+            let mut lx = jj as f32 / N as f32 + (kk as f32 / N as f32) * 0.5;
+            let mut ly = (kk as f32 / N as f32) * UNIT_H;
+            if ii > 0 && jj > 0 && kk > 0 && ii < N && jj < N && kk < N {
+                let (dlx, dly) = model.interior_local_offset(ta, tb, tc, ii, jj, kk);
+                lx += dlx;
+                ly += dly;
+            }
             ([lx, ly], vert_height(ii, jj, kk))
         };
 
@@ -378,6 +400,8 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
         indices,
         vertex_world_keys,
         world_vert_cls,
+        world_key_c1,
+        world_key_c2,
     }
 }
 
@@ -553,6 +577,8 @@ pub fn build_tile_catalog(model: &MapModel) -> MeshData {
             indices: Vec::new(),
             vertex_world_keys: Vec::new(),
             world_vert_cls: HashMap::new(),
+            world_key_c1: HashMap::new(),
+            world_key_c2: HashMap::new(),
         };
     }
 
@@ -569,6 +595,8 @@ pub fn build_tile_catalog(model: &MapModel) -> MeshData {
     let mut all_nrm: Vec<[f32; 3]> = Vec::new();
     let mut vertex_world_keys: Vec<String> = Vec::new();
     let mut world_vert_cls: HashMap<String, Vec<VertexClassification>> = HashMap::new();
+    let mut world_key_c1: HashMap<String, [f32; 2]> = HashMap::new();
+    let mut world_key_c2: HashMap<String, [f32; 2]> = HashMap::new();
 
     let base_a = super::voronoi::Point2::new(0.0, 0.0);
     let base_b = super::voronoi::Point2::new(tile_size, 0.0);
@@ -625,6 +653,8 @@ pub fn build_tile_catalog(model: &MapModel) -> MeshData {
             if !entry.iter().any(|c| *c == cls) {
                 entry.push(cls);
             }
+            world_key_c1.entry(wk.clone()).or_insert([c1x, c1y]);
+            world_key_c2.entry(wk.clone()).or_insert([c2x, c2y]);
             (wp, wk)
         };
 
@@ -686,6 +716,8 @@ pub fn build_tile_catalog(model: &MapModel) -> MeshData {
         indices,
         vertex_world_keys,
         world_vert_cls,
+        world_key_c1,
+        world_key_c2,
     }
 }
 

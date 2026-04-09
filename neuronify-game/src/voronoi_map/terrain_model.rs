@@ -99,6 +99,12 @@ pub struct InteriorPoint {
     pub j: usize,
     pub k: usize,
     pub z: f32,
+    /// Local-space X offset (along the base edge of the unit triangle).
+    #[serde(default)]
+    pub dlx: f32,
+    /// Local-space Y offset (perpendicular to the base edge, toward apex).
+    #[serde(default)]
+    pub dly: f32,
 }
 
 // ── Vertex classification ────────────────────────────────────────────────────
@@ -273,6 +279,8 @@ impl MapModel {
                                     j,
                                     k,
                                     z: heights[dom],
+                                    dlx: 0.0,
+                                    dly: 0.0,
                                 });
                             }
                         }
@@ -341,6 +349,25 @@ impl MapModel {
     /// Get the height offset for a terrain type's corners.
     pub fn terrain_offset(&self, t: EditorTerrain) -> f32 {
         self.terrain_height_offsets.get(&t).copied().unwrap_or(0.0)
+    }
+
+    /// Get the local-space XY offset for an interior vertex, or (0, 0).
+    pub fn interior_local_offset(
+        &self,
+        ta: EditorTerrain,
+        tb: EditorTerrain,
+        tc: EditorTerrain,
+        i: usize,
+        j: usize,
+        k: usize,
+    ) -> (f32, f32) {
+        let key = TripleKey::new(ta, tb, tc);
+        if let Some(pts) = self.interior_profiles.get(&key) {
+            if let Some(p) = pts.iter().find(|p| p.i == i && p.j == j && p.k == k) {
+                return (p.dlx, p.dly);
+            }
+        }
+        (0.0, 0.0)
     }
 
     /// Classify a subdivision vertex within a canonical triple (ta <= tb <= tc).
