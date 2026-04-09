@@ -164,18 +164,44 @@ pub struct MapModel {
     pub cell_centers: Vec<Point2>,
     pub cell_terrains: Vec<EditorTerrain>,
     pub triangles: Vec<[usize; 3]>,
+    #[serde(with = "map_as_vec")]
     pub edge_profiles: HashMap<EdgeKey, Vec<f32>>,
+    #[serde(with = "map_as_vec")]
     pub interior_profiles: HashMap<TripleKey, Vec<InteriorPoint>>,
     /// Per-cell height offset (added on top of the terrain base height).
     #[serde(default)]
     pub cell_height_offsets: Vec<f32>,
-    /// Transition bias per terrain pair. Controls where the boundary between
-    /// two terrains falls within the tile.
-    /// 0.5 = midpoint (default), <0.5 = terrain A wins more area,
-    /// >0.5 = terrain B wins more area.
-    /// Key is EdgeKey (sorted pair), value is bias 0.0..1.0.
-    #[serde(default)]
+    /// Transition bias per terrain pair.
+    #[serde(default, with = "map_as_vec")]
     pub transition_biases: HashMap<EdgeKey, f32>,
+}
+
+/// Serialize/deserialize a HashMap as a Vec of (key, value) pairs,
+/// since JSON requires string keys.
+mod map_as_vec {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::collections::HashMap;
+    use std::hash::Hash;
+
+    pub fn serialize<S, K, V>(map: &HashMap<K, V>, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        K: Serialize,
+        V: Serialize,
+    {
+        let vec: Vec<(&K, &V)> = map.iter().collect();
+        vec.serialize(ser)
+    }
+
+    pub fn deserialize<'de, D, K, V>(de: D) -> Result<HashMap<K, V>, D::Error>
+    where
+        D: Deserializer<'de>,
+        K: Deserialize<'de> + Eq + Hash,
+        V: Deserialize<'de>,
+    {
+        let vec: Vec<(K, V)> = Vec::deserialize(de)?;
+        Ok(vec.into_iter().collect())
+    }
 }
 
 impl MapModel {

@@ -131,7 +131,13 @@ pub fn draw_ui(
                 }
             }
 
-            ui.add_space(12.0);
+            ui.add_space(8.0);
+
+            if ui.checkbox(&mut app.show_wireframe, "Show triangles").changed() {
+                app.wireframe_dirty = true;
+            }
+
+            ui.add_space(8.0);
             ui.separator();
             ui.add_space(4.0);
 

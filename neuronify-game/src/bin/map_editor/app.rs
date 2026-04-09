@@ -1,12 +1,12 @@
 use glam::{Quat, Vec3};
 use visula::winit::event::{ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
 use visula::{
-    CustomEvent, Expression, InstanceBuffer, MeshGeometry,
+    CustomEvent, Expression, InstanceBuffer, LineGeometry, LineMaterial, Lines, MeshGeometry,
     MeshMaterial, MeshPipeline, RenderData, Renderable, SphereGeometry, SphereMaterial, Spheres,
 };
 use wgpu::util::DeviceExt;
 
-use neuronify_core::rendering::gpu_types::Sphere;
+use neuronify_core::rendering::gpu_types::{ConnectionData, Sphere};
 use neuronify_game_lib::voronoi_map::{
     map_gen,
     mesh_builder,
@@ -40,6 +40,8 @@ pub struct MapEditorApp {
     // Rendering
     pub terrain_mesh: MeshPipeline,
     pub catalog_mesh: MeshPipeline,
+    pub wireframe_lines: Lines,
+    pub wireframe_buffer: InstanceBuffer<ConnectionData>,
     pub edit_spheres: Spheres,
     pub edit_sphere_buffer: InstanceBuffer<Sphere>,
 
@@ -68,6 +70,7 @@ pub struct MapEditorApp {
     pub mesh_dirty: bool,
     pub dots_dirty: bool,
     pub catalog_dirty: bool,
+    pub wireframe_dirty: bool,
 
     // Mouse tracking
     pub mouse_pos: Option<(f64, f64)>,
@@ -86,6 +89,22 @@ impl MapEditorApp {
         application.camera_controller.target_transform.distance = 350.0;
         application.camera_controller.current_transform =
             application.camera_controller.target_transform.clone();
+
+        let wireframe_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
+        let wf = wireframe_buffer.instance();
+        let wireframe_lines = Lines::new(
+            &application.rendering_descriptor(),
+            &LineGeometry {
+                start: wf.position_a.clone(),
+                end: wf.position_b.clone(),
+                width: Expression::from(0.3),
+                color: wf.start_color.clone(),
+            },
+            &LineMaterial {
+                color: Expression::InputColor.lit(),
+            },
+        )
+        .unwrap();
 
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
         let sphere = sphere_buffer.instance();
@@ -134,6 +153,8 @@ impl MapEditorApp {
             model,
             terrain_mesh,
             catalog_mesh,
+            wireframe_lines,
+            wireframe_buffer,
             edit_spheres,
             edit_sphere_buffer: sphere_buffer,
             mode: Mode::Orbit,
@@ -155,6 +176,7 @@ impl MapEditorApp {
             mesh_dirty: true,
             dots_dirty: true,
             catalog_dirty: true,
+            wireframe_dirty: true,
             mouse_pos: None,
             mouse_left_down: false,
             cached_mesh_data: None,
@@ -194,6 +216,7 @@ impl MapEditorApp {
         self.mesh_dirty = false;
         self.dots_dirty = true;
         self.catalog_dirty = true;
+        self.wireframe_dirty = true;
     }
 
     fn rebuild_catalog(&mut self, device: &wgpu::Device) {
@@ -217,6 +240,30 @@ impl MapEditorApp {
             });
         self.catalog_mesh.vertex_count = idx.len();
         self.catalog_dirty = false;
+    }
+
+    fn rebuild_wireframe(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let edges = mesh_builder::build_wireframe_edges(
+            &self.model,
+            map_gen::MAP_W,
+            map_gen::MAP_H,
+            map_gen::CELL_SPACING,
+        );
+        let line_color = Vec3::new(1.0, 0.7, 0.2);
+        let line_data: Vec<ConnectionData> = edges
+            .iter()
+            .map(|(start, end)| ConnectionData {
+                start_color: line_color,
+                end_color: line_color,
+                position_a: Vec3::new(start[0], start[1], start[2]),
+                position_b: Vec3::new(end[0], end[1], end[2]),
+                strength: 1.0,
+                directional: 0.0,
+                _padding: [0.0; 2],
+            })
+            .collect();
+        self.wireframe_buffer.update(device, queue, &line_data);
+        self.wireframe_dirty = false;
     }
 
     fn rebuild_edit_dots(
@@ -341,6 +388,9 @@ impl visula::Simulation for MapEditorApp {
         if self.catalog_dirty && self.view == View::TileCatalog {
             self.rebuild_catalog(&application.device);
         }
+        if self.wireframe_dirty && self.show_wireframe {
+            self.rebuild_wireframe(&application.device, &application.queue);
+        }
         if self.dots_dirty {
             self.rebuild_edit_dots(&application.device, &application.queue);
         }
@@ -351,6 +401,9 @@ impl visula::Simulation for MapEditorApp {
         match self.view {
             View::FullMap | View::TopDown => {
                 self.terrain_mesh.render(data);
+                if self.show_wireframe {
+                    self.wireframe_lines.render(data);
+                }
                 if self.mode == Mode::EditVertex {
                     self.edit_spheres.render(data);
                 }

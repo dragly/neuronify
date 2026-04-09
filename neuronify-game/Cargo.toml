@@ -15,6 +15,10 @@ path = "src/main.rs"
 name = "map-editor"
 path = "src/bin/map_editor/main.rs"
 
+[[bin]]
+name = "gen-voronoi-map"
+path = "src/bin/gen_voronoi_map.rs"
+
 [dependencies]
 neuronify-core = { path = "../neuronify-core" }
 visula = { git = "https://github.com/dragly/visula", rev = "73aaa820b1127362415c2cfa5200e4703e55a3aa" }
