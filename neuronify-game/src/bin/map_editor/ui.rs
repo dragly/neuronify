@@ -269,7 +269,7 @@ pub fn draw_ui(
                 app.model.edge_profiles.clear();
                 app.model.interior_profiles.clear();
                 app.model.transition_biases.clear();
-                app.model.cell_height_offsets.fill(0.0);
+                app.model.terrain_height_offsets.clear();
                 app.model.ensure_profiles();
                 app.mesh_dirty = true;
             }

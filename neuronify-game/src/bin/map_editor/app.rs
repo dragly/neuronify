@@ -59,7 +59,7 @@ pub struct MapEditorApp {
     pub camera_center: Vec3,
     pub dragging_camera: bool,
     pub panning_camera: bool,
-    /// World-space grab point on the ground plane when right-click started.
+    /// World-space point on the ground plane that should stay under the cursor.
     pub pan_grab_point: Option<Vec3>,
     pub last_mouse_x: f64,
     pub last_mouse_y: f64,
@@ -300,14 +300,14 @@ impl MapEditorApp {
             seen.insert(wk.clone());
 
             let v = &data.vertices[vi];
-            let is_cell_center = cls
+            let is_corner = cls
                 .iter()
-                .any(|c| matches!(c, VertexClassification::CellCenter { .. }));
+                .any(|c| matches!(c, VertexClassification::Corner { .. }));
             let is_edge = cls
                 .iter()
                 .any(|c| matches!(c, VertexClassification::Edge { .. }));
-            let color = if is_cell_center {
-                Vec3::new(0.4, 0.9, 1.0) // cyan for cell centers
+            let color = if is_corner {
+                Vec3::new(0.4, 0.9, 1.0) // cyan for corners (shared per terrain type)
             } else if is_edge {
                 Vec3::new(1.0, 0.8, 0.2) // yellow for edge vertices
             } else {
@@ -532,14 +532,17 @@ impl visula::Simulation for MapEditorApp {
                     }
 
                     // Camera pan (right-click drag): keep the grab point
-                    // pinned under the cursor so the terrain feels "grabbed".
+                    // pinned under the cursor.
                     if self.panning_camera {
                         if let Some(grab) = self.pan_grab_point {
                             if let Some(current) = Self::screen_to_world(application, mx as f32, my as f32) {
                                 let delta = grab - current;
                                 self.camera_center += delta;
-                                // Don't update pan_grab_point — it stays fixed
-                                // in world space, which is what makes the grab feel solid.
+                                // Immediately update the camera controller so
+                                // that subsequent mouse events in the same
+                                // frame see the new camera position (avoids
+                                // jitter from stale projection).
+                                self.update_camera(application);
                             }
                         }
                     }

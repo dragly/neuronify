@@ -70,14 +70,13 @@ pub fn generate_scenario_map() -> MapModel {
     paint_circle(&mut cell_terrains, &pts, 280.0, 150.0, 20.0, EditorTerrain::GlialScar);
     paint_circle(&mut cell_terrains, &pts, 600.0, 200.0, 22.0, EditorTerrain::GlialScar);
 
-    let n_cells = pts.len();
     let mut model = MapModel {
         cell_centers: pts,
         cell_terrains,
         triangles,
         edge_profiles: HashMap::new(),
         interior_profiles: HashMap::new(),
-        cell_height_offsets: vec![0.0; n_cells],
+        terrain_height_offsets: HashMap::new(),
         transition_biases: HashMap::new(),
     };
 

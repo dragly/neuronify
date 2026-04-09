@@ -105,9 +105,11 @@ pub struct InteriorPoint {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum VertexClassification {
-    /// A cell-center vertex shared by all triangles meeting at that cell.
-    CellCenter {
-        cell_idx: usize,
+    /// A tile corner vertex. The height offset is shared across ALL tiles
+    /// that have this terrain type in this slot of their canonical triple.
+    /// `slot` is 0 (ta), 1 (tb), or 2 (tc) in the sorted triple.
+    Corner {
+        terrain: EditorTerrain,
     },
     Edge {
         key: EdgeKey,
@@ -168,9 +170,11 @@ pub struct MapModel {
     pub edge_profiles: HashMap<EdgeKey, Vec<f32>>,
     #[serde(with = "map_as_vec")]
     pub interior_profiles: HashMap<TripleKey, Vec<InteriorPoint>>,
-    /// Per-cell height offset (added on top of the terrain base height).
-    #[serde(default)]
-    pub cell_height_offsets: Vec<f32>,
+    /// Per-terrain-type height offset (added to every corner of that type).
+    /// Shared across ALL tiles on the map — editing one corner of a terrain
+    /// type moves all corners of that type, just like edge profiles.
+    #[serde(default, with = "map_as_vec")]
+    pub terrain_height_offsets: HashMap<EditorTerrain, f32>,
     /// Transition bias per terrain pair.
     #[serde(default, with = "map_as_vec")]
     pub transition_biases: HashMap<EdgeKey, f32>,
@@ -332,8 +336,11 @@ impl MapModel {
     pub fn ensure_profiles(&mut self) {
         self.init_edge_profiles();
         self.init_interiors();
-        // Ensure cell_height_offsets has the right length.
-        self.cell_height_offsets.resize(self.cell_centers.len(), 0.0);
+    }
+
+    /// Get the height offset for a terrain type's corners.
+    pub fn terrain_offset(&self, t: EditorTerrain) -> f32 {
+        self.terrain_height_offsets.get(&t).copied().unwrap_or(0.0)
     }
 
     /// Classify a subdivision vertex within a canonical triple (ta <= tb <= tc).
@@ -359,13 +366,13 @@ impl MapModel {
         k: usize,
     ) -> VertexClassification {
         if i == N {
-            return VertexClassification::CellCenter { cell_idx: cell_idx_a };
+            return VertexClassification::Corner { terrain: ta };
         }
         if j == N {
-            return VertexClassification::CellCenter { cell_idx: cell_idx_b };
+            return VertexClassification::Corner { terrain: tb };
         }
         if k == N {
-            return VertexClassification::CellCenter { cell_idx: cell_idx_c };
+            return VertexClassification::Corner { terrain: tc };
         }
         if k == 0 {
             let ek = EdgeKey::new(ta, tb);
@@ -421,17 +428,14 @@ impl MapModel {
         j: usize,
         k: usize,
     ) -> f32 {
-        let cell_offset = |idx: usize| -> f32 {
-            self.cell_height_offsets.get(idx).copied().unwrap_or(0.0)
-        };
         if i == N {
-            return ta.height() + cell_offset(cell_idx_a);
+            return ta.height() + self.terrain_offset(ta);
         }
         if j == N {
-            return tb.height() + cell_offset(cell_idx_b);
+            return tb.height() + self.terrain_offset(tb);
         }
         if k == N {
-            return tc.height() + cell_offset(cell_idx_c);
+            return tc.height() + self.terrain_offset(tc);
         }
         // Edge k==0: edge between ta and tb
         if k == 0 {

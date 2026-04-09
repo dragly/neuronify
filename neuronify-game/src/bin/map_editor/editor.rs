@@ -98,10 +98,8 @@ pub fn drag_vertex(
                     }
                 }
             }
-            VertexClassification::CellCenter { cell_idx } => {
-                if *cell_idx < model.cell_height_offsets.len() {
-                    model.cell_height_offsets[*cell_idx] += delta;
-                }
+            VertexClassification::Corner { terrain } => {
+                *model.terrain_height_offsets.entry(*terrain).or_insert(0.0) += delta;
             }
         }
     }

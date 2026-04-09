@@ -166,9 +166,11 @@ pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f3
             let cls = classify_vert(i, j, k);
 
             let (canon_x, canon_z) = match &cls {
-                VertexClassification::CellCenter { cell_idx } => {
-                    let c = &pts[*cell_idx];
-                    (c.x, c.y)
+                VertexClassification::Corner { .. } => {
+                    // Use the cell centre directly for canonical position.
+                    if i == N { (cell_a.x, cell_a.y) }
+                    else if j == N { (cell_b.x, cell_b.y) }
+                    else { (cell_c.x, cell_c.y) }
                 }
                 VertexClassification::Edge { key: _, param_idx } => {
                     // Use the actual cell pair for the specific barycentric
