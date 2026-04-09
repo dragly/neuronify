@@ -136,6 +136,7 @@ pub fn draw_ui(
             if ui.checkbox(&mut app.show_wireframe, "Show triangles").changed() {
                 app.wireframe_dirty = true;
             }
+            ui.checkbox(&mut app.height_only, "Height only (edit)");
 
             ui.add_space(8.0);
             ui.separator();

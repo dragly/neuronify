@@ -51,6 +51,7 @@ pub struct MapEditorApp {
     pub selected_terrain: EditorTerrain,
     pub show_wireframe: bool,
     pub show_triangle_ids: bool,
+    pub height_only: bool,
 
     // Camera
     pub theta: f32,
@@ -169,6 +170,7 @@ impl MapEditorApp {
             selected_terrain: EditorTerrain::Vessel,
             show_wireframe: false,
             show_triangle_ids: false,
+            height_only: false,
             theta: 0.8,
             phi: 0.6,
             dist: 350.0,
@@ -543,7 +545,7 @@ impl visula::Simulation for MapEditorApp {
                             // Height from screen Y.
                             let screen_dy = (my - self.pick_screen_y) as f32;
                             self.pick_screen_y = my;
-                            let delta_height = -screen_dy * 0.4;
+                            let delta_height = -screen_dy * 0.2;
 
                             // XZ from world raycast + inverse affine.
                             let mut delta_local_x = 0.0f32;
@@ -568,6 +570,11 @@ impl visula::Simulation for MapEditorApp {
                                         delta_local_y = (-c1y * dwx + c1x * dwy) / det;
                                     }
                                 }
+                            }
+
+                            if self.height_only {
+                                delta_local_x = 0.0;
+                                delta_local_y = 0.0;
                             }
 
                             let active_data = match self.view {
