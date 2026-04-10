@@ -12,3 +12,4 @@ pub mod scenarios;
 pub mod setup;
 pub mod transport;
 pub mod victory;
+pub mod voronoi_scenario;

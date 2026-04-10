@@ -18,7 +18,6 @@ pub fn generate_scenario_map() -> MapModel {
     let mut cell_terrains: Vec<EditorTerrain> = vec![EditorTerrain::Open; pts.len()];
     let triangles = voronoi::delaunay(&pts, MAP_W, MAP_H);
 
-    // Paint terrain using the same layout as the JSX reference.
     let paint_circle = |terrains: &mut Vec<EditorTerrain>, pts: &[Point2], cx: f32, cy: f32, r: f32, t: EditorTerrain| {
         for (i, p) in pts.iter().enumerate() {
             if (p.x - cx).powi(2) + (p.y - cy).powi(2) < r * r {
@@ -45,30 +44,45 @@ pub fn generate_scenario_map() -> MapModel {
         }
     };
 
-    // Vessel network (blood vessels running through the middle).
-    paint_line(&mut cell_terrains, &pts, 50.0, 250.0, 650.0, 220.0, 28.0, EditorTerrain::Vessel);
-    paint_line(&mut cell_terrains, &pts, 200.0, 240.0, 500.0, 230.0, 18.0, EditorTerrain::Vessel);
-    paint_line(&mut cell_terrains, &pts, 400.0, 230.0, 480.0, 100.0, 20.0, EditorTerrain::Vessel);
-    paint_line(&mut cell_terrains, &pts, 200.0, 245.0, 150.0, 370.0, 18.0, EditorTerrain::Vessel);
-    paint_line(&mut cell_terrains, &pts, 150.0, 370.0, 500.0, 360.0, 18.0, EditorTerrain::Vessel);
-    paint_line(&mut cell_terrains, &pts, 320.0, 230.0, 320.0, 160.0, 14.0, EditorTerrain::Vessel);
-    paint_line(&mut cell_terrains, &pts, 500.0, 350.0, 550.0, 430.0, 14.0, EditorTerrain::Vessel);
+    // ── Non-open border (GlialScar around the map edges) ─────────────────
+    let margin = 30.0;
+    for (i, p) in pts.iter().enumerate() {
+        if p.x < margin || p.x > MAP_W - margin || p.y < margin || p.y > MAP_H - margin {
+            cell_terrains[i] = EditorTerrain::GlialScar;
+        }
+    }
 
-    // CSF pools (fluid areas).
-    paint_circle(&mut cell_terrains, &pts, 130.0, 130.0, 55.0, EditorTerrain::Csf);
-    paint_circle(&mut cell_terrains, &pts, 170.0, 110.0, 40.0, EditorTerrain::Csf);
-    paint_circle(&mut cell_terrains, &pts, 550.0, 400.0, 50.0, EditorTerrain::Csf);
-    paint_circle(&mut cell_terrains, &pts, 580.0, 380.0, 40.0, EditorTerrain::Csf);
-    paint_circle(&mut cell_terrains, &pts, 350.0, 430.0, 45.0, EditorTerrain::Csf);
-    paint_circle(&mut cell_terrains, &pts, 100.0, 350.0, 35.0, EditorTerrain::Csf);
+    // ── Vessel network ───────────────────────────────────────────────────
+    // Two main vessels with a clear gap in the middle for the open corridor.
+    // Upper vessel: runs left-to-center, leaving a gap around x=350.
+    paint_line(&mut cell_terrains, &pts, 80.0, 190.0, 300.0, 200.0, 22.0, EditorTerrain::Vessel);
+    // Branch up from upper vessel.
+    paint_line(&mut cell_terrains, &pts, 200.0, 195.0, 180.0, 100.0, 16.0, EditorTerrain::Vessel);
+    // Lower vessel: runs center-to-right, leaving the same gap.
+    paint_line(&mut cell_terrains, &pts, 400.0, 280.0, 620.0, 300.0, 22.0, EditorTerrain::Vessel);
+    // Branch down from lower vessel.
+    paint_line(&mut cell_terrains, &pts, 520.0, 295.0, 540.0, 400.0, 16.0, EditorTerrain::Vessel);
+    // Small vessel segment top-right.
+    paint_line(&mut cell_terrains, &pts, 500.0, 100.0, 580.0, 80.0, 14.0, EditorTerrain::Vessel);
+    // Small vessel segment bottom-left.
+    paint_line(&mut cell_terrains, &pts, 100.0, 350.0, 150.0, 420.0, 14.0, EditorTerrain::Vessel);
 
-    // Scar walls.
-    paint_line(&mut cell_terrains, &pts, 250.0, 300.0, 330.0, 370.0, 22.0, EditorTerrain::GlialScar);
-    paint_line(&mut cell_terrains, &pts, 430.0, 160.0, 500.0, 140.0, 20.0, EditorTerrain::GlialScar);
-    paint_line(&mut cell_terrains, &pts, 80.0, 420.0, 170.0, 450.0, 18.0, EditorTerrain::GlialScar);
-    paint_circle(&mut cell_terrains, &pts, 400.0, 380.0, 25.0, EditorTerrain::GlialScar);
-    paint_circle(&mut cell_terrains, &pts, 280.0, 150.0, 20.0, EditorTerrain::GlialScar);
-    paint_circle(&mut cell_terrains, &pts, 600.0, 200.0, 22.0, EditorTerrain::GlialScar);
+    // ── CSF pools ────────────────────────────────────────────────────────
+    paint_circle(&mut cell_terrains, &pts, 140.0, 120.0, 40.0, EditorTerrain::Csf);
+    paint_circle(&mut cell_terrains, &pts, 560.0, 400.0, 40.0, EditorTerrain::Csf);
+    paint_circle(&mut cell_terrains, &pts, 350.0, 430.0, 35.0, EditorTerrain::Csf);
+
+    // ── Scar walls (partial barriers, not blocking the corridor) ─────────
+    paint_line(&mut cell_terrains, &pts, 250.0, 310.0, 300.0, 360.0, 18.0, EditorTerrain::GlialScar);
+    paint_line(&mut cell_terrains, &pts, 430.0, 140.0, 470.0, 170.0, 16.0, EditorTerrain::GlialScar);
+    paint_circle(&mut cell_terrains, &pts, 280.0, 150.0, 18.0, EditorTerrain::GlialScar);
+    paint_circle(&mut cell_terrains, &pts, 450.0, 370.0, 18.0, EditorTerrain::GlialScar);
+
+    // ── Ensure player/enemy base areas are open ──────────────────────────
+    // Player base: lower-left.
+    paint_circle(&mut cell_terrains, &pts, 100.0, 400.0, 60.0, EditorTerrain::Open);
+    // Enemy base: upper-right.
+    paint_circle(&mut cell_terrains, &pts, 580.0, 100.0, 60.0, EditorTerrain::Open);
 
     let mut model = MapModel {
         cell_centers: pts,

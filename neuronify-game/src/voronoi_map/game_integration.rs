@@ -3,10 +3,7 @@
 //! Converts a `MapModel` into the game's `ScenarioMap` format and builds
 //! the terrain mesh using the Voronoi mesh builder.
 
-use std::collections::HashMap;
-
 use glam::{Quat, Vec3};
-use visula::primitives::mesh_primitive::MeshVertexAttributes;
 use visula::{Expression, MeshGeometry, MeshMaterial, MeshPipeline, RenderingDescriptor};
 use wgpu::util::DeviceExt;
 
@@ -92,26 +89,10 @@ pub fn build_voronoi_terrain_mesh(
     mesh.vertex_count = data.indices.len();
 }
 
-/// Convert EditorTerrain to the game's TerrainType string representation.
-fn editor_terrain_to_game(t: EditorTerrain) -> (&'static str, bool, f32, bool) {
-    // Returns (terrain_name, passable, speed_mult, resource_glucose)
-    match t {
-        EditorTerrain::Open => ("open", true, 1.0, false),
-        EditorTerrain::Vessel => ("vessel", false, 1.0, true),
-        EditorTerrain::GlialScar => ("glial_scar", false, 1.0, false),
-        EditorTerrain::Csf => ("csf", false, 1.0, false),
-    }
-}
-
 /// Sample the Voronoi cell terrain at a given world position.
 /// Returns the EditorTerrain of the nearest Voronoi cell.
 pub fn sample_terrain_at(model: &MapModel, world_x: f32, world_z: f32) -> EditorTerrain {
-    let cen_x: f32 = model.cell_centers.iter().map(|p| p.x).sum::<f32>()
-        / model.cell_centers.len() as f32;
-    let cen_y: f32 = model.cell_centers.iter().map(|p| p.y).sum::<f32>()
-        / model.cell_centers.len() as f32;
-
-    // Reverse to_world: world_x = voronoi_x - cen_x, world_z = -(voronoi_y - cen_y)
+    let (cen_x, cen_y) = voronoi_center(model);
     let vx = world_x + cen_x;
     let vy = -world_z + cen_y;
     let target = Point2::new(vx, vy);
@@ -127,3 +108,41 @@ pub fn sample_terrain_at(model: &MapModel, world_x: f32, world_z: f32) -> Editor
     }
     model.cell_terrains[best_idx]
 }
+
+/// Average of all Voronoi cell centers (used for coordinate transforms).
+pub fn voronoi_center(model: &MapModel) -> (f32, f32) {
+    let n = model.cell_centers.len() as f32;
+    let cx = model.cell_centers.iter().map(|p| p.x).sum::<f32>() / n;
+    let cy = model.cell_centers.iter().map(|p| p.y).sum::<f32>() / n;
+    (cx, cy)
+}
+
+/// Convert Voronoi coordinates to world coordinates.
+pub fn voronoi_to_world(model: &MapModel, vx: f32, vy: f32) -> Vec3 {
+    let (cx, cy) = voronoi_center(model);
+    Vec3::new(vx - cx, 0.0, -(vy - cy))
+}
+
+/// Check that a world position is on Open terrain.
+pub fn is_open(model: &MapModel, pos: Vec3) -> bool {
+    sample_terrain_at(model, pos.x, pos.z) == EditorTerrain::Open
+}
+
+/// World-space bounding box of the Voronoi map: (min_x, min_z, max_x, max_z).
+pub fn world_bounds(model: &MapModel) -> (f32, f32, f32, f32) {
+    let (cx, cy) = voronoi_center(model);
+    let mut min_x = f32::MAX;
+    let mut max_x = f32::MIN;
+    let mut min_z = f32::MAX;
+    let mut max_z = f32::MIN;
+    for p in &model.cell_centers {
+        let wx = p.x - cx;
+        let wz = -(p.y - cy);
+        min_x = min_x.min(wx);
+        max_x = max_x.max(wx);
+        min_z = min_z.min(wz);
+        max_z = max_z.max(wz);
+    }
+    (min_x, min_z, max_x, max_z)
+}
+

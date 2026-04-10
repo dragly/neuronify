@@ -108,13 +108,13 @@ pub fn draw_main_menu(
                             });
                         let resp = voronoi_frame.show(ui, |ui| {
                             ui.label(
-                                egui::RichText::new("Voronoi Terrain")
+                                egui::RichText::new("Neural Infiltration")
                                     .font(egui::FontId::monospace(13.0))
                                     .color(egui::Color32::from_rgb(140, 210, 175))
                                     .strong(),
                             );
                             ui.label(
-                                egui::RichText::new("Irregular Voronoi cells with editable terrain transitions")
+                                egui::RichText::new("Voronoi terrain — convergent network vs inhibitory suppressor")
                                     .font(egui::FontId::monospace(10.0))
                                     .color(egui::Color32::from_rgb(120, 120, 130)),
                             );
