@@ -153,7 +153,18 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
 }
 
 pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
-    for (_, (position, dynamics)) in world.query_mut::<(&mut Position, &mut SpatialDynamics)>() {
+    // Collect radii first to avoid borrow conflicts.
+    let radii: Vec<(hecs::Entity, f32)> = world
+        .query::<&SpatialDynamics>()
+        .iter()
+        .map(|(e, _)| {
+            let r = world.get::<&VisualRadius>(e).map(|vr| vr.radius).unwrap_or(NODE_RADIUS * 0.3);
+            (e, r)
+        })
+        .collect();
+    let radius_map: std::collections::HashMap<hecs::Entity, f32> = radii.into_iter().collect();
+
+    for (id, (position, dynamics)) in world.query_mut::<(&mut Position, &mut SpatialDynamics)>() {
         // Guard against NaN/Inf from force calculations
         if !dynamics.acceleration.is_finite() {
             dynamics.acceleration = Vec3::ZERO;
@@ -161,15 +172,18 @@ pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
         if !dynamics.velocity.is_finite() {
             dynamics.velocity = Vec3::ZERO;
         }
-        let gravity = -position.position.y;
+        let radius = radius_map.get(&id).copied().unwrap_or(NODE_RADIUS * 0.3);
+        // Gravity pulls toward ground_level = radius (so bottom of sphere sits on y=0).
+        let ground_level = radius;
+        let gravity = -(position.position.y - ground_level);
         dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
         dynamics.velocity += dynamics.acceleration * dt as f32;
         position.position += dynamics.velocity * dt as f32;
         dynamics.acceleration = Vec3::ZERO;
         dynamics.velocity -= dynamics.velocity * dt as f32;
-        // Ground plane: prevent entities from going below y=0.
-        if position.position.y < 0.0 {
-            position.position.y = 0.0;
+        // Ground plane: bottom of entity sits on y=0.
+        if position.position.y < ground_level {
+            position.position.y = ground_level;
             dynamics.velocity.y = dynamics.velocity.y.max(0.0);
         }
         if !position.position.is_finite() {

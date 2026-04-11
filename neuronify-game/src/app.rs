@@ -56,6 +56,9 @@ pub struct GameApp {
     pub spheres: Spheres,
     pub sphere_buffer: InstanceBuffer<Sphere>,
     pub connection_lines: Lines,
+    /// Thick lines used only for shadow casting (matches cylinder diameter).
+    pub shadow_lines: Lines,
+    pub shadow_line_buffer: InstanceBuffer<ConnectionData>,
     pub connection_spheres: Spheres,
     pub connection_buffer: InstanceBuffer<ConnectionData>,
     pub world: hecs::World,
@@ -208,8 +211,25 @@ impl GameApp {
             &LineGeometry {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
-                width: connection.strength.clone() * 0.6,
+                width: connection.strength.clone() * 0.3,
                 color: connection.start_color.clone(),
+            },
+            &LineMaterial {
+                color: Expression::InputColor.lit(),
+            },
+        )
+        .unwrap();
+
+        // Shadow-only thick lines matching cylinder diameters.
+        let shadow_line_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
+        let shadow_conn = shadow_line_buffer.instance();
+        let shadow_lines = Lines::new(
+            &application.rendering_descriptor(),
+            &LineGeometry {
+                start: shadow_conn.position_a.clone(),
+                end: shadow_conn.position_b.clone(),
+                width: shadow_conn.strength.clone(),
+                color: shadow_conn.start_color.clone(),
             },
             &LineMaterial {
                 color: Expression::InputColor.lit(),
@@ -262,6 +282,8 @@ impl GameApp {
             spheres,
             sphere_buffer,
             connection_lines,
+            shadow_lines,
+            shadow_line_buffer,
             connection_spheres,
             connection_buffer,
             world,
@@ -780,6 +802,50 @@ impl GameApp {
                 }
             }
 
+            // Select tool: perform selection on release if the mouse didn't drag far.
+            if matches!(self.tool, GameTool::Select) {
+                if let (Some(origin), Some(mouse_position)) = (
+                    self.move_origin,
+                    self.mouse_world_position(application),
+                ) {
+                    let drag_dist = origin.distance(mouse_position);
+                    if drag_dist < SELECTION_RANGE * 0.5 {
+                        // Didn't drag far — treat as a click.
+                        let clicked = self
+                            .world
+                            .query::<&Position>()
+                            .iter()
+                            .min_by(|a, b| nearest(&mouse_position, a, b))
+                            .and_then(|(id, pos)| {
+                                if mouse_position.distance(pos.position) < SELECTION_RANGE {
+                                    Some(id)
+                                } else {
+                                    None
+                                }
+                            });
+                        if let Some(entity) = clicked {
+                            if self.attack_mode {
+                                self.apply_attack_target(entity);
+                                self.attack_mode = false;
+                            } else if self.keyboard.shift_down {
+                                if self.selected_entities.contains(&entity) {
+                                    self.selected_entities.retain(|&e| e != entity);
+                                } else {
+                                    self.selected_entities.push(entity);
+                                }
+                            } else {
+                                self.selected_entities = vec![entity];
+                            }
+                        } else {
+                            if !self.attack_mode {
+                                self.selected_entities.clear();
+                            }
+                            self.attack_mode = false;
+                        }
+                    }
+                }
+            }
+
             self.connection_tool = None;
             self.previous_creation = None;
             self.move_origin = None;
@@ -861,53 +927,16 @@ impl GameApp {
                 }
             }
             GameTool::Select => {
-                match self.move_origin {
-                    Some(origin) => {
-                        let center = mouse_position - origin;
-                        application.camera_controller.target_transform.center -=
-                            Vec3::new(center.x, center.y, center.z);
-                        application.camera_controller.current_transform.center =
-                            application.camera_controller.target_transform.center;
-                    }
-                    None => {
-                        let clicked = self
-                            .world
-                            .query::<&Position>()
-                            .iter()
-                            .min_by(|a, b| nearest(&mouse_position, a, b))
-                            .and_then(|(id, pos)| {
-                                if mouse_position.distance(pos.position) < SELECTION_RANGE {
-                                    Some(id)
-                                } else {
-                                    None
-                                }
-                            });
-                        if let Some(entity) = clicked {
-                            // Consume the click so mouse-drag doesn't re-trigger selection.
-                            self.move_origin = Some(mouse_position);
-                            if self.attack_mode {
-                                // Attack-mode: set as manual target for all selected player units.
-                                self.apply_attack_target(entity);
-                                self.attack_mode = false;
-                            } else if self.keyboard.shift_down {
-                                // Shift-click: toggle entity in/out of selection.
-                                if self.selected_entities.contains(&entity) {
-                                    self.selected_entities.retain(|&e| e != entity);
-                                } else {
-                                    self.selected_entities.push(entity);
-                                }
-                            } else {
-                                // Plain click: replace selection.
-                                self.selected_entities = vec![entity];
-                            }
-                        } else {
-                            if !self.attack_mode {
-                                self.selected_entities.clear();
-                            }
-                            self.attack_mode = false;
-                            self.move_origin = Some(mouse_position);
-                        }
-                    }
+                if just_pressed {
+                    // On press: start potential drag, don't select yet.
+                    self.move_origin = Some(mouse_position);
+                } else if let Some(origin) = self.move_origin {
+                    // Dragging: pan the camera.
+                    let center = mouse_position - origin;
+                    application.camera_controller.target_transform.center -=
+                        Vec3::new(center.x, center.y, center.z);
+                    application.camera_controller.current_transform.center =
+                        application.camera_controller.target_transform.center;
                 }
             }
             GameTool::Axon => {
@@ -1016,6 +1045,13 @@ impl visula::Simulation for GameApp {
         if self.pending_exit_game {
             std::process::exit(0);
         }
+
+        // Configure shadow map to follow the camera.
+        application.light.direction = Vec3::new(-0.3, -1.0, -0.2).normalize();
+        application.light.shadow_center = application.camera_controller.current_transform.center;
+        let cam_dist = application.camera_controller.current_transform.distance;
+        application.light.shadow_extent = (cam_dist * 0.8).clamp(50.0, 250.0);
+        application.light.shadow_distance = 300.0;
 
         // Pause all simulation while in the main menu or showing the briefing.
         if matches!(self.game_state, GameState::MainMenu | GameState::Briefing { .. }) {
@@ -1203,6 +1239,24 @@ impl visula::Simulation for GameApp {
         );
         let dendrite_cyls = rendering::collect_dendrite_cylinders(&self.world);
         self.dendrite_buffer.update(&application.device, &application.queue, &dendrite_cyls);
+
+        // Build shadow line data from cylinder data (same segments, width = diameter).
+        let shadow_line_data: Vec<ConnectionData> = dendrite_cyls
+            .iter()
+            .map(|cyl| {
+                let avg_radius = (cyl.start_radius + cyl.end_radius) * 0.5;
+                ConnectionData {
+                    position_a: Vec3::new(cyl.start[0], cyl.start[1], cyl.start[2]),
+                    position_b: Vec3::new(cyl.end[0], cyl.end[1], cyl.end[2]),
+                    start_color: Vec3::new(cyl.color[0], cyl.color[1], cyl.color[2]),
+                    end_color: Vec3::new(cyl.color[0], cyl.color[1], cyl.color[2]),
+                    strength: avg_radius * 2.0, // diameter as line width
+                    directional: 0.0,
+                    _padding: [0.0; 2],
+                }
+            })
+            .collect();
+        self.shadow_line_buffer.update(&application.device, &application.queue, &shadow_line_data);
         let cam_forward = application.camera_controller.current_transform.forward;
         rendering::update_health_bar_meshes(
             &mut self.health_bar_meshes,
@@ -1253,8 +1307,7 @@ impl visula::Simulation for GameApp {
 
     fn render_shadow(&mut self, data: &mut ShadowRenderData) {
         self.spheres.render_shadow(data);
-        self.connection_spheres.render_shadow(data);
-        self.connection_lines.render_shadow(data);
+        self.shadow_lines.render_shadow(data);
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {

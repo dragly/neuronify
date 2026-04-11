@@ -6,8 +6,8 @@ use visula_derive::Instance;
 #[derive(Clone, Copy, Debug, Instance, Pod, Zeroable)]
 pub struct Sphere {
     pub position: Vec3,
-    pub color: Vec3,
     pub radius: f32,
+    pub color: Vec3,
     pub _padding: f32,
 }
 
