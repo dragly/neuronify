@@ -6,8 +6,6 @@ use crate::simulation::dev_scenarios::DevStage;
 /// A playable scenario entry shown in the main menu.
 pub struct ScenarioEntry {
     pub meta: ScenarioMeta,
-    /// Embedded SVG content (compiled into the binary via `include_str!`).
-    pub svg_content: &'static str,
     /// If `Some`, this is a dev-only stage scenario.
     pub dev_stage: Option<DevStage>,
 }
@@ -15,12 +13,8 @@ pub struct ScenarioEntry {
 /// Return value from `draw_main_menu`.
 pub enum MenuAction {
     None,
-    /// Player selected a scenario and pressed Play. Carries the embedded SVG content.
-    StartScenario(&'static str),
-    /// Player selected a dev scenario. Carries SVG content + stage.
-    StartDevScenario(&'static str, DevStage),
-    /// Player selected the Voronoi-based map scenario.
-    StartVoronoiScenario,
+    /// Player selected a scenario and pressed Play. Carries optional dev stage.
+    StartScenario(Option<DevStage>),
     Exit,
 }
 
@@ -91,39 +85,6 @@ pub fn draw_main_menu(
                             ui.add_space(8.0);
                         }
 
-                        // Voronoi map scenario — special entry.
-                        let voronoi_selected = *selected == Some(usize::MAX);
-                        let voronoi_frame = egui::Frame::new()
-                            .fill(if voronoi_selected {
-                                egui::Color32::from_rgb(35, 50, 40)
-                            } else {
-                                egui::Color32::from_rgb(28, 28, 32)
-                            })
-                            .corner_radius(egui::CornerRadius::same(4))
-                            .inner_margin(egui::Margin::symmetric(12, 8))
-                            .stroke(if voronoi_selected {
-                                egui::Stroke::new(1.5, egui::Color32::from_rgb(80, 200, 120))
-                            } else {
-                                egui::Stroke::new(0.5, egui::Color32::from_rgb(50, 50, 55))
-                            });
-                        let resp = voronoi_frame.show(ui, |ui| {
-                            ui.label(
-                                egui::RichText::new("Neural Infiltration")
-                                    .font(egui::FontId::monospace(13.0))
-                                    .color(egui::Color32::from_rgb(140, 210, 175))
-                                    .strong(),
-                            );
-                            ui.label(
-                                egui::RichText::new("Voronoi terrain — convergent network vs inhibitory suppressor")
-                                    .font(egui::FontId::monospace(10.0))
-                                    .color(egui::Color32::from_rgb(120, 120, 130)),
-                            );
-                        });
-                        if resp.response.interact(egui::Sense::click()).clicked() {
-                            *selected = Some(usize::MAX);
-                        }
-                        ui.add_space(8.0);
-
                         // Dev scenario section — only when --dev was passed.
                         if dev_mode && !dev.is_empty() {
                             ui.add_space(16.0);
@@ -166,16 +127,8 @@ pub fn draw_main_menu(
                             .clicked()
                         {
                             if let Some(idx) = *selected {
-                                if idx == usize::MAX {
-                                    action = MenuAction::StartVoronoiScenario;
-                                } else {
-                                    let entry = &scenarios[idx];
-                                    if let Some(stage) = entry.dev_stage {
-                                        action = MenuAction::StartDevScenario(entry.svg_content, stage);
-                                    } else {
-                                        action = MenuAction::StartScenario(entry.svg_content);
-                                    }
-                                }
+                                let entry = &scenarios[idx];
+                                action = MenuAction::StartScenario(entry.dev_stage);
                             }
                         }
                     });

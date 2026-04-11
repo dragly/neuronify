@@ -118,10 +118,12 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 }
                 c
             };
+            // Match the cylinder radius at this joint for smooth bends.
+            let radius = crate::rendering::dendrites::entity_radius(world, entity);
             Sphere {
                 position: position.position,
                 color,
-                radius: COMPARTMENT_SPHERE_SCALE * NODE_RADIUS,
+                radius,
                 _padding: Default::default(),
             }
         })
@@ -141,10 +143,11 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 }
                 c
             };
+            let radius = crate::rendering::dendrites::entity_radius(world, entity);
             Sphere {
                 position: position.position,
                 color,
-                radius: COMPARTMENT_SPHERE_SCALE * NODE_RADIUS,
+                radius,
                 _padding: Default::default(),
             }
         })

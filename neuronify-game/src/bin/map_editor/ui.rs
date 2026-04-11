@@ -4,6 +4,7 @@ use neuronify_game_lib::voronoi_map::terrain_model::EditorTerrain;
 
 use super::app::{MapEditorApp, Mode, View};
 
+#[allow(deprecated)]
 pub fn draw_ui(
     app: &mut MapEditorApp,
     _application: &visula::Application,
@@ -95,7 +96,7 @@ pub fn draw_ui(
 
     // Left panel: terrain tools and info.
     egui::Panel::left("tools_panel")
-        .default_width(160.0)
+        .default_size(160.0)
         .show(context, |ui| {
             ui.label(
                 egui::RichText::new("Terrain")

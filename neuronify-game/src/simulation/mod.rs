@@ -8,7 +8,9 @@ pub mod metabolism;
 pub mod ownership;
 pub mod pathfinding;
 pub mod production;
+#[allow(dead_code)]
 pub mod scenarios;
+#[allow(dead_code)]
 pub mod setup;
 pub mod transport;
 pub mod victory;

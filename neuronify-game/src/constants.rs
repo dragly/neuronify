@@ -98,6 +98,7 @@ pub const DEATH_DURATION: f32 = 1.5;
 pub const ASTROCYTE_STAGGER_SLOW_FACTOR: f32 = 0.28;
 
 // Game constants - axon structural health (added to compartments in combat scenarios)
+#[allow(dead_code)]
 pub const AXON_COMPARTMENT_HEALTH: f32 = 50.0;
 
 // Game constants - production queue

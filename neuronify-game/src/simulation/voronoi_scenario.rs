@@ -161,6 +161,21 @@ pub fn setup_voronoi_scenario(
     setup::connect_axon(world, p3, p3_pos, p5, p5_pos, NeuronType::Excitatory);
     setup::connect_axon(world, p3, p3_pos, p6, p6_pos, NeuronType::Excitatory);
 
+    // Tag all compartments with player ownership so they render with the
+    // same color tint as player-built axons.
+    {
+        use neuronify_core::Compartment;
+        let player_comps: Vec<hecs::Entity> = world
+            .query::<&Compartment>()
+            .iter()
+            .filter(|(e, _)| world.get::<&Ownership>(*e).is_err())
+            .map(|(e, _)| e)
+            .collect();
+        for e in player_comps {
+            world.insert_one(e, Ownership { player: PlayerId::Player1 }).ok();
+        }
+    }
+
     // Dendrites on player neurons.
     for &entity in &[p_origin, p_gen, p1, p2, p3, p4, p5, p6] {
         let pos = world.get::<&Position>(entity).unwrap().position;

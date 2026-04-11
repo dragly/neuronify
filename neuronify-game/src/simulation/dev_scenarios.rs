@@ -1,19 +1,18 @@
 //! Dev-only scenario stages for reviewing game progression.
 //!
-//! Accessible via `--dev` CLI flag. Each stage loads the base excitotoxic-wave
-//! SVG and then programmatically adds entities to represent a game phase.
+//! Accessible via `--dev` CLI flag. Each stage loads the Voronoi scenario
+//! and then programmatically adds entities to represent a game phase.
 
 use glam::Vec3;
 use neuronify_core::{NeuronType, Position, Selectable};
 
+use neuronify_game_lib::voronoi_map::game_integration;
+
 use crate::components::*;
-use crate::map::hex::hex_to_world;
 use crate::simulation::setup;
 use crate::spawning;
 use crate::ui::main_menu::ScenarioEntry;
 use crate::map::ScenarioMeta;
-
-const BASE_SVG: &str = include_str!("../../maps/excitotoxic-wave.svg");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DevStage {
@@ -31,9 +30,8 @@ pub fn load_dev_scenario_entries() -> Vec<ScenarioEntry> {
                 name: "Dev: Early Stage".to_string(),
                 objective: "Game start — no player actions taken".to_string(),
                 victory: String::new(),
-                briefing: "The scenario as the player first sees it. Neural cluster at the south, enemy outpost at the north. No network has been built yet.".to_string(),
+                briefing: "The scenario as the player first sees it. Neural cluster in the lower-left, enemy outpost upper-right. No network has been built yet.".to_string(),
             },
-            svg_content: BASE_SVG,
             dev_stage: Some(DevStage::Early),
         },
         ScenarioEntry {
@@ -42,9 +40,8 @@ pub fn load_dev_scenario_entries() -> Vec<ScenarioEntry> {
                 name: "Dev: Late Stage".to_string(),
                 objective: "Network built to enemy side, ready to attack".to_string(),
                 victory: String::new(),
-                briefing: "The player has built a relay chain from their cluster through the open corridor to the enemy outpost. Glial cells harvest glucose along the route. Combat units are staged near the front line.".to_string(),
+                briefing: "The player has built a relay chain through the open corridor to the enemy outpost. Glial cells harvest glucose from nearby vessels. Combat units are staged near the front line.".to_string(),
             },
-            svg_content: BASE_SVG,
             dev_stage: Some(DevStage::Late),
         },
         ScenarioEntry {
@@ -55,20 +52,19 @@ pub fn load_dev_scenario_entries() -> Vec<ScenarioEntry> {
                 victory: String::new(),
                 briefing: "Player units are engaging the enemy. Macrophages are activated by driver neurons. Some enemy neurons show damage. The battle is in progress.".to_string(),
             },
-            svg_content: BASE_SVG,
             dev_stage: Some(DevStage::Attack),
         },
     ]
 }
 
-/// Apply dev-stage modifications after the base SVG has been loaded.
+/// Apply dev-stage modifications after the Voronoi scenario has been loaded.
 pub fn apply_dev_stage(
     world: &mut hecs::World,
     economy: &mut PlayerEconomy,
     stage: DevStage,
 ) {
     match stage {
-        DevStage::Early => {} // Base SVG is the early state — nothing to add.
+        DevStage::Early => {} // Base scenario is the early state.
         DevStage::Late => apply_late_stage(world, economy),
         DevStage::Attack => {
             apply_late_stage(world, economy);
@@ -77,50 +73,48 @@ pub fn apply_dev_stage(
     }
 }
 
-// ── Relay neuron positions along the verified passable corridor ──────────────
+// ── Relay neuron positions through the open corridor ─────────────────────────
+// Voronoi coords along the gap between the two vessel segments.
+// Route: from player network (p6 area ~205,385) through the gap (~350,250)
+// toward the enemy outpost (~520,100).
 
-// Relay path verified to avoid all impassable terrain (vessels, scars, CSF).
-// Each consecutive pair has a straight-line connection that stays in passable hexes.
-// Route: go left to col 2 to cross the vessel band at rows 9-10, then east along row 7.
-const RELAY_HEXES: [(i32, i32); 8] = [
-    (2, 11),  // open — cross above vessel row via col 2
-    (2, 9),   // open — past vessels (col 2 rows 9-11 all passable)
-    (4, 7),   // open — diagonal into the clear row-7 corridor
-    (7, 7),   // open — east along row 7
-    (10, 7),  // open — continuing east
-    (13, 6),  // open — angle toward enemy cluster
-    (15, 6),  // open — detour around glial scar at (15,5)
-    (16, 5),  // open — approaching enemy outpost
-];
-
-const GLIAL_HEXES: [(i32, i32); 2] = [
-    (3, 9),   // open, adjacent to vessel hexes at (3,10) and (4,9)
-    (6, 7),   // open, adjacent to vessel hex at (6,8)
-];
+fn relay_world_positions() -> Vec<Vec3> {
+    let model = game_integration::load_voronoi_model();
+    vec![
+        game_integration::voronoi_to_world(&model, 240.0, 330.0),
+        game_integration::voronoi_to_world(&model, 280.0, 300.0),
+        game_integration::voronoi_to_world(&model, 320.0, 270.0),
+        game_integration::voronoi_to_world(&model, 360.0, 240.0),
+        game_integration::voronoi_to_world(&model, 400.0, 210.0),
+        game_integration::voronoi_to_world(&model, 440.0, 180.0),
+        game_integration::voronoi_to_world(&model, 480.0, 150.0),
+        game_integration::voronoi_to_world(&model, 510.0, 120.0),
+    ]
+}
 
 // ── Late stage ───────────────────────────────────────────────────────────────
 
 fn apply_late_stage(world: &mut hecs::World, economy: &mut PlayerEconomy) {
-    // Find p8 (the furthest player neuron from origin in the SVG network).
-    let p8 = find_neuron_by_id(world, "p8");
+    // Find p6 (the furthest player neuron from origin in the convergent network).
+    let p6 = find_neuron_by_id(world, "p6");
 
     // Spawn relay neurons along the corridor.
+    let positions = relay_world_positions();
     let mut relay_entities: Vec<(hecs::Entity, Vec3)> = Vec::new();
-    for &(col, row) in &RELAY_HEXES {
-        let pos = hex_to_world(col, row);
+    for pos in &positions {
         let entity = spawning::spawn_neuron_with_dendrites(
             world,
-            pos,
+            *pos,
             NeuronType::Excitatory,
             PlayerId::Player1,
             5,
         );
         world.insert_one(entity, Selectable { selected: false }).ok();
-        relay_entities.push((entity, pos));
+        relay_entities.push((entity, *pos));
     }
 
-    // Chain with axons: p8 → relay1 → relay2 → ... → relay7
-    let mut prev = p8;
+    // Chain with axons: p6 → relay1 → relay2 → ... → relay8
+    let mut prev = p6;
     for &(entity, pos) in &relay_entities {
         let prev_pos = world
             .get::<&Position>(prev.0)
@@ -131,9 +125,13 @@ fn apply_late_stage(world: &mut hecs::World, economy: &mut PlayerEconomy) {
     }
 
     // Spawn glial cells near vessel terrain for economy.
-    for &(col, row) in &GLIAL_HEXES {
-        let pos = hex_to_world(col, row);
-        spawning::spawn_glial(world, pos, PlayerId::Player1, 3);
+    let model = game_integration::load_voronoi_model();
+    let glial_positions = [
+        game_integration::voronoi_to_world(&model, 260.0, 200.0),
+        game_integration::voronoi_to_world(&model, 420.0, 280.0),
+    ];
+    for pos in &glial_positions {
+        spawning::spawn_glial(world, *pos, PlayerId::Player1, 3);
     }
 
     // Spawn combat units near the front line (last relay neuron area).
@@ -155,7 +153,6 @@ fn apply_late_stage(world: &mut hecs::World, economy: &mut PlayerEconomy) {
 // ── Attack stage (on top of late stage) ──────────────────────────────────────
 
 fn apply_attack_stage(world: &mut hecs::World) {
-    // Find enemy neuron entities for targeting.
     let e1 = find_neuron_by_id(world, "e1");
     let e2 = find_neuron_by_id(world, "e2");
 
@@ -203,7 +200,6 @@ fn apply_attack_stage(world: &mut hecs::World) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/// Find a neuron entity by its `NeuronScenarioId`, returning entity + position.
 fn find_neuron_by_id(world: &hecs::World, id: &str) -> (hecs::Entity, Vec3) {
     world
         .query::<(&NeuronScenarioId, &Position)>()

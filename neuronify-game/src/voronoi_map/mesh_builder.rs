@@ -25,15 +25,6 @@ pub struct MeshData {
     pub world_key_c2: HashMap<String, [f32; 2]>,
 }
 
-fn dominant(wa: f32, wb: f32, wc: f32) -> usize {
-    if wa >= wb && wa >= wc {
-        0
-    } else if wb >= wc {
-        1
-    } else {
-        2
-    }
-}
 
 fn darken(color: [u8; 3], factor: f32) -> [u8; 3] {
     [
@@ -54,7 +45,7 @@ const PERMS: [[usize; 3]; 6] = [
 ];
 
 /// Build the complete terrain mesh from a MapModel.
-pub fn build_map_mesh(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f32) -> MeshData {
+pub fn build_map_mesh(model: &MapModel, _map_w: f32, _map_h: f32, cell_spacing: f32) -> MeshData {
     let pts: Vec<Point2> = model.cell_centers.clone();
     let max_edge = cell_spacing * 3.0;
 
@@ -723,7 +714,7 @@ pub fn build_tile_catalog(model: &MapModel) -> MeshData {
 
 /// Build wireframe edge data for Delaunay triangle boundaries.
 /// Returns pairs of world-space points for each triangle edge.
-pub fn build_wireframe_edges(model: &MapModel, map_w: f32, map_h: f32, cell_spacing: f32) -> Vec<([f32; 3], [f32; 3])> {
+pub fn build_wireframe_edges(model: &MapModel, _map_w: f32, _map_h: f32, cell_spacing: f32) -> Vec<([f32; 3], [f32; 3])> {
     let pts = &model.cell_centers;
     let max_edge = cell_spacing * 3.0;
     let cen_x: f32 = pts.iter().map(|p| p.x).sum::<f32>() / pts.len() as f32;

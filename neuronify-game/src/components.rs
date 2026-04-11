@@ -42,6 +42,7 @@ pub struct AxonHealth {
 }
 
 impl AxonHealth {
+    #[allow(dead_code)]
     pub fn new(max: f32) -> Self {
         Self { current: max, max }
     }
@@ -396,6 +397,7 @@ pub struct GrowthCone {
 
 /// Which unit type a NeuronSpawner produces when the neuron fires.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub enum NeuronSpawnType {
     MicroglialCell,
     TCell,

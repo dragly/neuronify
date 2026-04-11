@@ -33,7 +33,7 @@ pub fn pick_vertex(
         if wk == "wall" || seen.contains(wk) {
             continue;
         }
-        let cls = match data.world_vert_cls.get(wk) {
+        let _cls = match data.world_vert_cls.get(wk) {
             Some(c) if !c.is_empty() => c,
             _ => continue,
         };
@@ -121,8 +121,8 @@ pub fn paint_cell(
     model: &mut MapModel,
     world_pos: Vec3,
     terrain: EditorTerrain,
-    map_w: f32,
-    map_h: f32,
+    _map_w: f32,
+    _map_h: f32,
 ) {
     // World coordinates: x maps to voronoi x (with centering offset), z maps to voronoi y (negated).
     let cen_x: f32 = model.cell_centers.iter().map(|p| p.x).sum::<f32>()

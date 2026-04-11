@@ -29,9 +29,8 @@ use crate::components::*;
 use crate::constants::*;
 use crate::spawning;
 use crate::rendering;
-use crate::simulation::{boundary, cleanup, combat, cytokines, dev_scenarios, economy, metabolism, ownership, production, scenarios, setup, transport, victory};
+use crate::simulation::{boundary, cleanup, combat, cytokines, dev_scenarios, economy, metabolism, ownership, production, setup, transport, victory};
 use crate::simulation::pathfinding::HexGrid;
-use crate::simulation::scenarios::ScenarioId;
 use crate::tools::*;
 use crate::ui::{main_menu, sidebar};
 
@@ -83,15 +82,10 @@ pub struct GameApp {
     pub connection_consumed_this_press: bool,
     /// Active touch points by touch ID → current screen position.
     pub touches: HashMap<u64, PhysicalPosition<f64>>,
-    pub current_scenario: ScenarioId,
     pub sidebar_icons: Option<crate::ui::sidebar::SidebarIcons>,
     pub game_state: GameState,
     pub menu_scenarios: Vec<main_menu::ScenarioEntry>,
     pub menu_selected: Option<usize>,
-    /// Embedded SVG content that will be loaded when `pending_new_game` fires.
-    pub pending_svg_content: Option<&'static str>,
-    /// When true, the next update loads the Voronoi terrain scenario.
-    pub pending_voronoi_scenario: bool,
     /// Pathfinding grid rebuilt each frame from current neuroblast positions.
     pub hex_grid: HexGrid,
     /// When true, the next right-click or left-click sets the move destination
@@ -124,20 +118,23 @@ pub struct GameApp {
     pub pending_dev_stage: Option<dev_scenarios::DevStage>,
 }
 
-/// Build the main-menu scenario list from SVG content embedded in the binary.
+/// Build the main-menu scenario list.
 fn load_menu_scenarios() -> Vec<main_menu::ScenarioEntry> {
-    let mut entries = Vec::new();
-    for &content in crate::map::embedded_scenario_svgs() {
-        match crate::map::parse_scenario_svg(content) {
-            Ok(map) => entries.push(main_menu::ScenarioEntry {
-                meta: map.meta,
-                svg_content: content,
-                dev_stage: None,
-            }),
-            Err(e) => log::warn!("Failed to parse embedded scenario: {}", e),
-        }
-    }
-    entries
+    vec![main_menu::ScenarioEntry {
+        meta: crate::map::ScenarioMeta {
+            id: "neural_infiltration".to_string(),
+            name: "Neural Infiltration".to_string(),
+            objective: "Destroy all three target neurons (e1, e2, e3)".to_string(),
+            victory: "all_neurons_dead:e1,e2,e3".to_string(),
+            briefing: "The enemy has fortified an outpost in the upper cortex, \
+                protected by dormant macrophages and an inhibitory suppressor neuron. \
+                Blood vessels cut through the center of the field \u{2014} axons cannot cross them. \
+                Disable the driver neurons to keep macrophages dormant, then use convergent \
+                summation to overwhelm the inhibitory gate and destroy all three target neurons."
+                .to_string(),
+        },
+        dev_stage: None,
+    }]
 }
 
 #[derive(Debug)]
@@ -211,7 +208,7 @@ impl GameApp {
             &LineGeometry {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
-                width: connection.strength.clone() * 0.3,
+                width: connection.strength.clone() * 0.6,
                 color: connection.start_color.clone(),
             },
             &LineMaterial {
@@ -224,8 +221,8 @@ impl GameApp {
             &application.rendering_descriptor(),
             &SphereGeometry {
                 position: connection_endpoint,
-                radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
-                color: Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0).into(),
+                radius: Expression::from(0.0f32), // Synapse endpoints hidden in RTS mode.
+                color: connection.start_color.clone(),
             },
             &SphereMaterial {
                 color: Expression::InputColor.lit(),
@@ -294,13 +291,10 @@ impl GameApp {
             funds_blocked_entity: None,
             connection_consumed_this_press: false,
             touches: HashMap::new(),
-            current_scenario: ScenarioId::Default,
             sidebar_icons: None,
             game_state: GameState::MainMenu,
             menu_scenarios,
             menu_selected: None,
-            pending_svg_content: None,
-            pending_voronoi_scenario: false,
             hex_grid: HexGrid::new(HEX_GRID_CELL_SIZE),
             awaiting_move_destination: false,
             combat_accumulator: 0.0,
@@ -974,8 +968,7 @@ impl visula::Simulation for GameApp {
         if self.pending_new_game {
             self.pending_new_game = false;
             self.world.clear();
-            if self.pending_voronoi_scenario {
-                self.pending_voronoi_scenario = false;
+            {
                 use neuronify_game_lib::voronoi_map::game_integration;
                 let model = game_integration::load_voronoi_model();
 
@@ -993,6 +986,15 @@ impl visula::Simulation for GameApp {
                         &mut self.scenario_terrain,
                     );
 
+                // Apply dev stage modifications if selected.
+                if let Some(stage) = self.pending_dev_stage.take() {
+                    dev_scenarios::apply_dev_stage(
+                        &mut self.world,
+                        &mut self.p1_economy,
+                        stage,
+                    );
+                }
+
                 self.petri_dish.radius = 10000.0; // No dish boundary — the map itself is the boundary.
                 self.victory_condition = victory_cond;
                 self.victory_achieved = false;
@@ -1004,51 +1006,6 @@ impl visula::Simulation for GameApp {
                 application.camera_controller.current_transform =
                     application.camera_controller.target_transform.clone();
                 self.game_state = GameState::Briefing { name, briefing, objective };
-            } else if let Some(svg_content) = self.pending_svg_content.take() {
-                if let Err(e) = scenarios::setup_scenario_from_svg(&mut self.world, &mut self.petri_dish, svg_content) {
-                    log::error!("Failed to load SVG scenario: {}", e);
-                    scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
-                }
-                // Build terrain mesh and store terrain data for movement lookups.
-                let briefing_state = match crate::map::parse_scenario_svg(svg_content) {
-                    Ok(map) => {
-                        rendering::build_terrain_mesh(
-                            &mut self.terrain_mesh, &map, &application.device,
-                        );
-                        self.victory_condition = victory::parse_victory(&map.meta.victory);
-                        self.scenario_terrain = map.terrain;
-                        GameState::Briefing {
-                            name: map.meta.name,
-                            briefing: map.meta.briefing,
-                            objective: map.meta.objective,
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!("Terrain mesh skipped: {}", e);
-                        GameState::InGame
-                    }
-                };
-                // Apply dev stage modifications on top of the base SVG.
-                if let Some(stage) = self.pending_dev_stage.take() {
-                    dev_scenarios::apply_dev_stage(
-                        &mut self.world,
-                        &mut self.p1_economy,
-                        stage,
-                    );
-                }
-                self.victory_achieved = false;
-                self.victory_check_timer = 1.0;
-                self.game_elapsed = 0.0;
-                // Aim camera along +z at 30° below horizontal to show the rotated SVG map.
-                application.camera_controller.target_transform.center = Vec3::ZERO;
-                application.camera_controller.target_transform.forward = Vec3::new(-0.3536, -0.7071, 0.6124);
-                application.camera_controller.target_transform.distance = 300.0;
-                application.camera_controller.current_transform =
-                    application.camera_controller.target_transform.clone();
-                self.game_state = briefing_state;
-            } else {
-                scenarios::setup_scenario(&mut self.world, &self.petri_dish, self.current_scenario);
-                self.game_state = GameState::InGame;
             }
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
@@ -1295,28 +1252,17 @@ impl visula::Simulation for GameApp {
     }
 
     fn render_shadow(&mut self, data: &mut ShadowRenderData) {
-        // Spheres and lines support shadow rendering via the Renderable trait.
         self.spheres.render_shadow(data);
         self.connection_spheres.render_shadow(data);
-        self.dendrite_cylinders.render_shadow(data);
+        self.connection_lines.render_shadow(data);
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
         // Main menu: show scenario selector, skip game UI.
         if self.game_state == GameState::MainMenu {
             match main_menu::draw_main_menu(context, &self.menu_scenarios, &mut self.menu_selected, self.dev_mode) {
-                main_menu::MenuAction::StartScenario(svg_content) => {
-                    self.pending_svg_content = Some(svg_content);
-                    self.pending_dev_stage = None;
-                    self.pending_new_game = true;
-                }
-                main_menu::MenuAction::StartDevScenario(svg_content, stage) => {
-                    self.pending_svg_content = Some(svg_content);
-                    self.pending_dev_stage = Some(stage);
-                    self.pending_new_game = true;
-                }
-                main_menu::MenuAction::StartVoronoiScenario => {
-                    self.pending_voronoi_scenario = true;
+                main_menu::MenuAction::StartScenario(dev_stage) => {
+                    self.pending_dev_stage = dev_stage;
                     self.pending_new_game = true;
                 }
                 main_menu::MenuAction::Exit => {

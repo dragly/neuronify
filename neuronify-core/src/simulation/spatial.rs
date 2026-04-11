@@ -90,6 +90,66 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
             }
         }
     }
+
+    // ── Cylinder-to-point repulsion ──────────────────────────────────────
+    // Push compartments away from nearby cylinder segments they don't belong to.
+    // This prevents axon/dendrite chains from overlapping visually.
+
+    // Collect all connection segments with positions.
+    let segments: Vec<(Entity, Entity, Vec3, Vec3)> = connections
+        .iter()
+        .filter_map(|(_, c)| {
+            let from = world.get::<&Position>(c.from).ok()?.position;
+            let to = world.get::<&Position>(c.to).ok()?.position;
+            Some((c.from, c.to, from, to))
+        })
+        .collect();
+
+    let cylinder_repulsion = 0.8;
+    let min_sep = NODE_RADIUS * 1.2;
+    let min_sep2 = min_sep * min_sep;
+
+    // Build adjacency: which entities are directly connected to each entity.
+    let mut neighbors: std::collections::HashSet<(Entity, Entity)> = std::collections::HashSet::new();
+    for &(seg_from, seg_to, _, _) in &segments {
+        neighbors.insert((seg_from, seg_to));
+        neighbors.insert((seg_to, seg_from));
+    }
+
+    for (id, (position, dynamics)) in world.query_mut::<(&Position, &mut SpatialDynamics)>() {
+        let p = position.position;
+        for &(seg_from, seg_to, a, b) in &segments {
+            // Skip segments that share this entity or a neighbor as endpoint.
+            if id == seg_from || id == seg_to {
+                continue;
+            }
+            // Skip if this entity is directly connected to either segment endpoint
+            // (would fight the spring forces in the same chain).
+            if neighbors.contains(&(id, seg_from)) || neighbors.contains(&(id, seg_to)) {
+                continue;
+            }
+            // Closest point on segment AB to point P.
+            let ab = b - a;
+            let len2 = ab.length_squared();
+            if len2 < 1e-6 {
+                continue;
+            }
+            let t = ((p - a).dot(ab) / len2).clamp(0.0, 1.0);
+            let closest = a + ab * t;
+            let diff = p - closest;
+            let dist2 = diff.length_squared();
+            // Use XZ distance only to detect overlap (cylinders live in the ground plane).
+            let diff_xz = Vec3::new(diff.x, 0.0, diff.z);
+            let dist_xz2 = diff_xz.length_squared();
+            if dist_xz2 < min_sep2 && dist_xz2 > 1e-6 {
+                // Push in Y direction: up if above the segment, down if below,
+                // with a bias upward so crossing axons bridge over each other.
+                let y_sign = if diff.y >= 0.0 { 1.0 } else { -1.0 };
+                let push = cylinder_repulsion * (min_sep2 - dist_xz2);
+                dynamics.acceleration.y += y_sign * push;
+            }
+        }
+    }
 }
 
 pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
@@ -107,6 +167,11 @@ pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
         position.position += dynamics.velocity * dt as f32;
         dynamics.acceleration = Vec3::ZERO;
         dynamics.velocity -= dynamics.velocity * dt as f32;
+        // Ground plane: prevent entities from going below y=0.
+        if position.position.y < 0.0 {
+            position.position.y = 0.0;
+            dynamics.velocity.y = dynamics.velocity.y.max(0.0);
+        }
         if !position.position.is_finite() {
             position.position = Vec3::ZERO;
         }

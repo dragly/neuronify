@@ -50,7 +50,6 @@ pub struct MapEditorApp {
     pub view: View,
     pub selected_terrain: EditorTerrain,
     pub show_wireframe: bool,
-    pub show_triangle_ids: bool,
     pub height_only: bool,
 
     // Camera
@@ -157,7 +156,7 @@ impl MapEditorApp {
 
         let model = map_gen::generate_scenario_map();
 
-        let mut app = MapEditorApp {
+        let app = MapEditorApp {
             model,
             terrain_mesh,
             catalog_mesh,
@@ -169,7 +168,6 @@ impl MapEditorApp {
             view: View::FullMap,
             selected_terrain: EditorTerrain::Vessel,
             show_wireframe: false,
-            show_triangle_ids: false,
             height_only: false,
             theta: 0.8,
             phi: 0.6,

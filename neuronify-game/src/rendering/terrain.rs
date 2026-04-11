@@ -1,4 +1,4 @@
-//! Terrain mesh rendering.
+//! Terrain mesh rendering (SVG hex-based — retained for reference).
 //!
 //! Generates a dense triangulated grid over the scenario map extent.  Each
 //! vertex is assigned a terrain type via a **noise-perturbed Voronoi** lookup:
