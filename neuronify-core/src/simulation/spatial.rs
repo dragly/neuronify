@@ -5,22 +5,26 @@ use crate::components::*;
 use crate::constants::*;
 
 pub fn apply_spatial_forces(world: &mut hecs::World) {
-    let positions: Vec<(Entity, Position)> = world
-        .query::<&Position>()
+    // Only collect entities with SpatialDynamics for the repulsion check,
+    // not ALL positions — most entities don't need point-point repulsion.
+    let dynamics_positions: Vec<(Entity, Vec3)> = world
+        .query::<(&Position, &SpatialDynamics)>()
         .iter()
-        .map(|(e, p)| (e.to_owned(), p.to_owned()))
+        .map(|(e, (p, _))| (e, p.position))
         .collect();
+    let cutoff2 = (2.0 * NODE_RADIUS).powi(2);
     for (id, (position, dynamics)) in world.query_mut::<(&Position, &mut SpatialDynamics)>() {
-        for (other_id, other_position) in &positions {
-            if id == *other_id {
+        let from = position.position;
+        for &(other_id, to) in &dynamics_positions {
+            if id == other_id {
                 continue;
             }
-            let from = position.position;
-            let to = other_position.position;
             let r2 = from.distance_squared(to);
-            let target2 = (2.0 * NODE_RADIUS).powi(2);
+            if r2 >= cutoff2 {
+                continue; // Too far to interact.
+            }
             let d = (to - from).normalize_or_zero();
-            let force = REPULSION_STRENGTH * (r2 - target2).min(0.0) * d;
+            let force = REPULSION_STRENGTH * (r2 - cutoff2).min(0.0) * d;
             dynamics.acceleration += force;
         }
     }
@@ -116,19 +120,22 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
         neighbors.insert((seg_to, seg_from));
     }
 
+    let coarse_cutoff2 = (NODE_RADIUS * 6.0).powi(2);
+
     for (id, (position, dynamics)) in world.query_mut::<(&Position, &mut SpatialDynamics)>() {
         let p = position.position;
         for &(seg_from, seg_to, a, b) in &segments {
-            // Skip segments that share this entity or a neighbor as endpoint.
+            // Coarse distance check against segment midpoint.
+            let mid = (a + b) * 0.5;
+            if p.distance_squared(mid) > coarse_cutoff2 {
+                continue;
+            }
             if id == seg_from || id == seg_to {
                 continue;
             }
-            // Skip if this entity is directly connected to either segment endpoint
-            // (would fight the spring forces in the same chain).
             if neighbors.contains(&(id, seg_from)) || neighbors.contains(&(id, seg_to)) {
                 continue;
             }
-            // Closest point on segment AB to point P.
             let ab = b - a;
             let len2 = ab.length_squared();
             if len2 < 1e-6 {
@@ -137,13 +144,9 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
             let t = ((p - a).dot(ab) / len2).clamp(0.0, 1.0);
             let closest = a + ab * t;
             let diff = p - closest;
-            let dist2 = diff.length_squared();
-            // Use XZ distance only to detect overlap (cylinders live in the ground plane).
             let diff_xz = Vec3::new(diff.x, 0.0, diff.z);
             let dist_xz2 = diff_xz.length_squared();
             if dist_xz2 < min_sep2 && dist_xz2 > 1e-6 {
-                // Push in Y direction: up if above the segment, down if below,
-                // with a bias upward so crossing axons bridge over each other.
                 let y_sign = if diff.y >= 0.0 { 1.0 } else { -1.0 };
                 let push = cylinder_repulsion * (min_sep2 - dist_xz2);
                 dynamics.acceleration.y += y_sign * push;

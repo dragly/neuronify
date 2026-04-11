@@ -67,7 +67,12 @@ pub fn depth_radius(depth: u32) -> f32 {
 }
 
 /// Get the cylinder radius for a given entity (for matching sphere size at joints).
-pub fn entity_radius(world: &hecs::World, entity: hecs::Entity) -> f32 {
+/// `neuron_positions` should be pre-collected to avoid per-call queries.
+pub fn entity_radius_with_cache(
+    world: &hecs::World,
+    entity: hecs::Entity,
+    neuron_positions: &[Vec3],
+) -> f32 {
     use neuronify_core::LeakyNeuron;
 
     if world.get::<&LeakyNeuron>(entity).is_ok() {
@@ -75,19 +80,32 @@ pub fn entity_radius(world: &hecs::World, entity: hecs::Entity) -> f32 {
     }
     if let Ok(pos) = world.get::<&Position>(entity) {
         let pos = pos.position;
-        let min_dist = world
-            .query::<(&LeakyNeuron, &Position)>()
-            .iter()
-            .map(|(_, (_, np))| {
-                let dx = pos.x - np.position.x;
-                let dz = pos.z - np.position.z;
-                (dx * dx + dz * dz).sqrt()
-            })
-            .fold(f32::MAX, f32::min);
+        let min_dist = nearest_neuron_dist_from_cache(pos, neuron_positions);
         radius_from_neuron_distance(min_dist)
     } else {
         DENDRITE_MIN_RADIUS
     }
+}
+
+fn nearest_neuron_dist_from_cache(pos: Vec3, neuron_positions: &[Vec3]) -> f32 {
+    neuron_positions
+        .iter()
+        .map(|np| {
+            let dx = pos.x - np.x;
+            let dz = pos.z - np.z;
+            (dx * dx + dz * dz).sqrt()
+        })
+        .fold(f32::MAX, f32::min)
+}
+
+/// Collect all neuron soma positions (call once per frame, pass to entity_radius_with_cache).
+pub fn collect_neuron_positions(world: &hecs::World) -> Vec<Vec3> {
+    use neuronify_core::LeakyNeuron;
+    world
+        .query::<(&LeakyNeuron, &Position)>()
+        .iter()
+        .map(|(_, (_, p))| p.position)
+        .collect()
 }
 
 /// Compute radius from distance to nearest neuron soma.
@@ -99,22 +117,10 @@ fn radius_from_neuron_distance(dist: f32) -> f32 {
 pub fn collect_dendrite_cylinders(world: &hecs::World) -> Vec<CylinderData> {
     use neuronify_core::LeakyNeuron;
 
-    // Collect all neuron soma positions for distance lookups.
-    let neuron_positions: Vec<Vec3> = world
-        .query::<(&LeakyNeuron, &Position)>()
-        .iter()
-        .map(|(_, (_, p))| p.position)
-        .collect();
+    let neuron_positions = collect_neuron_positions(world);
 
     let nearest_neuron_dist = |pos: Vec3| -> f32 {
-        neuron_positions
-            .iter()
-            .map(|np| {
-                let dx = pos.x - np.x;
-                let dz = pos.z - np.z;
-                (dx * dx + dz * dz).sqrt()
-            })
-            .fold(f32::MAX, f32::min)
+        nearest_neuron_dist_from_cache(pos, &neuron_positions)
     };
 
     let mut result = Vec::new();

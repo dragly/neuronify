@@ -18,6 +18,7 @@ use crate::tools::GameTool;
 
 pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<Entity>) -> Vec<Sphere> {
     let mut spheres = Vec::new();
+    let neuron_positions = crate::rendering::dendrites::collect_neuron_positions(world);
 
     let lif_neuron_spheres: Vec<Sphere> = world
         .query::<(&LeakyNeuron, &LeakyDynamics, &Position)>()
@@ -119,7 +120,7 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 c
             };
             // Match the cylinder radius at this joint for smooth bends.
-            let radius = crate::rendering::dendrites::entity_radius(world, entity);
+            let radius = crate::rendering::dendrites::entity_radius_with_cache(world, entity, &neuron_positions);
             Sphere {
                 position: position.position,
                 color,
@@ -143,7 +144,7 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 }
                 c
             };
-            let radius = crate::rendering::dendrites::entity_radius(world, entity);
+            let radius = crate::rendering::dendrites::entity_radius_with_cache(world, entity, &neuron_positions);
             Sphere {
                 position: position.position,
                 color,
