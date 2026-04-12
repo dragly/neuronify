@@ -1035,6 +1035,22 @@ impl visula::Simulation for GameApp {
                 application.camera_controller.current_transform =
                     application.camera_controller.target_transform.clone();
                 self.game_state = GameState::Briefing { name, briefing, objective };
+
+                // Enable SSAO for ambient occlusion.
+                use visula::post_process::config::SsaoConfig;
+                application.post_processor.config.ssao = Some(SsaoConfig {
+                    radius: 2.0,
+                    bias: 0.02,
+                    intensity: 1.5,
+                });
+                application.post_processor.enable_ssao(
+                    &application.device,
+                    &application.queue,
+                    application.config.width,
+                    application.config.height,
+                    &application.camera,
+                    &application.depth_texture,
+                );
             }
             self.tool = GameTool::Select;
             self.p1_economy = PlayerEconomy::default();
