@@ -81,6 +81,7 @@ pub struct MapEditorApp {
     // Mouse tracking
     pub mouse_pos: Option<(f64, f64)>,
     pub mouse_left_down: bool,
+    pub ctrl_down: bool,
 
     // Cached mesh data for editing
     pub cached_mesh_data: Option<mesh_builder::MeshData>,
@@ -189,6 +190,7 @@ impl MapEditorApp {
             wireframe_dirty: true,
             mouse_pos: None,
             mouse_left_down: false,
+            ctrl_down: false,
             cached_mesh_data: None,
             cached_catalog_data: None,
         };
@@ -636,12 +638,21 @@ impl visula::Simulation for MapEditorApp {
                     }
                 }
 
+                WindowEvent::ModifiersChanged(state) => {
+                    use visula::winit::keyboard::ModifiersKeyState;
+                    self.ctrl_down = state.lcontrol_state() == ModifiersKeyState::Pressed
+                        || state.rcontrol_state() == ModifiersKeyState::Pressed;
+                }
+
                 WindowEvent::MouseWheel { delta, .. } => {
+                    // All scroll events → zoom. Two-finger pan deferred until
+                    // winit has proper Wayland multitouch support.
                     let scroll = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => *y * 20.0,
-                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
+                        MouseScrollDelta::LineDelta(_, y) => *y,
+                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 40.0,
                     };
-                    self.dist = (self.dist - scroll * 0.4).clamp(50.0, 1200.0);
+                    self.dist *= 1.0 - scroll * 0.1;
+                    self.dist = self.dist.clamp(50.0, 1200.0);
                 }
 
                 _ => {}

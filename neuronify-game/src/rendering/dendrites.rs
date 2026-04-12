@@ -53,14 +53,14 @@ pub fn create_dendrite_pipeline(
 // ── Per-frame data collection ─────────────────────────────────────────────────
 
 /// Radius at depth 0 (soma surface). Each depth step multiplies by TAPER.
-const DENDRITE_ROOT_RADIUS: f32 = 0.60;
+const DENDRITE_ROOT_RADIUS: f32 = 0.30;
 /// Radius shrinks by this factor per depth hop.
-const DENDRITE_TAPER: f32 = 0.78;
+const DENDRITE_TAPER: f32 = 0.85;
 /// Floor so dendrites/axons never disappear entirely.
 const DENDRITE_MIN_RADIUS: f32 = 0.16;
 
 /// Consistent radius for axon compartments (no DendriteDepth).
-const AXON_RADIUS: f32 = 0.28;
+const AXON_RADIUS: f32 = 0.16;
 
 pub fn depth_radius(depth: u32) -> f32 {
     (DENDRITE_ROOT_RADIUS * DENDRITE_TAPER.powi(depth as i32)).max(DENDRITE_MIN_RADIUS)
