@@ -51,12 +51,19 @@ pub fn update_ownership(world: &mut hecs::World) {
         reachable.insert(*player, visited);
     }
 
-    // Helper to assign ownership based on reachability
+    // Helper to assign ownership based on reachability.
+    // Only ADDS ownership to newly-reachable entities; never removes it.
+    // Ownership is permanent once granted — it represents who built the entity,
+    // not whether it's currently connected.
     fn assign_ownership(
         world: &mut hecs::World,
         entity: Entity,
         reachable: &HashMap<PlayerId, HashSet<Entity>>,
     ) {
+        // Already owned — don't touch.
+        if world.get::<&Ownership>(entity).is_ok() {
+            return;
+        }
         let p1_owns = reachable
             .get(&PlayerId::Player1)
             .is_some_and(|s| s.contains(&entity));
@@ -67,8 +74,6 @@ pub fn update_ownership(world: &mut hecs::World) {
                     player: PlayerId::Player1,
                 },
             );
-        } else {
-            let _ = world.remove_one::<Ownership>(entity);
         }
     }
 

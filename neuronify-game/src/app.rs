@@ -877,28 +877,40 @@ impl GameApp {
 
         match &self.tool {
             GameTool::Erase => {
+                // Find player-owned entities near the mouse.
+                let erase_radius = ERASE_RADIUS * 2.0;
                 let to_delete: Vec<Entity> = self
                     .world
                     .query::<&Position>()
                     .with::<&Deletable>()
                     .iter()
                     .filter_map(|(entity, position)| {
-                        if position.position.distance(mouse_position) < NODE_RADIUS * 1.5 {
-                            Some(entity)
-                        } else {
-                            None
+                        if position.position.distance(mouse_position) >= erase_radius {
+                            return None;
                         }
+                        // Only allow erasing player-owned entities.
+                        let is_player = self.world.get::<&Ownership>(entity)
+                            .map(|o| o.player == PlayerId::Player1)
+                            .unwrap_or(false);
+                        if is_player { Some(entity) } else { None }
                     })
                     .collect();
-                for entity in to_delete {
-                    let _ = self.world.despawn(entity);
-                }
-                let connections_to_delete: Vec<Entity> = self
+
+                // Also find player-owned connections near the mouse line.
+                let connections_near: Vec<Entity> = self
                     .world
                     .query::<&Connection>()
                     .with::<&Deletable>()
                     .iter()
                     .filter_map(|(entity, connection)| {
+                        // Only allow erasing connections with at least one player-owned endpoint.
+                        let from_player = self.world.get::<&Ownership>(connection.from)
+                            .map(|o| o.player == PlayerId::Player1).unwrap_or(false);
+                        let to_player = self.world.get::<&Ownership>(connection.to)
+                            .map(|o| o.player == PlayerId::Player1).unwrap_or(false);
+                        if !from_player && !to_player {
+                            return None;
+                        }
                         if let (Ok(from), Ok(to)) = (
                             self.world.get::<&Position>(connection.from),
                             self.world.get::<&Position>(connection.to),
@@ -907,12 +919,11 @@ impl GameApp {
                             let b = to.position;
                             let p = mouse_position;
                             let ab = b - a;
-                            let ap = p - a;
-                            let t = ap.dot(ab) / ab.dot(ab);
-                            let d = t * ab;
-                            let point_on_line = a + d;
-                            let distance_from_line = p.distance(point_on_line);
-                            if distance_from_line < ERASE_RADIUS && (0.0..=1.0).contains(&t) {
+                            let len2 = ab.length_squared();
+                            if len2 < 1e-6 { return None; }
+                            let t = ((p - a).dot(ab) / len2).clamp(0.0, 1.0);
+                            let closest = a + ab * t;
+                            if p.distance(closest) < erase_radius {
                                 Some(entity)
                             } else {
                                 None
@@ -922,7 +933,11 @@ impl GameApp {
                         }
                     })
                     .collect();
-                for entity in connections_to_delete {
+
+                // Delete what the user pointed at. Orphaned compartments keep
+                // their Ownership so they remain individually erasable.
+                // cleanup_orphans removes truly disconnected fragments each frame.
+                for entity in to_delete.into_iter().chain(connections_near) {
                     let _ = self.world.despawn(entity);
                 }
             }

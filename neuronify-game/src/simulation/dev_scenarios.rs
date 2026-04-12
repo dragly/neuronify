@@ -124,6 +124,42 @@ fn apply_late_stage(world: &mut hecs::World, economy: &mut PlayerEconomy) {
         prev = (entity, pos);
     }
 
+    // Tag compartments created by the relay chain as player-owned.
+    // We find compartments connected to player-owned neurons via BFS.
+    {
+        use neuronify_core::{Compartment, Connection, CompartmentCurrent};
+        let player_entities: std::collections::HashSet<hecs::Entity> = world
+            .query::<&Ownership>()
+            .iter()
+            .filter(|(_, o)| o.player == PlayerId::Player1)
+            .map(|(e, _)| e)
+            .collect();
+        // Walk connections from player entities to find reachable unowned compartments.
+        let mut to_tag = Vec::new();
+        let connections: Vec<(hecs::Entity, hecs::Entity)> = world
+            .query::<&Connection>()
+            .with::<&CompartmentCurrent>()
+            .iter()
+            .map(|(_, c)| (c.from, c.to))
+            .collect();
+        let mut visited = player_entities.clone();
+        let mut frontier: Vec<hecs::Entity> = player_entities.into_iter().collect();
+        while let Some(entity) = frontier.pop() {
+            for &(from, to) in &connections {
+                let neighbor = if from == entity { to } else if to == entity { from } else { continue };
+                if visited.insert(neighbor) {
+                    if world.get::<&Compartment>(neighbor).is_ok() && world.get::<&Ownership>(neighbor).is_err() {
+                        to_tag.push(neighbor);
+                        frontier.push(neighbor);
+                    }
+                }
+            }
+        }
+        for e in to_tag {
+            world.insert_one(e, Ownership { player: PlayerId::Player1 }).ok();
+        }
+    }
+
     // Spawn glial cells near vessel terrain for economy.
     let model = game_integration::load_voronoi_model();
     let glial_positions = [
