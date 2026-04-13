@@ -99,6 +99,7 @@ pub struct GameApp {
     pub microglia_mesh: MeshPipeline,
     pub astrocyte_mesh: MeshPipeline,
     pub macrophage_mesh: MeshPipeline,
+    pub tcell_mesh: MeshPipeline,
     pub dendrite_cylinders: visula::Cylinders,
     pub dendrite_buffer: InstanceBuffer<rendering::CylinderData>,
     pub health_bar_meshes: [MeshPipeline; 4],
@@ -256,6 +257,8 @@ impl GameApp {
             rendering::create_astrocyte_pipeline(&application.rendering_descriptor()).unwrap();
         let macrophage_mesh =
             rendering::create_macrophage_pipeline(&application.rendering_descriptor()).unwrap();
+        let tcell_mesh =
+            rendering::create_tcell_pipeline(&application.rendering_descriptor()).unwrap();
         let dendrite_buffer = InstanceBuffer::<rendering::CylinderData>::new(&application.device);
         let dendrite_cylinders =
             rendering::create_dendrite_pipeline(&application.rendering_descriptor(), &dendrite_buffer).unwrap();
@@ -323,6 +326,7 @@ impl GameApp {
             microglia_mesh,
             astrocyte_mesh,
             macrophage_mesh,
+            tcell_mesh,
             dendrite_cylinders,
             dendrite_buffer,
             health_bar_meshes,
@@ -1262,6 +1266,12 @@ impl visula::Simulation for GameApp {
             &application.device,
             self.time as f32,
         );
+        rendering::update_tcell_mesh(
+            &mut self.tcell_mesh,
+            &self.world,
+            &application.device,
+            self.time as f32,
+        );
         rendering::update_macrophage_mesh(
             &mut self.macrophage_mesh,
             &self.world,
@@ -1328,6 +1338,7 @@ impl visula::Simulation for GameApp {
         self.microglia_mesh.render(data);
         self.astrocyte_mesh.render(data);
         self.macrophage_mesh.render(data);
+        self.tcell_mesh.render(data);
         for mesh in &mut self.health_bar_meshes {
             mesh.render(data);
         }

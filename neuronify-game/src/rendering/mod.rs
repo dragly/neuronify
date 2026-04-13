@@ -20,5 +20,6 @@ pub use terrain::create_terrain_pipeline;
 pub use terrain::build_terrain_mesh;
 pub use units::{
     create_microglia_pipeline, create_astrocyte_pipeline, create_macrophage_pipeline,
-    update_microglia_mesh, update_astrocyte_mesh, update_macrophage_mesh,
+    create_tcell_pipeline, update_microglia_mesh, update_astrocyte_mesh,
+    update_macrophage_mesh, update_tcell_mesh,
 };

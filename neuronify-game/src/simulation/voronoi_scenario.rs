@@ -126,14 +126,12 @@ pub fn setup_voronoi_scenario(
     // Voronoi map: 700×500. Player base lower-left, enemy upper-right.
 
     // Player base (lower-left open area).
+    // Lean start: origin + generator + 2 forward path neurons.
+    // Player builds the rest of the network manually.
     let p_origin_pos = game_integration::voronoi_to_world(model, 100.0, 400.0);
-    let p_gen_pos = game_integration::voronoi_to_world(model, 125.0, 380.0);
-    let p1_pos = game_integration::voronoi_to_world(model, 140.0, 415.0);
-    let p2_pos = game_integration::voronoi_to_world(model, 140.0, 385.0);
-    let p3_pos = game_integration::voronoi_to_world(model, 160.0, 380.0);
-    let p4_pos = game_integration::voronoi_to_world(model, 175.0, 405.0);
-    let p5_pos = game_integration::voronoi_to_world(model, 185.0, 380.0);
-    let p6_pos = game_integration::voronoi_to_world(model, 205.0, 385.0);
+    let p_gen_pos    = game_integration::voronoi_to_world(model, 130.0, 385.0);
+    let p1_pos       = game_integration::voronoi_to_world(model, 155.0, 410.0);
+    let p2_pos       = game_integration::voronoi_to_world(model, 155.0, 370.0);
 
     let p_origin = spawn_neuron(
         world, p_origin_pos, NeuronType::Excitatory,
@@ -145,24 +143,13 @@ pub fn setup_voronoi_scenario(
     );
     let p1 = spawn_neuron(world, p1_pos, NeuronType::Excitatory, Some(PlayerId::Player1), false, None, "p1");
     let p2 = spawn_neuron(world, p2_pos, NeuronType::Excitatory, Some(PlayerId::Player1), false, None, "p2");
-    let p3 = spawn_neuron(world, p3_pos, NeuronType::Excitatory, Some(PlayerId::Player1), false, None, "p3");
-    let p4 = spawn_neuron(world, p4_pos, NeuronType::Excitatory, Some(PlayerId::Player1), false, None, "p4");
-    let p5 = spawn_neuron(world, p5_pos, NeuronType::Excitatory, Some(PlayerId::Player1), false, None, "p5");
-    let p6 = spawn_neuron(world, p6_pos, NeuronType::Excitatory, Some(PlayerId::Player1), false, None, "p6");
 
-    // Convergence network.
+    // Two parallel paths from origin.
+    setup::connect_axon(world, p_origin, p_origin_pos, p_gen, p_gen_pos, NeuronType::Excitatory);
     setup::connect_axon(world, p_origin, p_origin_pos, p1, p1_pos, NeuronType::Excitatory);
     setup::connect_axon(world, p_origin, p_origin_pos, p2, p2_pos, NeuronType::Excitatory);
-    setup::connect_axon(world, p_origin, p_origin_pos, p_gen, p_gen_pos, NeuronType::Excitatory);
-    setup::connect_axon(world, p_gen, p_gen_pos, p3, p3_pos, NeuronType::Excitatory);
-    setup::connect_axon(world, p1, p1_pos, p4, p4_pos, NeuronType::Excitatory);
-    setup::connect_axon(world, p2, p2_pos, p4, p4_pos, NeuronType::Excitatory);
-    setup::connect_axon(world, p2, p2_pos, p5, p5_pos, NeuronType::Excitatory);
-    setup::connect_axon(world, p3, p3_pos, p5, p5_pos, NeuronType::Excitatory);
-    setup::connect_axon(world, p3, p3_pos, p6, p6_pos, NeuronType::Excitatory);
 
-    // Tag all compartments with player ownership so they render with the
-    // same color tint as player-built axons.
+    // Tag all compartments with player ownership.
     {
         use neuronify_core::Compartment;
         let player_comps: Vec<hecs::Entity> = world
@@ -177,10 +164,16 @@ pub fn setup_voronoi_scenario(
     }
 
     // Dendrites on player neurons.
-    for &entity in &[p_origin, p_gen, p1, p2, p3, p4, p5, p6] {
+    for &entity in &[p_origin, p_gen, p1, p2] {
         let pos = world.get::<&Position>(entity).unwrap().position;
         spawning::spawn_neuron_dendrites(world, pos, &NeuronType::Excitatory, PlayerId::Player1, entity, 5);
     }
+
+    // Player defensive units near the base.
+    let def1_pos = game_integration::voronoi_to_world(model, 200.0, 400.0);
+    let def2_pos = game_integration::voronoi_to_world(model, 220.0, 370.0);
+    spawning::spawn_microglial_cell(world, def1_pos, Faction::Biological);
+    spawning::spawn_microglial_cell(world, def2_pos, Faction::Biological);
 
     // Enemy outpost (upper-right open area).
     let e1_pos = game_integration::voronoi_to_world(model, 580.0, 100.0);
@@ -217,15 +210,73 @@ pub fn setup_voronoi_scenario(
     spawning::spawn_mast_cell(world, mast1_pos, e_drv1);
     spawning::spawn_mast_cell(world, mast2_pos, e_drv2);
 
+    // ── Enemy spawn towers ───────────────────────────────────────────────
+    // Towers are regular neurons (no auto-fire) that receive excitatory
+    // input from the driver network. Energy comes from enemy glial cells
+    // near vessels. When drivers fire, signal propagates to towers, which
+    // fire and trigger NeuronSpawner to release combat units.
+
+    // Tower 1: spawns microglia (axon cutters).
+    let tower1_pos = game_integration::voronoi_to_world(model, 480.0, 170.0);
+    let tower1 = spawn_neuron(world, tower1_pos, NeuronType::Excitatory, None, false, None, "tower1");
+    world.insert_one(tower1, NeuronSpawner {
+        faction: Faction::Tumor,
+        spawn_type: NeuronSpawnType::MicroglialCell,
+        cooldown: 8.0,
+        timer: 0.0,
+        spawn_offset: Vec3::new(2.0, 0.0, 0.0),
+    }).ok();
+
+    // Tower 2: spawns microglia (axon cutters).
+    let tower2_pos = game_integration::voronoi_to_world(model, 520.0, 200.0);
+    let tower2 = spawn_neuron(world, tower2_pos, NeuronType::Excitatory, None, false, None, "tower2");
+    world.insert_one(tower2, NeuronSpawner {
+        faction: Faction::Tumor,
+        spawn_type: NeuronSpawnType::MicroglialCell,
+        cooldown: 10.0,
+        timer: 0.0,
+        spawn_offset: Vec3::new(2.0, 0.0, 0.0),
+    }).ok();
+
+    // Wire drivers → towers so towers fire when drivers fire.
+    setup::connect_axon(world, e_drv1, e_drv1_pos, tower1, tower1_pos, NeuronType::Excitatory);
+    setup::connect_axon(world, e_drv2, e_drv2_pos, tower2, tower2_pos, NeuronType::Excitatory);
+
+    // Enemy glial cells near vessels to provide energy to the enemy network.
+    // Placed near the upper vessel segment close to the enemy base.
+    let eg1_pos = game_integration::voronoi_to_world(model, 500.0, 100.0);
+    let eg2_pos = game_integration::voronoi_to_world(model, 560.0, 80.0);
+    // Spawn enemy glials without Ownership (protected from erase).
+    for &gpos in &[eg1_pos, eg2_pos] {
+        let glial = world.spawn((
+            Position { position: gpos },
+            GlialCell::default(),
+            NeuronType::Excitatory,
+            neuronify_core::StaticConnectionSource {},
+            Health::new(GLIAL_HEALTH),
+            Deletable {},
+            VisualRadius { radius: NODE_RADIUS * 1.3 },
+        ));
+        // Connect glial to nearest driver so energy flows into the network.
+        let nearest_drv = if gpos.distance(e_drv1_pos) < gpos.distance(e_drv2_pos) {
+            (e_drv1, e_drv1_pos)
+        } else {
+            (e_drv2, e_drv2_pos)
+        };
+        setup::connect_axon(world, glial, gpos, nearest_drv.0, nearest_drv.1, NeuronType::Excitatory);
+    }
+
     // Victory condition.
     let victory_cond = victory::parse_victory("all_neurons_dead:e1,e2,e3");
 
     let name = "Neural Infiltration".to_string();
     let briefing = "The enemy has fortified an outpost in the upper cortex, \
-        protected by dormant macrophages and an inhibitory suppressor neuron. \
-        Blood vessels cut through the center of the field \u{2014} axons cannot cross them. \
-        Disable the driver neurons to keep macrophages dormant, then use convergent \
-        summation to overwhelm the inhibitory gate and destroy all three target neurons."
+        protected by dormant macrophages, spawn towers, and an inhibitory suppressor. \
+        Enemy glial cells harvest glucose from nearby vessels to power the network. \
+        Driver neurons trigger spawn towers that release microglia and T-cells \u{2014} \
+        disable the drivers to shut them down. \
+        Blood vessels cut through the center \u{2014} axons cannot cross them. \
+        Use convergent summation to overwhelm the inhibitory gate and destroy all three targets."
         .to_string();
     let objective = "Destroy all three target neurons (e1, e2, e3)".to_string();
 

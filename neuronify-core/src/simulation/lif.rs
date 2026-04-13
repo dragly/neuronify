@@ -11,10 +11,21 @@ pub struct SpikeRecord {
 }
 
 pub fn lif_step(world: &mut World, dt: f64, time: f64) {
-    for (_, (generator, dynamics)) in
+    // Collect dormancy state before mutating GeneratorDynamics.
+    let dormant_set: std::collections::HashSet<hecs::Entity> = world
+        .query::<&LeakyDynamics>()
+        .iter()
+        .filter(|(_, ld)| !ld.enabled)
+        .map(|(e, _)| e)
+        .collect();
+
+    for (entity, (generator, dynamics)) in
         world.query_mut::<(&RegularSpikeGenerator, &mut GeneratorDynamics)>()
     {
         dynamics.time_since_fire += dt;
+        if dormant_set.contains(&entity) {
+            continue; // Dormant neurons don't fire their generators.
+        }
         if generator.frequency > 0.0 && dynamics.time_since_fire >= 1.0 / generator.frequency {
             dynamics.fired = true;
             dynamics.time_since_fire = 0.0;
@@ -55,7 +66,13 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         let (neuron, dynamics) = query.get().unwrap();
 
         dynamics.time_since_fire += dt;
-        dynamics.enabled = dynamics.time_since_fire >= dynamics.refractory_period;
+        // Refractory period can disable; but only re-enable if not already
+        // disabled by dormancy (apply_dormancy sets enabled=false for low energy).
+        if dynamics.time_since_fire < dynamics.refractory_period {
+            dynamics.enabled = false;
+        }
+        // Note: we do NOT set enabled=true here. That's handled by apply_dormancy
+        // which checks both energy level and refractory state.
 
         if dynamics.enabled && dynamics.voltage > neuron.threshold {
             dynamics.fired = true;

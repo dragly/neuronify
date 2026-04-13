@@ -26,7 +26,7 @@ use visula::primitives::mesh_primitive::MeshVertexAttributes;
 use wgpu::util::DeviceExt;
 
 use crate::components::{
-    Dying, Health, MacrophageActivation, MacrophageUnit, MicroglialCell,
+    Dying, Health, MacrophageActivation, MacrophageUnit, MicroglialCell, TCellUnit,
 };
 use neuronify_core::Position;
 
@@ -43,6 +43,9 @@ const MACROPHAGE_BODY_COLOR:   [u8; 4] = [97,  5,   77,  255]; // dark purple (d
 const MACROPHAGE_CAP_COLOR:    [u8; 4] = [242, 71,  209, 255]; // hot pink (dormant)
 const MACROPHAGE_BODY_ACTIVE:  [u8; 4] = [200, 20,  160, 255]; // vivid magenta (active)
 const MACROPHAGE_CAP_ACTIVE:   [u8; 4] = [255, 160,  80, 255]; // bright orange (active)
+const TCELL_BODY_COLOR:        [u8; 4] = [80,  200, 60,  255]; // lime green
+const TCELL_NUCLEUS_COLOR:     [u8; 4] = [40,  120, 30,  255]; // dark green
+const TCELL_TENDRIL_COLOR:     [u8; 4] = [60,  170, 45,  255]; // medium green
 
 // ── Death animation curve ─────────────────────────────────────────────────────
 
@@ -461,4 +464,159 @@ pub fn update_macrophage_mesh(mesh: &mut MeshPipeline, world: &hecs::World, devi
     flush(mesh, verts, idx, device, "macrophage");
 }
 
+// ── T-cell mesh (organic lymphocyte with pseudopods) ─────────────────────────
+
+/// Generate T-cell body: a flattened dome with 4 pseudopod tendrils.
+fn generate_tcell_body(
+    center: Vec3,
+    seed: f32,
+    time: f32,
+    death_t: Option<f32>,
+    color: [u8; 4],
+    tendril_color: [u8; 4],
+    verts: &mut Vec<MeshVertexAttributes>,
+    idx: &mut Vec<u32>,
+) {
+    let (death_disp, death_scale) = death_t.map(|t| death_phase(t)).unwrap_or((0.0, 1.0));
+    let scale = 1.2 * death_scale;
+
+    // Central dome (low-poly sphere, flattened in Y).
+    let segments = 8;
+    let rings = 4;
+    let base = verts.len() as u32;
+
+    // Top vertex.
+    let top = center + Vec3::new(0.0, scale * 0.6, 0.0);
+    verts.push(vert_c([top.x, top.y, top.z], [0.0, 1.0, 0.0], color));
+
+    for ring in 1..rings {
+        let phi = std::f32::consts::FRAC_PI_2 * ring as f32 / rings as f32;
+        let r = scale * phi.sin();
+        let y = center.y + scale * 0.6 * phi.cos();
+        for seg in 0..segments {
+            let theta = std::f32::consts::TAU * seg as f32 / segments as f32;
+            let x = center.x + r * theta.cos();
+            let z = center.z + r * theta.sin();
+            let n = Vec3::new(theta.cos() * phi.sin(), phi.cos(), theta.sin() * phi.sin()).normalize();
+            verts.push(vert_c([x, y, z], [n.x, n.y, n.z], color));
+        }
+    }
+    // Bottom ring (y = center.y).
+    for seg in 0..segments {
+        let theta = std::f32::consts::TAU * seg as f32 / segments as f32;
+        let x = center.x + scale * theta.cos();
+        let z = center.z + scale * theta.sin();
+        verts.push(vert_c([x, center.y, z], [0.0, -1.0, 0.0], color));
+    }
+
+    // Top fan.
+    for seg in 0..segments {
+        let next = (seg + 1) % segments;
+        idx.extend_from_slice(&[base, base + 1 + seg as u32, base + 1 + next as u32]);
+    }
+    // Ring strips.
+    for ring in 0..(rings - 1) {
+        for seg in 0..segments {
+            let next = (seg + 1) % segments;
+            let cur_ring_start = base + 1 + (ring * segments) as u32;
+            let next_ring_start = base + 1 + ((ring + 1) * segments) as u32;
+            let a = cur_ring_start + seg as u32;
+            let b = cur_ring_start + next as u32;
+            let c = next_ring_start + seg as u32;
+            let d = next_ring_start + next as u32;
+            idx.extend_from_slice(&[a, c, b, b, c, d]);
+        }
+    }
+
+    // 4 pseudopod tendrils radiating outward with wave animation.
+    for arm in 0..4 {
+        let base_angle = seed + std::f32::consts::FRAC_PI_2 * arm as f32;
+        let wave = (time * 2.0 + seed + arm as f32 * 1.7).sin() * 0.3;
+        let dir = Vec3::new(
+            (base_angle + wave).cos(),
+            0.0,
+            (base_angle + wave).sin(),
+        );
+        let perp = Vec3::new(-dir.z, 0.0, dir.x);
+
+        let tendril_len = scale * 1.8;
+        let tendril_w = scale * 0.25;
+        let tip = center + dir * tendril_len;
+        let tip_wave = (time * 3.0 + arm as f32 * 2.3).sin() * scale * 0.2;
+        let tip = tip + Vec3::new(0.0, tip_wave, 0.0);
+
+        let b = verts.len() as u32;
+        let root_l = center + perp * tendril_w + Vec3::new(0.0, scale * 0.1, 0.0);
+        let root_r = center - perp * tendril_w + Vec3::new(0.0, scale * 0.1, 0.0);
+        let n_up = Vec3::new(0.0, 1.0, 0.0);
+        verts.push(vert_c([root_l.x, root_l.y, root_l.z], [n_up.x, n_up.y, n_up.z], tendril_color));
+        verts.push(vert_c([root_r.x, root_r.y, root_r.z], [n_up.x, n_up.y, n_up.z], tendril_color));
+        verts.push(vert_c([tip.x, tip.y, tip.z], [dir.x, 0.5, dir.z], tendril_color));
+        idx.extend_from_slice(&[b, b + 1, b + 2]);
+        // Bottom face.
+        let root_l_b = root_l - Vec3::new(0.0, scale * 0.15, 0.0);
+        let root_r_b = root_r - Vec3::new(0.0, scale * 0.15, 0.0);
+        let tip_b = tip - Vec3::new(0.0, scale * 0.1, 0.0);
+        let b2 = verts.len() as u32;
+        verts.push(vert_c([root_l_b.x, root_l_b.y, root_l_b.z], [0.0, -1.0, 0.0], tendril_color));
+        verts.push(vert_c([root_r_b.x, root_r_b.y, root_r_b.z], [0.0, -1.0, 0.0], tendril_color));
+        verts.push(vert_c([tip_b.x, tip_b.y, tip_b.z], [0.0, -1.0, 0.0], tendril_color));
+        idx.extend_from_slice(&[b2, b2 + 2, b2 + 1]);
+    }
+}
+
+/// Generate T-cell nucleus: small dark sphere at center.
+fn generate_tcell_nucleus(
+    center: Vec3,
+    death_t: Option<f32>,
+    color: [u8; 4],
+    verts: &mut Vec<MeshVertexAttributes>,
+    idx: &mut Vec<u32>,
+) {
+    let (_, death_scale) = death_t.map(|t| death_phase(t)).unwrap_or((0.0, 1.0));
+    let r = 0.5 * death_scale;
+    let y_off = 0.3 * death_scale;
+    let nc = center + Vec3::new(0.0, y_off, 0.0);
+
+    // Simple octahedron.
+    let base = verts.len() as u32;
+    let positions = [
+        [nc.x, nc.y + r, nc.z],        // top
+        [nc.x + r, nc.y, nc.z],        // right
+        [nc.x, nc.y, nc.z + r],        // front
+        [nc.x - r, nc.y, nc.z],        // left
+        [nc.x, nc.y, nc.z - r],        // back
+        [nc.x, nc.y - r, nc.z],        // bottom
+    ];
+    for &p in &positions {
+        let n = Vec3::new(p[0] - nc.x, p[1] - nc.y, p[2] - nc.z).normalize();
+        verts.push(vert_c(p, [n.x, n.y, n.z], color));
+    }
+    // Top 4 faces.
+    idx.extend_from_slice(&[base, base+1, base+2]);
+    idx.extend_from_slice(&[base, base+2, base+3]);
+    idx.extend_from_slice(&[base, base+3, base+4]);
+    idx.extend_from_slice(&[base, base+4, base+1]);
+    // Bottom 4 faces.
+    idx.extend_from_slice(&[base+5, base+2, base+1]);
+    idx.extend_from_slice(&[base+5, base+3, base+2]);
+    idx.extend_from_slice(&[base+5, base+4, base+3]);
+    idx.extend_from_slice(&[base+5, base+1, base+4]);
+}
+
+pub fn create_tcell_pipeline(rd: &RenderingDescriptor) -> Result<MeshPipeline, Box<dyn std::error::Error>> {
+    make_vertex_color_pipeline(rd)
+}
+
+pub fn update_tcell_mesh(mesh: &mut MeshPipeline, world: &hecs::World, device: &wgpu::Device, time: f32) {
+    let mut verts = Vec::new();
+    let mut idx = Vec::new();
+    for (entity, (_, pos)) in world.query::<(&TCellUnit, &Position)>().iter() {
+        let seed = (entity.id() as f32) * 3.14;
+        let death_t = world.get::<&Dying>(entity).ok().map(|d| d.timer / d.duration);
+        generate_tcell_body(pos.position, seed, time, death_t, TCELL_BODY_COLOR, TCELL_TENDRIL_COLOR, &mut verts, &mut idx);
+        generate_tcell_nucleus(pos.position, death_t, TCELL_NUCLEUS_COLOR, &mut verts, &mut idx);
+    }
+    flush(mesh, verts, idx, device, "tcell");
+}
 

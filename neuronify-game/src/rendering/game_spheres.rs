@@ -229,17 +229,7 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
         })
         .collect();
 
-    // TCellUnit — lime green sphere, radius 1.2
-    let tcell_spheres: Vec<Sphere> = world
-        .query::<(&TCellUnit, &Position)>()
-        .iter()
-        .map(|(_, (_, position))| Sphere {
-            position: position.position,
-            color: srgb(80, 255, 60),
-            radius: 1.2,
-            _padding: Default::default(),
-        })
-        .collect();
+    // TCellUnit — rendered via dedicated mesh pipeline (units.rs), not as spheres.
 
     // Neuroblasts — small dim spheres migrating through the soup
     let neuroblast_spheres: Vec<Sphere> = world
@@ -302,7 +292,6 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
     spheres.extend(cytokine_spheres.iter());
     spheres.extend(lactate_packet_spheres.iter());
     spheres.extend(attack_projectile_spheres.iter());
-    spheres.extend(tcell_spheres.iter());
     spheres.extend(neuroblast_spheres.iter());
     spheres.extend(maturing_spheres.iter());
     spheres.extend(growth_cone_spheres.iter());

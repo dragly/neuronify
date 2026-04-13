@@ -89,6 +89,7 @@ pub fn spawn_t_cell(world: &mut hecs::World, position: Vec3, faction: Faction) -
         },
         Health::new(TCELL_HEALTH),
         Deletable {},
+        Selectable { selected: false },
         VisualRadius { radius: 1.2 },
     ))
 }

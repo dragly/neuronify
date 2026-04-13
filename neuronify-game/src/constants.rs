@@ -14,10 +14,10 @@ pub const INITIAL_BUILDING_BLOCKS: f64 = 600.0;
 
 // Game constants - metabolism
 pub const RESTING_METABOLIC_COST: f64 = 0.5;
-pub const FIRING_METABOLIC_COST: f64 = 1.0;
-pub const CONNECTION_MAINTENANCE_COST: f64 = 0.1;
-pub const COMPARTMENT_METABOLIC_COST: f64 = 0.15;
-pub const RESOURCE_FLOW_RATE: f64 = 3.0;
+pub const FIRING_METABOLIC_COST: f64 = 3.0;
+pub const CONNECTION_MAINTENANCE_COST: f64 = 0.3;
+pub const COMPARTMENT_METABOLIC_COST: f64 = 0.4;
+pub const RESOURCE_FLOW_RATE: f64 = 1.5;
 pub const ORIGIN_MIN_ENERGY: f64 = 50.0;
 pub const DEFAULT_NEURON_ENERGY: f64 = 80.0;
 pub const MAX_NEURON_ENERGY: f64 = 150.0;
@@ -84,11 +84,11 @@ pub const MACROPHAGE_FIRE_RANGE: f32 = 5.0;
 pub const ATTACK_PROJECTILE_SPEED: f32 = 14.0;
 
 // Game constants - combat: fast raiders (T-Cell / Nano-Probe / Invadopod)
-pub const TCELL_HEALTH: f32 = 20.0;
-pub const TCELL_SPEED: f32 = 14.0;
-pub const TCELL_BURST_DAMAGE: f32 = 50.0;
-pub const TCELL_BURST_RANGE: f32 = 1.8;
-pub const TCELL_BURST_COOLDOWN: f32 = 3.0;
+pub const TCELL_HEALTH: f32 = 25.0;
+pub const TCELL_SPEED: f32 = 10.0;
+pub const TCELL_BURST_DAMAGE: f32 = 15.0;
+pub const TCELL_BURST_RANGE: f32 = 5.0;
+pub const TCELL_BURST_COOLDOWN: f32 = 2.5;
 
 /// Enemy AI will attack nearby player combat units (within this range) before targeting neurons.
 pub const COMBAT_PRIORITY_RANGE: f32 = 15.0;

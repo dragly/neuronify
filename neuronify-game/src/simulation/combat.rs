@@ -152,7 +152,7 @@ pub fn move_mobile_units(
                 } else if has_engulfment {
                     nearest_of(&neuron_targets, from)
                 } else if has_burst {
-                    priority_neuron(world, from)
+                    nearest_of(&neuron_targets, from)
                 } else {
                     nearest_of(&neuron_targets, from)
                 }
