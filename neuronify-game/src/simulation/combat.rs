@@ -139,25 +139,32 @@ pub fn move_mobile_units(
             let has_engulfment = world.get::<&NeuronEngulfment>(entity).is_ok();
             let has_burst = world.get::<&BurstAttack>(entity).is_ok();
 
+            // Detection range: units only engage targets within this distance.
+            const DETECTION_RANGE: f32 = 40.0;
+
             if faction != Faction::Biological {
-                // Priority 1: Nearby player combat units (within COMBAT_PRIORITY_RANGE).
+                // Priority 1: Nearby player combat units.
                 let nearby_bio = enemy_mobile_positions(world, faction)
                     .into_iter()
                     .filter(|(_, p)| from.distance(*p) <= COMBAT_PRIORITY_RANGE)
                     .collect::<Vec<_>>();
                 if !nearby_bio.is_empty() {
                     nearest_of(&nearby_bio, from)
-                } else if has_axon_cutter {
-                    nearest_of(&axon_targets, from)
-                } else if has_engulfment {
-                    nearest_of(&neuron_targets, from)
-                } else if has_burst {
-                    nearest_of(&neuron_targets, from)
                 } else {
-                    nearest_of(&neuron_targets, from)
+                    // Only pursue targets within detection range.
+                    let nearby_targets: Vec<_> = if has_axon_cutter {
+                        axon_targets.iter().filter(|(_, p)| from.distance(*p) <= DETECTION_RANGE).cloned().collect()
+                    } else {
+                        neuron_targets.iter().filter(|(_, p)| from.distance(*p) <= DETECTION_RANGE).cloned().collect()
+                    };
+                    nearest_of(&nearby_targets, from)
                 }
             } else {
-                let enemies = enemy_mobile_positions(world, Faction::Biological);
+                // Player units: only engage nearby enemies, don't cross the map.
+                let enemies: Vec<_> = enemy_mobile_positions(world, Faction::Biological)
+                    .into_iter()
+                    .filter(|(_, p)| from.distance(*p) <= DETECTION_RANGE)
+                    .collect();
                 nearest_of(&enemies, from)
             }
         };
@@ -239,7 +246,8 @@ pub fn move_mobile_units(
 
 // ── 1b. Unit-to-unit repulsion ────────────────────────────────────────────────
 
-/// Position-correction repulsion so mobile units push each other apart.
+/// Position-correction repulsion so mobile units push each other apart
+/// and don't overlap neuron somas.
 /// Called after move_mobile_units; does not use SpatialDynamics.
 pub fn apply_unit_repulsion(world: &mut hecs::World) {
     let units: Vec<(hecs::Entity, Vec3, f32)> = world
@@ -248,7 +256,16 @@ pub fn apply_unit_repulsion(world: &mut hecs::World) {
         .map(|(e, (p, vr, _))| (e, p.position, vr.radius))
         .collect();
 
+    // Also collect neuron somas as static obstacles.
+    let obstacles: Vec<(Vec3, f32)> = world
+        .query::<(&Position, &VisualRadius, &LeakyNeuron)>()
+        .iter()
+        .map(|(_, (p, vr, _))| (p.position, vr.radius))
+        .collect();
+
     let mut pushes: Vec<(hecs::Entity, Vec3)> = Vec::new();
+
+    // Unit-unit repulsion.
     for i in 0..units.len() {
         for j in (i + 1)..units.len() {
             let (ea, pa, ra) = units[i];
@@ -257,13 +274,26 @@ pub fn apply_unit_repulsion(world: &mut hecs::World) {
             let delta = pa - pb;
             let dist = delta.length();
             if dist < min_dist && dist > 0.001 {
-                // Full gap closure each call; app.rs calls this twice per frame to converge.
                 let push = delta.normalize_or_zero() * (min_dist - dist);
                 pushes.push((ea,  push * 0.5));
                 pushes.push((eb, -push * 0.5));
             }
         }
     }
+
+    // Unit-obstacle repulsion (neurons are immovable, unit gets all the push).
+    for &(unit_e, unit_pos, unit_r) in &units {
+        for &(obs_pos, obs_r) in &obstacles {
+            let min_dist = unit_r + obs_r;
+            let delta = unit_pos - obs_pos;
+            let dist = delta.length();
+            if dist < min_dist && dist > 0.001 {
+                let push = delta.normalize_or_zero() * (min_dist - dist);
+                pushes.push((unit_e, push));
+            }
+        }
+    }
+
     for (e, push) in pushes {
         if let Ok(mut p) = world.get::<&mut Position>(e) {
             p.position += push;
