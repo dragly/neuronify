@@ -241,6 +241,8 @@ pub struct GlialCell {
     pub blocks_stored: f64,
     pub max_blocks: f64,
     pub lactate_timer: f64,
+    pub glucose_spawn_timer: f64,
+    pub glucose_spawn_counter: u32,
 }
 
 impl Default for GlialCell {
@@ -252,12 +254,22 @@ impl Default for GlialCell {
             blocks_stored: 0.0,
             max_blocks: crate::constants::GLIAL_MAX_BLOCKS,
             lactate_timer: 0.0,
+            glucose_spawn_timer: 0.0,
+            glucose_spawn_counter: 0,
         }
     }
 }
 
 /// A lactate packet traveling from a glial cell to a neuron along the glial
 /// process chain.
+/// Visual particle traveling from a vessel hex toward a glial cell soma.
+pub struct GlucosePacket {
+    pub target: hecs::Entity,
+    pub start: glam::Vec3,
+    pub progress: f32,
+    pub speed: f32,
+}
+
 pub struct LactatePacket {
     /// Ordered entities from glial soma → process compartments → bridge → neuron soma.
     pub path: Vec<hecs::Entity>,
@@ -279,6 +291,7 @@ pub struct LactatePacket {
 pub enum ProducibleCell {
     ExcitatoryNeuroblast,
     InhibitoryNeuroblast,
+    GlialBlast,
 }
 
 /// Everything the player can queue for production at the origin neuron.
@@ -291,6 +304,8 @@ pub enum ProducibleItem {
     MicroglialCell,
     Macrophage,
     TCell,
+    // Support — glial cell that harvests glucose from nearby vessels
+    GlialCell,
 }
 
 impl ProducibleItem {
@@ -301,6 +316,7 @@ impl ProducibleItem {
             ProducibleItem::MicroglialCell     => "Microglia",
             ProducibleItem::Macrophage         => "Macrophage",
             ProducibleItem::TCell              => "T-Cell",
+            ProducibleItem::GlialCell          => "Glial",
         }
     }
 
@@ -311,6 +327,7 @@ impl ProducibleItem {
             ProducibleItem::MicroglialCell     => crate::constants::MICROGLIA_PRODUCE_COST,
             ProducibleItem::Macrophage         => crate::constants::MACROPHAGE_PRODUCE_COST,
             ProducibleItem::TCell              => crate::constants::TCELL_PRODUCE_COST,
+            ProducibleItem::GlialCell          => crate::constants::GLIAL_PRODUCE_COST,
         }
     }
 
@@ -321,6 +338,7 @@ impl ProducibleItem {
             ProducibleItem::MicroglialCell     => crate::constants::MICROGLIA_BUILD_DURATION,
             ProducibleItem::Macrophage         => crate::constants::MACROPHAGE_BUILD_DURATION,
             ProducibleItem::TCell              => crate::constants::TCELL_BUILD_DURATION,
+            ProducibleItem::GlialCell          => crate::constants::GLIAL_BUILD_DURATION,
         }
     }
 

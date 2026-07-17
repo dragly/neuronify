@@ -85,8 +85,8 @@ pub fn setup_voronoi_scenario(
     scenario_terrain.clear();
     let (min_x, min_z, max_x, max_z) = game_integration::world_bounds(model);
 
-    for row in -5..30 {
-        for col in -5..30 {
+    for row in -15..35 {
+        for col in -15..40 {
             let wp = map::hex::hex_to_world(col, row);
             if wp.x < min_x - 20.0
                 || wp.x > max_x + 20.0
@@ -169,6 +169,14 @@ pub fn setup_voronoi_scenario(
         spawning::spawn_neuron_dendrites(world, pos, &NeuronType::Excitatory, PlayerId::Player1, entity, 5);
     }
 
+    // Player glial cells adjacent to the bottom-left vessel segment
+    // (vessel runs from Voronoi (100,350) to (150,420)).
+    // Place glials right at the vessel edge so their short processes touch it.
+    let pg1_pos = game_integration::voronoi_to_world(model, 105.0, 355.0);
+    let pg2_pos = game_integration::voronoi_to_world(model, 145.0, 415.0);
+    spawning::spawn_glial(world, pg1_pos, PlayerId::Player1, 5);
+    spawning::spawn_glial(world, pg2_pos, PlayerId::Player1, 5);
+
     // Player defensive units near the base.
     let def1_pos = game_integration::voronoi_to_world(model, 200.0, 400.0);
     let def2_pos = game_integration::voronoi_to_world(model, 220.0, 370.0);
@@ -242,21 +250,32 @@ pub fn setup_voronoi_scenario(
     setup::connect_axon(world, e_drv1, e_drv1_pos, tower1, tower1_pos, NeuronType::Excitatory);
     setup::connect_axon(world, e_drv2, e_drv2_pos, tower2, tower2_pos, NeuronType::Excitatory);
 
-    // Enemy glial cells near vessels to provide energy to the enemy network.
-    // Placed near the upper vessel segment close to the enemy base.
-    let eg1_pos = game_integration::voronoi_to_world(model, 500.0, 100.0);
-    let eg2_pos = game_integration::voronoi_to_world(model, 560.0, 80.0);
-    // Spawn enemy glials without Ownership (protected from erase).
+    // Enemy glial cells at the top-right vessel (runs from Voronoi (500,100) to (580,80)).
+    let eg1_pos = game_integration::voronoi_to_world(model, 505.0, 98.0);
+    let eg2_pos = game_integration::voronoi_to_world(model, 575.0, 82.0);
     for &gpos in &[eg1_pos, eg2_pos] {
-        let glial = world.spawn((
-            Position { position: gpos },
-            GlialCell::default(),
-            NeuronType::Excitatory,
-            neuronify_core::StaticConnectionSource {},
-            Health::new(GLIAL_HEALTH),
-            Deletable {},
-            VisualRadius { radius: NODE_RADIUS * 1.3 },
-        ));
+        let glial = spawning::spawn_glial(world, gpos, PlayerId::Player1, 5);
+        // Remove player ownership — enemy glial.
+        let _ = world.remove_one::<Ownership>(glial);
+        // Also strip ownership from the glial's process compartments.
+        {
+            use neuronify_core::Compartment;
+            let process_comps: Vec<(hecs::Entity, Vec3)> = world
+                .query::<(&GlialProcess, &Position)>()
+                .iter()
+                .filter(|(e, _)| {
+                    world.get::<&Ownership>(*e)
+                        .map(|o| o.player == PlayerId::Player1)
+                        .unwrap_or(false)
+                })
+                .map(|(e, (_, p))| (e, p.position))
+                .collect();
+            for (e, pos) in process_comps {
+                if pos.distance(gpos) < 20.0 {
+                    let _ = world.remove_one::<Ownership>(e);
+                }
+            }
+        }
         // Connect glial to nearest driver so energy flows into the network.
         let nearest_drv = if gpos.distance(e_drv1_pos) < gpos.distance(e_drv2_pos) {
             (e_drv1, e_drv1_pos)

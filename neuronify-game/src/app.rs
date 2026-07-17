@@ -108,6 +108,8 @@ pub struct GameApp {
     /// Terrain hex data for the loaded scenario, used for movement speed/passability.
     /// Empty map = no terrain effects (e.g. in the non-SVG default scenario).
     pub scenario_terrain: std::collections::HashMap<(i32,i32), crate::map::HexTerrain>,
+    /// Voronoi map model for direct terrain sampling (glucose harvesting, etc.).
+    pub voronoi_model: Option<neuronify_game_lib::voronoi_map::terrain_model::MapModel>,
     /// Parsed win condition for the current SVG scenario, if any.
     pub victory_condition: Option<victory::VictoryCondition>,
     /// Countdown (seconds) until the next victory check.
@@ -333,6 +335,7 @@ impl GameApp {
             energy_bar_meshes,
             terrain_mesh,
             scenario_terrain: std::collections::HashMap::new(),
+            voronoi_model: None,
             victory_condition: None,
             victory_check_timer: 1.0,
             victory_achieved: false,
@@ -1019,6 +1022,7 @@ impl visula::Simulation for GameApp {
             {
                 use neuronify_game_lib::voronoi_map::game_integration;
                 let model = game_integration::load_voronoi_model();
+                self.voronoi_model = Some(model.clone());
 
                 // Build terrain mesh.
                 game_integration::build_voronoi_terrain_mesh(
@@ -1126,7 +1130,7 @@ impl visula::Simulation for GameApp {
         self.funds_flash_timer = (self.funds_flash_timer - frame_dt).max(0.0);
         boundary::enforce_petri_boundary(&mut self.world, &self.petri_dish);
         transport::tick_glial_connect_neurons(&mut self.world);
-        transport::harvest_glucose(&mut self.world, &self.scenario_terrain, frame_dt);
+        transport::harvest_glucose_with_model(&mut self.world, &self.scenario_terrain, self.voronoi_model.as_ref(), frame_dt);
         transport::spawn_lactate_packets(&mut self.world, frame_dt);
         cytokines::emit_cytokines(&mut self.world, frame_dt as f32);
         cytokines::tick_cytokines(&mut self.world, frame_dt as f32);
@@ -1146,6 +1150,7 @@ impl visula::Simulation for GameApp {
             }
         }
         transport::move_lactate_packets(&mut self.world, frame_dt);
+        transport::move_glucose_packets(&mut self.world, frame_dt);
         economy::glial_contribute_blocks(&mut self.world, frame_dt, &mut self.p1_economy);
         metabolism::metabolic_drain(&mut self.world, frame_dt);
         metabolism::apply_dormancy(&mut self.world);
@@ -1196,7 +1201,7 @@ impl visula::Simulation for GameApp {
         } else {
             None
         };
-        let mut spheres = rendering::collect_game_spheres(&self.world, self.funds_blocked_entity);
+        let mut spheres = rendering::collect_game_spheres(&self.world, self.funds_blocked_entity, &self.scenario_terrain);
         let placement_spheres = rendering::collect_placement_preview(
             &self.tool,
             &self.placement_preview,

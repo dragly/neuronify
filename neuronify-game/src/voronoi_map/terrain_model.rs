@@ -227,17 +227,22 @@ impl MapModel {
                 self.edge_profiles.entry(key).or_insert_with(|| {
                     let h1 = key.0.height();
                     let h2 = key.1.height();
+                    let involves_vessel = key.0 == EditorTerrain::Vessel
+                        || key.1 == EditorTerrain::Vessel;
                     (0..=N)
                         .map(|i| {
                             let f = i as f32 / N as f32;
-                            // Remap to a steep transition in the middle.
-                            // Hold at h1 for f < 0.35, hold at h2 for f > 0.65,
-                            // steep linear ramp between 0.35 and 0.65.
-                            let s = ((f - 0.35) / 0.3).clamp(0.0, 1.0);
-                            // Apply smoothstep to the remapped value for
-                            // a slight ease at the cliff edges.
-                            let s = s * s * (3.0 - 2.0 * s);
-                            h1 * (1.0 - s) + h2 * s
+                            if involves_vessel {
+                                // Vessel edges: gradual ramp from ground to vessel
+                                // height so the base of the vessel touches the ground.
+                                let s = f * f * (3.0 - 2.0 * f); // smooth ramp
+                                h1 * (1.0 - s) + h2 * s
+                            } else {
+                                // Other edges: steep step in the middle.
+                                let s = ((f - 0.35) / 0.3).clamp(0.0, 1.0);
+                                let s = s * s * (3.0 - 2.0 * s);
+                                h1 * (1.0 - s) + h2 * s
+                            }
                         })
                         .collect()
                 });

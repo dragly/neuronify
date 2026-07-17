@@ -53,19 +53,19 @@ pub fn generate_scenario_map() -> MapModel {
     }
 
     // ── Vessel network ───────────────────────────────────────────────────
+    // Width must be >= CELL_SPACING/2 (~21) to reliably paint at least one cell.
     // Two main vessels with a clear gap in the middle for the open corridor.
-    // Upper vessel: runs left-to-center, leaving a gap around x=350.
-    paint_line(&mut cell_terrains, &pts, 80.0, 190.0, 300.0, 200.0, 22.0, EditorTerrain::Vessel);
+    paint_line(&mut cell_terrains, &pts, 80.0, 190.0, 300.0, 200.0, 28.0, EditorTerrain::Vessel);
     // Branch up from upper vessel.
-    paint_line(&mut cell_terrains, &pts, 200.0, 195.0, 180.0, 100.0, 16.0, EditorTerrain::Vessel);
-    // Lower vessel: runs center-to-right, leaving the same gap.
-    paint_line(&mut cell_terrains, &pts, 400.0, 280.0, 620.0, 300.0, 22.0, EditorTerrain::Vessel);
+    paint_line(&mut cell_terrains, &pts, 200.0, 195.0, 180.0, 100.0, 24.0, EditorTerrain::Vessel);
+    // Lower vessel: runs center-to-right.
+    paint_line(&mut cell_terrains, &pts, 400.0, 280.0, 620.0, 300.0, 28.0, EditorTerrain::Vessel);
     // Branch down from lower vessel.
-    paint_line(&mut cell_terrains, &pts, 520.0, 295.0, 540.0, 400.0, 16.0, EditorTerrain::Vessel);
-    // Small vessel segment top-right.
-    paint_line(&mut cell_terrains, &pts, 500.0, 100.0, 580.0, 80.0, 14.0, EditorTerrain::Vessel);
-    // Small vessel segment bottom-left.
-    paint_line(&mut cell_terrains, &pts, 100.0, 350.0, 150.0, 420.0, 14.0, EditorTerrain::Vessel);
+    paint_line(&mut cell_terrains, &pts, 520.0, 295.0, 540.0, 400.0, 24.0, EditorTerrain::Vessel);
+    // Vessel segment top-right (near enemy base, for enemy glial harvesting).
+    paint_line(&mut cell_terrains, &pts, 500.0, 100.0, 580.0, 80.0, 24.0, EditorTerrain::Vessel);
+    // Vessel segment bottom-left (near player base, for player glial harvesting).
+    paint_line(&mut cell_terrains, &pts, 100.0, 350.0, 150.0, 420.0, 24.0, EditorTerrain::Vessel);
 
     // ── CSF pools ────────────────────────────────────────────────────────
     paint_circle(&mut cell_terrains, &pts, 140.0, 120.0, 40.0, EditorTerrain::Csf);
@@ -84,6 +84,14 @@ pub fn generate_scenario_map() -> MapModel {
     // Enemy base: upper-right.
     paint_circle(&mut cell_terrains, &pts, 580.0, 100.0, 60.0, EditorTerrain::Open);
 
+    // Bias vessel boundaries so vessel color extends down the slope to ground.
+    // Bias > 0.5 means the second terrain in the EdgeKey wins more area.
+    // EdgeKey is sorted, so Open < Vessel → bias > 0.5 means Vessel wins.
+    let mut transition_biases = HashMap::new();
+    transition_biases.insert(EdgeKey::new(EditorTerrain::Open, EditorTerrain::Vessel), 0.8);
+    transition_biases.insert(EdgeKey::new(EditorTerrain::Csf, EditorTerrain::Vessel), 0.8);
+    transition_biases.insert(EdgeKey::new(EditorTerrain::GlialScar, EditorTerrain::Vessel), 0.7);
+
     let mut model = MapModel {
         cell_centers: pts,
         cell_terrains,
@@ -91,7 +99,7 @@ pub fn generate_scenario_map() -> MapModel {
         edge_profiles: HashMap::new(),
         interior_profiles: HashMap::new(),
         terrain_height_offsets: HashMap::new(),
-        transition_biases: HashMap::new(),
+        transition_biases,
     };
 
     model.ensure_profiles();

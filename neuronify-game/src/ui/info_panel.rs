@@ -180,6 +180,7 @@ fn draw_single_entity(
             match nb.cell_type {
                 ProducibleCell::ExcitatoryNeuroblast => "Excitatory Neuroblast",
                 ProducibleCell::InhibitoryNeuroblast => "Inhibitory Neuroblast",
+                ProducibleCell::GlialBlast => "Glial Precursor",
             }
         } else {
             "Neuroblast"
@@ -209,6 +210,7 @@ fn draw_single_entity(
             let name = match maturing.cell_type {
                 ProducibleCell::ExcitatoryNeuroblast => "Excitatory Neuron",
                 ProducibleCell::InhibitoryNeuroblast => "Inhibitory Neuron",
+                ProducibleCell::GlialBlast => "Glial Cell",
             };
             ui.label(
                 egui::RichText::new(name)

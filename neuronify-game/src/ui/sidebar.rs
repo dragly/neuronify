@@ -147,6 +147,7 @@ pub fn draw_sidebar(
             const ALL_ITEMS: &[ProducibleItem] = &[
                 ProducibleItem::ExcitatoryNeuron,
                 ProducibleItem::InhibitoryNeuron,
+                ProducibleItem::GlialCell,
                 ProducibleItem::MicroglialCell,
                 ProducibleItem::Macrophage,
                 ProducibleItem::TCell,

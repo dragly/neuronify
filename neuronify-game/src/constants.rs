@@ -110,11 +110,13 @@ pub const NEURON_PRODUCE_COST: f64 = 25.0;
 pub const MICROGLIA_PRODUCE_COST: f64 = 15.0;
 pub const MACROPHAGE_PRODUCE_COST: f64 = 20.0;
 pub const TCELL_PRODUCE_COST: f64 = 12.0;
+pub const GLIAL_PRODUCE_COST: f64 = 20.0;
 
 pub const NEURON_BUILD_DURATION: f32 = 3.0;
 pub const MICROGLIA_BUILD_DURATION: f32 = 2.0;
 pub const MACROPHAGE_BUILD_DURATION: f32 = 3.0;
 pub const TCELL_BUILD_DURATION: f32 = 1.5;
+pub const GLIAL_BUILD_DURATION: f32 = 4.0;
 
 // Game constants - neuroblast production and migration
 /// World-units per second for a migrating neuroblast.

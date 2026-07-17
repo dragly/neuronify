@@ -9,14 +9,18 @@ use neuronify_core::{
 };
 
 use crate::components::{
-    AttackProjectile, CytokineParticle, GlialCell, GlialProcess, GrowthCone, LactatePacket,
+    AttackProjectile, CytokineParticle, GlialCell, GlialProcess, GlucosePacket, GrowthCone, LactatePacket,
     MastCell, MaturingNeuron, MetabolicState, Neuroblast, OriginNeuron, Ownership, ProducibleCell,
     TCellUnit,
 };
 use crate::rendering::colors::{glial_color, player1_color};
 use crate::tools::GameTool;
 
-pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<Entity>) -> Vec<Sphere> {
+pub fn collect_game_spheres(
+    world: &hecs::World,
+    funds_blocked_entity: Option<Entity>,
+    terrain: &std::collections::HashMap<(i32, i32), crate::map::HexTerrain>,
+) -> Vec<Sphere> {
     let mut spheres = Vec::new();
     let neuron_positions = crate::rendering::dendrites::collect_neuron_positions(world);
 
@@ -172,6 +176,33 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
         })
         .collect();
 
+    // Vessel connection points — bright red-orange spheres where glial processes
+    // touch vessel terrain, showing the player the connection is active.
+    let vessel_connection_spheres: Vec<Sphere> = world
+        .query::<(&GlialProcess, &Position)>()
+        .iter()
+        .filter_map(|(_, (_, position))| {
+            let hex = crate::map::hex::world_to_hex(position.position.x, position.position.z);
+            let near_vessel = crate::map::hex::hex_neighbors(hex.col, hex.row)
+                .iter()
+                .any(|nb| {
+                    terrain.get(&(nb.col, nb.row))
+                        .map(|t| t.terrain == crate::map::TerrainType::Vessel)
+                        .unwrap_or(false)
+                });
+            if near_vessel {
+                Some(Sphere {
+                    position: position.position,
+                    color: srgb(255, 120, 40),
+                    radius: NODE_RADIUS * 0.5,
+                    _padding: Default::default(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
     // Lactate packets — small green spheres flying from glial cells to neurons
     let lactate_packet_spheres: Vec<Sphere> = world
         .query::<(&LactatePacket, &Position)>()
@@ -182,6 +213,21 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
                 position: position.position,
                 color,
                 radius: NODE_RADIUS * 0.35,
+                _padding: Default::default(),
+            }
+        })
+        .collect();
+
+    // Glucose packets — small red-orange spheres flying from vessels to glial cells
+    let glucose_packet_spheres: Vec<Sphere> = world
+        .query::<(&GlucosePacket, &Position)>()
+        .iter()
+        .map(|(_, (_, position))| {
+            let color = srgb(240, 140, 50);
+            Sphere {
+                position: position.position,
+                color,
+                radius: NODE_RADIUS * 0.3,
                 _padding: Default::default(),
             }
         })
@@ -239,6 +285,7 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
             let color = match nb.cell_type {
                 ProducibleCell::ExcitatoryNeuroblast => srgb(80, 130, 255),
                 ProducibleCell::InhibitoryNeuroblast => srgb(255, 80, 80),
+                ProducibleCell::GlialBlast => srgb(80, 200, 80),
             };
             Sphere {
                 position: position.position,
@@ -259,6 +306,7 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
             let base_color = match maturing.cell_type {
                 ProducibleCell::ExcitatoryNeuroblast => blue(),
                 ProducibleCell::InhibitoryNeuroblast => red(),
+                ProducibleCell::GlialBlast => glam::Vec3::new(0.3, 0.7, 0.3),
             };
             let color = base_color * (0.4 + 0.6 * t);
             Sphere {
@@ -288,9 +336,11 @@ pub fn collect_game_spheres(world: &hecs::World, funds_blocked_entity: Option<En
     spheres.extend(compartment_spheres.iter());
     spheres.extend(glial_process_spheres.iter());
     spheres.extend(glial_spheres.iter());
+    spheres.extend(vessel_connection_spheres.iter());
     spheres.extend(mast_cell_spheres.iter());
     spheres.extend(cytokine_spheres.iter());
     spheres.extend(lactate_packet_spheres.iter());
+    spheres.extend(glucose_packet_spheres.iter());
     spheres.extend(attack_projectile_spheres.iter());
     spheres.extend(neuroblast_spheres.iter());
     spheres.extend(maturing_spheres.iter());

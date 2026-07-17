@@ -72,6 +72,11 @@ fn spawn_produced_item(world: &mut hecs::World, item: ProducibleItem, origin_pos
         ProducibleItem::Macrophage => {
             spawning::spawn_macrophage(world, origin_pos + offset, Faction::Biological);
         }
+        ProducibleItem::GlialCell => {
+            let e = spawning::spawn_neuroblast(world, origin_pos, ProducibleCell::GlialBlast);
+            let dest = origin_pos + offset.normalize_or_zero() * 10.0;
+            let _ = world.insert(e, (MovePath { waypoints: vec![dest], replan_timer: 0.5 },));
+        }
         ProducibleItem::TCell => {
             spawning::spawn_t_cell(world, origin_pos + offset, Faction::Biological);
         }
@@ -401,17 +406,24 @@ pub fn tick_maturation(world: &mut hecs::World, dt: f32) {
         }
     }
 
-    for (entity, _pos, cell_type) in completed {
-        let neuron_type = match cell_type {
-            ProducibleCell::ExcitatoryNeuroblast => NeuronType::Excitatory,
-            ProducibleCell::InhibitoryNeuroblast => NeuronType::Inhibitory,
-        };
-
-        // Remove the maturation marker
+    for (entity, pos, cell_type) in completed {
+        // Remove the maturation marker.
         let _ = world.remove::<(MaturingNeuron,)>(entity);
 
-        // Upgrade this entity in-place: add neuron components
-        spawning::mature_neuroblast(world, entity, neuron_type);
+        match cell_type {
+            ProducibleCell::ExcitatoryNeuroblast | ProducibleCell::InhibitoryNeuroblast => {
+                let neuron_type = match cell_type {
+                    ProducibleCell::ExcitatoryNeuroblast => NeuronType::Excitatory,
+                    _ => NeuronType::Inhibitory,
+                };
+                spawning::mature_neuroblast(world, entity, neuron_type);
+            }
+            ProducibleCell::GlialBlast => {
+                // Despawn the neuroblast and spawn a full glial cell at its position.
+                let _ = world.despawn(entity);
+                spawning::spawn_glial(world, pos, PlayerId::Player1, 3);
+            }
+        }
     }
 }
 
