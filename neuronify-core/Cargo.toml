@@ -33,7 +33,7 @@ hecs = { version = "0.10.5", features = [
   "row-serialize",
 ] }
 strum = { version = "0.25.0", features = ["derive"] }
-rand = "0.8.5"
+rand = "0.8.6"
 serde_derive = "1.0.204"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.122"
