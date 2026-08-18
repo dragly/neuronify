@@ -21,8 +21,8 @@ use std::thread;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, WindowEvent};
 use visula::{
-    winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer, LineDelegate, Lines,
-    RenderData, Renderable, SphereDelegate, Spheres,
+    winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer, LineGeometry, LineMaterial,
+    Lines, RenderData, Renderable, SphereGeometry, SphereMaterial, Spheres,
 };
 
 use crate::input::{Keyboard, Mouse};
@@ -96,11 +96,12 @@ impl Neuronify {
 
         let spheres = Spheres::new(
             &application.rendering_descriptor(),
-            &SphereDelegate {
+            &SphereGeometry {
                 position: sphere.position.clone(),
                 radius: sphere.radius,
                 color: sphere.color,
             },
+            &SphereMaterial::default(),
         )
         .unwrap();
 
@@ -112,22 +113,24 @@ impl Neuronify {
                 * 2.0;
         let connection_lines = Lines::new(
             &application.rendering_descriptor(),
-            &LineDelegate {
+            &LineGeometry {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
                 width: connection.strength.clone() * 0.3,
                 color: connection.start_color.clone(),
             },
+            &LineMaterial::default(),
         )
         .unwrap();
 
         let connection_spheres = Spheres::new(
             &application.rendering_descriptor(),
-            &SphereDelegate {
+            &SphereGeometry {
                 position: connection_endpoint,
                 radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
                 color: Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0).into(),
             },
+            &SphereMaterial::default(),
         )
         .unwrap();
 
@@ -902,7 +905,6 @@ impl Neuronify {
 }
 
 impl visula::Simulation for Neuronify {
-    type Error = Error;
     fn clear_color(&self) -> wgpu::Color {
         wgpu::Color {
             r: crate::rendering::srgb_component(30) as f64,
@@ -979,8 +981,10 @@ impl visula::Simulation for Neuronify {
                 ui.toggle_value(&mut self.edit_enabled, "Edit").clicked();
             });
         if self.edit_enabled {
+            // show_inside needs a &mut Ui, which Simulation::gui does not hand us
             #[cfg(not(target_arch = "wasm32"))]
-            egui::TopBottomPanel::top("top_panel").show(context, |ui| {
+            #[allow(deprecated)]
+            egui::Panel::top("top_panel").show(context, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.menu_button("File", |ui| {
                         if ui.button("Save").clicked() {
