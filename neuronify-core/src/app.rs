@@ -52,6 +52,7 @@ pub struct Neuronify {
     pub dragging_entity: Option<Entity>,
     pub drag_offset: Vec3,
     pub resizing_voltmeter: Option<(Entity, ResizeCorner)>,
+    pub load_error: Option<String>,
 }
 
 #[derive(Debug)]
@@ -187,6 +188,7 @@ impl Neuronify {
             dragging_entity: None,
             drag_offset: Vec3::ZERO,
             resizing_voltmeter: None,
+            load_error: None,
         }
     }
 
@@ -894,13 +896,16 @@ impl Neuronify {
         self.world = deserialize(&mut context, &mut deserializer).unwrap();
     }
 
-    pub fn from_slice(application: &mut visula::Application, bytes: &[u8]) -> Neuronify {
-        let mut neuronify = Neuronify::new(application);
-        let mut context = LoadContext::new();
-        let mut deserializer = postcard::Deserializer::from_bytes(bytes);
-        neuronify.world = deserialize(&mut context, &mut deserializer).unwrap();
-        neuronify.edit_enabled = false;
-        neuronify
+    /// Replaces the world with a legacy `.nfy` file or a `.neuronify` save file.
+    pub fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
+        self.world = crate::serialization::load_from_bytes(bytes)?;
+        self.time = 0.0;
+        self.previous_creation = None;
+        self.connection_tool = None;
+        self.active_entity = None;
+        self.dragging_entity = None;
+        self.resizing_voltmeter = None;
+        Ok(())
     }
 }
 
@@ -914,6 +919,14 @@ impl visula::Simulation for Neuronify {
         }
     }
     fn update(&mut self, application: &mut visula::Application) {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(fetched) = crate::web::take_fetched_file() {
+            if let Err(error) = fetched.and_then(|bytes| self.load_from_bytes(&bytes)) {
+                log::error!("{error}");
+                self.load_error = Some(error);
+            }
+        }
+
         let Neuronify {
             connection_tool,
             world,
@@ -975,6 +988,11 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
+        if let Some(error) = &self.load_error {
+            egui::Window::new("Could not load file").show(context, |ui| {
+                ui.label(error);
+            });
+        }
         egui::Area::new("edit_button_area".into())
             .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
             .show(context, |ui| {

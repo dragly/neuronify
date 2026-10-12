@@ -12,4 +12,8 @@ but with new features and the ability to embed simulations into websites and onl
 
 Neuronify 1 was originally written in C++, while Neuronify 2 is written in Rust.
 
-
+To run Neuronify in the browser,
+install [trunk](https://trunkrs.dev) and run `trunk serve --port <port>` in the `neuronify` folder.
+Adding `?file=examples/leaky.nfy` to the URL shows that file
+the way it would look embedded on a web page, with the editor hidden.
+It can be any legacy `.nfy` file or `.neuronify` save file the page can fetch.

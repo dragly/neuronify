@@ -38,7 +38,11 @@ serde_derive = "1.0.204"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.122"
 postcard = { version = "1.0.8", features = ["use-std"] }
-web-sys = { version = "0.3.69", features = ["Request", "Response", "RequestInit", "Headers"] }
+web-sys = { version = "0.3.69", features = ["Location", "Response", "UrlSearchParams", "Window"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 rfd = "0.15.2"
 winit = "0.30"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# rand 0.8 depends on getrandom 0.2, which only builds for the web with its js feature
+getrandom = { version = "0.2", features = ["js"] }
