@@ -129,3 +129,102 @@ component_id!(
     SpatialDynamics,
     NeuronType,
 );
+
+/// Reads a legacy `.nfy` file (JSON) or a `.neuronify` save file (postcard).
+pub fn load_from_bytes(bytes: &[u8]) -> Result<World, String> {
+    if !bytes.starts_with(b"{") {
+        return load_save_file(bytes);
+    }
+    // A save file with 123 archetypes starts with `{` too,
+    // so try it as a save file before reporting why it is not a legacy file
+    load_legacy(bytes).or_else(|legacy_error| load_save_file(bytes).map_err(|_| legacy_error))
+}
+
+fn load_legacy(bytes: &[u8]) -> Result<World, String> {
+    let contents = std::str::from_utf8(bytes).map_err(|e| format!("File is not UTF-8: {e}"))?;
+    let simulation = crate::legacy::parse_legacy_nfy(contents)?;
+    let mut world = World::new();
+    crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
+    Ok(world)
+}
+
+fn load_save_file(bytes: &[u8]) -> Result<World, String> {
+    let mut context = LoadContext::new();
+    let mut deserializer = postcard::Deserializer::from_bytes(bytes);
+    deserialize(&mut context, &mut deserializer)
+        .map_err(|e| format!("Could not read save file: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use postcard::ser_flavors::Flavor;
+
+    const LEAKY_NFY: &str = include_str!("../examples/leaky.nfy");
+
+    fn save(world: &World) -> Vec<u8> {
+        let mut serializer = postcard::Serializer {
+            output: postcard::ser_flavors::StdVec::new(),
+        };
+        serialize(world, &mut SaveContext, &mut serializer).unwrap();
+        serializer.output.finalize().unwrap()
+    }
+
+    #[test]
+    fn loads_legacy_file() {
+        let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap();
+        assert!(!world.is_empty());
+    }
+
+    #[test]
+    fn loads_save_file() {
+        let original = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap();
+        let loaded = load_from_bytes(&save(&original)).unwrap();
+        assert_eq!(loaded.len(), original.len());
+    }
+
+    #[test]
+    fn loads_save_file_starting_with_brace() {
+        // A save file starts with its number of archetypes, and 123 is `{`
+        let mut world = World::new();
+        for mask in 1..=123u32 {
+            let mut builder = EntityBuilder::new();
+            if mask & 1 != 0 {
+                builder.add(Position {
+                    position: glam::Vec3::ZERO,
+                });
+            }
+            if mask & 2 != 0 {
+                builder.add(Inhibitory);
+            }
+            if mask & 4 != 0 {
+                builder.add(TouchSensor);
+            }
+            if mask & 8 != 0 {
+                builder.add(Deletable {});
+            }
+            if mask & 16 != 0 {
+                builder.add(StaticConnectionSource {});
+            }
+            if mask & 32 != 0 {
+                builder.add(Selectable { selected: false });
+            }
+            if mask & 64 != 0 {
+                builder.add(Annotation {
+                    text: String::new(),
+                });
+            }
+            world.spawn(builder.build());
+        }
+        let bytes = save(&world);
+        assert_eq!(bytes[0], b'{');
+
+        let loaded = load_from_bytes(&bytes).unwrap();
+        assert_eq!(loaded.len(), world.len());
+    }
+
+    #[test]
+    fn rejects_html() {
+        assert!(load_from_bytes(b"<!DOCTYPE html><html></html>").is_err());
+    }
+}

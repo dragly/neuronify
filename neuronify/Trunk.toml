@@ -1,0 +1,16 @@
+# Run `trunk serve --port <port>` in this directory,
+# then open http://localhost:<port>/ for the app
+# or http://localhost:<port>/?file=examples/leaky.nfy for a single file.
+# Add `--address 0.0.0.0` to reach it from other devices on the network, such as a phone.
+
+[build]
+target = "index.html"
+release = true
+
+[serve]
+# A missing file should give a 404, not index.html
+no_spa = true
+
+[watch]
+# Rebuild on changes to the core library too, not only this crate
+watch = [".", "../neuronify-core"]
