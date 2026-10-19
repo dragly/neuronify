@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
@@ -6,30 +8,38 @@ use crate::components::{Position, VoltmeterSize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RollingWindow<T> {
-    data: Vec<T>,
+    data: VecDeque<T>,
     max_capacity: usize,
 }
 
 impl<T> RollingWindow<T> {
     pub fn new(max_capacity: usize) -> Self {
         Self {
-            data: Vec::with_capacity(max_capacity),
+            data: VecDeque::with_capacity(max_capacity),
             max_capacity,
         }
     }
 
     pub fn push(&mut self, value: T) {
-        if self.data.len() == self.max_capacity {
-            self.data.remove(0);
+        while !self.data.is_empty() && self.data.len() >= self.max_capacity {
+            self.data.pop_front();
         }
-        self.data.push(value);
+        if self.data.len() < self.max_capacity {
+            self.data.push_back(value);
+        }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &T> + ExactSizeIterator + '_ {
         self.data.iter()
     }
     pub fn last(&self) -> Option<&T> {
-        self.data.last()
+        self.data.back()
+    }
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 }
 
@@ -213,5 +223,61 @@ mod tests {
         assert_eq!(resized.size().width, MIN_FRAME_WIDTH);
         assert_eq!(resized.size().height, MIN_FRAME_HEIGHT);
         assert_eq!(resized.bottom_left, frame.bottom_left);
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct RollingWindowBackedByVec {
+        data: Vec<u32>,
+        max_capacity: usize,
+    }
+
+    #[test]
+    fn rolling_window_keeps_vec_behaviour_and_format() {
+        let mut window = RollingWindow::new(5);
+        let mut reference = RollingWindowBackedByVec {
+            data: Vec::new(),
+            max_capacity: 5,
+        };
+        for value in 0..12 {
+            window.push(value);
+            if reference.data.len() == reference.max_capacity {
+                reference.data.remove(0);
+            }
+            reference.data.push(value);
+
+            assert_eq!(window.iter().copied().collect::<Vec<_>>(), reference.data);
+            assert_eq!(window.last(), reference.data.last());
+
+            let bytes = postcard::to_stdvec(&window).unwrap();
+            assert_eq!(bytes, postcard::to_stdvec(&reference).unwrap());
+            let loaded: RollingWindow<u32> = postcard::from_bytes(&bytes).unwrap();
+            assert_eq!(loaded.iter().copied().collect::<Vec<_>>(), reference.data);
+        }
+    }
+
+    #[test]
+    fn rolling_window_stays_within_capacity() {
+        let mut empty = RollingWindow::new(0);
+        empty.push(1);
+        empty.push(2);
+        assert!(empty.is_empty());
+
+        let corrupt = RollingWindowBackedByVec {
+            data: vec![0, 1],
+            max_capacity: 0,
+        };
+        let bytes = postcard::to_stdvec(&corrupt).unwrap();
+        let mut loaded: RollingWindow<u32> = postcard::from_bytes(&bytes).unwrap();
+        loaded.push(2);
+        assert!(loaded.is_empty());
+
+        let oversized = RollingWindowBackedByVec {
+            data: (0..8).collect(),
+            max_capacity: 3,
+        };
+        let bytes = postcard::to_stdvec(&oversized).unwrap();
+        let mut loaded: RollingWindow<u32> = postcard::from_bytes(&bytes).unwrap();
+        loaded.push(8);
+        assert_eq!(loaded.iter().copied().collect::<Vec<_>>(), [6, 7, 8]);
     }
 }
