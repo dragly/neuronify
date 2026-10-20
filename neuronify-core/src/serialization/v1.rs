@@ -4,7 +4,6 @@ use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 
 schema!(
-    save,
     Position,
     LeakyNeuron,
     LeakyDynamics,

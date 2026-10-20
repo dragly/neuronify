@@ -7,9 +7,14 @@ use crate::{Connection, Deletable, NeuronType, Position};
 
 use super::{LegacyEdge, LegacyNode, LegacySimulation};
 
+const PIXELS_PER_UNIT: f32 = 50.0 / 2.0;
+
 fn convert_position(x: f64, y: f64) -> Vec3 {
-    let scale = 50.0 / 2.0;
-    Vec3::new(-(y as f32 - 540.0) / scale, 0.0, (x as f32 - 960.0) / scale)
+    Vec3::new(
+        -(y as f32 - 540.0) / PIXELS_PER_UNIT,
+        0.0,
+        (x as f32 - 960.0) / PIXELS_PER_UNIT,
+    )
 }
 
 pub fn spawn_legacy_simulation(world: &mut World, sim: &LegacySimulation) -> Vec<Entity> {
@@ -66,9 +71,25 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
             Deletable {},
         )),
         "meters/SpikeDetector.qml" => world.spawn((pos,)),
-        s if s.starts_with("annotations/") => {
+        "annotations/NextTutorial.qml" => world.spawn((pos,)),
+        "annotations/Note.qml" => {
             let text = node.text.clone().unwrap_or_default();
-            world.spawn((pos, Annotation { text }))
+            let default_size = NoteSize::default();
+            let width = node
+                .width
+                .unwrap_or((default_size.width * PIXELS_PER_UNIT).into());
+            let height = node
+                .height
+                .unwrap_or((default_size.height * PIXELS_PER_UNIT).into());
+            // QML places an item by its top left corner, but a note is drawn around its position
+            let center = Position {
+                position: convert_position(node.x + width / 2.0, node.y + height / 2.0),
+            };
+            let size = NoteSize {
+                width: width as f32 / PIXELS_PER_UNIT,
+                height: height as f32 / PIXELS_PER_UNIT,
+            };
+            world.spawn((center, Annotation { text }, size, Deletable {}))
         }
         _ => world.spawn((pos,)),
     }

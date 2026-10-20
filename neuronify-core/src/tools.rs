@@ -16,6 +16,7 @@ pub enum Tool {
     Axon,
     Erase,
     Stimulate,
+    Note,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -23,6 +24,7 @@ pub enum ToolCategory {
     Interaction,
     Neurons,
     Connections,
+    Annotations,
 }
 
 impl ToolCategory {
@@ -31,6 +33,7 @@ impl ToolCategory {
             ToolCategory::Interaction => "Interaction",
             ToolCategory::Neurons => "Neurons",
             ToolCategory::Connections => "Connections",
+            ToolCategory::Annotations => "Annotations",
         }
     }
     pub fn tools(&self) -> Vec<(Tool, &str)> {
@@ -53,14 +56,16 @@ impl ToolCategory {
                 (Tool::StaticConnection, "Static Connection"),
                 (Tool::Axon, "Axon"),
             ],
+            ToolCategory::Annotations => vec![(Tool::Note, "Note")],
         }
     }
 }
 
-pub const TOOL_CATEGORIES: [ToolCategory; 3] = [
+pub const TOOL_CATEGORIES: [ToolCategory; 4] = [
     ToolCategory::Interaction,
     ToolCategory::Neurons,
     ToolCategory::Connections,
+    ToolCategory::Annotations,
 ];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

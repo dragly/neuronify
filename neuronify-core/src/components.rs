@@ -166,6 +166,21 @@ pub struct Annotation {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NoteSize {
+    pub width: f32,
+    pub height: f32,
+}
+
+impl Default for NoteSize {
+    fn default() -> Self {
+        Self {
+            width: 7.2,
+            height: 4.8,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GeneratorDynamics {
     pub fired: bool,
     pub time_since_fire: f64,

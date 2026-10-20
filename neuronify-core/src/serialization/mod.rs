@@ -19,9 +19,10 @@ use postcard::ser_flavors::Flavor;
 #[macro_use]
 mod schema;
 mod v1;
+mod v2;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -29,7 +30,7 @@ pub fn save(world: &World) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v1::SaveContext, &mut serializer)
+    serialize(world, &mut v2::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -49,13 +50,23 @@ pub fn load(bytes: &[u8]) -> Result<World, String> {
         .split_first_chunk()
         .ok_or("The save file ends before its version")?;
     let version = u32::from_le_bytes(*version);
-    match version {
-        1 => v1::deserialize(body),
-        _ => Err(format!(
-            "The save file has version {version}, \
-             but this Neuronify reads versions 1 to {VERSION}"
-        )),
+    let mut world = match version {
+        1 => v1::deserialize(body)?,
+        2 => v2::deserialize(body)?,
+        _ => {
+            return Err(format!(
+                "The save file has version {version}, \
+                 but this Neuronify reads versions 1 to {VERSION}"
+            ))
+        }
+    };
+    for from in version..VERSION {
+        match from {
+            1 => v2::upgrade_from_v1(&mut world),
+            _ => unreachable!("no upgrade from version {from}"),
+        }
     }
+    Ok(world)
 }
 
 /// Reads a legacy `.nfy` file (JSON) or a `.neuronify` save file.
@@ -118,7 +129,13 @@ mod tests {
 
     #[test]
     fn loads_version_1() {
-        assert_fixture(&load(include_bytes!("fixtures/v1.neuronify")).unwrap());
+        // Version 1 turned the link to the next tutorial into an empty note
+        assert_fixture(&load(include_bytes!("fixtures/v1.neuronify")).unwrap(), 30);
+    }
+
+    #[test]
+    fn loads_version_2() {
+        assert_fixture(&load(include_bytes!("fixtures/v2.neuronify")).unwrap(), 29);
     }
 
     /// Writes `fixture_world` as `fixtures/v{VERSION}.neuronify`.
@@ -214,7 +231,7 @@ mod tests {
     }
 
     /// Checks a fixture after it has been upgraded to the current version.
-    fn assert_fixture(world: &World) {
+    fn assert_fixture(world: &World, notes: usize) {
         assert_eq!(world.len(), 190);
         assert_eq!(count::<Position>(world), 125);
         assert_eq!(count::<LeakyNeuron>(world), 44);
@@ -230,9 +247,10 @@ mod tests {
         assert_eq!(count::<RegularSpikeGenerator>(world), 1);
         assert_eq!(count::<PoissonGenerator>(world), 1);
         assert_eq!(count::<VoltmeterSize>(world), 14);
-        assert_eq!(count::<Annotation>(world), 30);
+        assert_eq!(count::<Annotation>(world), notes);
+        assert_eq!(count::<NoteSize>(world), notes);
         assert_eq!(count::<StaticConnectionSource>(world), 1);
-        assert_eq!(count::<Deletable>(world), 145);
+        assert_eq!(count::<Deletable>(world), 145 + notes);
         assert_eq!(count::<Selectable>(world), 1);
         assert_eq!(count::<Voltmeter>(world), 14);
         assert_eq!(count::<VoltageSeries>(world), 14);
