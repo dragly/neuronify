@@ -4130,7 +4130,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "visula"
 version = "0.1.0"
-source = "git+https://github.com/dragly/visula?rev=aa83a2b63633c688faf1efcb6f2f963390c06eb7#aa83a2b63633c688faf1efcb6f2f963390c06eb7"
+source = "git+https://github.com/dragly/visula?rev=49367fc7b9ca7fcb1fc4a4fe4172ff2766eab56c#49367fc7b9ca7fcb1fc4a4fe4172ff2766eab56c"
 dependencies = [
  "bytemuck",
  "catppuccin",
@@ -4182,7 +4182,7 @@ dependencies = [
 [[package]]
 name = "visula_core"
 version = "0.1.0"
-source = "git+https://github.com/dragly/visula?rev=aa83a2b63633c688faf1efcb6f2f963390c06eb7#aa83a2b63633c688faf1efcb6f2f963390c06eb7"
+source = "git+https://github.com/dragly/visula?rev=49367fc7b9ca7fcb1fc4a4fe4172ff2766eab56c#49367fc7b9ca7fcb1fc4a4fe4172ff2766eab56c"
 dependencies = [
  "bytemuck",
  "glam",
@@ -4197,7 +4197,7 @@ dependencies = [
 [[package]]
 name = "visula_derive"
 version = "0.1.0"
-source = "git+https://github.com/dragly/visula?rev=aa83a2b63633c688faf1efcb6f2f963390c06eb7#aa83a2b63633c688faf1efcb6f2f963390c06eb7"
+source = "git+https://github.com/dragly/visula?rev=49367fc7b9ca7fcb1fc4a4fe4172ff2766eab56c#49367fc7b9ca7fcb1fc4a4fe4172ff2766eab56c"
 dependencies = [
  "proc-macro-crate 1.3.1",
  "proc-macro2",

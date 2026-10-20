@@ -412,3 +412,22 @@ fn test_inhibitory_suppresses_firing() {
         alone_spikes.len()
     );
 }
+
+#[test]
+fn test_annotation_loads_with_size() {
+    let sim = parse_legacy_nfy(LEAKY_NFY).unwrap();
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &sim);
+
+    let mut annotation_count = 0;
+    for (_entity, (annotation, size)) in world.query::<(&Annotation, &NoteSize)>().iter() {
+        annotation_count += 1;
+        assert!(!annotation.text.is_empty());
+        assert!(size.width > 0.0);
+        assert!(size.height > 0.0);
+    }
+    assert!(
+        annotation_count > 0,
+        "leaky.nfy should produce at least one annotation"
+    );
+}

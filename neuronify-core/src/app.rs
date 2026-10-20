@@ -2,7 +2,8 @@ use crate::components::*;
 use crate::constants::*;
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
 use crate::rendering::{
-    collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, Sphere,
+    collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, NoteRenderer,
+    Sphere,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
@@ -50,6 +51,7 @@ pub struct Neuronify {
     pub drag_offset: Vec3,
     pub resizing_voltmeter: Option<(Entity, ResizeCorner)>,
     pub load_error: Option<String>,
+    pub note_renderer: NoteRenderer,
 }
 
 #[derive(Debug)]
@@ -249,6 +251,7 @@ impl Neuronify {
             drag_offset: Vec3::ZERO,
             resizing_voltmeter: None,
             load_error: None,
+            note_renderer: NoteRenderer::new(application),
         }
     }
 
@@ -508,6 +511,23 @@ impl Neuronify {
                     position: mouse_position,
                 })
             }
+            Tool::Note => {
+                if previous_too_near {
+                    return;
+                }
+                let entity = world.spawn((
+                    Position {
+                        position: mouse_position,
+                    },
+                    Annotation {
+                        text: "New note".to_string(),
+                    },
+                    NoteSize::default(),
+                    Deletable {},
+                ));
+                *active_entity = Some(entity);
+                self.previous_creation = Some(PreviousCreation { entity });
+            }
             Tool::Erase => {
                 let to_delete = world
                     .query::<&Position>()
@@ -746,12 +766,33 @@ impl Neuronify {
                                     }
 
                                     if !found_voltmeter {
-                                        if let Some((entity, entity_pos)) = world
+                                        // Notes lie under the circuit,
+                                        // so anything near the pointer wins over the note around it
+                                        let nearby = world
                                             .query::<&Position>()
+                                            .without::<&Annotation>()
                                             .iter()
                                             .min_by(|a, b| nearest(&mouse_position, a, b))
-                                            .and_then(|v| within_selection_range(mouse_position, v))
-                                        {
+                                            .and_then(|v| {
+                                                within_selection_range(mouse_position, v)
+                                            });
+                                        let note = || {
+                                            world
+                                                .query::<(&Position, &NoteSize)>()
+                                                .with::<&Annotation>()
+                                                .iter()
+                                                .filter(|(_, (position, size))| {
+                                                    let offset = mouse_position - position.position;
+                                                    offset.x.abs() <= size.height * 0.5
+                                                        && offset.z.abs() <= size.width * 0.5
+                                                })
+                                                // The renderer draws later notes on top
+                                                .max_by_key(|(entity, _)| entity.id())
+                                                .map(|(entity, (position, _))| {
+                                                    (entity, position.position)
+                                                })
+                                        };
+                                        if let Some((entity, entity_pos)) = nearby.or_else(note) {
                                             *active_entity = Some(entity);
                                             *dragging_entity = Some(entity);
                                             *drag_offset = entity_pos - mouse_position;
@@ -1037,6 +1078,8 @@ impl visula::Simulation for Neuronify {
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
 
+        self.note_renderer.update(application, &self.world);
+
         let time_diff = Utc::now() - self.last_update;
         #[cfg(not(target_arch = "wasm32"))]
         if time_diff < Duration::milliseconds(TARGET_FRAME_MS) {
@@ -1056,6 +1099,7 @@ impl visula::Simulation for Neuronify {
         self.spheres.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
+        self.note_renderer.render(data);
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
@@ -1347,6 +1391,30 @@ impl visula::Simulation for Neuronify {
                                 if let Some(last) = series.measurements.last() {
                                     ui.label(format!("Voltage: {:.2} mV", last.voltage));
                                 }
+                            }
+                        });
+                    }
+                    if self.world.get::<&Annotation>(active_entity).is_ok() {
+                        ui.collapsing("Note", |ui| {
+                            if let Ok(mut annotation) =
+                                self.world.get::<&mut Annotation>(active_entity)
+                            {
+                                ui.label("Text:");
+                                ui.add(
+                                    egui::TextEdit::multiline(&mut annotation.text)
+                                        .desired_rows(4)
+                                        .desired_width(f32::INFINITY),
+                                );
+                            }
+                            if let Ok(mut size) = self.world.get::<&mut NoteSize>(active_entity) {
+                                egui::Grid::new("note_size_settings").show(ui, |ui| {
+                                    ui.label("Width:");
+                                    ui.add(egui::Slider::new(&mut size.width, 2.0..=30.0));
+                                    ui.end_row();
+                                    ui.label("Height:");
+                                    ui.add(egui::Slider::new(&mut size.height, 1.0..=20.0));
+                                    ui.end_row();
+                                });
                             }
                         });
                     }
