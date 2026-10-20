@@ -4,13 +4,10 @@ use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
 use crate::rendering::{
     collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, Sphere,
 };
-use crate::serialization::{LoadContext, SaveContext};
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
 use glam::Vec3;
-use hecs::serialize::column::*;
 use hecs::Entity;
-use postcard::ser_flavors::Flavor;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::io::BufReader;
@@ -943,15 +940,9 @@ impl Neuronify {
     }
 
     pub fn save(&self, path: PathBuf) {
-        let mut context = SaveContext;
-        let mut serializer = postcard::Serializer {
-            output: postcard::ser_flavors::StdVec::new(),
-        };
-        serialize(&self.world, &mut context, &mut serializer).unwrap();
+        let bytes = crate::serialization::save(&self.world).unwrap();
         let mut writer = std::fs::File::create(path.with_extension("neuronify")).unwrap();
-        writer
-            .write_all(&serializer.output.finalize().unwrap())
-            .unwrap();
+        writer.write_all(&bytes).unwrap();
     }
 
     pub fn load_legacy_string(&mut self, contents: &str) {
@@ -966,13 +957,14 @@ impl Neuronify {
     }
 
     pub fn loadfile(&mut self, path: PathBuf) {
-        let mut context = LoadContext::new();
         let reader = std::fs::File::open(path).unwrap();
         let mut bufreader = BufReader::new(reader);
         let mut bytes: Vec<u8> = Vec::new();
         bufreader.read_to_end(&mut bytes).unwrap();
-        let mut deserializer = postcard::Deserializer::from_bytes(&bytes);
-        self.world = deserialize(&mut context, &mut deserializer).unwrap();
+        if let Err(error) = self.load_from_bytes(&bytes) {
+            log::error!("{error}");
+            self.load_error = Some(error);
+        }
     }
 
     /// Replaces the world with a legacy `.nfy` file or a `.neuronify` save file.
