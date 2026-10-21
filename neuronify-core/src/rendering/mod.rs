@@ -1,15 +1,22 @@
 pub mod bounds;
 pub mod colors;
 pub mod connections;
+pub mod cylinders;
+pub mod floor;
 pub mod gpu_types;
+pub mod lighting;
 pub mod notes;
+pub mod scene;
 pub mod spheres;
 pub mod voltmeter;
 
 pub use bounds::{canvas_bounds, circuit_bounds, Bounds};
 pub use colors::{neurocolor, srgb, srgb_component};
 pub use connections::collect_connections;
-pub use gpu_types::{ConnectionData, LineData, MeshInstanceData, Sphere};
+pub use cylinders::{collect_cylinders, compartment_radii};
+pub use floor::create_floor;
+pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere};
 pub use notes::NoteRenderer;
+pub use scene::{collect_scene, Scene};
 pub use spheres::collect_spheres;
 pub use voltmeter::collect_voltmeter_traces;

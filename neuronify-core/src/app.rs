@@ -3,9 +3,10 @@ use crate::constants::*;
 use crate::examples::Example;
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
+use crate::rendering::lighting::{configure_lighting, shaded};
 use crate::rendering::{
-    canvas_bounds, collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData,
-    NoteRenderer, Sphere,
+    canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, create_floor,
+    ConnectionData, CylinderData, NoteRenderer, Sphere,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
@@ -20,8 +21,9 @@ use std::thread;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
 use visula::{
-    winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer, LineGeometry, LineMaterial,
-    Lines, RenderData, Renderable, SphereGeometry, SphereMaterial, Spheres,
+    winit::keyboard::ModifiersKeyState, CustomEvent, CylinderGeometry, CylinderMaterial, Cylinders,
+    Expression, InstanceBuffer, LineGeometry, LineMaterial, Lines, MeshPipeline, RenderData,
+    Renderable, ShadowRenderData, SphereGeometry, SphereMaterial, Spheres,
 };
 
 use crate::input::{Keyboard, Mouse, TouchGesture, Touches};
@@ -41,6 +43,9 @@ pub struct Neuronify {
     pub connection_lines: Lines,
     pub connection_spheres: Spheres,
     pub connection_buffer: InstanceBuffer<ConnectionData>,
+    pub cylinders: Cylinders,
+    pub cylinder_buffer: InstanceBuffer<CylinderData>,
+    pub floor: MeshPipeline,
     pub iterations: u32,
     pub last_update: DateTime<Utc>,
     pub fps: f64,
@@ -179,7 +184,9 @@ impl Neuronify {
                 radius: sphere.radius,
                 color: sphere.color,
             },
-            &SphereMaterial::default(),
+            &SphereMaterial {
+                color: shaded(Expression::InputColor),
+            },
         )
         .unwrap();
 
@@ -197,7 +204,9 @@ impl Neuronify {
                 width: connection.strength.clone() * 0.3,
                 color: connection.start_color.clone(),
             },
-            &LineMaterial::default(),
+            &LineMaterial {
+                color: shaded(Expression::InputColor),
+            },
         )
         .unwrap();
 
@@ -208,9 +217,32 @@ impl Neuronify {
                 radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
                 color: crate::rendering::colors::terminal_color().into(),
             },
-            &SphereMaterial::default(),
+            &SphereMaterial {
+                color: shaded(Expression::InputColor),
+            },
         )
         .unwrap();
+
+        let cylinder_buffer = InstanceBuffer::<CylinderData>::new(&application.device);
+        let cylinder = cylinder_buffer.instance();
+        let cylinders = Cylinders::new(
+            &application.rendering_descriptor(),
+            &CylinderGeometry {
+                start: cylinder.start,
+                end: cylinder.end,
+                start_radius: cylinder.start_radius,
+                end_radius: cylinder.end_radius,
+                color: cylinder.color,
+            },
+            &CylinderMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
+        let floor = create_floor(&application.rendering_descriptor(), &application.device).unwrap();
+
+        configure_lighting(application);
 
         let mut world = hecs::World::new();
         #[allow(unused_mut)]
@@ -246,6 +278,9 @@ impl Neuronify {
             connection_lines,
             connection_spheres,
             connection_buffer,
+            cylinders,
+            cylinder_buffer,
+            floor,
             tool: Tool::Select,
             previous_creation: None,
             connection_tool: None,
@@ -1094,13 +1129,22 @@ impl visula::Simulation for Neuronify {
             self.frame_scene(application);
         }
 
+        let camera = &application.camera_controller.current_transform;
+        application.light.shadow_center = camera.center;
+        // visula blurs shadows over a fixed number of shadow map texels,
+        // so a map that reaches well past the view gives softer shadows
+        application.light.shadow_extent = (camera.distance * 2.0).clamp(50.0, 625.0);
+
         let world = &self.world;
-        let spheres = collect_spheres(world);
+        let scene = collect_scene(world);
         let mut connections = collect_connections(world, &self.tool, &self.connection_tool);
         connections.extend(collect_voltmeter_traces(world));
 
         self.sphere_buffer
-            .update(&application.device, &application.queue, &spheres);
+            .update(&application.device, &application.queue, &scene.spheres);
+
+        self.cylinder_buffer
+            .update(&application.device, &application.queue, &scene.cylinders);
 
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
@@ -1123,10 +1167,17 @@ impl visula::Simulation for Neuronify {
     }
 
     fn render(&mut self, data: &mut RenderData) {
+        self.floor.render(data);
         self.spheres.render(data);
+        self.cylinders.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
         self.note_renderer.render(data);
+    }
+
+    fn render_shadow(&mut self, data: &mut ShadowRenderData) {
+        self.spheres.render_shadow(data);
+        self.cylinders.render_shadow(data);
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {

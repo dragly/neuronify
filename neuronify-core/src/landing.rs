@@ -14,8 +14,8 @@ use crate::constants::*;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
 use crate::rendering::colors::terminal_color;
 use crate::rendering::{
-    circuit_bounds, collect_connections, collect_spheres, collect_voltmeter_traces, Bounds,
-    ConnectionData,
+    circuit_bounds, collect_connections, collect_scene, collect_voltmeter_traces, Bounds,
+    ConnectionData, CylinderData,
 };
 use crate::simulation;
 use crate::tools::Tool;
@@ -467,7 +467,12 @@ fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds) -> Vec<Shape> {
         .min(area.height() / size.x.max(THUMBNAIL_MIN_CANVAS_EXTENT));
     let center = bounds.center();
     let to_screen = |p: Vec3| area.center() + vec2(p.z - center.z, center.x - p.x) * scale;
-    let mut shapes = Vec::new();
+    let scene = collect_scene(world);
+    let mut shapes: Vec<Shape> = scene
+        .cylinders
+        .iter()
+        .map(|cylinder| cylinder_from_above(cylinder, scale, to_screen))
+        .collect();
 
     for connection in collect_connections(world, &Tool::Select, &None) {
         let start = connection.position_a;
@@ -499,7 +504,7 @@ fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds) -> Vec<Shape> {
         to_screen,
     ));
 
-    for sphere in collect_spheres(world) {
+    for sphere in scene.spheres {
         shapes.push(Shape::circle_filled(
             to_screen(sphere.position),
             sphere.radius * scale,
@@ -507,6 +512,32 @@ fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds) -> Vec<Shape> {
         ));
     }
     shapes
+}
+
+fn cylinder_from_above(
+    cylinder: &CylinderData,
+    scale: f32,
+    to_screen: impl Fn(Vec3) -> Pos2,
+) -> Shape {
+    let color = egui_color_from_linear(cylinder.color);
+    let start = to_screen(cylinder.start);
+    let end = to_screen(cylinder.end);
+    let along = end - start;
+    if along.length() <= f32::EPSILON {
+        let radius = cylinder.start_radius.max(cylinder.end_radius);
+        return Shape::circle_filled(start, radius * scale, color);
+    }
+    let across = along.normalized().rot90() * scale;
+    Shape::convex_polygon(
+        vec![
+            start + across * cylinder.start_radius,
+            end + across * cylinder.end_radius,
+            end - across * cylinder.end_radius,
+            start - across * cylinder.start_radius,
+        ],
+        color,
+        Stroke::NONE,
+    )
 }
 
 fn joined_voltmeter_traces(
