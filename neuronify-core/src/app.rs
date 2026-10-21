@@ -1,5 +1,6 @@
 use crate::components::*;
 use crate::constants::*;
+use crate::dendrites::{dendrite_tree, spawn_dendrites};
 use crate::examples::Example;
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
@@ -14,6 +15,7 @@ use chrono::{DateTime, Duration, Utc};
 use glam::Vec3;
 use hecs::Entity;
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
@@ -36,6 +38,7 @@ pub struct Neuronify {
     pub theme: Theme,
     /// The theme the floor and lighting were last set up for
     applied_theme: Theme,
+    pub dendrites: bool,
     pub previous_creation: Option<PreviousCreation>,
     pub connection_tool: Option<ConnectionTool>,
     pub stimulation_tool: Option<StimulationTool>,
@@ -319,6 +322,7 @@ impl Neuronify {
             tool: Tool::Select,
             theme,
             applied_theme: theme,
+            dendrites: false,
             previous_creation: None,
             connection_tool: None,
             stimulation_tool: None,
@@ -454,6 +458,9 @@ impl Neuronify {
                 ));
                 if self.tool == Tool::InhibitoryNeuron {
                     world.insert_one(entity, Inhibitory).unwrap();
+                }
+                if self.dendrites {
+                    spawn_dendrites(world, entity);
                 }
                 self.previous_creation = Some(PreviousCreation { entity });
             }
@@ -635,6 +642,11 @@ impl Neuronify {
                         }
                     })
                     .collect::<Vec<Entity>>();
+                let to_delete: HashSet<Entity> = to_delete
+                    .iter()
+                    .flat_map(|&entity| dendrite_tree(world, entity))
+                    .chain(to_delete.iter().copied())
+                    .collect();
                 for entity in to_delete {
                     world.despawn(entity).unwrap();
                 }
@@ -1308,6 +1320,9 @@ impl visula::Simulation for Neuronify {
                     ui.collapsing(category.label(), |ui| {
                         for (tool_value, label) in category.tools() {
                             ui.selectable_value(&mut self.tool, tool_value, label);
+                        }
+                        if *category == ToolCategory::Neurons {
+                            ui.checkbox(&mut self.dendrites, "With dendrites");
                         }
                     });
                 }
