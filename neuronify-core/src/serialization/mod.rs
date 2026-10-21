@@ -20,9 +20,10 @@ use postcard::ser_flavors::Flavor;
 mod schema;
 mod v1;
 mod v2;
+mod v3;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -30,7 +31,7 @@ pub fn save(world: &World) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v2::SaveContext, &mut serializer)
+    serialize(world, &mut v3::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -53,6 +54,7 @@ pub fn load(bytes: &[u8]) -> Result<World, String> {
     let mut world = match version {
         1 => v1::deserialize(body)?,
         2 => v2::deserialize(body)?,
+        3 => v3::deserialize(body)?,
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -63,6 +65,7 @@ pub fn load(bytes: &[u8]) -> Result<World, String> {
     for from in version..VERSION {
         match from {
             1 => v2::upgrade_from_v1(&mut world),
+            2 => v3::upgrade_from_v2(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -136,6 +139,32 @@ mod tests {
     #[test]
     fn loads_version_2() {
         assert_fixture(&load(include_bytes!("fixtures/v2.neuronify")).unwrap(), 29);
+    }
+
+    #[test]
+    fn loads_version_3() {
+        assert_fixture(&load(include_bytes!("fixtures/v3.neuronify")).unwrap(), 29);
+    }
+
+    #[test]
+    fn keeps_dendrites() {
+        let mut world = World::new();
+        let soma = world.spawn((
+            Position {
+                position: glam::Vec3::ZERO,
+            },
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            NeuronType::Excitatory,
+            Deletable {},
+        ));
+        crate::dendrites::spawn_dendrites(&mut world, soma);
+        let dendrites = count::<Dendrite>(&world);
+        assert!(dendrites > 0);
+
+        let loaded = load(&save(&world).unwrap()).unwrap();
+        assert_eq!(count::<Dendrite>(&loaded), dendrites);
     }
 
     /// Writes `fixture_world` as `fixtures/v{VERSION}.neuronify`.
