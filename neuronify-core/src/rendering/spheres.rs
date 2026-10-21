@@ -1,11 +1,20 @@
+use std::collections::HashMap;
+
 use glam::Vec3;
+use hecs::Entity;
 
 use crate::components::*;
 use crate::constants::*;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::Sphere;
 
-pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
+/// How long a soma keeps glowing after it fires, in simulated seconds.
+const FLASH_DURATION: f64 = 0.01;
+/// How much brighter than white a flash starts, so that only flashes bloom.
+const FLASH_BRIGHTNESS: f32 = 3.0;
+
+/// `radii` comes from `compartment_radii`, so the joints match the cylinders.
+pub fn collect_spheres(world: &hecs::World, radii: &HashMap<Entity, f32>) -> Vec<Sphere> {
     let mut spheres = Vec::new();
 
     let lif_neuron_spheres: Vec<Sphere> = world
@@ -17,10 +26,15 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
                 .clamp(0.0, 1.0) as f32;
             let is_inhibitory = world.get::<&Inhibitory>(entity).is_ok();
             let color = if is_inhibitory {
-                value * mantle() + (1.0 - value) * red()
+                red().lerp(red().lerp(mantle(), VOLTAGE_TINT), value)
             } else {
-                value * base() + (1.0 - value) * blue()
+                blue().lerp(blue().lerp(base(), VOLTAGE_TINT), value)
             };
+            let remaining = (1.0 - dynamics.time_since_fire / FLASH_DURATION).max(0.0) as f32;
+            let color = color.lerp(
+                Vec3::new(1.0, 1.0, 0.55) * FLASH_BRIGHTNESS,
+                remaining * remaining,
+            );
             Sphere {
                 position: position.position,
                 color,
@@ -56,12 +70,15 @@ pub fn collect_spheres(world: &hecs::World) -> Vec<Sphere> {
     let compartment_spheres: Vec<Sphere> = world
         .query::<(&Compartment, &Position, &NeuronType)>()
         .iter()
-        .map(|(_, (compartment, position, neuron_type))| {
+        .map(|(entity, (compartment, position, neuron_type))| {
             let value = ((compartment.voltage + 50.0) / 200.0) as f32;
             Sphere {
                 position: position.position,
                 color: neurocolor(neuron_type, value),
-                radius: COMPARTMENT_SPHERE_SCALE * NODE_RADIUS,
+                radius: radii
+                    .get(&entity)
+                    .copied()
+                    .unwrap_or(COMPARTMENT_SPHERE_SCALE * NODE_RADIUS),
                 _padding: Default::default(),
             }
         })

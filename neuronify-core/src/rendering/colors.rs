@@ -54,10 +54,17 @@ pub fn terminal_color() -> Vec3 {
     Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0)
 }
 
+pub fn floor_color() -> Vec3 {
+    srgb(56, 58, 80)
+}
+
+/// How far a neuron at threshold has gone from the colour of its type towards white.
+pub const VOLTAGE_TINT: f32 = 0.55;
+
 pub fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
     let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
     match *neuron_type {
-        NeuronType::Excitatory => v * base() + (1.0 - v) * blue(),
-        NeuronType::Inhibitory => v * mantle() + (1.0 - v) * red(),
+        NeuronType::Excitatory => blue().lerp(blue().lerp(base(), VOLTAGE_TINT), v),
+        NeuronType::Inhibitory => red().lerp(red().lerp(mantle(), VOLTAGE_TINT), v),
     }
 }

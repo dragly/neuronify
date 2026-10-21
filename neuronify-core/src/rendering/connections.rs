@@ -21,9 +21,11 @@ pub fn collect_connections(
     tool: &Tool,
     connection_tool: &Option<ConnectionTool>,
 ) -> Vec<ConnectionData> {
+    // Cable segments between compartments are drawn as cylinders instead
     let connection_info: Vec<(Entity, Entity, Entity, f32, bool)> = world
         .query::<&Connection>()
         .iter()
+        .filter(|(e, c)| c.directional || world.get::<&CompartmentCurrent>(*e).is_err())
         .map(|(e, c)| {
             let is_voltmeter = world.get::<&Voltmeter>(e).is_ok();
             (

@@ -25,6 +25,17 @@ pub struct ConnectionData {
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
+pub struct CylinderData {
+    pub start: Vec3,
+    pub start_radius: f32,
+    pub end: Vec3,
+    pub end_radius: f32,
+    pub color: Vec3,
+    pub _padding: f32,
+}
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Instance, Pod, Zeroable)]
 pub struct LineData {
     pub start: Vec3,
     pub end: Vec3,

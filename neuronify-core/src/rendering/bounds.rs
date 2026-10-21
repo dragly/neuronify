@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::components::*;
 use crate::rendering::connections::collect_connections;
-use crate::rendering::spheres::collect_spheres;
+use crate::rendering::scene::collect_scene;
 use crate::tools::Tool;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -40,10 +40,13 @@ pub fn canvas_bounds(world: &hecs::World) -> Option<Bounds> {
 
 fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
     let mut points = Vec::new();
-    for sphere in collect_spheres(world) {
-        let reach = Vec3::new(sphere.radius, 0.0, sphere.radius);
-        points.push(sphere.position - reach);
-        points.push(sphere.position + reach);
+    let scene = collect_scene(world);
+    for sphere in &scene.spheres {
+        points.extend(footprint(sphere.position, sphere.radius));
+    }
+    for cylinder in &scene.cylinders {
+        points.extend(footprint(cylinder.start, cylinder.start_radius));
+        points.extend(footprint(cylinder.end, cylinder.end_radius));
     }
     for connection in collect_connections(world, &Tool::Select, &None) {
         points.push(connection.position_a);
@@ -65,6 +68,12 @@ fn bounds_around(points: &[Vec3]) -> Option<Bounds> {
         bounds.include(point);
     }
     Some(bounds)
+}
+
+fn footprint(center: Vec3, radius: f32) -> [Vec3; 2] {
+    let reach = Vec3::new(radius, 0.0, radius);
+    let center = center.with_y(0.0);
+    [center - reach, center + reach]
 }
 
 fn note_corners(center: Vec3, size: &NoteSize) -> [Vec3; 2] {
