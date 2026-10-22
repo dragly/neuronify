@@ -100,6 +100,12 @@ fn ground_position(application: &visula::Application, position: PhysicalPosition
     ray_origin + t * ray_world
 }
 
+fn pan(application: &mut visula::Application, offset: Vec3) {
+    let camera = &mut application.camera_controller;
+    camera.target_transform.center -= offset;
+    camera.current_transform.center = camera.target_transform.center;
+}
+
 fn gui_takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
     let context = application.egui_renderer.state.egui_ctx();
     let point = egui::pos2(position.x as f32, position.y as f32) / context.pixels_per_point();
@@ -311,6 +317,14 @@ impl Neuronify {
             }
         };
         let mouse_position = ground_position(application, mouse_physical_position);
+
+        if !self.edit_enabled {
+            match *move_origin {
+                Some(origin) => pan(application, mouse_position - origin),
+                None => *move_origin = Some(mouse_position),
+            }
+            return;
+        }
 
         let minimum_distance = match tool {
             Tool::Axon => MIN_CREATION_DISTANCE_AXON,
@@ -676,13 +690,7 @@ impl Neuronify {
                         }
                     } else {
                         match *move_origin {
-                            Some(origin) => {
-                                let center = mouse_position - origin;
-                                application.camera_controller.target_transform.center -=
-                                    Vec3::new(center.x, center.y, center.z);
-                                application.camera_controller.current_transform.center =
-                                    application.camera_controller.target_transform.center;
-                            }
+                            Some(origin) => pan(application, mouse_position - origin),
                             None => {
                                 let voltmeter_bounds: Vec<_> = world
                                     .query::<(&Voltmeter, &Position)>()
