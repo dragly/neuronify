@@ -19,13 +19,13 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::thread;
 use visula::winit::dpi::PhysicalPosition;
-use visula::winit::event::{ElementState, Event, MouseButton, WindowEvent};
+use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
 use visula::{
     winit::keyboard::ModifiersKeyState, CustomEvent, InstanceBuffer, LineGeometry, LineMaterial,
     Lines, RenderData, Renderable, SphereGeometry, SphereMaterial, Spheres,
 };
 
-use crate::input::{Keyboard, Mouse};
+use crate::input::{Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
 
 pub struct Neuronify {
@@ -46,7 +46,7 @@ pub struct Neuronify {
     pub last_update: DateTime<Utc>,
     pub fps: f64,
     pub edit_enabled: bool,
-    pub last_touch_points: Option<((f64, f64), (f64, f64))>,
+    pub touches: Touches,
     pub move_origin: Option<Vec3>,
     pub active_entity: Option<Entity>,
     pub dragging_entity: Option<Entity>,
@@ -78,6 +78,63 @@ fn within_selection_range(
     } else {
         None
     }
+}
+
+fn ground_position(application: &visula::Application, position: PhysicalPosition<f64>) -> Vec3 {
+    let ndc_x = 2.0 * position.x as f32 / application.config.width as f32 - 1.0;
+    let ndc_y = 1.0 - 2.0 * position.y as f32 / application.config.height as f32;
+    let ray_clip = glam::Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
+    let aspect_ratio = application.config.width as f32 / application.config.height as f32;
+    let inv_projection = application
+        .camera_controller
+        .projection_matrix(aspect_ratio)
+        .inverse();
+
+    let ray_eye = inv_projection * ray_clip;
+    let ray_eye = glam::Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
+    let inv_view_matrix = application.camera_controller.view_matrix().inverse();
+    let ray_world = inv_view_matrix * ray_eye;
+    let ray_world = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
+    let ray_origin = application.camera_controller.position();
+    let t = -ray_origin.y / ray_world.y;
+    ray_origin + t * ray_world
+}
+
+fn gui_takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
+    let context = application.egui_renderer.state.egui_ctx();
+    let point = egui::pos2(position.x as f32, position.y as f32) / context.pixels_per_point();
+    let radius = context.global_style().interaction.interact_radius;
+    context.memory(|memory| {
+        memory.areas().visible_layer_ids().into_iter().any(|layer| {
+            layer.order != egui::Order::Background
+                && memory
+                    .area_rect(layer.id)
+                    .is_some_and(|rect| rect.distance_to_pos(point) <= radius)
+        })
+    })
+}
+
+fn pinch(
+    application: &mut visula::Application,
+    previous: [PhysicalPosition<f64>; 2],
+    current: [PhysicalPosition<f64>; 2],
+) {
+    let spread = |[a, b]: [PhysicalPosition<f64>; 2]| (a.x - b.x).hypot(a.y - b.y);
+    let midpoint = |[a, b]: [PhysicalPosition<f64>; 2]| {
+        PhysicalPosition::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+    };
+    let anchor = ground_position(application, midpoint(previous));
+    let camera = &mut application.camera_controller;
+    if spread(previous) > 0.0 && spread(current) > 0.0 {
+        let zoom = (spread(previous) / spread(current)) as f32;
+        camera.current_transform.distance = (camera.current_transform.distance * zoom)
+            .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+        camera.target_transform.distance = camera.current_transform.distance;
+    }
+    let under_fingers = ground_position(application, midpoint(current));
+    let camera = &mut application.camera_controller;
+    camera.current_transform.center += anchor - under_fingers;
+    camera.target_transform.center = camera.current_transform.center;
 }
 
 impl Neuronify {
@@ -182,7 +239,7 @@ impl Neuronify {
             last_update: Utc::now(),
             fps: 60.0,
             edit_enabled: true,
-            last_touch_points: None,
+            touches: Touches::default(),
             move_origin: None,
             active_entity: None,
             dragging_entity: None,
@@ -192,7 +249,47 @@ impl Neuronify {
         }
     }
 
+    fn press_pointer(&mut self, application: &mut visula::Application, pressed: bool) {
+        self.mouse.left_down = pressed;
+        self.mouse.delta_position = None;
+        self.handle_tool(application);
+    }
+
+    fn move_pointer(
+        &mut self,
+        application: &mut visula::Application,
+        position: PhysicalPosition<f64>,
+    ) {
+        self.mouse.delta_position = self.mouse.position.map(|previous| {
+            PhysicalPosition::new(position.x - previous.x, position.y - previous.y)
+        });
+        self.mouse.position = Some(position);
+        self.handle_tool(application);
+    }
+
+    fn release_tools(&mut self) {
+        self.stimulation_tool = None;
+        self.connection_tool = None;
+        self.previous_creation = None;
+        self.move_origin = None;
+        self.dragging_entity = None;
+        self.resizing_voltmeter = None;
+    }
+
+    fn sync_pointer_with_gui(&mut self, context: &egui::Context) {
+        let held = context.input(|input| input.pointer.any_down() || input.any_touches());
+        if !held {
+            self.touches = Touches::default();
+            self.mouse.left_down = false;
+            self.release_tools();
+        }
+    }
+
     fn handle_tool(&mut self, application: &mut visula::Application) {
+        if !self.mouse.left_down {
+            self.release_tools();
+            return;
+        }
         let Neuronify {
             tool,
             mouse,
@@ -207,39 +304,13 @@ impl Neuronify {
             resizing_voltmeter,
             ..
         } = self;
-        if !mouse.left_down {
-            *stimulation_tool = None;
-            *connection_tool = None;
-            *previous_creation = None;
-            *move_origin = None;
-            *dragging_entity = None;
-            *resizing_voltmeter = None;
-            return;
-        }
         let mouse_physical_position = match mouse.position {
             Some(p) => p,
             None => {
                 return;
             }
         };
-        let ndc_x = 2.0 * mouse_physical_position.x as f32 / application.config.width as f32 - 1.0;
-        let ndc_y = 1.0 - 2.0 * mouse_physical_position.y as f32 / application.config.height as f32;
-        let ray_clip = glam::Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
-        let aspect_ratio = application.config.width as f32 / application.config.height as f32;
-        let inv_projection = application
-            .camera_controller
-            .projection_matrix(aspect_ratio)
-            .inverse();
-
-        let ray_eye = inv_projection * ray_clip;
-        let ray_eye = glam::Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
-        let inv_view_matrix = application.camera_controller.view_matrix().inverse();
-        let ray_world = inv_view_matrix * ray_eye;
-        let ray_world = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
-        let ray_origin = application.camera_controller.position();
-        let t = -ray_origin.y / ray_world.y;
-        let intersection = ray_origin + t * ray_world;
-        let mouse_position = intersection;
+        let mouse_position = ground_position(application, mouse_physical_position);
 
         let minimum_distance = match tool {
             Tool::Axon => MIN_CREATION_DISTANCE_AXON,
@@ -988,6 +1059,7 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
+        self.sync_pointer_with_gui(context);
         if let Some(error) = &self.load_error {
             egui::Window::new("Could not load file").show(context, |ui| {
                 ui.label(error);
@@ -1299,9 +1371,7 @@ impl visula::Simulation for Neuronify {
                     },
                 ..
             } => {
-                self.mouse.left_down = *state == ElementState::Pressed;
-                self.mouse.delta_position = None;
-                self.handle_tool(application);
+                self.press_pointer(application, *state == ElementState::Pressed);
             }
             Event::WindowEvent {
                 event: WindowEvent::ModifiersChanged(state),
@@ -1314,11 +1384,29 @@ impl visula::Simulation for Neuronify {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                self.mouse.delta_position = self.mouse.position.map(|previous| {
-                    PhysicalPosition::new(position.x - previous.x, position.y - previous.y)
-                });
-                self.mouse.position = Some(*position);
-                self.handle_tool(application);
+                self.move_pointer(application, *position);
+            }
+            Event::WindowEvent {
+                event: WindowEvent::Touch(touch),
+                ..
+            } => {
+                if touch.phase == TouchPhase::Started
+                    && gui_takes_press(application, touch.location)
+                {
+                    return;
+                }
+                match self.touches.update(touch) {
+                    TouchGesture::Press(position) => {
+                        self.move_pointer(application, position);
+                        self.press_pointer(application, true);
+                    }
+                    TouchGesture::Drag(position) => self.move_pointer(application, position),
+                    TouchGesture::Release => self.press_pointer(application, false),
+                    TouchGesture::Pinch { previous, current } => {
+                        pinch(application, previous, current)
+                    }
+                    TouchGesture::None => {}
+                }
             }
             Event::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },
