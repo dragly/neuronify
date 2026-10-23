@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use glam::Vec3;
 use hecs::Entity;
@@ -7,6 +7,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::Sphere;
+use crate::rendering::paths::ConnectionPath;
 
 /// How long a soma keeps glowing after it fires, in simulated seconds.
 const FLASH_DURATION: f64 = 0.01;
@@ -14,7 +15,11 @@ const FLASH_DURATION: f64 = 0.01;
 const FLASH_BRIGHTNESS: f32 = 3.0;
 
 /// `radii` comes from `compartment_radii`, so the joints match the cylinders.
-pub fn collect_spheres(world: &hecs::World, radii: &HashMap<Entity, f32>) -> Vec<Sphere> {
+pub fn collect_spheres(
+    world: &hecs::World,
+    radii: &HashMap<Entity, f32>,
+    paths: &BTreeMap<Entity, ConnectionPath>,
+) -> Vec<Sphere> {
     let mut spheres = Vec::new();
 
     let lif_neuron_spheres: Vec<Sphere> = world
@@ -84,19 +89,45 @@ pub fn collect_spheres(world: &hecs::World, radii: &HashMap<Entity, f32>) -> Vec
         })
         .collect();
 
+    let joint_spheres: Vec<Sphere> = paths
+        .values()
+        .flat_map(|path| {
+            let segments = path.points.len().saturating_sub(1);
+            let joints = path
+                .points
+                .iter()
+                .enumerate()
+                .skip(1)
+                .take(segments.saturating_sub(1));
+            joints.map(move |(i, &position)| Sphere {
+                position,
+                color: path
+                    .start_color
+                    .lerp(path.end_color, i as f32 / segments as f32),
+                radius: path.radius,
+                _padding: Default::default(),
+            })
+        })
+        .collect();
+
+    let synapse_spheres: Vec<Sphere> = paths
+        .values()
+        .filter(|path| path.directional)
+        .filter_map(|path| {
+            Some(Sphere {
+                position: *path.points.last()?,
+                color: terminal_color(),
+                radius: 0.5 * NODE_RADIUS,
+                _padding: Default::default(),
+            })
+        })
+        .collect();
+
     let trigger_spheres: Vec<Sphere> = world
-        .query::<(&CurrentSynapse, &Connection)>()
+        .query::<&CurrentSynapse>()
         .iter()
-        .flat_map(|(_, (synapse, connection))| {
-            let start = world
-                .get::<&Position>(connection.from)
-                .map(|p| p.position)
-                .unwrap_or(Vec3::ZERO);
-            let end = world
-                .get::<&Position>(connection.to)
-                .map(|p| p.position)
-                .unwrap_or(Vec3::ZERO);
-            let diff = end - start;
+        .filter_map(|(entity, synapse)| Some((paths.get(&entity)?, synapse)))
+        .flat_map(|(path, synapse)| {
             synapse
                 .triggers
                 .iter()
@@ -108,7 +139,7 @@ pub fn collect_spheres(world: &hecs::World, radii: &HashMap<Entity, f32>) -> Vec
                         1.0
                     };
                     Sphere {
-                        position: start + diff * progress,
+                        position: path.point_at(progress),
                         color: crust(),
                         radius: NODE_RADIUS * TRIGGER_SPHERE_SCALE,
                         _padding: Default::default(),
@@ -122,6 +153,8 @@ pub fn collect_spheres(world: &hecs::World, radii: &HashMap<Entity, f32>) -> Vec
     spheres.extend(current_clamp_spheres.iter());
     spheres.extend(generator_spheres.iter());
     spheres.extend(compartment_spheres.iter());
+    spheres.extend(joint_spheres.iter());
+    spheres.extend(synapse_spheres.iter());
     spheres.extend(trigger_spheres.iter());
 
     spheres

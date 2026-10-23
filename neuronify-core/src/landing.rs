@@ -12,7 +12,6 @@ use hecs::World;
 
 use crate::constants::*;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
-use crate::rendering::colors::terminal_color;
 use crate::rendering::{
     circuit_bounds, collect_connections, collect_scene, collect_voltmeter_traces, Bounds,
     ConnectionData, CylinderData,
@@ -474,28 +473,14 @@ fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds) -> Vec<Shape> {
         .map(|cylinder| cylinder_from_above(cylinder, scale, to_screen))
         .collect();
 
-    for connection in collect_connections(world, &Tool::Select, &None) {
-        let start = connection.position_a;
-        let vector = connection.position_b - start;
-        if vector.length() <= f32::EPSILON {
-            continue;
-        }
-        let end_before_terminal =
-            start + vector - connection.directional * vector.normalize() * NODE_RADIUS * 2.0;
+    for wire in collect_connections(world, &Tool::Select, &None) {
         shapes.push(Shape::line_segment(
-            [to_screen(start), to_screen(end_before_terminal)],
+            [to_screen(wire.position_a), to_screen(wire.position_b)],
             Stroke::new(
-                rendered_line_width(connection.strength, scale),
-                egui_color_from_linear(connection.start_color),
+                rendered_line_width(wire.strength, scale),
+                egui_color_from_linear(wire.start_color),
             ),
         ));
-        if connection.directional > 0.0 {
-            shapes.push(Shape::circle_filled(
-                to_screen(end_before_terminal),
-                0.5 * NODE_RADIUS * scale,
-                egui_color_from_linear(terminal_color()),
-            ));
-        }
     }
 
     shapes.extend(joined_voltmeter_traces(

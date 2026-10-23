@@ -5,8 +5,8 @@ use crate::landing::{LandingChoice, LandingScreen};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
 use crate::rendering::lighting::{configure_lighting, shaded};
 use crate::rendering::{
-    canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, create_floor,
-    ConnectionData, CylinderData, NoteRenderer, Sphere,
+    canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, compartment_radii,
+    connection_paths, create_floor, ConnectionData, CylinderData, NoteRenderer, Sphere,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
@@ -600,6 +600,8 @@ impl Neuronify {
                 for entity in to_delete {
                     world.despawn(entity).unwrap();
                 }
+                // Erase what is drawn, which for most connections is a bent path
+                let paths = connection_paths(world, &compartment_radii(world));
                 let connections_to_delete = world
                     .query::<&Connection>()
                     .with::<&Deletable>()
@@ -609,20 +611,22 @@ impl Neuronify {
                             world.get::<&Position>(connection.from),
                             world.get::<&Position>(connection.to),
                         ) {
-                            let a = from.position;
-                            let b = to.position;
-                            let p = mouse_position;
-                            let ab = b - a;
-                            let ap = p - a;
-                            let t = ap.dot(ab) / ab.dot(ab);
-                            let d = t * ab;
-                            let point_on_line = a + d;
-                            let distance_from_line = p.distance(point_on_line);
-                            if distance_from_line < ERASE_RADIUS && (0.0..=1.0).contains(&t) {
-                                Some(entity)
+                            let near = if let Some(path) = paths.get(&entity) {
+                                path.distance_to(mouse_position)
+                                    .is_some_and(|distance| distance < ERASE_RADIUS)
                             } else {
-                                None
-                            }
+                                let a = from.position;
+                                let b = to.position;
+                                let p = mouse_position;
+                                let ab = b - a;
+                                let ap = p - a;
+                                let t = ap.dot(ab) / ab.dot(ab);
+                                let d = t * ab;
+                                let point_on_line = a + d;
+                                let distance_from_line = p.distance(point_on_line);
+                                distance_from_line < ERASE_RADIUS && (0.0..=1.0).contains(&t)
+                            };
+                            near.then_some(entity)
                         } else {
                             Some(entity)
                         }
