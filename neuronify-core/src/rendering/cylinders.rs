@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use glam::Vec3;
 use hecs::Entity;
@@ -6,6 +6,7 @@ use hecs::Entity;
 use crate::components::*;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::CylinderData;
+use crate::rendering::paths::ConnectionPath;
 
 /// Radius where a process leaves the soma.
 const ROOT_RADIUS: f32 = 0.30;
@@ -43,13 +44,15 @@ pub fn compartment_radii(world: &hecs::World) -> HashMap<Entity, f32> {
         .collect()
 }
 
-/// Tapered tubes for the cable segments between compartments, and from a soma
-/// to its first compartment.
-///
-/// Directional links are axon terminals and stay lines with a synapse marker.
-pub fn collect_cylinders(world: &hecs::World, radii: &HashMap<Entity, f32>) -> Vec<CylinderData> {
+/// Tapered tubes for the cable segments between compartments, from a soma to
+/// its first compartment, and along the paths of all other connections.
+pub fn collect_cylinders(
+    world: &hecs::World,
+    radii: &HashMap<Entity, f32>,
+    paths: &BTreeMap<Entity, ConnectionPath>,
+) -> Vec<CylinderData> {
     let radius = |entity: Entity| radii.get(&entity).copied().unwrap_or(ROOT_RADIUS);
-    world
+    let mut cylinders: Vec<CylinderData> = world
         .query::<&Connection>()
         .with::<&CompartmentCurrent>()
         .iter()
@@ -81,5 +84,21 @@ pub fn collect_cylinders(world: &hecs::World, radii: &HashMap<Entity, f32>) -> V
                 _padding: Default::default(),
             })
         })
-        .collect()
+        .collect();
+    for path in paths.values() {
+        let segments = path.points.len().saturating_sub(1);
+        for (i, w) in path.points.windows(2).enumerate() {
+            cylinders.push(CylinderData {
+                start: w[0],
+                start_radius: path.radius,
+                end: w[1],
+                end_radius: path.radius,
+                color: path
+                    .start_color
+                    .lerp(path.end_color, (i as f32 + 0.5) / segments as f32),
+                _padding: Default::default(),
+            });
+        }
+    }
+    cylinders
 }

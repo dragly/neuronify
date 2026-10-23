@@ -34,7 +34,6 @@ pub const TRIGGER_SPHERE_SCALE: f32 = 0.5;
 
 pub const FHN_FIRE_VOLTAGE: f64 = 1.0;
 
-pub const BEZIER_SEGMENTS: usize = 16;
 pub const BEZIER_BEND_FRACTION: f32 = 0.2;
 
 pub const MIN_CREATION_DISTANCE_AXON: f32 = 2.0 * NODE_RADIUS;
