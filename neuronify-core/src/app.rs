@@ -10,7 +10,6 @@ use chrono::{DateTime, Duration, Utc};
 use glam::Vec3;
 use hecs::Entity;
 use std::cmp::Ordering;
-use std::collections::HashSet;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
@@ -1049,24 +1048,7 @@ impl visula::Simulation for Neuronify {
 
         simulation::stimulate_nearby(world, stimulation_tool);
 
-        let lif_dt = LIF_DT;
-        for _ in 0..self.iterations {
-            simulation::lif_step(world, lif_dt, *time);
-            *time += lif_dt;
-        }
-
-        let recently_fired: HashSet<Entity> = world
-            .query::<&LeakyDynamics>()
-            .iter()
-            .filter(|(_, d)| d.time_since_fire < self.iterations as f64 * lif_dt)
-            .map(|(e, _)| e)
-            .collect();
-
-        for _ in 0..self.iterations {
-            simulation::fhn_step(world, FHN_CDT, &recently_fired);
-            simulation::apply_spatial_forces(world);
-            simulation::integrate_motion(world, PHYSICS_DT);
-        }
+        simulation::step_frame(world, time, self.iterations);
 
         let spheres = collect_spheres(world);
         let mut connections = collect_connections(world, &self.tool, connection_tool);
