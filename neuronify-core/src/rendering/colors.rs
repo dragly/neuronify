@@ -50,6 +50,10 @@ pub fn frame_color() -> Vec3 {
     srgb(80, 80, 100)
 }
 
+pub fn terminal_color() -> Vec3 {
+    Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0)
+}
+
 pub fn neurocolor(neuron_type: &NeuronType, value: f32) -> Vec3 {
     let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
     match *neuron_type {

@@ -1,9 +1,11 @@
 use crate::components::*;
 use crate::constants::*;
+use crate::examples::Example;
+use crate::landing::{LandingChoice, LandingScreen};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
 use crate::rendering::{
-    collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData, NoteRenderer,
-    Sphere,
+    canvas_bounds, collect_connections, collect_spheres, collect_voltmeter_traces, ConnectionData,
+    NoteRenderer, Sphere,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
@@ -51,6 +53,8 @@ pub struct Neuronify {
     pub resizing_voltmeter: Option<(Entity, ResizeCorner)>,
     pub load_error: Option<String>,
     pub note_renderer: NoteRenderer,
+    pub landing: Option<LandingScreen>,
+    pub frame_scene_requested: bool,
 }
 
 #[derive(Debug)]
@@ -96,6 +100,18 @@ fn ground_position(application: &visula::Application, position: PhysicalPosition
     let ray_origin = application.camera_controller.position();
     let t = -ray_origin.y / ray_world.y;
     ray_origin + t * ray_world
+}
+
+fn is_press_scroll_or_touch(event: &Event<CustomEvent>) -> bool {
+    matches!(
+        event,
+        Event::WindowEvent {
+            event: WindowEvent::MouseInput { .. }
+                | WindowEvent::MouseWheel { .. }
+                | WindowEvent::Touch(_),
+            ..
+        }
+    )
 }
 
 fn pan(application: &mut visula::Application, offset: Vec3) {
@@ -147,7 +163,7 @@ impl Neuronify {
         application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
         application.camera_controller.target_transform.forward =
             Vec3::new(0.3, -1.0, 0.0).normalize();
-        application.camera_controller.target_transform.distance = 50.0;
+        application.camera_controller.target_transform.distance = CAMERA_DEFAULT_DISTANCE;
         application.camera_controller.current_transform =
             application.camera_controller.target_transform.clone();
 
@@ -190,13 +206,15 @@ impl Neuronify {
             &SphereGeometry {
                 position: connection_endpoint,
                 radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
-                color: Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0).into(),
+                color: crate::rendering::colors::terminal_color().into(),
             },
             &SphereMaterial::default(),
         )
         .unwrap();
 
         let mut world = hecs::World::new();
+        #[allow(unused_mut)]
+        let mut opened_file_from_command_line = false;
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -213,6 +231,7 @@ impl Neuronify {
                                 sim.edges.len()
                             );
                             crate::legacy::convert::spawn_legacy_simulation(&mut world, &sim);
+                            opened_file_from_command_line = true;
                         }
                         Err(e) => log::error!("Failed to parse legacy file {}: {}", path, e),
                     },
@@ -251,6 +270,8 @@ impl Neuronify {
             resizing_voltmeter: None,
             load_error: None,
             note_renderer: NoteRenderer::new(application),
+            landing: (!opened_file_from_command_line).then(|| LandingScreen::new(false)),
+            frame_scene_requested: opened_file_from_command_line,
         }
     }
 
@@ -985,15 +1006,44 @@ impl Neuronify {
         writer.write_all(&bytes).unwrap();
     }
 
-    pub fn load_legacy_string(&mut self, contents: &str) {
-        match crate::legacy::parse_legacy_nfy(contents) {
-            Ok(sim) => {
-                self.world.clear();
-                self.time = 0.0;
-                crate::legacy::convert::spawn_legacy_simulation(&mut self.world, &sim);
-            }
-            Err(e) => log::error!("Failed to parse legacy file: {}", e),
+    pub fn load_example(&mut self, example: &Example) {
+        match example.spawn() {
+            Ok(world) => self.open_world(world, 0.0),
+            Err(e) => log::error!("Failed to load example {}: {}", example.name, e),
         }
+    }
+
+    pub fn open_world(&mut self, world: hecs::World, time: f64) {
+        self.world = world;
+        self.time = time;
+        self.release_tools();
+        self.active_entity = None;
+        self.landing = None;
+        self.frame_scene_requested = true;
+    }
+
+    fn frame_scene(&self, application: &mut visula::Application) {
+        let camera = &mut application.camera_controller;
+        let (center, distance) = match canvas_bounds(&self.world) {
+            Some(bounds) => {
+                let height_on_screen = bounds.size().x;
+                let width_on_screen = bounds.size().z;
+                let aspect_ratio =
+                    application.config.width as f32 / application.config.height.max(1) as f32;
+                let tangent = (CAMERA_FIELD_OF_VIEW_DEGREES.to_radians() / 2.0).tan();
+                let fit = (height_on_screen / tangent)
+                    .max(width_on_screen / (tangent * aspect_ratio))
+                    / 2.0
+                    * CAMERA_FRAMING_MARGIN;
+                let center = bounds.center();
+                (Vec3::new(center.x, 0.0, center.z), fit)
+            }
+            None => (Vec3::ZERO, CAMERA_DEFAULT_DISTANCE),
+        };
+        camera.target_transform.center = center;
+        camera.target_transform.distance =
+            distance.clamp(CAMERA_DEFAULT_DISTANCE, CAMERA_MAX_DISTANCE);
+        camera.current_transform = camera.target_transform.clone();
     }
 
     pub fn loadfile(&mut self, path: PathBuf) {
@@ -1009,13 +1059,8 @@ impl Neuronify {
 
     /// Replaces the world with a legacy `.nfy` file or a `.neuronify` save file.
     pub fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
-        self.world = crate::serialization::load_from_bytes(bytes)?;
-        self.time = 0.0;
-        self.previous_creation = None;
-        self.connection_tool = None;
-        self.active_entity = None;
-        self.dragging_entity = None;
-        self.resizing_voltmeter = None;
+        let world = crate::serialization::load_from_bytes(bytes)?;
+        self.open_world(world, 0.0);
         Ok(())
     }
 }
@@ -1038,20 +1083,20 @@ impl visula::Simulation for Neuronify {
             }
         }
 
-        let Neuronify {
-            connection_tool,
-            world,
-            time,
-            stimulation_tool,
-            ..
-        } = self;
+        simulation::stimulate_nearby(&mut self.world, &self.stimulation_tool);
+        simulation::step_frame(&mut self.world, &mut self.time, self.iterations);
 
-        simulation::stimulate_nearby(world, stimulation_tool);
+        if let Some(landing) = &mut self.landing {
+            landing.update(self.iterations);
+        }
+        if self.frame_scene_requested {
+            self.frame_scene_requested = false;
+            self.frame_scene(application);
+        }
 
-        simulation::step_frame(world, time, self.iterations);
-
+        let world = &self.world;
         let spheres = collect_spheres(world);
-        let mut connections = collect_connections(world, &self.tool, connection_tool);
+        let mut connections = collect_connections(world, &self.tool, &self.connection_tool);
         connections.extend(collect_voltmeter_traces(world));
 
         self.sphere_buffer
@@ -1086,6 +1131,15 @@ impl visula::Simulation for Neuronify {
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
         self.sync_pointer_with_gui(context);
+        if let Some(landing) = &mut self.landing {
+            match landing.show(context) {
+                Some(LandingChoice::Example { world, time }) => self.open_world(*world, time),
+                Some(LandingChoice::EmptyCanvas) => self.open_world(hecs::World::new(), 0.0),
+                Some(LandingChoice::BackToSimulation) => self.landing = None,
+                None => {}
+            }
+            return;
+        }
         if let Some(error) = &self.load_error {
             egui::Window::new("Could not load file").show(context, |ui| {
                 ui.label(error);
@@ -1094,7 +1148,12 @@ impl visula::Simulation for Neuronify {
         egui::Area::new("edit_button_area".into())
             .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
             .show(context, |ui| {
-                ui.toggle_value(&mut self.edit_enabled, "Edit").clicked();
+                ui.horizontal(|ui| {
+                    if ui.button("Examples").clicked() {
+                        self.landing = Some(LandingScreen::new(true));
+                    }
+                    ui.toggle_value(&mut self.edit_enabled, "Edit");
+                });
             });
         if self.edit_enabled {
             // show_inside needs a &mut Ui, which Simulation::gui does not hand us
@@ -1116,132 +1175,16 @@ impl visula::Simulation for Neuronify {
                         }
                     });
                     ui.menu_button("Examples", |ui| {
-                        ui.menu_button("Tutorial", |ui| {
-                            if ui.button("1 - Intro").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/tutorial_1_intro.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("2 - Circuits").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/tutorial_2_circuits.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("3 - Creation").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/tutorial_3_creation.nfy"
-                                ));
-                                ui.close();
-                            }
-                        });
-                        ui.menu_button("Neurons", |ui| {
-                            if ui.button("Leaky").clicked() {
-                                self.load_legacy_string(include_str!("../examples/leaky.nfy"));
-                                ui.close();
-                            }
-                            if ui.button("Inhibitory").clicked() {
-                                self.load_legacy_string(include_str!("../examples/inhibitory.nfy"));
-                                ui.close();
-                            }
-                            if ui.button("Adaptation").clicked() {
-                                self.load_legacy_string(include_str!("../examples/adaptation.nfy"));
-                                ui.close();
-                            }
-                            if ui.button("Burst").clicked() {
-                                self.load_legacy_string(include_str!("../examples/burst.nfy"));
-                                ui.close();
-                            }
-                        });
-                        ui.menu_button("Circuits", |ui| {
-                            if ui.button("Input Summation").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/input_summation.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Prolonged Activity").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/prolonged_activity.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Disinhibition").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/disinhibition.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Recurrent Inhibition").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/recurrent_inhibition.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Reciprocal Inhibition").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/reciprocal_inhibition.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Lateral Inhibition").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/lateral_inhibition.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Lateral Inhibition 1").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/lateral_inhibition_1.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Lateral Inhibition 2").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/lateral_inhibition_2.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Two Neuron Oscillator").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/two_neuron_oscillator.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Rhythm Transformation").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/rythm_transformation.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Types of Inhibition").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/types_of_inhibition.nfy"
-                                ));
-                                ui.close();
-                            }
-                        });
-                        ui.menu_button("Textbook", |ui| {
-                            if ui.button("IF Response").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/if_response.nfy"
-                                ));
-                                ui.close();
-                            }
-                            if ui.button("Refractory Period").clicked() {
-                                self.load_legacy_string(include_str!(
-                                    "../examples/refractory_period.nfy"
-                                ));
-                                ui.close();
-                            }
-                        });
-                        ui.menu_button("Items", |ui| {
-                            if ui.button("Generators").clicked() {
-                                self.load_legacy_string(include_str!("../examples/generators.nfy"));
-                                ui.close();
-                            }
-                        });
+                        for category in crate::examples::EXAMPLE_CATEGORIES {
+                            ui.menu_button(category.name, |ui| {
+                                for example in category.examples {
+                                    if ui.button(example.name).clicked() {
+                                        self.load_example(example);
+                                        ui.close();
+                                    }
+                                }
+                            });
+                        }
                     });
                 });
             });
@@ -1406,6 +1349,9 @@ impl visula::Simulation for Neuronify {
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
+        if self.landing.is_some() && is_press_scroll_or_touch(event) {
+            return;
+        }
         if let Event::WindowEvent { window_id, .. } = event {
             if &application.window.id() != window_id {
                 return;

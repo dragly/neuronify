@@ -1,7 +1,9 @@
 pub mod app;
 pub mod components;
 pub mod constants;
+pub mod examples;
 pub mod input;
+pub mod landing;
 pub mod legacy;
 pub mod measurement;
 pub mod rendering;
@@ -29,6 +31,9 @@ pub fn run() {
     visula::run(move |application| {
         let mut neuronify = Neuronify::new(application);
         neuronify.edit_enabled = !embedded;
+        if embedded {
+            neuronify.landing = None;
+        }
         neuronify
     });
 }
