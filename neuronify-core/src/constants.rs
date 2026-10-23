@@ -45,3 +45,6 @@ pub const TARGET_FRAME_MS: i64 = 16;
 
 pub const CAMERA_MIN_DISTANCE: f32 = 5.0;
 pub const CAMERA_MAX_DISTANCE: f32 = 200.0;
+pub const CAMERA_DEFAULT_DISTANCE: f32 = 50.0;
+pub const CAMERA_FIELD_OF_VIEW_DEGREES: f32 = 40.0;
+pub const CAMERA_FRAMING_MARGIN: f32 = 1.15;
