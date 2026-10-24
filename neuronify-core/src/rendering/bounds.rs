@@ -1,6 +1,7 @@
 use glam::Vec3;
 
 use crate::components::*;
+use crate::rendering::colors::Theme;
 use crate::rendering::connections::collect_connections;
 use crate::rendering::scene::collect_scene;
 use crate::tools::Tool;
@@ -40,7 +41,8 @@ pub fn canvas_bounds(world: &hecs::World) -> Option<Bounds> {
 
 fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
     let mut points = Vec::new();
-    let scene = collect_scene(world);
+    let palette = Theme::default().palette();
+    let scene = collect_scene(world, &palette);
     for sphere in &scene.spheres {
         points.extend(footprint(sphere.position, sphere.radius));
     }
@@ -48,7 +50,7 @@ fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
         points.extend(footprint(cylinder.start, cylinder.start_radius));
         points.extend(footprint(cylinder.end, cylinder.end_radius));
     }
-    for connection in collect_connections(world, &Tool::Select, &None) {
+    for connection in collect_connections(world, &Tool::Select, &None, &palette) {
         points.push(connection.position_a);
         points.push(connection.position_b);
     }

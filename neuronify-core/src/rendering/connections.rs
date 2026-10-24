@@ -1,9 +1,7 @@
-use glam::Vec3;
-
 use crate::components::*;
 use crate::measurement::voltmeter::Voltmeter;
+use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::ConnectionData;
-use crate::rendering::paths::connection_colors;
 use crate::ConnectionTool;
 use crate::Tool;
 
@@ -14,6 +12,7 @@ pub fn collect_connections(
     world: &hecs::World,
     tool: &Tool,
     connection_tool: &Option<ConnectionTool>,
+    palette: &Palette,
 ) -> Vec<ConnectionData> {
     let mut connections: Vec<ConnectionData> = world
         .query::<&Connection>()
@@ -22,14 +21,13 @@ pub fn collect_connections(
         .filter_map(|(_, connection)| {
             let start = world.get::<&Position>(connection.from).ok()?.position;
             let end = world.get::<&Position>(connection.to).ok()?.position;
-            let (start_color, end_color) = connection_colors(world, connection.from, connection.to);
             Some(ConnectionData {
                 position_a: start,
                 position_b: end,
                 strength: connection.strength as f32,
                 directional: 0.0,
-                start_color,
-                end_color,
+                start_color: palette.neutral,
+                end_color: palette.neutral,
                 _padding: Default::default(),
             })
         })
@@ -42,8 +40,8 @@ pub fn collect_connections(
                 position_b: connection.end,
                 strength: 1.0,
                 directional: 1.0,
-                start_color: Vec3::new(0.8, 0.8, 0.8),
-                end_color: Vec3::new(0.8, 0.8, 0.8),
+                start_color: palette.neutral,
+                end_color: palette.neutral,
                 _padding: Default::default(),
             });
         }

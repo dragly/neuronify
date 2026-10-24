@@ -14,17 +14,46 @@ use crate::constants::*;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
 use crate::rendering::{
     circuit_bounds, collect_connections, collect_scene, collect_voltmeter_traces, Bounds,
-    ConnectionData, CylinderData,
+    ConnectionData, CylinderData, Palette, Theme,
 };
 use crate::simulation;
 use crate::tools::Tool;
 
-const BACKGROUND: Color32 = Color32::from_rgb(30, 30, 46);
-const SURFACE: Color32 = Color32::from_rgb(49, 50, 68);
-const SURFACE_HOVERED: Color32 = Color32::from_rgb(69, 71, 90);
-const ACCENT: Color32 = Color32::from_rgb(137, 180, 250);
-const TEXT: Color32 = Color32::from_rgb(205, 214, 244);
-const SUBTEXT: Color32 = Color32::from_rgb(166, 173, 200);
+struct Colors {
+    background: Color32,
+    surface: Color32,
+    surface_hovered: Color32,
+    accent: Color32,
+    text: Color32,
+    subtext: Color32,
+}
+
+const DARK: Colors = Colors {
+    background: Color32::from_rgb(30, 30, 46),
+    surface: Color32::from_rgb(49, 50, 68),
+    surface_hovered: Color32::from_rgb(69, 71, 90),
+    accent: Color32::from_rgb(137, 180, 250),
+    text: Color32::from_rgb(205, 214, 244),
+    subtext: Color32::from_rgb(166, 173, 200),
+};
+
+const LIGHT: Colors = Colors {
+    background: Color32::from_rgb(236, 239, 245),
+    surface: Color32::from_rgb(255, 255, 255),
+    surface_hovered: Color32::from_rgb(246, 248, 253),
+    accent: Color32::from_rgb(30, 102, 245),
+    text: Color32::from_rgb(76, 79, 105),
+    subtext: Color32::from_rgb(92, 95, 119),
+};
+
+impl Colors {
+    fn of(theme: Theme) -> &'static Colors {
+        match theme {
+            Theme::Dark => &DARK,
+            Theme::Light => &LIGHT,
+        }
+    }
+}
 
 const MAX_CONTENT_WIDTH: f32 = 1100.0;
 const PAGE_MARGIN: f32 = 16.0;
@@ -109,8 +138,15 @@ impl Preview {
 
 struct StillDrawing {
     size_in_pixels: [usize; 2],
+    theme: Theme,
     texture: TextureHandle,
     unfinished: Option<UnfinishedDrawing>,
+}
+
+impl StillDrawing {
+    fn is_for(&self, size_in_pixels: [usize; 2], theme: Theme) -> bool {
+        self.size_in_pixels == size_in_pixels && self.theme == theme
+    }
 }
 
 struct UnfinishedDrawing {
@@ -133,6 +169,7 @@ enum Picked {
 pub struct LandingScreen {
     previews_by_category: Vec<Vec<Preview>>,
     can_go_back: bool,
+    theme: Theme,
     still_drawing_deadline: Option<DateTime<Utc>>,
 }
 
@@ -145,6 +182,7 @@ impl LandingScreen {
         LandingScreen {
             previews_by_category,
             can_go_back,
+            theme: Theme::default(),
             still_drawing_deadline: None,
         }
     }
@@ -163,13 +201,14 @@ impl LandingScreen {
         }
     }
 
-    pub fn show(&mut self, context: &egui::Context) -> Option<LandingChoice> {
+    pub fn show(&mut self, context: &egui::Context, theme: Theme) -> Option<LandingChoice> {
         let mut picked = None;
+        self.theme = theme;
         self.still_drawing_deadline =
             Some(Utc::now() + Duration::microseconds(STILL_DRAWING_MICROSECONDS_PER_FRAME));
         #[allow(deprecated)]
         egui::CentralPanel::default()
-            .frame(egui::Frame::NONE.fill(BACKGROUND))
+            .frame(egui::Frame::NONE.fill(Colors::of(theme).background))
             .show(context, |ui| {
                 ScrollArea::vertical()
                     .auto_shrink([false, false])
@@ -202,16 +241,19 @@ impl LandingScreen {
     }
 
     fn contents(&mut self, ui: &mut Ui, width: f32) -> Option<Picked> {
+        let colors = Colors::of(self.theme);
         let mut picked = None;
         ui.add_space(40.0);
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Neuronify").size(34.0).color(TEXT));
+            ui.label(RichText::new("Neuronify").size(34.0).color(colors.text));
             if self.can_go_back {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     let button = egui::Button::new(
-                        RichText::new("Back to simulation").size(15.0).color(TEXT),
+                        RichText::new("Back to simulation")
+                            .size(15.0)
+                            .color(colors.text),
                     )
-                    .fill(SURFACE)
+                    .fill(colors.surface)
                     .corner_radius(CARD_RADIUS)
                     .min_size(vec2(0.0, 36.0));
                     if ui.add(button).clicked() {
@@ -227,12 +269,12 @@ impl LandingScreen {
                  Open an example below, or start from an empty canvas.",
             )
             .size(16.0)
-            .color(SUBTEXT),
+            .color(colors.subtext),
         );
 
         for (category_index, category) in EXAMPLE_CATEGORIES.iter().enumerate() {
             ui.add_space(32.0);
-            ui.label(RichText::new(category.name).size(20.0).color(TEXT));
+            ui.label(RichText::new(category.name).size(20.0).color(colors.text));
             ui.add_space(12.0);
             let mut cards = Vec::new();
             if category_index == 0 {
@@ -258,13 +300,19 @@ impl LandingScreen {
                 (example.name, example.description)
             }
         };
+        let colors = Colors::of(self.theme);
         let painter = ui.painter();
         [
-            painter.layout(name.to_owned(), FontId::proportional(16.0), TEXT, width),
+            painter.layout(
+                name.to_owned(),
+                FontId::proportional(16.0),
+                colors.text,
+                width,
+            ),
             painter.layout(
                 description.to_owned(),
                 FontId::proportional(13.5),
-                SUBTEXT,
+                colors.subtext,
                 width,
             ),
         ]
@@ -281,6 +329,8 @@ impl LandingScreen {
         let card_width = (width - CARD_GAP * (columns - 1) as f32) / columns as f32;
         let text_width = card_width - 2.0 * CARD_PADDING;
         let thumbnail_size = vec2(text_width, (text_width * THUMBNAIL_ASPECT).round());
+        let theme = self.theme;
+        let colors = Colors::of(theme);
         let mut clicked = None;
         for row in cards.chunks(columns) {
             let texts: Vec<[Arc<Galley>; 2]> = row
@@ -312,12 +362,12 @@ impl LandingScreen {
                         rect,
                         CARD_RADIUS,
                         if highlighted {
-                            SURFACE_HOVERED
+                            colors.surface_hovered
                         } else {
-                            SURFACE
+                            colors.surface
                         },
                         if highlighted {
-                            Stroke::new(1.5_f32, ACCENT)
+                            Stroke::new(1.5_f32, colors.accent)
                         } else {
                             Stroke::NONE
                         },
@@ -327,20 +377,26 @@ impl LandingScreen {
                         rect.min + vec2(CARD_PADDING, CARD_PADDING),
                         thumbnail_size,
                     );
-                    painter.rect_filled(thumbnail, THUMBNAIL_RADIUS, BACKGROUND);
+                    painter.rect_filled(thumbnail, THUMBNAIL_RADIUS, colors.background);
                     let thumbnail_painter = ui.painter_at(thumbnail);
                     match card {
-                        Card::EmptyCanvas => paint_plus(&thumbnail_painter, thumbnail),
+                        Card::EmptyCanvas => {
+                            paint_plus(&thumbnail_painter, thumbnail, colors.subtext)
+                        }
                         Card::Preview(index) => {
                             let preview = &mut self.previews_by_category[category][index];
                             match preview.mode {
-                                PreviewMode::Live => {
-                                    paint_live_preview(&thumbnail_painter, thumbnail, preview)
-                                }
+                                PreviewMode::Live => paint_live_preview(
+                                    &thumbnail_painter,
+                                    thumbnail,
+                                    preview,
+                                    &theme.palette(),
+                                ),
                                 PreviewMode::Still => paint_still_preview(
                                     &thumbnail_painter,
                                     thumbnail,
                                     preview,
+                                    theme,
                                     &mut self.still_drawing_deadline,
                                 ),
                             }
@@ -352,8 +408,8 @@ impl LandingScreen {
                     );
                     let description_position = name_position + vec2(0.0, name.size().y + TITLE_GAP);
                     let label = name.text().to_owned();
-                    painter.galley(name_position, name, TEXT);
-                    painter.galley(description_position, description, SUBTEXT);
+                    painter.galley(name_position, name, colors.text);
+                    painter.galley(description_position, description, colors.subtext);
                     response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &label));
                     if response.on_hover_cursor(CursorIcon::PointingHand).clicked() {
                         clicked = Some(card);
@@ -374,7 +430,12 @@ fn rendered_line_width(strength: f32, scale: f32) -> f32 {
     (strength * CONNECTION_WIDTH_PER_STRENGTH * scale).max(MIN_LINE_WIDTH)
 }
 
-fn paint_live_preview(painter: &Painter, thumbnail: Rect, preview: &mut Preview) {
+fn paint_live_preview(
+    painter: &Painter,
+    thumbnail: Rect,
+    preview: &mut Preview,
+    palette: &Palette,
+) {
     let Some(bounds) = &preview.bounds else {
         return;
     };
@@ -391,6 +452,7 @@ fn paint_live_preview(painter: &Painter, thumbnail: Rect, preview: &mut Preview)
             thumbnail.shrink(THUMBNAIL_PADDING),
             &preview.world,
             bounds,
+            palette,
         ));
     }
 }
@@ -399,6 +461,7 @@ fn paint_still_preview(
     painter: &Painter,
     thumbnail: Rect,
     preview: &mut Preview,
+    theme: Theme,
     still_drawing_deadline: &mut Option<DateTime<Utc>>,
 ) {
     let Some(bounds) = &preview.bounds else {
@@ -408,18 +471,18 @@ fn paint_still_preview(
     let pixels = (thumbnail.size() * pixels_per_point).round();
     let size_in_pixels = [pixels.x as usize, pixels.y as usize];
     let finished = preview.still_drawing.as_ref().is_some_and(|drawing| {
-        drawing.size_in_pixels == size_in_pixels && drawing.unfinished.is_none()
+        drawing.is_for(size_in_pixels, theme) && drawing.unfinished.is_none()
     });
     if let Some(deadline) = (!finished).then(|| still_drawing_deadline.take()).flatten() {
         if preview
             .still_drawing
             .as_ref()
-            .is_none_or(|drawing| drawing.size_in_pixels != size_in_pixels)
+            .is_none_or(|drawing| !drawing.is_for(size_in_pixels, theme))
         {
             let area = Rect::from_min_size(Pos2::ZERO, thumbnail.size()).shrink(THUMBNAIL_PADDING);
             let unfinished = UnfinishedDrawing {
                 mesh_in_pixels: tessellate_untextured_in_pixels(
-                    top_down_shapes(area, &preview.world, bounds),
+                    top_down_shapes(area, &preview.world, bounds, &theme.palette()),
                     pixels_per_point,
                 ),
                 next_triangle: 0,
@@ -432,6 +495,7 @@ fn paint_still_preview(
             );
             preview.still_drawing = Some(StillDrawing {
                 size_in_pixels,
+                theme,
                 texture,
                 unfinished: Some(unfinished),
             });
@@ -460,20 +524,20 @@ fn paint_still_preview(
     }
 }
 
-fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds) -> Vec<Shape> {
+fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds, palette: &Palette) -> Vec<Shape> {
     let size = bounds.size();
     let scale = (area.width() / size.z.max(THUMBNAIL_MIN_CANVAS_EXTENT))
         .min(area.height() / size.x.max(THUMBNAIL_MIN_CANVAS_EXTENT));
     let center = bounds.center();
     let to_screen = |p: Vec3| area.center() + vec2(p.z - center.z, center.x - p.x) * scale;
-    let scene = collect_scene(world);
+    let scene = collect_scene(world, palette);
     let mut shapes: Vec<Shape> = scene
         .cylinders
         .iter()
         .map(|cylinder| cylinder_from_above(cylinder, scale, to_screen))
         .collect();
 
-    for wire in collect_connections(world, &Tool::Select, &None) {
+    for wire in collect_connections(world, &Tool::Select, &None, palette) {
         shapes.push(Shape::line_segment(
             [to_screen(wire.position_a), to_screen(wire.position_b)],
             Stroke::new(
@@ -670,10 +734,10 @@ fn edge_crossing_at_row(p: Vec2, q: Vec2, y: f32) -> Option<f32> {
     (!horizontal && spans_row).then(|| p.x + (y - p.y) * (q.x - p.x) / (q.y - p.y))
 }
 
-fn paint_plus(painter: &Painter, area: Rect) {
+fn paint_plus(painter: &Painter, area: Rect, color: Color32) {
     let center = area.center();
     let arm = area.height() * 0.15;
-    let stroke = Stroke::new(2.0_f32, SUBTEXT);
+    let stroke = Stroke::new(2.0_f32, color);
     painter.line_segment([center - vec2(arm, 0.0), center + vec2(arm, 0.0)], stroke);
     painter.line_segment([center - vec2(0.0, arm), center + vec2(0.0, arm)], stroke);
 }
@@ -699,7 +763,7 @@ mod tests {
         events: Vec<Event>,
         screen: Vec2,
     ) -> (egui::FullOutput, Option<LandingChoice>) {
-        run_at(context, landing, events, screen, 0.0)
+        run_at(context, landing, events, screen, 0.0, Theme::Dark)
     }
 
     fn run_at(
@@ -708,6 +772,7 @@ mod tests {
         events: Vec<Event>,
         screen: Vec2,
         time: f64,
+        theme: Theme,
     ) -> (egui::FullOutput, Option<LandingChoice>) {
         let input = RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, screen)),
@@ -716,7 +781,7 @@ mod tests {
             ..Default::default()
         };
         let mut choice = None;
-        let output = context.run_ui(input, |ui| choice = landing.show(ui.ctx()));
+        let output = context.run_ui(input, |ui| choice = landing.show(ui.ctx(), theme));
         (output, choice)
     }
 
@@ -813,7 +878,12 @@ mod tests {
     fn unfinished_drawing(world: &World, size: Vec2, pixels_per_point: f32) -> UnfinishedDrawing {
         let pixels = size * pixels_per_point;
         let area = Rect::from_min_size(Pos2::ZERO, size).shrink(THUMBNAIL_PADDING);
-        let shapes = top_down_shapes(area, world, &circuit_bounds(world).unwrap());
+        let shapes = top_down_shapes(
+            area,
+            world,
+            &circuit_bounds(world).unwrap(),
+            &Theme::Dark.palette(),
+        );
         UnfinishedDrawing {
             mesh_in_pixels: tessellate_untextured_in_pixels(shapes, pixels_per_point),
             next_triangle: 0,
@@ -837,7 +907,7 @@ mod tests {
             |point: Pos2| image.pixels[(point.y * 2.0) as usize * 400 + (point.x * 2.0) as usize];
         let resting = egui_color_from_linear(colors::blue());
         let bounds = circuit_bounds(&world).unwrap();
-        for shape in top_down_shapes(area, &world, &bounds) {
+        for shape in top_down_shapes(area, &world, &bounds, &Theme::Dark.palette()) {
             if let Shape::Circle(circle) = shape {
                 assert_eq!(circle.fill, resting);
                 let drawn = pixel(circle.center);
@@ -874,6 +944,40 @@ mod tests {
     }
 
     #[test]
+    fn follows_the_theme() {
+        let screen = vec2(1280.0, 800.0);
+        for theme in [Theme::Dark, Theme::Light] {
+            let context = egui::Context::default();
+            let mut landing = LandingScreen::new(false);
+            let (output, _) = run_at(&context, &mut landing, vec![], screen, 0.0, theme);
+            let background = Colors::of(theme).background;
+            assert!(output.shapes.iter().any(|clipped| matches!(
+                &clipped.shape,
+                Shape::Rect(rect) if rect.fill == background
+            )));
+        }
+    }
+
+    #[test]
+    fn still_previews_are_drawn_again_when_the_theme_changes() {
+        let context = egui::Context::default();
+        let mut landing = LandingScreen::new(false);
+        landing.previews_by_category[0][0].mode = PreviewMode::Still;
+        for theme in [Theme::Dark, Theme::Light] {
+            run_at(
+                &context,
+                &mut landing,
+                vec![],
+                vec2(1280.0, 800.0),
+                0.0,
+                theme,
+            );
+            let preview = &landing.previews_by_category[0][0];
+            assert_eq!(preview.still_drawing.as_ref().unwrap().theme, theme);
+        }
+    }
+
+    #[test]
     fn live_previews_are_hidden_while_warming_up_and_then_fade_in() {
         let context = egui::Context::default();
         let mut landing = LandingScreen::new(false);
@@ -892,7 +996,15 @@ mod tests {
         let mut next_frame = |landing: &mut LandingScreen| {
             landing.update(4);
             frame += 1;
-            run_at(&context, landing, vec![], screen, frame as f64 / 60.0).0
+            run_at(
+                &context,
+                landing,
+                vec![],
+                screen,
+                frame as f64 / 60.0,
+                Theme::Dark,
+            )
+            .0
         };
 
         let output = next_frame(&mut landing);
