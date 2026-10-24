@@ -68,7 +68,12 @@ pub(crate) fn is_drawn_as_path(
         && (connection.directional || world.get::<&CompartmentCurrent>(entity).is_err())
 }
 
-pub(crate) fn connection_colors(world: &hecs::World, from: Entity, to: Entity) -> (Vec3, Vec3) {
+fn connection_colors(
+    world: &hecs::World,
+    from: Entity,
+    to: Entity,
+    palette: &Palette,
+) -> (Vec3, Vec3) {
     let value = |target: Entity| -> f32 {
         if let Ok(compartment) = world.get::<&Compartment>(target) {
             ((compartment.voltage + 50.0) / 200.0) as f32
@@ -93,11 +98,11 @@ pub(crate) fn connection_colors(world: &hecs::World, from: Entity, to: Entity) -
         (orange(), orange())
     } else if let Ok(neuron_type) = world.get::<&NeuronType>(from) {
         (
-            neurocolor(&neuron_type, start_value),
-            neurocolor(&neuron_type, end_value),
+            palette.neurocolor(&neuron_type, start_value),
+            palette.neurocolor(&neuron_type, end_value),
         )
     } else {
-        (crust(), crust())
+        (palette.neutral, palette.neutral)
     }
 }
 
@@ -136,6 +141,7 @@ fn bent_line(start: Vec3, end: Vec3, bend: f32, trim: f32) -> Vec<Vec3> {
 pub fn connection_paths(
     world: &hecs::World,
     radii: &HashMap<Entity, f32>,
+    palette: &Palette,
 ) -> BTreeMap<Entity, ConnectionPath> {
     let pairs: HashSet<(Entity, Entity)> = world
         .query::<&Connection>()
@@ -168,7 +174,8 @@ pub fn connection_paths(
                 Some(&radius) if from_compartment => radius,
                 _ => (CONNECTION_RADIUS * connection.strength as f32).max(0.05),
             };
-            let (start_color, end_color) = connection_colors(world, connection.from, connection.to);
+            let (start_color, end_color) =
+                connection_colors(world, connection.from, connection.to, palette);
             Some((
                 entity,
                 ConnectionPath {

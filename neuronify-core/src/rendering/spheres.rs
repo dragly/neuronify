@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
 
-use glam::Vec3;
 use hecs::Entity;
 
 use crate::components::*;
@@ -19,6 +18,7 @@ pub fn collect_spheres(
     world: &hecs::World,
     radii: &HashMap<Entity, f32>,
     paths: &BTreeMap<Entity, ConnectionPath>,
+    palette: &Palette,
 ) -> Vec<Sphere> {
     let mut spheres = Vec::new();
 
@@ -29,17 +29,14 @@ pub fn collect_spheres(
             let value = ((dynamics.voltage - neuron.resting_potential)
                 / (neuron.threshold - neuron.resting_potential))
                 .clamp(0.0, 1.0) as f32;
-            let is_inhibitory = world.get::<&Inhibitory>(entity).is_ok();
-            let color = if is_inhibitory {
-                red().lerp(red().lerp(mantle(), VOLTAGE_TINT), value)
+            let neuron_type = if world.get::<&Inhibitory>(entity).is_ok() {
+                NeuronType::Inhibitory
             } else {
-                blue().lerp(blue().lerp(base(), VOLTAGE_TINT), value)
+                NeuronType::Excitatory
             };
+            let color = palette.soma(&neuron_type, value);
             let remaining = (1.0 - dynamics.time_since_fire / FLASH_DURATION).max(0.0) as f32;
-            let color = color.lerp(
-                Vec3::new(1.0, 1.0, 0.55) * FLASH_BRIGHTNESS,
-                remaining * remaining,
-            );
+            let color = color.lerp(palette.flash * FLASH_BRIGHTNESS, remaining * remaining);
             Sphere {
                 position: position.position,
                 color,
@@ -79,7 +76,7 @@ pub fn collect_spheres(
             let value = ((compartment.voltage + 50.0) / 200.0) as f32;
             Sphere {
                 position: position.position,
-                color: neurocolor(neuron_type, value),
+                color: palette.neurocolor(neuron_type, value),
                 radius: radii
                     .get(&entity)
                     .copied()
@@ -140,7 +137,7 @@ pub fn collect_spheres(
                     };
                     Sphere {
                         position: path.point_at(progress),
-                        color: crust(),
+                        color: palette.spike,
                         radius: NODE_RADIUS * TRIGGER_SPHERE_SCALE,
                         _padding: Default::default(),
                     }

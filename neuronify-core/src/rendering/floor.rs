@@ -3,12 +3,12 @@ use visula::primitives::mesh_primitive::MeshVertexAttributes;
 use visula::{Expression, MeshGeometry, MeshMaterial, MeshPipeline, RenderingDescriptor};
 
 use crate::constants::*;
-use crate::rendering::colors::floor_color;
 
 /// A plane under the network that catches the shadows.
 pub fn create_floor(
     rendering_descriptor: &RenderingDescriptor,
     device: &wgpu::Device,
+    color: Vec3,
 ) -> Result<MeshPipeline, visula_core::ShaderError> {
     let mut floor = MeshPipeline::new(
         rendering_descriptor,
@@ -19,7 +19,7 @@ pub fn create_floor(
         },
         // Plain lighting, since `shaded` loses the shadows on meshes in visula aa83a2b
         &MeshMaterial {
-            color: Expression::from(floor_color().extend(1.0)).directional_lit(),
+            color: Expression::from(color.extend(1.0)).directional_lit(),
         },
     )?;
     let corner = |x: f32, z: f32| MeshVertexAttributes {

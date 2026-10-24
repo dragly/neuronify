@@ -1,3 +1,4 @@
+use crate::rendering::colors::Palette;
 use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
 use crate::rendering::gpu_types::{CylinderData, Sphere};
 use crate::rendering::paths::connection_paths;
@@ -9,11 +10,11 @@ pub struct Scene {
     pub cylinders: Vec<CylinderData>,
 }
 
-pub fn collect_scene(world: &hecs::World) -> Scene {
+pub fn collect_scene(world: &hecs::World, palette: &Palette) -> Scene {
     let radii = compartment_radii(world);
-    let paths = connection_paths(world, &radii);
+    let paths = connection_paths(world, &radii, palette);
     Scene {
-        spheres: collect_spheres(world, &radii, &paths),
-        cylinders: collect_cylinders(world, &radii, &paths),
+        spheres: collect_spheres(world, &radii, &paths, palette),
+        cylinders: collect_cylinders(world, &radii, &paths, palette),
     }
 }

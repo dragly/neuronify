@@ -4,7 +4,7 @@ use glam::Vec3;
 use hecs::Entity;
 
 use crate::components::*;
-use crate::rendering::colors::*;
+use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::CylinderData;
 use crate::rendering::paths::ConnectionPath;
 
@@ -50,6 +50,7 @@ pub fn collect_cylinders(
     world: &hecs::World,
     radii: &HashMap<Entity, f32>,
     paths: &BTreeMap<Entity, ConnectionPath>,
+    palette: &Palette,
 ) -> Vec<CylinderData> {
     let radius = |entity: Entity| radii.get(&entity).copied().unwrap_or(ROOT_RADIUS);
     let mut cylinders: Vec<CylinderData> = world
@@ -69,11 +70,11 @@ pub fn collect_cylinders(
                 world.get::<&Compartment>(colored_by),
                 world.get::<&NeuronType>(colored_by),
             ) {
-                (Ok(compartment), Ok(neuron_type)) => neurocolor(
+                (Ok(compartment), Ok(neuron_type)) => palette.neurocolor(
                     &neuron_type,
                     ((compartment.voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32,
                 ),
-                _ => crust(),
+                _ => palette.neutral,
             };
             Some(CylinderData {
                 start,

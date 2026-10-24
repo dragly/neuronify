@@ -3,10 +3,10 @@ use crate::constants::*;
 use crate::examples::Example;
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
-use crate::rendering::lighting::{configure_lighting, shaded};
+use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::{
     canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, compartment_radii,
-    connection_paths, create_floor, ConnectionData, CylinderData, NoteRenderer, Sphere,
+    connection_paths, create_floor, ConnectionData, CylinderData, NoteRenderer, Sphere, Theme,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
@@ -31,6 +31,9 @@ use crate::simulation;
 
 pub struct Neuronify {
     pub tool: Tool,
+    pub theme: Theme,
+    /// The theme the floor and lighting were last set up for
+    applied_theme: Theme,
     pub previous_creation: Option<PreviousCreation>,
     pub connection_tool: Option<ConnectionTool>,
     pub stimulation_tool: Option<StimulationTool>,
@@ -240,9 +243,18 @@ impl Neuronify {
         )
         .unwrap();
 
-        let floor = create_floor(&application.rendering_descriptor(), &application.device).unwrap();
+        let theme = match application.window.theme() {
+            Some(visula::winit::window::Theme::Light) => Theme::Light,
+            _ => Theme::Dark,
+        };
+        let floor = create_floor(
+            &application.rendering_descriptor(),
+            &application.device,
+            theme.palette().floor,
+        )
+        .unwrap();
 
-        configure_lighting(application);
+        configure_lighting(application, theme);
 
         let mut world = hecs::World::new();
         #[allow(unused_mut)]
@@ -282,6 +294,8 @@ impl Neuronify {
             cylinder_buffer,
             floor,
             tool: Tool::Select,
+            theme,
+            applied_theme: theme,
             previous_creation: None,
             connection_tool: None,
             stimulation_tool: None,
@@ -351,6 +365,7 @@ impl Neuronify {
             self.release_tools();
             return;
         }
+        let palette = self.theme.palette();
         let Neuronify {
             tool,
             mouse,
@@ -601,7 +616,7 @@ impl Neuronify {
                     world.despawn(entity).unwrap();
                 }
                 // Erase what is drawn, which for most connections is a bent path
-                let paths = connection_paths(world, &compartment_radii(world));
+                let paths = connection_paths(world, &compartment_radii(world), &palette);
                 let connections_to_delete = world
                     .query::<&Connection>()
                     .with::<&Deletable>()
@@ -1122,6 +1137,17 @@ impl visula::Simulation for Neuronify {
             }
         }
 
+        if self.applied_theme != self.theme {
+            self.floor = create_floor(
+                &application.rendering_descriptor(),
+                &application.device,
+                self.theme.palette().floor,
+            )
+            .unwrap();
+            set_theme_lighting(application, self.theme);
+            self.applied_theme = self.theme;
+        }
+
         simulation::stimulate_nearby(&mut self.world, &self.stimulation_tool);
         simulation::step_frame(&mut self.world, &mut self.time, self.iterations);
 
@@ -1140,8 +1166,10 @@ impl visula::Simulation for Neuronify {
         application.light.shadow_extent = (camera.distance * 2.0).clamp(50.0, 625.0);
 
         let world = &self.world;
-        let scene = collect_scene(world);
-        let mut connections = collect_connections(world, &self.tool, &self.connection_tool);
+        let palette = self.theme.palette();
+        let scene = collect_scene(world, &palette);
+        let mut connections =
+            collect_connections(world, &self.tool, &self.connection_tool, &palette);
         connections.extend(collect_voltmeter_traces(world));
 
         self.sphere_buffer
@@ -1185,9 +1213,13 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
+        context.set_theme(match self.theme {
+            Theme::Dark => egui::Theme::Dark,
+            Theme::Light => egui::Theme::Light,
+        });
         self.sync_pointer_with_gui(context);
         if let Some(landing) = &mut self.landing {
-            match landing.show(context) {
+            match landing.show(context, self.theme) {
                 Some(LandingChoice::Example { world, time }) => self.open_world(*world, time),
                 Some(LandingChoice::EmptyCanvas) => self.open_world(hecs::World::new(), 0.0),
                 Some(LandingChoice::BackToSimulation) => self.landing = None,
@@ -1256,6 +1288,11 @@ impl visula::Simulation for Neuronify {
                 ui.label(format!("FPS: {:.0}", self.fps));
                 ui.label("Simulation speed");
                 ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
+                ui.horizontal(|ui| {
+                    ui.label("Theme");
+                    ui.selectable_value(&mut self.theme, Theme::Dark, "Dark");
+                    ui.selectable_value(&mut self.theme, Theme::Light, "Light");
+                });
             });
             if let Some(active_entity) = self.active_entity {
                 egui::Window::new("Selection").show(context, |ui| {
