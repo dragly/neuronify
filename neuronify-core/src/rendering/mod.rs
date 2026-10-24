@@ -8,6 +8,7 @@ pub mod lighting;
 pub mod notes;
 pub mod paths;
 pub mod scene;
+pub mod shapes;
 pub mod spheres;
 pub mod voltmeter;
 
@@ -16,7 +17,7 @@ pub use colors::{srgb, srgb_component, Palette, Theme};
 pub use connections::collect_connections;
 pub use cylinders::{collect_cylinders, compartment_radii};
 pub use floor::create_floor;
-pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere};
+pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere, TorusData};
 pub use notes::NoteRenderer;
 pub use paths::{connection_paths, ConnectionPath};
 pub use scene::{collect_scene, Scene};

@@ -50,6 +50,12 @@ fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
         points.extend(footprint(cylinder.start, cylinder.start_radius));
         points.extend(footprint(cylinder.end, cylinder.end_radius));
     }
+    for ring in &scene.rings {
+        points.extend(footprint(
+            ring.position,
+            ring.major_radius + ring.minor_radius,
+        ));
+    }
     for connection in collect_connections(world, &Tool::Select, &None, &palette) {
         points.push(connection.position_a);
         points.push(connection.position_b);
@@ -94,7 +100,7 @@ fn voltmeter_frame_corners(position: Vec3, size: &VoltmeterSize) -> [Vec3; 2] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::NODE_RADIUS;
+    use crate::rendering::shapes::PAD_RADIUS;
 
     fn world_with_clamp_and_voltmeter() -> hecs::World {
         let mut world = hecs::World::new();
@@ -126,7 +132,7 @@ mod tests {
     #[test]
     fn circuit_bounds_cover_neurons_and_voltmeters() {
         let bounds = circuit_bounds(&world_with_clamp_and_voltmeter()).unwrap();
-        assert_eq!(bounds.min, Vec3::new(-NODE_RADIUS, 0.0, -NODE_RADIUS));
+        assert_eq!(bounds.min, Vec3::new(-PAD_RADIUS, 0.0, -PAD_RADIUS));
         assert_eq!(bounds.max, Vec3::new(12.0, 0.0, 13.0));
     }
 
@@ -150,7 +156,7 @@ mod tests {
             circuit_bounds(&world_with_clamp_and_voltmeter())
         );
         let bounds = canvas_bounds(&world).unwrap();
-        assert_eq!(bounds.min, Vec3::new(-12.0, 0.0, -NODE_RADIUS));
+        assert_eq!(bounds.min, Vec3::new(-12.0, 0.0, -PAD_RADIUS));
         assert_eq!(bounds.max, Vec3::new(12.0, 0.0, 23.0));
     }
 }

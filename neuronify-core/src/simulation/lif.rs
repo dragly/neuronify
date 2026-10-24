@@ -21,6 +21,13 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         }
     }
 
+    for (_, dynamics) in world
+        .query_mut::<&mut GeneratorDynamics>()
+        .with::<&TouchSensor>()
+    {
+        dynamics.time_since_fire += dt;
+    }
+
     {
         let mut rng = rand::thread_rng();
         let poisson_entities: Vec<hecs::Entity> = world

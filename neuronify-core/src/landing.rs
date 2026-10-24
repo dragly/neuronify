@@ -536,6 +536,16 @@ fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds, palette: &Palette
         .iter()
         .map(|cylinder| cylinder_from_above(cylinder, scale, to_screen))
         .collect();
+    for ring in &scene.rings {
+        shapes.push(Shape::circle_stroke(
+            to_screen(ring.position),
+            ring.major_radius * scale,
+            Stroke::new(
+                2.0 * ring.minor_radius * scale,
+                egui_color_from_linear(ring.color),
+            ),
+        ));
+    }
 
     for wire in collect_connections(world, &Tool::Select, &None, palette) {
         shapes.push(Shape::line_segment(
