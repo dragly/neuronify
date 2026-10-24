@@ -36,6 +36,16 @@ pub struct CylinderData {
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
+pub struct TorusData {
+    pub position: Vec3,
+    pub major_radius: f32,
+    pub rotation: Quat,
+    pub color: Vec3,
+    pub minor_radius: f32,
+}
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Instance, Pod, Zeroable)]
 pub struct LineData {
     pub start: Vec3,
     pub end: Vec3,

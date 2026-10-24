@@ -7,6 +7,7 @@ use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded}
 use crate::rendering::{
     canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, compartment_radii,
     connection_paths, create_floor, ConnectionData, CylinderData, NoteRenderer, Sphere, Theme,
+    TorusData,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
@@ -23,7 +24,8 @@ use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowE
 use visula::{
     winit::keyboard::ModifiersKeyState, CustomEvent, CylinderGeometry, CylinderMaterial, Cylinders,
     Expression, InstanceBuffer, LineGeometry, LineMaterial, Lines, MeshPipeline, RenderData,
-    Renderable, ShadowRenderData, SphereGeometry, SphereMaterial, Spheres,
+    Renderable, ShadowRenderData, SphereGeometry, SphereMaterial, Spheres, Torus, TorusGeometry,
+    TorusMaterial,
 };
 
 use crate::input::{Keyboard, Mouse, TouchGesture, Touches};
@@ -48,6 +50,8 @@ pub struct Neuronify {
     pub connection_buffer: InstanceBuffer<ConnectionData>,
     pub cylinders: Cylinders,
     pub cylinder_buffer: InstanceBuffer<CylinderData>,
+    pub rings: Torus,
+    pub ring_buffer: InstanceBuffer<TorusData>,
     pub floor: MeshPipeline,
     pub iterations: u32,
     pub last_update: DateTime<Utc>,
@@ -243,6 +247,23 @@ impl Neuronify {
         )
         .unwrap();
 
+        let ring_buffer = InstanceBuffer::<TorusData>::new(&application.device);
+        let ring = ring_buffer.instance();
+        let rings = Torus::new(
+            &application.rendering_descriptor(),
+            &TorusGeometry {
+                position: ring.position,
+                major_radius: ring.major_radius,
+                minor_radius: ring.minor_radius,
+                rotation: ring.rotation,
+                color: ring.color,
+            },
+            &TorusMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
         let theme = match application.window.theme() {
             Some(visula::winit::window::Theme::Light) => Theme::Light,
             _ => Theme::Dark,
@@ -292,6 +313,8 @@ impl Neuronify {
             connection_buffer,
             cylinders,
             cylinder_buffer,
+            rings,
+            ring_buffer,
             floor,
             tool: Tool::Select,
             theme,
@@ -1178,6 +1201,9 @@ impl visula::Simulation for Neuronify {
         self.cylinder_buffer
             .update(&application.device, &application.queue, &scene.cylinders);
 
+        self.ring_buffer
+            .update(&application.device, &application.queue, &scene.rings);
+
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
 
@@ -1202,6 +1228,7 @@ impl visula::Simulation for Neuronify {
         self.floor.render(data);
         self.spheres.render(data);
         self.cylinders.render(data);
+        self.rings.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
         self.note_renderer.render(data);
@@ -1210,6 +1237,7 @@ impl visula::Simulation for Neuronify {
     fn render_shadow(&mut self, data: &mut ShadowRenderData) {
         self.spheres.render_shadow(data);
         self.cylinders.render_shadow(data);
+        self.rings.render_shadow(data);
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {

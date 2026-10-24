@@ -7,11 +7,7 @@ use crate::constants::*;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
-
-/// How long a soma keeps glowing after it fires, in simulated seconds.
-const FLASH_DURATION: f64 = 0.01;
-/// How much brighter than white a flash starts, so that only flashes bloom.
-const FLASH_BRIGHTNESS: f32 = 3.0;
+use crate::rendering::shapes::{generator_color, soma_color};
 
 /// `radii` comes from `compartment_radii`, so the joints match the cylinders.
 pub fn collect_spheres(
@@ -25,45 +21,22 @@ pub fn collect_spheres(
     let lif_neuron_spheres: Vec<Sphere> = world
         .query::<(&LeakyNeuron, &LeakyDynamics, &Position)>()
         .iter()
-        .map(|(entity, (neuron, dynamics, position))| {
-            let value = ((dynamics.voltage - neuron.resting_potential)
-                / (neuron.threshold - neuron.resting_potential))
-                .clamp(0.0, 1.0) as f32;
-            let neuron_type = if world.get::<&Inhibitory>(entity).is_ok() {
-                NeuronType::Inhibitory
-            } else {
-                NeuronType::Excitatory
-            };
-            let color = palette.soma(&neuron_type, value);
-            let remaining = (1.0 - dynamics.time_since_fire / FLASH_DURATION).max(0.0) as f32;
-            let color = color.lerp(palette.flash * FLASH_BRIGHTNESS, remaining * remaining);
-            Sphere {
-                position: position.position,
-                color,
-                radius: NODE_RADIUS,
-                _padding: Default::default(),
-            }
-        })
-        .collect();
-
-    let current_clamp_spheres: Vec<Sphere> = world
-        .query::<&Position>()
-        .with::<&CurrentClamp>()
-        .iter()
-        .map(|(_, position)| Sphere {
+        .map(|(entity, (neuron, dynamics, position))| Sphere {
             position: position.position,
-            color: yellow(),
+            color: soma_color(world, entity, neuron, dynamics, palette),
             radius: NODE_RADIUS,
             _padding: Default::default(),
         })
         .collect();
 
+    // Touch sensors and current sources are flat pads, see `collect_shapes`
     let generator_spheres: Vec<Sphere> = world
         .query::<(&Position, &GeneratorDynamics)>()
+        .without::<&TouchSensor>()
         .iter()
-        .map(|(_, (position, _))| Sphere {
+        .map(|(_, (position, dynamics))| Sphere {
             position: position.position,
-            color: orange(),
+            color: generator_color(dynamics, palette),
             radius: NODE_RADIUS,
             _padding: Default::default(),
         })
@@ -107,9 +80,10 @@ pub fn collect_spheres(
         })
         .collect();
 
+    // Inhibitory synapses end in a bar instead, see `collect_cylinders`
     let synapse_spheres: Vec<Sphere> = paths
         .values()
-        .filter(|path| path.directional)
+        .filter(|path| path.directional && !path.inhibitory)
         .filter_map(|path| {
             Some(Sphere {
                 position: *path.points.last()?,
@@ -147,7 +121,6 @@ pub fn collect_spheres(
         .collect();
 
     spheres.extend(lif_neuron_spheres.iter());
-    spheres.extend(current_clamp_spheres.iter());
     spheres.extend(generator_spheres.iter());
     spheres.extend(compartment_spheres.iter());
     spheres.extend(joint_spheres.iter());

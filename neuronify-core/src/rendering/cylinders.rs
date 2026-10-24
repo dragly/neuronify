@@ -4,7 +4,8 @@ use glam::Vec3;
 use hecs::Entity;
 
 use crate::components::*;
-use crate::rendering::colors::Palette;
+use crate::constants::NODE_RADIUS;
+use crate::rendering::colors::{terminal_color, Palette};
 use crate::rendering::gpu_types::CylinderData;
 use crate::rendering::paths::ConnectionPath;
 
@@ -97,6 +98,18 @@ pub fn collect_cylinders(
                 color: path
                     .start_color
                     .lerp(path.end_color, (i as f32 + 0.5) / segments as f32),
+                _padding: Default::default(),
+            });
+        }
+        // The bar across the end of an inhibitory synapse, as in ⊣
+        if let (true, [.., before, end]) = (path.directional && path.inhibitory, &path.points[..]) {
+            let direction = (*end - *before).normalize_or_zero();
+            cylinders.push(CylinderData {
+                start: *end - direction * 0.12,
+                start_radius: 0.6 * NODE_RADIUS,
+                end: *end + direction * 0.12,
+                end_radius: 0.6 * NODE_RADIUS,
+                color: terminal_color(),
                 _padding: Default::default(),
             });
         }

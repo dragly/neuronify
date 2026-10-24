@@ -7,6 +7,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::measurement::voltmeter::Voltmeter;
 use crate::rendering::colors::*;
+use crate::rendering::shapes::is_inhibitory;
 
 /// Spacing between the joints along a connection, the same as between compartments.
 const JOINT_SPACING: f32 = 2.0 * NODE_RADIUS;
@@ -26,6 +27,8 @@ pub struct ConnectionPath {
     pub start_color: Vec3,
     pub end_color: Vec3,
     pub directional: bool,
+    /// The source inhibits its target, so the path ends in a bar rather than a knob
+    pub inhibitory: bool,
 }
 
 impl ConnectionPath {
@@ -184,6 +187,7 @@ pub fn connection_paths(
                     start_color,
                     end_color,
                     directional: connection.directional,
+                    inhibitory: is_inhibitory(world, connection.from),
                 },
             ))
         })
@@ -201,6 +205,7 @@ mod tests {
             start_color: Vec3::ONE,
             end_color: Vec3::ONE,
             directional: trim > 0.0,
+            inhibitory: false,
         }
     }
 
