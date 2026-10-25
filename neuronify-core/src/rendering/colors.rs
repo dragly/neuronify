@@ -54,6 +54,14 @@ pub fn terminal_color() -> Vec3 {
     Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0)
 }
 
+pub fn adaptation_gauge_color() -> Vec3 {
+    srgb(32, 170, 150)
+}
+
+pub fn burst_gauge_color() -> Vec3 {
+    srgb(228, 92, 152)
+}
+
 /// How far a neuron at threshold has gone from the colour of its type towards white.
 pub const VOLTAGE_TINT: f32 = 0.55;
 

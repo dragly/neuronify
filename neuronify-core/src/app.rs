@@ -7,8 +7,8 @@ use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::{
     canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, compartment_radii,
-    connection_paths, create_floor, ConnectionData, CylinderData, NoteRenderer, Sphere, Theme,
-    TorusData,
+    connection_paths, create_floor, ConnectionData, CylinderData, GaugeRenderer, NoteRenderer,
+    Sphere, Theme, TorusData,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
@@ -68,6 +68,7 @@ pub struct Neuronify {
     pub resizing_voltmeter: Option<(Entity, ResizeCorner)>,
     pub load_error: Option<String>,
     pub note_renderer: NoteRenderer,
+    pub gauge_renderer: GaugeRenderer,
     pub landing: Option<LandingScreen>,
     pub frame_scene_requested: bool,
 }
@@ -346,6 +347,7 @@ impl Neuronify {
             resizing_voltmeter: None,
             load_error: None,
             note_renderer: NoteRenderer::new(application),
+            gauge_renderer: GaugeRenderer::new(application),
             landing: (!opened_file_from_command_line).then(|| LandingScreen::new(false)),
             frame_scene_requested: opened_file_from_command_line,
         }
@@ -1220,6 +1222,8 @@ impl visula::Simulation for Neuronify {
             .update(&application.device, &application.queue, &connections);
 
         self.note_renderer.update(application, &self.world);
+        self.gauge_renderer
+            .update(application, &self.world, &palette);
 
         let time_diff = Utc::now() - self.last_update;
         #[cfg(not(target_arch = "wasm32"))]
@@ -1244,6 +1248,7 @@ impl visula::Simulation for Neuronify {
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
         self.note_renderer.render(data);
+        self.gauge_renderer.render(data);
     }
 
     fn render_shadow(&mut self, data: &mut ShadowRenderData) {
