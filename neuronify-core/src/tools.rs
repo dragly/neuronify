@@ -7,6 +7,8 @@ pub enum Tool {
     Select,
     ExcitatoryNeuron,
     InhibitoryNeuron,
+    AdaptiveNeuron,
+    BurstNeuron,
     CurrentSource,
     TouchSensor,
     RegularSpikeGenerator,
@@ -46,6 +48,8 @@ impl ToolCategory {
             ToolCategory::Neurons => vec![
                 (Tool::ExcitatoryNeuron, "Excitatory Neuron"),
                 (Tool::InhibitoryNeuron, "Inhibitory Neuron"),
+                (Tool::AdaptiveNeuron, "Adaptive Neuron"),
+                (Tool::BurstNeuron, "Burst Neuron"),
                 (Tool::CurrentSource, "Current Source"),
                 (Tool::TouchSensor, "Touch Sensor"),
                 (Tool::RegularSpikeGenerator, "Spike Generator"),
