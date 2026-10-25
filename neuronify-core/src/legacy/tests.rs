@@ -13,6 +13,8 @@ const LEAKY_NFY: &str = include_str!("../../examples/leaky.nfy");
 
 const ADAPTATION_NFY: &str = include_str!("../../examples/adaptation.nfy");
 
+const BURST_NFY: &str = include_str!("../../examples/burst.nfy");
+
 const INHIBITORY_NFY: &str = include_str!("../../examples/inhibitory.nfy");
 
 const TUTORIAL_2_CIRCUITS_NFY: &str = include_str!("../../examples/tutorial_2_circuits.nfy");
@@ -430,4 +432,12 @@ fn test_annotation_loads_with_size() {
         annotation_count > 0,
         "leaky.nfy should produce at least one annotation"
     );
+}
+
+#[test]
+fn test_burst_neuron_loads_with_burst_current() {
+    let sim = parse_legacy_nfy(BURST_NFY).unwrap();
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &sim);
+    assert_eq!(world.query::<&BurstCurrent>().iter().count(), 1);
 }

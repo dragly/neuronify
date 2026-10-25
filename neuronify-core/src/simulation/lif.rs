@@ -101,6 +101,14 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
         adapt.current = -adapt.conductance * (v - em);
     }
 
+    for (_, (burst, dynamics)) in world.query_mut::<(&mut BurstCurrent, &mut LeakyDynamics)>() {
+        if dynamics.fired && burst.boost < 1e-12 {
+            burst.boost = burst.peak;
+        }
+        burst.boost = (burst.boost - burst.drain * dt).max(0.0);
+        dynamics.received_currents += burst.boost;
+    }
+
     {
         let leak_currents: Vec<(hecs::Entity, f64)> = world
             .query::<(&LeakCurrent, &LeakyDynamics)>()
@@ -330,6 +338,24 @@ pub fn run_headless(world: &mut World, steps: usize, dt: f64) -> Vec<SpikeRecord
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_spike_starts_a_burst() {
+        let mut world = World::new();
+        let neuron = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            BurstCurrent::default(),
+        ));
+        world.get::<&mut LeakyDynamics>(neuron).unwrap().voltage = 0.0;
+
+        let spikes = run_headless(&mut world, 5000, 0.0001);
+
+        assert!(spikes.len() > 3);
+        assert!(spikes.last().unwrap().time < 0.25);
+        assert_eq!(world.get::<&BurstCurrent>(neuron).unwrap().boost, 0.0);
+    }
 
     #[test]
     fn adaptation_builds_up_and_slows_firing() {

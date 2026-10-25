@@ -65,6 +65,12 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                     and recovers after a while.",
                 nfy_contents: include_str!("../examples/adaptation.nfy"),
             },
+            Example {
+                name: "Burst",
+                description: "A burst neuron keeps firing for a while \
+                    after a single touch.",
+                nfy_contents: include_str!("../examples/burst.nfy"),
+            },
         ],
     },
     ExampleCategory {

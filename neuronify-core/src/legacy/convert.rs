@@ -47,6 +47,18 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
             entity
         }
         "neurons/AdaptationNeuron.qml" => spawn_adaptation_neuron(world, node, pos),
+        "neurons/BurstNeuron.qml" => {
+            let entity = spawn_leaky_neuron(world, node, pos);
+            world.insert_one(entity, BurstCurrent::default()).unwrap();
+            entity
+        }
+        "neurons/BurstInhibitoryNeuron.qml" => {
+            let entity = spawn_leaky_neuron(world, node, pos);
+            world
+                .insert(entity, (BurstCurrent::default(), Inhibitory))
+                .unwrap();
+            entity
+        }
         "generators/CurrentClamp.qml" => {
             let current = node.engine.current_output.unwrap_or(2e-9);
             world.spawn((
