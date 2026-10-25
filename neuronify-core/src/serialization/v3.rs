@@ -1,4 +1,5 @@
-//! Dendrites are marked, so they keep their look after loading.
+//! Dendrites are marked, so they keep their look after loading,
+//! and burst neurons from Neuronify 1 keep their burst current.
 
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
@@ -33,6 +34,7 @@ schema!(
     SpatialDynamics,
     NeuronType,
     Dendrite,
+    BurstCurrent,
 );
 
 /// Version 3 only adds components, so a version 2 world is already a version 3 world.

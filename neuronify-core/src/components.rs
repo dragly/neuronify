@@ -84,6 +84,27 @@ impl Default for AdaptationCurrent {
     }
 }
 
+/// Neuronify 1's burst neuron. A spike after a quiet spell starts a boost current
+/// that drains linearly and keeps the neuron firing until it runs out.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct BurstCurrent {
+    /// The current at the start of a burst
+    pub peak: f64,
+    /// How fast the current drains, in amperes per second
+    pub drain: f64,
+    pub boost: f64,
+}
+
+impl Default for BurstCurrent {
+    fn default() -> Self {
+        Self {
+            peak: 1.2e-9,
+            drain: 6e-9,
+            boost: 0.0,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CurrentClamp {
     pub current_output: f64,
