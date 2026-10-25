@@ -88,13 +88,13 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
     for (_, (adapt, neuron, dynamics)) in
         world.query_mut::<(&mut AdaptationCurrent, &LeakyNeuron, &LeakyDynamics)>()
     {
-        if !dynamics.enabled {
-            adapt.current = 0.0;
-            continue;
-        }
         adapt.conductance -= adapt.conductance / adapt.time_constant * dt;
         if dynamics.fired {
             adapt.conductance += adapt.adaptation;
+        }
+        if !dynamics.enabled {
+            adapt.current = 0.0;
+            continue;
         }
         let v = dynamics.voltage;
         let em = neuron.resting_potential;
@@ -325,4 +325,36 @@ pub fn run_headless(world: &mut World, steps: usize, dt: f64) -> Vec<SpikeRecord
     }
 
     spike_records
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn adaptation_builds_up_and_slows_firing() {
+        let mut world = World::new();
+        let neuron = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            AdaptationCurrent::default(),
+        ));
+        let clamp = world.spawn((CurrentClamp {
+            current_output: 2e-9,
+        },));
+        world.spawn((Connection {
+            from: clamp,
+            to: neuron,
+            strength: 1.0,
+            directional: true,
+        },));
+
+        let spikes = run_headless(&mut world, 5000, 0.0001);
+
+        assert!(world.get::<&AdaptationCurrent>(neuron).unwrap().conductance > 0.0);
+        let intervals: Vec<f64> = spikes.windows(2).map(|w| w[1].time - w[0].time).collect();
+        assert!(intervals.len() > 2);
+        assert!(intervals.last().unwrap() > intervals.first().unwrap());
+    }
 }
