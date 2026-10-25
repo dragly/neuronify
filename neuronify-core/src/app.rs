@@ -439,7 +439,10 @@ impl Neuronify {
             false
         };
         match tool {
-            Tool::ExcitatoryNeuron | Tool::InhibitoryNeuron => {
+            Tool::ExcitatoryNeuron
+            | Tool::InhibitoryNeuron
+            | Tool::AdaptiveNeuron
+            | Tool::BurstNeuron => {
                 if previous_too_near {
                     return;
                 }
@@ -458,8 +461,13 @@ impl Neuronify {
                     neuron_type,
                     Deletable {},
                 ));
-                if self.tool == Tool::InhibitoryNeuron {
-                    world.insert_one(entity, Inhibitory).unwrap();
+                match self.tool {
+                    Tool::InhibitoryNeuron => world.insert_one(entity, Inhibitory).unwrap(),
+                    Tool::AdaptiveNeuron => world
+                        .insert_one(entity, AdaptationCurrent::default())
+                        .unwrap(),
+                    Tool::BurstNeuron => world.insert_one(entity, BurstCurrent::default()).unwrap(),
+                    _ => {}
                 }
                 if self.dendrites {
                     spawn_dendrites(world, entity);
