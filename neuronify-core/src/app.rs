@@ -1,3 +1,4 @@
+use crate::camera;
 use crate::components::*;
 use crate::constants::*;
 use crate::editor::{Editor, Pan};
@@ -11,7 +12,6 @@ use crate::rendering::{
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
-use glam::Vec3;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
@@ -63,26 +63,6 @@ pub struct Neuronify {
 #[derive(Debug)]
 pub struct Error {}
 
-fn ground_position(application: &visula::Application, position: PhysicalPosition<f64>) -> Vec3 {
-    let ndc_x = 2.0 * position.x as f32 / application.config.width as f32 - 1.0;
-    let ndc_y = 1.0 - 2.0 * position.y as f32 / application.config.height as f32;
-    let ray_clip = glam::Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
-    let aspect_ratio = application.config.width as f32 / application.config.height as f32;
-    let inv_projection = application
-        .camera_controller
-        .projection_matrix(aspect_ratio)
-        .inverse();
-
-    let ray_eye = inv_projection * ray_clip;
-    let ray_eye = glam::Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
-    let inv_view_matrix = application.camera_controller.view_matrix().inverse();
-    let ray_world = inv_view_matrix * ray_eye;
-    let ray_world = Vec3::new(ray_world.x, ray_world.y, ray_world.z).normalize();
-    let ray_origin = application.camera_controller.position();
-    let t = -ray_origin.y / ray_world.y;
-    ray_origin + t * ray_world
-}
-
 fn is_press_scroll_or_touch(event: &Event<CustomEvent>) -> bool {
     matches!(
         event,
@@ -93,12 +73,6 @@ fn is_press_scroll_or_touch(event: &Event<CustomEvent>) -> bool {
             ..
         }
     )
-}
-
-fn pan(application: &mut visula::Application, offset: Vec3) {
-    let camera = &mut application.camera_controller;
-    camera.target_transform.center -= offset;
-    camera.current_transform.center = camera.target_transform.center;
 }
 
 fn gui_takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
@@ -115,38 +89,9 @@ fn gui_takes_press(application: &visula::Application, position: PhysicalPosition
     })
 }
 
-fn pinch(
-    application: &mut visula::Application,
-    previous: [PhysicalPosition<f64>; 2],
-    current: [PhysicalPosition<f64>; 2],
-) {
-    let spread = |[a, b]: [PhysicalPosition<f64>; 2]| (a.x - b.x).hypot(a.y - b.y);
-    let midpoint = |[a, b]: [PhysicalPosition<f64>; 2]| {
-        PhysicalPosition::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
-    };
-    let anchor = ground_position(application, midpoint(previous));
-    let camera = &mut application.camera_controller;
-    if spread(previous) > 0.0 && spread(current) > 0.0 {
-        let zoom = (spread(previous) / spread(current)) as f32;
-        camera.current_transform.distance = (camera.current_transform.distance * zoom)
-            .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
-        camera.target_transform.distance = camera.current_transform.distance;
-    }
-    let under_fingers = ground_position(application, midpoint(current));
-    let camera = &mut application.camera_controller;
-    camera.current_transform.center += anchor - under_fingers;
-    camera.target_transform.center = camera.current_transform.center;
-}
-
 impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
-        application.camera_controller.enabled = false;
-        application.camera_controller.target_transform.center = Vec3::new(0.0, 0.0, 0.0);
-        application.camera_controller.target_transform.forward =
-            Vec3::new(0.3, -1.0, 0.0).normalize();
-        application.camera_controller.target_transform.distance = CAMERA_DEFAULT_DISTANCE;
-        application.camera_controller.current_transform =
-            application.camera_controller.target_transform.clone();
+        camera::set_up(application);
 
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
         let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
@@ -344,7 +289,7 @@ impl Neuronify {
         let Some(screen_position) = self.mouse.position else {
             return;
         };
-        let position = ground_position(application, screen_position);
+        let position = camera::ground_position(application, screen_position);
         let requested_pan = if self.edit_enabled {
             self.editor
                 .edit(&mut self.world, position, self.keyboard.shift_down)
@@ -352,7 +297,7 @@ impl Neuronify {
             self.editor.view(&self.world, position)
         };
         if let Some(Pan(offset)) = requested_pan {
-            pan(application, offset);
+            camera::pan(application, offset);
         }
     }
 
@@ -376,30 +321,6 @@ impl Neuronify {
         self.editor.selection = None;
         self.landing = None;
         self.frame_scene_requested = true;
-    }
-
-    fn frame_scene(&self, application: &mut visula::Application) {
-        let camera = &mut application.camera_controller;
-        let (center, distance) = match canvas_bounds(&self.world) {
-            Some(bounds) => {
-                let height_on_screen = bounds.size().x;
-                let width_on_screen = bounds.size().z;
-                let aspect_ratio =
-                    application.config.width as f32 / application.config.height.max(1) as f32;
-                let tangent = (CAMERA_FIELD_OF_VIEW_DEGREES.to_radians() / 2.0).tan();
-                let fit = (height_on_screen / tangent)
-                    .max(width_on_screen / (tangent * aspect_ratio))
-                    / 2.0
-                    * CAMERA_FRAMING_MARGIN;
-                let center = bounds.center();
-                (Vec3::new(center.x, 0.0, center.z), fit)
-            }
-            None => (Vec3::ZERO, CAMERA_DEFAULT_DISTANCE),
-        };
-        camera.target_transform.center = center;
-        camera.target_transform.distance =
-            distance.clamp(CAMERA_DEFAULT_DISTANCE, CAMERA_MAX_DISTANCE);
-        camera.current_transform = camera.target_transform.clone();
     }
 
     pub fn loadfile(&mut self, path: PathBuf) {
@@ -458,7 +379,7 @@ impl visula::Simulation for Neuronify {
         }
         if self.frame_scene_requested {
             self.frame_scene_requested = false;
-            self.frame_scene(application);
+            camera::frame(application, canvas_bounds(&self.world));
         }
 
         let camera = &application.camera_controller.current_transform;
@@ -809,7 +730,7 @@ impl visula::Simulation for Neuronify {
                     TouchGesture::Drag(position) => self.move_pointer(application, position),
                     TouchGesture::Release => self.press_pointer(application, false),
                     TouchGesture::Pinch { previous, current } => {
-                        pinch(application, previous, current)
+                        camera::pinch(application, previous, current)
                     }
                     TouchGesture::None => {}
                 }
@@ -817,18 +738,7 @@ impl visula::Simulation for Neuronify {
             Event::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },
                 ..
-            } => {
-                let scroll = match delta {
-                    winit::event::MouseScrollDelta::LineDelta(_, y) => *y,
-                    winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 100.0,
-                };
-                application.camera_controller.target_transform.distance *= 1.0 - scroll * 0.1;
-                application.camera_controller.target_transform.distance = application
-                    .camera_controller
-                    .target_transform
-                    .distance
-                    .clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
-            }
+            } => camera::scroll(application, delta),
             _ => {}
         }
     }
