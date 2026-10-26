@@ -3,9 +3,8 @@ use glam::Vec3;
 use crate::components::*;
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::colors::Theme;
-use crate::rendering::connections::collect_connections;
+use crate::rendering::connections::collect_voltmeter_wires;
 use crate::rendering::scene::collect_scene;
-use crate::tools::Tool;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bounds {
@@ -57,7 +56,7 @@ fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
             ring.major_radius + ring.minor_radius,
         ));
     }
-    for connection in collect_connections(world, &Tool::Select, &None, &palette) {
+    for connection in collect_voltmeter_wires(world, &palette) {
         points.push(connection.position_a);
         points.push(connection.position_b);
     }

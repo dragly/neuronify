@@ -28,8 +28,8 @@ pub struct Editor {
     pub tool: Tool,
     pub dendrites: bool,
     pub selection: Option<Entity>,
-    pub connection_tool: Option<ConnectionTool>,
-    pub stimulation_tool: Option<StimulationTool>,
+    connection_tool: Option<ConnectionTool>,
+    stimulation_tool: Option<StimulationTool>,
     previous_creation: Option<Entity>,
     move_origin: Option<Vec3>,
     dragging: Option<Entity>,
@@ -38,6 +38,17 @@ pub struct Editor {
 }
 
 impl Editor {
+    pub fn touch(&self) -> Option<Vec3> {
+        self.stimulation_tool.as_ref().map(|touch| touch.position)
+    }
+
+    pub fn connection_being_drawn(&self) -> Option<(Vec3, Vec3)> {
+        match (self.tool, &self.connection_tool) {
+            (Tool::StaticConnection, Some(connection)) => Some((connection.start, connection.end)),
+            _ => None,
+        }
+    }
+
     pub fn release(&mut self) {
         self.stimulation_tool = None;
         self.connection_tool = None;
