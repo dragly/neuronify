@@ -12,7 +12,8 @@ use hecs::Entity;
 use crate::components::*;
 use crate::constants::*;
 use crate::rendering::colors::*;
-use crate::rendering::gpu_types::{CylinderData, Sphere, TorusData};
+use crate::rendering::gpu_types::{CylinderData, TorusData};
+use crate::rendering::scene::Scene;
 
 /// How long a soma or generator keeps glowing after it fires, in simulated seconds.
 const FLASH_DURATION: f64 = 0.01;
@@ -121,49 +122,20 @@ fn hand_outline() -> Vec<Vec2> {
     points.iter().map(|&point| point - center).collect()
 }
 
-#[derive(Default)]
-pub struct Shapes {
-    pub cylinders: Vec<CylinderData>,
-    pub spheres: Vec<Sphere>,
-}
-
-impl Shapes {
-    fn pad(&mut self, center: Vec3, color: Vec3) {
-        self.cylinders.push(CylinderData {
-            start: center - Vec3::Y * PAD_HALF_HEIGHT,
-            start_radius: PAD_RADIUS,
-            end: center + Vec3::Y * PAD_HALF_HEIGHT,
-            end_radius: PAD_RADIUS,
-            color,
-            _padding: Default::default(),
-        });
-    }
-
-    fn stroke(&mut self, points: &[Vec3], radius: f32, color: Vec3) {
-        for pair in points.windows(2) {
-            self.cylinders.push(CylinderData {
-                start: pair[0],
-                start_radius: radius,
-                end: pair[1],
-                end_radius: radius,
-                color,
-                _padding: Default::default(),
-            });
-        }
-        for &position in points {
-            self.spheres.push(Sphere {
-                position,
-                color,
-                radius,
-                _padding: Default::default(),
-            });
-        }
-    }
+fn pad(scene: &mut Scene, center: Vec3, color: Vec3) {
+    scene.cylinders.push(CylinderData {
+        start: center - Vec3::Y * PAD_HALF_HEIGHT,
+        start_radius: PAD_RADIUS,
+        end: center + Vec3::Y * PAD_HALF_HEIGHT,
+        end_radius: PAD_RADIUS,
+        color,
+        _padding: Default::default(),
+    });
 }
 
 /// The touch pads with their hands, and the current source pads with their arrows.
-pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Shapes {
-    let mut shapes = Shapes::default();
+pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
+    let mut shapes = Scene::default();
     let hand = hand_outline();
     for (_, (dynamics, position)) in world
         .query::<(&GeneratorDynamics, &Position)>()
@@ -171,7 +143,7 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Shapes {
         .iter()
     {
         let center = position.position;
-        shapes.pad(center, generator_color(dynamics, palette));
+        pad(&mut shapes, center, generator_color(dynamics, palette));
         let outline: Vec<Vec3> = hand
             .iter()
             .map(|point| {
@@ -192,7 +164,7 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Shapes {
         .collect();
     for (entity, position) in world.query::<&Position>().with::<&CurrentClamp>().iter() {
         let center = position.position;
-        shapes.pad(center, yellow());
+        pad(&mut shapes, center, yellow());
         let forward = targets
             .get(&entity)
             .map(|target| (*target - center).with_y(0.0).normalize_or_zero())

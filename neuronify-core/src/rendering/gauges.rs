@@ -13,6 +13,7 @@ use crate::constants::NODE_RADIUS;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{CylinderData, Sphere, TorusData};
 use crate::rendering::lighting::shaded;
+use crate::rendering::scene::Scene;
 
 /// Adaptation conductance, in spikes' worth, at which the ring is about two thirds full.
 const ADAPTATION_SCALE: f64 = 2.0;
@@ -24,36 +25,6 @@ const RING_RADIUS: f32 = 1.32 * NODE_RADIUS;
 const RING_THICKNESS: f32 = 0.075 * NODE_RADIUS;
 const BAR_LENGTH: f32 = 1.8 * NODE_RADIUS;
 const BAR_THICKNESS: f32 = 0.14 * NODE_RADIUS;
-
-#[derive(Default)]
-struct Gauges {
-    spheres: Vec<Sphere>,
-    cylinders: Vec<CylinderData>,
-    rings: Vec<TorusData>,
-}
-
-impl Gauges {
-    fn stroke(&mut self, points: &[Vec3], radius: f32, color: Vec3) {
-        for pair in points.windows(2) {
-            self.cylinders.push(CylinderData {
-                start: pair[0],
-                start_radius: radius,
-                end: pair[1],
-                end_radius: radius,
-                color,
-                _padding: Default::default(),
-            });
-        }
-        for &position in points {
-            self.spheres.push(Sphere {
-                position,
-                color,
-                radius,
-                _padding: Default::default(),
-            });
-        }
-    }
-}
 
 pub struct GaugeRenderer {
     spheres: Spheres,
@@ -164,9 +135,9 @@ fn collect_gauges(
     eye: Vec3,
     forward: Vec3,
     view_up: Vec3,
-) -> Gauges {
+) -> Scene {
     let screen_right = forward.cross(view_up).normalize();
-    let mut gauges = Gauges::default();
+    let mut gauges = Scene::default();
     for (entity, position) in world.query::<&Position>().with::<&LeakyNeuron>().iter() {
         let adaptation = world
             .get::<&AdaptationCurrent>(entity)
