@@ -1,16 +1,16 @@
 use crate::camera;
-use crate::components::*;
 use crate::constants::*;
 use crate::editor::{Editor, Pan};
 use crate::examples::Example;
+use crate::gui;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::gui::MenuChoice;
 use crate::landing::{LandingChoice, LandingScreen};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::{
     canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, create_floor,
     ConnectionData, CylinderData, GaugeRenderer, NoteRenderer, Sphere, Theme, TorusData,
 };
-use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
 use std::io::BufReader;
 use std::io::Read;
@@ -463,218 +463,23 @@ impl visula::Simulation for Neuronify {
             return;
         }
         if let Some(error) = &self.load_error {
-            egui::Window::new("Could not load file").show(context, |ui| {
-                ui.label(error);
-            });
+            gui::load_error(context, error);
         }
-        egui::Area::new("edit_button_area".into())
-            .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
-            .show(context, |ui| {
-                ui.horizontal(|ui| {
-                    if ui.button("Examples").clicked() {
-                        self.landing = Some(LandingScreen::new(true));
-                    }
-                    ui.toggle_value(&mut self.edit_enabled, "Edit");
-                });
-            });
+        if gui::corner_buttons(context, &mut self.edit_enabled) {
+            self.landing = Some(LandingScreen::new(true));
+        }
         if self.edit_enabled {
-            // show_inside needs a &mut Ui, which Simulation::gui does not hand us
             #[cfg(not(target_arch = "wasm32"))]
-            #[allow(deprecated)]
-            egui::Panel::top("top_panel").show(context, |ui| {
-                egui::MenuBar::new().ui(ui, |ui| {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Save").clicked() {
-                            if let Some(path) = rfd::FileDialog::new().save_file() {
-                                self.save(path);
-                            }
-                        }
-
-                        if ui.button("Open").clicked() {
-                            if let Some(path) = rfd::FileDialog::new().pick_file() {
-                                self.loadfile(path);
-                            }
-                        }
-                    });
-                    ui.menu_button("Examples", |ui| {
-                        for category in crate::examples::EXAMPLE_CATEGORIES {
-                            ui.menu_button(category.name, |ui| {
-                                for example in category.examples {
-                                    if ui.button(example.name).clicked() {
-                                        self.load_example(example);
-                                        ui.close();
-                                    }
-                                }
-                            });
-                        }
-                    });
-                });
-            });
-            egui::Window::new("Elements").show(context, |ui| {
-                for category in &TOOL_CATEGORIES {
-                    ui.collapsing(category.label(), |ui| {
-                        for (tool_value, label) in category.tools() {
-                            ui.selectable_value(&mut self.editor.tool, tool_value, label);
-                        }
-                        if *category == ToolCategory::Neurons {
-                            ui.checkbox(&mut self.editor.dendrites, "With dendrites");
-                        }
-                    });
-                }
-            });
-            egui::Window::new("Settings").show(context, |ui| {
-                ui.label(format!("FPS: {:.0}", self.fps));
-                ui.label("Simulation speed");
-                ui.add(egui::Slider::new(&mut self.iterations, 1..=20));
-                ui.horizontal(|ui| {
-                    ui.label("Theme");
-                    ui.selectable_value(&mut self.theme, Theme::Dark, "Dark");
-                    ui.selectable_value(&mut self.theme, Theme::Light, "Light");
-                });
-            });
-            if let Some(active_entity) = self.editor.selection {
-                egui::Window::new("Selection").show(context, |ui| {
-                    if let Ok(compartment) = self.world.get::<&Compartment>(active_entity) {
-                        ui.collapsing("Compartment", |ui| {
-                            egui::Grid::new("compartment_state").show(ui, |ui| {
-                                ui.label("Voltage:");
-                                ui.label(format!("{:.2} mV", compartment.voltage));
-                                ui.end_row();
-                                ui.label("m:");
-                                ui.label(format!("{:.2}", compartment.m));
-                                ui.end_row();
-                                ui.label("n:");
-                                ui.label(format!("{:.2}", compartment.n));
-                                ui.end_row();
-                                ui.label("h:");
-                                ui.label(format!("{:.2}", compartment.h));
-                                ui.end_row();
-                            });
-                        });
-                    }
-                    if let Ok(mut neuron) = self.world.get::<&mut LeakyNeuron>(active_entity) {
-                        let is_inhibitory =
-                            neuron_type(&self.world, active_entity) == NeuronType::Inhibitory;
-                        let label = if is_inhibitory {
-                            "LIF Neuron (Inhibitory)"
-                        } else {
-                            "LIF Neuron (Excitatory)"
-                        };
-                        ui.collapsing(label, |ui| {
-                            egui::Grid::new("neuron_settings").show(ui, |ui| {
-                                ui.label("Threshold:");
-                                ui.add(
-                                    egui::Slider::new(&mut neuron.threshold, -0.08..=-0.03)
-                                        .suffix(" V"),
-                                );
-                                ui.end_row();
-                                ui.label("Resting potential:");
-                                ui.add(
-                                    egui::Slider::new(&mut neuron.resting_potential, -0.09..=-0.05)
-                                        .suffix(" V"),
-                                );
-                                ui.end_row();
-                                ui.label("Capacitance:");
-                                ui.add(
-                                    egui::Slider::new(&mut neuron.capacitance, 1e-11..=1e-9)
-                                        .suffix(" F"),
-                                );
-                                ui.end_row();
-                            });
-                        });
-                    }
-                    if let Ok(dynamics) = self.world.get::<&LeakyDynamics>(active_entity) {
-                        ui.collapsing("Dynamics", |ui| {
-                            egui::Grid::new("neuron_dynamics").show(ui, |ui| {
-                                ui.label("Voltage:");
-                                ui.label(format!("{:.4} V", dynamics.voltage));
-                                ui.end_row();
-                                ui.label("Fired:");
-                                ui.label(format!("{}", dynamics.fired));
-                                ui.end_row();
-                            });
-                        });
-                    }
-                    if let Ok(mut clamp) = self.world.get::<&mut CurrentClamp>(active_entity) {
-                        ui.collapsing("Current Source", |ui| {
-                            egui::Grid::new("clamp_settings").show(ui, |ui| {
-                                ui.label("Current:");
-                                ui.add(
-                                    egui::Slider::new(&mut clamp.current_output, 0.0..=1e-8)
-                                        .suffix(" A"),
-                                );
-                                ui.end_row();
-                            });
-                        });
-                    }
-                    if let Ok(mut gen) = self.world.get::<&mut RegularSpikeGenerator>(active_entity)
-                    {
-                        ui.collapsing("Spike Generator", |ui| {
-                            egui::Grid::new("spike_gen_settings").show(ui, |ui| {
-                                ui.label("Frequency:");
-                                ui.add(
-                                    egui::Slider::new(&mut gen.frequency, 1.0..=200.0)
-                                        .suffix(" Hz"),
-                                );
-                                ui.end_row();
-                            });
-                        });
-                    }
-                    if let Ok(mut gen) = self.world.get::<&mut PoissonGenerator>(active_entity) {
-                        ui.collapsing("Poisson Generator", |ui| {
-                            egui::Grid::new("poisson_gen_settings").show(ui, |ui| {
-                                ui.label("Rate:");
-                                ui.add(egui::Slider::new(&mut gen.rate, 1.0..=200.0).suffix(" Hz"));
-                                ui.end_row();
-                            });
-                        });
-                    }
-                    if self.world.get::<&Voltmeter>(active_entity).is_ok() {
-                        ui.collapsing("Voltmeter", |ui| {
-                            if let Ok(mut size) =
-                                self.world.get::<&mut VoltmeterSize>(active_entity)
-                            {
-                                egui::Grid::new("voltmeter_size_settings").show(ui, |ui| {
-                                    ui.label("Width:");
-                                    ui.add(egui::Slider::new(&mut size.width, 2.0..=20.0));
-                                    ui.end_row();
-                                    ui.label("Height:");
-                                    ui.add(egui::Slider::new(&mut size.height, 1.0..=10.0));
-                                    ui.end_row();
-                                });
-                            }
-                            if let Ok(series) = self.world.get::<&VoltageSeries>(active_entity) {
-                                if let Some(last) = series.measurements.last() {
-                                    ui.label(format!("Voltage: {:.2} mV", last.voltage));
-                                }
-                            }
-                        });
-                    }
-                    if self.world.get::<&Annotation>(active_entity).is_ok() {
-                        ui.collapsing("Note", |ui| {
-                            if let Ok(mut annotation) =
-                                self.world.get::<&mut Annotation>(active_entity)
-                            {
-                                ui.label("Text:");
-                                ui.add(
-                                    egui::TextEdit::multiline(&mut annotation.text)
-                                        .desired_rows(4)
-                                        .desired_width(f32::INFINITY),
-                                );
-                            }
-                            if let Ok(mut size) = self.world.get::<&mut NoteSize>(active_entity) {
-                                egui::Grid::new("note_size_settings").show(ui, |ui| {
-                                    ui.label("Width:");
-                                    ui.add(egui::Slider::new(&mut size.width, 2.0..=30.0));
-                                    ui.end_row();
-                                    ui.label("Height:");
-                                    ui.add(egui::Slider::new(&mut size.height, 1.0..=20.0));
-                                    ui.end_row();
-                                });
-                            }
-                        });
-                    }
-                });
+            match gui::menu_bar(context) {
+                Some(MenuChoice::Save(path)) => self.save(path),
+                Some(MenuChoice::Open(path)) => self.loadfile(path),
+                Some(MenuChoice::Example(example)) => self.load_example(example),
+                None => {}
+            }
+            gui::elements_window(context, &mut self.editor);
+            gui::settings_window(context, self.fps, &mut self.iterations, &mut self.theme);
+            if let Some(selection) = self.editor.selection {
+                gui::selection_window(context, &self.world, selection);
             }
         }
     }
