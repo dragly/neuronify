@@ -1,8 +1,6 @@
-use glam::Vec3;
-
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
+use crate::measurement::voltmeter::{Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::colors;
 use crate::rendering::gpu_types::ConnectionData;
 
@@ -10,16 +8,17 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
     let mut result = Vec::new();
 
     for (voltmeter_id, _) in world.query::<&Voltmeter>().iter() {
-        let (series, spike_times, voltmeter_pos, trace_width, trace_height, is_compartment) = {
+        let (series, spike_times, frame, is_compartment) = {
             let Ok(series) = world.get::<&VoltageSeries>(voltmeter_id) else {
                 continue;
             };
             let Ok(pos) = world.get::<&Position>(voltmeter_id) else {
                 continue;
             };
-            let size = world.get::<&VoltmeterSize>(voltmeter_id).ok();
-            let tw = size.as_ref().map(|s| s.width).unwrap_or(8.0);
-            let th = size.as_ref().map(|s| s.height).unwrap_or(4.0);
+            let size = world
+                .get::<&VoltmeterSize>(voltmeter_id)
+                .map(|size| (*size).clone())
+                .unwrap_or_default();
             let is_comp = world
                 .get::<&Connection>(voltmeter_id)
                 .ok()
@@ -31,8 +30,12 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
                 .map(|m| (m.time, m.voltage))
                 .collect();
             let spikes = series.spike_times.clone();
-            let vpos = pos.position;
-            (measurements, spikes, vpos, tw, th, is_comp)
+            (
+                measurements,
+                spikes,
+                Frame::new(pos.position, &size),
+                is_comp,
+            )
         };
 
         if series.len() < 2 {
@@ -49,15 +52,13 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
         let latest_time = series.last().map(|(t, _)| *t).unwrap_or(0.0);
         let start_time = latest_time - time_window;
 
-        let bottom_left_origin = voltmeter_pos + Vec3::new(-trace_height * 0.5, 0.0, 0.0);
-
         let trace_color = colors::green();
         let fc = colors::frame_color();
 
-        let bottom_left = bottom_left_origin;
-        let bottom_right = bottom_left_origin + Vec3::new(0.0, 0.0, trace_width);
-        let top_left = bottom_left_origin + Vec3::new(trace_height, 0.0, 0.0);
-        let top_right = bottom_left_origin + Vec3::new(trace_height, 0.0, trace_width);
+        let bottom_left = frame.corner(Corner::BottomLeft);
+        let bottom_right = frame.corner(Corner::BottomRight);
+        let top_left = frame.corner(Corner::TopLeft);
+        let top_right = frame.corner(Corner::TopRight);
         for (a, b) in [
             (top_left, top_right),
             (top_right, bottom_right),
@@ -81,13 +82,14 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
             let (t0, v0) = window[0];
             let (t1, v1) = window[1];
 
-            let z0 = ((t0 - start_time) / time_window) as f32 * trace_width;
-            let z1 = ((t1 - start_time) / time_window) as f32 * trace_width;
-            let x0 = ((v0 - v_min) / (v_max - v_min)) as f32 * trace_height;
-            let x1 = ((v1 - v_min) / (v_max - v_min)) as f32 * trace_height;
-
-            let p0 = bottom_left_origin + Vec3::new(x0, 0.0, z0);
-            let p1 = bottom_left_origin + Vec3::new(x1, 0.0, z1);
+            let p0 = frame.point(
+                ((t0 - start_time) / time_window) as f32,
+                ((v0 - v_min) / (v_max - v_min)) as f32,
+            );
+            let p1 = frame.point(
+                ((t1 - start_time) / time_window) as f32,
+                ((v1 - v_min) / (v_max - v_min)) as f32,
+            );
 
             result.push(ConnectionData {
                 position_a: p0,
@@ -104,9 +106,9 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
             if *spike_time < start_time || *spike_time > latest_time {
                 continue;
             }
-            let z = ((spike_time - start_time) / time_window) as f32 * trace_width;
-            let top = bottom_left_origin + Vec3::new(trace_height, 0.0, z);
-            let bottom = bottom_left_origin + Vec3::new(0.0, 0.0, z);
+            let right = ((spike_time - start_time) / time_window) as f32;
+            let top = frame.point(right, 1.0);
+            let bottom = frame.point(right, 0.0);
             result.push(ConnectionData {
                 position_a: top,
                 position_b: bottom,

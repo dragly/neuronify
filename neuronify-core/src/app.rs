@@ -4,7 +4,7 @@ use crate::dendrites::{dendrite_tree, spawn_dendrites};
 use crate::elements::{spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element};
 use crate::examples::Example;
 use crate::landing::{LandingChoice, LandingScreen};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
+use crate::measurement::voltmeter::{Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::{
     canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, compartment_radii,
@@ -66,7 +66,7 @@ pub struct Neuronify {
     pub active_entity: Option<Entity>,
     pub dragging_entity: Option<Entity>,
     pub drag_offset: Vec3,
-    pub resizing_voltmeter: Option<(Entity, ResizeCorner)>,
+    pub resizing_voltmeter: Option<(Entity, Corner)>,
     pub load_error: Option<String>,
     pub note_renderer: NoteRenderer,
     pub gauge_renderer: GaugeRenderer,
@@ -658,117 +658,43 @@ impl Neuronify {
                             pos.position.y = 0.0;
                         }
                     } else if let Some((entity, corner)) = *resizing_voltmeter {
-                        let current = world
-                            .get::<&Position>(entity)
-                            .ok()
-                            .map(|p| p.position)
-                            .and_then(|vpos| {
-                                world
-                                    .get::<&VoltmeterSize>(entity)
-                                    .ok()
-                                    .map(|s| (vpos, s.width, s.height))
-                            });
-                        if let Some((vpos, w, h)) = current {
-                            let bl = vpos + Vec3::new(-h * 0.5, 0.0, 0.0);
-                            let anchor = match corner {
-                                ResizeCorner::TopLeft => bl + Vec3::new(0.0, 0.0, w),
-                                ResizeCorner::TopRight => bl,
-                                ResizeCorner::BottomLeft => bl + Vec3::new(h, 0.0, w),
-                                ResizeCorner::BottomRight => bl + Vec3::new(h, 0.0, 0.0),
-                            };
-                            let new_width = match corner {
-                                ResizeCorner::TopRight | ResizeCorner::BottomRight => {
-                                    (mouse_position.z - anchor.z).max(2.0)
-                                }
-                                ResizeCorner::TopLeft | ResizeCorner::BottomLeft => {
-                                    (anchor.z - mouse_position.z).max(2.0)
-                                }
-                            };
-                            let new_height = match corner {
-                                ResizeCorner::TopLeft | ResizeCorner::TopRight => {
-                                    (mouse_position.x - anchor.x).max(1.0)
-                                }
-                                ResizeCorner::BottomLeft | ResizeCorner::BottomRight => {
-                                    (anchor.x - mouse_position.x).max(1.0)
-                                }
-                            };
-                            let new_bl = match corner {
-                                ResizeCorner::TopLeft => {
-                                    Vec3::new(anchor.x, 0.0, mouse_position.z.min(anchor.z - 2.0))
-                                }
-                                ResizeCorner::TopRight => anchor,
-                                ResizeCorner::BottomLeft => Vec3::new(
-                                    mouse_position.x.min(anchor.x - 1.0),
-                                    0.0,
-                                    mouse_position.z.min(anchor.z - 2.0),
-                                ),
-                                ResizeCorner::BottomRight => {
-                                    Vec3::new(mouse_position.x.min(anchor.x - 1.0), 0.0, anchor.z)
-                                }
-                            };
-                            let new_pos = new_bl + Vec3::new(new_height * 0.5, 0.0, 0.0);
+                        if let Some(frame) = Frame::of(world, entity) {
+                            let resized = frame.resized(corner, mouse_position);
                             if let Ok(mut size) = world.get::<&mut VoltmeterSize>(entity) {
-                                size.width = new_width;
-                                size.height = new_height;
+                                *size = resized.size();
                             }
                             if let Ok(mut pos) = world.get::<&mut Position>(entity) {
-                                pos.position = new_pos;
+                                pos.position = resized.position();
                             }
                         }
                     } else {
                         match *move_origin {
                             Some(origin) => pan(application, mouse_position - origin),
                             None => {
-                                let voltmeter_bounds: Vec<_> = world
-                                    .query::<(&Voltmeter, &Position)>()
+                                let frames: Vec<_> = world
+                                    .query::<(&Position, &VoltmeterSize)>()
+                                    .with::<&Voltmeter>()
                                     .iter()
-                                    .filter_map(|(vid, (_, pos))| {
-                                        world.get::<&VoltmeterSize>(vid).ok().map(|size| {
-                                            (vid, pos.position, size.width, size.height)
-                                        })
+                                    .map(|(voltmeter, (position, size))| {
+                                        (
+                                            voltmeter,
+                                            position.position,
+                                            Frame::new(position.position, size),
+                                        )
                                     })
                                     .collect();
+                                *resizing_voltmeter =
+                                    frames.iter().find_map(|(voltmeter, _, frame)| {
+                                        Some((*voltmeter, frame.corner_near(mouse_position, 1.0)?))
+                                    });
 
-                                let mut found_corner = false;
-                                let corner_threshold = 1.0_f32;
-                                for (vid, vpos, w, h) in &voltmeter_bounds {
-                                    let bl = *vpos + Vec3::new(-h * 0.5, 0.0, 0.0);
-                                    let corners = [
-                                        (bl + Vec3::new(*h, 0.0, 0.0), ResizeCorner::TopLeft),
-                                        (bl + Vec3::new(*h, 0.0, *w), ResizeCorner::TopRight),
-                                        (bl, ResizeCorner::BottomLeft),
-                                        (bl + Vec3::new(0.0, 0.0, *w), ResizeCorner::BottomRight),
-                                    ];
-                                    for (corner_pos, corner_type) in &corners {
-                                        let dist = Vec3::new(
-                                            mouse_position.x - corner_pos.x,
-                                            0.0,
-                                            mouse_position.z - corner_pos.z,
-                                        )
-                                        .length();
-                                        if dist < corner_threshold {
-                                            *resizing_voltmeter = Some((*vid, *corner_type));
-                                            found_corner = true;
-                                            break;
-                                        }
-                                    }
-                                    if found_corner {
-                                        break;
-                                    }
-                                }
-
-                                if !found_corner {
+                                if resizing_voltmeter.is_none() {
                                     let mut found_voltmeter = false;
-                                    for (vid, vpos, w, h) in &voltmeter_bounds {
-                                        let bl = *vpos + Vec3::new(-h * 0.5, 0.0, 0.0);
-                                        if mouse_position.x >= bl.x
-                                            && mouse_position.x <= bl.x + h
-                                            && mouse_position.z >= bl.z
-                                            && mouse_position.z <= bl.z + w
-                                        {
-                                            *active_entity = Some(*vid);
-                                            *dragging_entity = Some(*vid);
-                                            *drag_offset = *vpos - mouse_position;
+                                    for (voltmeter, position, frame) in &frames {
+                                        if frame.contains(mouse_position) {
+                                            *active_entity = Some(*voltmeter);
+                                            *dragging_entity = Some(*voltmeter);
+                                            *drag_offset = *position - mouse_position;
                                             drag_offset.y = 0.0;
                                             found_voltmeter = true;
                                             break;

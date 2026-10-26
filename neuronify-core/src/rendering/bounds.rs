@@ -1,6 +1,7 @@
 use glam::Vec3;
 
 use crate::components::*;
+use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::colors::Theme;
 use crate::rendering::connections::collect_connections;
 use crate::rendering::scene::collect_scene;
@@ -61,7 +62,9 @@ fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
         points.push(connection.position_b);
     }
     for (_, (position, size)) in world.query::<(&Position, &VoltmeterSize)>().iter() {
-        points.extend(voltmeter_frame_corners(position.position, size));
+        let frame = Frame::new(position.position, size);
+        points.push(frame.corner(Corner::BottomLeft));
+        points.push(frame.corner(Corner::TopRight));
     }
     points
 }
@@ -87,14 +90,6 @@ fn footprint(center: Vec3, radius: f32) -> [Vec3; 2] {
 fn note_corners(center: Vec3, size: &NoteSize) -> [Vec3; 2] {
     let half_extent = Vec3::new(size.height * 0.5, 0.0, size.width * 0.5);
     [center - half_extent, center + half_extent]
-}
-
-fn voltmeter_frame_corners(position: Vec3, size: &VoltmeterSize) -> [Vec3; 2] {
-    let bottom_left = position - Vec3::new(size.height * 0.5, 0.0, 0.0);
-    [
-        bottom_left,
-        bottom_left + Vec3::new(size.height, 0.0, size.width),
-    ]
 }
 
 #[cfg(test)]
