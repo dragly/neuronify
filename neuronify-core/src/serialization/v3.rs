@@ -1,12 +1,12 @@
 //! Dendrites are marked, so they keep their look after loading,
 //! and burst neurons from Neuronify 1 keep their burst current.
 
+use super::v1::Inhibitory;
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use hecs::World;
 
 schema!(
-    save,
     Position,
     LeakyNeuron,
     LeakyDynamics,

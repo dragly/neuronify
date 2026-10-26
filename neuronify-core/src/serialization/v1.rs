@@ -2,6 +2,10 @@
 
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Inhibitory;
 
 schema!(
     Position,

@@ -219,10 +219,10 @@ fn test_inhibitory_simulation() {
     assert_eq!(sim.edges.len(), 5);
 
     let c_entity = entities[0];
-    assert!(world.get::<&Inhibitory>(c_entity).is_err());
+    assert_eq!(neuron_type(&world, c_entity), NeuronType::Excitatory);
 
     let b_entity = entities[3];
-    assert!(world.get::<&Inhibitory>(b_entity).is_ok());
+    assert_eq!(neuron_type(&world, b_entity), NeuronType::Inhibitory);
 
     let dt = 0.0001;
     for i in 0..100 {
@@ -331,7 +331,6 @@ fn test_inhibitory_suppresses_firing() {
         LeakyDynamics::default(),
         LeakCurrent::default(),
         NeuronType::Inhibitory,
-        Inhibitory,
         Position {
             position: Vec3::new(0.0, 0.0, 1.0),
         },

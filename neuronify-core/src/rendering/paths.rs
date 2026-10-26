@@ -7,7 +7,6 @@ use crate::components::*;
 use crate::constants::*;
 use crate::measurement::voltmeter::Voltmeter;
 use crate::rendering::colors::*;
-use crate::rendering::shapes::is_inhibitory;
 
 /// Spacing between the joints along a connection, the same as between compartments.
 const JOINT_SPACING: f32 = 2.0 * NODE_RADIUS;
@@ -187,7 +186,7 @@ pub fn connection_paths(
                     start_color,
                     end_color,
                     directional: connection.directional,
-                    inhibitory: is_inhibitory(world, connection.from),
+                    inhibitory: neuron_type(world, connection.from) == NeuronType::Inhibitory,
                 },
             ))
         })

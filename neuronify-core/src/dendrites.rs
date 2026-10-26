@@ -68,7 +68,7 @@ fn spawn_chain(
             chain.wander,
         );
         position += direction * SEGMENT_LENGTH;
-        let compartment = spawn_compartment(world, position, neuron_type.clone());
+        let compartment = spawn_compartment(world, position, *neuron_type);
         world.insert_one(compartment, Dendrite).unwrap();
         spawn_cable(world, previous, compartment, false);
         spawned.push((compartment, position));
@@ -91,7 +91,7 @@ const BRANCH_SCALE: Vec3 = Vec3::new(5.9, 0.0, 8.7);
 pub fn spawn_dendrites(world: &mut hecs::World, soma: Entity) {
     let (Some(origin), Some(neuron_type)) = (
         world.get::<&Position>(soma).ok().map(|p| p.position),
-        world.get::<&NeuronType>(soma).ok().map(|t| (*t).clone()),
+        world.get::<&NeuronType>(soma).ok().map(|t| *t),
     ) else {
         return;
     };

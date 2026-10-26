@@ -40,23 +40,17 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
     };
 
     match node.filename.as_str() {
-        "neurons/LeakyNeuron.qml" => spawn_leaky_neuron(world, node, pos),
-        "neurons/LeakyInhibitoryNeuron.qml" => {
-            let entity = spawn_leaky_neuron(world, node, pos);
-            world.insert_one(entity, Inhibitory).unwrap();
-            entity
-        }
+        "neurons/LeakyNeuron.qml" => spawn_leaky_neuron(world, node, pos, node.inhibitory),
+        "neurons/LeakyInhibitoryNeuron.qml" => spawn_leaky_neuron(world, node, pos, true),
         "neurons/AdaptationNeuron.qml" => spawn_adaptation_neuron(world, node, pos),
         "neurons/BurstNeuron.qml" => {
-            let entity = spawn_leaky_neuron(world, node, pos);
+            let entity = spawn_leaky_neuron(world, node, pos, node.inhibitory);
             world.insert_one(entity, BurstCurrent::default()).unwrap();
             entity
         }
         "neurons/BurstInhibitoryNeuron.qml" => {
-            let entity = spawn_leaky_neuron(world, node, pos);
-            world
-                .insert(entity, (BurstCurrent::default(), Inhibitory))
-                .unwrap();
+            let entity = spawn_leaky_neuron(world, node, pos, true);
+            world.insert_one(entity, BurstCurrent::default()).unwrap();
             entity
         }
         "generators/CurrentClamp.qml" => {
@@ -107,7 +101,12 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
     }
 }
 
-fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> Entity {
+fn spawn_leaky_neuron(
+    world: &mut World,
+    node: &LegacyNode,
+    pos: Position,
+    inhibitory: bool,
+) -> Entity {
     let e = &node.engine;
 
     let neuron = LeakyNeuron {
@@ -134,23 +133,17 @@ fn spawn_leaky_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> En
         current: 0.0,
     };
 
-    let neuron_type = if node.inhibitory {
+    let neuron_type = if inhibitory {
         NeuronType::Inhibitory
     } else {
         NeuronType::Excitatory
     };
 
-    let entity = world.spawn((pos, neuron, dynamics, leak, neuron_type, Deletable {}));
-
-    if node.inhibitory {
-        world.insert_one(entity, Inhibitory).unwrap();
-    }
-
-    entity
+    world.spawn((pos, neuron, dynamics, leak, neuron_type, Deletable {}))
 }
 
 fn spawn_adaptation_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> Entity {
-    let entity = spawn_leaky_neuron(world, node, pos);
+    let entity = spawn_leaky_neuron(world, node, pos, node.inhibitory);
 
     let e = &node.engine;
     let adapt = AdaptationCurrent {

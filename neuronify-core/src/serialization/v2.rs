@@ -1,5 +1,6 @@
 //! Notes get a size and can be deleted.
 
+use super::v1::Inhibitory;
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use hecs::World;

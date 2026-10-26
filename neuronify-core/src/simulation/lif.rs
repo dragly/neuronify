@@ -227,7 +227,7 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
     let current_deliveries: Vec<(hecs::Entity, f64)> = edges_with_fire
         .iter()
         .filter_map(|(edge_entity, source, _target, _)| {
-            let sign = if world.get::<&Inhibitory>(*source).is_ok() {
+            let sign = if neuron_type(world, *source) == NeuronType::Inhibitory {
                 -1.0
             } else {
                 1.0
