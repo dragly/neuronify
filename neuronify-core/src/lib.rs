@@ -6,6 +6,7 @@ pub mod dendrites;
 pub mod editor;
 pub mod elements;
 pub mod examples;
+pub mod frame_clock;
 pub mod gui;
 pub mod input;
 pub mod landing;
@@ -18,10 +19,9 @@ pub mod tools;
 #[cfg(target_arch = "wasm32")]
 mod web;
 
-pub use app::{Error, Neuronify};
+pub use app::Neuronify;
 pub use components::*;
 pub use constants::*;
-pub use input::{Keyboard, Mouse};
 pub use simulation::{fhn_step, lif_step, run_headless, SpikeRecord};
 pub use tools::*;
 
