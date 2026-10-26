@@ -85,11 +85,3 @@ pub struct ConnectionTool {
 pub struct StimulationTool {
     pub position: Vec3,
 }
-
-#[derive(Clone, Copy, Debug)]
-pub enum ResizeCorner {
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
-}
