@@ -6,6 +6,7 @@ pub mod dendrites;
 pub mod editor;
 pub mod elements;
 pub mod examples;
+pub mod gui;
 pub mod input;
 pub mod landing;
 pub mod legacy;
