@@ -133,16 +133,7 @@ mod axon_tests {
         let mut compartment_entities = Vec::new();
         for i in 0..num_compartments {
             let comp = world.spawn((
-                Compartment {
-                    voltage: -10.0,
-                    m: -0.625,
-                    h: 0.0,
-                    n: 0.0,
-                    influence: 0.0,
-                    capacitance: 1.0,
-                    injected_current: 0.0,
-                    fire_impulse: 0.0,
-                },
+                Compartment::default(),
                 Position {
                     position: Vec3::new(0.0, 0.0, 2.0 * (i + 1) as f32),
                 },

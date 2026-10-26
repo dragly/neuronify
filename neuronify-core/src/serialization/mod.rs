@@ -93,6 +93,7 @@ fn load_legacy(bytes: &[u8]) -> Result<World, String> {
 mod tests {
     use super::*;
     use crate::components::*;
+    use crate::elements::{spawn_cable, spawn_compartment, Element};
     use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 
     const LEAKY_NFY: &str = include_str!("../../examples/leaky.nfy");
@@ -149,16 +150,7 @@ mod tests {
     #[test]
     fn keeps_dendrites() {
         let mut world = World::new();
-        let soma = world.spawn((
-            Position {
-                position: glam::Vec3::ZERO,
-            },
-            LeakyNeuron::default(),
-            LeakyDynamics::default(),
-            LeakCurrent::default(),
-            NeuronType::Excitatory,
-            Deletable {},
-        ));
+        let soma = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::ZERO);
         crate::dendrites::spawn_dendrites(&mut world, soma);
         let dendrites = count::<Dendrite>(&world);
         assert!(dendrites > 0);
@@ -203,55 +195,12 @@ mod tests {
             let simulation = crate::legacy::parse_legacy_nfy(example).unwrap();
             crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
         }
-        let position = |x: f32| Position {
-            position: glam::Vec3::new(x, 0.0, 30.0),
-        };
-        world.spawn((
-            position(0.0),
-            RegularSpikeGenerator::default(),
-            GeneratorDynamics::default(),
-            Deletable {},
-        ));
-        world.spawn((
-            position(3.0),
-            PoissonGenerator::default(),
-            GeneratorDynamics::default(),
-            Deletable {},
-        ));
+        let position = |x: f32| glam::Vec3::new(x, 0.0, 30.0);
+        Element::RegularSpikeGenerator.spawn(&mut world, position(0.0));
+        Element::PoissonGenerator.spawn(&mut world, position(3.0));
         let neuron = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
-        let compartment = world.spawn((
-            position(6.0),
-            NeuronType::Excitatory,
-            Compartment {
-                voltage: -10.0,
-                m: -0.625,
-                h: 0.0,
-                n: 0.0,
-                influence: 0.0,
-                capacitance: 1.0,
-                injected_current: 0.0,
-                fire_impulse: 0.0,
-            },
-            StaticConnectionSource {},
-            Deletable {},
-            Selectable { selected: false },
-            SpatialDynamics {
-                velocity: glam::Vec3::ZERO,
-                acceleration: glam::Vec3::ZERO,
-            },
-        ));
-        world.spawn((
-            Connection {
-                from: neuron,
-                to: compartment,
-                strength: 1.0,
-                directional: false,
-            },
-            Deletable {},
-            CompartmentCurrent {
-                capacitance: crate::constants::COUPLING_CAPACITANCE,
-            },
-        ));
+        let compartment = spawn_compartment(&mut world, position(6.0), NeuronType::Excitatory);
+        spawn_cable(&mut world, neuron, compartment, false);
         world
     }
 

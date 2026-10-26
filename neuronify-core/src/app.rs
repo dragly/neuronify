@@ -1,9 +1,10 @@
 use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{dendrite_tree, spawn_dendrites};
+use crate::elements::{spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element};
 use crate::examples::Example;
 use crate::landing::{LandingChoice, LandingScreen};
-use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
+use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::{
     canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, compartment_radii,
@@ -447,94 +448,18 @@ impl Neuronify {
             false
         };
         match tool {
-            Tool::ExcitatoryNeuron
-            | Tool::InhibitoryNeuron
-            | Tool::AdaptiveNeuron
-            | Tool::BurstNeuron => {
+            Tool::Place(element) => {
                 if previous_too_near {
                     return;
                 }
-                let neuron_type = if self.tool == Tool::InhibitoryNeuron {
-                    NeuronType::Inhibitory
-                } else {
-                    NeuronType::Excitatory
-                };
-                let entity = world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    LeakyNeuron::default(),
-                    LeakyDynamics::default(),
-                    LeakCurrent::default(),
-                    neuron_type,
-                    Deletable {},
-                ));
-                match self.tool {
-                    Tool::InhibitoryNeuron => world.insert_one(entity, Inhibitory).unwrap(),
-                    Tool::AdaptiveNeuron => world
-                        .insert_one(entity, AdaptationCurrent::default())
-                        .unwrap(),
-                    Tool::BurstNeuron => world.insert_one(entity, BurstCurrent::default()).unwrap(),
-                    _ => {}
-                }
-                if self.dendrites {
+                let element = *element;
+                let entity = element.spawn(world, mouse_position);
+                if element.is_neuron() && self.dendrites {
                     spawn_dendrites(world, entity);
                 }
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            Tool::CurrentSource => {
-                if previous_too_near {
-                    return;
+                if element == Element::Note {
+                    *active_entity = Some(entity);
                 }
-                let entity = world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    CurrentClamp::default(),
-                    Deletable {},
-                ));
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            Tool::TouchSensor => {
-                if previous_too_near {
-                    return;
-                }
-                let entity = world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    TouchSensor,
-                    GeneratorDynamics::default(),
-                    Deletable {},
-                ));
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            Tool::RegularSpikeGenerator => {
-                if previous_too_near {
-                    return;
-                }
-                let entity = world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    RegularSpikeGenerator::default(),
-                    GeneratorDynamics::default(),
-                    Deletable {},
-                ));
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            Tool::PoissonGenerator => {
-                if previous_too_near {
-                    return;
-                }
-                let entity = world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    PoissonGenerator::default(),
-                    GeneratorDynamics::default(),
-                    Deletable {},
-                ));
                 self.previous_creation = Some(PreviousCreation { entity });
             }
             Tool::StaticConnection => {
@@ -571,7 +496,7 @@ impl Neuronify {
                                 c.from == new_connection.from && c.to == new_connection.to
                             });
                         if !connection_exists && ct.from != id {
-                            world.spawn((new_connection, CurrentSynapse::default(), Deletable {}));
+                            spawn_synapse(world, ct.from, id);
                         }
                         if !self.keyboard.shift_down {
                             ct.start = position;
@@ -628,23 +553,6 @@ impl Neuronify {
                 *stimulation_tool = Some(StimulationTool {
                     position: mouse_position,
                 })
-            }
-            Tool::Note => {
-                if previous_too_near {
-                    return;
-                }
-                let entity = world.spawn((
-                    Position {
-                        position: mouse_position,
-                    },
-                    Annotation {
-                        text: "New note".to_string(),
-                    },
-                    NoteSize::default(),
-                    Deletable {},
-                ));
-                *active_entity = Some(entity);
-                self.previous_creation = Some(PreviousCreation { entity });
             }
             Tool::Erase => {
                 let to_delete = world
@@ -739,32 +647,7 @@ impl Neuronify {
                 let Some((target, position)) = result else {
                     return;
                 };
-                let voltmeter = world.spawn((
-                    Voltmeter {},
-                    Position {
-                        position: position
-                            + Vec3 {
-                                x: 1.0,
-                                y: 0.0,
-                                z: 0.0,
-                            },
-                    },
-                    VoltageSeries {
-                        measurements: RollingWindow::new(100000),
-                        spike_times: Vec::new(),
-                    },
-                    Connection {
-                        from: target,
-                        to: Entity::DANGLING,
-                        strength: 1.0,
-                        directional: true,
-                    },
-                    VoltmeterSize::default(),
-                    Deletable {},
-                ));
-                if let Ok(mut conn) = world.get::<&mut Connection>(voltmeter) {
-                    conn.to = voltmeter;
-                }
+                let voltmeter = spawn_voltmeter(world, target, position + Vec3::X);
                 *previous_creation = Some(PreviousCreation { entity: voltmeter });
             }
             Tool::Select => match mouse.left_down {
@@ -1031,13 +914,7 @@ impl Neuronify {
                                     c.from == new_connection.from && c.to == new_connection.to
                                 });
                             if !connection_exists && ct.from != id {
-                                world.spawn((
-                                    new_connection,
-                                    Deletable {},
-                                    CompartmentCurrent {
-                                        capacitance: COUPLING_CAPACITANCE,
-                                    },
-                                ));
+                                spawn_cable(world, ct.from, id, true);
                             }
                             if !self.keyboard.shift_down {
                                 ct.start = position;
@@ -1055,42 +932,9 @@ impl Neuronify {
                                     None
                                 };
                             if let Some(neuron_type) = neuron_type {
-                                let compartment = world.spawn((
-                                    Position {
-                                        position: mouse_position,
-                                    },
-                                    neuron_type,
-                                    Compartment {
-                                        voltage: -10.0,
-                                        m: -0.625,
-                                        h: 0.0,
-                                        n: 0.0,
-                                        influence: 0.0,
-                                        capacitance: 1.0,
-                                        injected_current: 0.0,
-                                        fire_impulse: 0.0,
-                                    },
-                                    StaticConnectionSource {},
-                                    Deletable {},
-                                    Selectable { selected: false },
-                                    SpatialDynamics {
-                                        velocity: Vec3::new(0.0, 0.0, 0.0),
-                                        acceleration: Vec3::new(0.0, 0.0, 0.0),
-                                    },
-                                ));
-                                let new_connection = Connection {
-                                    from: ct.from,
-                                    to: compartment,
-                                    strength: 1.0,
-                                    directional: false,
-                                };
-                                world.spawn((
-                                    new_connection,
-                                    Deletable {},
-                                    CompartmentCurrent {
-                                        capacitance: COUPLING_CAPACITANCE,
-                                    },
-                                ));
+                                let compartment =
+                                    spawn_compartment(world, mouse_position, neuron_type);
+                                spawn_cable(world, ct.from, compartment, false);
                                 self.previous_creation = Some(PreviousCreation {
                                     entity: compartment,
                                 });

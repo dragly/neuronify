@@ -2,23 +2,17 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
+use crate::elements::Element;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tool {
     Select,
-    ExcitatoryNeuron,
-    InhibitoryNeuron,
-    AdaptiveNeuron,
-    BurstNeuron,
-    CurrentSource,
-    TouchSensor,
-    RegularSpikeGenerator,
-    PoissonGenerator,
+    Place(Element),
     Voltmeter,
     StaticConnection,
     Axon,
     Erase,
     Stimulate,
-    Note,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -46,21 +40,24 @@ impl ToolCategory {
                 (Tool::Erase, "Erase"),
             ],
             ToolCategory::Neurons => vec![
-                (Tool::ExcitatoryNeuron, "Excitatory Neuron"),
-                (Tool::InhibitoryNeuron, "Inhibitory Neuron"),
-                (Tool::AdaptiveNeuron, "Adaptive Neuron"),
-                (Tool::BurstNeuron, "Burst Neuron"),
-                (Tool::CurrentSource, "Current Source"),
-                (Tool::TouchSensor, "Touch Sensor"),
-                (Tool::RegularSpikeGenerator, "Spike Generator"),
-                (Tool::PoissonGenerator, "Poisson Generator"),
+                (Tool::Place(Element::ExcitatoryNeuron), "Excitatory Neuron"),
+                (Tool::Place(Element::InhibitoryNeuron), "Inhibitory Neuron"),
+                (Tool::Place(Element::AdaptiveNeuron), "Adaptive Neuron"),
+                (Tool::Place(Element::BurstNeuron), "Burst Neuron"),
+                (Tool::Place(Element::CurrentSource), "Current Source"),
+                (Tool::Place(Element::TouchSensor), "Touch Sensor"),
+                (
+                    Tool::Place(Element::RegularSpikeGenerator),
+                    "Spike Generator",
+                ),
+                (Tool::Place(Element::PoissonGenerator), "Poisson Generator"),
                 (Tool::Voltmeter, "Voltmeter"),
             ],
             ToolCategory::Connections => vec![
                 (Tool::StaticConnection, "Static Connection"),
                 (Tool::Axon, "Axon"),
             ],
-            ToolCategory::Annotations => vec![(Tool::Note, "Note")],
+            ToolCategory::Annotations => vec![(Tool::Place(Element::Note), "Note")],
         }
     }
 }

@@ -268,7 +268,7 @@ pub struct Position {
     pub position: Vec3,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SpatialDynamics {
     pub velocity: Vec3,
     pub acceleration: Vec3,
@@ -293,4 +293,19 @@ pub struct Compartment {
     pub injected_current: f64,
     #[serde(default)]
     pub fire_impulse: f64,
+}
+
+impl Default for Compartment {
+    fn default() -> Self {
+        Self {
+            voltage: -10.0,
+            m: -0.625,
+            h: 0.0,
+            n: 0.0,
+            influence: 0.0,
+            capacitance: 1.0,
+            injected_current: 0.0,
+            fire_impulse: 0.0,
+        }
+    }
 }
