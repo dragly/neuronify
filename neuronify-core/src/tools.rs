@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::elements::Element;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Tool {
+    #[default]
     Select,
     Place(Element),
     Voltmeter,
@@ -68,11 +69,6 @@ pub const TOOL_CATEGORIES: [ToolCategory; 4] = [
     ToolCategory::Connections,
     ToolCategory::Annotations,
 ];
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PreviousCreation {
-    pub entity: Entity,
-}
 
 #[derive(Clone, Debug)]
 pub struct ConnectionTool {

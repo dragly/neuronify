@@ -49,15 +49,17 @@ impl ConnectionPath {
     pub fn distance_to(&self, point: Vec3) -> Option<f32> {
         self.points
             .windows(2)
-            .filter_map(|w| {
-                let ab = w[1] - w[0];
-                let t = (point - w[0]).dot(ab) / ab.length_squared();
-                (0.0..=1.0)
-                    .contains(&t)
-                    .then(|| point.distance(w[0] + t * ab))
-            })
+            .filter_map(|w| distance_to_segment(w[0], w[1], point))
             .reduce(f32::min)
     }
+}
+
+pub fn distance_to_segment(start: Vec3, end: Vec3, point: Vec3) -> Option<f32> {
+    let along = end - start;
+    let t = (point - start).dot(along) / along.length_squared();
+    (0.0..=1.0)
+        .contains(&t)
+        .then(|| point.distance(start + t * along))
 }
 
 /// Cable segments between compartments and voltmeter wires are drawn in other ways.

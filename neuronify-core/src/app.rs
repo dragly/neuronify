@@ -1,22 +1,17 @@
 use crate::components::*;
 use crate::constants::*;
-use crate::dendrites::{dendrite_tree, spawn_dendrites};
-use crate::elements::{spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element};
+use crate::editor::{Editor, Pan};
 use crate::examples::Example;
 use crate::landing::{LandingChoice, LandingScreen};
-use crate::measurement::voltmeter::{Corner, Frame, VoltageSeries, Voltmeter};
+use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::{
-    canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, compartment_radii,
-    connection_paths, create_floor, ConnectionData, CylinderData, GaugeRenderer, NoteRenderer,
-    Sphere, Theme, TorusData,
+    canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, create_floor,
+    ConnectionData, CylinderData, GaugeRenderer, NoteRenderer, Sphere, Theme, TorusData,
 };
 use crate::tools::*;
 use chrono::{DateTime, Duration, Utc};
 use glam::Vec3;
-use hecs::Entity;
-use std::cmp::Ordering;
-use std::collections::HashSet;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
@@ -35,14 +30,10 @@ use crate::input::{Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
 
 pub struct Neuronify {
-    pub tool: Tool,
+    pub editor: Editor,
     pub theme: Theme,
     /// The theme the floor and lighting were last set up for
     applied_theme: Theme,
-    pub dendrites: bool,
-    pub previous_creation: Option<PreviousCreation>,
-    pub connection_tool: Option<ConnectionTool>,
-    pub stimulation_tool: Option<StimulationTool>,
     pub world: hecs::World,
     pub time: f64,
     pub mouse: Mouse,
@@ -62,11 +53,6 @@ pub struct Neuronify {
     pub fps: f64,
     pub edit_enabled: bool,
     pub touches: Touches,
-    pub move_origin: Option<Vec3>,
-    pub active_entity: Option<Entity>,
-    pub dragging_entity: Option<Entity>,
-    pub drag_offset: Vec3,
-    pub resizing_voltmeter: Option<(Entity, Corner)>,
     pub load_error: Option<String>,
     pub note_renderer: NoteRenderer,
     pub gauge_renderer: GaugeRenderer,
@@ -76,28 +62,6 @@ pub struct Neuronify {
 
 #[derive(Debug)]
 pub struct Error {}
-
-fn nearest(
-    mouse_position: &Vec3,
-    (_, x): &(Entity, &Position),
-    (_, y): &(Entity, &Position),
-) -> Ordering {
-    mouse_position
-        .distance(x.position)
-        .partial_cmp(&mouse_position.distance(y.position))
-        .unwrap_or(std::cmp::Ordering::Equal)
-}
-
-fn within_selection_range(
-    mouse_position: Vec3,
-    (id, position): (Entity, &Position),
-) -> Option<(Entity, Vec3)> {
-    if mouse_position.distance(position.position) < SELECTION_RANGE {
-        Some((id, position.position))
-    } else {
-        None
-    }
-}
 
 fn ground_position(application: &visula::Application, position: PhysicalPosition<f64>) -> Vec3 {
     let ndc_x = 2.0 * position.x as f32 / application.config.width as f32 - 1.0;
@@ -321,13 +285,9 @@ impl Neuronify {
             rings,
             ring_buffer,
             floor,
-            tool: Tool::Select,
+            editor: Editor::default(),
             theme,
             applied_theme: theme,
-            dendrites: false,
-            previous_creation: None,
-            connection_tool: None,
-            stimulation_tool: None,
             world,
             time: 0.0,
             mouse: Mouse {
@@ -341,11 +301,6 @@ impl Neuronify {
             fps: 60.0,
             edit_enabled: true,
             touches: Touches::default(),
-            move_origin: None,
-            active_entity: None,
-            dragging_entity: None,
-            drag_offset: Vec3::ZERO,
-            resizing_voltmeter: None,
             load_error: None,
             note_renderer: NoteRenderer::new(application),
             gauge_renderer: GaugeRenderer::new(application),
@@ -372,503 +327,32 @@ impl Neuronify {
         self.handle_tool(application);
     }
 
-    fn release_tools(&mut self) {
-        self.stimulation_tool = None;
-        self.connection_tool = None;
-        self.previous_creation = None;
-        self.move_origin = None;
-        self.dragging_entity = None;
-        self.resizing_voltmeter = None;
-    }
-
     fn sync_pointer_with_gui(&mut self, context: &egui::Context) {
         let held = context.input(|input| input.pointer.any_down() || input.any_touches());
         if !held {
             self.touches = Touches::default();
             self.mouse.left_down = false;
-            self.release_tools();
+            self.editor.release();
         }
     }
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
-            self.release_tools();
+            self.editor.release();
             return;
         }
-        let palette = self.theme.palette();
-        let Neuronify {
-            tool,
-            mouse,
-            connection_tool,
-            stimulation_tool,
-            world,
-            previous_creation,
-            move_origin,
-            active_entity,
-            dragging_entity,
-            drag_offset,
-            resizing_voltmeter,
-            ..
-        } = self;
-        let mouse_physical_position = match mouse.position {
-            Some(p) => p,
-            None => {
-                return;
-            }
-        };
-        let mouse_position = ground_position(application, mouse_physical_position);
-
-        if !self.edit_enabled {
-            let touching = stimulation_tool.is_some()
-                || (move_origin.is_none() && simulation::touch_sensor_near(world, mouse_position));
-            if touching {
-                *stimulation_tool = Some(StimulationTool {
-                    position: mouse_position,
-                });
-            } else {
-                match *move_origin {
-                    Some(origin) => pan(application, mouse_position - origin),
-                    None => *move_origin = Some(mouse_position),
-                }
-            }
+        let Some(screen_position) = self.mouse.position else {
             return;
-        }
-
-        let minimum_distance = match tool {
-            Tool::Axon => MIN_CREATION_DISTANCE_AXON,
-            _ => MIN_CREATION_DISTANCE_DEFAULT,
         };
-        let previous_too_near = if let Some(pc) = previous_creation {
-            if let Ok(position) = world.get::<&Position>(pc.entity) {
-                position.position.distance(mouse_position) < minimum_distance
-            } else {
-                false
-            }
+        let position = ground_position(application, screen_position);
+        let requested_pan = if self.edit_enabled {
+            self.editor
+                .edit(&mut self.world, position, self.keyboard.shift_down)
         } else {
-            false
+            self.editor.view(&self.world, position)
         };
-        match tool {
-            Tool::Place(element) => {
-                if previous_too_near {
-                    return;
-                }
-                let element = *element;
-                let entity = element.spawn(world, mouse_position);
-                if element.is_neuron() && self.dendrites {
-                    spawn_dendrites(world, entity);
-                }
-                if element == Element::Note {
-                    *active_entity = Some(entity);
-                }
-                self.previous_creation = Some(PreviousCreation { entity });
-            }
-            Tool::StaticConnection => {
-                if let Some(ct) = connection_tool {
-                    let target_candidates: Vec<(Entity, Vec3)> = world
-                        .query::<&Position>()
-                        .with::<&LeakyNeuron>()
-                        .iter()
-                        .map(|(e, p)| (e, p.position))
-                        .collect();
-                    let nearest_target = target_candidates
-                        .iter()
-                        .min_by(|a, b| {
-                            a.1.distance(mouse_position)
-                                .partial_cmp(&b.1.distance(mouse_position))
-                                .unwrap_or(Ordering::Equal)
-                        })
-                        .and_then(|(id, pos)| {
-                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
-                                Some((*id, *pos))
-                            } else {
-                                None
-                            }
-                        });
-                    if let Some((id, position)) = nearest_target {
-                        let new_connection = Connection {
-                            from: ct.from,
-                            to: id,
-                            strength: 1.0,
-                            directional: true,
-                        };
-                        let connection_exists =
-                            world.query::<&Connection>().iter().any(|(_, c)| {
-                                c.from == new_connection.from && c.to == new_connection.to
-                            });
-                        if !connection_exists && ct.from != id {
-                            spawn_synapse(world, ct.from, id);
-                        }
-                        if !self.keyboard.shift_down {
-                            ct.start = position;
-                            ct.from = id;
-                        }
-                    }
-                    ct.end = mouse_position;
-                } else {
-                    let source_candidates: Vec<(Entity, Vec3)> = {
-                        let mut candidates: Vec<_> = world
-                            .query::<&Position>()
-                            .with::<&LeakyNeuron>()
-                            .iter()
-                            .map(|(e, p)| (e, p.position))
-                            .collect();
-                        candidates.extend(
-                            world
-                                .query::<&Position>()
-                                .with::<&CurrentClamp>()
-                                .iter()
-                                .map(|(e, p)| (e, p.position)),
-                        );
-                        candidates.extend(
-                            world
-                                .query::<&Position>()
-                                .with::<&GeneratorDynamics>()
-                                .iter()
-                                .map(|(e, p)| (e, p.position)),
-                        );
-                        candidates
-                    };
-                    *connection_tool = source_candidates
-                        .iter()
-                        .min_by(|a, b| {
-                            a.1.distance(mouse_position)
-                                .partial_cmp(&b.1.distance(mouse_position))
-                                .unwrap_or(Ordering::Equal)
-                        })
-                        .and_then(|(id, pos)| {
-                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
-                                Some((*id, *pos))
-                            } else {
-                                None
-                            }
-                        })
-                        .map(|(id, position)| ConnectionTool {
-                            start: position,
-                            end: mouse_position,
-                            from: id,
-                        });
-                }
-            }
-            Tool::Stimulate => {
-                *stimulation_tool = Some(StimulationTool {
-                    position: mouse_position,
-                })
-            }
-            Tool::Erase => {
-                let to_delete = world
-                    .query::<&Position>()
-                    .with::<&Deletable>()
-                    .iter()
-                    .filter_map(|(entity, position)| {
-                        let distance = position.position.distance(mouse_position);
-                        if distance < NODE_RADIUS * 1.5 {
-                            Some(entity)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<Entity>>();
-                let to_delete: HashSet<Entity> = to_delete
-                    .iter()
-                    .flat_map(|&entity| dendrite_tree(world, entity))
-                    .chain(to_delete.iter().copied())
-                    .collect();
-                for entity in to_delete {
-                    world.despawn(entity).unwrap();
-                }
-                // Erase what is drawn, which for most connections is a bent path
-                let paths = connection_paths(world, &compartment_radii(world), &palette);
-                let connections_to_delete = world
-                    .query::<&Connection>()
-                    .with::<&Deletable>()
-                    .iter()
-                    .filter_map(|(entity, connection)| {
-                        if let (Ok(from), Ok(to)) = (
-                            world.get::<&Position>(connection.from),
-                            world.get::<&Position>(connection.to),
-                        ) {
-                            let near = if let Some(path) = paths.get(&entity) {
-                                path.distance_to(mouse_position)
-                                    .is_some_and(|distance| distance < ERASE_RADIUS)
-                            } else {
-                                let a = from.position;
-                                let b = to.position;
-                                let p = mouse_position;
-                                let ab = b - a;
-                                let ap = p - a;
-                                let t = ap.dot(ab) / ab.dot(ab);
-                                let d = t * ab;
-                                let point_on_line = a + d;
-                                let distance_from_line = p.distance(point_on_line);
-                                distance_from_line < ERASE_RADIUS && (0.0..=1.0).contains(&t)
-                            };
-                            near.then_some(entity)
-                        } else {
-                            Some(entity)
-                        }
-                    })
-                    .collect::<Vec<Entity>>();
-                for connection in connections_to_delete {
-                    world.despawn(connection).unwrap();
-                }
-            }
-            Tool::Voltmeter => {
-                if previous_too_near {
-                    return;
-                }
-                let result: Option<(Entity, Vec3)> = world
-                    .query::<&Position>()
-                    .with::<&LeakyNeuron>()
-                    .iter()
-                    .filter_map(|(entity, position)| {
-                        let distance = position.position.distance(mouse_position);
-                        if distance < NODE_RADIUS {
-                            Some((entity, position.position))
-                        } else {
-                            None
-                        }
-                    })
-                    .next()
-                    .or_else(|| {
-                        world
-                            .query::<&Position>()
-                            .with::<&Compartment>()
-                            .iter()
-                            .filter_map(|(entity, position)| {
-                                let distance = position.position.distance(mouse_position);
-                                if distance < NODE_RADIUS {
-                                    Some((entity, position.position))
-                                } else {
-                                    None
-                                }
-                            })
-                            .next()
-                    });
-                let Some((target, position)) = result else {
-                    return;
-                };
-                let voltmeter = spawn_voltmeter(world, target, position + Vec3::X);
-                *previous_creation = Some(PreviousCreation { entity: voltmeter });
-            }
-            Tool::Select => match mouse.left_down {
-                true => {
-                    if let Some(entity) = *dragging_entity {
-                        if let Ok(mut pos) = world.get::<&mut Position>(entity) {
-                            pos.position = mouse_position + *drag_offset;
-                            pos.position.y = 0.0;
-                        }
-                    } else if let Some((entity, corner)) = *resizing_voltmeter {
-                        if let Some(frame) = Frame::of(world, entity) {
-                            let resized = frame.resized(corner, mouse_position);
-                            if let Ok(mut size) = world.get::<&mut VoltmeterSize>(entity) {
-                                *size = resized.size();
-                            }
-                            if let Ok(mut pos) = world.get::<&mut Position>(entity) {
-                                pos.position = resized.position();
-                            }
-                        }
-                    } else {
-                        match *move_origin {
-                            Some(origin) => pan(application, mouse_position - origin),
-                            None => {
-                                let frames: Vec<_> = world
-                                    .query::<(&Position, &VoltmeterSize)>()
-                                    .with::<&Voltmeter>()
-                                    .iter()
-                                    .map(|(voltmeter, (position, size))| {
-                                        (
-                                            voltmeter,
-                                            position.position,
-                                            Frame::new(position.position, size),
-                                        )
-                                    })
-                                    .collect();
-                                *resizing_voltmeter =
-                                    frames.iter().find_map(|(voltmeter, _, frame)| {
-                                        Some((*voltmeter, frame.corner_near(mouse_position, 1.0)?))
-                                    });
-
-                                if resizing_voltmeter.is_none() {
-                                    let mut found_voltmeter = false;
-                                    for (voltmeter, position, frame) in &frames {
-                                        if frame.contains(mouse_position) {
-                                            *active_entity = Some(*voltmeter);
-                                            *dragging_entity = Some(*voltmeter);
-                                            *drag_offset = *position - mouse_position;
-                                            drag_offset.y = 0.0;
-                                            found_voltmeter = true;
-                                            break;
-                                        }
-                                    }
-
-                                    if !found_voltmeter {
-                                        // Notes lie under the circuit,
-                                        // so anything near the pointer wins over the note around it
-                                        let nearby = world
-                                            .query::<&Position>()
-                                            .without::<&Annotation>()
-                                            .iter()
-                                            .min_by(|a, b| nearest(&mouse_position, a, b))
-                                            .and_then(|v| {
-                                                within_selection_range(mouse_position, v)
-                                            });
-                                        let note = || {
-                                            world
-                                                .query::<(&Position, &NoteSize)>()
-                                                .with::<&Annotation>()
-                                                .iter()
-                                                .filter(|(_, (position, size))| {
-                                                    let offset = mouse_position - position.position;
-                                                    offset.x.abs() <= size.height * 0.5
-                                                        && offset.z.abs() <= size.width * 0.5
-                                                })
-                                                // The renderer draws later notes on top
-                                                .max_by_key(|(entity, _)| entity.id())
-                                                .map(|(entity, (position, _))| {
-                                                    (entity, position.position)
-                                                })
-                                        };
-                                        if let Some((entity, entity_pos)) = nearby.or_else(note) {
-                                            *active_entity = Some(entity);
-                                            *dragging_entity = Some(entity);
-                                            *drag_offset = entity_pos - mouse_position;
-                                            drag_offset.y = 0.0;
-                                        } else {
-                                            *active_entity = None;
-                                            *move_origin = Some(mouse_position);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                false => {
-                    *move_origin = None;
-                    *dragging_entity = None;
-                    *resizing_voltmeter = None;
-                }
-            },
-            Tool::Axon => match connection_tool {
-                None => {
-                    let source_candidates: Vec<(Entity, Vec3)> = {
-                        let mut candidates: Vec<_> = world
-                            .query::<&Position>()
-                            .with::<&StaticConnectionSource>()
-                            .iter()
-                            .map(|(e, p)| (e, p.position))
-                            .collect();
-                        candidates.extend(
-                            world
-                                .query::<&Position>()
-                                .with::<&LeakyNeuron>()
-                                .iter()
-                                .map(|(e, p)| (e, p.position)),
-                        );
-                        candidates.extend(
-                            world
-                                .query::<&Position>()
-                                .with::<&CurrentClamp>()
-                                .iter()
-                                .map(|(e, p)| (e, p.position)),
-                        );
-                        candidates.extend(
-                            world
-                                .query::<&Position>()
-                                .with::<&GeneratorDynamics>()
-                                .iter()
-                                .map(|(e, p)| (e, p.position)),
-                        );
-                        candidates
-                    };
-                    *connection_tool = source_candidates
-                        .iter()
-                        .min_by(|a, b| {
-                            a.1.distance(mouse_position)
-                                .partial_cmp(&b.1.distance(mouse_position))
-                                .unwrap_or(Ordering::Equal)
-                        })
-                        .and_then(|(id, pos)| {
-                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
-                                Some((*id, *pos))
-                            } else {
-                                None
-                            }
-                        })
-                        .map(|(id, position)| ConnectionTool {
-                            start: position,
-                            end: mouse_position,
-                            from: id,
-                        });
-                    if let Some(ct) = connection_tool {
-                        self.previous_creation = Some(PreviousCreation { entity: ct.from });
-                    }
-                }
-                Some(ct) => {
-                    ct.end = mouse_position;
-                    let target_candidates: Vec<(Entity, Vec3)> = world
-                        .query::<&Position>()
-                        .with::<&LeakyNeuron>()
-                        .iter()
-                        .map(|(e, p)| (e, p.position))
-                        .collect();
-                    let nearest_target = target_candidates
-                        .iter()
-                        .min_by(|a, b| {
-                            a.1.distance(mouse_position)
-                                .partial_cmp(&b.1.distance(mouse_position))
-                                .unwrap_or(Ordering::Equal)
-                        })
-                        .and_then(|(id, pos)| {
-                            if pos.distance(mouse_position) < 2.0 * NODE_RADIUS {
-                                Some((*id, *pos))
-                            } else {
-                                None
-                            }
-                        });
-
-                    match nearest_target {
-                        Some((id, position)) => {
-                            let new_connection = Connection {
-                                from: ct.from,
-                                to: id,
-                                strength: 1.0,
-                                directional: true,
-                            };
-                            let connection_exists =
-                                world.query::<&Connection>().iter().any(|(_, c)| {
-                                    c.from == new_connection.from && c.to == new_connection.to
-                                });
-                            if !connection_exists && ct.from != id {
-                                spawn_cable(world, ct.from, id, true);
-                            }
-                            if !self.keyboard.shift_down {
-                                ct.start = position;
-                                ct.from = id;
-                            }
-                        }
-                        None => {
-                            if previous_too_near {
-                                return;
-                            }
-                            let neuron_type = world.get::<&NeuronType>(ct.from).ok().map(|t| *t);
-                            if let Some(neuron_type) = neuron_type {
-                                let compartment =
-                                    spawn_compartment(world, mouse_position, neuron_type);
-                                spawn_cable(world, ct.from, compartment, false);
-                                self.previous_creation = Some(PreviousCreation {
-                                    entity: compartment,
-                                });
-                                *connection_tool = Some(ConnectionTool {
-                                    start: mouse_position,
-                                    end: mouse_position,
-                                    from: compartment,
-                                });
-                            }
-                        }
-                    }
-                }
-            },
+        if let Some(Pan(offset)) = requested_pan {
+            pan(application, offset);
         }
     }
 
@@ -888,8 +372,8 @@ impl Neuronify {
     pub fn open_world(&mut self, world: hecs::World, time: f64) {
         self.world = world;
         self.time = time;
-        self.release_tools();
-        self.active_entity = None;
+        self.editor.release();
+        self.editor.selection = None;
         self.landing = None;
         self.frame_scene_requested = true;
     }
@@ -966,7 +450,7 @@ impl visula::Simulation for Neuronify {
             self.applied_theme = self.theme;
         }
 
-        simulation::stimulate_nearby(&mut self.world, &self.stimulation_tool);
+        simulation::stimulate_nearby(&mut self.world, &self.editor.stimulation_tool);
         simulation::step_frame(&mut self.world, &mut self.time, self.iterations);
 
         if let Some(landing) = &mut self.landing {
@@ -986,8 +470,12 @@ impl visula::Simulation for Neuronify {
         let world = &self.world;
         let palette = self.theme.palette();
         let scene = collect_scene(world, &palette);
-        let mut connections =
-            collect_connections(world, &self.tool, &self.connection_tool, &palette);
+        let mut connections = collect_connections(
+            world,
+            &self.editor.tool,
+            &self.editor.connection_tool,
+            &palette,
+        );
         connections.extend(collect_voltmeter_traces(world));
 
         self.sphere_buffer
@@ -1105,10 +593,10 @@ impl visula::Simulation for Neuronify {
                 for category in &TOOL_CATEGORIES {
                     ui.collapsing(category.label(), |ui| {
                         for (tool_value, label) in category.tools() {
-                            ui.selectable_value(&mut self.tool, tool_value, label);
+                            ui.selectable_value(&mut self.editor.tool, tool_value, label);
                         }
                         if *category == ToolCategory::Neurons {
-                            ui.checkbox(&mut self.dendrites, "With dendrites");
+                            ui.checkbox(&mut self.editor.dendrites, "With dendrites");
                         }
                     });
                 }
@@ -1123,7 +611,7 @@ impl visula::Simulation for Neuronify {
                     ui.selectable_value(&mut self.theme, Theme::Light, "Light");
                 });
             });
-            if let Some(active_entity) = self.active_entity {
+            if let Some(active_entity) = self.editor.selection {
                 egui::Window::new("Selection").show(context, |ui| {
                     if let Ok(compartment) = self.world.get::<&Compartment>(active_entity) {
                         ui.collapsing("Compartment", |ui| {
