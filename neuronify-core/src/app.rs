@@ -6,12 +6,7 @@ use crate::gui;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::gui::MenuChoice;
 use crate::landing::{LandingChoice, LandingScreen};
-use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
-use crate::rendering::{
-    canvas_bounds, collect_scene, collect_voltmeter_traces, collect_voltmeter_wires,
-    connection_being_drawn, create_floor, ConnectionData, CylinderData, GaugeRenderer,
-    NoteRenderer, Sphere, Theme, TorusData,
-};
+use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
 use chrono::{DateTime, Duration, Utc};
 use std::io::BufReader;
 use std::io::Read;
@@ -20,12 +15,7 @@ use std::path::PathBuf;
 use std::thread;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
-use visula::{
-    winit::keyboard::ModifiersKeyState, CustomEvent, CylinderGeometry, CylinderMaterial, Cylinders,
-    Expression, InstanceBuffer, LineGeometry, LineMaterial, Lines, MeshPipeline, RenderData,
-    Renderable, ShadowRenderData, SphereGeometry, SphereMaterial, Spheres, Torus, TorusGeometry,
-    TorusMaterial,
-};
+use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, ShadowRenderData};
 
 use crate::input::{Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
@@ -33,30 +23,17 @@ use crate::simulation;
 pub struct Neuronify {
     pub editor: Editor,
     pub theme: Theme,
-    /// The theme the floor and lighting were last set up for
-    applied_theme: Theme,
     pub world: hecs::World,
     pub time: f64,
     pub mouse: Mouse,
     pub keyboard: Keyboard,
-    pub spheres: Spheres,
-    pub sphere_buffer: InstanceBuffer<Sphere>,
-    pub connection_lines: Lines,
-    pub connection_spheres: Spheres,
-    pub connection_buffer: InstanceBuffer<ConnectionData>,
-    pub cylinders: Cylinders,
-    pub cylinder_buffer: InstanceBuffer<CylinderData>,
-    pub rings: Torus,
-    pub ring_buffer: InstanceBuffer<TorusData>,
-    pub floor: MeshPipeline,
+    pub renderer: SceneRenderer,
     pub iterations: u32,
     pub last_update: DateTime<Utc>,
     pub fps: f64,
     pub edit_enabled: bool,
     pub touches: Touches,
     pub load_error: Option<String>,
-    pub note_renderer: NoteRenderer,
-    pub gauge_renderer: GaugeRenderer,
     pub landing: Option<LandingScreen>,
     pub frame_scene_requested: bool,
 }
@@ -94,103 +71,11 @@ impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
         camera::set_up(application);
 
-        let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
-        let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
-        let sphere = sphere_buffer.instance();
-        let connection = connection_buffer.instance();
-
-        let spheres = Spheres::new(
-            &application.rendering_descriptor(),
-            &SphereGeometry {
-                position: sphere.position.clone(),
-                radius: sphere.radius,
-                color: sphere.color,
-            },
-            &SphereMaterial {
-                color: shaded(Expression::InputColor),
-            },
-        )
-        .unwrap();
-
-        let connection_vector = connection.position_b.clone() - connection.position_a.clone();
-        let connection_endpoint = connection.position_a.clone() + connection_vector.clone()
-            - connection.directional.clone() * connection_vector.clone()
-                / connection_vector.clone().length()
-                * NODE_RADIUS
-                * 2.0;
-        let connection_lines = Lines::new(
-            &application.rendering_descriptor(),
-            &LineGeometry {
-                start: connection.position_a.clone(),
-                end: connection_endpoint.clone(),
-                width: connection.strength.clone() * 0.3,
-                color: connection.start_color.clone(),
-            },
-            &LineMaterial {
-                color: shaded(Expression::InputColor),
-            },
-        )
-        .unwrap();
-
-        let connection_spheres = Spheres::new(
-            &application.rendering_descriptor(),
-            &SphereGeometry {
-                position: connection_endpoint,
-                radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
-                color: crate::rendering::colors::terminal_color().into(),
-            },
-            &SphereMaterial {
-                color: shaded(Expression::InputColor),
-            },
-        )
-        .unwrap();
-
-        let cylinder_buffer = InstanceBuffer::<CylinderData>::new(&application.device);
-        let cylinder = cylinder_buffer.instance();
-        let cylinders = Cylinders::new(
-            &application.rendering_descriptor(),
-            &CylinderGeometry {
-                start: cylinder.start,
-                end: cylinder.end,
-                start_radius: cylinder.start_radius,
-                end_radius: cylinder.end_radius,
-                color: cylinder.color,
-            },
-            &CylinderMaterial {
-                color: shaded(Expression::InputColor),
-            },
-        )
-        .unwrap();
-
-        let ring_buffer = InstanceBuffer::<TorusData>::new(&application.device);
-        let ring = ring_buffer.instance();
-        let rings = Torus::new(
-            &application.rendering_descriptor(),
-            &TorusGeometry {
-                position: ring.position,
-                major_radius: ring.major_radius,
-                minor_radius: ring.minor_radius,
-                rotation: ring.rotation,
-                color: ring.color,
-            },
-            &TorusMaterial {
-                color: shaded(Expression::InputColor),
-            },
-        )
-        .unwrap();
-
         let theme = match application.window.theme() {
             Some(visula::winit::window::Theme::Light) => Theme::Light,
             _ => Theme::Dark,
         };
-        let floor = create_floor(
-            &application.rendering_descriptor(),
-            &application.device,
-            theme.palette().floor,
-        )
-        .unwrap();
-
-        configure_lighting(application, theme);
+        let renderer = SceneRenderer::new(application, theme);
 
         let mut world = hecs::World::new();
         #[allow(unused_mut)]
@@ -221,19 +106,9 @@ impl Neuronify {
         }
 
         Neuronify {
-            spheres,
-            sphere_buffer,
-            connection_lines,
-            connection_spheres,
-            connection_buffer,
-            cylinders,
-            cylinder_buffer,
-            rings,
-            ring_buffer,
-            floor,
+            renderer,
             editor: Editor::default(),
             theme,
-            applied_theme: theme,
             world,
             time: 0.0,
             mouse: Mouse {
@@ -248,8 +123,6 @@ impl Neuronify {
             edit_enabled: true,
             touches: Touches::default(),
             load_error: None,
-            note_renderer: NoteRenderer::new(application),
-            gauge_renderer: GaugeRenderer::new(application),
             landing: (!opened_file_from_command_line).then(|| LandingScreen::new(false)),
             frame_scene_requested: opened_file_from_command_line,
         }
@@ -361,17 +234,6 @@ impl visula::Simulation for Neuronify {
             }
         }
 
-        if self.applied_theme != self.theme {
-            self.floor = create_floor(
-                &application.rendering_descriptor(),
-                &application.device,
-                self.theme.palette().floor,
-            )
-            .unwrap();
-            set_theme_lighting(application, self.theme);
-            self.applied_theme = self.theme;
-        }
-
         if let Some(position) = self.editor.touch() {
             simulation::stimulate_nearby(&mut self.world, position);
         }
@@ -385,36 +247,12 @@ impl visula::Simulation for Neuronify {
             camera::frame(application, canvas_bounds(&self.world));
         }
 
-        let camera = &application.camera_controller.current_transform;
-        application.light.shadow_center = camera.center;
-        // visula blurs shadows over a fixed number of shadow map texels,
-        // so a map that reaches well past the view gives softer shadows
-        application.light.shadow_extent = (camera.distance * 2.0).clamp(50.0, 625.0);
-
-        let world = &self.world;
-        let palette = self.theme.palette();
-        let scene = collect_scene(world, &palette);
-        let mut connections = collect_voltmeter_wires(world, &palette);
-        if let Some((start, end)) = self.editor.connection_being_drawn() {
-            connections.push(connection_being_drawn(start, end, &palette));
-        }
-        connections.extend(collect_voltmeter_traces(world));
-
-        self.sphere_buffer
-            .update(&application.device, &application.queue, &scene.spheres);
-
-        self.cylinder_buffer
-            .update(&application.device, &application.queue, &scene.cylinders);
-
-        self.ring_buffer
-            .update(&application.device, &application.queue, &scene.rings);
-
-        self.connection_buffer
-            .update(&application.device, &application.queue, &connections);
-
-        self.note_renderer.update(application, &self.world);
-        self.gauge_renderer
-            .update(application, &self.world, &palette);
+        self.renderer.update(
+            application,
+            &self.world,
+            self.theme,
+            self.editor.connection_being_drawn(),
+        );
 
         let time_diff = Utc::now() - self.last_update;
         #[cfg(not(target_arch = "wasm32"))]
@@ -432,20 +270,11 @@ impl visula::Simulation for Neuronify {
     }
 
     fn render(&mut self, data: &mut RenderData) {
-        self.floor.render(data);
-        self.spheres.render(data);
-        self.cylinders.render(data);
-        self.rings.render(data);
-        self.connection_lines.render(data);
-        self.connection_spheres.render(data);
-        self.note_renderer.render(data);
-        self.gauge_renderer.render(data);
+        self.renderer.render(data);
     }
 
     fn render_shadow(&mut self, data: &mut ShadowRenderData) {
-        self.spheres.render_shadow(data);
-        self.cylinders.render_shadow(data);
-        self.rings.render_shadow(data);
+        self.renderer.render_shadow(data);
     }
 
     fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {

@@ -1,0 +1,210 @@
+use glam::Vec3;
+use visula::{
+    CylinderGeometry, CylinderMaterial, Cylinders, Expression, InstanceBuffer, LineGeometry,
+    LineMaterial, Lines, MeshPipeline, RenderData, Renderable, ShadowRenderData, SphereGeometry,
+    SphereMaterial, Spheres, Torus, TorusGeometry, TorusMaterial,
+};
+
+use crate::constants::NODE_RADIUS;
+use crate::rendering::colors::{terminal_color, Theme};
+use crate::rendering::connections::{collect_voltmeter_wires, connection_being_drawn};
+use crate::rendering::floor::create_floor;
+use crate::rendering::gauges::GaugeRenderer;
+use crate::rendering::gpu_types::{ConnectionData, CylinderData, Sphere, TorusData};
+use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
+use crate::rendering::notes::NoteRenderer;
+use crate::rendering::scene::collect_scene;
+use crate::rendering::voltmeter::collect_voltmeter_traces;
+
+const SHADOW_EXTENT_PER_CAMERA_DISTANCE: f32 = 2.0;
+const MIN_SHADOW_EXTENT: f32 = 50.0;
+const MAX_SHADOW_EXTENT: f32 = 625.0;
+
+pub struct SceneRenderer {
+    theme: Theme,
+    floor: MeshPipeline,
+    spheres: Spheres,
+    sphere_buffer: InstanceBuffer<Sphere>,
+    cylinders: Cylinders,
+    cylinder_buffer: InstanceBuffer<CylinderData>,
+    rings: Torus,
+    ring_buffer: InstanceBuffer<TorusData>,
+    connection_lines: Lines,
+    connection_spheres: Spheres,
+    connection_buffer: InstanceBuffer<ConnectionData>,
+    notes: NoteRenderer,
+    gauges: GaugeRenderer,
+}
+
+impl SceneRenderer {
+    pub fn new(application: &mut visula::Application, theme: Theme) -> SceneRenderer {
+        let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
+        let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
+        let sphere = sphere_buffer.instance();
+        let connection = connection_buffer.instance();
+
+        let spheres = Spheres::new(
+            &application.rendering_descriptor(),
+            &SphereGeometry {
+                position: sphere.position.clone(),
+                radius: sphere.radius,
+                color: sphere.color,
+            },
+            &SphereMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
+        let connection_vector = connection.position_b.clone() - connection.position_a.clone();
+        let connection_endpoint = connection.position_a.clone() + connection_vector.clone()
+            - connection.directional.clone() * connection_vector.clone()
+                / connection_vector.clone().length()
+                * NODE_RADIUS
+                * 2.0;
+        let connection_lines = Lines::new(
+            &application.rendering_descriptor(),
+            &LineGeometry {
+                start: connection.position_a.clone(),
+                end: connection_endpoint.clone(),
+                width: connection.strength.clone() * 0.3,
+                color: connection.start_color.clone(),
+            },
+            &LineMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
+        let connection_spheres = Spheres::new(
+            &application.rendering_descriptor(),
+            &SphereGeometry {
+                position: connection_endpoint,
+                radius: connection.directional.clone() * (0.5 * NODE_RADIUS),
+                color: terminal_color().into(),
+            },
+            &SphereMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
+        let cylinder_buffer = InstanceBuffer::<CylinderData>::new(&application.device);
+        let cylinder = cylinder_buffer.instance();
+        let cylinders = Cylinders::new(
+            &application.rendering_descriptor(),
+            &CylinderGeometry {
+                start: cylinder.start,
+                end: cylinder.end,
+                start_radius: cylinder.start_radius,
+                end_radius: cylinder.end_radius,
+                color: cylinder.color,
+            },
+            &CylinderMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
+        let ring_buffer = InstanceBuffer::<TorusData>::new(&application.device);
+        let ring = ring_buffer.instance();
+        let rings = Torus::new(
+            &application.rendering_descriptor(),
+            &TorusGeometry {
+                position: ring.position,
+                major_radius: ring.major_radius,
+                minor_radius: ring.minor_radius,
+                rotation: ring.rotation,
+                color: ring.color,
+            },
+            &TorusMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
+        let floor = create_floor(
+            &application.rendering_descriptor(),
+            &application.device,
+            theme.palette().floor,
+        )
+        .unwrap();
+        configure_lighting(application, theme);
+
+        SceneRenderer {
+            theme,
+            floor,
+            spheres,
+            sphere_buffer,
+            cylinders,
+            cylinder_buffer,
+            rings,
+            ring_buffer,
+            connection_lines,
+            connection_spheres,
+            connection_buffer,
+            notes: NoteRenderer::new(application),
+            gauges: GaugeRenderer::new(application),
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        application: &mut visula::Application,
+        world: &hecs::World,
+        theme: Theme,
+        drawn_connection: Option<(Vec3, Vec3)>,
+    ) {
+        if self.theme != theme {
+            self.floor = create_floor(
+                &application.rendering_descriptor(),
+                &application.device,
+                theme.palette().floor,
+            )
+            .unwrap();
+            set_theme_lighting(application, theme);
+            self.theme = theme;
+        }
+
+        let camera = &application.camera_controller.current_transform;
+        application.light.shadow_center = camera.center;
+        application.light.shadow_extent = (camera.distance * SHADOW_EXTENT_PER_CAMERA_DISTANCE)
+            .clamp(MIN_SHADOW_EXTENT, MAX_SHADOW_EXTENT);
+
+        let palette = theme.palette();
+        let scene = collect_scene(world, &palette);
+        let mut connections = collect_voltmeter_wires(world, &palette);
+        if let Some((start, end)) = drawn_connection {
+            connections.push(connection_being_drawn(start, end, &palette));
+        }
+        connections.extend(collect_voltmeter_traces(world));
+
+        self.sphere_buffer
+            .update(&application.device, &application.queue, &scene.spheres);
+        self.cylinder_buffer
+            .update(&application.device, &application.queue, &scene.cylinders);
+        self.ring_buffer
+            .update(&application.device, &application.queue, &scene.rings);
+        self.connection_buffer
+            .update(&application.device, &application.queue, &connections);
+        self.notes.update(application, world);
+        self.gauges.update(application, world, &palette);
+    }
+
+    pub fn render(&mut self, data: &mut RenderData) {
+        self.floor.render(data);
+        self.spheres.render(data);
+        self.cylinders.render(data);
+        self.rings.render(data);
+        self.connection_lines.render(data);
+        self.connection_spheres.render(data);
+        self.notes.render(data);
+        self.gauges.render(data);
+    }
+
+    pub fn render_shadow(&mut self, data: &mut ShadowRenderData) {
+        self.spheres.render_shadow(data);
+        self.cylinders.render_shadow(data);
+        self.rings.render_shadow(data);
+    }
+}

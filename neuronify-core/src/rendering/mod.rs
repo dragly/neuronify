@@ -9,6 +9,7 @@ pub mod lighting;
 pub mod notes;
 pub mod paths;
 pub mod scene;
+pub mod scene_renderer;
 pub mod shapes;
 pub mod spheres;
 pub mod voltmeter;
@@ -23,5 +24,6 @@ pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sp
 pub use notes::NoteRenderer;
 pub use paths::{connection_paths, distance_to_segment, ConnectionPath};
 pub use scene::{collect_scene, Scene};
+pub use scene_renderer::SceneRenderer;
 pub use spheres::collect_spheres;
 pub use voltmeter::collect_voltmeter_traces;
