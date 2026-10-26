@@ -866,15 +866,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 
 [[package]]
-name = "crude-profiler"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9389510ac716b6ace8c4b635420cf023e12c81b61e933bfef06639142f149ecd"
-dependencies = [
- "lazy_static 0.2.11",
-]
-
-[[package]]
 name = "crunchy"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1481,7 +1472,7 @@ dependencies = [
  "byteorder",
  "gltf-json",
  "image",
- "lazy_static 1.5.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -1952,12 +1943,6 @@ dependencies = [
 
 [[package]]
 name = "lazy_static"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76f033c7ad61445c5b347c7382dd1237847eb1bce590fe50365dcb33d546be73"
-
-[[package]]
-name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
@@ -2261,29 +2246,18 @@ name = "neuronify-core"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "cgmath",
  "chrono",
- "crude-profiler",
  "egui",
- "futures",
  "getrandom 0.2.15",
  "glam",
  "hecs",
  "js-sys",
  "log",
- "ndarray",
- "num",
- "pollster 0.3.0",
  "postcard",
- "proc-macro2",
- "quote",
  "rand 0.8.7",
  "rfd",
  "serde",
- "serde_derive",
  "serde_json",
- "strum",
- "syn 1.0.109",
  "visula",
  "visula_core",
  "visula_derive",
