@@ -4,6 +4,7 @@ use std::f32::consts::{PI, TAU};
 
 use crate::components::*;
 use crate::constants::*;
+use crate::elements::{spawn_cable, spawn_compartment};
 
 /// Apical dendrites grow this way, which is up on the screen with the default camera.
 const APICAL_DIRECTION: Vec3 = Vec3::X;
@@ -33,31 +34,6 @@ fn wander(
     } else {
         wandered
     }
-}
-
-fn spawn_compartment(world: &mut hecs::World, position: Vec3, neuron_type: NeuronType) -> Entity {
-    world.spawn((
-        Position { position },
-        neuron_type,
-        Compartment {
-            voltage: -10.0,
-            m: -0.625,
-            h: 0.0,
-            n: 0.0,
-            influence: 0.0,
-            capacitance: 1.0,
-            injected_current: 0.0,
-            fire_impulse: 0.0,
-        },
-        Dendrite,
-        StaticConnectionSource {},
-        Deletable {},
-        Selectable { selected: false },
-        SpatialDynamics {
-            velocity: Vec3::ZERO,
-            acceleration: Vec3::ZERO,
-        },
-    ))
 }
 
 /// A dendrite or branch of `steps` compartments, starting at `parent`.
@@ -93,18 +69,8 @@ fn spawn_chain(
         );
         position += direction * SEGMENT_LENGTH;
         let compartment = spawn_compartment(world, position, neuron_type.clone());
-        world.spawn((
-            Connection {
-                from: previous,
-                to: compartment,
-                strength: 1.0,
-                directional: false,
-            },
-            Deletable {},
-            CompartmentCurrent {
-                capacitance: COUPLING_CAPACITANCE,
-            },
-        ));
+        world.insert_one(compartment, Dendrite).unwrap();
+        spawn_cable(world, previous, compartment, false);
         spawned.push((compartment, position));
         previous = compartment;
     }

@@ -2,6 +2,7 @@ pub mod app;
 pub mod components;
 pub mod constants;
 pub mod dendrites;
+pub mod elements;
 pub mod examples;
 pub mod input;
 pub mod landing;
