@@ -1,13 +1,13 @@
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{Touch, TouchPhase};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Mouse {
     pub left_down: bool,
     pub position: Option<PhysicalPosition<f64>>,
-    pub delta_position: Option<PhysicalPosition<f64>>,
 }
 
+#[derive(Default)]
 pub struct Keyboard {
     pub shift_down: bool,
 }

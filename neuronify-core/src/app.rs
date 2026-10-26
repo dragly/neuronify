@@ -1,18 +1,16 @@
 use crate::camera;
-use crate::constants::*;
 use crate::editor::{Editor, Pan};
 use crate::examples::Example;
+use crate::frame_clock::FrameClock;
 use crate::gui;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::gui::MenuChoice;
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
-use chrono::{DateTime, Duration, Utc};
 use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
-use std::thread;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
 use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, ShadowRenderData};
@@ -21,25 +19,46 @@ use crate::input::{Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
 
 pub struct Neuronify {
-    pub editor: Editor,
-    pub theme: Theme,
-    pub world: hecs::World,
-    pub time: f64,
-    pub mouse: Mouse,
-    pub keyboard: Keyboard,
-    pub renderer: SceneRenderer,
-    pub iterations: u32,
-    pub last_update: DateTime<Utc>,
-    pub fps: f64,
     pub edit_enabled: bool,
-    pub touches: Touches,
-    pub load_error: Option<String>,
     pub landing: Option<LandingScreen>,
-    pub frame_scene_requested: bool,
+    editor: Editor,
+    theme: Theme,
+    world: hecs::World,
+    time: f64,
+    iterations: u32,
+    mouse: Mouse,
+    keyboard: Keyboard,
+    touches: Touches,
+    renderer: SceneRenderer,
+    frame_clock: FrameClock,
+    load_error: Option<String>,
+    frame_scene_requested: bool,
 }
 
-#[derive(Debug)]
-pub struct Error {}
+#[cfg(not(target_arch = "wasm32"))]
+fn world_from_command_line() -> Option<hecs::World> {
+    let path = std::env::args().nth(1)?;
+    let contents = std::fs::read_to_string(&path)
+        .map_err(|e| log::error!("Failed to read file {}: {}", path, e))
+        .ok()?;
+    let simulation = crate::legacy::parse_legacy_nfy(&contents)
+        .map_err(|e| log::error!("Failed to parse legacy file {}: {}", path, e))
+        .ok()?;
+    log::info!(
+        "Loaded legacy simulation from {}: {} nodes, {} edges",
+        path,
+        simulation.nodes.len(),
+        simulation.edges.len()
+    );
+    let mut world = hecs::World::new();
+    crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
+    Some(world)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn world_from_command_line() -> Option<hecs::World> {
+    None
+}
 
 fn is_press_scroll_or_touch(event: &Event<CustomEvent>) -> bool {
     matches!(
@@ -77,60 +96,27 @@ impl Neuronify {
         };
         let renderer = SceneRenderer::new(application, theme);
 
-        let mut world = hecs::World::new();
-        #[allow(unused_mut)]
-        let mut opened_file_from_command_line = false;
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let args: Vec<String> = std::env::args().collect();
-            if args.len() > 1 {
-                let path = &args[1];
-                match std::fs::read_to_string(path) {
-                    Ok(contents) => match crate::legacy::parse_legacy_nfy(&contents) {
-                        Ok(sim) => {
-                            log::info!(
-                                "Loaded legacy simulation from {}: {} nodes, {} edges",
-                                path,
-                                sim.nodes.len(),
-                                sim.edges.len()
-                            );
-                            crate::legacy::convert::spawn_legacy_simulation(&mut world, &sim);
-                            opened_file_from_command_line = true;
-                        }
-                        Err(e) => log::error!("Failed to parse legacy file {}: {}", path, e),
-                    },
-                    Err(e) => log::error!("Failed to read file {}: {}", path, e),
-                }
-            }
-        }
-
+        let opened = world_from_command_line();
         Neuronify {
-            renderer,
+            edit_enabled: true,
+            landing: opened.is_none().then(|| LandingScreen::new(false)),
             editor: Editor::default(),
             theme,
-            world,
+            frame_scene_requested: opened.is_some(),
+            world: opened.unwrap_or_default(),
             time: 0.0,
-            mouse: Mouse {
-                left_down: false,
-                position: None,
-                delta_position: None,
-            },
-            keyboard: Keyboard { shift_down: false },
             iterations: 4,
-            last_update: Utc::now(),
-            fps: 60.0,
-            edit_enabled: true,
+            mouse: Mouse::default(),
+            keyboard: Keyboard::default(),
             touches: Touches::default(),
+            renderer,
+            frame_clock: FrameClock::default(),
             load_error: None,
-            landing: (!opened_file_from_command_line).then(|| LandingScreen::new(false)),
-            frame_scene_requested: opened_file_from_command_line,
         }
     }
 
     fn press_pointer(&mut self, application: &mut visula::Application, pressed: bool) {
         self.mouse.left_down = pressed;
-        self.mouse.delta_position = None;
         self.handle_tool(application);
     }
 
@@ -139,9 +125,6 @@ impl Neuronify {
         application: &mut visula::Application,
         position: PhysicalPosition<f64>,
     ) {
-        self.mouse.delta_position = self.mouse.position.map(|previous| {
-            PhysicalPosition::new(position.x - previous.x, position.y - previous.y)
-        });
         self.mouse.position = Some(position);
         self.handle_tool(application);
     }
@@ -188,7 +171,7 @@ impl Neuronify {
         }
     }
 
-    pub fn open_world(&mut self, world: hecs::World, time: f64) {
+    fn open_world(&mut self, world: hecs::World, time: f64) {
         self.world = world;
         self.time = time;
         self.editor.release();
@@ -208,8 +191,7 @@ impl Neuronify {
         }
     }
 
-    /// Replaces the world with a legacy `.nfy` file or a `.neuronify` save file.
-    pub fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
+    fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
         let world = crate::serialization::load_from_bytes(bytes)?;
         self.open_world(world, 0.0);
         Ok(())
@@ -253,20 +235,7 @@ impl visula::Simulation for Neuronify {
             self.theme,
             self.editor.connection_being_drawn(),
         );
-
-        let time_diff = Utc::now() - self.last_update;
-        #[cfg(not(target_arch = "wasm32"))]
-        if time_diff < Duration::milliseconds(TARGET_FRAME_MS) {
-            thread::sleep(std::time::Duration::from_millis(
-                (Duration::milliseconds(TARGET_FRAME_MS) - time_diff).num_milliseconds() as u64,
-            ))
-        }
-        let low_pass_factor = FPS_LOW_PASS_FACTOR;
-        let new_fps = 1.0
-            / ((Utc::now() - self.last_update).num_nanoseconds().unwrap() as f64 * 1e-9)
-                .max(0.0000001);
-        self.fps = (1.0 - low_pass_factor) * self.fps + low_pass_factor * new_fps;
-        self.last_update = Utc::now();
+        self.frame_clock.tick();
     }
 
     fn render(&mut self, data: &mut RenderData) {
@@ -307,7 +276,12 @@ impl visula::Simulation for Neuronify {
                 None => {}
             }
             gui::elements_window(context, &mut self.editor);
-            gui::settings_window(context, self.fps, &mut self.iterations, &mut self.theme);
+            gui::settings_window(
+                context,
+                self.frame_clock.fps(),
+                &mut self.iterations,
+                &mut self.theme,
+            );
             if let Some(selection) = self.editor.selection {
                 gui::selection_window(context, &self.world, selection);
             }
