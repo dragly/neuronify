@@ -247,13 +247,10 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
 
     assert_eq!(editor.view(&world, at(0.5, 0.0)), None);
     assert_eq!(editor.view(&world, at(5.0, 5.0)), None);
-    assert_eq!(
-        editor.stimulation_tool.as_ref().map(|touch| touch.position),
-        Some(at(5.0, 5.0))
-    );
+    assert_eq!(editor.touch(), Some(at(5.0, 5.0)));
     editor.release();
 
     assert_eq!(editor.view(&world, at(10.0, 10.0)), None);
     assert_eq!(editor.view(&world, at(11.0, 10.0)), Some(Pan(at(1.0, 0.0))));
-    assert!(editor.stimulation_tool.is_none());
+    assert_eq!(editor.touch(), None);
 }

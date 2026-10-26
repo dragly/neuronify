@@ -13,11 +13,10 @@ use hecs::World;
 use crate::constants::*;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
 use crate::rendering::{
-    circuit_bounds, collect_connections, collect_scene, collect_voltmeter_traces, Bounds,
+    circuit_bounds, collect_scene, collect_voltmeter_traces, collect_voltmeter_wires, Bounds,
     ConnectionData, CylinderData, Palette, Theme,
 };
 use crate::simulation;
-use crate::tools::Tool;
 
 struct Colors {
     background: Color32,
@@ -547,7 +546,7 @@ fn top_down_shapes(area: Rect, world: &World, bounds: &Bounds, palette: &Palette
         ));
     }
 
-    for wire in collect_connections(world, &Tool::Select, &None, palette) {
+    for wire in collect_voltmeter_wires(world, palette) {
         shapes.push(Shape::line_segment(
             [to_screen(wire.position_a), to_screen(wire.position_b)],
             Stroke::new(

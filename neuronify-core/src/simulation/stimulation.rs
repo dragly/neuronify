@@ -2,7 +2,6 @@ use glam::Vec3;
 
 use crate::components::*;
 use crate::constants::*;
-use crate::StimulationTool;
 
 pub fn touch_sensor_near(world: &hecs::World, position: Vec3) -> bool {
     world
@@ -12,15 +11,11 @@ pub fn touch_sensor_near(world: &hecs::World, position: Vec3) -> bool {
         .any(|(_, sensor)| sensor.position.distance(position) < ERASE_RADIUS)
 }
 
-pub fn stimulate_nearby(world: &mut hecs::World, stimulation_tool: &Option<StimulationTool>) {
-    let Some(stim) = stimulation_tool else {
-        return;
-    };
-
+pub fn stimulate_nearby(world: &mut hecs::World, position: Vec3) {
     let touch_entities: Vec<hecs::Entity> = world
         .query::<(&Position, &TouchSensor)>()
         .iter()
-        .filter(|(_, (pos, _))| pos.position.distance(stim.position) < ERASE_RADIUS)
+        .filter(|(_, (pos, _))| pos.position.distance(position) < ERASE_RADIUS)
         .map(|(e, _)| e)
         .collect();
     for entity in touch_entities {
@@ -33,7 +28,7 @@ pub fn stimulate_nearby(world: &mut hecs::World, stimulation_tool: &Option<Stimu
     let neuron_entities: Vec<hecs::Entity> = world
         .query::<(&Position, &LeakyNeuron)>()
         .iter()
-        .filter(|(_, (pos, _))| pos.position.distance(stim.position) < ERASE_RADIUS)
+        .filter(|(_, (pos, _))| pos.position.distance(position) < ERASE_RADIUS)
         .map(|(e, _)| e)
         .collect();
     for entity in neuron_entities {

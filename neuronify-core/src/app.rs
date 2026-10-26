@@ -8,8 +8,9 @@ use crate::gui::MenuChoice;
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::{
-    canvas_bounds, collect_connections, collect_scene, collect_voltmeter_traces, create_floor,
-    ConnectionData, CylinderData, GaugeRenderer, NoteRenderer, Sphere, Theme, TorusData,
+    canvas_bounds, collect_scene, collect_voltmeter_traces, collect_voltmeter_wires,
+    connection_being_drawn, create_floor, ConnectionData, CylinderData, GaugeRenderer,
+    NoteRenderer, Sphere, Theme, TorusData,
 };
 use chrono::{DateTime, Duration, Utc};
 use std::io::BufReader;
@@ -371,7 +372,9 @@ impl visula::Simulation for Neuronify {
             self.applied_theme = self.theme;
         }
 
-        simulation::stimulate_nearby(&mut self.world, &self.editor.stimulation_tool);
+        if let Some(position) = self.editor.touch() {
+            simulation::stimulate_nearby(&mut self.world, position);
+        }
         simulation::step_frame(&mut self.world, &mut self.time, self.iterations);
 
         if let Some(landing) = &mut self.landing {
@@ -391,12 +394,10 @@ impl visula::Simulation for Neuronify {
         let world = &self.world;
         let palette = self.theme.palette();
         let scene = collect_scene(world, &palette);
-        let mut connections = collect_connections(
-            world,
-            &self.editor.tool,
-            &self.editor.connection_tool,
-            &palette,
-        );
+        let mut connections = collect_voltmeter_wires(world, &palette);
+        if let Some((start, end)) = self.editor.connection_being_drawn() {
+            connections.push(connection_being_drawn(start, end, &palette));
+        }
         connections.extend(collect_voltmeter_traces(world));
 
         self.sphere_buffer
