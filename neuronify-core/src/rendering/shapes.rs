@@ -58,13 +58,6 @@ const HAND_SCALE: f32 = 0.45 * NODE_RADIUS;
 const HAND_TILT: f32 = FRAC_PI_6;
 const FINGERTIP_STEPS: usize = 8;
 
-pub fn is_inhibitory(world: &hecs::World, entity: Entity) -> bool {
-    world.get::<&Inhibitory>(entity).is_ok()
-        || world
-            .get::<&NeuronType>(entity)
-            .is_ok_and(|neuron_type| matches!(*neuron_type, NeuronType::Inhibitory))
-}
-
 /// How much brighter than white a flash starts, so that only flashes bloom.
 const FLASH_BRIGHTNESS: f32 = 3.0;
 
@@ -84,12 +77,7 @@ pub fn soma_color(
     let value = ((dynamics.voltage - neuron.resting_potential)
         / (neuron.threshold - neuron.resting_potential))
         .clamp(0.0, 1.0) as f32;
-    let neuron_type = if is_inhibitory(world, entity) {
-        NeuronType::Inhibitory
-    } else {
-        NeuronType::Excitatory
-    };
-    palette.soma(&neuron_type, value).lerp(
+    palette.soma(&neuron_type(world, entity), value).lerp(
         palette.flash * FLASH_BRIGHTNESS,
         flash(dynamics.time_since_fire),
     )

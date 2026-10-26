@@ -21,9 +21,10 @@ mod schema;
 mod v1;
 mod v2;
 mod v3;
+mod v4;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -31,7 +32,7 @@ pub fn save(world: &World) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v3::SaveContext, &mut serializer)
+    serialize(world, &mut v4::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -55,6 +56,7 @@ pub fn load(bytes: &[u8]) -> Result<World, String> {
         1 => v1::deserialize(body)?,
         2 => v2::deserialize(body)?,
         3 => v3::deserialize(body)?,
+        4 => v4::deserialize(body)?,
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -66,6 +68,7 @@ pub fn load(bytes: &[u8]) -> Result<World, String> {
         match from {
             1 => v2::upgrade_from_v1(&mut world),
             2 => v3::upgrade_from_v2(&mut world),
+            3 => v4::upgrade_from_v3(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -134,17 +137,38 @@ mod tests {
     #[test]
     fn loads_version_1() {
         // Version 1 turned the link to the next tutorial into an empty note
-        assert_fixture(&load(include_bytes!("fixtures/v1.neuronify")).unwrap(), 30);
+        assert_fixture(
+            &load(include_bytes!("fixtures/v1.neuronify")).unwrap(),
+            30,
+            0,
+        );
     }
 
     #[test]
     fn loads_version_2() {
-        assert_fixture(&load(include_bytes!("fixtures/v2.neuronify")).unwrap(), 29);
+        assert_fixture(
+            &load(include_bytes!("fixtures/v2.neuronify")).unwrap(),
+            29,
+            0,
+        );
     }
 
     #[test]
     fn loads_version_3() {
-        assert_fixture(&load(include_bytes!("fixtures/v3.neuronify")).unwrap(), 29);
+        assert_fixture(
+            &load(include_bytes!("fixtures/v3.neuronify")).unwrap(),
+            29,
+            0,
+        );
+    }
+
+    #[test]
+    fn loads_version_4() {
+        assert_fixture(
+            &load(include_bytes!("fixtures/v4.neuronify")).unwrap(),
+            29,
+            1,
+        );
     }
 
     #[test]
@@ -209,17 +233,27 @@ mod tests {
     }
 
     /// Checks a fixture after it has been upgraded to the current version.
-    fn assert_fixture(world: &World, notes: usize) {
+    fn assert_fixture(world: &World, notes: usize, burst_neurons: usize) {
+        let neurons = 44 + burst_neurons;
         assert_eq!(world.len(), 190);
         assert_eq!(count::<Position>(world), 125);
-        assert_eq!(count::<LeakyNeuron>(world), 44);
-        assert_eq!(count::<LeakyDynamics>(world), 44);
-        assert_eq!(count::<LeakCurrent>(world), 44);
+        assert_eq!(count::<LeakyNeuron>(world), neurons);
+        assert_eq!(count::<LeakyDynamics>(world), neurons);
+        assert_eq!(count::<LeakCurrent>(world), neurons);
         assert_eq!(count::<AdaptationCurrent>(world), 1);
+        assert_eq!(count::<BurstCurrent>(world), burst_neurons);
         assert_eq!(count::<CurrentClamp>(world), 10);
         assert_eq!(count::<CurrentSynapse>(world), 45);
         assert_eq!(count::<ImmediateFireSynapse>(world), 14);
-        assert_eq!(count::<Inhibitory>(world), 7);
+        assert_eq!(count::<v1::Inhibitory>(world), 0);
+        assert_eq!(
+            world
+                .query::<&NeuronType>()
+                .iter()
+                .filter(|(_, neuron_type)| **neuron_type == NeuronType::Inhibitory)
+                .count(),
+            7
+        );
         assert_eq!(count::<TouchSensor>(world), 14);
         assert_eq!(count::<GeneratorDynamics>(world), 16);
         assert_eq!(count::<RegularSpikeGenerator>(world), 1);
@@ -228,7 +262,7 @@ mod tests {
         assert_eq!(count::<Annotation>(world), notes);
         assert_eq!(count::<NoteSize>(world), notes);
         assert_eq!(count::<StaticConnectionSource>(world), 1);
-        assert_eq!(count::<Deletable>(world), 145 + notes);
+        assert_eq!(count::<Deletable>(world), 145 + notes + burst_neurons);
         assert_eq!(count::<Selectable>(world), 1);
         assert_eq!(count::<Voltmeter>(world), 14);
         assert_eq!(count::<VoltageSeries>(world), 14);
@@ -236,7 +270,7 @@ mod tests {
         assert_eq!(count::<CompartmentCurrent>(world), 1);
         assert_eq!(count::<Compartment>(world), 1);
         assert_eq!(count::<SpatialDynamics>(world), 1);
-        assert_eq!(count::<NeuronType>(world), 45);
+        assert_eq!(count::<NeuronType>(world), neurons + 1);
 
         for (_, connection) in world.query::<&Connection>().iter() {
             assert!(world.contains(connection.from) && world.contains(connection.to));

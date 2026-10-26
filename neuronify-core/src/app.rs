@@ -925,12 +925,7 @@ impl Neuronify {
                             if previous_too_near {
                                 return;
                             }
-                            let neuron_type =
-                                if let Ok(neuron_type) = world.get::<&NeuronType>(ct.from) {
-                                    Some((*neuron_type).clone())
-                                } else {
-                                    None
-                                };
+                            let neuron_type = world.get::<&NeuronType>(ct.from).ok().map(|t| *t);
                             if let Some(neuron_type) = neuron_type {
                                 let compartment =
                                     spawn_compartment(world, mouse_position, neuron_type);
@@ -1223,7 +1218,8 @@ impl visula::Simulation for Neuronify {
                         });
                     }
                     if let Ok(mut neuron) = self.world.get::<&mut LeakyNeuron>(active_entity) {
-                        let is_inhibitory = self.world.get::<&Inhibitory>(active_entity).is_ok();
+                        let is_inhibitory =
+                            neuron_type(&self.world, active_entity) == NeuronType::Inhibitory;
                         let label = if is_inhibitory {
                             "LIF Neuron (Inhibitory)"
                         } else {

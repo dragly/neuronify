@@ -37,11 +37,9 @@ impl Element {
             Element::ExcitatoryNeuron => {
                 world.spawn(neuron(position, NeuronType::Excitatory).build())
             }
-            Element::InhibitoryNeuron => world.spawn(
-                neuron(position, NeuronType::Inhibitory)
-                    .add(Inhibitory)
-                    .build(),
-            ),
+            Element::InhibitoryNeuron => {
+                world.spawn(neuron(position, NeuronType::Inhibitory).build())
+            }
             Element::AdaptiveNeuron => world.spawn(
                 neuron(position, NeuronType::Excitatory)
                     .add(AdaptationCurrent::default())

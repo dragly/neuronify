@@ -13,7 +13,6 @@ use crate::constants::NODE_RADIUS;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{CylinderData, Sphere, TorusData};
 use crate::rendering::lighting::shaded;
-use crate::rendering::shapes::is_inhibitory;
 
 /// Adaptation conductance, in spikes' worth, at which the ring is about two thirds full.
 const ADAPTATION_SCALE: f64 = 2.0;
@@ -180,13 +179,8 @@ fn collect_gauges(
         if adaptation.is_none() && burst.is_none() {
             continue;
         }
-        let neuron_type = if is_inhibitory(world, entity) {
-            NeuronType::Inhibitory
-        } else {
-            NeuronType::Excitatory
-        };
         let track = palette
-            .soma(&neuron_type, 0.0)
+            .soma(&neuron_type(world, entity), 0.0)
             .lerp(palette.floor, TRACK_MIX);
         let normal = (eye - position.position).normalize();
         let right = (screen_right - normal * screen_right.dot(normal)).normalize();

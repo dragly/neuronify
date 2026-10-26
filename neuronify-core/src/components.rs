@@ -161,9 +161,6 @@ impl Default for ImmediateFireSynapse {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Inhibitory;
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TouchSensor;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -238,10 +235,18 @@ impl Default for PoissonGenerator {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub enum NeuronType {
+    #[default]
     Excitatory,
     Inhibitory,
+}
+
+pub fn neuron_type(world: &hecs::World, entity: Entity) -> NeuronType {
+    world
+        .get::<&NeuronType>(entity)
+        .map(|neuron_type| *neuron_type)
+        .unwrap_or_default()
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
