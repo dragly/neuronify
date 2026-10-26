@@ -418,9 +418,17 @@ impl Neuronify {
         let mouse_position = ground_position(application, mouse_physical_position);
 
         if !self.edit_enabled {
-            match *move_origin {
-                Some(origin) => pan(application, mouse_position - origin),
-                None => *move_origin = Some(mouse_position),
+            let touching = stimulation_tool.is_some()
+                || (move_origin.is_none() && simulation::touch_sensor_near(world, mouse_position));
+            if touching {
+                *stimulation_tool = Some(StimulationTool {
+                    position: mouse_position,
+                });
+            } else {
+                match *move_origin {
+                    Some(origin) => pan(application, mouse_position - origin),
+                    None => *move_origin = Some(mouse_position),
+                }
             }
             return;
         }

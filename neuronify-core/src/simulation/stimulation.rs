@@ -1,6 +1,16 @@
+use glam::Vec3;
+
 use crate::components::*;
 use crate::constants::*;
 use crate::StimulationTool;
+
+pub fn touch_sensor_near(world: &hecs::World, position: Vec3) -> bool {
+    world
+        .query::<&Position>()
+        .with::<&TouchSensor>()
+        .iter()
+        .any(|(_, sensor)| sensor.position.distance(position) < ERASE_RADIUS)
+}
 
 pub fn stimulate_nearby(world: &mut hecs::World, stimulation_tool: &Option<StimulationTool>) {
     let Some(stim) = stimulation_tool else {
@@ -31,5 +41,31 @@ pub fn stimulate_nearby(world: &mut hecs::World, stimulation_tool: &Option<Stimu
             let neuron = world.get::<&LeakyNeuron>(entity).unwrap();
             dynamics.voltage = neuron.threshold + 0.01;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finds_touch_sensors_within_reach() {
+        let mut world = hecs::World::new();
+        world.spawn((
+            Position {
+                position: Vec3::ZERO,
+            },
+            TouchSensor,
+            GeneratorDynamics::default(),
+        ));
+        world.spawn((
+            Position {
+                position: 10.0 * Vec3::X,
+            },
+            LeakyNeuron::default(),
+        ));
+        assert!(touch_sensor_near(&world, 0.5 * ERASE_RADIUS * Vec3::Z));
+        assert!(!touch_sensor_near(&world, 2.0 * ERASE_RADIUS * Vec3::Z));
+        assert!(!touch_sensor_near(&world, 10.0 * Vec3::X));
     }
 }
