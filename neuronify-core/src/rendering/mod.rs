@@ -21,7 +21,7 @@ pub use floor::create_floor;
 pub use gauges::GaugeRenderer;
 pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere, TorusData};
 pub use notes::NoteRenderer;
-pub use paths::{connection_paths, ConnectionPath};
+pub use paths::{connection_paths, distance_to_segment, ConnectionPath};
 pub use scene::{collect_scene, Scene};
 pub use spheres::collect_spheres;
 pub use voltmeter::collect_voltmeter_traces;
