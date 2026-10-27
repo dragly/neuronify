@@ -159,6 +159,16 @@ impl Harness {
         self.click(response.rect.center());
     }
 
+    fn press(&mut self, modifiers: Modifiers, key: Key) {
+        self.frame(vec![Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers,
+        }]);
+    }
+
     fn click_text(&mut self, text: &str) {
         let position = self
             .text_position(text)
@@ -314,6 +324,35 @@ fn undo_and_redo_what_the_inspector_deleted() {
     harness.click(corner_button(3));
     assert!(harness.world.contains(neuron));
     harness.click(corner_button(2));
+    assert!(!harness.world.contains(neuron));
+}
+
+#[test]
+fn ctrl_z_undoes_and_ctrl_shift_z_or_ctrl_y_redoes() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    harness.editor.erase_selection(&mut harness.world);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert!(harness.world.contains(neuron));
+    harness.press(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z);
+    assert!(!harness.world.contains(neuron));
+    harness.press(Modifiers::COMMAND, Key::Z);
+    harness.press(Modifiers::COMMAND, Key::Y);
+    assert!(!harness.world.contains(neuron));
+}
+
+#[test]
+fn ctrl_z_is_left_to_the_text_of_a_note() {
+    let mut world = World::new();
+    let note = Element::Note.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(note));
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut harness.world, Vec3::X * 10.0);
+    harness.editor.selection = Some(neuron);
+    harness.editor.erase_selection(&mut harness.world);
+    harness.editor.selection = Some(note);
+    harness.frame(vec![]);
+    harness.click_text("New note");
+    harness.press(Modifiers::COMMAND, Key::Z);
     assert!(!harness.world.contains(neuron));
 }
 
