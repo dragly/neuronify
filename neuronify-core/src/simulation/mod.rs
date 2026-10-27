@@ -30,6 +30,12 @@ pub fn step_frame(world: &mut World, time: &mut f64, iterations: u32) {
 
     for _ in 0..iterations {
         fhn_step(world, FHN_CDT, &recently_fired);
+    }
+    step_physics(world, iterations);
+}
+
+pub fn step_physics(world: &mut World, iterations: u32) {
+    for _ in 0..iterations {
         apply_spatial_forces(world);
         integrate_motion(world, PHYSICS_DT);
     }

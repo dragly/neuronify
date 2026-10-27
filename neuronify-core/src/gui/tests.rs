@@ -15,6 +15,8 @@ struct Harness {
     editor: Editor,
     world: World,
     theme: Theme,
+    running: bool,
+    iterations: u32,
     choice: Option<MenuChoice>,
     output: Option<FullOutput>,
     time: f64,
@@ -33,6 +35,8 @@ impl Harness {
             editor: Editor::default(),
             world,
             theme: Theme::Dark,
+            running: true,
+            iterations: 4,
             choice: None,
             output: None,
             time: 0.0,
@@ -58,6 +62,8 @@ impl Harness {
             editor,
             world,
             theme,
+            running,
+            iterations,
             choice,
             time,
             ..
@@ -69,6 +75,8 @@ impl Harness {
                 world,
                 theme,
                 time: *time,
+                running,
+                iterations,
                 fps: 60.0,
             };
             if let Some(picked) = gui.show(ui.ctx(), controls) {
@@ -251,4 +259,28 @@ fn the_inspector_forgets_a_selection_that_was_erased() {
     let harness = Harness::with(true, world, Some(neuron));
     assert!(!harness.shows("Threshold"));
     assert!(harness.world.contains(other));
+}
+
+#[test]
+fn the_playback_bar_pauses_and_resumes() {
+    for edit_enabled in [true, false] {
+        let mut harness = Harness::new(edit_enabled);
+        harness.click_button(playback::PLAY);
+        assert!(!harness.running);
+        harness.click_button(playback::PLAY);
+        assert!(harness.running);
+    }
+}
+
+#[test]
+fn the_playback_bar_keeps_the_speed_within_bounds() {
+    let mut harness = Harness::new(true);
+    harness.click_button(playback::FASTER);
+    assert_eq!(harness.iterations, 5);
+    harness.iterations = 1;
+    harness.click_button(playback::SLOWER);
+    assert_eq!(harness.iterations, 1);
+    harness.iterations = playback::MAX_SPEED;
+    harness.click_button(playback::FASTER);
+    assert_eq!(harness.iterations, playback::MAX_SPEED);
 }

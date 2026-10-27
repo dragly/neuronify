@@ -31,6 +31,10 @@ pub enum Icon {
     Save,
     Trash,
     Close,
+    Play,
+    Pause,
+    Plus,
+    Minus,
     Select,
     Stimulate,
     Erase,
@@ -133,6 +137,33 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
         Icon::Close => {
             painter.line_segment([at(vec2(6.5, 6.5)), at(vec2(17.5, 17.5))], stroke);
             painter.line_segment([at(vec2(17.5, 6.5)), at(vec2(6.5, 17.5))], stroke);
+        }
+        Icon::Play => {
+            painter.add(Shape::convex_polygon(
+                vec![
+                    at(vec2(8.0, 5.6)),
+                    at(vec2(18.4, 12.0)),
+                    at(vec2(8.0, 18.4)),
+                ],
+                color,
+                stroke,
+            ));
+        }
+        Icon::Pause => {
+            for left in [7.0, 13.6] {
+                painter.rect_filled(
+                    Rect::from_min_size(at(vec2(left, 5.5)), vec2(3.4, 13.0) * scale),
+                    1.0 * scale,
+                    color,
+                );
+            }
+        }
+        Icon::Plus => {
+            painter.line_segment([at(vec2(12.0, 5.0)), at(vec2(12.0, 19.0))], stroke);
+            painter.line_segment([at(vec2(5.0, 12.0)), at(vec2(19.0, 12.0))], stroke);
+        }
+        Icon::Minus => {
+            painter.line_segment([at(vec2(5.0, 12.0)), at(vec2(19.0, 12.0))], stroke);
         }
         Icon::Select => outline(&[
             vec2(6.5, 3.8),
