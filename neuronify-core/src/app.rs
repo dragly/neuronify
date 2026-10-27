@@ -180,13 +180,13 @@ impl Neuronify {
         if !held {
             self.touches.forget_fingers();
             self.mouse.cancel();
-            self.editor.release();
+            self.editor.release(&self.world);
         }
     }
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
-            self.editor.release();
+            self.editor.release(&self.world);
             return;
         }
         let Some(screen_position) = self.mouse.position else {
@@ -240,8 +240,7 @@ impl Neuronify {
         self.speed = speed;
         self.running = true;
         self.edit_enabled = false;
-        self.editor.release();
-        self.editor.selection = None;
+        self.editor.forget_world();
         self.landing = None;
         self.frame_scene_requested = true;
     }

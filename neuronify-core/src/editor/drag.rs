@@ -8,6 +8,8 @@ use crate::components::*;
 use crate::constants::SEGMENT_LENGTH;
 use crate::elements::{spawn_cable, spawn_compartment};
 
+use super::history::Recording;
+
 pub struct Drag {
     entity: Entity,
     offset: Vec3,
@@ -27,20 +29,22 @@ impl Drag {
         drag
     }
 
-    pub fn move_to(&mut self, world: &mut World, pointer: Vec3) {
+    pub fn move_to(&mut self, world: &mut World, recording: &mut Recording, pointer: Vec3) {
         let target = (pointer + self.offset).with_y(0.0);
+        recording.edit(world, self.entity);
         match world.get::<&mut Position>(self.entity) {
             Ok(mut dragged) if dragged.position != target => dragged.position = target,
             _ => return,
         }
         for (follower, moved) in self.pose.move_to(planar(target)) {
+            recording.edit(world, follower);
             if let Ok(mut position) = world.get::<&mut Position>(follower) {
                 position.position += Vec3::new(moved.x as f32, 0.0, moved.y as f32);
             }
         }
         let mut resampled = false;
         for chain in &self.stretching_chains {
-            resampled |= resample(world, chain);
+            resampled |= resample(world, recording, chain);
         }
         if resampled {
             self.measure(world);
@@ -376,7 +380,7 @@ fn fit(free: &[bool], pairs: &[(usize, usize)], fixed: &[DVec2], guide: &[DVec2]
         .collect()
 }
 
-fn resample(world: &mut World, chain: &[Entity]) -> bool {
+fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> bool {
     let Some(nodes) = chain_nodes(world, chain) else {
         return false;
     };
@@ -409,8 +413,8 @@ fn resample(world: &mut World, chain: &[Entity]) -> bool {
     let interior = &nodes[1..nodes.len() - 1];
     let kept = interior.len().min(segments - 1);
     for (&compartment, &cable) in interior[kept..].iter().zip(&chain[kept..]) {
-        world.despawn(compartment).unwrap();
-        world.despawn(cable).unwrap();
+        recording.take(world, compartment);
+        recording.take(world, cable);
     }
     let mut compartments = interior[..kept].to_vec();
     let mut previous = nodes[kept];
@@ -420,11 +424,11 @@ fn resample(world: &mut World, chain: &[Entity]) -> bool {
         compartments.push(compartment);
         previous = compartment;
     }
-    world
-        .get::<&mut Connection>(chain[chain.len() - 1])
-        .unwrap()
-        .from = previous;
+    let last = chain[chain.len() - 1];
+    recording.edit(world, last);
+    world.get::<&mut Connection>(last).unwrap().from = previous;
     for (step, &compartment) in compartments.iter().enumerate() {
+        recording.edit(world, compartment);
         let distance = (step + 1) as f32 * length / segments as f32;
         world.get::<&mut Position>(compartment).unwrap().position = point_along(&points, distance);
     }
