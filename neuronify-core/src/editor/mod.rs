@@ -13,7 +13,7 @@ use crate::rendering::{compartment_radii, connection_paths, distance_to_segment,
 use crate::simulation::{fire_nearby, touch_sensor_near};
 use crate::tools::{ConnectionTool, StimulationTool, Tool};
 use drag::Drag;
-use history::{History, Recording};
+use history::{History, Recording, Snapshot};
 
 mod drag;
 mod history;
@@ -40,6 +40,7 @@ pub struct Editor {
     dragging: Option<Drag>,
     resizing: Option<(Entity, Corner, Vec3)>,
     recording: Option<Recording>,
+    adjusting: Option<Snapshot>,
     history: History,
 }
 
@@ -85,12 +86,47 @@ impl Editor {
 
     pub fn undo(&mut self, world: &mut World) {
         self.release(world);
+        self.settle();
         self.history.undo(world);
     }
 
     pub fn redo(&mut self, world: &mut World) {
         self.release(world);
+        self.settle();
         self.history.redo(world);
+    }
+
+    pub fn adjust(
+        &mut self,
+        world: &World,
+        entity: Entity,
+        settled: bool,
+        adjust: impl FnOnce() -> bool,
+    ) {
+        if self
+            .adjusting
+            .as_ref()
+            .is_some_and(|adjusting| adjusting.entity != entity)
+        {
+            self.settle();
+        }
+        let ongoing = self.adjusting.is_some();
+        let before = self
+            .adjusting
+            .take()
+            .or_else(|| Snapshot::of(world, entity));
+        if adjust() || ongoing {
+            self.adjusting = before;
+        }
+        if settled {
+            self.settle();
+        }
+    }
+
+    fn settle(&mut self) {
+        if let Some(adjusting) = self.adjusting.take() {
+            self.history.record_snapshot(adjusting);
+        }
     }
 
     pub fn erase_selection(&mut self, world: &mut World) {
@@ -100,6 +136,7 @@ impl Editor {
         if world.get::<&Deletable>(selected).is_err() {
             return;
         }
+        self.settle();
         let mut recording = Recording::start(world);
         let elements: HashSet<Entity> = compartment_tree(world, selected)
             .into_iter()
@@ -124,6 +161,7 @@ impl Editor {
     }
 
     pub fn edit(&mut self, world: &mut World, position: Vec3, shift_down: bool) -> Option<Pan> {
+        self.settle();
         let mut recording = self
             .recording
             .take()

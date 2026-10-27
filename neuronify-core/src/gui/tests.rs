@@ -3,6 +3,7 @@ use glam::Vec3;
 use hecs::Entity;
 
 use super::*;
+use crate::components::LeakyNeuron;
 use crate::constants::DEFAULT_SPEED;
 use crate::elements::Element;
 use crate::tools::Tool;
@@ -354,6 +355,22 @@ fn ctrl_z_is_left_to_the_text_of_a_note() {
     harness.click_text("New note");
     harness.press(Modifiers::COMMAND, Key::Z);
     assert!(!harness.world.contains(neuron));
+}
+
+#[test]
+fn dragging_a_slider_is_one_step_to_undo() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    let threshold =
+        |harness: &Harness| harness.world.get::<&LeakyNeuron>(neuron).unwrap().threshold;
+    let original = threshold(&harness);
+    let slider = harness.text_position("Threshold").unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(120.0, 0.0));
+    assert_ne!(threshold(&harness), original);
+
+    harness.click(corner_button(3));
+    assert_eq!(threshold(&harness), original);
+    assert!(!harness.editor.can_undo());
 }
 
 #[test]
