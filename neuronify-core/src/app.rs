@@ -23,6 +23,7 @@ pub struct Neuronify {
     theme: Theme,
     world: hecs::World,
     time: f64,
+    running: bool,
     iterations: u32,
     mouse: Mouse,
     keyboard: Keyboard,
@@ -104,6 +105,7 @@ impl Neuronify {
             frame_scene_requested: opened.is_some(),
             world: opened.unwrap_or_default(),
             time: 0.0,
+            running: true,
             iterations: 4,
             mouse: Mouse::default(),
             keyboard: Keyboard::default(),
@@ -211,7 +213,11 @@ impl visula::Simulation for Neuronify {
         if let Some(position) = self.editor.touch() {
             simulation::stimulate_nearby(&mut self.world, position);
         }
-        simulation::step_frame(&mut self.world, &mut self.time, self.iterations);
+        if self.running {
+            simulation::step_frame(&mut self.world, &mut self.time, self.iterations);
+        } else {
+            simulation::step_physics(&mut self.world, self.iterations);
+        }
 
         if let Some(landing) = &mut self.landing {
             landing.update(self.iterations);
@@ -262,6 +268,8 @@ impl visula::Simulation for Neuronify {
             world: &mut self.world,
             theme: &mut self.theme,
             time: self.time,
+            running: &mut self.running,
+            iterations: &mut self.iterations,
             fps: self.frame_clock.fps(),
         };
         match self.gui.show(context, controls) {
@@ -269,9 +277,6 @@ impl visula::Simulation for Neuronify {
             Some(MenuChoice::Save(path)) => self.save(path),
             Some(MenuChoice::Open(path)) => self.loadfile(path),
             None => {}
-        }
-        if self.edit_enabled {
-            gui::settings_window(context, &mut self.iterations);
         }
     }
 

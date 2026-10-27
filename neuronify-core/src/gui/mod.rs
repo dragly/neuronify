@@ -1,5 +1,6 @@
 mod icons;
 mod inspector;
+mod playback;
 mod rail;
 mod style;
 #[cfg(test)]
@@ -18,7 +19,7 @@ use crate::editor::Editor;
 use crate::rendering::Theme;
 use icons::Icon;
 use inspector::Inspector;
-use rail::{Rail, POPOVER_GAP};
+use rail::{Rail, POPOVER_GAP, RAIL_WIDTH};
 use style::{Chrome, MARGIN, PANEL_RADIUS};
 use widgets::{icon_row, segmented, separator};
 
@@ -41,6 +42,8 @@ pub struct Controls<'a> {
     pub world: &'a mut World,
     pub theme: &'a mut Theme,
     pub time: f64,
+    pub running: &'a mut bool,
+    pub iterations: &'a mut u32,
     pub fps: f64,
 }
 
@@ -80,6 +83,19 @@ impl Gui {
             let position = pos2(button.rect.left(), button.rect.bottom() + FAB_GAP);
             (button, position)
         };
+        let shift = if *controls.edit_enabled {
+            (MARGIN + RAIL_WIDTH) / 2.0
+        } else {
+            0.0
+        };
+        playback::bar(
+            context,
+            theme,
+            shift,
+            controls.running,
+            controls.iterations,
+            controls.time,
+        );
         if menu_button.clicked() {
             self.menu_open = !self.menu_open;
         }
@@ -215,11 +231,4 @@ fn labelled_row(ui: &mut Ui, chrome: &Chrome, label: &str, value: impl FnOnce(&m
             });
         },
     );
-}
-
-pub fn settings_window(context: &Context, iterations: &mut u32) {
-    egui::Window::new("Settings").show(context, |ui| {
-        ui.label("Simulation speed");
-        ui.add(egui::Slider::new(iterations, 1..=20));
-    });
 }
