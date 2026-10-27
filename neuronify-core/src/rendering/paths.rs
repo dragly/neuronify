@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use glam::Vec3;
-use hecs::Entity;
+use hecs::{Entity, EntityRef};
 
 use crate::components::*;
 use crate::constants::*;
@@ -62,27 +62,12 @@ pub fn distance_to_segment(start: Vec3, end: Vec3, point: Vec3) -> Option<f32> {
         .then(|| point.distance(start + t * along))
 }
 
-/// Cable segments between compartments and voltmeter wires are drawn in other ways.
-pub(crate) fn is_drawn_as_path(
-    world: &hecs::World,
-    entity: Entity,
-    connection: &Connection,
-) -> bool {
-    world.get::<&Voltmeter>(entity).is_err()
-        && (connection.directional || world.get::<&CompartmentCurrent>(entity).is_err())
-}
-
-fn connection_colors(
-    world: &hecs::World,
-    from: Entity,
-    to: Entity,
-    palette: &Palette,
-) -> (Vec3, Vec3) {
-    let value = |target: Entity| -> f32 {
-        if let Ok(compartment) = world.get::<&Compartment>(target) {
+fn connection_colors(from: EntityRef, to: EntityRef, palette: &Palette) -> (Vec3, Vec3) {
+    let value = |target: EntityRef| -> f32 {
+        if let Some(compartment) = target.get::<&Compartment>() {
             ((compartment.voltage + 50.0) / 200.0) as f32
-        } else if let Ok(dynamics) = world.get::<&LeakyDynamics>(target) {
-            let neuron = world.get::<&LeakyNeuron>(target).ok();
+        } else if let Some(dynamics) = target.get::<&LeakyDynamics>() {
+            let neuron = target.get::<&LeakyNeuron>();
             if let Some(neuron) = neuron {
                 ((dynamics.voltage - neuron.resting_potential)
                     / (neuron.threshold - neuron.resting_potential))
@@ -96,11 +81,11 @@ fn connection_colors(
     };
     let start_value = value(to);
     let end_value = value(from);
-    if world.get::<&CurrentClamp>(from).is_ok() {
+    if from.has::<CurrentClamp>() {
         (yellow(), yellow())
-    } else if world.get::<&GeneratorDynamics>(from).is_ok() {
+    } else if from.has::<GeneratorDynamics>() {
         (orange(), orange())
-    } else if let Ok(neuron_type) = world.get::<&NeuronType>(from) {
+    } else if let Some(neuron_type) = from.get::<&NeuronType>() {
         (
             palette.neurocolor(&neuron_type, start_value),
             palette.neurocolor(&neuron_type, end_value),
@@ -122,21 +107,22 @@ fn bent_line(start: Vec3, end: Vec3, bend: f32, trim: f32) -> Vec<Vec3> {
     let side = diff.cross(Vec3::Y).normalize_or_zero();
     let control = (start + end) * 0.5 + side * bend * length;
     let steps = ((length / JOINT_SPACING).ceil() as usize).max(1);
-    let curve: Vec<Vec3> = (0..=steps)
+    let mut points: Vec<Vec3> = (0..=steps)
         .map(|i| quadratic_bezier(start, control, end, i as f32 / steps as f32))
         .collect();
-    let mut keep = curve.windows(2).map(|w| w[0].distance(w[1])).sum::<f32>() - trim;
-    let mut points = vec![start];
-    for w in curve.windows(2) {
-        let segment = w[0].distance(w[1]);
+    let mut keep = points.windows(2).map(|w| w[0].distance(w[1])).sum::<f32>() - trim;
+    for i in 1..points.len() {
+        let segment = points[i - 1].distance(points[i]);
         if keep <= segment {
             if keep > 0.0 {
-                points.push(w[0].lerp(w[1], keep / segment));
+                points[i] = points[i - 1].lerp(points[i], keep / segment);
+                points.truncate(i + 1);
+            } else {
+                points.truncate(i);
             }
             break;
         }
         keep -= segment;
-        points.push(w[1]);
     }
     points
 }
@@ -153,13 +139,16 @@ pub fn connection_paths(
         .map(|(_, c)| (c.from, c.to))
         .collect();
     world
-        .query::<&Connection>()
+        .query::<(&Connection, Option<&CompartmentCurrent>)>()
+        .without::<&Voltmeter>()
         .iter()
-        .filter(|(entity, connection)| is_drawn_as_path(world, *entity, connection))
-        .filter_map(|(entity, connection)| {
-            let start = world.get::<&Position>(connection.from).ok()?.position;
-            let end = world.get::<&Position>(connection.to).ok()?.position;
-            let from_compartment = world.get::<&Compartment>(connection.from).is_ok();
+        .filter(|(_, (connection, cable))| connection.directional || cable.is_none())
+        .filter_map(|(entity, (connection, _))| {
+            let from = world.entity(connection.from).ok()?;
+            let to = world.entity(connection.to).ok()?;
+            let start = from.get::<&Position>()?.position;
+            let end = to.get::<&Position>()?.position;
+            let from_compartment = from.has::<Compartment>();
             // Reciprocal pairs bend to opposite sides so both stay visible.
             // An axon terminal continues its chain of compartments straight.
             let bend = if pairs.contains(&(connection.to, connection.from)) {
@@ -178,8 +167,7 @@ pub fn connection_paths(
                 Some(&radius) if from_compartment => radius,
                 _ => (CONNECTION_RADIUS * connection.strength as f32).max(0.05),
             };
-            let (start_color, end_color) =
-                connection_colors(world, connection.from, connection.to, palette);
+            let (start_color, end_color) = connection_colors(from, to, palette);
             Some((
                 entity,
                 ConnectionPath {
@@ -188,7 +176,9 @@ pub fn connection_paths(
                     start_color,
                     end_color,
                     directional: connection.directional,
-                    inhibitory: neuron_type(world, connection.from) == NeuronType::Inhibitory,
+                    inhibitory: from
+                        .get::<&NeuronType>()
+                        .is_some_and(|neuron_type| *neuron_type == NeuronType::Inhibitory),
                 },
             ))
         })

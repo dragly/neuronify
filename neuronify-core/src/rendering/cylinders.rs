@@ -72,18 +72,16 @@ pub fn collect_cylinders(
         .iter()
         .filter(|(_, connection)| !connection.directional)
         .filter_map(|(_, connection)| {
-            let start = world.get::<&Position>(connection.from).ok()?.position;
-            let end = world.get::<&Position>(connection.to).ok()?.position;
-            let colored_by = if world.get::<&Compartment>(connection.to).is_ok() {
-                connection.to
-            } else {
-                connection.from
-            };
+            let from = world.entity(connection.from).ok()?;
+            let to = world.entity(connection.to).ok()?;
+            let start = from.get::<&Position>()?.position;
+            let end = to.get::<&Position>()?.position;
+            let colored_by = if to.has::<Compartment>() { to } else { from };
             let color = match (
-                world.get::<&Compartment>(colored_by),
-                world.get::<&NeuronType>(colored_by),
+                colored_by.get::<&Compartment>(),
+                colored_by.get::<&NeuronType>(),
             ) {
-                (Ok(compartment), Ok(neuron_type)) => palette.neurocolor(
+                (Some(compartment), Some(neuron_type)) => palette.neurocolor(
                     &neuron_type,
                     ((compartment.voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32,
                 ),
@@ -99,6 +97,7 @@ pub fn collect_cylinders(
             })
         })
         .collect();
+    cylinders.reserve(paths.values().map(|path| path.points.len()).sum());
     for path in paths.values() {
         let segments = path.points.len().saturating_sub(1);
         for (i, w) in path.points.windows(2).enumerate() {
