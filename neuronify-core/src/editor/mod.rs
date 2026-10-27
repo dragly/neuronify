@@ -59,6 +59,34 @@ impl Editor {
         self.resizing = None;
     }
 
+    pub fn erase_selection(&mut self, world: &mut World) {
+        let Some(selected) = self.selection.take() else {
+            return;
+        };
+        if world.get::<&Deletable>(selected).is_err() {
+            return;
+        }
+        let erased: HashSet<Entity> = dendrite_tree(world, selected)
+            .into_iter()
+            .chain([selected])
+            .collect();
+        for entity in erased {
+            world.despawn(entity).unwrap();
+        }
+        let dangling: Vec<Entity> = world
+            .query::<&Connection>()
+            .with::<&Deletable>()
+            .iter()
+            .filter(|(_, connection)| {
+                !world.contains(connection.from) || !world.contains(connection.to)
+            })
+            .map(|(connection, _)| connection)
+            .collect();
+        for connection in dangling {
+            world.despawn(connection).unwrap();
+        }
+    }
+
     pub fn edit(&mut self, world: &mut World, position: Vec3, shift_down: bool) -> Option<Pan> {
         match self.tool {
             Tool::Select => return self.select(world, position),
