@@ -99,9 +99,8 @@ fn add_cable_bending(positions: &[Vec3], cables: &[(usize, usize)], forces: &mut
 }
 
 fn add_cable_springs(positions: &[Vec3], cables: &[(usize, usize)], forces: &mut [Vec3]) {
-    let rest_length = 2.0 * NODE_RADIUS;
     for &(from, to) in cables {
-        let stretch = positions[from].distance_squared(positions[to]) - rest_length.powi(2);
+        let stretch = positions[from].distance_squared(positions[to]) - SEGMENT_LENGTH.powi(2);
         let force =
             SPRING_STRENGTH * stretch * (positions[to] - positions[from]).normalize_or_zero();
         forces[from] += force;

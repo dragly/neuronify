@@ -255,6 +255,14 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
     assert_eq!(editor.touch(), None);
 }
 
+fn grow_axon(world: &mut World, from: Vec3, to: Vec3) {
+    let steps = (from.distance(to) / 0.5) as usize;
+    let path: Vec<Vec3> = (0..=steps)
+        .map(|step| from.lerp(to, step as f32 / steps as f32))
+        .collect();
+    drag(&mut editor(Tool::Axon), world, &path);
+}
+
 fn drag_in_steps(world: &mut World, from: Vec3, to: Vec3) {
     let path: Vec<Vec3> = (0..=50)
         .map(|step| from.lerp(to, step as f32 / 50.0))
@@ -264,6 +272,34 @@ fn drag_in_steps(world: &mut World, from: Vec3, to: Vec3) {
 
 fn position(world: &World, entity: Entity) -> Vec3 {
     world.get::<&Position>(entity).unwrap().position
+}
+
+fn cables_out_of(world: &World, from: Entity) -> Vec<Entity> {
+    world
+        .query::<&Connection>()
+        .with::<&CompartmentCurrent>()
+        .iter()
+        .filter(|(_, cable)| cable.from == from)
+        .map(|(_, cable)| cable.to)
+        .collect()
+}
+
+fn chain(world: &World, from: Entity, to: Entity) -> Option<Vec<Entity>> {
+    if from == to {
+        return Some(vec![to]);
+    }
+    cables_out_of(world, from).into_iter().find_map(|next| {
+        let mut rest = chain(world, next, to)?;
+        rest.insert(0, from);
+        Some(rest)
+    })
+}
+
+fn evenly_spaced(world: &World, chain: &[Entity]) -> bool {
+    chain.windows(2).all(|pair| {
+        let length = position(world, pair[0]).distance(position(world, pair[1]));
+        (length - SEGMENT_LENGTH).abs() < 0.25 * SEGMENT_LENGTH
+    })
 }
 
 #[test]
@@ -280,4 +316,83 @@ fn dendrites_move_along_with_a_dragged_neuron() {
         let moved = position(&world, dendrite) - previous;
         assert!(moved.distance(at(3.0, 4.0)) < 1e-4, "moved {moved}");
     }
+}
+
+#[test]
+fn stretched_axons_grow_compartments() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    let grown = chain(&world, source, target).unwrap().len();
+
+    drag_in_steps(&mut world, at(0.0, 0.0), at(0.0, -30.0));
+
+    let stretched = chain(&world, source, target).unwrap();
+    assert!(
+        stretched.len() > grown,
+        "{grown} became {}",
+        stretched.len()
+    );
+    assert!(evenly_spaced(&world, &stretched));
+    let along: Vec<f32> = stretched.iter().map(|&c| position(&world, c).z).collect();
+    assert!(along.windows(2).all(|pair| pair[0] < pair[1]), "{along:?}");
+}
+
+#[test]
+fn compressed_axons_lose_compartments_but_keep_one() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+
+    drag_in_steps(&mut world, at(0.0, 0.0), at(0.0, 18.5));
+
+    let compressed = chain(&world, source, target).unwrap();
+    assert_eq!(compressed.len(), 3);
+    assert!(world.get::<&Compartment>(compressed[1]).is_ok());
+    let into_target = world
+        .query::<&Connection>()
+        .iter()
+        .find(|(_, cable)| cable.to == target)
+        .map(|(_, cable)| cable.directional);
+    assert_eq!(into_target, Some(true));
+}
+
+#[test]
+fn compressing_keeps_branches_and_measured_compartments() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    let grown = chain(&world, source, target).unwrap();
+    let (branching, measured) = (grown[3], grown[8]);
+    let branching_at = position(&world, branching);
+    grow_axon(&mut world, branching_at, branching_at + at(10.0, 0.0));
+    spawn_voltmeter(&mut world, measured, at(10.0, 10.0));
+
+    drag_in_steps(&mut world, at(0.0, 0.0), at(0.0, 8.0));
+
+    let compressed = chain(&world, source, target).unwrap();
+    assert!(compressed.len() < grown.len());
+    assert!(compressed.contains(&branching) && compressed.contains(&measured));
+    assert!(evenly_spaced(&world, &compressed));
+}
+
+#[test]
+fn a_dragged_compartment_pulls_its_axon_longer() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 6.0));
+    let (tip, _) = positions_with::<Compartment>(&world)
+        .into_iter()
+        .find(|&(compartment, _)| cables_out_of(&world, compartment).is_empty())
+        .unwrap();
+    let tip_at = position(&world, tip);
+
+    drag_in_steps(&mut world, tip_at, tip_at + at(0.0, 20.0));
+
+    let pulled = chain(&world, soma, tip).unwrap();
+    assert!(pulled.len() > 6, "{}", pulled.len());
+    assert!(evenly_spaced(&world, &pulled));
 }
