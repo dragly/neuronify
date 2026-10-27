@@ -1,6 +1,11 @@
+mod icons;
+mod style;
+#[cfg(test)]
+mod tests;
+
 use std::path::PathBuf;
 
-use egui::Context;
+use egui::{Align2, Context, Rect, Response, Sense, Ui, Vec2, WidgetInfo, WidgetType};
 use hecs::{Entity, World};
 
 use crate::components::*;
@@ -9,6 +14,12 @@ use crate::examples::Example;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::rendering::Theme;
 use crate::tools::{ToolCategory, TOOL_CATEGORIES};
+use icons::Icon;
+use style::{Chrome, MARGIN, PANEL_RADIUS};
+
+const FAB_SIZE: f32 = 46.0;
+const FAB_GAP: f32 = 8.0;
+const ICON_SIZE: f32 = 22.0;
 
 pub enum MenuChoice {
     Save(PathBuf),
@@ -22,14 +33,38 @@ pub fn load_error(context: &Context, error: &str) {
     });
 }
 
-pub fn corner_buttons(context: &Context, edit_enabled: &mut bool) -> bool {
+fn fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, on: bool) -> Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(FAB_SIZE), Sense::click());
+    let fill = if on {
+        chrome.accent
+    } else if response.hovered() {
+        chrome.hovered
+    } else {
+        chrome.panel
+    };
+    chrome.paint_floating(ui.painter(), rect, PANEL_RADIUS, fill);
+    icons::paint_icon(
+        ui.painter(),
+        icon,
+        Rect::from_center_size(rect.center(), Vec2::splat(ICON_SIZE)),
+        if on { chrome.on_accent } else { chrome.text },
+    );
+    response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, on, label));
+    response.on_hover_text(label)
+}
+
+pub fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) -> bool {
+    let chrome = Chrome::of(theme);
     let mut examples_clicked = false;
-    egui::Area::new("edit_button_area".into())
-        .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+    egui::Area::new("corner_buttons".into())
+        .anchor(Align2::RIGHT_BOTTOM, [-MARGIN, -MARGIN])
         .show(context, |ui| {
             ui.horizontal(|ui| {
-                examples_clicked = ui.button("Examples").clicked();
-                ui.toggle_value(edit_enabled, "Edit");
+                ui.spacing_mut().item_spacing.x = FAB_GAP;
+                examples_clicked = fab(ui, chrome, Icon::Grid, "Examples", false).clicked();
+                if fab(ui, chrome, Icon::Pencil, "Edit", *edit_enabled).clicked() {
+                    *edit_enabled = !*edit_enabled;
+                }
             });
         });
     examples_clicked

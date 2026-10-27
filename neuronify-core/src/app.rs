@@ -264,7 +264,7 @@ impl visula::Simulation for Neuronify {
         if let Some(error) = &self.load_error {
             gui::load_error(context, error);
         }
-        if gui::corner_buttons(context, &mut self.edit_enabled) {
+        if gui::corner_buttons(context, self.theme, &mut self.edit_enabled) {
             self.landing = Some(LandingScreen::new(true));
         }
         if self.edit_enabled {
