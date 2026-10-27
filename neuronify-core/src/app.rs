@@ -259,7 +259,9 @@ impl visula::Simulation for Neuronify {
         let controls = gui::Controls {
             edit_enabled: &mut self.edit_enabled,
             editor: &mut self.editor,
+            world: &mut self.world,
             theme: &mut self.theme,
+            time: self.time,
             fps: self.frame_clock.fps(),
         };
         match self.gui.show(context, controls) {
@@ -270,9 +272,6 @@ impl visula::Simulation for Neuronify {
         }
         if self.edit_enabled {
             gui::settings_window(context, &mut self.iterations);
-            if let Some(selection) = self.editor.selection {
-                gui::selection_window(context, &self.world, selection);
-            }
         }
     }
 

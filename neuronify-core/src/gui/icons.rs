@@ -29,6 +29,8 @@ pub enum Icon {
     Folder,
     #[cfg(not(target_arch = "wasm32"))]
     Save,
+    Trash,
+    Close,
     Select,
     Stimulate,
     Erase,
@@ -103,6 +105,34 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
                 stroke,
             ));
             painter.line_segment([at(vec2(5.0, 19.5)), at(vec2(19.0, 19.5))], stroke);
+        }
+        Icon::Trash => {
+            painter.line_segment([at(vec2(4.5, 7.0)), at(vec2(19.5, 7.0))], stroke);
+            painter.add(Shape::line(
+                vec![
+                    at(vec2(9.5, 7.0)),
+                    at(vec2(9.5, 4.5)),
+                    at(vec2(14.5, 4.5)),
+                    at(vec2(14.5, 7.0)),
+                ],
+                stroke,
+            ));
+            painter.add(Shape::line(
+                vec![
+                    at(vec2(6.5, 7.0)),
+                    at(vec2(7.4, 19.8)),
+                    at(vec2(16.6, 19.8)),
+                    at(vec2(17.5, 7.0)),
+                ],
+                stroke,
+            ));
+            for x in [10.0, 14.0] {
+                painter.line_segment([at(vec2(x, 10.8)), at(vec2(x, 16.5))], stroke);
+            }
+        }
+        Icon::Close => {
+            painter.line_segment([at(vec2(6.5, 6.5)), at(vec2(17.5, 17.5))], stroke);
+            painter.line_segment([at(vec2(17.5, 6.5)), at(vec2(6.5, 17.5))], stroke);
         }
         Icon::Select => outline(&[
             vec2(6.5, 3.8),

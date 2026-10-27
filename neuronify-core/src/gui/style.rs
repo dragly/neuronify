@@ -14,6 +14,7 @@ pub struct Chrome {
     pub subtext: Color32,
     pub accent: Color32,
     pub on_accent: Color32,
+    pub danger: Color32,
     pub shadow: Color32,
 }
 
@@ -26,6 +27,7 @@ const DARK: Chrome = Chrome {
     subtext: Color32::from_rgb(166, 173, 200),
     accent: Color32::from_rgb(137, 180, 250),
     on_accent: Color32::from_rgb(17, 17, 27),
+    danger: Color32::from_rgb(243, 139, 168),
     shadow: Color32::from_black_alpha(96),
 };
 
@@ -38,6 +40,7 @@ const LIGHT: Chrome = Chrome {
     subtext: Color32::from_rgb(92, 95, 119),
     accent: Color32::from_rgb(30, 102, 245),
     on_accent: Color32::from_rgb(255, 255, 255),
+    danger: Color32::from_rgb(210, 15, 57),
     shadow: Color32::from_black_alpha(40),
 };
 

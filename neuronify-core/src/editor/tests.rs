@@ -160,6 +160,27 @@ fn erasing_removes_what_is_under_the_pointer() {
 }
 
 #[test]
+fn erasing_the_selection_takes_its_dendrites_connections_and_voltmeters() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.dendrites = true;
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+    let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+    let b = neuron(&mut world, at(0.0, 10.0));
+    spawn_synapse(&mut world, a, b);
+    spawn_voltmeter(&mut world, a, at(1.0, 0.0));
+
+    editor.selection = Some(a);
+    editor.erase_selection(&mut world);
+    assert_eq!(editor.selection, None);
+    assert!(world.contains(b));
+    assert_eq!(count::<LeakyNeuron>(&world), 1);
+    assert_eq!(count::<Dendrite>(&world), 0);
+    assert_eq!(count::<Connection>(&world), 0);
+    assert_eq!(count::<Voltmeter>(&world), 0);
+}
+
+#[test]
 fn voltmeters_attach_to_the_neuron_under_the_pointer() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));

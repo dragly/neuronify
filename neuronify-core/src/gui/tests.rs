@@ -1,4 +1,6 @@
 use egui::{pos2, vec2, Event, FullOutput, PointerButton, Pos2, RawInput, Shape};
+use glam::Vec3;
+use hecs::Entity;
 
 use super::*;
 use crate::elements::Element;
@@ -11,6 +13,7 @@ struct Harness {
     gui: Gui,
     edit_enabled: bool,
     editor: Editor,
+    world: World,
     theme: Theme,
     choice: Option<MenuChoice>,
     output: Option<FullOutput>,
@@ -19,18 +22,25 @@ struct Harness {
 
 impl Harness {
     fn new(edit_enabled: bool) -> Harness {
+        Harness::with(edit_enabled, World::new(), None)
+    }
+
+    fn with(edit_enabled: bool, world: World, selection: Option<Entity>) -> Harness {
         let mut harness = Harness {
             context: Context::default(),
             gui: Gui::default(),
             edit_enabled,
             editor: Editor::default(),
+            world,
             theme: Theme::Dark,
             choice: None,
             output: None,
             time: 0.0,
         };
-        harness.frame(vec![]);
-        harness.frame(vec![]);
+        harness.editor.selection = selection;
+        for _ in 0..3 {
+            harness.frame(vec![]);
+        }
         harness
     }
 
@@ -41,21 +51,24 @@ impl Harness {
             events,
             ..Default::default()
         };
-        self.time += 0.1;
         let Harness {
             context,
             gui,
             edit_enabled,
             editor,
+            world,
             theme,
             choice,
+            time,
             ..
         } = self;
         let output = context.run_ui(input, |ui| {
             let controls = Controls {
                 edit_enabled,
                 editor,
+                world,
                 theme,
+                time: *time,
                 fps: 60.0,
             };
             if let Some(picked) = gui.show(ui.ctx(), controls) {
@@ -63,6 +76,7 @@ impl Harness {
             }
         });
         self.output = Some(output);
+        self.time += 0.1;
     }
 
     fn click(&mut self, position: Pos2) {
@@ -92,6 +106,14 @@ impl Harness {
 
     fn shows(&self, text: &str) -> bool {
         self.text_position(text).is_some()
+    }
+
+    fn click_button(&mut self, id: &str) {
+        let response = self
+            .context
+            .read_response(Id::new(id))
+            .unwrap_or_else(|| panic!("{id} is not on screen"));
+        self.click(response.rect.center());
     }
 
     fn click_text(&mut self, text: &str) {
@@ -182,4 +204,51 @@ fn the_menu_opens_the_examples() {
     harness.click_text("Examples");
     assert!(matches!(harness.choice, Some(MenuChoice::Examples)));
     assert!(!harness.shows("Examples"));
+}
+
+fn one_neuron() -> (World, Entity) {
+    let mut world = World::new();
+    let neuron = Element::AdaptiveNeuron.spawn(&mut world, Vec3::ZERO);
+    (world, neuron)
+}
+
+#[test]
+fn the_inspector_shows_the_selection_while_editing() {
+    let (world, neuron) = one_neuron();
+    let harness = Harness::with(true, world, Some(neuron));
+    assert!(harness.shows("Adaptive neuron"));
+    assert!(harness.shows("Threshold"));
+
+    let (world, neuron) = one_neuron();
+    assert!(!Harness::with(false, world, Some(neuron)).shows("Threshold"));
+    assert!(!Harness::new(true).shows("Threshold"));
+}
+
+#[test]
+fn the_inspector_deletes_the_selection() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    harness.click_button(inspector::DELETE);
+    assert!(!harness.world.contains(neuron));
+    assert_eq!(harness.editor.selection, None);
+    assert!(!harness.shows("Threshold"));
+}
+
+#[test]
+fn closing_the_inspector_clears_the_selection() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    harness.click_button(inspector::CLOSE);
+    assert!(harness.world.contains(neuron));
+    assert_eq!(harness.editor.selection, None);
+}
+
+#[test]
+fn the_inspector_forgets_a_selection_that_was_erased() {
+    let (mut world, neuron) = one_neuron();
+    let other = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::X * 10.0);
+    world.despawn(neuron).unwrap();
+    let harness = Harness::with(true, world, Some(neuron));
+    assert!(!harness.shows("Threshold"));
+    assert!(harness.world.contains(other));
 }
