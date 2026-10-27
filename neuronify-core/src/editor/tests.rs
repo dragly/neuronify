@@ -527,7 +527,7 @@ fn pulling_a_compartment_next_to_the_soma_lengthens_its_dendrite_by_the_pull() {
     let soma = neuron(&mut world, at(0.0, 0.0));
     spawn_dendrites(&mut world, soma);
     let reach = |world: &World| {
-        dendrite_tree(world, soma)
+        compartment_tree(world, soma)
             .iter()
             .map(|&dendrite| position(world, dendrite).length())
             .fold(0.0, f32::max)
@@ -597,7 +597,10 @@ fn dendrites_turn_to_keep_facing_the_neuron_they_connect_to() {
     let source = neuron_with_dendrites(&mut world, at(0.0, 0.0));
     let target = neuron(&mut world, at(0.0, 30.0));
     grow_axon(&mut world, at(0.0, 0.0), at(0.0, 30.0));
-    let dendrites = dendrite_tree(&world, source);
+    let dendrites: Vec<Entity> = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .map(|(dendrite, _)| dendrite)
+        .collect();
     let before: Vec<_> = dendrites
         .iter()
         .map(|&dendrite| bearing(&world, source, target, dendrite))
@@ -667,4 +670,54 @@ fn axons_to_several_neurons_turn_without_bending() {
             assert!(off_line < 0.1, "{off_line} off the line");
         }
     }
+}
+
+#[test]
+fn erasing_a_neuron_erases_its_axons() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    assert!(count::<Compartment>(&world) > 3);
+
+    drag(&mut editor(Tool::Erase), &mut world, &[at(0.0, 0.0)]);
+
+    assert!(!world.contains(source) && world.contains(target));
+    assert_eq!(count::<Compartment>(&world), 0);
+    assert_eq!(count::<Connection>(&world), 0);
+}
+
+#[test]
+fn erasing_part_of_an_axon_erases_the_rest_of_it() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    let grown = chain(&world, source, target).unwrap();
+    let cut = position(&world, grown[4]);
+
+    drag(&mut editor(Tool::Erase), &mut world, &[cut]);
+
+    assert_eq!(chain(&world, source, grown[3]).unwrap(), grown[..4]);
+    assert_eq!(count::<Compartment>(&world), 3);
+    assert!(world.contains(target));
+}
+
+#[test]
+fn erasing_beside_an_axon_erases_the_rest_of_it() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    let grown = chain(&world, source, target).unwrap();
+    let beside = (position(&world, grown[3]) + position(&world, grown[4])) / 2.0 + at(1.8, 0.0);
+    assert!(grown
+        .iter()
+        .all(|&element| position(&world, element).distance(beside) > ELEMENT_ERASE_REACH));
+
+    drag(&mut editor(Tool::Erase), &mut world, &[beside]);
+
+    assert_eq!(chain(&world, source, grown[3]).unwrap(), grown[..4]);
+    assert_eq!(count::<Compartment>(&world), 3);
+    assert!(world.contains(target));
 }
