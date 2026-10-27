@@ -10,6 +10,7 @@ use crate::rendering::colors::*;
 
 /// Spacing between the joints along a connection, the same as between compartments.
 const JOINT_SPACING: f32 = 2.0 * NODE_RADIUS;
+const MAX_SEGMENTS: usize = 12;
 /// Largest sideways bend of a connection, as a fraction of its length.
 const MAX_BEND: f32 = 0.1;
 /// Radius of a connection with strength 1, the same as the thinnest axon.
@@ -106,7 +107,7 @@ fn bent_line(start: Vec3, end: Vec3, bend: f32, trim: f32) -> Vec<Vec3> {
     let length = diff.length();
     let side = diff.cross(Vec3::Y).normalize_or_zero();
     let control = (start + end) * 0.5 + side * bend * length;
-    let steps = ((length / JOINT_SPACING).ceil() as usize).max(1);
+    let steps = ((length / JOINT_SPACING).ceil() as usize).clamp(1, MAX_SEGMENTS);
     let mut points: Vec<Vec3> = (0..=steps)
         .map(|i| quadratic_bezier(start, control, end, i as f32 / steps as f32))
         .collect();
@@ -223,6 +224,15 @@ mod tests {
         );
         assert!(path.distance_to(middle).unwrap() < 1e-4);
         assert!(path.distance_to(Vec3::new(10.0, 0.0, 0.0)).unwrap() > 0.5);
+    }
+
+    #[test]
+    fn long_connections_have_a_limited_number_of_joints() {
+        let target = Vec3::new(500.0, 0.0, 0.0);
+        let points = bent_line(Vec3::ZERO, target, MAX_BEND, SYNAPSE_GAP);
+        assert_eq!(points.len(), MAX_SEGMENTS + 1);
+        let end = *points.last().unwrap();
+        assert!((end.distance(target) - SYNAPSE_GAP).abs() < 0.1);
     }
 
     #[test]
