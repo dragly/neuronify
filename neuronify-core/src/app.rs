@@ -224,7 +224,24 @@ impl visula::Simulation for Neuronify {
         }
         if self.frame_scene_requested {
             self.frame_scene_requested = false;
-            camera::frame(application, canvas_bounds(&self.world));
+            let pixels_per_point = application
+                .egui_renderer
+                .state
+                .egui_ctx()
+                .pixels_per_point();
+            let screen = egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(
+                    application.config.width as f32,
+                    application.config.height as f32,
+                ) / pixels_per_point,
+            );
+            let free = gui::canvas_area(screen, self.edit_enabled);
+            let free = egui::Rect::from_min_max(
+                (free.min.to_vec2() * pixels_per_point).to_pos2(),
+                (free.max.to_vec2() * pixels_per_point).to_pos2(),
+            );
+            camera::frame(application, canvas_bounds(&self.world), free);
         }
 
         self.renderer.update(

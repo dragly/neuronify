@@ -284,3 +284,14 @@ fn the_playback_bar_keeps_the_speed_within_bounds() {
     harness.click_button(playback::FASTER);
     assert_eq!(harness.iterations, playback::MAX_SPEED);
 }
+
+#[test]
+fn the_canvas_area_leaves_out_the_rail_and_the_playback_bar() {
+    let screen = Rect::from_min_size(Pos2::ZERO, SCREEN);
+    let editing = canvas_area(screen, true);
+    let viewing = canvas_area(screen, false);
+    assert_eq!(editing.left(), MARGIN + RAIL_WIDTH);
+    assert_eq!(viewing.left(), 0.0);
+    assert_eq!(editing.bottom(), SCREEN.y - MARGIN - BAR_HEIGHT);
+    assert_eq!(editing.right(), SCREEN.x);
+}
