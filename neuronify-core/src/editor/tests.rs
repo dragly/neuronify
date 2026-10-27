@@ -922,3 +922,49 @@ fn undo_puts_back_a_resized_note() {
     assert_eq!(size(&world), before);
     assert_eq!(position(&world, note), at(0.0, 0.0));
 }
+
+fn threshold(world: &World, neuron: Entity) -> f64 {
+    world.get::<&LeakyNeuron>(neuron).unwrap().threshold
+}
+
+fn set_threshold(world: &World, neuron: Entity, threshold: f64) -> bool {
+    world.get::<&mut LeakyNeuron>(neuron).unwrap().threshold = threshold;
+    true
+}
+
+#[test]
+fn adjusting_a_parameter_until_it_settles_is_one_undo_step() {
+    let mut world = World::new();
+    let a = neuron(&mut world, at(0.0, 0.0));
+    let original = threshold(&world, a);
+    let mut editor = editor(Tool::Select);
+    editor.adjust(&world, a, true, || false);
+    assert!(!editor.can_undo());
+
+    for value in [-0.05, -0.045, -0.04] {
+        editor.adjust(&world, a, false, || set_threshold(&world, a, value));
+    }
+    editor.adjust(&world, a, true, || false);
+
+    editor.undo(&mut world);
+    assert_eq!(threshold(&world, a), original);
+    assert!(!editor.can_undo());
+    editor.redo(&mut world);
+    assert_eq!(threshold(&world, a), -0.04);
+}
+
+#[test]
+fn an_adjustment_comes_before_the_stroke_that_follows_it() {
+    let mut world = World::new();
+    let a = neuron(&mut world, at(0.0, 0.0));
+    let original = threshold(&world, a);
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.adjust(&world, a, false, || set_threshold(&world, a, -0.04));
+    drag(&mut editor, &mut world, &[at(10.0, 0.0)]);
+
+    editor.undo(&mut world);
+    assert_eq!(count::<LeakyNeuron>(&world), 1);
+    assert_eq!(threshold(&world, a), -0.04);
+    editor.undo(&mut world);
+    assert_eq!(threshold(&world, a), original);
+}

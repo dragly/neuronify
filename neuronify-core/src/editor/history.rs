@@ -24,12 +24,25 @@ const fn edited<T: Component + Clone>() -> Edited {
     }
 }
 
-const EDITED: [Edited; 4] = [
+const EDITED: [Edited; 9] = [
     edited::<Position>(),
     edited::<VoltmeterSize>(),
     edited::<NoteSize>(),
     edited::<Connection>(),
+    edited::<LeakyNeuron>(),
+    edited::<CurrentClamp>(),
+    edited::<RegularSpikeGenerator>(),
+    edited::<PoissonGenerator>(),
+    edited::<Annotation>(),
 ];
+
+fn copy_edited(entity: EntityRef) -> EntityBuilder {
+    let mut edited = EntityBuilder::new();
+    for component in &EDITED {
+        (component.copy)(entity, &mut edited);
+    }
+    edited
+}
 
 fn copy<T: Component + Clone>(entity: EntityRef, edited: &mut EntityBuilder) {
     if let Some(component) = entity.get::<&T>() {
@@ -69,11 +82,8 @@ impl Recording {
             return;
         }
         if let Ok(current) = world.entity(entity) {
-            let mut edited = EntityBuilder::new();
-            for component in &EDITED {
-                (component.copy)(current, &mut edited);
-            }
-            self.before.insert(entity, State::Edited(edited));
+            self.before
+                .insert(entity, State::Edited(copy_edited(current)));
         }
     }
 
@@ -100,6 +110,18 @@ impl Recording {
     }
 }
 
+pub struct Snapshot {
+    pub entity: Entity,
+    edited: EntityBuilder,
+}
+
+impl Snapshot {
+    pub fn of(world: &World, entity: Entity) -> Option<Self> {
+        let edited = copy_edited(world.entity(entity).ok()?);
+        Some(Snapshot { entity, edited })
+    }
+}
+
 #[derive(Default)]
 pub struct History {
     undo: Vec<Change>,
@@ -108,7 +130,14 @@ pub struct History {
 
 impl History {
     pub fn record(&mut self, recording: Recording, world: &World) {
-        let change = recording.finish(world);
+        self.push(recording.finish(world));
+    }
+
+    pub fn record_snapshot(&mut self, snapshot: Snapshot) {
+        self.push(vec![(snapshot.entity, State::Edited(snapshot.edited))]);
+    }
+
+    fn push(&mut self, change: Change) {
         if !change.is_empty() {
             self.undo.push(change);
             self.redo.clear();

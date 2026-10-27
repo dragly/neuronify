@@ -89,6 +89,8 @@ impl Inspector {
         }
         let chrome = Chrome::of(theme);
         let screen = context.content_rect();
+        let settled = !context.egui_wants_keyboard_input()
+            && !context.input(|input| input.pointer.any_down());
         let mut action = None;
         let mut dismissed = false;
         let mut contents = |ui: &mut Ui, room: f32, inspector: &mut Inspector| {
@@ -101,7 +103,9 @@ impl Inspector {
                 .min_scrolled_height(room)
                 .show(ui, |ui| {
                     inspector.live(ui, chrome, world, entity);
-                    parameters(ui, chrome, world, entity);
+                    editor.adjust(world, entity, settled, || {
+                        parameters(ui, chrome, world, entity)
+                    });
                     if world.get::<&Deletable>(entity).is_ok()
                         && delete_button(ui, chrome).clicked()
                     {
@@ -408,10 +412,12 @@ fn parameter<N: Numeric>(
     value: &mut N,
     range: RangeInclusive<N>,
     shown: impl Fn(N) -> String,
-) {
+) -> bool {
     let (row, _) = ui.allocate_exact_size(vec2(ui.available_width(), 20.0), Sense::hover());
     ui.spacing_mut().slider_width = ui.available_width();
-    ui.add(Slider::new(value, range).show_value(false));
+    let changed = ui
+        .add(Slider::new(value, range).show_value(false))
+        .changed();
     ui.painter().text(
         row.left_center(),
         Align2::LEFT_CENTER,
@@ -427,6 +433,7 @@ fn parameter<N: Numeric>(
         chrome.text,
     );
     ui.add_space(8.0);
+    changed
 }
 
 fn reading(ui: &mut Ui, chrome: &Chrome, label: &str, value: String, size: f32) {
@@ -447,11 +454,12 @@ fn reading(ui: &mut Ui, chrome: &Chrome, label: &str, value: String, size: f32) 
     );
 }
 
-fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
+fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
+    let mut changed = false;
     let hertz = |value: f64| format!("{value:.0} Hz");
     if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        parameter(
+        changed |= parameter(
             ui,
             chrome,
             "Threshold",
@@ -459,7 +467,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
             -0.08..=-0.03,
             millivolts,
         );
-        parameter(
+        changed |= parameter(
             ui,
             chrome,
             "Resting potential",
@@ -467,7 +475,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
             -0.09..=-0.05,
             millivolts,
         );
-        parameter(
+        changed |= parameter(
             ui,
             chrome,
             "Capacitance",
@@ -478,7 +486,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
     }
     if let Ok(mut clamp) = world.get::<&mut CurrentClamp>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        parameter(
+        changed |= parameter(
             ui,
             chrome,
             "Current",
@@ -489,7 +497,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
     }
     if let Ok(mut generator) = world.get::<&mut RegularSpikeGenerator>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        parameter(
+        changed |= parameter(
             ui,
             chrome,
             "Frequency",
@@ -500,16 +508,18 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
     }
     if let Ok(mut generator) = world.get::<&mut PoissonGenerator>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        parameter(ui, chrome, "Rate", &mut generator.rate, 1.0..=200.0, hertz);
+        changed |= parameter(ui, chrome, "Rate", &mut generator.rate, 1.0..=200.0, hertz);
     }
     if let Ok(mut annotation) = world.get::<&mut Annotation>(entity) {
         heading(ui, chrome, "Text", 0.0);
-        ui.add(
-            TextEdit::multiline(&mut annotation.text)
-                .desired_rows(4)
-                .desired_width(f32::INFINITY)
-                .margin(Margin::same(8)),
-        );
+        changed |= ui
+            .add(
+                TextEdit::multiline(&mut annotation.text)
+                    .desired_rows(4)
+                    .desired_width(f32::INFINITY)
+                    .margin(Margin::same(8)),
+            )
+            .changed();
         ui.add_space(8.0);
     }
     if let Ok(compartment) = world.get::<&Compartment>(entity) {
@@ -518,4 +528,5 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
         reading(ui, chrome, "n", format!("{:.2}", compartment.n), 12.5);
         reading(ui, chrome, "h", format!("{:.2}", compartment.h), 12.5);
     }
+    changed
 }
