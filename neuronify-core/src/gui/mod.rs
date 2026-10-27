@@ -9,8 +9,8 @@ mod tests;
 mod widgets;
 
 use egui::{
-    pos2, vec2, Align, Align2, Color32, Context, Id, Layout, Order, Pos2, Rect, Response, RichText,
-    Sense, Ui, Vec2, WidgetInfo, WidgetType,
+    pos2, vec2, Align, Align2, Color32, Context, Id, Key, KeyboardShortcut, Layout, Modifiers,
+    Order, Pos2, Rect, Response, RichText, Sense, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::World;
 
@@ -33,6 +33,10 @@ const MENU_PADDING: i8 = 6;
 const MENU_ROW_HEIGHT: f32 = 34.0;
 const COMPACT_WIDTH: f32 = 640.0;
 const COMPACT_HEIGHT: f32 = 560.0;
+const UNDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Z);
+const REDO: KeyboardShortcut =
+    KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::Z);
+const REDO_Y: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Y);
 
 #[derive(Debug, PartialEq)]
 pub enum MenuChoice {
@@ -71,6 +75,9 @@ pub struct Gui {
 
 impl Gui {
     pub fn show(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
+        if *controls.edit_enabled {
+            history_shortcuts(context, controls.editor, controls.world);
+        }
         if is_compact(context.content_rect()) {
             self.compact(context, controls)
         } else {
@@ -310,7 +317,14 @@ fn fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, on: bool) -> Respo
     response.on_hover_text(label)
 }
 
-fn action_fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, enabled: bool) -> Response {
+fn action_fab(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    icon: Icon,
+    label: &str,
+    shortcut: &KeyboardShortcut,
+    enabled: bool,
+) -> Response {
     let sense = if enabled {
         Sense::click()
     } else {
@@ -329,7 +343,8 @@ fn action_fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, enabled: bo
     };
     paint_fab(ui, chrome, icon, rect, fill, color);
     response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, label));
-    response.on_hover_text(label)
+    let shortcut = ui.ctx().format_shortcut(shortcut);
+    response.on_hover_text(format!("{label} ({shortcut})"))
 }
 
 fn paint_fab(ui: &Ui, chrome: &Chrome, icon: Icon, rect: Rect, fill: Color32, color: Color32) {
@@ -350,14 +365,27 @@ fn history_buttons(
 ) -> Response {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = FAB_GAP;
-        if action_fab(ui, chrome, Icon::Undo, "Undo", editor.can_undo()).clicked() {
+        if action_fab(ui, chrome, Icon::Undo, "Undo", &UNDO, editor.can_undo()).clicked() {
             editor.undo(world);
         }
-        if action_fab(ui, chrome, Icon::Redo, "Redo", editor.can_redo()).clicked() {
+        if action_fab(ui, chrome, Icon::Redo, "Redo", &REDO, editor.can_redo()).clicked() {
             editor.redo(world);
         }
     })
     .response
+}
+
+fn history_shortcuts(context: &Context, editor: &mut Editor, world: &mut World) {
+    if context.egui_wants_keyboard_input() {
+        return;
+    }
+    let redo =
+        context.input_mut(|input| input.consume_shortcut(&REDO) || input.consume_shortcut(&REDO_Y));
+    if redo {
+        editor.redo(world);
+    } else if context.input_mut(|input| input.consume_shortcut(&UNDO)) {
+        editor.undo(world);
+    }
 }
 
 fn floating(
