@@ -254,3 +254,30 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
     assert_eq!(editor.view(&world, at(11.0, 10.0)), Some(Pan(at(1.0, 0.0))));
     assert_eq!(editor.touch(), None);
 }
+
+fn drag_in_steps(world: &mut World, from: Vec3, to: Vec3) {
+    let path: Vec<Vec3> = (0..=50)
+        .map(|step| from.lerp(to, step as f32 / 50.0))
+        .collect();
+    drag(&mut editor(Tool::Select), world, &path);
+}
+
+fn position(world: &World, entity: Entity) -> Vec3 {
+    world.get::<&Position>(entity).unwrap().position
+}
+
+#[test]
+fn dendrites_move_along_with_a_dragged_neuron() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.dendrites = true;
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+    let before: Vec<(Entity, Vec3)> = positions_with::<Dendrite>(&world);
+
+    drag_in_steps(&mut world, at(0.0, 0.5), at(3.0, 4.5));
+
+    for (dendrite, previous) in before {
+        let moved = position(&world, dendrite) - previous;
+        assert!(moved.distance(at(3.0, 4.0)) < 1e-4, "moved {moved}");
+    }
+}
