@@ -196,10 +196,7 @@ impl LandingScreen {
 
     fn card_texts(&self, ui: &Ui, category: usize, card: Card, width: f32) -> [Arc<Galley>; 2] {
         let (name, description) = match card {
-            Card::EmptyCanvas => (
-                "Empty canvas",
-                "Build your own circuit with the tools in the Elements window.",
-            ),
+            Card::EmptyCanvas => ("Empty canvas", "Build your own circuit from scratch."),
             Card::Preview(index) => {
                 let example = self.previews_by_category[category][index].example;
                 (example.name, example.description)
