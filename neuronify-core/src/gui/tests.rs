@@ -306,6 +306,18 @@ fn the_inspector_deletes_the_selection() {
 }
 
 #[test]
+fn undo_and_redo_what_the_inspector_deleted() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    harness.click_button(inspector::DELETE);
+    assert!(!harness.world.contains(neuron));
+    harness.click(corner_button(3));
+    assert!(harness.world.contains(neuron));
+    harness.click(corner_button(2));
+    assert!(!harness.world.contains(neuron));
+}
+
+#[test]
 fn closing_the_inspector_clears_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));
@@ -418,6 +430,20 @@ fn done_stops_editing_on_phones() {
     assert!(!harness.edit_enabled);
     assert_eq!(harness.editor.selection, None);
     assert_eq!(harness.editor.tool, Tool::Select);
+}
+
+#[test]
+fn undo_and_redo_sit_at_the_top_on_phones() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::phone(true, world, Some(neuron));
+    let slot = |from_right: f32| top_corner(true) - vec2(from_right * (FAB_SIZE + FAB_GAP), 0.0);
+    harness.editor.erase_selection(&mut harness.world);
+    harness.frame(vec![]);
+    assert!(!harness.world.contains(neuron));
+    harness.click(slot(3.0));
+    assert!(harness.world.contains(neuron));
+    harness.click(slot(2.0));
+    assert!(!harness.world.contains(neuron));
 }
 
 #[test]

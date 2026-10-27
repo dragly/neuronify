@@ -1,5 +1,7 @@
 use super::*;
+use crate::measurement::voltmeter::VoltageSeries;
 use crate::simulation::step_simulation;
+use std::collections::HashMap;
 
 fn at(x: f32, z: f32) -> Vec3 {
     Vec3::new(x, 0.0, z)
@@ -17,7 +19,7 @@ fn drag(editor: &mut Editor, world: &mut World, path: &[Vec3]) -> Vec<Option<Pan
         .iter()
         .map(|&position| editor.edit(world, position, false))
         .collect();
-    editor.release();
+    editor.release(world);
     pans
 }
 
@@ -94,7 +96,7 @@ fn static_connections_chain_from_neuron_to_neuron_unless_shift_is_held() {
     for position in [at(0.0, 0.0), at(0.0, 10.0), at(0.0, 20.0)] {
         editor.edit(&mut world, position, true);
     }
-    editor.release();
+    editor.release(&world);
     assert!(connected(&world, a, c));
     assert_eq!(count::<CurrentSynapse>(&world), 3);
 }
@@ -230,10 +232,10 @@ fn the_editor_knows_whether_a_press_landed_on_the_background() {
     let mut editor = editor(Tool::Select);
     editor.edit(&mut world, at(0.5, 0.0), false);
     assert!(!editor.pressed_background());
-    editor.release();
+    editor.release(&world);
     editor.edit(&mut world, at(10.0, 10.0), false);
     assert!(editor.pressed_background());
-    editor.release();
+    editor.release(&world);
     assert!(!editor.pressed_background());
 }
 
@@ -319,7 +321,7 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
     assert_eq!(editor.view(&mut world, at(0.5, 0.0)), None);
     assert_eq!(editor.view(&mut world, at(5.0, 5.0)), None);
     assert_eq!(editor.touch(), Some(at(5.0, 5.0)));
-    editor.release();
+    editor.release(&world);
 
     assert_eq!(editor.view(&mut world, at(10.0, 10.0)), None);
     assert_eq!(
@@ -343,7 +345,7 @@ fn touch_sensors_fire_once_per_press() {
 
     assert!(fired(&mut world, &mut editor));
     assert!(!fired(&mut world, &mut editor));
-    editor.release();
+    editor.release(&world);
     assert!(fired(&mut world, &mut editor));
 }
 
@@ -355,12 +357,12 @@ fn viewers_select_with_a_tap() {
 
     editor.view(&mut world, at(0.5, 0.0));
     editor.tap(&world, at(0.5, 0.0));
-    editor.release();
+    editor.release(&world);
     assert_eq!(editor.selection, Some(target));
 
     editor.view(&mut world, at(10.0, 10.0));
     editor.tap(&world, at(10.0, 10.0));
-    editor.release();
+    editor.release(&world);
     assert_eq!(editor.selection, None);
 }
 
@@ -385,7 +387,7 @@ fn holding_an_element_grabs_it() {
 
     editor.view(&mut world, at(10.0, 10.0));
     assert!(!editor.hold(&world, at(10.0, 10.0)));
-    editor.release();
+    editor.release(&world);
 
     editor.view(&mut world, at(0.5, 0.0));
     assert!(editor.hold(&world, at(0.5, 0.0)));
@@ -720,4 +722,203 @@ fn erasing_beside_an_axon_erases_the_rest_of_it() {
     assert_eq!(chain(&world, source, grown[3]).unwrap(), grown[..4]);
     assert_eq!(count::<Compartment>(&world), 3);
     assert!(world.contains(target));
+}
+
+fn entities(world: &World) -> HashSet<Entity> {
+    world.iter().map(|entity| entity.entity()).collect()
+}
+
+#[test]
+fn undo_brings_back_what_was_erased() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.dendrites = true;
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+    let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+    let b = neuron(&mut world, at(0.0, 10.0));
+    spawn_synapse(&mut world, a, b);
+    let voltmeter = spawn_voltmeter(&mut world, a, at(-10.0, 0.0));
+    let before = entities(&world);
+
+    editor.tool = Tool::Erase;
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+    assert_eq!(entities(&world), HashSet::from([b]));
+    assert!(editor.can_undo());
+
+    editor.undo(&mut world);
+    assert_eq!(entities(&world), before);
+    assert!(connected(&world, a, b) && connected(&world, a, voltmeter));
+    assert!(editor.can_redo());
+}
+
+#[test]
+fn undo_reconnects_elements_whose_place_was_taken() {
+    let mut world = World::new();
+    let a = neuron(&mut world, at(0.0, 0.0));
+    let b = neuron(&mut world, at(0.0, 10.0));
+    spawn_synapse(&mut world, a, b);
+    let mut editor = editor(Tool::Erase);
+    drag(&mut editor, &mut world, &[at(0.0, 5.0)]);
+    drag(&mut editor, &mut world, &[at(0.0, 10.0)]);
+    let c = neuron(&mut world, at(10.0, 10.0));
+    assert_eq!(c.id(), b.id());
+
+    editor.undo(&mut world);
+    editor.undo(&mut world);
+
+    let (restored, _) = first_within::<LeakyNeuron>(&world, at(0.0, 10.0), 0.1).unwrap();
+    assert!(world.contains(c) && restored != c);
+    assert!(connected(&world, a, restored));
+    assert_eq!(count::<LeakyNeuron>(&world), 3);
+}
+
+type Layout = HashMap<Entity, (Option<Vec3>, Option<(Entity, Entity)>)>;
+
+fn layout(world: &World) -> Layout {
+    world
+        .query::<(Option<&Position>, Option<&Connection>)>()
+        .iter()
+        .map(|(entity, (position, connection))| {
+            let ends = connection.map(|connection| (connection.from, connection.to));
+            (entity, (position.map(|position| position.position), ends))
+        })
+        .collect()
+}
+
+fn step(editor: &mut Editor, world: &mut World, tool: Tool, path: &[Vec3]) -> Layout {
+    editor.tool = tool;
+    let steps: Vec<Vec3> = path
+        .windows(2)
+        .flat_map(|pair| (0..10).map(move |step| pair[0].lerp(pair[1], step as f32 / 10.0)))
+        .chain(path.last().copied())
+        .collect();
+    drag(editor, world, &steps);
+    layout(world)
+}
+
+#[test]
+fn undo_and_redo_step_through_every_kind_of_edit() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Select);
+    editor.dendrites = true;
+    let excitatory = Tool::Place(Element::ExcitatoryNeuron);
+    let mut layouts = vec![layout(&world)];
+    let edits: [(Tool, &[Vec3]); 7] = [
+        (excitatory, &[at(0.0, 0.0)]),
+        (excitatory, &[at(0.0, 20.0)]),
+        (Tool::StaticConnection, &[at(0.0, 0.5), at(0.0, 19.5)]),
+        (Tool::Axon, &[at(0.0, 20.5), at(20.0, 20.0)]),
+        (Tool::Select, &[at(0.0, 0.5), at(-5.0, 3.5)]),
+        (Tool::Voltmeter, &[at(-4.5, 3.0)]),
+        (Tool::Erase, &[at(0.0, 20.0)]),
+    ];
+    for (tool, path) in edits {
+        layouts.push(step(&mut editor, &mut world, tool, path));
+    }
+    assert!(layouts.windows(2).all(|pair| pair[0] != pair[1]));
+
+    for expected in layouts.iter().rev().skip(1) {
+        editor.undo(&mut world);
+        assert_eq!(&layout(&world), expected);
+    }
+    assert!(!editor.can_undo());
+    for expected in &layouts[1..] {
+        editor.redo(&mut world);
+        assert_eq!(&layout(&world), expected);
+    }
+    assert!(!editor.can_redo());
+}
+
+#[test]
+fn undo_puts_back_axons_that_a_drag_stretched_or_compressed() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    neuron(&mut world, at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    let mut editor = editor(Tool::Select);
+    let grown = layout(&world);
+    let stretched = step(
+        &mut editor,
+        &mut world,
+        Tool::Select,
+        &[at(0.0, 0.0), at(0.0, -30.0)],
+    );
+    let compressed = step(
+        &mut editor,
+        &mut world,
+        Tool::Select,
+        &[at(0.0, -30.0), at(0.0, 15.0)],
+    );
+    assert!(stretched.len() > grown.len() && compressed.len() < grown.len());
+
+    editor.undo(&mut world);
+    assert_eq!(layout(&world), stretched);
+    editor.undo(&mut world);
+    assert_eq!(layout(&world), grown);
+    editor.redo(&mut world);
+    editor.redo(&mut world);
+    assert_eq!(layout(&world), compressed);
+}
+
+#[test]
+fn a_new_edit_clears_what_could_be_redone() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+    editor.undo(&mut world);
+    assert!(editor.can_redo());
+
+    drag(&mut editor, &mut world, &[at(10.0, 0.0)]);
+    assert!(!editor.can_redo());
+    assert_eq!(count::<LeakyNeuron>(&world), 1);
+}
+
+#[test]
+fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let voltmeter = spawn_voltmeter(&mut world, target, at(10.0, 5.0));
+    let mut editor = editor(Tool::Select);
+    drag(&mut editor, &mut world, &[at(12.0, 13.0), at(13.0, 15.0)]);
+    drag(&mut editor, &mut world, &[at(10.0, 9.0), at(11.0, 9.0)]);
+    world
+        .get::<&mut VoltageSeries>(voltmeter)
+        .unwrap()
+        .spike_times
+        .push(1.0);
+
+    editor.undo(&mut world);
+    editor.undo(&mut world);
+
+    assert_eq!(position(&world, voltmeter), at(10.0, 5.0));
+    let size = world.get::<&VoltmeterSize>(voltmeter).unwrap();
+    assert_eq!((size.width, size.height), (8.0, 4.0));
+    let series = world.get::<&VoltageSeries>(voltmeter).unwrap();
+    assert_eq!(series.spike_times, [1.0]);
+}
+
+#[test]
+fn undo_puts_back_a_resized_note() {
+    let mut world = World::new();
+    let note = Element::Note.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Select);
+    editor.selection = Some(note);
+    let size = |world: &World| {
+        world
+            .get::<&NoteSize>(note)
+            .map(|size| (size.width, size.height))
+            .unwrap()
+    };
+    let before = size(&world);
+    let [_, top_right] = note_corners(at(0.0, 0.0), &world.get::<&NoteSize>(note).unwrap());
+    drag(
+        &mut editor,
+        &mut world,
+        &[top_right, top_right + at(2.0, 1.0)],
+    );
+    assert_ne!(size(&world), before);
+
+    editor.undo(&mut world);
+    assert_eq!(size(&world), before);
+    assert_eq!(position(&world, note), at(0.0, 0.0));
 }

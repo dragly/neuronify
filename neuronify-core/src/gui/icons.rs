@@ -1,4 +1,4 @@
-use std::f32::consts::TAU;
+use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 use egui::epaint::Mesh;
 use egui::{pos2, vec2, Color32, Painter, Pos2, Rect, Shape, Stroke, StrokeKind, Vec2};
@@ -32,6 +32,8 @@ pub enum Icon {
     Save,
     Share,
     Trash,
+    Undo,
+    Redo,
     Close,
     Play,
     Pause,
@@ -177,6 +179,23 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
             for x in [10.0, 14.0] {
                 painter.line_segment([at(vec2(x, 10.8)), at(vec2(x, 16.5))], stroke);
             }
+        }
+        Icon::Undo | Icon::Redo => {
+            let side = if icon == Icon::Undo { 1.0 } else { -1.0 };
+            let point = |x: f32, y: f32| at(vec2(12.0 + side * x, y));
+            let mut hook = vec![point(-3.0, 18.5)];
+            hook.extend(arc(
+                point(2.0, 14.0),
+                4.5 * scale,
+                FRAC_PI_2,
+                FRAC_PI_2 - side * PI,
+            ));
+            hook.push(point(-7.5, 9.5));
+            painter.add(Shape::line(hook, stroke));
+            painter.add(Shape::line(
+                vec![point(-3.5, 5.5), point(-7.5, 9.5), point(-3.5, 13.5)],
+                stroke,
+            ));
         }
         Icon::Close => {
             painter.line_segment([at(vec2(6.5, 6.5)), at(vec2(17.5, 17.5))], stroke);

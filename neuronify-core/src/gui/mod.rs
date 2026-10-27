@@ -9,8 +9,8 @@ mod tests;
 mod widgets;
 
 use egui::{
-    pos2, vec2, Align, Align2, Context, Id, Layout, Order, Pos2, Rect, Response, RichText, Sense,
-    Ui, Vec2, WidgetInfo, WidgetType,
+    pos2, vec2, Align, Align2, Color32, Context, Id, Layout, Order, Pos2, Rect, Response, RichText,
+    Sense, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::World;
 
@@ -27,6 +27,7 @@ use widgets::{icon_row, segmented, separator};
 const FAB_SIZE: f32 = 46.0;
 const FAB_GAP: f32 = 8.0;
 const ICON_SIZE: f32 = 22.0;
+const DISABLED_OPACITY: f32 = 0.45;
 const MENU_WIDTH: f32 = 232.0;
 const MENU_PADDING: i8 = 6;
 const MENU_ROW_HEIGHT: f32 = 34.0;
@@ -84,6 +85,15 @@ impl Gui {
         let mut choice = None;
         if corner_buttons(context, theme, controls.edit_enabled) {
             choice = Some(MenuChoice::Examples);
+        }
+        if editing {
+            floating(
+                context,
+                "history_buttons",
+                Align2::RIGHT_BOTTOM,
+                vec2(-(MARGIN + 2.0 * (FAB_SIZE + FAB_GAP)), -MARGIN),
+                |ui| history_buttons(ui, chrome, controls.editor, controls.world),
+            );
         }
         let (menu_button, menu_position) = if editing {
             let rail = self
@@ -187,6 +197,13 @@ impl Gui {
                 controls.editor.tool = Tool::Select;
                 self.rail.close();
             }
+            floating(
+                context,
+                "history_buttons",
+                Align2::RIGHT_TOP,
+                vec2(-(more_inset + FAB_SIZE + FAB_GAP), MARGIN),
+                |ui| history_buttons(ui, chrome, controls.editor, controls.world),
+            );
         }
         self.rail.bar(
             context,
@@ -281,22 +298,66 @@ pub fn load_error(context: &Context, error: &str) {
 
 fn fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, on: bool) -> Response {
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(FAB_SIZE), Sense::click());
-    let fill = if on {
-        chrome.accent
+    let (fill, color) = if on {
+        (chrome.accent, chrome.on_accent)
     } else if response.hovered() {
-        chrome.hovered
+        (chrome.hovered, chrome.text)
     } else {
-        chrome.panel
+        (chrome.panel, chrome.text)
     };
+    paint_fab(ui, chrome, icon, rect, fill, color);
+    response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, on, label));
+    response.on_hover_text(label)
+}
+
+fn action_fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, enabled: bool) -> Response {
+    let sense = if enabled {
+        Sense::click()
+    } else {
+        Sense::hover()
+    };
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(FAB_SIZE), sense);
+    let (fill, color) = if !enabled {
+        (
+            chrome.panel,
+            chrome.subtext.gamma_multiply(DISABLED_OPACITY),
+        )
+    } else if response.hovered() {
+        (chrome.hovered, chrome.text)
+    } else {
+        (chrome.panel, chrome.text)
+    };
+    paint_fab(ui, chrome, icon, rect, fill, color);
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, label));
+    response.on_hover_text(label)
+}
+
+fn paint_fab(ui: &Ui, chrome: &Chrome, icon: Icon, rect: Rect, fill: Color32, color: Color32) {
     chrome.paint_floating(ui.painter(), rect, PANEL_RADIUS, fill);
     icons::paint_icon(
         ui.painter(),
         icon,
         Rect::from_center_size(rect.center(), Vec2::splat(ICON_SIZE)),
-        if on { chrome.on_accent } else { chrome.text },
+        color,
     );
-    response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, on, label));
-    response.on_hover_text(label)
+}
+
+fn history_buttons(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    editor: &mut Editor,
+    world: &mut World,
+) -> Response {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = FAB_GAP;
+        if action_fab(ui, chrome, Icon::Undo, "Undo", editor.can_undo()).clicked() {
+            editor.undo(world);
+        }
+        if action_fab(ui, chrome, Icon::Redo, "Redo", editor.can_redo()).clicked() {
+            editor.redo(world);
+        }
+    })
+    .response
 }
 
 fn floating(

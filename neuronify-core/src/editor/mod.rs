@@ -13,8 +13,10 @@ use crate::rendering::{compartment_radii, connection_paths, distance_to_segment,
 use crate::simulation::{fire_nearby, touch_sensor_near};
 use crate::tools::{ConnectionTool, StimulationTool, Tool};
 use drag::Drag;
+use history::{History, Recording};
 
 mod drag;
+mod history;
 #[cfg(test)]
 mod tests;
 
@@ -37,6 +39,8 @@ pub struct Editor {
     move_origin: Option<Vec3>,
     dragging: Option<Drag>,
     resizing: Option<(Entity, Corner, Vec3)>,
+    recording: Option<Recording>,
+    history: History,
 }
 
 impl Editor {
@@ -51,13 +55,42 @@ impl Editor {
         }
     }
 
-    pub fn release(&mut self) {
+    pub fn release(&mut self, world: &World) {
         self.stimulation_tool = None;
         self.connection_tool = None;
         self.previous_creation = None;
         self.move_origin = None;
         self.dragging = None;
         self.resizing = None;
+        if let Some(recording) = self.recording.take() {
+            self.history.record(recording, world);
+        }
+    }
+
+    pub fn forget_world(&mut self) {
+        *self = Editor {
+            tool: self.tool,
+            dendrites: self.dendrites,
+            ..Default::default()
+        };
+    }
+
+    pub fn can_undo(&self) -> bool {
+        self.history.can_undo()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        self.history.can_redo()
+    }
+
+    pub fn undo(&mut self, world: &mut World) {
+        self.release(world);
+        self.history.undo(world);
+    }
+
+    pub fn redo(&mut self, world: &mut World) {
+        self.release(world);
+        self.history.redo(world);
     }
 
     pub fn erase_selection(&mut self, world: &mut World) {
@@ -67,12 +100,13 @@ impl Editor {
         if world.get::<&Deletable>(selected).is_err() {
             return;
         }
-        let erased: HashSet<Entity> = compartment_tree(world, selected)
+        let mut recording = Recording::start(world);
+        let elements: HashSet<Entity> = compartment_tree(world, selected)
             .into_iter()
             .chain([selected])
             .collect();
-        for entity in erased {
-            world.despawn(entity).unwrap();
+        for entity in elements {
+            recording.take(world, entity);
         }
         let dangling: Vec<Entity> = world
             .query::<&Connection>()
@@ -84,18 +118,35 @@ impl Editor {
             .map(|(connection, _)| connection)
             .collect();
         for connection in dangling {
-            world.despawn(connection).unwrap();
+            recording.take(world, connection);
         }
+        self.history.record(recording, world);
     }
 
     pub fn edit(&mut self, world: &mut World, position: Vec3, shift_down: bool) -> Option<Pan> {
+        let mut recording = self
+            .recording
+            .take()
+            .unwrap_or_else(|| Recording::start(world));
+        let pan = self.use_tool(world, &mut recording, position, shift_down);
+        self.recording = Some(recording);
+        pan
+    }
+
+    fn use_tool(
+        &mut self,
+        world: &mut World,
+        recording: &mut Recording,
+        position: Vec3,
+        shift_down: bool,
+    ) -> Option<Pan> {
         match self.tool {
-            Tool::Select => return self.select(world, position),
+            Tool::Select => return self.select(world, recording, position),
             Tool::Place(element) => self.place(world, element, position),
             Tool::Voltmeter => self.place_voltmeter(world, position),
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon => self.grow_axon(world, position, shift_down),
-            Tool::Erase => erase(world, position),
+            Tool::Erase => erase(world, recording, position),
             Tool::Stimulate => self.stimulate(world, position),
         }
         None
@@ -241,11 +292,16 @@ impl Editor {
         });
     }
 
-    fn select(&mut self, world: &mut World, position: Vec3) -> Option<Pan> {
+    fn select(
+        &mut self,
+        world: &mut World,
+        recording: &mut Recording,
+        position: Vec3,
+    ) -> Option<Pan> {
         if let Some(drag) = &mut self.dragging {
-            drag.move_to(world, position);
+            drag.move_to(world, recording, position);
         } else if let Some((resized, corner, offset)) = self.resizing {
-            resize(world, resized, corner, position + offset);
+            resize(world, recording, resized, corner, position + offset);
         } else if let Some(origin) = self.move_origin {
             return Some(Pan(position - origin));
         } else {
@@ -413,10 +469,17 @@ fn resizable(world: &World, entity: Entity) -> Option<Frame> {
     })
 }
 
-fn resize(world: &mut World, entity: Entity, corner: Corner, position: Vec3) {
+fn resize(
+    world: &mut World,
+    recording: &mut Recording,
+    entity: Entity,
+    corner: Corner,
+    position: Vec3,
+) {
     let Some(frame) = resizable(world, entity) else {
         return;
     };
+    recording.edit(world, entity);
     let resized = frame.resized(corner, position);
     let moved_to = if let Ok(mut size) = world.get::<&mut NoteSize>(entity) {
         *size = NoteSize {
@@ -435,7 +498,7 @@ fn resize(world: &mut World, entity: Entity, corner: Corner, position: Vec3) {
     }
 }
 
-fn erase(world: &mut World, position: Vec3) {
+fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
     let cut = connections_near(world, position);
     let cut_off = cut.iter().filter_map(|&connection| {
         let to = world.get::<&Connection>(connection).ok()?.to;
@@ -449,13 +512,13 @@ fn erase(world: &mut World, position: Vec3) {
         .map(|(entity, _)| entity)
         .chain(cut_off)
         .collect();
-    let erased: HashSet<Entity> = near
+    let elements: HashSet<Entity> = near
         .iter()
         .flat_map(|&entity| compartment_tree(world, entity))
         .chain(near.iter().copied())
         .collect();
-    for entity in erased {
-        world.despawn(entity).unwrap();
+    for entity in elements {
+        recording.take(world, entity);
     }
 
     let dangling: Vec<Entity> = world
@@ -469,9 +532,7 @@ fn erase(world: &mut World, position: Vec3) {
         .map(|(entity, _)| entity)
         .collect();
     for connection in cut.into_iter().chain(dangling) {
-        if world.contains(connection) {
-            world.despawn(connection).unwrap();
-        }
+        recording.take(world, connection);
     }
 }
 
