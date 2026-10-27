@@ -159,7 +159,7 @@ impl Neuronify {
     }
 
     pub fn save(&self, path: PathBuf) {
-        let bytes = crate::serialization::save(&self.world).unwrap();
+        let bytes = crate::serialization::save(&self.world, self.time).unwrap();
         let mut writer = std::fs::File::create(path.with_extension("neuronify")).unwrap();
         writer.write_all(&bytes).unwrap();
     }
@@ -192,8 +192,8 @@ impl Neuronify {
     }
 
     fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
-        let world = crate::serialization::load_from_bytes(bytes)?;
-        self.open_world(world, 0.0);
+        let saved = crate::serialization::load_from_bytes(bytes)?;
+        self.open_world(saved.world, saved.time);
         Ok(())
     }
 }
