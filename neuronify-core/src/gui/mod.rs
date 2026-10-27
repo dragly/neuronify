@@ -19,6 +19,7 @@ use crate::editor::Editor;
 use crate::rendering::Theme;
 use icons::Icon;
 use inspector::Inspector;
+use playback::BAR_HEIGHT;
 use rail::{Rail, POPOVER_GAP, RAIL_WIDTH};
 use style::{Chrome, MARGIN, PANEL_RADIUS};
 use widgets::{icon_row, segmented, separator};
@@ -114,6 +115,15 @@ impl Gui {
         }
         choice
     }
+}
+
+pub fn canvas_area(screen: Rect, edit_enabled: bool) -> Rect {
+    let mut area = screen;
+    if edit_enabled {
+        area.min.x += MARGIN + RAIL_WIDTH;
+    }
+    area.max.y -= MARGIN + BAR_HEIGHT;
+    area
 }
 
 pub fn load_error(context: &Context, error: &str) {

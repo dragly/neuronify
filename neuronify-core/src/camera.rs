@@ -76,12 +76,14 @@ pub fn scroll(application: &mut visula::Application, delta: &MouseScrollDelta) {
         (target.distance * (1.0 - lines * ZOOM_PER_SCROLL_LINE)).clamp(MIN_DISTANCE, MAX_DISTANCE);
 }
 
-pub fn frame(application: &mut visula::Application, bounds: Option<Bounds>) {
-    let aspect_ratio = application.config.width as f32 / application.config.height.max(1) as f32;
+pub fn frame(application: &mut visula::Application, bounds: Option<Bounds>, free: egui::Rect) {
+    let screen_width = application.config.width as f32;
+    let screen_height = application.config.height.max(1) as f32;
+    let aspect_ratio = screen_width / screen_height;
     let (center, distance) = match bounds {
         Some(bounds) => {
-            let height_on_screen = bounds.size().x;
-            let width_on_screen = bounds.size().z;
+            let height_on_screen = bounds.size().x / (free.height() / screen_height);
+            let width_on_screen = bounds.size().z / (free.width() / screen_width);
             let tangent = (FIELD_OF_VIEW_DEGREES.to_radians() / 2.0).tan();
             let fit = (height_on_screen / tangent).max(width_on_screen / (tangent * aspect_ratio))
                 / 2.0
@@ -93,5 +95,10 @@ pub fn frame(application: &mut visula::Application, bounds: Option<Bounds>) {
     let camera = &mut application.camera_controller;
     camera.target_transform.center = center;
     camera.target_transform.distance = distance.clamp(DEFAULT_DISTANCE, MAX_DISTANCE);
+    camera.current_transform = camera.target_transform.clone();
+    let middle = PhysicalPosition::new(free.center().x as f64, free.center().y as f64);
+    let offset = center - ground_position(application, middle);
+    let camera = &mut application.camera_controller;
+    camera.target_transform.center += offset;
     camera.current_transform = camera.target_transform.clone();
 }
