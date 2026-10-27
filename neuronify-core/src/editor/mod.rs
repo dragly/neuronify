@@ -11,7 +11,9 @@ use crate::measurement::voltmeter::{Corner, Frame, Voltmeter};
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::touch_sensor_near;
 use crate::tools::{ConnectionTool, StimulationTool, Tool};
+use drag::Drag;
 
+mod drag;
 #[cfg(test)]
 mod tests;
 
@@ -32,8 +34,7 @@ pub struct Editor {
     stimulation_tool: Option<StimulationTool>,
     previous_creation: Option<Entity>,
     move_origin: Option<Vec3>,
-    dragging: Option<Entity>,
-    drag_offset: Vec3,
+    dragging: Option<Drag>,
     resizing: Option<(Entity, Corner)>,
 }
 
@@ -171,10 +172,8 @@ impl Editor {
     }
 
     fn select(&mut self, world: &mut World, position: Vec3) -> Option<Pan> {
-        if let Some(entity) = self.dragging {
-            if let Ok(mut dragged) = world.get::<&mut Position>(entity) {
-                dragged.position = (position + self.drag_offset).with_y(0.0);
-            }
+        if let Some(drag) = &self.dragging {
+            drag.move_to(world, position);
         } else if let Some((voltmeter, corner)) = self.resizing {
             resize(world, voltmeter, corner, position);
         } else if let Some(origin) = self.move_origin {
@@ -210,8 +209,8 @@ impl Editor {
         match picked {
             Some((entity, entity_position)) => {
                 self.selection = Some(entity);
-                self.dragging = Some(entity);
-                self.drag_offset = (entity_position - position).with_y(0.0);
+                let offset = (entity_position - position).with_y(0.0);
+                self.dragging = Some(Drag::new(world, entity, offset));
             }
             None => {
                 self.selection = None;
