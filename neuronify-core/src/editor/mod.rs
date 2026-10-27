@@ -5,7 +5,7 @@ use hecs::{Component, Entity, World};
 
 use crate::components::*;
 use crate::constants::*;
-use crate::dendrites::{dendrite_tree, spawn_dendrites};
+use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element};
 use crate::measurement::voltmeter::{Corner, Frame, Voltmeter};
 use crate::rendering::bounds::note_corners;
@@ -67,7 +67,7 @@ impl Editor {
         if world.get::<&Deletable>(selected).is_err() {
             return;
         }
-        let erased: HashSet<Entity> = dendrite_tree(world, selected)
+        let erased: HashSet<Entity> = compartment_tree(world, selected)
             .into_iter()
             .chain([selected])
             .collect();
@@ -436,28 +436,52 @@ fn resize(world: &mut World, entity: Entity, corner: Corner, position: Vec3) {
 }
 
 fn erase(world: &mut World, position: Vec3) {
+    let cut = connections_near(world, position);
+    let cut_off = cut.iter().filter_map(|&connection| {
+        let to = world.get::<&Connection>(connection).ok()?.to;
+        world.get::<&Compartment>(to).is_ok().then_some(to)
+    });
     let near: Vec<Entity> = world
         .query::<&Position>()
         .with::<&Deletable>()
         .iter()
         .filter(|(_, element)| element.position.distance(position) < ELEMENT_ERASE_REACH)
         .map(|(entity, _)| entity)
+        .chain(cut_off)
         .collect();
     let erased: HashSet<Entity> = near
         .iter()
-        .flat_map(|&entity| dendrite_tree(world, entity))
+        .flat_map(|&entity| compartment_tree(world, entity))
         .chain(near.iter().copied())
         .collect();
     for entity in erased {
         world.despawn(entity).unwrap();
     }
 
+    let dangling: Vec<Entity> = world
+        .query::<&Connection>()
+        .with::<&Deletable>()
+        .iter()
+        .filter(|(_, connection)| {
+            world.get::<&Position>(connection.from).is_err()
+                || world.get::<&Position>(connection.to).is_err()
+        })
+        .map(|(entity, _)| entity)
+        .collect();
+    for connection in cut.into_iter().chain(dangling) {
+        if world.contains(connection) {
+            world.despawn(connection).unwrap();
+        }
+    }
+}
+
+fn connections_near(world: &World, position: Vec3) -> Vec<Entity> {
     let paths = connection_paths(
         world,
         &compartment_radii(world),
         &Theme::default().palette(),
     );
-    let connections: Vec<Entity> = world
+    world
         .query::<&Connection>()
         .with::<&Deletable>()
         .iter()
@@ -466,7 +490,7 @@ fn erase(world: &mut World, position: Vec3) {
                 world.get::<&Position>(connection.from),
                 world.get::<&Position>(connection.to),
             ) else {
-                return true;
+                return false;
             };
             let distance = match paths.get(entity) {
                 Some(path) => path.distance_to(position),
@@ -475,8 +499,5 @@ fn erase(world: &mut World, position: Vec3) {
             distance.is_some_and(|distance| distance < ERASE_RADIUS)
         })
         .map(|(entity, _)| entity)
-        .collect();
-    for connection in connections {
-        world.despawn(connection).unwrap();
-    }
+        .collect()
 }

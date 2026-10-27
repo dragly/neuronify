@@ -214,14 +214,14 @@ fn spawn_star(
     }
 }
 
-/// The dendrite compartments that grow out of `soma`.
-pub fn dendrite_tree(world: &hecs::World, soma: Entity) -> Vec<Entity> {
+/// The compartments of the dendrites and axons that grow out of `root`.
+pub fn compartment_tree(world: &hecs::World, root: Entity) -> Vec<Entity> {
     let mut tree = Vec::new();
-    let mut frontier = vec![soma];
+    let mut frontier = vec![root];
     while let Some(parent) = frontier.pop() {
         for (_, connection) in world.query::<&Connection>().iter() {
             if connection.from == parent
-                && world.get::<&Dendrite>(connection.to).is_ok()
+                && world.get::<&Compartment>(connection.to).is_ok()
                 && !tree.contains(&connection.to)
             {
                 tree.push(connection.to);
@@ -293,7 +293,7 @@ mod tests {
         let mut branched = hecs::World::new();
         let branched_neuron = driven_neuron(&mut branched);
         spawn_dendrites(&mut branched, branched_neuron);
-        let tree = dendrite_tree(&branched, branched_neuron);
+        let tree = compartment_tree(&branched, branched_neuron);
         let (branched_spikes, peak) = run(&mut branched, branched_neuron, &tree);
 
         assert!(!plain_spikes.is_empty());
@@ -309,9 +309,9 @@ mod tests {
         spawn_dendrites(&mut world, neuron);
         let spawned = world.query::<&Dendrite>().iter().count();
         spawn_dendrites(&mut world, other);
-        let tree = dendrite_tree(&world, neuron);
+        let tree = compartment_tree(&world, neuron);
         assert_eq!(tree.len(), spawned);
-        assert!(dendrite_tree(&world, other)
+        assert!(compartment_tree(&world, other)
             .iter()
             .all(|compartment| !tree.contains(compartment)));
     }
@@ -326,7 +326,7 @@ mod tests {
             neuron_type,
         ));
         spawn_dendrites(&mut world, soma);
-        dendrite_tree(&world, soma)
+        compartment_tree(&world, soma)
             .iter()
             .map(|&compartment| {
                 let position = world.get::<&Position>(compartment).unwrap().position;
