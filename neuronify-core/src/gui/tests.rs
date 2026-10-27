@@ -7,9 +7,11 @@ use crate::elements::Element;
 use crate::tools::Tool;
 
 const SCREEN: Vec2 = vec2(1280.0, 800.0);
+const PHONE: Vec2 = vec2(390.0, 760.0);
 
 struct Harness {
     context: Context,
+    screen: Vec2,
     gui: Gui,
     edit_enabled: bool,
     editor: Editor,
@@ -28,8 +30,17 @@ impl Harness {
     }
 
     fn with(edit_enabled: bool, world: World, selection: Option<Entity>) -> Harness {
+        Harness::sized(SCREEN, edit_enabled, world, selection)
+    }
+
+    fn phone(edit_enabled: bool, world: World, selection: Option<Entity>) -> Harness {
+        Harness::sized(PHONE, edit_enabled, world, selection)
+    }
+
+    fn sized(screen: Vec2, edit_enabled: bool, world: World, selection: Option<Entity>) -> Harness {
         let mut harness = Harness {
             context: Context::default(),
+            screen,
             gui: Gui::default(),
             edit_enabled,
             editor: Editor::default(),
@@ -50,7 +61,7 @@ impl Harness {
 
     fn frame(&mut self, events: Vec<Event>) {
         let input = RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, SCREEN)),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, self.screen)),
             time: Some(self.time),
             events,
             ..Default::default()
@@ -97,6 +108,25 @@ impl Harness {
         self.frame(vec![Event::PointerMoved(position), button(true)]);
         self.frame(vec![button(false)]);
         self.frame(vec![]);
+    }
+
+    fn drag(&mut self, from: Pos2, to: Pos2) {
+        let button = |pos, pressed| Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Default::default(),
+        };
+        self.frame(vec![Event::PointerMoved(from), button(from, true)]);
+        for step in 1..=4 {
+            self.frame(vec![Event::PointerMoved(
+                from + (to - from) * step as f32 / 4.0,
+            )]);
+        }
+        self.frame(vec![button(to, false)]);
+        for _ in 0..5 {
+            self.frame(vec![]);
+        }
     }
 
     fn text_position(&self, text: &str) -> Option<Pos2> {
@@ -294,4 +324,170 @@ fn the_canvas_area_leaves_out_the_rail_and_the_playback_bar() {
     assert_eq!(viewing.left(), 0.0);
     assert_eq!(editing.bottom(), SCREEN.y - MARGIN - BAR_HEIGHT);
     assert_eq!(editing.right(), SCREEN.x);
+}
+
+fn top_corner(right: bool) -> Pos2 {
+    let inset = MARGIN + FAB_SIZE / 2.0;
+    pos2(if right { PHONE.x - inset } else { inset }, inset)
+}
+
+#[test]
+fn phones_get_a_tool_bar_instead_of_the_rail() {
+    for edit_enabled in [true, false] {
+        let harness = Harness::phone(edit_enabled, World::new(), None);
+        assert!(harness.shows("Stimulate") && harness.shows("Add") && harness.shows("Playback"));
+        assert!(!harness.shows("Neurons") && !harness.shows("×4"));
+    }
+}
+
+#[test]
+fn a_tool_on_the_tool_bar_starts_editing() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Erase");
+    assert_eq!(harness.editor.tool, Tool::Erase);
+    assert!(harness.edit_enabled);
+}
+
+#[test]
+fn the_add_sheet_starts_editing_with_what_to_place() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Add");
+    harness.click_text("Poisson generator");
+    assert_eq!(harness.editor.tool, Tool::Place(Element::PoissonGenerator));
+    assert!(harness.edit_enabled);
+    assert!(!harness.shows("Poisson generator"));
+}
+
+#[test]
+fn the_add_sheet_closes_when_pulled_down() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Add");
+    let tile = harness.text_position("Poisson generator").unwrap();
+    let sheet = harness
+        .context
+        .memory(|memory| memory.area_rect(Id::new("add_sheet")))
+        .unwrap();
+    let handle = sheet.center_top() + vec2(0.0, 10.0);
+    harness.drag(handle, handle + vec2(0.0, 40.0));
+    assert_eq!(harness.text_position("Poisson generator"), Some(tile));
+    harness.drag(handle, handle + vec2(0.0, 500.0));
+    assert!(!harness.shows("Poisson generator"));
+}
+
+#[test]
+fn done_stops_editing_on_phones() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::phone(true, world, Some(neuron));
+    harness.editor.tool = Tool::Erase;
+    harness.click(top_corner(true));
+    assert!(!harness.edit_enabled);
+    assert_eq!(harness.editor.selection, None);
+    assert_eq!(harness.editor.tool, Tool::Select);
+}
+
+#[test]
+fn the_more_menu_sits_at_the_top_right_on_phones() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click(top_corner(true));
+    harness.click_text("Light");
+    assert_eq!(harness.theme, Theme::Light);
+}
+
+#[test]
+fn the_playback_bar_hides_behind_a_button_on_phones() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Playback");
+    assert!(harness.shows("×4"));
+    harness.frame(vec![]);
+    harness.click_button(playback::PLAY);
+    assert!(!harness.running);
+}
+
+#[test]
+fn the_examples_button_sits_at_the_top_left_on_phones() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click(top_corner(false));
+    assert!(matches!(harness.choice, Some(MenuChoice::Examples)));
+}
+
+#[test]
+fn the_inspector_is_a_sheet_on_phones() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::phone(true, world, Some(neuron));
+    let close = harness
+        .context
+        .read_response(Id::new(inspector::CLOSE))
+        .unwrap();
+    assert!(close.rect.top() > PHONE.y / 2.0);
+    harness.click_button(inspector::CLOSE);
+    assert_eq!(harness.editor.selection, None);
+}
+
+#[test]
+fn the_inspector_sheet_keeps_its_height_for_a_new_selection_only() {
+    let (mut world, neuron) = one_neuron();
+    let other = Element::InhibitoryNeuron.spawn(&mut world, Vec3::X * 10.0);
+    let mut harness = Harness::phone(true, world, Some(neuron));
+    let title = |harness: &Harness| {
+        ["Adaptive neuron", "Inhibitory neuron"]
+            .into_iter()
+            .find_map(|name| harness.text_position(name))
+            .map(|position| position.y)
+    };
+    let peeking = title(&harness).unwrap();
+    harness.click(pos2(PHONE.x / 2.0, peeking - 30.0));
+    for _ in 0..5 {
+        harness.frame(vec![]);
+    }
+    let expanded = title(&harness).unwrap();
+    assert!(expanded < peeking - 300.0, "{peeking} {expanded}");
+
+    harness.editor.selection = Some(other);
+    for _ in 0..4 {
+        harness.frame(vec![]);
+        assert_eq!(title(&harness), Some(expanded));
+    }
+
+    harness.editor.selection = None;
+    harness.frame(vec![]);
+    harness.frame(vec![]);
+    harness.editor.selection = Some(neuron);
+    for _ in 0..4 {
+        harness.frame(vec![]);
+        assert_eq!(title(&harness), Some(peeking));
+    }
+}
+
+#[test]
+fn the_inspector_sheet_follows_its_handle() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::phone(true, world, Some(neuron));
+    let close_top = |harness: &Harness| {
+        harness
+            .context
+            .read_response(Id::new(inspector::CLOSE))
+            .unwrap()
+            .rect
+            .top()
+    };
+    let peeking = close_top(&harness);
+    let handle = |harness: &Harness| pos2(PHONE.x / 2.0, close_top(harness) - 15.0);
+    harness.drag(handle(&harness), handle(&harness) - vec2(0.0, 300.0));
+    let expanded = close_top(&harness);
+    assert!(expanded < peeking - 300.0, "{peeking} {expanded}");
+    harness.drag(handle(&harness), handle(&harness) + vec2(0.0, 300.0));
+    assert_eq!(close_top(&harness), peeking);
+    harness.drag(handle(&harness), handle(&harness) + vec2(0.0, 150.0));
+    assert_eq!(harness.editor.selection, None);
+}
+
+#[test]
+fn the_canvas_area_on_phones_leaves_out_the_bars() {
+    let screen = Rect::from_min_size(Pos2::ZERO, PHONE);
+    for edit_enabled in [true, false] {
+        let area = canvas_area(screen, edit_enabled);
+        assert_eq!(area.left(), 0.0);
+        assert_eq!(area.top(), MARGIN + FAB_SIZE);
+        assert_eq!(area.bottom(), PHONE.y - TOOL_BAR_MARGIN - TOOL_BAR_HEIGHT);
+    }
 }

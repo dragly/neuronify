@@ -6,7 +6,7 @@ use egui::{
 use crate::rendering::Theme;
 
 use super::icons::{paint_icon, Icon};
-use super::style::{Chrome, MARGIN};
+use super::style::Chrome;
 
 pub const PLAY: &str = "playback_play";
 pub const SLOWER: &str = "playback_slower";
@@ -22,14 +22,15 @@ const TIME_WIDTH: f32 = 78.0;
 pub fn bar(
     context: &Context,
     theme: Theme,
-    shift: f32,
+    anchor: Align2,
+    offset: Vec2,
     running: &mut bool,
     iterations: &mut u32,
     time: f64,
 ) {
     let chrome = Chrome::of(theme);
     egui::Area::new(Id::new("playback"))
-        .anchor(Align2::CENTER_BOTTOM, [shift, -MARGIN])
+        .anchor(anchor, offset)
         .show(context, |ui| {
             chrome
                 .panel_frame(PADDING)

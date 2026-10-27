@@ -24,7 +24,10 @@ const CREAM: Color32 = Color32::from_rgb(255, 244, 214);
 pub enum Icon {
     Pencil,
     Grid,
+    Back,
     Menu,
+    More,
+    Check,
     #[cfg(not(target_arch = "wasm32"))]
     Folder,
     #[cfg(not(target_arch = "wasm32"))]
@@ -33,6 +36,7 @@ pub enum Icon {
     Close,
     Play,
     Pause,
+    Playback,
     Plus,
     Minus,
     Select,
@@ -83,10 +87,35 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
                 );
             }
         }
+        Icon::Back => {
+            painter.add(Shape::line(
+                vec![
+                    at(vec2(14.5, 5.5)),
+                    at(vec2(8.0, 12.0)),
+                    at(vec2(14.5, 18.5)),
+                ],
+                stroke,
+            ));
+        }
         Icon::Menu => {
             for y in [7.0, 12.0, 17.0] {
                 painter.line_segment([at(vec2(4.5, y)), at(vec2(19.5, y))], stroke);
             }
+        }
+        Icon::More => {
+            for x in [5.5, 12.0, 18.5] {
+                painter.circle_filled(at(vec2(x, 12.0)), 1.7 * scale, color);
+            }
+        }
+        Icon::Check => {
+            painter.add(Shape::line(
+                vec![
+                    at(vec2(5.0, 12.5)),
+                    at(vec2(10.0, 17.5)),
+                    at(vec2(19.0, 7.0)),
+                ],
+                stroke,
+            ));
         }
         #[cfg(not(target_arch = "wasm32"))]
         Icon::Folder => outline(&[
@@ -154,6 +183,24 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
                 painter.rect_filled(
                     Rect::from_min_size(at(vec2(left, 5.5)), vec2(3.4, 13.0) * scale),
                     1.0 * scale,
+                    color,
+                );
+            }
+        }
+        Icon::Playback => {
+            painter.add(Shape::convex_polygon(
+                vec![
+                    at(vec2(3.5, 6.5)),
+                    at(vec2(11.5, 12.0)),
+                    at(vec2(3.5, 17.5)),
+                ],
+                color,
+                stroke,
+            ));
+            for left in [13.8, 17.8] {
+                painter.rect_filled(
+                    Rect::from_min_size(at(vec2(left, 6.5)), vec2(2.6, 11.0) * scale),
+                    0.8 * scale,
                     color,
                 );
             }
