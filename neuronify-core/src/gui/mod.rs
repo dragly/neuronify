@@ -2,6 +2,7 @@ mod icons;
 mod inspector;
 mod playback;
 mod rail;
+mod sheet;
 mod style;
 #[cfg(test)]
 mod tests;
@@ -17,10 +18,11 @@ use hecs::World;
 
 use crate::editor::Editor;
 use crate::rendering::Theme;
+use crate::tools::Tool;
 use icons::Icon;
-use inspector::Inspector;
+use inspector::{Inspector, Placement};
 use playback::BAR_HEIGHT;
-use rail::{Rail, POPOVER_GAP, RAIL_WIDTH};
+use rail::{Rail, POPOVER_GAP, RAIL_WIDTH, TOOL_BAR_HEIGHT, TOOL_BAR_MARGIN};
 use style::{Chrome, MARGIN, PANEL_RADIUS};
 use widgets::{icon_row, segmented, separator};
 
@@ -30,6 +32,8 @@ const ICON_SIZE: f32 = 22.0;
 const MENU_WIDTH: f32 = 232.0;
 const MENU_PADDING: i8 = 6;
 const MENU_ROW_HEIGHT: f32 = 34.0;
+const COMPACT_WIDTH: f32 = 640.0;
+const COMPACT_HEIGHT: f32 = 560.0;
 
 pub enum MenuChoice {
     Save(PathBuf),
@@ -53,38 +57,61 @@ pub struct Gui {
     rail: Rail,
     inspector: Inspector,
     menu_open: bool,
+    playback_open: bool,
 }
 
 impl Gui {
     pub fn show(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
+        if is_compact(context.content_rect()) {
+            self.compact(context, controls)
+        } else {
+            self.wide(context, controls)
+        }
+    }
+
+    fn wide(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
         let theme = *controls.theme;
+        let chrome = Chrome::of(theme);
+        let editing = *controls.edit_enabled;
         let mut choice = None;
         if corner_buttons(context, theme, controls.edit_enabled) {
             choice = Some(MenuChoice::Examples);
         }
-        let (menu_button, menu_position) = if *controls.edit_enabled {
+        let (menu_button, menu_position) = if editing {
             let rail = self
                 .rail
                 .show(context, theme, self.menu_open, controls.editor);
-            self.inspector.show(
-                context,
-                theme,
-                controls.world,
-                controls.editor,
-                controls.time,
-            );
             let position = pos2(
                 rail.rect.right() + POPOVER_GAP,
                 rail.menu.rect.top() - MENU_PADDING as f32,
             );
             (rail.menu, position)
         } else {
-            self.rail.close();
-            let button = menu_button(context, theme, self.menu_open);
+            let open = self.menu_open;
+            let button = floating(
+                context,
+                "menu_button",
+                Align2::LEFT_TOP,
+                vec2(MARGIN, MARGIN),
+                |ui| fab(ui, chrome, Icon::Menu, "Menu", open),
+            );
             let position = pos2(button.rect.left(), button.rect.bottom() + FAB_GAP);
             (button, position)
         };
-        let shift = if *controls.edit_enabled {
+        if !editing {
+            self.rail.close();
+        }
+        if editing {
+            self.inspector.show(
+                context,
+                theme,
+                controls.world,
+                controls.editor,
+                controls.time,
+                Placement::Panel,
+            );
+        }
+        let shift = if editing {
             (MARGIN + RAIL_WIDTH) / 2.0
         } else {
             0.0
@@ -92,37 +119,147 @@ impl Gui {
         playback::bar(
             context,
             theme,
-            shift,
+            Align2::CENTER_BOTTOM,
+            vec2(shift, -MARGIN),
             controls.running,
             controls.iterations,
             controls.time,
         );
-        if menu_button.clicked() {
+        let picked = self.menu(
+            context,
+            &menu_button,
+            (Align2::LEFT_TOP, menu_position),
+            controls.theme,
+            controls.fps,
+        );
+        choice.or(picked)
+    }
+
+    fn compact(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
+        let theme = *controls.theme;
+        let chrome = Chrome::of(theme);
+        let editing = *controls.edit_enabled;
+        let mut choice = None;
+        let back = floating(
+            context,
+            "back_button",
+            Align2::LEFT_TOP,
+            vec2(MARGIN, MARGIN),
+            |ui| fab(ui, chrome, Icon::Back, "Examples", false),
+        );
+        if back.clicked() {
+            choice = Some(MenuChoice::Examples);
+        }
+        let more_inset = if editing {
+            MARGIN + FAB_SIZE + FAB_GAP
+        } else {
+            MARGIN
+        };
+        let open = self.menu_open;
+        let more = floating(
+            context,
+            "more_button",
+            Align2::RIGHT_TOP,
+            vec2(-more_inset, MARGIN),
+            |ui| fab(ui, chrome, Icon::More, "More", open),
+        );
+        if editing {
+            let done = floating(
+                context,
+                "done_button",
+                Align2::RIGHT_TOP,
+                vec2(-MARGIN, MARGIN),
+                |ui| fab(ui, chrome, Icon::Check, "Done", true),
+            );
+            if done.clicked() {
+                *controls.edit_enabled = false;
+                controls.editor.selection = None;
+                controls.editor.tool = Tool::Select;
+                self.rail.close();
+            }
+        }
+        self.rail.bar(
+            context,
+            theme,
+            controls.editor,
+            controls.edit_enabled,
+            &mut self.playback_open,
+        );
+        if self.playback_open {
+            playback::bar(
+                context,
+                theme,
+                Align2::CENTER_BOTTOM,
+                vec2(0.0, -(TOOL_BAR_MARGIN + TOOL_BAR_HEIGHT + FAB_GAP)),
+                controls.running,
+                controls.iterations,
+                controls.time,
+            );
+        }
+        if editing {
+            self.inspector.show(
+                context,
+                theme,
+                controls.world,
+                controls.editor,
+                controls.time,
+                Placement::Sheet,
+            );
+        }
+        let position = pos2(more.rect.right(), more.rect.bottom() + FAB_GAP);
+        let picked = self.menu(
+            context,
+            &more,
+            (Align2::RIGHT_TOP, position),
+            controls.theme,
+            controls.fps,
+        );
+        choice.or(picked)
+    }
+
+    fn menu(
+        &mut self,
+        context: &Context,
+        button: &Response,
+        (pivot, position): (Align2, Pos2),
+        theme: &mut Theme,
+        fps: f64,
+    ) -> Option<MenuChoice> {
+        if button.clicked() {
             self.menu_open = !self.menu_open;
         }
-        if self.menu_open {
-            let (picked, rect) = menu(context, menu_position, controls.theme, controls.fps);
-            let pressed_elsewhere = context.input(|input| {
-                input.pointer.any_pressed()
-                    && input.pointer.interact_pos().is_some_and(|position| {
-                        !rect.contains(position) && !menu_button.rect.contains(position)
-                    })
-            });
-            if picked.is_some() || pressed_elsewhere {
-                self.menu_open = false;
-            }
-            choice = choice.or(picked.flatten());
+        if !self.menu_open {
+            return None;
         }
-        choice
+        let (picked, rect) = menu(context, pivot, position, theme, fps);
+        let pressed_elsewhere = context.input(|input| {
+            input.pointer.any_pressed()
+                && input.pointer.interact_pos().is_some_and(|position| {
+                    !rect.contains(position) && !button.rect.contains(position)
+                })
+        });
+        if picked.is_some() || pressed_elsewhere {
+            self.menu_open = false;
+        }
+        picked.flatten()
     }
+}
+
+fn is_compact(screen: Rect) -> bool {
+    screen.width() < COMPACT_WIDTH || screen.height() < COMPACT_HEIGHT
 }
 
 pub fn canvas_area(screen: Rect, edit_enabled: bool) -> Rect {
     let mut area = screen;
-    if edit_enabled {
-        area.min.x += MARGIN + RAIL_WIDTH;
+    if is_compact(screen) {
+        area.min.y += MARGIN + FAB_SIZE;
+        area.max.y -= TOOL_BAR_MARGIN + TOOL_BAR_HEIGHT;
+    } else {
+        if edit_enabled {
+            area.min.x += MARGIN + RAIL_WIDTH;
+        }
+        area.max.y -= MARGIN + BAR_HEIGHT;
     }
-    area.max.y -= MARGIN + BAR_HEIGHT;
     area
 }
 
@@ -152,6 +289,19 @@ fn fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, on: bool) -> Respo
     response.on_hover_text(label)
 }
 
+fn floating(
+    context: &Context,
+    id: &str,
+    anchor: Align2,
+    offset: Vec2,
+    contents: impl FnOnce(&mut Ui) -> Response,
+) -> Response {
+    egui::Area::new(Id::new(id))
+        .anchor(anchor, offset)
+        .show(context, contents)
+        .inner
+}
+
 fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) -> bool {
     let chrome = Chrome::of(theme);
     let mut examples_clicked = false;
@@ -169,17 +319,9 @@ fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) -> b
     examples_clicked
 }
 
-fn menu_button(context: &Context, theme: Theme, open: bool) -> Response {
-    egui::Area::new("menu_button".into())
-        .anchor(Align2::LEFT_TOP, [MARGIN, MARGIN])
-        .show(context, |ui| {
-            fab(ui, Chrome::of(theme), Icon::Menu, "Menu", open)
-        })
-        .inner
-}
-
 fn menu(
     context: &Context,
+    pivot: Align2,
     position: Pos2,
     theme: &mut Theme,
     fps: f64,
@@ -188,6 +330,7 @@ fn menu(
     let mut picked = None;
     let rect = egui::Area::new(Id::new("menu"))
         .order(Order::Foreground)
+        .pivot(pivot)
         .fixed_pos(position)
         .show(context, |ui| {
             chrome.panel_frame(MENU_PADDING).show(ui, |ui| {

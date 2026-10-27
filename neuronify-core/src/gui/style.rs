@@ -4,6 +4,7 @@ use crate::rendering::Theme;
 
 pub const MARGIN: f32 = 12.0;
 pub const PANEL_RADIUS: u8 = 14;
+const SHEET_RADIUS: u8 = 20;
 
 pub struct Chrome {
     pub panel: Color32,
@@ -72,6 +73,25 @@ impl Chrome {
             .corner_radius(PANEL_RADIUS)
             .shadow(self.panel_shadow())
             .inner_margin(Margin::same(padding))
+    }
+
+    pub fn sheet_frame(&self, padding: i8) -> Frame {
+        Frame::new()
+            .fill(self.panel)
+            .stroke(Stroke::new(1.0_f32, self.border))
+            .corner_radius(CornerRadius {
+                nw: SHEET_RADIUS,
+                ne: SHEET_RADIUS,
+                sw: 0,
+                se: 0,
+            })
+            .shadow(self.panel_shadow())
+            .inner_margin(Margin {
+                left: padding,
+                right: padding,
+                top: 0,
+                bottom: padding,
+            })
     }
 
     pub fn paint_floating(&self, painter: &Painter, rect: Rect, radius: u8, fill: Color32) {

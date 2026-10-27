@@ -3,9 +3,9 @@ use std::ops::RangeInclusive;
 
 use egui::emath::Numeric;
 use egui::{
-    pos2, style::HandleShape, vec2, Align2, Context, CornerRadius, FontId, Frame, Id, Margin, Rect,
-    Response, ScrollArea, Sense, Shape, Slider, Stroke, Style, TextEdit, Ui, Vec2, WidgetInfo,
-    WidgetType,
+    pos2, style::HandleShape, vec2, Align2, Context, CornerRadius, FontId, Frame, Id, Margin,
+    Order, Rect, Response, ScrollArea, Sense, Shape, Slider, Stroke, Style, TextEdit, Ui, Vec2,
+    WidgetInfo, WidgetType,
 };
 use hecs::{Entity, World};
 
@@ -17,6 +17,7 @@ use crate::rendering::Theme;
 use crate::tools::Tool;
 
 use super::icons::{paint_icon, paint_tool, Icon};
+use super::sheet::{self, Sheet, HANDLE_HEIGHT};
 use super::style::{Chrome, MARGIN};
 use super::widgets::{heading, ROW_RADIUS};
 
@@ -25,6 +26,9 @@ pub const DELETE: &str = "inspector_delete";
 pub const CLOSE: &str = "inspector_close";
 const PADDING: i8 = 14;
 const ROOM_BELOW: f32 = 80.0;
+const SHEET_PADDING: i8 = 16;
+const PEEKING_SHEET: f32 = 212.0;
+const EXPANDED_SHEET: f32 = 0.72;
 const HISTORY_LENGTH: usize = 240;
 const SPARKLINE_HEIGHT: f32 = 40.0;
 const SPIKE_HEIGHT: f64 = 0.02;
@@ -39,12 +43,18 @@ enum Action {
     Close,
 }
 
+pub enum Placement {
+    Panel,
+    Sheet,
+}
+
 #[derive(Default)]
 pub struct Inspector {
     entity: Option<Entity>,
     history: VecDeque<f64>,
     last_time: f64,
     last_time_since_fire: f64,
+    sheet: Sheet,
 }
 
 impl Inspector {
@@ -55,12 +65,13 @@ impl Inspector {
         world: &mut World,
         editor: &mut Editor,
         time: f64,
+        placement: Placement,
     ) {
         let selected = editor.selection.filter(|&entity| world.contains(entity));
         let Some((entity, (tool, name))) =
             selected.and_then(|entity| Some((entity, kind(world, entity)?)))
         else {
-            self.entity = None;
+            *self = Inspector::default();
             return;
         };
         if self.entity != Some(entity) {
@@ -68,6 +79,7 @@ impl Inspector {
                 entity: Some(entity),
                 last_time: time,
                 last_time_since_fire: f64::NEG_INFINITY,
+                sheet: std::mem::take(&mut self.sheet),
                 ..Default::default()
             };
         }
@@ -76,32 +88,69 @@ impl Inspector {
             self.record(world, entity);
         }
         let chrome = Chrome::of(theme);
-        let height = context.content_rect().height() - MARGIN - ROOM_BELOW;
+        let screen = context.content_rect();
         let mut action = None;
-        egui::Area::new(Id::new("inspector"))
-            .anchor(Align2::RIGHT_TOP, [-MARGIN, MARGIN])
-            .show(context, |ui| {
-                chrome.panel_frame(PADDING).show(ui, |ui| {
-                    ui.set_width(INSPECTOR_WIDTH - 2.0 * PADDING as f32);
-                    apply_style(ui.style_mut(), chrome);
-                    if header(ui, chrome, theme, tool, name).clicked() {
-                        action = Some(Action::Close);
+        let mut dismissed = false;
+        let mut contents = |ui: &mut Ui, room: f32, inspector: &mut Inspector| {
+            apply_style(ui.style_mut(), chrome);
+            if header(ui, chrome, theme, tool, name).clicked() {
+                action = Some(Action::Close);
+            }
+            ScrollArea::vertical()
+                .max_height(room)
+                .min_scrolled_height(room)
+                .show(ui, |ui| {
+                    inspector.live(ui, chrome, world, entity);
+                    parameters(ui, chrome, world, entity);
+                    if world.get::<&Deletable>(entity).is_ok()
+                        && delete_button(ui, chrome).clicked()
+                    {
+                        action = Some(Action::Delete);
                     }
-                    let room = height - 2.0 * PADDING as f32 - HEADER_BUTTON;
-                    ScrollArea::vertical()
-                        .max_height(room)
-                        .min_scrolled_height(room)
-                        .show(ui, |ui| {
-                            self.live(ui, chrome, world, entity);
-                            parameters(ui, chrome, world, entity);
-                            if world.get::<&Deletable>(entity).is_ok()
-                                && delete_button(ui, chrome).clicked()
-                            {
-                                action = Some(Action::Delete);
-                            }
-                        });
                 });
-            });
+        };
+        match placement {
+            Placement::Panel => {
+                egui::Area::new(Id::new("inspector"))
+                    .anchor(Align2::RIGHT_TOP, [-MARGIN, MARGIN])
+                    .show(context, |ui| {
+                        chrome.panel_frame(PADDING).show(ui, |ui| {
+                            ui.set_width(INSPECTOR_WIDTH - 2.0 * PADDING as f32);
+                            let room = screen.height()
+                                - MARGIN
+                                - ROOM_BELOW
+                                - 2.0 * PADDING as f32
+                                - HEADER_BUTTON;
+                            contents(ui, room, self);
+                        });
+                    });
+            }
+            Placement::Sheet => {
+                let id = Id::new("inspector_sheet");
+                let detents = [
+                    PEEKING_SHEET,
+                    (screen.height() * EXPANDED_SHEET).max(PEEKING_SHEET),
+                ];
+                let height = self.sheet.height(context, id, &detents);
+                let (laid_out, dropped) = sheet::layout(height, &detents);
+                egui::Area::new(id)
+                    .order(Order::Foreground)
+                    .anchor(Align2::LEFT_BOTTOM, [0.0, dropped])
+                    .show(context, |ui| {
+                        chrome.sheet_frame(SHEET_PADDING).show(ui, |ui| {
+                            ui.set_width(screen.width() - 2.0 * SHEET_PADDING as f32);
+                            ui.set_min_height(laid_out - SHEET_PADDING as f32);
+                            dismissed = self.sheet.handle(ui, chrome, height, &detents);
+                            let room =
+                                laid_out - HANDLE_HEIGHT - HEADER_BUTTON - SHEET_PADDING as f32;
+                            contents(ui, room, self);
+                        });
+                    });
+            }
+        }
+        if dismissed {
+            action = Some(Action::Close);
+        }
         match action {
             Some(Action::Delete) => editor.erase_selection(world),
             Some(Action::Close) => editor.selection = None,
