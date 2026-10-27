@@ -96,7 +96,7 @@ fn glyph_color() -> Vec3 {
 }
 
 /// The outline of the hand, centred on the pad, with x to the right and y up on the screen.
-fn hand_outline() -> Vec<Vec2> {
+pub fn hand_outline() -> Vec<Vec2> {
     let mut points = vec![Vec2::ZERO];
     let mut left = 0.0;
     for digit in HAND {

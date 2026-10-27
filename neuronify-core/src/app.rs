@@ -1,10 +1,7 @@
 use crate::camera;
 use crate::editor::{Editor, Pan};
-use crate::examples::Example;
 use crate::frame_clock::FrameClock;
-use crate::gui;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::gui::MenuChoice;
+use crate::gui::{self, Gui, MenuChoice};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
 use std::io::BufReader;
@@ -22,6 +19,7 @@ pub struct Neuronify {
     pub edit_enabled: bool,
     pub landing: Option<LandingScreen>,
     editor: Editor,
+    gui: Gui,
     theme: Theme,
     world: hecs::World,
     time: f64,
@@ -101,6 +99,7 @@ impl Neuronify {
             edit_enabled: true,
             landing: opened.is_none().then(|| LandingScreen::new(false)),
             editor: Editor::default(),
+            gui: Gui::default(),
             theme,
             frame_scene_requested: opened.is_some(),
             world: opened.unwrap_or_default(),
@@ -162,13 +161,6 @@ impl Neuronify {
         let bytes = crate::serialization::save(&self.world, self.time).unwrap();
         let mut writer = std::fs::File::create(path.with_extension("neuronify")).unwrap();
         writer.write_all(&bytes).unwrap();
-    }
-
-    pub fn load_example(&mut self, example: &Example) {
-        match example.spawn() {
-            Ok(world) => self.open_world(world, 0.0),
-            Err(e) => log::error!("Failed to load example {}: {}", example.name, e),
-        }
     }
 
     fn open_world(&mut self, world: hecs::World, time: f64) {
@@ -264,24 +256,20 @@ impl visula::Simulation for Neuronify {
         if let Some(error) = &self.load_error {
             gui::load_error(context, error);
         }
-        if gui::corner_buttons(context, self.theme, &mut self.edit_enabled) {
-            self.landing = Some(LandingScreen::new(true));
+        let controls = gui::Controls {
+            edit_enabled: &mut self.edit_enabled,
+            editor: &mut self.editor,
+            theme: &mut self.theme,
+            fps: self.frame_clock.fps(),
+        };
+        match self.gui.show(context, controls) {
+            Some(MenuChoice::Examples) => self.landing = Some(LandingScreen::new(true)),
+            Some(MenuChoice::Save(path)) => self.save(path),
+            Some(MenuChoice::Open(path)) => self.loadfile(path),
+            None => {}
         }
         if self.edit_enabled {
-            #[cfg(not(target_arch = "wasm32"))]
-            match gui::menu_bar(context) {
-                Some(MenuChoice::Save(path)) => self.save(path),
-                Some(MenuChoice::Open(path)) => self.loadfile(path),
-                Some(MenuChoice::Example(example)) => self.load_example(example),
-                None => {}
-            }
-            gui::elements_window(context, &mut self.editor);
-            gui::settings_window(
-                context,
-                self.frame_clock.fps(),
-                &mut self.iterations,
-                &mut self.theme,
-            );
+            gui::settings_window(context, &mut self.iterations);
             if let Some(selection) = self.editor.selection {
                 gui::selection_window(context, &self.world, selection);
             }

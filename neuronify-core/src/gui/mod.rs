@@ -1,30 +1,93 @@
 mod icons;
+mod rail;
 mod style;
 #[cfg(test)]
 mod tests;
+mod widgets;
 
 use std::path::PathBuf;
 
-use egui::{Align2, Context, Rect, Response, Sense, Ui, Vec2, WidgetInfo, WidgetType};
+use egui::{
+    pos2, vec2, Align, Align2, Context, Id, Layout, Order, Pos2, Rect, Response, RichText, Sense,
+    Ui, Vec2, WidgetInfo, WidgetType,
+};
 use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::editor::Editor;
-use crate::examples::Example;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::rendering::Theme;
-use crate::tools::{ToolCategory, TOOL_CATEGORIES};
 use icons::Icon;
+use rail::{Rail, POPOVER_GAP};
 use style::{Chrome, MARGIN, PANEL_RADIUS};
+use widgets::{icon_row, segmented, separator};
 
 const FAB_SIZE: f32 = 46.0;
 const FAB_GAP: f32 = 8.0;
 const ICON_SIZE: f32 = 22.0;
+const MENU_WIDTH: f32 = 232.0;
+const MENU_PADDING: i8 = 6;
+const MENU_ROW_HEIGHT: f32 = 34.0;
 
 pub enum MenuChoice {
     Save(PathBuf),
     Open(PathBuf),
-    Example(&'static Example),
+    Examples,
+}
+
+pub struct Controls<'a> {
+    pub edit_enabled: &'a mut bool,
+    pub editor: &'a mut Editor,
+    pub theme: &'a mut Theme,
+    pub fps: f64,
+}
+
+#[derive(Default)]
+pub struct Gui {
+    rail: Rail,
+    menu_open: bool,
+}
+
+impl Gui {
+    pub fn show(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
+        let theme = *controls.theme;
+        let mut choice = None;
+        if corner_buttons(context, theme, controls.edit_enabled) {
+            choice = Some(MenuChoice::Examples);
+        }
+        let (menu_button, menu_position) = if *controls.edit_enabled {
+            let rail = self
+                .rail
+                .show(context, theme, self.menu_open, controls.editor);
+            let position = pos2(
+                rail.rect.right() + POPOVER_GAP,
+                rail.menu.rect.top() - MENU_PADDING as f32,
+            );
+            (rail.menu, position)
+        } else {
+            self.rail.close();
+            let button = menu_button(context, theme, self.menu_open);
+            let position = pos2(button.rect.left(), button.rect.bottom() + FAB_GAP);
+            (button, position)
+        };
+        if menu_button.clicked() {
+            self.menu_open = !self.menu_open;
+        }
+        if self.menu_open {
+            let (picked, rect) = menu(context, menu_position, controls.theme, controls.fps);
+            let pressed_elsewhere = context.input(|input| {
+                input.pointer.any_pressed()
+                    && input.pointer.interact_pos().is_some_and(|position| {
+                        !rect.contains(position) && !menu_button.rect.contains(position)
+                    })
+            });
+            if picked.is_some() || pressed_elsewhere {
+                self.menu_open = false;
+            }
+            choice = choice.or(picked.flatten());
+        }
+        choice
+    }
 }
 
 pub fn load_error(context: &Context, error: &str) {
@@ -53,7 +116,7 @@ fn fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, on: bool) -> Respo
     response.on_hover_text(label)
 }
 
-pub fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) -> bool {
+fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) -> bool {
     let chrome = Chrome::of(theme);
     let mut examples_clicked = false;
     egui::Area::new("corner_buttons".into())
@@ -70,62 +133,84 @@ pub fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) 
     examples_clicked
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-pub fn menu_bar(context: &Context) -> Option<MenuChoice> {
-    let mut choice = None;
-    #[allow(deprecated)]
-    egui::Panel::top("top_panel").show(context, |ui| {
-        egui::MenuBar::new().ui(ui, |ui| {
-            ui.menu_button("File", |ui| {
-                if ui.button("Save").clicked() {
-                    choice = rfd::FileDialog::new().save_file().map(MenuChoice::Save);
-                }
-                if ui.button("Open").clicked() {
-                    choice = rfd::FileDialog::new().pick_file().map(MenuChoice::Open);
-                }
-            });
-            ui.menu_button("Examples", |ui| {
-                for category in crate::examples::EXAMPLE_CATEGORIES {
-                    ui.menu_button(category.name, |ui| {
-                        for example in category.examples {
-                            if ui.button(example.name).clicked() {
-                                choice = Some(MenuChoice::Example(example));
-                                ui.close();
-                            }
-                        }
-                    });
-                }
-            });
-        });
-    });
-    choice
+fn menu_button(context: &Context, theme: Theme, open: bool) -> Response {
+    egui::Area::new("menu_button".into())
+        .anchor(Align2::LEFT_TOP, [MARGIN, MARGIN])
+        .show(context, |ui| {
+            fab(ui, Chrome::of(theme), Icon::Menu, "Menu", open)
+        })
+        .inner
 }
 
-pub fn elements_window(context: &Context, editor: &mut Editor) {
-    egui::Window::new("Elements").show(context, |ui| {
-        for category in &TOOL_CATEGORIES {
-            ui.collapsing(category.label(), |ui| {
-                for (tool, label) in category.tools() {
-                    ui.selectable_value(&mut editor.tool, tool, label);
+fn menu(
+    context: &Context,
+    position: Pos2,
+    theme: &mut Theme,
+    fps: f64,
+) -> (Option<Option<MenuChoice>>, Rect) {
+    let chrome = Chrome::of(*theme);
+    let mut picked = None;
+    let rect = egui::Area::new(Id::new("menu"))
+        .order(Order::Foreground)
+        .fixed_pos(position)
+        .show(context, |ui| {
+            chrome.panel_frame(MENU_PADDING).show(ui, |ui| {
+                ui.set_width(MENU_WIDTH);
+                ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    if icon_row(ui, chrome, Icon::Folder, "Open…").clicked() {
+                        picked = Some(rfd::FileDialog::new().pick_file().map(MenuChoice::Open));
+                    }
+                    if icon_row(ui, chrome, Icon::Save, "Save…").clicked() {
+                        picked = Some(rfd::FileDialog::new().save_file().map(MenuChoice::Save));
+                    }
                 }
-                if *category == ToolCategory::Neurons {
-                    ui.checkbox(&mut editor.dendrites, "With dendrites");
+                if icon_row(ui, chrome, Icon::Grid, "Examples").clicked() {
+                    picked = Some(Some(MenuChoice::Examples));
                 }
+                separator(ui, chrome);
+                labelled_row(ui, chrome, "Theme", |ui| {
+                    segmented(
+                        ui,
+                        chrome,
+                        theme,
+                        &[(Theme::Dark, "Dark"), (Theme::Light, "Light")],
+                    )
+                });
+                labelled_row(ui, chrome, "Frame rate", |ui| {
+                    ui.label(
+                        RichText::new(format!("{fps:.0} fps"))
+                            .size(13.0)
+                            .color(chrome.subtext),
+                    );
+                });
             });
-        }
-    });
+        })
+        .response
+        .rect;
+    (picked, rect)
 }
 
-pub fn settings_window(context: &Context, fps: f64, iterations: &mut u32, theme: &mut Theme) {
+fn labelled_row(ui: &mut Ui, chrome: &Chrome, label: &str, value: impl FnOnce(&mut Ui)) {
+    ui.allocate_ui_with_layout(
+        vec2(ui.available_width(), MENU_ROW_HEIGHT),
+        Layout::left_to_right(Align::Center),
+        |ui| {
+            ui.add_space(8.0);
+            ui.label(RichText::new(label).size(13.5).color(chrome.text));
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.add_space(4.0);
+                value(ui);
+            });
+        },
+    );
+}
+
+pub fn settings_window(context: &Context, iterations: &mut u32) {
     egui::Window::new("Settings").show(context, |ui| {
-        ui.label(format!("FPS: {fps:.0}"));
         ui.label("Simulation speed");
         ui.add(egui::Slider::new(iterations, 1..=20));
-        ui.horizontal(|ui| {
-            ui.label("Theme");
-            ui.selectable_value(theme, Theme::Dark, "Dark");
-            ui.selectable_value(theme, Theme::Light, "Light");
-        });
     });
 }
 

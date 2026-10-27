@@ -16,59 +16,90 @@ pub enum Tool {
     Stimulate,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum ToolCategory {
-    Interaction,
+impl Tool {
+    pub fn name(self) -> &'static str {
+        match self {
+            Tool::Select => "Select",
+            Tool::Stimulate => "Stimulate",
+            Tool::Erase => "Erase",
+            Tool::Place(Element::ExcitatoryNeuron) => "Excitatory neuron",
+            Tool::Place(Element::InhibitoryNeuron) => "Inhibitory neuron",
+            Tool::Place(Element::AdaptiveNeuron) => "Adaptive neuron",
+            Tool::Place(Element::BurstNeuron) => "Burst neuron",
+            Tool::Place(Element::CurrentSource) => "Current source",
+            Tool::Place(Element::TouchSensor) => "Touch sensor",
+            Tool::Place(Element::RegularSpikeGenerator) => "Spike generator",
+            Tool::Place(Element::PoissonGenerator) => "Poisson generator",
+            Tool::Place(Element::Note) => "Note",
+            Tool::Voltmeter => "Voltmeter",
+            Tool::StaticConnection => "Static connection",
+            Tool::Axon => "Axon",
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            Tool::Select => "Select elements and drag them around.",
+            Tool::Stimulate => "Touch neurons to make them fire.",
+            Tool::Erase => "Erase elements and connections.",
+            Tool::Place(Element::ExcitatoryNeuron) => {
+                "Its spikes push the neurons it connects to towards threshold."
+            }
+            Tool::Place(Element::InhibitoryNeuron) => {
+                "Its spikes pull the neurons it connects to away from threshold."
+            }
+            Tool::Place(Element::AdaptiveNeuron) => "Fires less often the longer it is driven.",
+            Tool::Place(Element::BurstNeuron) => {
+                "Fires a short burst of spikes when it reaches threshold."
+            }
+            Tool::Place(Element::CurrentSource) => {
+                "Injects a steady current into the neurons it connects to."
+            }
+            Tool::Place(Element::TouchSensor) => "Fires while you touch or hold it.",
+            Tool::Place(Element::RegularSpikeGenerator) => "Fires at a regular frequency.",
+            Tool::Place(Element::PoissonGenerator) => "Fires at random around a mean rate.",
+            Tool::Place(Element::Note) => "Text on the canvas.",
+            Tool::Voltmeter => "Click a neuron or compartment to plot its voltage.",
+            Tool::StaticConnection => "Drag from a neuron or source to the neuron it should drive.",
+            Tool::Axon => "Drag from a neuron to grow a cable of compartments.",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ToolGroup {
     Neurons,
+    Inputs,
     Connections,
-    Annotations,
 }
 
-impl ToolCategory {
-    pub fn label(&self) -> &str {
+impl ToolGroup {
+    pub fn label(self) -> &'static str {
         match self {
-            ToolCategory::Interaction => "Interaction",
-            ToolCategory::Neurons => "Neurons",
-            ToolCategory::Connections => "Connections",
-            ToolCategory::Annotations => "Annotations",
+            ToolGroup::Neurons => "Neurons",
+            ToolGroup::Inputs => "Inputs",
+            ToolGroup::Connections => "Connect",
         }
     }
-    pub fn tools(&self) -> Vec<(Tool, &str)> {
+
+    pub fn tools(self) -> &'static [Tool] {
         match self {
-            ToolCategory::Interaction => vec![
-                (Tool::Select, "Select"),
-                (Tool::Stimulate, "Stimulate"),
-                (Tool::Erase, "Erase"),
+            ToolGroup::Neurons => &[
+                Tool::Place(Element::ExcitatoryNeuron),
+                Tool::Place(Element::InhibitoryNeuron),
+                Tool::Place(Element::AdaptiveNeuron),
+                Tool::Place(Element::BurstNeuron),
             ],
-            ToolCategory::Neurons => vec![
-                (Tool::Place(Element::ExcitatoryNeuron), "Excitatory Neuron"),
-                (Tool::Place(Element::InhibitoryNeuron), "Inhibitory Neuron"),
-                (Tool::Place(Element::AdaptiveNeuron), "Adaptive Neuron"),
-                (Tool::Place(Element::BurstNeuron), "Burst Neuron"),
-                (Tool::Place(Element::CurrentSource), "Current Source"),
-                (Tool::Place(Element::TouchSensor), "Touch Sensor"),
-                (
-                    Tool::Place(Element::RegularSpikeGenerator),
-                    "Spike Generator",
-                ),
-                (Tool::Place(Element::PoissonGenerator), "Poisson Generator"),
-                (Tool::Voltmeter, "Voltmeter"),
+            ToolGroup::Inputs => &[
+                Tool::Place(Element::CurrentSource),
+                Tool::Place(Element::TouchSensor),
+                Tool::Place(Element::RegularSpikeGenerator),
+                Tool::Place(Element::PoissonGenerator),
             ],
-            ToolCategory::Connections => vec![
-                (Tool::StaticConnection, "Static Connection"),
-                (Tool::Axon, "Axon"),
-            ],
-            ToolCategory::Annotations => vec![(Tool::Place(Element::Note), "Note")],
+            ToolGroup::Connections => &[Tool::StaticConnection, Tool::Axon],
         }
     }
 }
-
-pub const TOOL_CATEGORIES: [ToolCategory; 4] = [
-    ToolCategory::Interaction,
-    ToolCategory::Neurons,
-    ToolCategory::Connections,
-    ToolCategory::Annotations,
-];
 
 #[derive(Clone, Debug)]
 pub struct ConnectionTool {
