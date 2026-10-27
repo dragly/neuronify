@@ -172,7 +172,7 @@ impl Editor {
     }
 
     fn select(&mut self, world: &mut World, position: Vec3) -> Option<Pan> {
-        if let Some(drag) = &self.dragging {
+        if let Some(drag) = &mut self.dragging {
             drag.move_to(world, position);
         } else if let Some((voltmeter, corner)) = self.resizing {
             resize(world, voltmeter, corner, position);

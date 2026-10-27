@@ -10,8 +10,6 @@ use crate::elements::{spawn_cable, spawn_compartment};
 const APICAL_DIRECTION: Vec3 = Vec3::X;
 /// Arms of the star that an inhibitory neuron grows.
 const STAR_ARMS: usize = 5;
-/// Spacing between compartments, which is the rest length of the springs.
-const SEGMENT_LENGTH: f32 = 2.0 * NODE_RADIUS;
 /// How far each step may turn sideways, as a fraction of the step length.
 const WANDER: f32 = 0.45;
 /// The apical dendrite runs nearly straight.
