@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::f64::consts::{PI, TAU};
 
-use glam::Vec3;
+use glam::{DVec2, Vec3};
 use hecs::{Entity, World};
 
 use crate::components::*;
@@ -10,7 +11,7 @@ use crate::elements::{spawn_cable, spawn_compartment};
 pub struct Drag {
     entity: Entity,
     offset: Vec3,
-    followers: Vec<(Entity, f32)>,
+    pose: Pose,
     stretching_chains: Vec<Vec<Entity>>,
 }
 
@@ -19,7 +20,7 @@ impl Drag {
         let mut drag = Drag {
             entity,
             offset,
-            followers: Vec::new(),
+            pose: Pose::default(),
             stretching_chains: Vec::new(),
         };
         drag.measure(world);
@@ -28,20 +29,13 @@ impl Drag {
 
     pub fn move_to(&mut self, world: &mut World, pointer: Vec3) {
         let target = (pointer + self.offset).with_y(0.0);
-        let shift = match world.get::<&mut Position>(self.entity) {
-            Ok(mut dragged) => {
-                let shift = target - dragged.position;
-                dragged.position = target;
-                shift
-            }
-            Err(_) => return,
-        };
-        if shift == Vec3::ZERO {
-            return;
+        match world.get::<&mut Position>(self.entity) {
+            Ok(mut dragged) if dragged.position != target => dragged.position = target,
+            _ => return,
         }
-        for &(follower, follows) in &self.followers {
+        for (follower, moved) in self.pose.move_to(planar(target)) {
             if let Ok(mut position) = world.get::<&mut Position>(follower) {
-                position.position += follows * shift;
+                position.position += Vec3::new(moved.x as f32, 0.0, moved.y as f32);
             }
         }
         let mut resampled = false;
@@ -56,16 +50,15 @@ impl Drag {
     fn measure(&mut self, world: &World) {
         let cables = Cables::of(world);
         let reached = Reached::from(world, self.entity, &cables);
-        let follows = reached.follows();
-        self.followers = reached
+        self.pose = Pose::of(world, &reached);
+        let follows = &self.pose.follows;
+        let free: HashSet<Entity> = reached
             .nodes
             .iter()
-            .zip(&follows)
             .zip(&reached.free)
             .filter(|(_, &free)| free)
-            .map(|((&node, &follows), _)| (node, follows as f32))
+            .map(|(&node, _)| node)
             .collect();
-        let free: HashSet<Entity> = self.followers.iter().map(|&(node, _)| node).collect();
         self.stretching_chains = reached
             .links
             .iter()
@@ -194,38 +187,174 @@ impl Reached {
             .collect();
         reached
     }
+}
 
-    fn follows(&self) -> Vec<f64> {
-        let pairs: Vec<(usize, usize)> = self.links.iter().map(|&(_, a, b)| (a, b)).collect();
-        let mut fixed = vec![0.0; self.nodes.len()];
+#[derive(Default)]
+struct Pose {
+    nodes: Vec<Entity>,
+    free: Vec<bool>,
+    pairs: Vec<(usize, usize)>,
+    detached: Vec<(usize, usize)>,
+    rest: Vec<DVec2>,
+    follows: Vec<f64>,
+    anchors: Vec<Anchor>,
+    anchored: Vec<f64>,
+    displacement: Vec<DVec2>,
+}
+
+struct Anchor {
+    node: usize,
+    coupling: f64,
+    turn: f64,
+}
+
+impl Pose {
+    fn of(world: &World, reached: &Reached) -> Self {
+        let count = reached.nodes.len();
+        let pairs: Vec<(usize, usize)> = reached.links.iter().map(|&(_, a, b)| (a, b)).collect();
+        let rest = reached
+            .nodes
+            .iter()
+            .map(|&node| {
+                world
+                    .get::<&Position>(node)
+                    .map_or(DVec2::ZERO, |p| planar(p.position))
+            })
+            .collect();
+        let mut fixed = vec![0.0; count];
         fixed[0] = 1.0;
-        harmonic(&self.free, &fixed, &pairs)
+        let follows = harmonic(&reached.free, &pairs, &fixed);
+        let mut coupling = vec![0.0; count];
+        for &(a, b) in &pairs {
+            coupling[a] += follows[b] - follows[a];
+            coupling[b] += follows[a] - follows[b];
+        }
+        let anchors: Vec<Anchor> = (1..count)
+            .filter(|&node| !reached.free[node] && coupling[node] > 0.0)
+            .map(|node| Anchor {
+                node,
+                coupling: coupling[node],
+                turn: 0.0,
+            })
+            .collect();
+        let detached: Vec<(usize, usize)> = pairs
+            .iter()
+            .copied()
+            .filter(|&(a, b)| a != 0 && b != 0)
+            .collect();
+        let mut at_anchors = vec![0.0; count];
+        for anchor in &anchors {
+            at_anchors[anchor.node] = 1.0;
+        }
+        let anchored = harmonic(&reached.free, &detached, &at_anchors);
+        Pose {
+            nodes: reached.nodes.clone(),
+            free: reached.free.clone(),
+            pairs,
+            detached,
+            rest,
+            follows,
+            anchors,
+            anchored,
+            displacement: vec![DVec2::ZERO; count],
+        }
+    }
+
+    fn move_to(&mut self, target: DVec2) -> Vec<(Entity, DVec2)> {
+        let turns = self.turns_towards(target);
+        let guide: Vec<DVec2> = self
+            .pairs
+            .iter()
+            .map(|&(a, b)| {
+                let edge = self.rest[a] - self.rest[b];
+                let turn = match (a, b) {
+                    (0, other) | (other, 0) => turns[other],
+                    _ => 0.5 * (turns[a] + turns[b]),
+                };
+                DVec2::from_angle(turn).rotate(edge) - edge
+            })
+            .collect();
+        let mut fixed = vec![DVec2::ZERO; self.nodes.len()];
+        fixed[0] = target - self.rest[0];
+        let displacement = fit(&self.free, &self.pairs, &fixed, &guide);
+        let moved = (0..self.nodes.len())
+            .filter(|&node| self.free[node])
+            .map(|node| {
+                (
+                    self.nodes[node],
+                    displacement[node] - self.displacement[node],
+                )
+            })
+            .collect();
+        self.displacement = displacement;
+        moved
+    }
+
+    fn turns_towards(&mut self, target: DVec2) -> Vec<f64> {
+        let start = self.rest[0];
+        let mut fixed = vec![0.0; self.nodes.len()];
+        let (mut weighted, mut total) = (0.0, 0.0);
+        for anchor in &mut self.anchors {
+            let before = self.rest[anchor.node] - start;
+            let after = self.rest[anchor.node] - target;
+            if before.length() > 1e-6 && after.length() > 1e-6 {
+                anchor.turn += wrapped(before.angle_to(after) - anchor.turn);
+            }
+            fixed[anchor.node] = anchor.turn;
+            weighted += anchor.coupling * anchor.turn;
+            total += anchor.coupling;
+        }
+        let mean = if total > 0.0 { weighted / total } else { 0.0 };
+        harmonic(&self.free, &self.detached, &fixed)
+            .iter()
+            .zip(&self.anchored)
+            .map(|(turn, anchored)| turn + (1.0 - anchored) * mean)
+            .collect()
     }
 }
 
-fn harmonic(free: &[bool], fixed: &[f64], pairs: &[(usize, usize)]) -> Vec<f64> {
-    let laplacian = |values: &[f64]| -> Vec<f64> {
-        let mut result = vec![0.0; values.len()];
-        for &(a, b) in pairs {
-            let flow = values[a] - values[b];
+fn planar(position: Vec3) -> DVec2 {
+    DVec2::new(position.x as f64, position.z as f64)
+}
+
+fn wrapped(angle: f64) -> f64 {
+    (angle + PI).rem_euclid(TAU) - PI
+}
+
+fn harmonic(free: &[bool], pairs: &[(usize, usize)], fixed: &[f64]) -> Vec<f64> {
+    let fixed: Vec<DVec2> = fixed.iter().map(|&value| DVec2::new(value, 0.0)).collect();
+    let unguided = vec![DVec2::ZERO; pairs.len()];
+    fit(free, pairs, &fixed, &unguided)
+        .iter()
+        .map(|value| value.x)
+        .collect()
+}
+
+fn fit(free: &[bool], pairs: &[(usize, usize)], fixed: &[DVec2], guide: &[DVec2]) -> Vec<DVec2> {
+    let gather = |difference: &dyn Fn(usize, usize, usize) -> DVec2| -> Vec<DVec2> {
+        let mut result = vec![DVec2::ZERO; free.len()];
+        for (pair, &(a, b)) in pairs.iter().enumerate() {
+            let flow = difference(pair, a, b);
             result[a] += flow;
             result[b] -= flow;
         }
         for (result, &free) in result.iter_mut().zip(free) {
             if !free {
-                *result = 0.0;
+                *result = DVec2::ZERO;
             }
         }
         result
     };
-    let dot = |a: &[f64], b: &[f64]| -> f64 { a.iter().zip(b).map(|(a, b)| a * b).sum() };
+    let laplacian = |values: &[DVec2]| gather(&|_, a, b| values[a] - values[b]);
+    let dot = |a: &[DVec2], b: &[DVec2]| -> f64 { a.iter().zip(b).map(|(a, b)| a.dot(*b)).sum() };
 
-    let mut solution = vec![0.0; fixed.len()];
-    let mut residual: Vec<f64> = laplacian(fixed).iter().map(|value| -value).collect();
+    let mut solution = vec![DVec2::ZERO; fixed.len()];
+    let mut residual = gather(&|pair, a, b| guide[pair] - (fixed[a] - fixed[b]));
     let mut direction = residual.clone();
     let mut residual_norm = dot(&residual, &residual);
+    let enough = 1e-20 * residual_norm.max(1.0);
     for _ in 0..2 * fixed.len() {
-        if residual_norm < 1e-20 {
+        if residual_norm < enough {
             break;
         }
         let along = laplacian(&direction);
@@ -243,7 +372,7 @@ fn harmonic(free: &[bool], fixed: &[f64], pairs: &[(usize, usize)]) -> Vec<f64> 
     solution
         .iter()
         .zip(fixed)
-        .map(|(x, fixed)| x + fixed)
+        .map(|(x, fixed)| *x + *fixed)
         .collect()
 }
 
