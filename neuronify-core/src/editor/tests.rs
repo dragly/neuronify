@@ -212,14 +212,28 @@ fn selecting_drags_the_element_under_the_pointer() {
 }
 
 #[test]
-fn selecting_empty_space_pans_and_clears_the_selection() {
+fn dragging_empty_space_pans_and_keeps_the_selection() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Select);
     editor.selection = Some(a);
     let pans = drag(&mut editor, &mut world, &[at(10.0, 10.0), at(12.0, 10.0)]);
     assert_eq!(pans, [None, Some(Pan(at(2.0, 0.0)))]);
-    assert_eq!(editor.selection, None);
+    assert_eq!(editor.selection, Some(a));
+}
+
+#[test]
+fn the_editor_knows_whether_a_press_landed_on_the_background() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Select);
+    editor.edit(&mut world, at(0.5, 0.0), false);
+    assert!(!editor.pressed_background());
+    editor.release();
+    editor.edit(&mut world, at(10.0, 10.0), false);
+    assert!(editor.pressed_background());
+    editor.release();
+    assert!(!editor.pressed_background());
 }
 
 #[test]

@@ -116,6 +116,10 @@ impl Editor {
         }
     }
 
+    pub fn pressed_background(&self) -> bool {
+        self.move_origin.is_some()
+    }
+
     pub fn tap(&mut self, world: &World, position: Vec3) {
         if self.stimulation_tool.is_none() {
             self.selection =
@@ -233,10 +237,7 @@ impl Editor {
                 let offset = (entity_position - position).with_y(0.0);
                 self.dragging = Some(Drag::new(world, entity, offset));
             }
-            None => {
-                self.selection = None;
-                self.move_origin = Some(position);
-            }
+            None => self.move_origin = Some(position),
         }
     }
 }

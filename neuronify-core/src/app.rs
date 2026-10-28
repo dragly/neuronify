@@ -117,8 +117,12 @@ impl Neuronify {
     }
 
     fn press_pointer(&mut self, application: &mut visula::Application, pressed: bool) {
-        if self.mouse.press(pressed) && !self.edit_enabled {
-            if let Some(position) = self.mouse.position {
+        if self.mouse.press(pressed) {
+            if self.edit_enabled {
+                if self.editor.pressed_background() {
+                    self.editor.selection = None;
+                }
+            } else if let Some(position) = self.mouse.position {
                 let position = camera::ground_position(application, position);
                 self.editor.tap(&self.world, position);
             }
