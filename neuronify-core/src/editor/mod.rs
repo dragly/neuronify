@@ -116,6 +116,13 @@ impl Editor {
         }
     }
 
+    pub fn tap(&mut self, world: &World, position: Vec3) {
+        if self.stimulation_tool.is_none() {
+            self.selection =
+                entity_at(world, &voltmeter_frames(world), position).map(|(entity, _)| entity);
+        }
+    }
+
     fn too_near_previous(&self, world: &World, position: Vec3) -> bool {
         let minimum_distance = match self.tool {
             Tool::Axon => MIN_CREATION_DISTANCE_AXON,
@@ -213,28 +220,14 @@ impl Editor {
     }
 
     fn pick(&mut self, world: &World, position: Vec3) {
-        let frames: Vec<_> = world
-            .query::<(&Position, &VoltmeterSize)>()
-            .with::<&Voltmeter>()
-            .iter()
-            .map(|(voltmeter, (voltmeter_position, size))| {
-                let frame = Frame::new(voltmeter_position.position, size);
-                (voltmeter, voltmeter_position.position, frame)
-            })
-            .collect();
+        let frames = voltmeter_frames(world);
         self.resizing = frames.iter().find_map(|(voltmeter, _, frame)| {
             Some((*voltmeter, frame.corner_near(position, CORNER_REACH)?))
         });
         if self.resizing.is_some() {
             return;
         }
-        let picked = frames
-            .iter()
-            .find(|(_, _, frame)| frame.contains(position))
-            .map(|&(voltmeter, voltmeter_position, _)| (voltmeter, voltmeter_position))
-            .or_else(|| element_near(world, position))
-            .or_else(|| note_under(world, position));
-        match picked {
+        match entity_at(world, &frames, position) {
             Some((entity, entity_position)) => {
                 self.selection = Some(entity);
                 let offset = (entity_position - position).with_y(0.0);
@@ -246,6 +239,31 @@ impl Editor {
             }
         }
     }
+}
+
+fn voltmeter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
+    world
+        .query::<(&Position, &VoltmeterSize)>()
+        .with::<&Voltmeter>()
+        .iter()
+        .map(|(voltmeter, (voltmeter_position, size))| {
+            let frame = Frame::new(voltmeter_position.position, size);
+            (voltmeter, voltmeter_position.position, frame)
+        })
+        .collect()
+}
+
+fn entity_at(
+    world: &World,
+    frames: &[(Entity, Vec3, Frame)],
+    position: Vec3,
+) -> Option<(Entity, Vec3)> {
+    frames
+        .iter()
+        .find(|(_, _, frame)| frame.contains(position))
+        .map(|&(voltmeter, voltmeter_position, _)| (voltmeter, voltmeter_position))
+        .or_else(|| element_near(world, position))
+        .or_else(|| note_under(world, position))
 }
 
 fn positions_with<T: Component>(world: &World) -> Vec<(Entity, Vec3)> {

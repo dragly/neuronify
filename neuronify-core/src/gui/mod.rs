@@ -101,16 +101,14 @@ impl Gui {
         if !editing {
             self.rail.close();
         }
-        if editing {
-            self.inspector.show(
-                context,
-                theme,
-                controls.world,
-                controls.editor,
-                controls.time,
-                Placement::Panel,
-            );
-        }
+        self.inspector.show(
+            context,
+            theme,
+            controls.world,
+            controls.editor,
+            controls.time,
+            Placement::Panel,
+        );
         let shift = if editing {
             (MARGIN + RAIL_WIDTH) / 2.0
         } else {
@@ -196,16 +194,14 @@ impl Gui {
                 controls.time,
             );
         }
-        if editing {
-            self.inspector.show(
-                context,
-                theme,
-                controls.world,
-                controls.editor,
-                controls.time,
-                Placement::Sheet,
-            );
-        }
+        self.inspector.show(
+            context,
+            theme,
+            controls.world,
+            controls.editor,
+            controls.time,
+            Placement::Sheet,
+        );
         let position = pos2(more.rect.right(), more.rect.bottom() + FAB_GAP);
         let picked = self.menu(
             context,

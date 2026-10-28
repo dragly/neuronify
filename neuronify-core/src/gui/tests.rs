@@ -251,14 +251,13 @@ fn one_neuron() -> (World, Entity) {
 }
 
 #[test]
-fn the_inspector_shows_the_selection_while_editing() {
-    let (world, neuron) = one_neuron();
-    let harness = Harness::with(true, world, Some(neuron));
-    assert!(harness.shows("Adaptive neuron"));
-    assert!(harness.shows("Threshold"));
-
-    let (world, neuron) = one_neuron();
-    assert!(!Harness::with(false, world, Some(neuron)).shows("Threshold"));
+fn the_inspector_shows_the_selection() {
+    for edit_enabled in [true, false] {
+        let (world, neuron) = one_neuron();
+        let harness = Harness::with(edit_enabled, world, Some(neuron));
+        assert!(harness.shows("Adaptive neuron"));
+        assert!(harness.shows("Threshold"));
+    }
     assert!(!Harness::new(true).shows("Threshold"));
 }
 
