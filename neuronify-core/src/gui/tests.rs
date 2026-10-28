@@ -22,6 +22,7 @@ struct Harness {
     choice: Option<MenuChoice>,
     output: Option<FullOutput>,
     time: f64,
+    saving: Saving,
 }
 
 impl Harness {
@@ -51,6 +52,7 @@ impl Harness {
             choice: None,
             output: None,
             time: 0.0,
+            saving: Saving::Save,
         };
         harness.editor.selection = selection;
         for _ in 0..3 {
@@ -77,6 +79,7 @@ impl Harness {
             iterations,
             choice,
             time,
+            saving,
             ..
         } = self;
         let output = context.run_ui(input, |ui| {
@@ -89,6 +92,7 @@ impl Harness {
                 running,
                 iterations,
                 fps: 60.0,
+                saving: *saving,
             };
             if let Some(picked) = gui.show(ui.ctx(), controls) {
                 *choice = Some(picked);
@@ -251,6 +255,25 @@ fn the_menu_asks_to_open_and_save() {
         harness.click(pos2(MARGIN + FAB_SIZE / 2.0, MARGIN + FAB_SIZE / 2.0));
         harness.click_text(row);
         assert_eq!(harness.choice, Some(asked));
+    }
+}
+
+#[test]
+fn the_menu_offers_to_share_where_the_browser_can() {
+    for (saving, save, share) in [
+        (Saving::Save, true, false),
+        (Saving::SaveOrShare, true, true),
+        (Saving::Share, false, true),
+    ] {
+        let mut harness = Harness::new(false);
+        harness.saving = saving;
+        harness.click(pos2(MARGIN + FAB_SIZE / 2.0, MARGIN + FAB_SIZE / 2.0));
+        assert_eq!(harness.shows("Save…"), save);
+        assert_eq!(harness.shows("Share…"), share);
+        if share {
+            harness.click_text("Share…");
+            assert_eq!(harness.choice, Some(MenuChoice::Share));
+        }
     }
 }
 

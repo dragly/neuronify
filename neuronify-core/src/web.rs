@@ -1,5 +1,6 @@
 //! Files in the browser: loading one named in the page URL, as in
-//! `index.html?file=examples/leaky.nfy`, loading one the user picks, and downloading a save.
+//! `index.html?file=examples/leaky.nfy`, loading one the user picks,
+//! and downloading or sharing a save.
 //!
 //! Fetching and reading are asynchronous and visula's event loop never returns on the web,
 //! so the result is left here for `Neuronify::update` to pick up.
@@ -8,9 +9,13 @@ use std::cell::RefCell;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Document, HtmlAnchorElement, HtmlInputElement, Response, Url};
+use web_sys::{
+    Document, DomException, File, FilePropertyBag, HtmlAnchorElement, HtmlInputElement, Response,
+    ShareData, Url,
+};
 
 const REVOKE_DELAY_MS: i32 = 10_000;
+const SHARED_TYPE: &str = "application/octet-stream";
 
 thread_local! {
     static LOADED: RefCell<Option<Result<Vec<u8>, String>>> = const { RefCell::new(None) };
@@ -86,6 +91,55 @@ pub fn download(bytes: &[u8], name: &str) -> Result<(), JsValue> {
             REVOKE_DELAY_MS,
         )?;
     Ok(())
+}
+
+pub fn can_share(name: &str) -> bool {
+    let Some(navigator) = web_sys::window().map(|window| window.navigator()) else {
+        return false;
+    };
+    js_sys::Reflect::has(&navigator, &"canShare".into()).unwrap_or(false)
+        && file(&[], name).is_ok_and(|file| navigator.can_share_with_data(&share_data(&file)))
+}
+
+pub fn is_ios() -> bool {
+    let Some(navigator) = web_sys::window().map(|window| window.navigator()) else {
+        return false;
+    };
+    let agent = navigator.user_agent().unwrap_or_default();
+    let ipad_posing_as_mac = agent.contains("Macintosh") && navigator.max_touch_points() > 1;
+    ["iPhone", "iPad", "iPod"]
+        .iter()
+        .any(|device| agent.contains(device))
+        || ipad_posing_as_mac
+}
+
+pub fn share(bytes: &[u8], name: &str) -> Result<(), JsValue> {
+    let navigator = web_sys::window().ok_or("no global window")?.navigator();
+    let shared = navigator.share_with_data(&share_data(&file(bytes, name)?));
+    wasm_bindgen_futures::spawn_local(async move {
+        if let Err(error) = JsFuture::from(shared).await {
+            let cancelled = error
+                .dyn_ref::<DomException>()
+                .is_some_and(|error| error.name() == "AbortError");
+            if !cancelled {
+                log::error!("Could not share: {error:?}");
+            }
+        }
+    });
+    Ok(())
+}
+
+fn file(bytes: &[u8], name: &str) -> Result<File, JsValue> {
+    let parts = js_sys::Array::of1(&js_sys::Uint8Array::from(bytes));
+    let options = FilePropertyBag::new();
+    options.set_type(SHARED_TYPE);
+    File::new_with_u8_array_sequence_and_options(&parts, name, &options)
+}
+
+fn share_data(file: &File) -> ShareData {
+    let data = ShareData::new();
+    data.set_files(&js_sys::Array::of1(file));
+    data
 }
 
 fn document() -> Result<Document, JsValue> {
