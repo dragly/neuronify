@@ -35,7 +35,6 @@ pub fn run() {
     let embedded = false;
     visula::run(move |application| {
         let mut neuronify = Neuronify::new(application);
-        neuronify.edit_enabled = !embedded;
         if embedded {
             neuronify.landing = None;
         }
