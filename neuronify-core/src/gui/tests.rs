@@ -403,6 +403,14 @@ fn the_playback_bar_hides_behind_a_button_on_phones() {
 }
 
 #[test]
+fn selecting_starts_editing_on_phones() {
+    let (world, neuron) = one_neuron();
+    let harness = Harness::phone(false, world, Some(neuron));
+    assert!(harness.edit_enabled);
+    assert!(harness.shows("Threshold"));
+}
+
+#[test]
 fn the_examples_button_sits_at_the_top_left_on_phones() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click(top_corner(false));

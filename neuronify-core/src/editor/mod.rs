@@ -127,6 +127,25 @@ impl Editor {
         }
     }
 
+    pub fn hold(&mut self, world: &World, position: Vec3) -> bool {
+        if self.stimulation_tool.is_some() {
+            return false;
+        }
+        let Some((entity, entity_position)) = entity_at(world, &voltmeter_frames(world), position)
+        else {
+            return false;
+        };
+        self.move_origin = None;
+        self.grab(world, entity, entity_position, position);
+        true
+    }
+
+    fn grab(&mut self, world: &World, entity: Entity, entity_position: Vec3, position: Vec3) {
+        self.selection = Some(entity);
+        let offset = (entity_position - position).with_y(0.0);
+        self.dragging = Some(Drag::new(world, entity, offset));
+    }
+
     fn too_near_previous(&self, world: &World, position: Vec3) -> bool {
         let minimum_distance = match self.tool {
             Tool::Axon => MIN_CREATION_DISTANCE_AXON,
@@ -233,9 +252,7 @@ impl Editor {
         }
         match entity_at(world, &frames, position) {
             Some((entity, entity_position)) => {
-                self.selection = Some(entity);
-                let offset = (entity_position - position).with_y(0.0);
-                self.dragging = Some(Drag::new(world, entity, offset));
+                self.grab(world, entity, entity_position, position);
             }
             None => self.move_origin = Some(position),
         }

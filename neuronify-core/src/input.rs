@@ -3,6 +3,7 @@ use visula::winit::event::{Touch, TouchPhase};
 
 const TAP_SLOP: f64 = 8.0;
 const SECOND_FINGER_DELAY: f64 = 0.12;
+const HOLD: f64 = 0.33;
 
 pub fn now() -> f64 {
     chrono::Utc::now().timestamp_micros() as f64 * 1e-6
@@ -12,22 +13,32 @@ pub fn now() -> f64 {
 pub struct Mouse {
     pub left_down: bool,
     pub position: Option<PhysicalPosition<f64>>,
-    tap_start: Option<PhysicalPosition<f64>>,
+    tap_start: Option<(PhysicalPosition<f64>, f64)>,
 }
 
 impl Mouse {
-    pub fn press(&mut self, pressed: bool) -> bool {
+    pub fn press(&mut self, pressed: bool, now: f64) -> bool {
         let tapped = !pressed && self.tap_start.take().is_some();
         self.left_down = pressed;
         if pressed {
-            self.tap_start = self.position;
+            self.tap_start = self.position.map(|position| (position, now));
         }
         tapped
     }
 
+    pub fn take_hold(&mut self, now: f64) -> Option<PhysicalPosition<f64>> {
+        match self.tap_start {
+            Some((_, since)) if self.left_down && now - since >= HOLD => {
+                self.tap_start = None;
+                self.position
+            }
+            _ => None,
+        }
+    }
+
     pub fn move_to(&mut self, position: PhysicalPosition<f64>, scale_factor: f64) {
         self.position = Some(position);
-        let moved_away = self.tap_start.is_some_and(|start| {
+        let moved_away = self.tap_start.is_some_and(|(start, _)| {
             (position.x - start.x).hypot(position.y - start.y) > TAP_SLOP * scale_factor
         });
         if moved_away {
@@ -312,7 +323,7 @@ mod tests {
     fn pressed_at(x: f64, y: f64) -> Mouse {
         let mut mouse = Mouse::default();
         mouse.move_to(at(x, y), 1.0);
-        mouse.press(true);
+        mouse.press(true, 0.0);
         mouse
     }
 
@@ -320,8 +331,8 @@ mod tests {
     fn a_press_released_where_it_started_is_a_tap() {
         let mut mouse = pressed_at(10.0, 10.0);
         mouse.move_to(at(14.0, 15.0), 1.0);
-        assert!(mouse.press(false));
-        assert!(!mouse.press(false));
+        assert!(mouse.press(false, 0.0));
+        assert!(!mouse.press(false, 0.0));
     }
 
     #[test]
@@ -329,14 +340,31 @@ mod tests {
         let mut mouse = pressed_at(10.0, 10.0);
         mouse.move_to(at(30.0, 10.0), 1.0);
         mouse.move_to(at(10.0, 10.0), 1.0);
-        assert!(!mouse.press(false));
+        assert!(!mouse.press(false, 0.0));
     }
 
     #[test]
     fn the_tap_slop_follows_the_scale_factor() {
         let mut mouse = pressed_at(10.0, 10.0);
         mouse.move_to(at(22.0, 10.0), 2.0);
-        assert!(mouse.press(false));
+        assert!(mouse.press(false, 0.0));
+    }
+
+    #[test]
+    fn keeping_still_is_a_hold_and_no_tap() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        assert_eq!(mouse.take_hold(0.1), None);
+        mouse.move_to(at(12.0, 10.0), 1.0);
+        assert_eq!(mouse.take_hold(0.4), Some(at(12.0, 10.0)));
+        assert_eq!(mouse.take_hold(0.5), None);
+        assert!(!mouse.press(false, 0.6));
+    }
+
+    #[test]
+    fn moving_away_is_no_hold() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.move_to(at(30.0, 10.0), 1.0);
+        assert_eq!(mouse.take_hold(1.0), None);
     }
 
     #[test]
@@ -344,6 +372,6 @@ mod tests {
         let mut mouse = pressed_at(10.0, 10.0);
         mouse.cancel();
         assert!(!mouse.left_down);
-        assert!(!mouse.press(false));
+        assert!(!mouse.press(false, 0.0));
     }
 }

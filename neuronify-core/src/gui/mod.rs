@@ -134,6 +134,9 @@ impl Gui {
     }
 
     fn compact(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
+        if controls.editor.selection.is_some() {
+            *controls.edit_enabled = true;
+        }
         let theme = *controls.theme;
         let chrome = Chrome::of(theme);
         let editing = *controls.edit_enabled;
@@ -241,7 +244,7 @@ impl Gui {
     }
 }
 
-fn is_compact(screen: Rect) -> bool {
+pub fn is_compact(screen: Rect) -> bool {
     screen.width() < COMPACT_WIDTH || screen.height() < COMPACT_HEIGHT
 }
 
