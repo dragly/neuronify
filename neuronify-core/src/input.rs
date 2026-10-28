@@ -2,6 +2,11 @@ use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{Touch, TouchPhase};
 
 const TAP_SLOP: f64 = 8.0;
+const SECOND_FINGER_DELAY: f64 = 0.12;
+
+pub fn now() -> f64 {
+    chrono::Utc::now().timestamp_micros() as f64 * 1e-6
+}
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Mouse {
@@ -46,6 +51,7 @@ pub enum TouchGesture {
     Press(PhysicalPosition<f64>),
     Drag(PhysicalPosition<f64>),
     Release,
+    Tap(PhysicalPosition<f64>),
     Cancel,
     Pinch {
         previous: [PhysicalPosition<f64>; 2],
@@ -58,19 +64,27 @@ pub enum TouchGesture {
 pub struct Touches {
     fingers: Vec<(u64, PhysicalPosition<f64>)>,
     pinched: bool,
+    waiting: Option<(PhysicalPosition<f64>, f64)>,
 }
 
 impl Touches {
-    pub fn update(&mut self, touch: &Touch) -> TouchGesture {
+    pub fn update(&mut self, touch: &Touch, now: f64, wait: bool) -> TouchGesture {
         let index = self.fingers.iter().position(|(id, _)| *id == touch.id);
         match (touch.phase, index) {
             (TouchPhase::Started, None) => {
                 self.fingers.push((touch.id, touch.location));
                 match self.fingers.len() {
+                    1 if wait => {
+                        self.waiting = Some((touch.location, now));
+                        TouchGesture::None
+                    }
                     1 => TouchGesture::Press(touch.location),
                     2 => {
                         self.pinched = true;
-                        TouchGesture::Cancel
+                        match self.waiting.take() {
+                            Some(_) => TouchGesture::None,
+                            None => TouchGesture::Cancel,
+                        }
                     }
                     _ => TouchGesture::None,
                 }
@@ -83,8 +97,8 @@ impl Touches {
                     (Some(previous), Some(current)) if index < 2 => {
                         TouchGesture::Pinch { previous, current }
                     }
-                    _ if !self.pinched => TouchGesture::Drag(touch.location),
-                    _ => TouchGesture::None,
+                    _ if self.pinched || self.waiting.is_some() => TouchGesture::None,
+                    _ => TouchGesture::Drag(touch.location),
                 }
             }
             (TouchPhase::Ended | TouchPhase::Cancelled, Some(index)) => {
@@ -93,13 +107,24 @@ impl Touches {
                 if self.fingers.is_empty() {
                     self.pinched = false;
                 }
-                match (released, touch.phase) {
-                    (false, _) => TouchGesture::None,
-                    (true, TouchPhase::Cancelled) => TouchGesture::Cancel,
-                    (true, _) => TouchGesture::Release,
+                match (released, touch.phase, self.waiting.take()) {
+                    (false, _, _) | (true, TouchPhase::Cancelled, Some(_)) => TouchGesture::None,
+                    (true, TouchPhase::Cancelled, None) => TouchGesture::Cancel,
+                    (true, _, Some((start, _))) => TouchGesture::Tap(start),
+                    (true, _, None) => TouchGesture::Release,
                 }
             }
             (_, None) => TouchGesture::None,
+        }
+    }
+
+    pub fn poll(&mut self, now: f64) -> TouchGesture {
+        match self.waiting {
+            Some((start, since)) if now - since >= SECOND_FINGER_DELAY => {
+                self.waiting = None;
+                TouchGesture::Press(start)
+            }
+            _ => TouchGesture::None,
         }
     }
 
@@ -134,15 +159,15 @@ mod tests {
     fn one_finger_acts_like_the_left_mouse_button() {
         let mut touches = Touches::default();
         assert_eq!(
-            touches.update(&touch(1, TouchPhase::Started, 10.0, 20.0)),
+            touches.update(&touch(1, TouchPhase::Started, 10.0, 20.0), 0.0, false),
             TouchGesture::Press(at(10.0, 20.0))
         );
         assert_eq!(
-            touches.update(&touch(1, TouchPhase::Moved, 15.0, 25.0)),
+            touches.update(&touch(1, TouchPhase::Moved, 15.0, 25.0), 0.0, false),
             TouchGesture::Drag(at(15.0, 25.0))
         );
         assert_eq!(
-            touches.update(&touch(1, TouchPhase::Ended, 15.0, 25.0)),
+            touches.update(&touch(1, TouchPhase::Ended, 15.0, 25.0), 0.0, false),
             TouchGesture::Release
         );
     }
@@ -150,13 +175,13 @@ mod tests {
     #[test]
     fn second_finger_turns_a_drag_into_a_pinch() {
         let mut touches = Touches::default();
-        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0));
+        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), 0.0, false);
         assert_eq!(
-            touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0)),
+            touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0), 0.0, false),
             TouchGesture::Cancel
         );
         assert_eq!(
-            touches.update(&touch(2, TouchPhase::Moved, 50.0, 10.0)),
+            touches.update(&touch(2, TouchPhase::Moved, 50.0, 10.0), 0.0, false),
             TouchGesture::Pinch {
                 previous: [at(10.0, 10.0), at(30.0, 10.0)],
                 current: [at(10.0, 10.0), at(50.0, 10.0)],
@@ -167,18 +192,18 @@ mod tests {
     #[test]
     fn finger_left_after_a_pinch_does_nothing() {
         let mut touches = Touches::default();
-        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0));
-        touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0));
+        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), 0.0, false);
+        touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0), 0.0, false);
         assert_eq!(
-            touches.update(&touch(1, TouchPhase::Ended, 10.0, 10.0)),
+            touches.update(&touch(1, TouchPhase::Ended, 10.0, 10.0), 0.0, false),
             TouchGesture::None
         );
         assert_eq!(
-            touches.update(&touch(2, TouchPhase::Moved, 60.0, 10.0)),
+            touches.update(&touch(2, TouchPhase::Moved, 60.0, 10.0), 0.0, false),
             TouchGesture::None
         );
         assert_eq!(
-            touches.update(&touch(2, TouchPhase::Ended, 60.0, 10.0)),
+            touches.update(&touch(2, TouchPhase::Ended, 60.0, 10.0), 0.0, false),
             TouchGesture::None
         );
     }
@@ -186,12 +211,12 @@ mod tests {
     #[test]
     fn touch_after_a_pinch_presses_again() {
         let mut touches = Touches::default();
-        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0));
-        touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0));
-        touches.update(&touch(1, TouchPhase::Ended, 10.0, 10.0));
-        touches.update(&touch(2, TouchPhase::Ended, 30.0, 10.0));
+        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), 0.0, false);
+        touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0), 0.0, false);
+        touches.update(&touch(1, TouchPhase::Ended, 10.0, 10.0), 0.0, false);
+        touches.update(&touch(2, TouchPhase::Ended, 30.0, 10.0), 0.0, false);
         assert_eq!(
-            touches.update(&touch(3, TouchPhase::Started, 5.0, 5.0)),
+            touches.update(&touch(3, TouchPhase::Started, 5.0, 5.0), 0.0, false),
             TouchGesture::Press(at(5.0, 5.0))
         );
     }
@@ -199,14 +224,14 @@ mod tests {
     #[test]
     fn third_finger_is_ignored() {
         let mut touches = Touches::default();
-        touches.update(&touch(1, TouchPhase::Started, 0.0, 0.0));
-        touches.update(&touch(2, TouchPhase::Started, 10.0, 0.0));
+        touches.update(&touch(1, TouchPhase::Started, 0.0, 0.0), 0.0, false);
+        touches.update(&touch(2, TouchPhase::Started, 10.0, 0.0), 0.0, false);
         assert_eq!(
-            touches.update(&touch(3, TouchPhase::Started, 20.0, 0.0)),
+            touches.update(&touch(3, TouchPhase::Started, 20.0, 0.0), 0.0, false),
             TouchGesture::None
         );
         assert_eq!(
-            touches.update(&touch(3, TouchPhase::Moved, 25.0, 0.0)),
+            touches.update(&touch(3, TouchPhase::Moved, 25.0, 0.0), 0.0, false),
             TouchGesture::None
         );
     }
@@ -215,11 +240,11 @@ mod tests {
     fn unknown_fingers_are_ignored() {
         let mut touches = Touches::default();
         assert_eq!(
-            touches.update(&touch(7, TouchPhase::Moved, 1.0, 1.0)),
+            touches.update(&touch(7, TouchPhase::Moved, 1.0, 1.0), 0.0, false),
             TouchGesture::None
         );
         assert_eq!(
-            touches.update(&touch(7, TouchPhase::Ended, 1.0, 1.0)),
+            touches.update(&touch(7, TouchPhase::Ended, 1.0, 1.0), 0.0, false),
             TouchGesture::None
         );
     }
@@ -227,11 +252,61 @@ mod tests {
     #[test]
     fn cancelled_touch_cancels() {
         let mut touches = Touches::default();
-        touches.update(&touch(1, TouchPhase::Started, 0.0, 0.0));
+        touches.update(&touch(1, TouchPhase::Started, 0.0, 0.0), 0.0, false);
         assert_eq!(
-            touches.update(&touch(1, TouchPhase::Cancelled, 0.0, 0.0)),
+            touches.update(&touch(1, TouchPhase::Cancelled, 0.0, 0.0), 0.0, false),
             TouchGesture::Cancel
         );
+    }
+
+    #[test]
+    fn while_editing_a_press_waits_for_a_second_finger() {
+        let mut touches = Touches::default();
+        assert_eq!(
+            touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), 0.0, true),
+            TouchGesture::None
+        );
+        assert_eq!(
+            touches.update(&touch(1, TouchPhase::Moved, 12.0, 10.0), 0.02, true),
+            TouchGesture::None
+        );
+        assert_eq!(
+            touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0), 0.05, true),
+            TouchGesture::None
+        );
+        assert_eq!(touches.poll(1.0), TouchGesture::None);
+        assert!(matches!(
+            touches.update(&touch(2, TouchPhase::Moved, 50.0, 10.0), 1.0, true),
+            TouchGesture::Pinch { .. }
+        ));
+    }
+
+    #[test]
+    fn a_waiting_press_goes_through_after_the_delay() {
+        let mut touches = Touches::default();
+        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), 0.0, true);
+        assert_eq!(touches.poll(0.05), TouchGesture::None);
+        assert_eq!(touches.poll(0.2), TouchGesture::Press(at(10.0, 10.0)));
+        assert_eq!(touches.poll(0.3), TouchGesture::None);
+        assert_eq!(
+            touches.update(&touch(1, TouchPhase::Moved, 20.0, 10.0), 0.3, true),
+            TouchGesture::Drag(at(20.0, 10.0))
+        );
+        assert_eq!(
+            touches.update(&touch(2, TouchPhase::Started, 40.0, 10.0), 0.4, true),
+            TouchGesture::Cancel
+        );
+    }
+
+    #[test]
+    fn a_quick_touch_while_waiting_is_a_tap() {
+        let mut touches = Touches::default();
+        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), 0.0, true);
+        assert_eq!(
+            touches.update(&touch(1, TouchPhase::Ended, 11.0, 10.0), 0.05, true),
+            TouchGesture::Tap(at(10.0, 10.0))
+        );
+        assert_eq!(touches.poll(1.0), TouchGesture::None);
     }
 
     fn pressed_at(x: f64, y: f64) -> Mouse {

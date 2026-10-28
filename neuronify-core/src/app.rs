@@ -12,8 +12,9 @@ use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
 use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, ShadowRenderData};
 
-use crate::input::{Keyboard, Mouse, TouchGesture, Touches};
+use crate::input::{self, Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
+use crate::tools::Tool;
 
 pub struct Neuronify {
     pub edit_enabled: bool,
@@ -220,6 +221,10 @@ impl visula::Simulation for Neuronify {
             }
         }
 
+        if let TouchGesture::Press(position) = self.touches.poll(input::now()) {
+            self.move_pointer(application, position);
+            self.press_pointer(application, true);
+        }
         if let Some(position) = self.editor.touch() {
             simulation::stimulate_nearby(&mut self.world, position);
         }
@@ -350,13 +355,19 @@ impl visula::Simulation for Neuronify {
                 {
                     return;
                 }
-                match self.touches.update(touch) {
+                let wait = self.edit_enabled && self.editor.tool != Tool::Stimulate;
+                match self.touches.update(touch, input::now(), wait) {
                     TouchGesture::Press(position) => {
                         self.move_pointer(application, position);
                         self.press_pointer(application, true);
                     }
                     TouchGesture::Drag(position) => self.move_pointer(application, position),
                     TouchGesture::Release => self.press_pointer(application, false),
+                    TouchGesture::Tap(position) => {
+                        self.move_pointer(application, position);
+                        self.press_pointer(application, true);
+                        self.press_pointer(application, false);
+                    }
                     TouchGesture::Cancel => {
                         self.mouse.cancel();
                         self.handle_tool(application);
