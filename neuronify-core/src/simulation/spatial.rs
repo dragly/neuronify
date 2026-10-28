@@ -114,6 +114,10 @@ pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
         dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
         dynamics.velocity += dynamics.acceleration * dt as f32;
         position.position += dynamics.velocity * dt as f32;
+        if position.position.y < 0.0 {
+            position.position.y = 0.0;
+            dynamics.velocity.y = dynamics.velocity.y.max(0.0);
+        }
         dynamics.acceleration = Vec3::new(0.0, 0.0, 0.0);
         dynamics.velocity -= dynamics.velocity * dt as f32;
     }
@@ -223,6 +227,23 @@ mod tests {
         }
 
         assert!(bend(&world) < initial_bend / 2.0, "bend {}", bend(&world));
+    }
+
+    #[test]
+    fn crowded_compartments_stay_above_the_floor() {
+        let mut world = World::new();
+        let lower = compartment(&mut world, 0.0, 0.0);
+        let upper = compartment(&mut world, 0.0, 0.0);
+        world.get::<&mut Position>(upper).unwrap().position.y = 0.5;
+
+        for _ in 0..200 {
+            apply_spatial_forces(&mut world);
+            integrate_motion(&mut world, PHYSICS_DT);
+            for compartment in [lower, upper] {
+                let height = position(&world, compartment).y;
+                assert!(height >= 0.0, "sank to {height}");
+            }
+        }
     }
 
     #[test]
