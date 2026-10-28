@@ -320,6 +320,26 @@ fn touching_a_sensor_leaves_the_selection_alone() {
     assert_eq!(editor.selection, Some(target));
 }
 
+#[test]
+fn holding_an_element_grabs_it() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Select);
+
+    editor.view(&world, at(10.0, 10.0));
+    assert!(!editor.hold(&world, at(10.0, 10.0)));
+    editor.release();
+
+    editor.view(&world, at(0.5, 0.0));
+    assert!(editor.hold(&world, at(0.5, 0.0)));
+    assert_eq!(editor.selection, Some(target));
+    assert_eq!(editor.edit(&mut world, at(3.5, 2.0), false), None);
+    assert_eq!(
+        world.get::<&Position>(target).unwrap().position,
+        at(3.0, 2.0)
+    );
+}
+
 fn grow_axon(world: &mut World, from: Vec3, to: Vec3) {
     let steps = (from.distance(to) / 0.5) as usize;
     let path: Vec<Vec3> = (0..=steps)

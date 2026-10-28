@@ -72,6 +72,10 @@ fn is_press_scroll_or_touch(event: &Event<CustomEvent>) -> bool {
     )
 }
 
+fn is_compact(application: &visula::Application) -> bool {
+    gui::is_compact(application.egui_renderer.state.egui_ctx().content_rect())
+}
+
 fn gui_takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
     let context = application.egui_renderer.state.egui_ctx();
     let point = egui::pos2(position.x as f32, position.y as f32) / context.pixels_per_point();
@@ -118,17 +122,24 @@ impl Neuronify {
     }
 
     fn press_pointer(&mut self, application: &mut visula::Application, pressed: bool) {
-        if self.mouse.press(pressed) {
-            if self.edit_enabled {
-                if self.editor.pressed_background() {
-                    self.editor.selection = None;
-                }
-            } else if let Some(position) = self.mouse.position {
-                let position = camera::ground_position(application, position);
-                self.editor.tap(&self.world, position);
-            }
+        if self.mouse.press(pressed, input::now()) {
+            self.tap(application);
         }
         self.handle_tool(application);
+    }
+
+    fn tap(&mut self, application: &visula::Application) {
+        if self.edit_enabled {
+            if self.editor.pressed_background() {
+                self.editor.selection = None;
+                if is_compact(application) {
+                    self.edit_enabled = false;
+                }
+            }
+        } else if let Some(position) = self.mouse.position {
+            let position = camera::ground_position(application, position);
+            self.editor.tap(&self.world, position);
+        }
     }
 
     fn move_pointer(
@@ -224,6 +235,12 @@ impl visula::Simulation for Neuronify {
         if let TouchGesture::Press(position) = self.touches.poll(input::now()) {
             self.move_pointer(application, position);
             self.press_pointer(application, true);
+        }
+        if !self.edit_enabled && is_compact(application) {
+            if let Some(position) = self.mouse.take_hold(input::now()) {
+                let position = camera::ground_position(application, position);
+                self.edit_enabled = self.editor.hold(&self.world, position);
+            }
         }
         if let Some(position) = self.editor.touch() {
             simulation::stimulate_nearby(&mut self.world, position);
