@@ -380,6 +380,45 @@ fn compressing_keeps_branches_and_measured_compartments() {
 }
 
 #[test]
+fn pulling_a_compartment_next_to_the_soma_lengthens_its_dendrite_by_the_pull() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    spawn_dendrites(&mut world, soma);
+    let reach = |world: &World| {
+        dendrite_tree(world, soma)
+            .iter()
+            .map(|&dendrite| position(world, dendrite).length())
+            .fold(0.0, f32::max)
+    };
+    let reached = reach(&world);
+    let (first, first_at) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .min_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
+        .unwrap();
+    let pulled = first_at + 6.0 * first_at.normalize();
+
+    drag_in_steps(&mut world, first_at, pulled);
+
+    assert!(position(&world, first).distance(pulled) < 1e-3);
+    assert!(evenly_spaced(&world, &chain(&world, soma, first).unwrap()));
+    assert!(reach(&world) < reached + 6.5, "reached {}", reach(&world));
+}
+
+#[test]
+fn stretching_axons_leave_the_neurons_between_them_in_place() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let middle = neuron(&mut world, at(0.0, 20.0));
+    neuron(&mut world, at(0.0, 40.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 20.0), at(0.0, 40.0));
+
+    drag_in_steps(&mut world, at(0.0, 0.0), at(0.0, -10.0));
+
+    assert_eq!(position(&world, middle), at(0.0, 20.0));
+}
+
+#[test]
 fn a_dragged_compartment_pulls_its_axon_longer() {
     let mut world = World::new();
     let soma = neuron(&mut world, at(0.0, 0.0));
