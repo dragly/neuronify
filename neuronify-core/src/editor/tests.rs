@@ -263,6 +263,41 @@ fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
 }
 
 #[test]
+fn selected_notes_are_resized_by_their_corners() {
+    let mut world = World::new();
+    let note = Element::Note.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Select);
+    let size = |world: &World| {
+        world
+            .get::<&NoteSize>(note)
+            .map(|size| (size.width, size.height))
+            .unwrap()
+    };
+    let corners = |world: &World| {
+        note_corners(
+            world.get::<&Position>(note).unwrap().position,
+            &world.get::<&NoteSize>(note).unwrap(),
+        )
+    };
+    let [bottom_left, top_right] = corners(&world);
+
+    drag(
+        &mut editor,
+        &mut world,
+        &[top_right, top_right + at(1.0, 1.0)],
+    );
+    assert_eq!(size(&world), (7.2, 4.8));
+    assert_eq!(editor.selection, Some(note));
+
+    let [bottom_left, top_right] = [bottom_left + at(1.0, 1.0), top_right + at(1.0, 1.0)];
+    let outside = top_right + at(0.3, 0.3);
+    drag(&mut editor, &mut world, &[outside, outside + at(2.0, 0.8)]);
+    let [resized_bottom_left, resized_top_right] = corners(&world);
+    assert!(resized_bottom_left.abs_diff_eq(bottom_left, 1e-5));
+    assert!(resized_top_right.abs_diff_eq(top_right + at(2.0, 0.8), 1e-5));
+}
+
+#[test]
 fn notes_lie_under_the_circuit() {
     let mut world = World::new();
     let note = Element::Note.spawn(&mut world, at(0.0, 0.0));

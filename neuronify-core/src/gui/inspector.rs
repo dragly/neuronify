@@ -448,7 +448,6 @@ fn reading(ui: &mut Ui, chrome: &Chrome, label: &str, value: String, size: f32) 
 }
 
 fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
-    let sized = |value: f32| format!("{value:.1}");
     let hertz = |value: f64| format!("{value:.0} Hz");
     if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
@@ -512,11 +511,6 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
                 .margin(Margin::same(8)),
         );
         ui.add_space(8.0);
-    }
-    if let Ok(mut size) = world.get::<&mut NoteSize>(entity) {
-        heading(ui, chrome, "Size", 0.0);
-        parameter(ui, chrome, "Width", &mut size.width, 2.0..=30.0, sized);
-        parameter(ui, chrome, "Height", &mut size.height, 1.0..=20.0, sized);
     }
     if let Ok(compartment) = world.get::<&Compartment>(entity) {
         heading(ui, chrome, "Gating", 0.0);

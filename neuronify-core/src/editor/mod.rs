@@ -8,6 +8,7 @@ use crate::constants::*;
 use crate::dendrites::{dendrite_tree, spawn_dendrites};
 use crate::elements::{spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element};
 use crate::measurement::voltmeter::{Corner, Frame, Voltmeter};
+use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::touch_sensor_near;
 use crate::tools::{ConnectionTool, StimulationTool, Tool};
@@ -35,7 +36,7 @@ pub struct Editor {
     previous_creation: Option<Entity>,
     move_origin: Option<Vec3>,
     dragging: Option<Drag>,
-    resizing: Option<(Entity, Corner)>,
+    resizing: Option<(Entity, Corner, Vec3)>,
 }
 
 impl Editor {
@@ -232,8 +233,8 @@ impl Editor {
     fn select(&mut self, world: &mut World, position: Vec3) -> Option<Pan> {
         if let Some(drag) = &mut self.dragging {
             drag.move_to(world, position);
-        } else if let Some((voltmeter, corner)) = self.resizing {
-            resize(world, voltmeter, corner, position);
+        } else if let Some((resized, corner, offset)) = self.resizing {
+            resize(world, resized, corner, position + offset);
         } else if let Some(origin) = self.move_origin {
             return Some(Pan(position - origin));
         } else {
@@ -244,9 +245,20 @@ impl Editor {
 
     fn pick(&mut self, world: &World, position: Vec3) {
         let frames = voltmeter_frames(world);
-        self.resizing = frames.iter().find_map(|(voltmeter, _, frame)| {
-            Some((*voltmeter, frame.corner_near(position, CORNER_REACH)?))
-        });
+        let selected = self
+            .selection
+            .and_then(|selected| Some((selected, resizable(world, selected)?)));
+        self.resizing = selected
+            .into_iter()
+            .chain(
+                frames
+                    .iter()
+                    .map(|&(voltmeter, _, frame)| (voltmeter, frame)),
+            )
+            .find_map(|(entity, frame)| {
+                let corner = frame.corner_near(position, CORNER_REACH)?;
+                Some((entity, corner, frame.corner(corner) - position))
+            });
         if self.resizing.is_some() {
             return;
         }
@@ -376,16 +388,39 @@ fn note_under(world: &World, position: Vec3) -> Option<(Entity, Vec3)> {
         .map(|(entity, (note, _))| (entity, note.position))
 }
 
-fn resize(world: &mut World, voltmeter: Entity, corner: Corner, position: Vec3) {
-    let Some(frame) = Frame::of(world, voltmeter) else {
+fn resizable(world: &World, entity: Entity) -> Option<Frame> {
+    if let Some(frame) = Frame::of(world, entity) {
+        return Some(frame);
+    }
+    let note = world.get::<&Position>(entity).ok()?;
+    let size = world.get::<&NoteSize>(entity).ok()?;
+    let [bottom_left, _] = note_corners(note.position, &size);
+    Some(Frame {
+        bottom_left,
+        width: size.width,
+        height: size.height,
+    })
+}
+
+fn resize(world: &mut World, entity: Entity, corner: Corner, position: Vec3) {
+    let Some(frame) = resizable(world, entity) else {
         return;
     };
     let resized = frame.resized(corner, position);
-    if let Ok(mut size) = world.get::<&mut VoltmeterSize>(voltmeter) {
-        *size = resized.size();
-    }
-    if let Ok(mut voltmeter_position) = world.get::<&mut Position>(voltmeter) {
-        voltmeter_position.position = resized.position();
+    let moved_to = if let Ok(mut size) = world.get::<&mut NoteSize>(entity) {
+        *size = NoteSize {
+            width: resized.width,
+            height: resized.height,
+        };
+        resized.point(0.5, 0.5)
+    } else {
+        if let Ok(mut size) = world.get::<&mut VoltmeterSize>(entity) {
+            *size = resized.size();
+        }
+        resized.position()
+    };
+    if let Ok(mut moved) = world.get::<&mut Position>(entity) {
+        moved.position = moved_to;
     }
 }
 
