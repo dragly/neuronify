@@ -16,7 +16,7 @@ use crate::tools::Tool;
 const SAVED_NAME: &str = "circuit.neuronify";
 
 pub struct Neuronify {
-    pub edit_enabled: bool,
+    edit_enabled: bool,
     pub landing: Option<LandingScreen>,
     editor: Editor,
     gui: Gui,
@@ -116,7 +116,7 @@ impl Neuronify {
 
         let opened = world_from_command_line();
         Neuronify {
-            edit_enabled: true,
+            edit_enabled: false,
             landing: opened.is_none().then(|| LandingScreen::new(false)),
             editor: Editor::default(),
             gui: Gui::default(),
@@ -229,6 +229,7 @@ impl Neuronify {
     fn open_world(&mut self, world: hecs::World, time: f64) {
         self.world = world;
         self.time = time;
+        self.edit_enabled = false;
         self.editor.release();
         self.editor.selection = None;
         self.landing = None;
