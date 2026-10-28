@@ -37,7 +37,15 @@ const COMPACT_HEIGHT: f32 = 560.0;
 pub enum MenuChoice {
     Open,
     Save,
+    Share,
     Examples,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Saving {
+    Save,
+    SaveOrShare,
+    Share,
 }
 
 pub struct Controls<'a> {
@@ -49,6 +57,7 @@ pub struct Controls<'a> {
     pub running: &'a mut bool,
     pub iterations: &'a mut u32,
     pub fps: f64,
+    pub saving: Saving,
 }
 
 #[derive(Default)]
@@ -128,6 +137,7 @@ impl Gui {
             (Align2::LEFT_TOP, menu_position),
             controls.theme,
             controls.fps,
+            controls.saving,
         );
         choice.or(picked)
     }
@@ -211,6 +221,7 @@ impl Gui {
             (Align2::RIGHT_TOP, position),
             controls.theme,
             controls.fps,
+            controls.saving,
         );
         choice.or(picked)
     }
@@ -222,6 +233,7 @@ impl Gui {
         (pivot, position): (Align2, Pos2),
         theme: &mut Theme,
         fps: f64,
+        saving: Saving,
     ) -> Option<MenuChoice> {
         if button.clicked() {
             self.menu_open = !self.menu_open;
@@ -229,7 +241,7 @@ impl Gui {
         if !self.menu_open {
             return None;
         }
-        let (picked, rect) = menu(context, pivot, position, theme, fps);
+        let (picked, rect) = menu(context, pivot, position, theme, fps, saving);
         let pressed_elsewhere = context.input(|input| {
             input.pointer.any_pressed()
                 && input.pointer.interact_pos().is_some_and(|position| {
@@ -323,6 +335,7 @@ fn menu(
     position: Pos2,
     theme: &mut Theme,
     fps: f64,
+    saving: Saving,
 ) -> (Option<MenuChoice>, Rect) {
     let chrome = Chrome::of(*theme);
     let mut picked = None;
@@ -337,8 +350,13 @@ fn menu(
                 if icon_row(ui, chrome, Icon::Folder, "Open…").clicked() {
                     picked = Some(MenuChoice::Open);
                 }
-                if icon_row(ui, chrome, Icon::Save, "Save…").clicked() {
+                if saving != Saving::Share && icon_row(ui, chrome, Icon::Save, "Save…").clicked()
+                {
                     picked = Some(MenuChoice::Save);
+                }
+                if saving != Saving::Save && icon_row(ui, chrome, Icon::Share, "Share…").clicked()
+                {
+                    picked = Some(MenuChoice::Share);
                 }
                 if icon_row(ui, chrome, Icon::Grid, "Examples").clicked() {
                     picked = Some(MenuChoice::Examples);

@@ -30,6 +30,7 @@ pub enum Icon {
     Check,
     Folder,
     Save,
+    Share,
     Trash,
     Close,
     Play,
@@ -134,6 +135,24 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
                 stroke,
             ));
             painter.line_segment([at(vec2(5.0, 19.5)), at(vec2(19.0, 19.5))], stroke);
+        }
+        Icon::Share => {
+            painter.line_segment([at(vec2(12.0, 3.5)), at(vec2(12.0, 14.5))], stroke);
+            painter.add(Shape::line(
+                vec![at(vec2(8.0, 7.5)), at(vec2(12.0, 3.5)), at(vec2(16.0, 7.5))],
+                stroke,
+            ));
+            painter.add(Shape::line(
+                vec![
+                    at(vec2(9.0, 9.5)),
+                    at(vec2(6.0, 9.5)),
+                    at(vec2(6.0, 20.5)),
+                    at(vec2(18.0, 20.5)),
+                    at(vec2(18.0, 9.5)),
+                    at(vec2(15.0, 9.5)),
+                ],
+                stroke,
+            ));
         }
         Icon::Trash => {
             painter.line_segment([at(vec2(4.5, 7.0)), at(vec2(19.5, 7.0))], stroke);

@@ -1,7 +1,7 @@
 use crate::camera;
 use crate::editor::{Editor, Pan};
 use crate::frame_clock::FrameClock;
-use crate::gui::{self, Gui, MenuChoice};
+use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
 use visula::winit::dpi::PhysicalPosition;
@@ -11,6 +11,9 @@ use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, Shadow
 use crate::input::{self, Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
 use crate::tools::Tool;
+
+#[cfg(target_arch = "wasm32")]
+const SAVED_NAME: &str = "circuit.neuronify";
 
 pub struct Neuronify {
     pub edit_enabled: bool,
@@ -29,6 +32,7 @@ pub struct Neuronify {
     frame_clock: FrameClock,
     load_error: Option<String>,
     frame_scene_requested: bool,
+    saving: Saving,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -54,6 +58,20 @@ fn world_from_command_line() -> Option<hecs::World> {
 #[cfg(target_arch = "wasm32")]
 fn world_from_command_line() -> Option<hecs::World> {
     None
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn saving() -> Saving {
+    Saving::Save
+}
+
+#[cfg(target_arch = "wasm32")]
+fn saving() -> Saving {
+    match (crate::web::can_share(SAVED_NAME), crate::web::is_ios()) {
+        (false, _) => Saving::Save,
+        (true, false) => Saving::SaveOrShare,
+        (true, true) => Saving::Share,
+    }
 }
 
 fn is_press_scroll_or_touch(event: &Event<CustomEvent>) -> bool {
@@ -114,6 +132,7 @@ impl Neuronify {
             renderer,
             frame_clock: FrameClock::default(),
             load_error: None,
+            saving: saving(),
         }
     }
 
@@ -189,8 +208,21 @@ impl Neuronify {
     #[cfg(target_arch = "wasm32")]
     fn save(&self) {
         let bytes = crate::serialization::save(&self.world, self.time).unwrap();
-        if let Err(error) = crate::web::download(&bytes, "circuit.neuronify") {
+        if let Err(error) = crate::web::download(&bytes, SAVED_NAME) {
             log::error!("Could not save: {error:?}");
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn share(&self) {
+        self.save();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn share(&self) {
+        let bytes = crate::serialization::save(&self.world, self.time).unwrap();
+        if let Err(error) = crate::web::share(&bytes, SAVED_NAME) {
+            log::error!("Could not share: {error:?}");
         }
     }
 
@@ -335,10 +367,12 @@ impl visula::Simulation for Neuronify {
             running: &mut self.running,
             iterations: &mut self.iterations,
             fps: self.frame_clock.fps(),
+            saving: self.saving,
         };
         match self.gui.show(context, controls) {
             Some(MenuChoice::Examples) => self.landing = Some(LandingScreen::new(true)),
             Some(MenuChoice::Save) => self.save(),
+            Some(MenuChoice::Share) => self.share(),
             Some(MenuChoice::Open) => self.open(),
             None => {}
         }
