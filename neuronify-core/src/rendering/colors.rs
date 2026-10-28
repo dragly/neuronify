@@ -90,6 +90,7 @@ pub struct Palette {
     pub flash: Vec3,
     /// Connections from anything that is not a neuron or a source
     pub neutral: Vec3,
+    pub selection: Vec3,
 }
 
 impl Theme {
@@ -104,6 +105,7 @@ impl Theme {
                 spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: crust(),
+                selection: srgb(137, 180, 250),
             },
             Theme::Light => Palette {
                 floor: srgb(236, 239, 245),
@@ -114,6 +116,7 @@ impl Theme {
                 spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: srgb(140, 143, 161),
+                selection: srgb(30, 102, 245),
             },
         }
     }

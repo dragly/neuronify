@@ -1,4 +1,5 @@
 use glam::Vec3;
+use hecs::Entity;
 use visula::{
     CylinderGeometry, CylinderMaterial, Cylinders, Expression, InstanceBuffer, LineGeometry,
     LineMaterial, Lines, MeshPipeline, RenderData, Renderable, ShadowRenderData, SphereGeometry,
@@ -14,6 +15,7 @@ use crate::rendering::gpu_types::{ConnectionData, CylinderData, Sphere, TorusDat
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::notes::NoteRenderer;
 use crate::rendering::scene::collect_scene;
+use crate::rendering::selection::collect_selection;
 use crate::rendering::voltmeter::collect_voltmeter_traces;
 
 const SHADOW_EXTENT_PER_CAMERA_DISTANCE: f32 = 2.0;
@@ -154,6 +156,7 @@ impl SceneRenderer {
         world: &hecs::World,
         theme: Theme,
         drawn_connection: Option<(Vec3, Vec3)>,
+        selection: Option<Entity>,
     ) {
         if self.theme != theme {
             self.floor = create_floor(
@@ -172,7 +175,10 @@ impl SceneRenderer {
             .clamp(MIN_SHADOW_EXTENT, MAX_SHADOW_EXTENT);
 
         let palette = theme.palette();
-        let scene = collect_scene(world, &palette);
+        let mut scene = collect_scene(world, &palette);
+        if let Some(selection) = selection {
+            scene.extend(collect_selection(world, selection, &palette));
+        }
         let mut connections = collect_voltmeter_wires(world, &palette);
         if let Some((start, end)) = drawn_connection {
             connections.push(connection_being_drawn(start, end, &palette));

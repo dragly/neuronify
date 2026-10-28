@@ -37,7 +37,7 @@ impl Scene {
         }
     }
 
-    fn extend(&mut self, other: Scene) {
+    pub fn extend(&mut self, other: Scene) {
         self.spheres.extend(other.spheres);
         self.cylinders.extend(other.cylinders);
         self.rings.extend(other.rings);
