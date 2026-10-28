@@ -435,3 +435,94 @@ fn a_dragged_compartment_pulls_its_axon_longer() {
     assert!(pulled.len() > 6, "{}", pulled.len());
     assert!(evenly_spaced(&world, &pulled));
 }
+
+fn neuron_with_dendrites(world: &mut World, position: Vec3) -> Entity {
+    let soma = neuron(world, position);
+    spawn_dendrites(world, soma);
+    soma
+}
+
+fn bearing(world: &World, soma: Entity, towards: Entity, of: Entity) -> (f32, f32) {
+    let flat = |offset: Vec3| glam::Vec2::new(offset.x, offset.z);
+    let towards = flat(position(world, towards) - position(world, soma));
+    let offset = flat(position(world, of) - position(world, soma));
+    (towards.angle_to(offset), offset.length())
+}
+
+#[test]
+fn dendrites_turn_to_keep_facing_the_neuron_they_connect_to() {
+    let mut world = World::new();
+    let source = neuron_with_dendrites(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 30.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 30.0));
+    let dendrites = dendrite_tree(&world, source);
+    let before: Vec<_> = dendrites
+        .iter()
+        .map(|&dendrite| bearing(&world, source, target, dendrite))
+        .collect();
+
+    drag_in_steps(&mut world, at(0.0, 0.0), at(15.0, 0.0));
+
+    for (&dendrite, (angle, distance)) in dendrites.iter().zip(before) {
+        let (turned_angle, turned_distance) = bearing(&world, source, target, dendrite);
+        assert!(
+            (turned_angle - angle).abs() < 1e-3,
+            "{angle} became {turned_angle}"
+        );
+        assert!((turned_distance - distance).abs() < 1e-3);
+    }
+}
+
+#[test]
+fn swinging_around_a_neuron_moves_nothing_far_in_one_step() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 30.0));
+    neuron_with_dendrites(&mut world, at(0.0, 0.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 30.0));
+    let mut editor = editor(Tool::Select);
+    let centre = position(&world, target);
+
+    let mut previous = positions_with::<Compartment>(&world);
+    for step in 0..=300 {
+        let swing = 1.5 * std::f32::consts::PI * step as f32 / 300.0;
+        editor.edit(
+            &mut world,
+            centre + 30.0 * at(swing.sin(), -swing.cos()),
+            false,
+        );
+        let current = positions_with::<Compartment>(&world);
+        for &(compartment, now) in &current {
+            if let Some(&(_, then)) = previous.iter().find(|(other, _)| *other == compartment) {
+                assert!(
+                    now.distance(then) < 3.0,
+                    "jumped {} at step {step}",
+                    now.distance(then)
+                );
+            }
+        }
+        previous = current;
+    }
+}
+
+#[test]
+fn axons_to_several_neurons_turn_without_bending() {
+    let mut world = World::new();
+    let source = neuron_with_dendrites(&mut world, at(0.0, 0.0));
+    let up = neuron(&mut world, at(0.0, 20.0));
+    let right = neuron(&mut world, at(20.0, 0.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
+    grow_axon(&mut world, at(0.0, 0.0), at(20.0, 0.0));
+
+    drag_in_steps(&mut world, at(0.0, 0.0), at(-8.0, -4.0));
+
+    for target in [up, right] {
+        let axon = chain(&world, source, target).unwrap();
+        let (start, end) = (position(&world, source), position(&world, target));
+        let along = (end - start).normalize();
+        for &compartment in &axon {
+            let offset = position(&world, compartment) - start;
+            let off_line = (offset - offset.dot(along) * along).length();
+            assert!(off_line < 0.1, "{off_line} off the line");
+        }
+    }
+}
