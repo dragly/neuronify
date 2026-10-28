@@ -23,6 +23,8 @@ const SCREEN_RIGHT: Vec3 = Vec3::Z;
 /// Where the arrow of a current source without a target points.
 const UNCONNECTED_ARROW: Vec3 = SCREEN_UP;
 pub const PAD_RADIUS: f32 = 1.25 * NODE_RADIUS;
+pub const GENERATOR_RING_RADIUS: f32 = 1.6 * NODE_RADIUS;
+pub const GENERATOR_RING_THICKNESS: f32 = 0.15 * NODE_RADIUS;
 const PAD_HALF_HEIGHT: f32 = 0.2;
 const GLYPH_HEIGHT: f32 = PAD_HALF_HEIGHT + 0.04;
 
@@ -194,10 +196,10 @@ pub fn collect_rings(world: &hecs::World, palette: &Palette) -> Vec<TorusData> {
         .iter()
         .map(|(_, (dynamics, position))| TorusData {
             position: position.position,
-            major_radius: 1.6 * NODE_RADIUS,
+            major_radius: GENERATOR_RING_RADIUS,
             rotation: Quat::IDENTITY,
             color: generator_color(dynamics, palette),
-            minor_radius: 0.15 * NODE_RADIUS,
+            minor_radius: GENERATOR_RING_THICKNESS,
         })
         .collect()
 }

@@ -329,6 +329,7 @@ impl visula::Simulation for Neuronify {
             &self.world,
             self.theme,
             self.editor.connection_being_drawn(),
+            self.editor.selection,
         );
         self.frame_clock.tick();
     }

@@ -180,8 +180,7 @@ fn collect_gauges(
         }
 
         if let Some(level) = burst {
-            let offset = if adaptation.is_some() { 1.75 } else { 1.6 } * NODE_RADIUS;
-            let bottom = center + right * offset - up * 0.5 * BAR_LENGTH;
+            let bottom = center + right * bar_offset(adaptation.is_some()) - up * 0.5 * BAR_LENGTH;
             gauges.stroke(&[bottom, bottom + up * BAR_LENGTH], BAR_THICKNESS, track);
             if level > 0.005 {
                 gauges.stroke(
@@ -193,6 +192,29 @@ fn collect_gauges(
         }
     }
     gauges
+}
+
+fn bar_offset(adaptation: bool) -> f32 {
+    if adaptation {
+        1.75 * NODE_RADIUS
+    } else {
+        1.6 * NODE_RADIUS
+    }
+}
+
+pub fn gauge_reach(world: &hecs::World, neuron: hecs::Entity) -> f32 {
+    let adaptation = world.get::<&AdaptationCurrent>(neuron).is_ok();
+    let ring = if adaptation {
+        RING_RADIUS + RING_THICKNESS
+    } else {
+        0.0
+    };
+    let bar = if world.get::<&BurstCurrent>(neuron).is_ok() {
+        bar_offset(adaptation).hypot(0.5 * BAR_LENGTH) + BAR_THICKNESS
+    } else {
+        0.0
+    };
+    ring.max(bar)
 }
 
 #[cfg(test)]
