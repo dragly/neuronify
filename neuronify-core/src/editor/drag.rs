@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use glam::Vec3;
 use hecs::{Entity, World};
@@ -65,11 +65,12 @@ impl Drag {
             .filter(|(_, &free)| free)
             .map(|((&node, &follows), _)| (node, follows as f32))
             .collect();
+        let free: HashSet<Entity> = self.followers.iter().map(|&(node, _)| node).collect();
         self.stretching_chains = reached
             .links
             .iter()
             .filter(|&&(_, a, b)| (follows[a] - follows[b]).abs() > 1e-4)
-            .filter_map(|&(cable, _, _)| cables.chain_from(cable))
+            .filter_map(|&(cable, _, _)| cables.chain_from(cable, &free))
             .collect();
     }
 }
@@ -114,8 +115,8 @@ impl Cables {
         cables
     }
 
-    fn onwards_from(&self, node: Entity) -> Option<&Cable> {
-        if self.connections_at.get(&node) != Some(&2) {
+    fn onwards_from(&self, node: Entity, free: &HashSet<Entity>) -> Option<&Cable> {
+        if !free.contains(&node) || self.connections_at.get(&node) != Some(&2) {
             return None;
         }
         let [first, second] = self.at.get(&node)?[..] else {
@@ -131,14 +132,14 @@ impl Cables {
         }
     }
 
-    fn chain_from(&self, start: usize) -> Option<Vec<Entity>> {
+    fn chain_from(&self, start: usize, free: &HashSet<Entity>) -> Option<Vec<Entity>> {
         let first = &self.all[start];
-        if self.onwards_from(first.from).is_some() {
+        if self.onwards_from(first.from, free).is_some() {
             return None;
         }
         let mut chain = vec![first.entity];
         let mut end = first.to;
-        while let Some(next) = self.onwards_from(end) {
+        while let Some(next) = self.onwards_from(end, free) {
             if chain.len() > self.all.len() {
                 return None;
             }
