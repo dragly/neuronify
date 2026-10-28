@@ -2,8 +2,8 @@ use glam::{Mat4, Vec3, Vec4};
 use hecs::Entity;
 use std::collections::{HashMap, HashSet};
 use visula::{
-    text::{tessellate_text_wrapped, TessellatedGeometry},
-    Expression, PolygonDelegate, PolygonVertex, Polygons,
+    text::{GlyphAtlas, TessellatedGeometry},
+    Expression, GlyphDelegate, GlyphVertex, Glyphs, PolygonDelegate, PolygonVertex, Polygons,
 };
 
 use crate::components::{Annotation, NoteSize, Position};
@@ -27,35 +27,41 @@ struct NoteGeometry {
     height: f32,
     half_extent: [f32; 2],
     background: TessellatedGeometry,
-    glyphs: TessellatedGeometry,
+    glyphs: TessellatedGeometry<GlyphVertex>,
 }
 
 /// Draws every note with two pipelines, one for the backgrounds and one for the text.
 /// Moving a note only uploads new vertices.
 pub struct NoteRenderer {
     backgrounds: Polygons,
-    text: Polygons,
+    text: Glyphs,
+    atlas: GlyphAtlas,
     notes: HashMap<Entity, NoteGeometry>,
     uploaded: Vec<(Entity, Vec3)>,
 }
 
 impl NoteRenderer {
     pub fn new(application: &visula::Application) -> Self {
-        let polygons = |color: Vec4, y: f32| {
-            Polygons::new(
+        Self {
+            backgrounds: Polygons::new(
                 &application.rendering_descriptor(),
                 &PolygonDelegate {
-                    color: color.into(),
-                    transform: Expression::from(note_plane(y)),
+                    color: Vec4::new(0.95, 0.95, 0.85, 1.0).into(),
+                    transform: Expression::from(note_plane(NOTE_BACKGROUND_Y)),
                 },
                 &[],
                 &[],
             )
-            .unwrap()
-        };
-        Self {
-            backgrounds: polygons(Vec4::new(0.95, 0.95, 0.85, 1.0), NOTE_BACKGROUND_Y),
-            text: polygons(Vec4::new(0.1, 0.1, 0.15, 1.0), NOTE_TEXT_Y),
+            .unwrap(),
+            text: Glyphs::new(
+                &application.rendering_descriptor(),
+                &GlyphDelegate {
+                    color: Vec4::new(0.1, 0.1, 0.15, 1.0).into(),
+                    transform: Expression::from(note_plane(NOTE_TEXT_Y)),
+                },
+            )
+            .unwrap(),
+            atlas: GlyphAtlas::new(NOTE_FONT_DATA).unwrap(),
             notes: HashMap::new(),
             uploaded: Vec::new(),
         }
@@ -73,8 +79,10 @@ impl NoteRenderer {
                     && note.height == size.height
             });
             if !current {
-                self.notes
-                    .insert(entity, build_note_geometry(&annotation.text, size));
+                self.notes.insert(
+                    entity,
+                    build_note_geometry(&mut self.atlas, &annotation.text, size),
+                );
                 changed = true;
             }
             placed.push((entity, position.position));
@@ -94,6 +102,8 @@ impl NoteRenderer {
             &backgrounds.vertices,
             &backgrounds.indices,
         );
+        self.text
+            .update_atlas(&application.device, &application.queue, &self.atlas);
         self.text.update_geometry(
             &application.device,
             &application.queue,
@@ -115,7 +125,7 @@ impl NoteRenderer {
 fn layout(
     notes: &HashMap<Entity, NoteGeometry>,
     placed: &[(Entity, Vec3)],
-) -> (TessellatedGeometry, TessellatedGeometry) {
+) -> (TessellatedGeometry, TessellatedGeometry<GlyphVertex>) {
     let rectangles: Vec<Rectangle> = placed
         .iter()
         .map(|(entity, position)| Rectangle::around(*position, notes[entity].half_extent))
@@ -136,14 +146,14 @@ fn layout(
     (backgrounds, text)
 }
 
-fn build_note_geometry(text: &str, size: &NoteSize) -> NoteGeometry {
+fn build_note_geometry(atlas: &mut GlyphAtlas, text: &str, size: &NoteSize) -> NoteGeometry {
     let width = size.width.max(0.5);
     let height = size.height.max(0.5);
     let inner_width = (width - 2.0 * NOTE_MARGIN).max(0.5);
     let glyphs = if text.is_empty() {
         TessellatedGeometry::default()
     } else {
-        match tessellate_text_wrapped(NOTE_FONT_DATA, text, NOTE_TEXT_HEIGHT, inner_width) {
+        match atlas.lay_out_wrapped(text, NOTE_TEXT_HEIGHT, inner_width) {
             // Lines start at the top left and go down, so shift the block to center it
             Ok(wrapped) => shifted(
                 &wrapped.geometry,
@@ -151,7 +161,7 @@ fn build_note_geometry(text: &str, size: &NoteSize) -> NoteGeometry {
                 wrapped.height * 0.5,
             ),
             Err(e) => {
-                log::error!("Failed to tessellate note text: {e:?}");
+                log::error!("Failed to lay out note text: {e:?}");
                 TessellatedGeometry::default()
             }
         }
@@ -179,21 +189,70 @@ fn note_plane(y: f32) -> Mat4 {
 }
 
 /// Moves geometry around a note's center to the note's position on the ground.
-fn translated(geometry: &TessellatedGeometry, position: Vec3) -> TessellatedGeometry {
+fn translated<V: PlaneVertex>(
+    geometry: &TessellatedGeometry<V>,
+    position: Vec3,
+) -> TessellatedGeometry<V> {
     shifted(geometry, position.z, position.x)
 }
 
-fn shifted(geometry: &TessellatedGeometry, dx: f32, dy: f32) -> TessellatedGeometry {
+fn shifted<V: PlaneVertex>(
+    geometry: &TessellatedGeometry<V>,
+    dx: f32,
+    dy: f32,
+) -> TessellatedGeometry<V> {
     TessellatedGeometry {
-        vertices: geometry
-            .vertices
-            .iter()
-            .map(|v| PolygonVertex {
-                position: [v.position[0] + dx, v.position[1] + dy],
-            })
-            .collect(),
+        vertices: geometry.vertices.iter().map(|v| v.moved(dx, dy)).collect(),
         indices: geometry.indices.clone(),
     }
+}
+
+trait PlaneVertex: Copy {
+    fn position(&self) -> [f32; 2];
+    fn moved(self, dx: f32, dy: f32) -> Self;
+    fn toward(self, other: Self, t: f32) -> Self;
+}
+
+impl PlaneVertex for PolygonVertex {
+    fn position(&self) -> [f32; 2] {
+        self.position
+    }
+
+    fn moved(self, dx: f32, dy: f32) -> Self {
+        PolygonVertex {
+            position: [self.position[0] + dx, self.position[1] + dy],
+        }
+    }
+
+    fn toward(self, other: Self, t: f32) -> Self {
+        PolygonVertex {
+            position: lerp(self.position, other.position, t),
+        }
+    }
+}
+
+impl PlaneVertex for GlyphVertex {
+    fn position(&self) -> [f32; 2] {
+        self.position
+    }
+
+    fn moved(self, dx: f32, dy: f32) -> Self {
+        GlyphVertex {
+            position: [self.position[0] + dx, self.position[1] + dy],
+            ..self
+        }
+    }
+
+    fn toward(self, other: Self, t: f32) -> Self {
+        GlyphVertex {
+            position: lerp(self.position, other.position, t),
+            texel: lerp(self.texel, other.texel, t),
+        }
+    }
+}
+
+fn lerp(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
+    [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]
 }
 
 /// An axis-aligned rectangle in the plane of the notes.
@@ -212,8 +271,8 @@ impl Rectangle {
         }
     }
 
-    fn bounding(points: &[[f32; 2]]) -> Self {
-        points.iter().fold(
+    fn bounding(points: impl Iterator<Item = [f32; 2]>) -> Self {
+        points.fold(
             Self {
                 min: [f32::MAX; 2],
                 max: [f32::MIN; 2],
@@ -235,7 +294,10 @@ impl Rectangle {
 }
 
 /// Removes the parts of the triangles that lie under any of the covers.
-fn uncovered(geometry: TessellatedGeometry, covers: &[Rectangle]) -> TessellatedGeometry {
+fn uncovered<V: PlaneVertex>(
+    geometry: TessellatedGeometry<V>,
+    covers: &[Rectangle],
+) -> TessellatedGeometry<V> {
     if covers.is_empty() {
         return geometry;
     }
@@ -243,7 +305,7 @@ fn uncovered(geometry: TessellatedGeometry, covers: &[Rectangle]) -> Tessellated
     for triangle in geometry.indices.as_chunks::<3>().0 {
         let mut pieces = vec![triangle
             .iter()
-            .map(|&index| geometry.vertices[index as usize].position)
+            .map(|&index| geometry.vertices[index as usize])
             .collect::<Vec<_>>()];
         for cover in covers {
             pieces = pieces
@@ -253,10 +315,9 @@ fn uncovered(geometry: TessellatedGeometry, covers: &[Rectangle]) -> Tessellated
         }
         for piece in pieces {
             let first = result.vertices.len() as u32;
-            result
-                .vertices
-                .extend(piece.iter().map(|&position| PolygonVertex { position }));
-            for corner in 1..piece.len() as u32 - 1 {
+            let count = piece.len() as u32;
+            result.vertices.extend(piece);
+            for corner in 1..count - 1 {
                 result
                     .indices
                     .extend([first, first + corner, first + corner + 1]);
@@ -267,8 +328,8 @@ fn uncovered(geometry: TessellatedGeometry, covers: &[Rectangle]) -> Tessellated
 }
 
 /// Splits a convex polygon into the convex pieces that lie outside the cover.
-fn outside(polygon: &[[f32; 2]], cover: &Rectangle) -> Vec<Vec<[f32; 2]>> {
-    let bounds = Rectangle::bounding(polygon);
+fn outside<V: PlaneVertex>(polygon: &[V], cover: &Rectangle) -> Vec<Vec<V>> {
+    let bounds = Rectangle::bounding(polygon.iter().map(V::position));
     if !bounds.overlaps(cover) {
         return vec![polygon.to_vec()];
     }
@@ -305,8 +366,9 @@ fn outside(polygon: &[[f32; 2]], cover: &Rectangle) -> Vec<Vec<[f32; 2]>> {
 }
 
 /// Keeps the part of a convex polygon at or below `bound` along `axis`, or at or above it.
-fn clip(polygon: &[[f32; 2]], axis: usize, bound: f32, below: bool) -> Vec<[f32; 2]> {
-    let inside = |point: &[f32; 2]| {
+fn clip<V: PlaneVertex>(polygon: &[V], axis: usize, bound: f32, below: bool) -> Vec<V> {
+    let inside = |vertex: &V| {
+        let point = vertex.position();
         if below {
             point[axis] <= bound
         } else {
@@ -317,11 +379,8 @@ fn clip(polygon: &[[f32; 2]], axis: usize, bound: f32, below: bool) -> Vec<[f32;
     for (index, current) in polygon.iter().enumerate() {
         let previous = &polygon[(index + polygon.len() - 1) % polygon.len()];
         if inside(current) != inside(previous) {
-            let t = (bound - previous[axis]) / (current[axis] - previous[axis]);
-            result.push([
-                previous[0] + t * (current[0] - previous[0]),
-                previous[1] + t * (current[1] - previous[1]),
-            ]);
+            let [from, to] = [previous.position()[axis], current.position()[axis]];
+            result.push(previous.toward(*current, (bound - from) / (to - from)));
         }
         if inside(current) {
             result.push(*current);
@@ -345,10 +404,15 @@ fn rectangle(width: f32, height: f32) -> TessellatedGeometry {
 mod tests {
     use super::*;
 
+    fn atlas() -> GlyphAtlas {
+        GlyphAtlas::new(NOTE_FONT_DATA).unwrap()
+    }
+
     #[test]
-    fn tessellates_short_text() {
-        let wrapped =
-            tessellate_text_wrapped(NOTE_FONT_DATA, "Hello", NOTE_TEXT_HEIGHT, 100.0).unwrap();
+    fn lays_out_short_text() {
+        let wrapped = atlas()
+            .lay_out_wrapped("Hello", NOTE_TEXT_HEIGHT, 100.0)
+            .unwrap();
         assert!(!wrapped.geometry.vertices.is_empty());
         assert!(!wrapped.geometry.indices.is_empty());
         assert!(wrapped.width > 0.0);
@@ -359,8 +423,11 @@ mod tests {
     fn wraps_long_text_into_multiple_lines() {
         let text =
             "This is a long note that should wrap onto several lines when given a narrow width";
-        let narrow = tessellate_text_wrapped(NOTE_FONT_DATA, text, NOTE_TEXT_HEIGHT, 4.0).unwrap();
-        let wide = tessellate_text_wrapped(NOTE_FONT_DATA, text, NOTE_TEXT_HEIGHT, 100.0).unwrap();
+        let mut atlas = atlas();
+        let narrow = atlas.lay_out_wrapped(text, NOTE_TEXT_HEIGHT, 4.0).unwrap();
+        let wide = atlas
+            .lay_out_wrapped(text, NOTE_TEXT_HEIGHT, 100.0)
+            .unwrap();
         assert!(
             narrow.height > wide.height,
             "narrow width should produce more lines (taller): narrow={} wide={}",
@@ -404,8 +471,30 @@ mod tests {
     }
 
     #[test]
+    fn hidden_text_keeps_its_texels_in_place() {
+        let note = build_note_geometry(&mut atlas(), "H", &NoteSize::default());
+        let [first, opposite] = [note.glyphs.vertices[0], note.glyphs.vertices[2]];
+        let cover = Rectangle {
+            min: [-0.1, -1.0],
+            max: [0.1, 1.0],
+        };
+        let visible = uncovered(translated(&note.glyphs, Vec3::ZERO), &[cover]);
+        assert!(!visible.indices.is_empty());
+        for vertex in &visible.vertices {
+            let x = vertex.position[0];
+            assert!(x <= cover.min[0] + 1e-5 || x >= cover.max[0] - 1e-5);
+            for axis in 0..2 {
+                let t = (vertex.position[axis] - first.position[axis])
+                    / (opposite.position[axis] - first.position[axis]);
+                let expected = first.texel[axis] + t * (opposite.texel[axis] - first.texel[axis]);
+                assert!((vertex.texel[axis] - expected).abs() < 1e-3);
+            }
+        }
+    }
+
+    #[test]
     fn centers_text_in_the_note() {
-        let note = build_note_geometry("Hello there", &NoteSize::default());
+        let note = build_note_geometry(&mut atlas(), "Hello there", &NoteSize::default());
         let xs = note.glyphs.vertices.iter().map(|v| v.position[0]);
         let (min, max) = xs.fold((f32::MAX, f32::MIN), |(a, b), x| (a.min(x), b.max(x)));
         assert!((min + max).abs() < 0.1, "min={min} max={max}");
