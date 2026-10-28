@@ -8,8 +8,6 @@ mod style;
 mod tests;
 mod widgets;
 
-use std::path::PathBuf;
-
 use egui::{
     pos2, vec2, Align, Align2, Context, Id, Layout, Order, Pos2, Rect, Response, RichText, Sense,
     Ui, Vec2, WidgetInfo, WidgetType,
@@ -35,9 +33,10 @@ const MENU_ROW_HEIGHT: f32 = 34.0;
 const COMPACT_WIDTH: f32 = 640.0;
 const COMPACT_HEIGHT: f32 = 560.0;
 
+#[derive(Debug, PartialEq)]
 pub enum MenuChoice {
-    Save(PathBuf),
-    Open(PathBuf),
+    Open,
+    Save,
     Examples,
 }
 
@@ -240,7 +239,7 @@ impl Gui {
         if picked.is_some() || pressed_elsewhere {
             self.menu_open = false;
         }
-        picked.flatten()
+        picked
     }
 }
 
@@ -324,7 +323,7 @@ fn menu(
     position: Pos2,
     theme: &mut Theme,
     fps: f64,
-) -> (Option<Option<MenuChoice>>, Rect) {
+) -> (Option<MenuChoice>, Rect) {
     let chrome = Chrome::of(*theme);
     let mut picked = None;
     let rect = egui::Area::new(Id::new("menu"))
@@ -335,17 +334,14 @@ fn menu(
             chrome.panel_frame(MENU_PADDING).show(ui, |ui| {
                 ui.set_width(MENU_WIDTH);
                 ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    if icon_row(ui, chrome, Icon::Folder, "Open…").clicked() {
-                        picked = Some(rfd::FileDialog::new().pick_file().map(MenuChoice::Open));
-                    }
-                    if icon_row(ui, chrome, Icon::Save, "Save…").clicked() {
-                        picked = Some(rfd::FileDialog::new().save_file().map(MenuChoice::Save));
-                    }
+                if icon_row(ui, chrome, Icon::Folder, "Open…").clicked() {
+                    picked = Some(MenuChoice::Open);
+                }
+                if icon_row(ui, chrome, Icon::Save, "Save…").clicked() {
+                    picked = Some(MenuChoice::Save);
                 }
                 if icon_row(ui, chrome, Icon::Grid, "Examples").clicked() {
-                    picked = Some(Some(MenuChoice::Examples));
+                    picked = Some(MenuChoice::Examples);
                 }
                 separator(ui, chrome);
                 labelled_row(ui, chrome, "Theme", |ui| {

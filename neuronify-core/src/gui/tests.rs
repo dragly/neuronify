@@ -244,6 +244,16 @@ fn the_menu_opens_the_examples() {
     assert!(!harness.shows("Examples"));
 }
 
+#[test]
+fn the_menu_asks_to_open_and_save() {
+    for (row, asked) in [("Open…", MenuChoice::Open), ("Save…", MenuChoice::Save)] {
+        let mut harness = Harness::new(false);
+        harness.click(pos2(MARGIN + FAB_SIZE / 2.0, MARGIN + FAB_SIZE / 2.0));
+        harness.click_text(row);
+        assert_eq!(harness.choice, Some(asked));
+    }
+}
+
 fn one_neuron() -> (World, Entity) {
     let mut world = World::new();
     let neuron = Element::AdaptiveNeuron.spawn(&mut world, Vec3::ZERO);
