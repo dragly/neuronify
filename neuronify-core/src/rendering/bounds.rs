@@ -86,7 +86,7 @@ fn footprint(center: Vec3, radius: f32) -> [Vec3; 2] {
     [center - reach, center + reach]
 }
 
-fn note_corners(center: Vec3, size: &NoteSize) -> [Vec3; 2] {
+pub fn note_corners(center: Vec3, size: &NoteSize) -> [Vec3; 2] {
     let half_extent = Vec3::new(size.height * 0.5, 0.0, size.width * 0.5);
     [center - half_extent, center + half_extent]
 }
