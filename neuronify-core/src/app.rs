@@ -117,7 +117,12 @@ impl Neuronify {
     }
 
     fn press_pointer(&mut self, application: &mut visula::Application, pressed: bool) {
-        self.mouse.left_down = pressed;
+        if self.mouse.press(pressed) && !self.edit_enabled {
+            if let Some(position) = self.mouse.position {
+                let position = camera::ground_position(application, position);
+                self.editor.tap(&self.world, position);
+            }
+        }
         self.handle_tool(application);
     }
 
@@ -126,7 +131,8 @@ impl Neuronify {
         application: &mut visula::Application,
         position: PhysicalPosition<f64>,
     ) {
-        self.mouse.position = Some(position);
+        self.mouse
+            .move_to(position, application.window.scale_factor());
         self.handle_tool(application);
     }
 
@@ -134,7 +140,7 @@ impl Neuronify {
         let held = context.input(|input| input.pointer.any_down() || input.any_touches());
         if !held {
             self.touches = Touches::default();
-            self.mouse.left_down = false;
+            self.mouse.cancel();
             self.editor.release();
         }
     }
@@ -347,6 +353,10 @@ impl visula::Simulation for Neuronify {
                     }
                     TouchGesture::Drag(position) => self.move_pointer(application, position),
                     TouchGesture::Release => self.press_pointer(application, false),
+                    TouchGesture::Cancel => {
+                        self.mouse.cancel();
+                        self.handle_tool(application);
+                    }
                     TouchGesture::Pinch { previous, current } => {
                         camera::pinch(application, previous, current)
                     }

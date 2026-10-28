@@ -1,10 +1,39 @@
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{Touch, TouchPhase};
 
+const TAP_SLOP: f64 = 8.0;
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Mouse {
     pub left_down: bool,
     pub position: Option<PhysicalPosition<f64>>,
+    tap_start: Option<PhysicalPosition<f64>>,
+}
+
+impl Mouse {
+    pub fn press(&mut self, pressed: bool) -> bool {
+        let tapped = !pressed && self.tap_start.take().is_some();
+        self.left_down = pressed;
+        if pressed {
+            self.tap_start = self.position;
+        }
+        tapped
+    }
+
+    pub fn move_to(&mut self, position: PhysicalPosition<f64>, scale_factor: f64) {
+        self.position = Some(position);
+        let moved_away = self.tap_start.is_some_and(|start| {
+            (position.x - start.x).hypot(position.y - start.y) > TAP_SLOP * scale_factor
+        });
+        if moved_away {
+            self.tap_start = None;
+        }
+    }
+
+    pub fn cancel(&mut self) {
+        self.left_down = false;
+        self.tap_start = None;
+    }
 }
 
 #[derive(Default)]
@@ -17,6 +46,7 @@ pub enum TouchGesture {
     Press(PhysicalPosition<f64>),
     Drag(PhysicalPosition<f64>),
     Release,
+    Cancel,
     Pinch {
         previous: [PhysicalPosition<f64>; 2],
         current: [PhysicalPosition<f64>; 2],
@@ -40,7 +70,7 @@ impl Touches {
                     1 => TouchGesture::Press(touch.location),
                     2 => {
                         self.pinched = true;
-                        TouchGesture::Release
+                        TouchGesture::Cancel
                     }
                     _ => TouchGesture::None,
                 }
@@ -63,10 +93,10 @@ impl Touches {
                 if self.fingers.is_empty() {
                     self.pinched = false;
                 }
-                if released {
-                    TouchGesture::Release
-                } else {
-                    TouchGesture::None
+                match (released, touch.phase) {
+                    (false, _) => TouchGesture::None,
+                    (true, TouchPhase::Cancelled) => TouchGesture::Cancel,
+                    (true, _) => TouchGesture::Release,
                 }
             }
             (_, None) => TouchGesture::None,
@@ -123,7 +153,7 @@ mod tests {
         touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0));
         assert_eq!(
             touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0)),
-            TouchGesture::Release
+            TouchGesture::Cancel
         );
         assert_eq!(
             touches.update(&touch(2, TouchPhase::Moved, 50.0, 10.0)),
@@ -195,12 +225,50 @@ mod tests {
     }
 
     #[test]
-    fn cancelled_touch_releases() {
+    fn cancelled_touch_cancels() {
         let mut touches = Touches::default();
         touches.update(&touch(1, TouchPhase::Started, 0.0, 0.0));
         assert_eq!(
             touches.update(&touch(1, TouchPhase::Cancelled, 0.0, 0.0)),
-            TouchGesture::Release
+            TouchGesture::Cancel
         );
+    }
+
+    fn pressed_at(x: f64, y: f64) -> Mouse {
+        let mut mouse = Mouse::default();
+        mouse.move_to(at(x, y), 1.0);
+        mouse.press(true);
+        mouse
+    }
+
+    #[test]
+    fn a_press_released_where_it_started_is_a_tap() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.move_to(at(14.0, 15.0), 1.0);
+        assert!(mouse.press(false));
+        assert!(!mouse.press(false));
+    }
+
+    #[test]
+    fn moving_away_turns_a_tap_into_a_drag() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.move_to(at(30.0, 10.0), 1.0);
+        mouse.move_to(at(10.0, 10.0), 1.0);
+        assert!(!mouse.press(false));
+    }
+
+    #[test]
+    fn the_tap_slop_follows_the_scale_factor() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.move_to(at(22.0, 10.0), 2.0);
+        assert!(mouse.press(false));
+    }
+
+    #[test]
+    fn a_cancelled_press_is_no_tap() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.cancel();
+        assert!(!mouse.left_down);
+        assert!(!mouse.press(false));
     }
 }

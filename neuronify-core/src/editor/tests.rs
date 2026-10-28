@@ -276,6 +276,36 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
     assert_eq!(editor.touch(), None);
 }
 
+#[test]
+fn viewers_select_with_a_tap() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Select);
+
+    editor.view(&world, at(0.5, 0.0));
+    editor.tap(&world, at(0.5, 0.0));
+    editor.release();
+    assert_eq!(editor.selection, Some(target));
+
+    editor.view(&world, at(10.0, 10.0));
+    editor.tap(&world, at(10.0, 10.0));
+    editor.release();
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn touching_a_sensor_leaves_the_selection_alone() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(10.0, 0.0));
+    Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Select);
+    editor.selection = Some(target);
+
+    editor.view(&world, at(0.5, 0.0));
+    editor.tap(&world, at(0.5, 0.0));
+    assert_eq!(editor.selection, Some(target));
+}
+
 fn grow_axon(world: &mut World, from: Vec3, to: Vec3) {
     let steps = (from.distance(to) / 0.5) as usize;
     let path: Vec<Vec3> = (0..=steps)
