@@ -4,10 +4,6 @@ use crate::frame_clock::FrameClock;
 use crate::gui::{self, Gui, MenuChoice};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
-use std::io::BufReader;
-use std::io::Read;
-use std::io::Write;
-use std::path::PathBuf;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
 use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, ShadowRenderData};
@@ -181,10 +177,21 @@ impl Neuronify {
         }
     }
 
-    pub fn save(&self, path: PathBuf) {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save(&self) {
+        let Some(path) = rfd::FileDialog::new().save_file() else {
+            return;
+        };
         let bytes = crate::serialization::save(&self.world, self.time).unwrap();
-        let mut writer = std::fs::File::create(path.with_extension("neuronify")).unwrap();
-        writer.write_all(&bytes).unwrap();
+        std::fs::write(path.with_extension("neuronify"), bytes).unwrap();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn save(&self) {
+        let bytes = crate::serialization::save(&self.world, self.time).unwrap();
+        if let Err(error) = crate::web::download(&bytes, "circuit.neuronify") {
+            log::error!("Could not save: {error:?}");
+        }
     }
 
     fn open_world(&mut self, world: hecs::World, time: f64) {
@@ -196,14 +203,22 @@ impl Neuronify {
         self.frame_scene_requested = true;
     }
 
-    pub fn loadfile(&mut self, path: PathBuf) {
-        let reader = std::fs::File::open(path).unwrap();
-        let mut bufreader = BufReader::new(reader);
-        let mut bytes: Vec<u8> = Vec::new();
-        bufreader.read_to_end(&mut bytes).unwrap();
+    #[cfg(not(target_arch = "wasm32"))]
+    fn open(&mut self) {
+        let Some(path) = rfd::FileDialog::new().pick_file() else {
+            return;
+        };
+        let bytes = std::fs::read(path).unwrap();
         if let Err(error) = self.load_from_bytes(&bytes) {
             log::error!("{error}");
             self.load_error = Some(error);
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn open(&mut self) {
+        if let Err(error) = crate::web::pick_file() {
+            log::error!("Could not open: {error:?}");
         }
     }
 
@@ -225,8 +240,8 @@ impl visula::Simulation for Neuronify {
     }
     fn update(&mut self, application: &mut visula::Application) {
         #[cfg(target_arch = "wasm32")]
-        if let Some(fetched) = crate::web::take_fetched_file() {
-            if let Err(error) = fetched.and_then(|bytes| self.load_from_bytes(&bytes)) {
+        if let Some(loaded) = crate::web::take_loaded_file() {
+            if let Err(error) = loaded.and_then(|bytes| self.load_from_bytes(&bytes)) {
                 log::error!("{error}");
                 self.load_error = Some(error);
             }
@@ -323,8 +338,8 @@ impl visula::Simulation for Neuronify {
         };
         match self.gui.show(context, controls) {
             Some(MenuChoice::Examples) => self.landing = Some(LandingScreen::new(true)),
-            Some(MenuChoice::Save(path)) => self.save(path),
-            Some(MenuChoice::Open(path)) => self.loadfile(path),
+            Some(MenuChoice::Save) => self.save(),
+            Some(MenuChoice::Open) => self.open(),
             None => {}
         }
     }

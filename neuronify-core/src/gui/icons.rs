@@ -28,9 +28,7 @@ pub enum Icon {
     Menu,
     More,
     Check,
-    #[cfg(not(target_arch = "wasm32"))]
     Folder,
-    #[cfg(not(target_arch = "wasm32"))]
     Save,
     Trash,
     Close,
@@ -117,7 +115,6 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
                 stroke,
             ));
         }
-        #[cfg(not(target_arch = "wasm32"))]
         Icon::Folder => outline(&[
             vec2(3.5, 6.5),
             vec2(9.2, 6.5),
@@ -126,7 +123,6 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
             vec2(20.5, 18.5),
             vec2(3.5, 18.5),
         ]),
-        #[cfg(not(target_arch = "wasm32"))]
         Icon::Save => {
             painter.line_segment([at(vec2(12.0, 4.0)), at(vec2(12.0, 15.0))], stroke);
             painter.add(Shape::line(
