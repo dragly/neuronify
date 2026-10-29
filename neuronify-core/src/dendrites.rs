@@ -235,8 +235,7 @@ pub fn dendrite_tree(world: &hecs::World, soma: Entity) -> Vec<Entity> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::{fhn_step, lif_step};
-    use std::collections::HashSet;
+    use crate::simulation::step_simulation;
 
     fn driven_neuron(world: &mut hecs::World) -> Entity {
         let neuron = world.spawn((
@@ -268,27 +267,16 @@ mod tests {
         neuron
     }
 
-    /// Frames in which `neuron` fired, and the highest voltage seen in `tree`.
+    /// Steps in which `neuron` fired, and the highest voltage seen in `tree`.
     fn run(world: &mut hecs::World, neuron: Entity, tree: &[Entity]) -> (Vec<usize>, f64) {
-        let steps_per_frame = 4;
         let mut spikes = Vec::new();
         let mut peak = f64::MIN;
         let mut time = 0.0;
-        for frame in 0..1000 {
-            for _ in 0..steps_per_frame {
-                lif_step(world, LIF_DT, time);
-                time += LIF_DT;
+        for step in 0..4000 {
+            step_simulation(world, &mut time, 1);
+            if world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0 {
+                spikes.push(step);
             }
-            let recently_fired: HashSet<Entity> = world
-                .query::<&LeakyDynamics>()
-                .iter()
-                .filter(|(_, d)| d.time_since_fire < steps_per_frame as f64 * LIF_DT)
-                .map(|(e, _)| e)
-                .collect();
-            if recently_fired.contains(&neuron) {
-                spikes.push(frame);
-            }
-            fhn_step(world, FHN_CDT, &recently_fired);
             for &compartment in tree {
                 peak = peak.max(world.get::<&Compartment>(compartment).unwrap().voltage);
             }

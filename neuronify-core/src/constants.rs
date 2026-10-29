@@ -9,6 +9,10 @@ pub const FHN_CDT: f64 = 0.01;
 pub const LIF_DT: f64 = 0.0001;
 pub const PHYSICS_DT: f64 = 0.001;
 
+pub const SIMULATION_STEPS_PER_SECOND: f64 = 1000.0 / 16.0;
+pub const DEFAULT_SPEED: f64 = 2.0;
+pub const PHYSICS_STEPS_PER_SECOND: f64 = 250.0;
+
 pub const NODE_RADIUS: f32 = 1.0;
 pub const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
 pub const ATTACHMENT_RANGE: f32 = 1.5 * NODE_RADIUS;
@@ -34,6 +38,7 @@ pub const COMPARTMENT_SPHERE_SCALE: f32 = 0.3;
 pub const TRIGGER_SPHERE_SCALE: f32 = 0.5;
 
 pub const FHN_FIRE_VOLTAGE: f64 = 1.0;
+pub const FHN_FIRE_DURATION: f64 = 4.0 * LIF_DT;
 
 pub const BEZIER_BEND_FRACTION: f32 = 0.2;
 

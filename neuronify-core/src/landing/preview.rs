@@ -2,15 +2,16 @@ use chrono::{DateTime, Utc};
 use egui::{pos2, Color32, Painter, Pos2, Rect, TextureHandle, TextureOptions};
 use hecs::World;
 
-use crate::constants::VOLTMETER_TIME_WINDOW;
+use crate::constants::{DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND, VOLTMETER_TIME_WINDOW};
 use crate::examples::Example;
+use crate::frame_clock::StepClock;
 use crate::landing::raster::{tessellate_untextured_in_pixels, UnfinishedDrawing};
 use crate::landing::top_down::top_down_shapes;
 use crate::rendering::{circuit_bounds, Bounds, Palette, Theme};
 use crate::simulation;
 
 pub const THUMBNAIL_PADDING: f32 = 10.0;
-const WARM_UP_SPEED: u32 = 16;
+const WARM_UP_STEPS_PER_FRAME: u32 = 64;
 pub const PREVIEW_FADE_IN_SECONDS: f64 = 0.25;
 const MAX_LIVE_PREVIEW_ENTITIES: u32 = 1000;
 const STEPS_UNTIL_VOLTMETERS_ARE_DRAWN: u32 = 2;
@@ -33,6 +34,7 @@ pub struct Preview {
     pub example: &'static Example,
     pub world: World,
     pub time: f64,
+    simulation_clock: StepClock,
     bounds: Option<Bounds>,
     pub mode: PreviewMode,
     pub on_screen: bool,
@@ -49,7 +51,7 @@ impl Preview {
         let mode = preview_mode(&world);
         let mut time = 0.0;
         if mode == PreviewMode::Still {
-            simulation::step_frame(&mut world, &mut time, STEPS_UNTIL_VOLTMETERS_ARE_DRAWN);
+            simulation::step_simulation(&mut world, &mut time, STEPS_UNTIL_VOLTMETERS_ARE_DRAWN);
         }
         Some(Preview {
             example,
@@ -57,6 +59,7 @@ impl Preview {
             mode,
             world,
             time,
+            simulation_clock: StepClock::default(),
             on_screen: false,
             fade_in_started_at: None,
             still_drawing: None,
@@ -67,12 +70,18 @@ impl Preview {
         self.time >= VOLTMETER_TIME_WINDOW
     }
 
-    pub fn step(&mut self, iterations: u32) {
+    pub fn step(&mut self, seconds: f64, physics_steps: u32) {
         if self.mode == PreviewMode::Still || !self.on_screen {
             return;
         }
-        let speed = if self.warmed_up() { 1 } else { WARM_UP_SPEED };
-        simulation::step_frame(&mut self.world, &mut self.time, iterations * speed);
+        let simulation_steps = if self.warmed_up() {
+            self.simulation_clock
+                .steps(seconds, DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND)
+        } else {
+            WARM_UP_STEPS_PER_FRAME
+        };
+        simulation::step_simulation(&mut self.world, &mut self.time, simulation_steps);
+        simulation::step_physics(&mut self.world, physics_steps);
     }
 
     pub fn paint(

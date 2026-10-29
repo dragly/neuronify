@@ -12,7 +12,7 @@ pub const PLAY: &str = "playback_play";
 pub const SLOWER: &str = "playback_slower";
 pub const FASTER: &str = "playback_faster";
 pub const BAR_HEIGHT: f32 = 44.0;
-pub const MAX_SPEED: u32 = 20;
+pub const SPEEDS: [f64; 5] = [0.5, 1.0, 2.0, 4.0, 8.0];
 const PADDING: i8 = 5;
 const BUTTON: f32 = 34.0;
 const ICON: f32 = 18.0;
@@ -25,7 +25,7 @@ pub fn bar(
     anchor: Align2,
     offset: Vec2,
     running: &mut bool,
-    iterations: &mut u32,
+    speed: &mut f64,
     time: f64,
 ) {
     let chrome = Chrome::of(theme);
@@ -48,18 +48,22 @@ pub fn bar(
                         }
                         divider(ui, chrome);
                         if button(ui, chrome, Icon::Minus, "Slower", SLOWER, false).clicked() {
-                            *iterations = iterations.saturating_sub(1).max(1);
+                            *speed = SPEEDS
+                                .into_iter()
+                                .rev()
+                                .find(|&s| s < *speed)
+                                .unwrap_or(*speed);
                         }
                         text(
                             ui,
                             SPEED_WIDTH,
-                            format!("×{iterations}"),
+                            format!("×{speed}"),
                             FontId::monospace(13.0),
                             chrome.text,
                         )
-                        .on_hover_text("Simulation steps per frame");
+                        .on_hover_text("Simulation speed");
                         if button(ui, chrome, Icon::Plus, "Faster", FASTER, false).clicked() {
-                            *iterations = (*iterations + 1).min(MAX_SPEED);
+                            *speed = SPEEDS.into_iter().find(|&s| s > *speed).unwrap_or(*speed);
                         }
                         divider(ui, chrome);
                         text(

@@ -1,7 +1,8 @@
 //! Save files (`.neuronify`) and scenarios.
 //!
 //! A save file starts with `MAGIC` and its version as a little-endian `u32`,
-//! followed by the simulation time as a little-endian `f64` (from version 5)
+//! followed by the simulation time as a little-endian `f64` (from version 5),
+//! the simulation speed as a little-endian `f64` (from version 6)
 //! and the world in the hecs column format.
 //!
 //! Each version has a module with the components it can hold.
@@ -17,6 +18,8 @@
 use hecs::{serialize::column::serialize, World};
 use postcard::ser_flavors::Flavor;
 
+use crate::constants::DEFAULT_SPEED;
+
 #[macro_use]
 mod schema;
 mod v1;
@@ -24,22 +27,24 @@ mod v2;
 mod v3;
 mod v4;
 mod v5;
+mod v6;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 const MAGIC: &[u8] = b"neuronify";
 
 pub struct SavedWorld {
     pub world: World,
     pub time: f64,
+    pub speed: f64,
 }
 
-pub fn save(world: &World, time: f64) -> Result<Vec<u8>, String> {
+pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v5::SaveContext, &mut serializer)
+    serialize(world, &mut v6::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -48,6 +53,7 @@ pub fn save(world: &World, time: f64) -> Result<Vec<u8>, String> {
     let mut bytes = MAGIC.to_vec();
     bytes.extend_from_slice(&VERSION.to_le_bytes());
     bytes.extend_from_slice(&time.to_le_bytes());
+    bytes.extend_from_slice(&speed.to_le_bytes());
     bytes.extend_from_slice(&body);
     Ok(bytes)
 }
@@ -60,16 +66,19 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
         .split_first_chunk()
         .ok_or("The save file ends before its version")?;
     let version = u32::from_le_bytes(*version);
-    let (mut world, time) = match version {
-        1 => (v1::deserialize(body)?, 0.0),
-        2 => (v2::deserialize(body)?, 0.0),
-        3 => (v3::deserialize(body)?, 0.0),
-        4 => (v4::deserialize(body)?, 0.0),
+    let (mut world, time, speed) = match version {
+        1 => (v1::deserialize(body)?, 0.0, DEFAULT_SPEED),
+        2 => (v2::deserialize(body)?, 0.0, DEFAULT_SPEED),
+        3 => (v3::deserialize(body)?, 0.0, DEFAULT_SPEED),
+        4 => (v4::deserialize(body)?, 0.0, DEFAULT_SPEED),
         5 => {
-            let (time, body) = body
-                .split_first_chunk()
-                .ok_or("The save file ends before its simulation time")?;
-            (v5::deserialize(body)?, f64::from_le_bytes(*time))
+            let (time, body) = split_f64(body, "simulation time")?;
+            (v5::deserialize(body)?, time, DEFAULT_SPEED)
+        }
+        6 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v6::deserialize(body)?, time, speed)
         }
         _ => {
             return Err(format!(
@@ -84,10 +93,18 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             2 => v3::upgrade_from_v2(&mut world),
             3 => v4::upgrade_from_v3(&mut world),
             4 => v5::upgrade_from_v4(&mut world),
+            5 => v6::upgrade_from_v5(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
-    Ok(SavedWorld { world, time })
+    Ok(SavedWorld { world, time, speed })
+}
+
+fn split_f64<'a>(bytes: &'a [u8], name: &str) -> Result<(f64, &'a [u8]), String> {
+    let (value, rest) = bytes
+        .split_first_chunk()
+        .ok_or_else(|| format!("The save file ends before its {name}"))?;
+    Ok((f64::from_le_bytes(*value), rest))
 }
 
 /// Reads a legacy `.nfy` file (JSON) or a `.neuronify` save file.
@@ -104,7 +121,11 @@ fn load_legacy(bytes: &[u8]) -> Result<SavedWorld, String> {
     let simulation = crate::legacy::parse_legacy_nfy(contents)?;
     let mut world = World::new();
     crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
-    Ok(SavedWorld { world, time: 0.0 })
+    Ok(SavedWorld {
+        world,
+        time: 0.0,
+        speed: DEFAULT_SPEED,
+    })
 }
 
 #[cfg(test)]
@@ -116,6 +137,7 @@ mod tests {
 
     const LEAKY_NFY: &str = include_str!("../../examples/leaky.nfy");
     const FIXTURE_TIME: f64 = 2.5;
+    const FIXTURE_SPEED: f64 = 0.5;
 
     #[test]
     fn loads_legacy_file() {
@@ -126,7 +148,7 @@ mod tests {
     #[test]
     fn loads_save_file() {
         let original = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
-        let bytes = save(&original, 0.0).unwrap();
+        let bytes = save(&original, 0.0, DEFAULT_SPEED).unwrap();
         assert!(bytes.starts_with(MAGIC));
 
         let loaded = load_from_bytes(&bytes).unwrap().world;
@@ -136,8 +158,15 @@ mod tests {
     #[test]
     fn keeps_the_simulation_time() {
         let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
-        let loaded = load(&save(&world, 12.5).unwrap()).unwrap();
+        let loaded = load(&save(&world, 12.5, DEFAULT_SPEED).unwrap()).unwrap();
         assert_eq!(loaded.time, 12.5);
+    }
+
+    #[test]
+    fn keeps_the_simulation_speed() {
+        let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
+        let loaded = load(&save(&world, 0.0, 0.5).unwrap()).unwrap();
+        assert_eq!(loaded.speed, 0.5);
     }
 
     #[test]
@@ -161,6 +190,12 @@ mod tests {
     fn rejects_truncated_time() {
         let truncated = b"neuronify\x05\0\0\0\0\0\0";
         assert!(load(truncated).is_err_and(|e| e.contains("simulation time")));
+    }
+
+    #[test]
+    fn rejects_truncated_speed() {
+        let truncated = b"neuronify\x06\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+        assert!(load(truncated).is_err_and(|e| e.contains("simulation speed")));
     }
 
     #[test]
@@ -205,6 +240,15 @@ mod tests {
         let saved = load(include_bytes!("fixtures/v5.neuronify")).unwrap();
         assert_fixture(&saved, 29, 1);
         assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, DEFAULT_SPEED);
+    }
+
+    #[test]
+    fn loads_version_6() {
+        let saved = load(include_bytes!("fixtures/v6.neuronify")).unwrap();
+        assert_fixture(&saved, 29, 1);
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
     }
 
     #[test]
@@ -215,7 +259,9 @@ mod tests {
         let dendrites = count::<Dendrite>(&world);
         assert!(dendrites > 0);
 
-        let loaded = load(&save(&world, 0.0).unwrap()).unwrap().world;
+        let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+            .unwrap()
+            .world;
         assert_eq!(count::<Dendrite>(&loaded), dendrites);
     }
 
@@ -229,7 +275,8 @@ mod tests {
             "{}/src/serialization/fixtures/v{VERSION}.neuronify",
             env!("CARGO_MANIFEST_DIR")
         );
-        std::fs::write(path, save(&fixture_world(), FIXTURE_TIME).unwrap()).unwrap();
+        let bytes = save(&fixture_world(), FIXTURE_TIME, FIXTURE_SPEED).unwrap();
+        std::fs::write(path, bytes).unwrap();
     }
 
     /// Bundled examples, plus the components that none of them have,
