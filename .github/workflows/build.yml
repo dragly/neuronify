@@ -44,6 +44,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
       - name: Check formatting
         run: cargo fmt --all --check
       - name: Check
@@ -54,3 +55,5 @@ jobs:
         run: cargo test --all-features --all-targets
       - name: Clippy
         run: cargo clippy --all-features --all-targets -- -D warnings
+      - name: Clippy for the web
+        run: cargo clippy --target wasm32-unknown-unknown -p neuronify -p neuronify-core -- -D warnings
