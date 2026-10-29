@@ -1,11 +1,12 @@
 //! Files in the browser: loading one named in the page URL, as in
 //! `index.html?file=examples/leaky.nfy`, loading one the user picks,
 //! and downloading or sharing a save.
+//! Also hides the loading screen of `index.html` once there is something to show.
 //!
 //! Fetching and reading are asynchronous and visula's event loop never returns on the web,
 //! so the result is left here for `Neuronify::update` to pick up.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -19,6 +20,8 @@ const SHARED_TYPE: &str = "application/octet-stream";
 
 thread_local! {
     static LOADED: RefCell<Option<Result<Vec<u8>, String>>> = const { RefCell::new(None) };
+    static FETCHING: Cell<bool> = const { Cell::new(false) };
+    static LOADING_SCREEN_SHOWN: Cell<bool> = const { Cell::new(true) };
 }
 
 /// Starts fetching the file named by the `file` query parameter.
@@ -27,6 +30,7 @@ pub fn fetch_requested_file() -> bool {
     let Some(url) = requested_file() else {
         return false;
     };
+    FETCHING.set(true);
     wasm_bindgen_futures::spawn_local(async move {
         let result = fetch_bytes(&url).await.map_err(|e| {
             // fetch rejects with a TypeError, while fetch_bytes rejects with a string
@@ -38,6 +42,7 @@ pub fn fetch_requested_file() -> bool {
             format!("Could not fetch {url}: {reason}")
         });
         LOADED.with(|loaded| *loaded.borrow_mut() = Some(result));
+        FETCHING.set(false);
     });
     true
 }
@@ -45,6 +50,18 @@ pub fn fetch_requested_file() -> bool {
 /// Returns a fetched or picked file once, after it has been read.
 pub fn take_loaded_file() -> Option<Result<Vec<u8>, String>> {
     LOADED.with(|loaded| loaded.borrow_mut().take())
+}
+
+pub fn hide_loading_screen_when_ready() {
+    if FETCHING.get() || !LOADING_SCREEN_SHOWN.replace(false) {
+        return;
+    }
+    if let Some(screen) = document()
+        .ok()
+        .and_then(|document| document.get_element_by_id("loading"))
+    {
+        screen.set_class_name("done");
+    }
 }
 
 pub fn pick_file() -> Result<(), JsValue> {

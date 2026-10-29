@@ -6,13 +6,34 @@
     <title>Neuronify</title>
     <link data-trunk rel="rust" data-bin="neuronify" />
     <link data-trunk rel="copy-dir" href="../neuronify-core/examples" />
+    <script>
+      if (new URLSearchParams(location.search).has("file")) {
+        document.documentElement.classList.add("scene");
+      }
+    </script>
     <style>
+      :root {
+        --background: #eceff5;
+        --surface: #ffffff;
+        --placeholder: rgba(76, 79, 105, 0.13);
+        --mark: #5c5f77;
+        --scene: #f2f5fc;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #1e1e2e;
+          --surface: #313244;
+          --placeholder: rgba(205, 214, 244, 0.1);
+          --mark: #a6adc8;
+          --scene: #383a51;
+        }
+      }
       html,
       body {
         margin: 0;
         height: 100%;
         overflow: hidden;
-        background: #1e1e2e;
+        background: var(--background);
       }
       #glcanvas {
         display: block;
@@ -21,9 +42,187 @@
         touch-action: none;
         outline: none;
       }
+      #loading {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background: var(--background);
+        transition: opacity 250ms ease-out;
+      }
+      #loading.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .page {
+        width: min(100% - 32px, 1100px);
+        margin: 0 auto;
+        padding-top: 46px;
+      }
+      .bar {
+        border-radius: 4px;
+        background: var(--placeholder);
+        animation: pulse 1.2s ease-in-out infinite alternate;
+      }
+      .title {
+        width: 147px;
+        height: 25px;
+        margin-bottom: 20px;
+      }
+      .subtitle {
+        width: min(100%, 691px);
+        height: 12px;
+        margin-bottom: 41px;
+      }
+      .subtitle + .subtitle {
+        display: none;
+      }
+      @media (max-width: 722px) {
+        .subtitle {
+          margin-bottom: 6px;
+        }
+        .subtitle + .subtitle {
+          display: block;
+          width: 85%;
+          margin-bottom: 41px;
+        }
+      }
+      .heading {
+        height: 15px;
+        margin-bottom: 20px;
+      }
+      .cards + .heading {
+        margin-top: 57px;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 19px 16px;
+      }
+      .card {
+        padding: 10px 10px 13px;
+        border-radius: 10px;
+        background: var(--surface);
+      }
+      .thumbnail {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        border-radius: 6px;
+        background: var(--background);
+      }
+      .plus::before,
+      .plus::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--mark);
+      }
+      .plus::before {
+        width: 16.875%;
+        height: 2px;
+      }
+      .plus::after {
+        width: 2px;
+        height: 30%;
+      }
+      .name {
+        width: 55%;
+        height: 11px;
+        margin-top: 14px;
+      }
+      .card:nth-child(3n + 2) .name {
+        width: 70%;
+      }
+      .card:nth-child(3n) .name {
+        width: 40%;
+      }
+      .line {
+        height: 9px;
+        margin-top: 11px;
+      }
+      .line + .line {
+        width: 65%;
+        margin-top: 7px;
+      }
+      .wide {
+        display: none;
+      }
+      @media (min-width: 528px) {
+        .line + .line {
+          width: 100%;
+        }
+        .line + .wide {
+          display: block;
+          width: 50%;
+        }
+      }
+      .plus ~ .name {
+        width: 40%;
+      }
+      .plus ~ .line {
+        width: 60%;
+      }
+      .scene #loading {
+        background: var(--scene);
+      }
+      .scene .page {
+        display: none;
+      }
+      .scene #loading::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 24px;
+        height: 24px;
+        margin: -12px;
+        border-radius: 50%;
+        background: var(--placeholder);
+        animation: pulse 1.2s ease-in-out infinite alternate;
+      }
+      @keyframes pulse {
+        to {
+          opacity: 0.4;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .bar,
+        .scene #loading::after {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
     <canvas id="glcanvas"></canvas>
+    <div id="loading" role="status" aria-label="Loading" ontransitionend="this.remove()">
+      <div class="page">
+        <div class="bar title"></div>
+        <div class="bar subtitle"></div>
+        <div class="bar subtitle"></div>
+        <div class="bar heading" style="width: 134px"></div>
+        <div class="cards">
+          <div class="card"><div class="thumbnail plus"></div><div class="bar name"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+        </div>
+        <div class="bar heading" style="width: 74px"></div>
+        <div class="cards">
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+        </div>
+        <div class="bar heading" style="width: 70px"></div>
+        <div class="cards">
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
