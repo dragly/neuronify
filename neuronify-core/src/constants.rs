@@ -13,6 +13,8 @@ pub const SIMULATION_STEPS_PER_SECOND: f64 = 1000.0 / 16.0;
 pub const DEFAULT_SPEED: f64 = 2.0;
 pub const PHYSICS_STEPS_PER_SECOND: f64 = 250.0;
 
+pub const STIMULATION_CURRENT: f64 = 300e-12;
+
 pub const NODE_RADIUS: f32 = 1.0;
 pub const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
 pub const ATTACHMENT_RANGE: f32 = 1.5 * NODE_RADIUS;

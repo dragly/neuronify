@@ -6,17 +6,21 @@ pub mod stimulation;
 pub use fhn::fhn_step;
 pub use lif::{lif_step, run_headless, SpikeRecord};
 pub use spatial::{apply_spatial_forces, integrate_motion};
-pub use stimulation::{stimulate_nearby, touch_sensor_near};
+pub use stimulation::{fire_nearby, stimulate_nearby, touch_sensor_near};
 
 use std::collections::HashSet;
 
+use glam::Vec3;
 use hecs::{Entity, World};
 
 use crate::components::LeakyDynamics;
 use crate::constants::*;
 
-pub fn step_simulation(world: &mut World, time: &mut f64, steps: u32) {
+pub fn step_simulation(world: &mut World, time: &mut f64, steps: u32, touch: Option<Vec3>) {
     for _ in 0..steps {
+        if let Some(position) = touch {
+            stimulate_nearby(world, position);
+        }
         lif_step(world, LIF_DT, *time);
         *time += LIF_DT;
 

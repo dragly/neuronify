@@ -207,7 +207,7 @@ pub fn collect_rings(world: &hecs::World, palette: &Palette) -> Vec<TorusData> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::{lif_step, stimulate_nearby};
+    use crate::simulation::{fire_nearby, lif_step};
 
     #[test]
     fn generators_have_rings_and_touch_sensors_are_pads() {
@@ -262,7 +262,7 @@ mod tests {
         let palette = Theme::Dark.palette();
         let pad_color = |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].color;
         let resting = pad_color(&world);
-        stimulate_nearby(&mut world, Vec3::ZERO);
+        fire_nearby(&mut world, Vec3::ZERO);
         assert_ne!(pad_color(&world), resting);
         let steps = (FLASH_DURATION / LIF_DT).ceil() as usize;
         for step in 0..=steps {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::simulation::step_simulation;
 
 fn at(x: f32, z: f32) -> Vec3 {
     Vec3::new(x, 0.0, z)
@@ -315,14 +316,35 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
     Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Select);
 
-    assert_eq!(editor.view(&world, at(0.5, 0.0)), None);
-    assert_eq!(editor.view(&world, at(5.0, 5.0)), None);
+    assert_eq!(editor.view(&mut world, at(0.5, 0.0)), None);
+    assert_eq!(editor.view(&mut world, at(5.0, 5.0)), None);
     assert_eq!(editor.touch(), Some(at(5.0, 5.0)));
     editor.release();
 
-    assert_eq!(editor.view(&world, at(10.0, 10.0)), None);
-    assert_eq!(editor.view(&world, at(11.0, 10.0)), Some(Pan(at(1.0, 0.0))));
+    assert_eq!(editor.view(&mut world, at(10.0, 10.0)), None);
+    assert_eq!(
+        editor.view(&mut world, at(11.0, 10.0)),
+        Some(Pan(at(1.0, 0.0)))
+    );
     assert_eq!(editor.touch(), None);
+}
+
+#[test]
+fn touch_sensors_fire_once_per_press() {
+    let mut world = World::new();
+    let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Stimulate);
+    let fired = |world: &mut World, editor: &mut Editor| {
+        editor.edit(world, at(0.5, 0.0), false);
+        let fired = world.get::<&GeneratorDynamics>(sensor).unwrap().fired;
+        step_simulation(world, &mut 0.0, 1, editor.touch());
+        fired
+    };
+
+    assert!(fired(&mut world, &mut editor));
+    assert!(!fired(&mut world, &mut editor));
+    editor.release();
+    assert!(fired(&mut world, &mut editor));
 }
 
 #[test]
@@ -331,12 +353,12 @@ fn viewers_select_with_a_tap() {
     let target = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Select);
 
-    editor.view(&world, at(0.5, 0.0));
+    editor.view(&mut world, at(0.5, 0.0));
     editor.tap(&world, at(0.5, 0.0));
     editor.release();
     assert_eq!(editor.selection, Some(target));
 
-    editor.view(&world, at(10.0, 10.0));
+    editor.view(&mut world, at(10.0, 10.0));
     editor.tap(&world, at(10.0, 10.0));
     editor.release();
     assert_eq!(editor.selection, None);
@@ -350,7 +372,7 @@ fn touching_a_sensor_leaves_the_selection_alone() {
     let mut editor = editor(Tool::Select);
     editor.selection = Some(target);
 
-    editor.view(&world, at(0.5, 0.0));
+    editor.view(&mut world, at(0.5, 0.0));
     editor.tap(&world, at(0.5, 0.0));
     assert_eq!(editor.selection, Some(target));
 }
@@ -361,11 +383,11 @@ fn holding_an_element_grabs_it() {
     let target = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Select);
 
-    editor.view(&world, at(10.0, 10.0));
+    editor.view(&mut world, at(10.0, 10.0));
     assert!(!editor.hold(&world, at(10.0, 10.0)));
     editor.release();
 
-    editor.view(&world, at(0.5, 0.0));
+    editor.view(&mut world, at(0.5, 0.0));
     assert!(editor.hold(&world, at(0.5, 0.0)));
     assert_eq!(editor.selection, Some(target));
     assert_eq!(editor.edit(&mut world, at(3.5, 2.0), false), None);

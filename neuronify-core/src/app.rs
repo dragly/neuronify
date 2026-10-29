@@ -197,7 +197,7 @@ impl Neuronify {
             self.editor
                 .edit(&mut self.world, position, self.keyboard.shift_down)
         } else {
-            self.editor.view(&self.world, position)
+            self.editor.view(&mut self.world, position)
         };
         if let Some(Pan(offset)) = requested_pan {
             camera::pan(application, offset);
@@ -313,11 +313,13 @@ impl visula::Simulation for Neuronify {
                 self.edit_enabled = self.editor.hold(&self.world, position);
             }
         }
-        if let Some(position) = self.editor.touch() {
-            simulation::stimulate_nearby(&mut self.world, position);
-        }
         if self.running {
-            simulation::step_simulation(&mut self.world, &mut self.time, simulation_steps);
+            simulation::step_simulation(
+                &mut self.world,
+                &mut self.time,
+                simulation_steps,
+                self.editor.touch(),
+            );
         }
         simulation::step_physics(&mut self.world, physics_steps);
 
