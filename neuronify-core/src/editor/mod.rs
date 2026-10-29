@@ -21,7 +21,6 @@ mod history;
 mod tests;
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
-const ELEMENT_ERASE_REACH: f32 = 1.5 * NODE_RADIUS;
 const VOLTMETER_REACH: f32 = NODE_RADIUS;
 const CORNER_REACH: f32 = 1.0;
 
@@ -546,7 +545,7 @@ fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
         .query::<&Position>()
         .with::<&Deletable>()
         .iter()
-        .filter(|(_, element)| element.position.distance(position) < ELEMENT_ERASE_REACH)
+        .filter(|(_, element)| element.position.distance(position) < ERASE_RADIUS)
         .map(|(entity, _)| entity)
         .chain(cut_off)
         .collect();
