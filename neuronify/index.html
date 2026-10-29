@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Neuronify</title>
-    <link data-trunk rel="rust" data-bin="neuronify" />
+    <link data-trunk rel="rust" data-bin="neuronify" data-initializer="loading.js" />
     <link data-trunk rel="copy-dir" href="../neuronify-core/examples" />
     <script>
       if (new URLSearchParams(location.search).has("file")) {
@@ -18,6 +18,7 @@
         --placeholder: rgba(76, 79, 105, 0.13);
         --mark: #5c5f77;
         --scene: #f2f5fc;
+        --accent: #1e66f5;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -26,6 +27,7 @@
           --placeholder: rgba(205, 214, 244, 0.1);
           --mark: #a6adc8;
           --scene: #383a51;
+          --accent: #89b4fa;
         }
       }
       html,
@@ -52,6 +54,17 @@
       #loading.done {
         opacity: 0;
         pointer-events: none;
+      }
+      #progress {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 200ms ease-out;
       }
       .page {
         width: min(100% - 32px, 1100px);
@@ -196,7 +209,8 @@
   </head>
   <body>
     <canvas id="glcanvas"></canvas>
-    <div id="loading" role="status" aria-label="Loading" ontransitionend="this.remove()">
+    <div id="loading" role="status" aria-label="Loading" ontransitionend="if (event.target === this) this.remove()">
+      <div id="progress"></div>
       <div class="page">
         <div class="bar title"></div>
         <div class="bar subtitle"></div>
