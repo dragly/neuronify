@@ -1,0 +1,161 @@
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: [".github/workflows/release.yml"]
+  workflow_dispatch:
+
+name: Release
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install trunk
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl --fail --location --silent --show-error \
+            https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Build
+        working-directory: neuronify
+        run: trunk build --release --public-url ./ --dist ../package/neuronify
+      - name: Package
+        working-directory: package
+        run: zip -r ../neuronify-web.zip neuronify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neuronify-web
+          path: neuronify-web.zip
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+      - name: Build
+        run: cargo build --release --locked -p neuronify
+      - name: Package
+        run: |
+          mkdir -p package/neuronify
+          cp target/release/neuronify LICENSE README.md package/neuronify/
+          tar -czf neuronify-linux-x86_64.tar.gz -C package neuronify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neuronify-linux
+          path: neuronify-linux-x86_64.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --locked -p neuronify
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory package/neuronify
+          Copy-Item target/release/neuronify.exe, LICENSE, README.md package/neuronify/
+          Compress-Archive package/neuronify neuronify-windows-x86_64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neuronify-windows
+          path: neuronify-windows-x86_64.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build
+        run: |
+          cargo build --release --locked -p neuronify --target aarch64-apple-darwin
+          cargo build --release --locked -p neuronify --target x86_64-apple-darwin
+      - name: Package
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' neuronify/Cargo.toml)
+          contents=package/neuronify/Neuronify.app/Contents
+          mkdir -p "$contents/MacOS" "$contents/Resources" neuronify.iconset
+          lipo -create -output "$contents/MacOS/neuronify" \
+            target/aarch64-apple-darwin/release/neuronify \
+            target/x86_64-apple-darwin/release/neuronify
+          for size in 16 32 128 256; do
+            sips -z $size $size neuronify-core/assets/icon.png \
+              --out neuronify.iconset/icon_${size}x${size}.png
+          done
+          for size in 16 32 128; do
+            sips -z $((size * 2)) $((size * 2)) neuronify-core/assets/icon.png \
+              --out neuronify.iconset/icon_${size}x${size}@2x.png
+          done
+          iconutil -c icns neuronify.iconset -o "$contents/Resources/neuronify.icns"
+          cat > "$contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>neuronify</string>
+            <key>CFBundleIconFile</key>
+            <string>neuronify</string>
+            <key>CFBundleIdentifier</key>
+            <string>net.ovilab.neuronifymac</string>
+            <key>CFBundleName</key>
+            <string>Neuronify</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>$version</string>
+            <key>CFBundleVersion</key>
+            <string>$version</string>
+            <key>LSApplicationCategoryType</key>
+            <string>public.app-category.education</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+          codesign --force --deep --sign - package/neuronify/Neuronify.app
+          cp LICENSE README.md package/neuronify/
+          ditto -c -k --keepParent package/neuronify neuronify-macos.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neuronify-macos
+          path: neuronify-macos.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [web, linux, windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Create a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --verify-tag \
+            --title "Neuronify ${GITHUB_REF_NAME#v}" \
+            --notes ""
