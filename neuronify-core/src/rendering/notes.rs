@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec3, Vec4};
 use hecs::Entity;
 use std::collections::{HashMap, HashSet};
+use std::ops::RangeInclusive;
 use visula::{
     text::{GlyphAtlas, TessellatedGeometry},
     Expression, GlyphDelegate, GlyphVertex, Glyphs, PolygonDelegate, PolygonVertex, Polygons,
@@ -20,6 +21,9 @@ pub const NOTE_MARGIN: f32 = 0.4;
 pub const NOTE_BACKGROUND_Y: f32 = 0.01;
 pub const NOTE_TEXT_Y: f32 = 0.02;
 
+const PREPARED_CHARACTERS: RangeInclusive<char> = ' '..='~';
+const PREPARED_GLYPHS_PER_FRAME: usize = 2;
+
 /// The geometry of one note around its own center, rebuilt only when its text or size changes.
 struct NoteGeometry {
     text: String,
@@ -36,6 +40,7 @@ pub struct NoteRenderer {
     backgrounds: Polygons,
     text: Glyphs,
     atlas: GlyphAtlas,
+    unprepared: RangeInclusive<char>,
     notes: HashMap<Entity, NoteGeometry>,
     uploaded: Vec<(Entity, Vec3)>,
 }
@@ -62,12 +67,14 @@ impl NoteRenderer {
             )
             .unwrap(),
             atlas: GlyphAtlas::new(NOTE_FONT_DATA).unwrap(),
+            unprepared: PREPARED_CHARACTERS,
             notes: HashMap::new(),
             uploaded: Vec::new(),
         }
     }
 
     pub fn update(&mut self, application: &visula::Application, world: &hecs::World) {
+        prepare_glyphs(&mut self.atlas, &mut self.unprepared);
         let mut changed = false;
         let mut placed = Vec::new();
         for (entity, (annotation, position, size)) in
@@ -144,6 +151,14 @@ fn layout(
         text.merge(&uncovered(translated(&note.glyphs, *position), &covers));
     }
     (backgrounds, text)
+}
+
+fn prepare_glyphs(atlas: &mut GlyphAtlas, unprepared: &mut RangeInclusive<char>) {
+    for character in unprepared.take(PREPARED_GLYPHS_PER_FRAME) {
+        if let Err(e) = atlas.prepare(character) {
+            log::error!("Failed to prepare the glyph for {character:?}: {e:?}");
+        }
+    }
 }
 
 fn build_note_geometry(atlas: &mut GlyphAtlas, text: &str, size: &NoteSize) -> NoteGeometry {
@@ -406,6 +421,24 @@ mod tests {
 
     fn atlas() -> GlyphAtlas {
         GlyphAtlas::new(NOTE_FONT_DATA).unwrap()
+    }
+
+    #[test]
+    fn prepares_every_printable_ascii_glyph_a_few_per_frame() {
+        let mut atlas = atlas();
+        let mut unprepared = PREPARED_CHARACTERS;
+        let mut frames = 0;
+        while !unprepared.is_empty() {
+            prepare_glyphs(&mut atlas, &mut unprepared);
+            frames += 1;
+        }
+        assert_eq!(frames, 48);
+        let revision = atlas.revision();
+        let ascii: String = PREPARED_CHARACTERS.collect();
+        atlas
+            .lay_out_wrapped(&ascii, NOTE_TEXT_HEIGHT, 100.0)
+            .unwrap();
+        assert_eq!(atlas.revision(), revision);
     }
 
     #[test]
