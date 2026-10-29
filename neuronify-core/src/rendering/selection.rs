@@ -2,7 +2,7 @@ use glam::{Quat, Vec3};
 use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::constants::{COMPARTMENT_SPHERE_SCALE, NODE_RADIUS};
+use crate::constants::{COMPARTMENT_SPHERE_SCALE, ERASE_RADIUS, NODE_RADIUS};
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::colors::Palette;
@@ -47,6 +47,16 @@ pub fn collect_selection(world: &World, selection: Entity, palette: &Palette) ->
         });
     }
     scene
+}
+
+pub fn eraser_outline(center: Vec3, palette: &Palette) -> TorusData {
+    TorusData {
+        position: center,
+        major_radius: ERASE_RADIUS,
+        rotation: Quat::IDENTITY,
+        color: palette.neutral,
+        minor_radius: THICKNESS,
+    }
 }
 
 fn rectangle(world: &World, entity: Entity) -> Option<[Vec3; 2]> {

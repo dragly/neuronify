@@ -5,6 +5,7 @@ use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
+use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
 use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, ShadowRenderData};
@@ -28,6 +29,7 @@ pub struct Neuronify {
     running: bool,
     speed: f64,
     mouse: Mouse,
+    hover: Option<PhysicalPosition<f64>>,
     keyboard: Keyboard,
     touches: Touches,
     renderer: SceneRenderer,
@@ -132,6 +134,7 @@ impl Neuronify {
             running: true,
             speed: DEFAULT_SPEED,
             mouse: Mouse::default(),
+            hover: None,
             keyboard: Keyboard::default(),
             touches: Touches::default(),
             renderer,
@@ -182,6 +185,15 @@ impl Neuronify {
             self.mouse.cancel();
             self.editor.release(&self.world);
         }
+    }
+
+    fn eraser(&self, application: &visula::Application) -> Option<Vec3> {
+        let hover = self.hover.filter(|&hover| {
+            self.edit_enabled
+                && self.editor.tool == Tool::Erase
+                && !gui_takes_press(application, hover)
+        })?;
+        Some(camera::ground_position(application, hover))
     }
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
@@ -353,6 +365,7 @@ impl visula::Simulation for Neuronify {
             self.theme,
             self.editor.connection_being_drawn(),
             self.editor.selection,
+            self.eraser(application),
         );
     }
 
@@ -438,12 +451,18 @@ impl visula::Simulation for Neuronify {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
+                self.hover = Some(*position);
                 self.move_pointer(application, *position);
             }
+            Event::WindowEvent {
+                event: WindowEvent::CursorLeft { .. },
+                ..
+            } => self.hover = None,
             Event::WindowEvent {
                 event: WindowEvent::Touch(touch),
                 ..
             } => {
+                self.hover = None;
                 if touch.phase == TouchPhase::Started {
                     if gui_takes_press(application, touch.location) {
                         self.touches.forget_tap();

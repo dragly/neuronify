@@ -715,7 +715,7 @@ fn erasing_beside_an_axon_erases_the_rest_of_it() {
     let beside = (position(&world, grown[3]) + position(&world, grown[4])) / 2.0 + at(1.8, 0.0);
     assert!(grown
         .iter()
-        .all(|&element| position(&world, element).distance(beside) > ELEMENT_ERASE_REACH));
+        .all(|&element| position(&world, element).distance(beside) > ERASE_RADIUS));
 
     drag(&mut editor(Tool::Erase), &mut world, &[beside]);
 
