@@ -51,7 +51,12 @@ impl Preview {
         let mode = preview_mode(&world);
         let mut time = 0.0;
         if mode == PreviewMode::Still {
-            simulation::step_simulation(&mut world, &mut time, STEPS_UNTIL_VOLTMETERS_ARE_DRAWN);
+            simulation::step_simulation(
+                &mut world,
+                &mut time,
+                STEPS_UNTIL_VOLTMETERS_ARE_DRAWN,
+                None,
+            );
         }
         Some(Preview {
             example,
@@ -80,7 +85,7 @@ impl Preview {
         } else {
             WARM_UP_STEPS_PER_FRAME
         };
-        simulation::step_simulation(&mut self.world, &mut self.time, simulation_steps);
+        simulation::step_simulation(&mut self.world, &mut self.time, simulation_steps, None);
         simulation::step_physics(&mut self.world, physics_steps);
     }
 

@@ -273,7 +273,7 @@ mod tests {
         let mut peak = f64::MIN;
         let mut time = 0.0;
         for step in 0..4000 {
-            step_simulation(world, &mut time, 1);
+            step_simulation(world, &mut time, 1, None);
             if world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0 {
                 spikes.push(step);
             }

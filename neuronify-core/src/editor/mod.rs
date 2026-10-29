@@ -10,7 +10,7 @@ use crate::elements::{spawn_cable, spawn_compartment, spawn_synapse, spawn_voltm
 use crate::measurement::voltmeter::{Corner, Frame, Voltmeter};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
-use crate::simulation::touch_sensor_near;
+use crate::simulation::{fire_nearby, touch_sensor_near};
 use crate::tools::{ConnectionTool, StimulationTool, Tool};
 use drag::Drag;
 
@@ -96,16 +96,16 @@ impl Editor {
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon => self.grow_axon(world, position, shift_down),
             Tool::Erase => erase(world, position),
-            Tool::Stimulate => self.stimulation_tool = Some(StimulationTool { position }),
+            Tool::Stimulate => self.stimulate(world, position),
         }
         None
     }
 
-    pub fn view(&mut self, world: &World, position: Vec3) -> Option<Pan> {
+    pub fn view(&mut self, world: &mut World, position: Vec3) -> Option<Pan> {
         let touching = self.stimulation_tool.is_some()
             || (self.move_origin.is_none() && touch_sensor_near(world, position));
         if touching {
-            self.stimulation_tool = Some(StimulationTool { position });
+            self.stimulate(world, position);
             return None;
         }
         match self.move_origin {
@@ -115,6 +115,13 @@ impl Editor {
                 None
             }
         }
+    }
+
+    fn stimulate(&mut self, world: &mut World, position: Vec3) {
+        if self.stimulation_tool.is_none() {
+            fire_nearby(world, position);
+        }
+        self.stimulation_tool = Some(StimulationTool { position });
     }
 
     pub fn pressed_background(&self) -> bool {
