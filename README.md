@@ -12,6 +12,10 @@ but with new features and the ability to embed simulations into websites and onl
 
 Neuronify 1 was originally written in C++, while Neuronify 2 is written in Rust.
 
+Each release on GitHub has builds for Linux, Windows and macOS,
+and a web build that can be put in any folder on a web server.
+To run Neuronify from the source code instead, run `cargo run --release -p neuronify`.
+
 To run Neuronify in the browser,
 install [trunk](https://trunkrs.dev) and run `trunk serve --port <port>` in the `neuronify` folder.
 Adding `?file=examples/leaky.nfy` to the URL shows that file
