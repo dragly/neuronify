@@ -11,6 +11,7 @@ const FIELD_OF_VIEW_DEGREES: f32 = 40.0;
 const FRAMING_MARGIN: f32 = 1.15;
 const ZOOM_PER_SCROLL_LINE: f32 = 0.1;
 const PIXELS_PER_SCROLL_LINE: f32 = 100.0;
+const POINTS_PER_ZOOM_DOUBLING: f64 = 150.0;
 
 pub fn set_up(application: &mut visula::Application) {
     let camera = &mut application.camera_controller;
@@ -52,15 +53,36 @@ pub fn pinch(
     let midpoint = |[a, b]: [PhysicalPosition<f64>; 2]| {
         PhysicalPosition::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
     };
-    let anchor = ground_position(application, midpoint(previous));
+    let zoom = match (spread(previous), spread(current)) {
+        (before, after) if before > 0.0 && after > 0.0 => (before / after) as f32,
+        _ => 1.0,
+    };
+    zoom_and_pan(application, zoom, midpoint(previous), midpoint(current));
+}
+
+pub fn drag_zoom(
+    application: &mut visula::Application,
+    anchor: PhysicalPosition<f64>,
+    previous: PhysicalPosition<f64>,
+    current: PhysicalPosition<f64>,
+) {
+    let points = (current.y - previous.y) / application.window.scale_factor();
+    let zoom = (-points / POINTS_PER_ZOOM_DOUBLING).exp2() as f32;
+    zoom_and_pan(application, zoom, anchor, anchor);
+}
+
+fn zoom_and_pan(
+    application: &mut visula::Application,
+    zoom: f32,
+    from: PhysicalPosition<f64>,
+    to: PhysicalPosition<f64>,
+) {
+    let anchor = ground_position(application, from);
     let camera = &mut application.camera_controller;
-    if spread(previous) > 0.0 && spread(current) > 0.0 {
-        let zoom = (spread(previous) / spread(current)) as f32;
-        camera.current_transform.distance =
-            (camera.current_transform.distance * zoom).clamp(MIN_DISTANCE, MAX_DISTANCE);
-        camera.target_transform.distance = camera.current_transform.distance;
-    }
-    let under_fingers = ground_position(application, midpoint(current));
+    camera.current_transform.distance =
+        (camera.current_transform.distance * zoom).clamp(MIN_DISTANCE, MAX_DISTANCE);
+    camera.target_transform.distance = camera.current_transform.distance;
+    let under_fingers = ground_position(application, to);
     let camera = &mut application.camera_controller;
     camera.current_transform.center += anchor - under_fingers;
     camera.target_transform.center = camera.current_transform.center;

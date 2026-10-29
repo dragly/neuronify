@@ -128,6 +128,10 @@ impl Editor {
         }
     }
 
+    pub fn empty_at(&self, world: &World, position: Vec3) -> bool {
+        entity_at(world, &voltmeter_frames(world), position).is_none()
+    }
+
     pub fn hold(&mut self, world: &World, position: Vec3) -> bool {
         if self.stimulation_tool.is_some() {
             return false;

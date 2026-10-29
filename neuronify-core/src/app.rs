@@ -17,6 +17,7 @@ const SAVED_NAME: &str = "circuit.neuronify";
 
 pub struct Neuronify {
     edit_enabled: bool,
+    tapped_background: bool,
     pub landing: Option<LandingScreen>,
     editor: Editor,
     gui: Gui,
@@ -117,6 +118,7 @@ impl Neuronify {
         let opened = world_from_command_line();
         Neuronify {
             edit_enabled: false,
+            tapped_background: false,
             landing: opened.is_none().then(|| LandingScreen::new(false)),
             editor: Editor::default(),
             gui: Gui::default(),
@@ -146,14 +148,15 @@ impl Neuronify {
     fn tap(&mut self, application: &visula::Application) {
         if self.edit_enabled {
             if self.editor.pressed_background() {
-                self.editor.selection = None;
-                if is_compact(application) {
-                    self.edit_enabled = false;
-                }
+                self.tapped_background = true;
             }
         } else if let Some(position) = self.mouse.position {
             let position = camera::ground_position(application, position);
-            self.editor.tap(&self.world, position);
+            if self.editor.touch().is_none() && self.editor.empty_at(&self.world, position) {
+                self.tapped_background = true;
+            } else {
+                self.editor.tap(&self.world, position);
+            }
         }
     }
 
@@ -170,7 +173,7 @@ impl Neuronify {
     fn sync_pointer_with_gui(&mut self, context: &egui::Context) {
         let held = context.input(|input| input.pointer.any_down() || input.any_touches());
         if !held {
-            self.touches = Touches::default();
+            self.touches.forget_fingers();
             self.mouse.cancel();
             self.editor.release();
         }
@@ -280,6 +283,13 @@ impl visula::Simulation for Neuronify {
             }
         }
 
+        if self.tapped_background && !self.touches.may_double_tap(input::now()) {
+            self.tapped_background = false;
+            self.editor.selection = None;
+            if self.edit_enabled && is_compact(application) {
+                self.edit_enabled = false;
+            }
+        }
         if let TouchGesture::Press(position) = self.touches.poll(input::now()) {
             self.move_pointer(application, position);
             self.press_pointer(application, true);
@@ -418,13 +428,20 @@ impl visula::Simulation for Neuronify {
                 event: WindowEvent::Touch(touch),
                 ..
             } => {
-                if touch.phase == TouchPhase::Started
-                    && gui_takes_press(application, touch.location)
-                {
-                    return;
+                if touch.phase == TouchPhase::Started {
+                    if gui_takes_press(application, touch.location) {
+                        self.touches.forget_tap();
+                        return;
+                    }
+                    let position = camera::ground_position(application, touch.location);
+                    if !self.editor.empty_at(&self.world, position) {
+                        self.touches.forget_tap();
+                    }
                 }
-                let wait = self.edit_enabled && self.editor.tool != Tool::Stimulate;
-                match self.touches.update(touch, input::now(), wait) {
+                let wait = self.edit_enabled
+                    && !matches!(self.editor.tool, Tool::Select | Tool::Stimulate);
+                let scale_factor = application.window.scale_factor();
+                match self.touches.update(touch, input::now(), wait, scale_factor) {
                     TouchGesture::Press(position) => {
                         self.move_pointer(application, position);
                         self.press_pointer(application, true);
@@ -442,6 +459,14 @@ impl visula::Simulation for Neuronify {
                     }
                     TouchGesture::Pinch { previous, current } => {
                         camera::pinch(application, previous, current)
+                    }
+                    TouchGesture::Zoom {
+                        anchor,
+                        previous,
+                        current,
+                    } => {
+                        self.tapped_background = false;
+                        camera::drag_zoom(application, anchor, previous, current);
                     }
                     TouchGesture::None => {}
                 }
