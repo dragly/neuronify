@@ -306,6 +306,8 @@ impl visula::Simulation for Neuronify {
                 self.load_error = Some(error);
             }
         }
+        #[cfg(target_arch = "wasm32")]
+        crate::web::hide_loading_screen_when_ready();
 
         if self.tapped_background && !self.touches.may_double_tap(input::now()) {
             self.tapped_background = false;
