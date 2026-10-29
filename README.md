@@ -17,3 +17,5 @@ install [trunk](https://trunkrs.dev) and run `trunk serve --port <port>` in the 
 Adding `?file=examples/leaky.nfy` to the URL shows that file
 the way it would look embedded on a web page, with the editor hidden.
 It can be any legacy `.nfy` file or `.neuronify` save file the page can fetch.
+
+Neuronify is licensed under the GNU General Public License version 3, see [LICENSE](LICENSE).
