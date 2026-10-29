@@ -100,9 +100,9 @@ impl LandingScreen {
         }
     }
 
-    pub fn update(&mut self, iterations: u32) {
+    pub fn update(&mut self, seconds: f64, physics_steps: u32) {
         for preview in self.previews_by_category.iter_mut().flatten() {
-            preview.step(iterations);
+            preview.step(seconds, physics_steps);
         }
     }
 
@@ -423,7 +423,7 @@ mod tests {
         let mut landing = LandingScreen::new(false);
         let window_with_room_for_one_row = vec2(1280.0, 400.0);
         run_sized(&context, &mut landing, vec![], window_with_room_for_one_row);
-        landing.update(4);
+        landing.update(1.0 / 60.0, 4);
         let first = &landing.previews_by_category[0][0];
         let last = landing.previews_by_category.last().unwrap().last().unwrap();
         assert!(first.on_screen && first.time > 0.0);
@@ -481,7 +481,7 @@ mod tests {
         };
         let mut frame = 0;
         let mut next_frame = |landing: &mut LandingScreen| {
-            landing.update(4);
+            landing.update(1.0 / 60.0, 4);
             frame += 1;
             run_at(
                 &context,

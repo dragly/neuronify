@@ -3,6 +3,7 @@ use glam::Vec3;
 use hecs::Entity;
 
 use super::*;
+use crate::constants::DEFAULT_SPEED;
 use crate::elements::Element;
 use crate::tools::Tool;
 
@@ -18,7 +19,7 @@ struct Harness {
     world: World,
     theme: Theme,
     running: bool,
-    iterations: u32,
+    speed: f64,
     choice: Option<MenuChoice>,
     output: Option<FullOutput>,
     time: f64,
@@ -48,7 +49,7 @@ impl Harness {
             world,
             theme: Theme::Dark,
             running: true,
-            iterations: 4,
+            speed: DEFAULT_SPEED,
             choice: None,
             output: None,
             time: 0.0,
@@ -76,7 +77,7 @@ impl Harness {
             world,
             theme,
             running,
-            iterations,
+            speed,
             choice,
             time,
             saving,
@@ -90,7 +91,7 @@ impl Harness {
                 theme,
                 time: *time,
                 running,
-                iterations,
+                speed,
                 fps: 60.0,
                 saving: *saving,
             };
@@ -337,14 +338,16 @@ fn the_playback_bar_pauses_and_resumes() {
 #[test]
 fn the_playback_bar_keeps_the_speed_within_bounds() {
     let mut harness = Harness::new(true);
+    harness.speed = 4.0;
     harness.click_button(playback::FASTER);
-    assert_eq!(harness.iterations, 5);
-    harness.iterations = 1;
+    assert_eq!(harness.speed, 8.0);
+    harness.click_button(playback::FASTER);
+    assert_eq!(harness.speed, 8.0);
+    harness.speed = 1.0;
     harness.click_button(playback::SLOWER);
-    assert_eq!(harness.iterations, 1);
-    harness.iterations = playback::MAX_SPEED;
-    harness.click_button(playback::FASTER);
-    assert_eq!(harness.iterations, playback::MAX_SPEED);
+    assert_eq!(harness.speed, 0.5);
+    harness.click_button(playback::SLOWER);
+    assert_eq!(harness.speed, 0.5);
 }
 
 #[test]
@@ -429,7 +432,7 @@ fn the_more_menu_sits_at_the_top_right_on_phones() {
 fn the_playback_bar_hides_behind_a_button_on_phones() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Playback");
-    assert!(harness.shows("×4"));
+    assert!(harness.shows("×2"));
     harness.frame(vec![]);
     harness.click_button(playback::PLAY);
     assert!(!harness.running);

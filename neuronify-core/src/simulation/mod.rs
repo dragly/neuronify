@@ -15,27 +15,23 @@ use hecs::{Entity, World};
 use crate::components::LeakyDynamics;
 use crate::constants::*;
 
-pub fn step_frame(world: &mut World, time: &mut f64, iterations: u32) {
-    for _ in 0..iterations {
+pub fn step_simulation(world: &mut World, time: &mut f64, steps: u32) {
+    for _ in 0..steps {
         lif_step(world, LIF_DT, *time);
         *time += LIF_DT;
-    }
 
-    let recently_fired: HashSet<Entity> = world
-        .query::<&LeakyDynamics>()
-        .iter()
-        .filter(|(_, d)| d.time_since_fire < iterations as f64 * LIF_DT)
-        .map(|(e, _)| e)
-        .collect();
-
-    for _ in 0..iterations {
+        let recently_fired: HashSet<Entity> = world
+            .query::<&LeakyDynamics>()
+            .iter()
+            .filter(|(_, d)| d.time_since_fire < FHN_FIRE_DURATION)
+            .map(|(e, _)| e)
+            .collect();
         fhn_step(world, FHN_CDT, &recently_fired);
     }
-    step_physics(world, iterations);
 }
 
-pub fn step_physics(world: &mut World, iterations: u32) {
-    for _ in 0..iterations {
+pub fn step_physics(world: &mut World, steps: u32) {
+    for _ in 0..steps {
         apply_spatial_forces(world);
         integrate_motion(world, PHYSICS_DT);
     }

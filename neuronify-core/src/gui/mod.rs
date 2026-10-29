@@ -55,7 +55,7 @@ pub struct Controls<'a> {
     pub theme: &'a mut Theme,
     pub time: f64,
     pub running: &'a mut bool,
-    pub iterations: &'a mut u32,
+    pub speed: &'a mut f64,
     pub fps: f64,
     pub saving: Saving,
 }
@@ -128,7 +128,7 @@ impl Gui {
             Align2::CENTER_BOTTOM,
             vec2(shift, -MARGIN),
             controls.running,
-            controls.iterations,
+            controls.speed,
             controls.time,
         );
         let picked = self.menu(
@@ -202,7 +202,7 @@ impl Gui {
                 Align2::CENTER_BOTTOM,
                 vec2(0.0, -(TOOL_BAR_MARGIN + TOOL_BAR_HEIGHT + FAB_GAP)),
                 controls.running,
-                controls.iterations,
+                controls.speed,
                 controls.time,
             );
         }

@@ -1,6 +1,7 @@
 use crate::camera;
+use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan};
-use crate::frame_clock::FrameClock;
+use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
@@ -25,12 +26,14 @@ pub struct Neuronify {
     world: hecs::World,
     time: f64,
     running: bool,
-    iterations: u32,
+    speed: f64,
     mouse: Mouse,
     keyboard: Keyboard,
     touches: Touches,
     renderer: SceneRenderer,
     frame_clock: FrameClock,
+    simulation_clock: StepClock,
+    physics_clock: StepClock,
     load_error: Option<String>,
     frame_scene_requested: bool,
     saving: Saving,
@@ -127,12 +130,14 @@ impl Neuronify {
             world: opened.unwrap_or_default(),
             time: 0.0,
             running: true,
-            iterations: 4,
+            speed: DEFAULT_SPEED,
             mouse: Mouse::default(),
             keyboard: Keyboard::default(),
             touches: Touches::default(),
             renderer,
             frame_clock: FrameClock::default(),
+            simulation_clock: StepClock::default(),
+            physics_clock: StepClock::default(),
             load_error: None,
             saving: saving(),
         }
@@ -204,13 +209,13 @@ impl Neuronify {
         let Some(path) = rfd::FileDialog::new().save_file() else {
             return;
         };
-        let bytes = crate::serialization::save(&self.world, self.time).unwrap();
+        let bytes = crate::serialization::save(&self.world, self.time, self.speed).unwrap();
         std::fs::write(path.with_extension("neuronify"), bytes).unwrap();
     }
 
     #[cfg(target_arch = "wasm32")]
     fn save(&self) {
-        let bytes = crate::serialization::save(&self.world, self.time).unwrap();
+        let bytes = crate::serialization::save(&self.world, self.time, self.speed).unwrap();
         if let Err(error) = crate::web::download(&bytes, SAVED_NAME) {
             log::error!("Could not save: {error:?}");
         }
@@ -223,15 +228,17 @@ impl Neuronify {
 
     #[cfg(target_arch = "wasm32")]
     fn share(&self) {
-        let bytes = crate::serialization::save(&self.world, self.time).unwrap();
+        let bytes = crate::serialization::save(&self.world, self.time, self.speed).unwrap();
         if let Err(error) = crate::web::share(&bytes, SAVED_NAME) {
             log::error!("Could not share: {error:?}");
         }
     }
 
-    fn open_world(&mut self, world: hecs::World, time: f64) {
+    fn open_world(&mut self, world: hecs::World, time: f64, speed: f64) {
         self.world = world;
         self.time = time;
+        self.speed = speed;
+        self.running = true;
         self.edit_enabled = false;
         self.editor.release();
         self.editor.selection = None;
@@ -260,7 +267,7 @@ impl Neuronify {
 
     fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
         let saved = crate::serialization::load_from_bytes(bytes)?;
-        self.open_world(saved.world, saved.time);
+        self.open_world(saved.world, saved.time, saved.speed);
         Ok(())
     }
 }
@@ -275,6 +282,12 @@ impl visula::Simulation for Neuronify {
         }
     }
     fn update(&mut self, application: &mut visula::Application) {
+        let seconds = self.frame_clock.tick();
+        let simulation_steps = self
+            .simulation_clock
+            .steps(seconds, self.speed * SIMULATION_STEPS_PER_SECOND);
+        let physics_steps = self.physics_clock.steps(seconds, PHYSICS_STEPS_PER_SECOND);
+
         #[cfg(target_arch = "wasm32")]
         if let Some(loaded) = crate::web::take_loaded_file() {
             if let Err(error) = loaded.and_then(|bytes| self.load_from_bytes(&bytes)) {
@@ -304,13 +317,12 @@ impl visula::Simulation for Neuronify {
             simulation::stimulate_nearby(&mut self.world, position);
         }
         if self.running {
-            simulation::step_frame(&mut self.world, &mut self.time, self.iterations);
-        } else {
-            simulation::step_physics(&mut self.world, self.iterations);
+            simulation::step_simulation(&mut self.world, &mut self.time, simulation_steps);
         }
+        simulation::step_physics(&mut self.world, physics_steps);
 
         if let Some(landing) = &mut self.landing {
-            landing.update(self.iterations);
+            landing.update(seconds, physics_steps);
         }
         if self.frame_scene_requested {
             self.frame_scene_requested = false;
@@ -341,7 +353,6 @@ impl visula::Simulation for Neuronify {
             self.editor.connection_being_drawn(),
             self.editor.selection,
         );
-        self.frame_clock.tick();
     }
 
     fn render(&mut self, data: &mut RenderData) {
@@ -360,8 +371,12 @@ impl visula::Simulation for Neuronify {
         self.sync_pointer_with_gui(context);
         if let Some(landing) = &mut self.landing {
             match landing.show(context, self.theme) {
-                Some(LandingChoice::Example { world, time }) => self.open_world(*world, time),
-                Some(LandingChoice::EmptyCanvas) => self.open_world(hecs::World::new(), 0.0),
+                Some(LandingChoice::Example { world, time }) => {
+                    self.open_world(*world, time, DEFAULT_SPEED)
+                }
+                Some(LandingChoice::EmptyCanvas) => {
+                    self.open_world(hecs::World::new(), 0.0, DEFAULT_SPEED)
+                }
                 Some(LandingChoice::BackToSimulation) => self.landing = None,
                 None => {}
             }
@@ -377,7 +392,7 @@ impl visula::Simulation for Neuronify {
             theme: &mut self.theme,
             time: self.time,
             running: &mut self.running,
-            iterations: &mut self.iterations,
+            speed: &mut self.speed,
             fps: self.frame_clock.fps(),
             saving: self.saving,
         };
