@@ -77,3 +77,4 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cpal = "0.18.2"
+png = "0.18"

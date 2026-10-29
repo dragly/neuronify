@@ -144,6 +144,8 @@ fn gui_takes_press(application: &visula::Application, position: PhysicalPosition
 
 impl Neuronify {
     pub fn new(application: &mut visula::Application) -> Neuronify {
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::window::name(&application.window);
         camera::set_up(application);
 
         let theme = match application.window.theme() {
