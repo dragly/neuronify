@@ -2,7 +2,7 @@
 
 Neuronify is an educational neural network app.
 It gives a low entry point to simulation-based neuroscience.
-Without prior computational experiene, Neuronify makes it possible to work on neural simulations.
+Without prior computational experience, Neuronify makes it possible to work on neural simulations.
 
 The original version of Neuronify is described in
 [this paper published in eNeuro](https://doi.org/10.1523/ENEURO.0022-17.2017).
