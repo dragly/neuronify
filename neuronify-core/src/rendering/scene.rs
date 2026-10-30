@@ -23,7 +23,8 @@ impl Scene {
                 start_radius: radius,
                 end: pair[1],
                 end_radius: radius,
-                color,
+                start_color: color,
+                end_color: color,
                 _padding: Default::default(),
             });
         }

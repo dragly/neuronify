@@ -102,7 +102,8 @@ pub fn collect_cylinders(
                     start_radius: start_radius + (end_radius - start_radius) * near,
                     end: start.lerp(end, far),
                     end_radius: start_radius + (end_radius - start_radius) * far,
-                    color,
+                    start_color: color,
+                    end_color: color,
                     _padding: Default::default(),
                 }
             }))
@@ -113,14 +114,16 @@ pub fn collect_cylinders(
     for path in paths.values() {
         let segments = path.points.len().saturating_sub(1);
         for (i, w) in path.points.windows(2).enumerate() {
+            let color = path
+                .start_color
+                .lerp(path.end_color, (i as f32 + 0.5) / segments as f32);
             cylinders.push(CylinderData {
                 start: w[0],
                 start_radius: path.radius,
                 end: w[1],
                 end_radius: path.radius,
-                color: path
-                    .start_color
-                    .lerp(path.end_color, (i as f32 + 0.5) / segments as f32),
+                start_color: color,
+                end_color: color,
                 _padding: Default::default(),
             });
         }
@@ -132,7 +135,8 @@ pub fn collect_cylinders(
                 start_radius: 1.2 * path.terminal_radius,
                 end: *end + direction * 0.12,
                 end_radius: 1.2 * path.terminal_radius,
-                color: terminal_color(),
+                start_color: terminal_color(),
+                end_color: terminal_color(),
                 _padding: Default::default(),
             });
         }
