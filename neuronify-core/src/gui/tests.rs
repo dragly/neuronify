@@ -161,13 +161,17 @@ impl Harness {
     }
 
     fn press(&mut self, modifiers: Modifiers, key: Key) {
-        self.frame(vec![Event::Key {
-            key,
-            physical_key: None,
-            pressed: true,
-            repeat: false,
-            modifiers,
-        }]);
+        self.frame(
+            [true, false]
+                .map(|pressed| Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed,
+                    repeat: false,
+                    modifiers,
+                })
+                .into(),
+        );
     }
 
     fn click_text(&mut self, text: &str) {
@@ -373,6 +377,33 @@ fn ctrl_z_is_left_to_the_text_of_a_note() {
     harness.click_text("New note");
     harness.press(Modifiers::COMMAND, Key::Z);
     assert!(!harness.world.contains(neuron));
+}
+
+#[test]
+fn letters_choose_tools_and_step_through_a_group() {
+    let mut harness = Harness::new(true);
+    harness.press(Modifiers::NONE, Key::N);
+    assert_eq!(harness.editor.tool, Tool::Place(Element::ExcitatoryNeuron));
+    harness.press(Modifiers::NONE, Key::N);
+    assert_eq!(harness.editor.tool, Tool::Place(Element::InhibitoryNeuron));
+    harness.press(Modifiers::NONE, Key::C);
+    assert_eq!(harness.editor.tool, Tool::StaticConnection);
+    harness.press(Modifiers::NONE, Key::N);
+    assert_eq!(harness.editor.tool, Tool::Place(Element::InhibitoryNeuron));
+    harness.press(Modifiers::SHIFT, Key::E);
+    assert_eq!(harness.editor.tool, Tool::Place(Element::InhibitoryNeuron));
+    harness.press(Modifiers::NONE, Key::V);
+    assert_eq!(harness.editor.tool, Tool::Select);
+}
+
+#[test]
+fn tool_letters_are_left_to_the_text_of_a_note() {
+    let mut world = World::new();
+    let note = Element::Note.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(note));
+    harness.click_text("New note");
+    harness.press(Modifiers::NONE, Key::N);
+    assert_eq!(harness.editor.tool, Tool::Select);
 }
 
 #[test]
