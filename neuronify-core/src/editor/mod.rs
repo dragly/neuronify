@@ -35,6 +35,7 @@ pub struct Editor {
     connection_tool: Option<ConnectionTool>,
     stimulation_tool: Option<StimulationTool>,
     previous_creation: Option<Entity>,
+    pressed: Option<Entity>,
     move_origin: Option<Vec3>,
     dragging: Option<Drag>,
     resizing: Option<(Entity, Corner, Vec3)>,
@@ -49,16 +50,16 @@ impl Editor {
     }
 
     pub fn connection_being_drawn(&self) -> Option<(Vec3, Vec3)> {
-        match (self.tool, &self.connection_tool) {
-            (Tool::StaticConnection, Some(connection)) => Some((connection.start, connection.end)),
-            _ => None,
-        }
+        let connection = self.connection_tool.as_ref()?;
+        let drawn = matches!(self.tool, Tool::StaticConnection | Tool::Place(_));
+        drawn.then_some((connection.start, connection.end))
     }
 
     pub fn release(&mut self, world: &World) {
         self.stimulation_tool = None;
         self.connection_tool = None;
         self.previous_creation = None;
+        self.pressed = None;
         self.move_origin = None;
         self.dragging = None;
         self.resizing = None;
@@ -179,7 +180,7 @@ impl Editor {
     ) -> Option<Pan> {
         match self.tool {
             Tool::Select => return self.select(world, recording, position),
-            Tool::Place(element) => self.place(world, element, position),
+            Tool::Place(element) => self.add(world, recording, element, position, shift_down),
             Tool::Voltmeter => self.place_voltmeter(world, position),
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon => self.grow_axon(world, position, shift_down),
@@ -227,15 +228,27 @@ impl Editor {
         entity_at(world, &voltmeter_frames(world), position).is_none()
     }
 
+    pub fn select_pressed(&mut self) {
+        if let Some(pressed) = self.pressed {
+            self.selection = Some(pressed);
+        }
+    }
+
     pub fn hold(&mut self, world: &World, position: Vec3) -> bool {
         if self.stimulation_tool.is_some() {
             return false;
         }
-        let Some((entity, entity_position)) = entity_at(world, &voltmeter_frames(world), position)
+        let pressed = self.pressed.and_then(|pressed| {
+            let pressed_position = world.get::<&Position>(pressed).ok()?.position;
+            Some((pressed, pressed_position))
+        });
+        let Some((entity, entity_position)) =
+            pressed.or_else(|| entity_at(world, &voltmeter_frames(world), position))
         else {
             return false;
         };
         self.move_origin = None;
+        self.connection_tool = None;
         self.grab(world, entity, entity_position, position);
         true
     }
@@ -254,6 +267,47 @@ impl Editor {
         self.previous_creation
             .and_then(|previous| world.get::<&Position>(previous).ok().map(|p| p.position))
             .is_some_and(|previous| previous.distance(position) < minimum_distance)
+    }
+
+    fn add(
+        &mut self,
+        world: &mut World,
+        recording: &mut Recording,
+        element: Element,
+        position: Vec3,
+        shift_down: bool,
+    ) {
+        if let Some(drag) = &mut self.dragging {
+            drag.move_to(world, recording, position);
+        } else if self.connection_tool.is_some() {
+            self.extend_connection(world, position, shift_down);
+        } else if self.previous_creation.is_some() {
+            self.place(world, element, position);
+        } else if self.pressed.is_none() {
+            self.press_to_add(world, element, position);
+        }
+    }
+
+    fn press_to_add(&mut self, world: &mut World, element: Element, position: Vec3) {
+        let connection = start_connection(sources(world), position);
+        let under = entity_at(world, &voltmeter_frames(world), position).map(|(entity, _)| entity);
+        self.pressed = connection
+            .as_ref()
+            .map(|connection| connection.from)
+            .or(under);
+        if self.pressed.is_some() {
+            self.previous_creation = connection.as_ref().map(|connection| connection.from);
+            self.connection_tool = connection;
+            return;
+        }
+        self.place(world, element, position);
+        if element.is_input() {
+            self.connection_tool = self.previous_creation.map(|from| ConnectionTool {
+                start: position,
+                end: position,
+                from,
+            });
+        }
     }
 
     fn place(&mut self, world: &mut World, element: Element, position: Vec3) {
@@ -283,13 +337,19 @@ impl Editor {
     }
 
     fn connect(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
-        match &mut self.connection_tool {
-            Some(connection) => {
-                connect_to_neuron_near(world, connection, position, shift_down, spawn_synapse);
-                connection.end = position;
-            }
-            None => self.connection_tool = start_connection(sources(world), position),
+        if self.connection_tool.is_some() {
+            self.extend_connection(world, position, shift_down);
+        } else {
+            self.connection_tool = start_connection(sources(world), position);
         }
+    }
+
+    fn extend_connection(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
+        let Some(connection) = &mut self.connection_tool else {
+            return;
+        };
+        connect_to_neuron_near(world, connection, position, shift_down, spawn_synapse);
+        connection.end = position;
     }
 
     fn grow_axon(&mut self, world: &mut World, position: Vec3, shift_down: bool) {

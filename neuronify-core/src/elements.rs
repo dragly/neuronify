@@ -31,6 +31,16 @@ impl Element {
         )
     }
 
+    pub fn is_input(self) -> bool {
+        matches!(
+            self,
+            Element::CurrentSource
+                | Element::TouchSensor
+                | Element::RegularSpikeGenerator
+                | Element::PoissonGenerator
+        )
+    }
+
     pub fn spawn(self, world: &mut World, position: Vec3) -> Entity {
         let position = Position { position };
         match self {
