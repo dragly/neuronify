@@ -9,6 +9,7 @@ use crate::rendering::colors::Theme;
 
 /// Share of each colour that comes from lighting. The rest is the flat colour.
 const SHADING: f32 = 0.5;
+pub const BLOOM_THRESHOLD: f32 = 1.1;
 
 /// The colour, partly lit, without a specular highlight that would read as a voltage.
 pub fn shaded(color: Expression) -> Expression {
@@ -21,9 +22,8 @@ pub fn configure_lighting(application: &mut visula::Application, theme: Theme) {
     // Colours stay as they are, since they show the voltage
     application.post_processor.config.tonemapping = Tonemapping::None;
     set_theme_lighting(application, theme);
-    // Only flashes are brighter than white, so only they bloom
     application.post_processor.config.bloom = Some(BloomConfig {
-        threshold: 1.1,
+        threshold: BLOOM_THRESHOLD,
         intensity: 2.5,
         mip_levels: 5,
     });

@@ -48,17 +48,14 @@ pub fn collect_spheres(
         world
             .query::<(&Compartment, &Position, &NeuronType)>()
             .iter()
-            .map(|(entity, (compartment, position, neuron_type))| {
-                let value = ((compartment.voltage + 50.0) / 200.0) as f32;
-                Sphere {
-                    position: position.position,
-                    color: palette.neurocolor(neuron_type, value),
-                    radius: radii
-                        .get(&entity)
-                        .copied()
-                        .unwrap_or(COMPARTMENT_SPHERE_SCALE * NODE_RADIUS),
-                    _padding: Default::default(),
-                }
+            .map(|(entity, (compartment, position, neuron_type))| Sphere {
+                position: position.position,
+                color: palette.compartment(neuron_type, compartment.voltage),
+                radius: radii
+                    .get(&entity)
+                    .copied()
+                    .unwrap_or(COMPARTMENT_SPHERE_SCALE * NODE_RADIUS),
+                _padding: Default::default(),
             }),
     );
 
