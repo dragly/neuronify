@@ -19,6 +19,7 @@ const GLYPH_GRID: f32 = 32.0;
 const STROKE: f32 = 1.8;
 const SPHERE_STEPS: usize = 40;
 const CREAM: Color32 = Color32::from_rgb(255, 244, 214);
+const MORPHOLOGY_GRID: Vec2 = vec2(64.0, 32.0);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
@@ -311,6 +312,65 @@ fn arc(center: Pos2, radius: f32, from: f32, to: f32) -> Vec<Pos2> {
             center + Vec2::angled(angle) * radius
         })
         .collect()
+}
+
+pub fn paint_morphology(painter: &Painter, compartments: bool, rect: Rect, theme: Theme) {
+    let excitatory = linear(theme.palette().excitatory);
+    let scale = (rect.width() / MORPHOLOGY_GRID.x).min(rect.height() / MORPHOLOGY_GRID.y);
+    let origin = rect.center() - MORPHOLOGY_GRID / 2.0 * scale;
+    let at = |(x, y): (f32, f32)| origin + vec2(x, y) * scale;
+    if !compartments {
+        let [start, bend, end] = [(19.5, 14.0), (32.0, 3.5), (43.5, 12.5)].map(at);
+        let curve: Vec<Pos2> = (0..=SPHERE_STEPS)
+            .map(|step| {
+                let t = step as f32 / SPHERE_STEPS as f32;
+                let u = 1.0 - t;
+                pos2(
+                    u * u * start.x + 2.0 * u * t * bend.x + t * t * end.x,
+                    u * u * start.y + 2.0 * u * t * bend.y + t * t * end.y,
+                )
+            })
+            .collect();
+        painter.add(Shape::line(curve, Stroke::new(3.0 * scale, excitatory)));
+        painter.circle_filled(end, 3.0 * scale, linear(terminal_color()));
+        for soma in [(11.0, 17.0), (53.0, 17.0)] {
+            sphere(painter, at(soma), 7.5 * scale, excitatory);
+        }
+        return;
+    }
+    let beads = |points: &[(f32, f32)]| {
+        let points: Vec<Pos2> = points.iter().copied().map(at).collect();
+        painter.add(Shape::line(
+            points.clone(),
+            Stroke::new(1.2 * scale, excitatory),
+        ));
+        for &point in &points[1..] {
+            painter.circle_filled(point, 1.5 * scale, excitatory);
+        }
+    };
+    for (x, y) in [(12.0, 18.0), (52.0, 18.0)] {
+        beads(&[
+            (x, y),
+            (x, y - 6.0),
+            (x - 1.0, y - 11.0),
+            (x - 4.0, y - 15.0),
+        ]);
+        beads(&[(x - 1.0, y - 11.0), (x + 3.0, y - 15.0)]);
+        beads(&[(x, y), (x - 5.0, y + 5.0), (x - 8.0, y + 10.0)]);
+        beads(&[(x, y), (x + 1.0, y + 6.0), (x + 3.0, y + 11.0)]);
+    }
+    beads(&[
+        (12.0, 18.0),
+        (18.0, 20.0),
+        (24.0, 21.5),
+        (30.0, 22.5),
+        (36.0, 23.0),
+        (42.0, 23.0),
+        (47.0, 23.0),
+    ]);
+    for soma in [(12.0, 18.0), (52.0, 18.0)] {
+        sphere(painter, at(soma), 4.5 * scale, excitatory);
+    }
 }
 
 pub fn paint_tool(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: Color32) {
