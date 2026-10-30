@@ -37,6 +37,14 @@ pub fn fire_nearby(world: &mut hecs::World, position: Vec3) {
             dynamics.voltage = neuron.threshold + 0.01;
         }
     }
+
+    for (_, (compartment_position, compartment)) in
+        world.query_mut::<(&Position, &mut Compartment)>()
+    {
+        if compartment_position.position.distance(position) < ERASE_RADIUS {
+            compartment.voltage = COMPARTMENT_FIRE_VOLTAGE;
+        }
+    }
 }
 
 pub fn stimulate_nearby(world: &mut hecs::World, position: Vec3) {
@@ -91,5 +99,21 @@ mod tests {
             }
         }
         assert!((30..60).contains(&spikes), "{spikes} spikes in a second");
+    }
+
+    #[test]
+    fn touching_a_compartment_starts_a_spike() {
+        let mut world = hecs::World::new();
+        let compartment_at = |world: &mut hecs::World, position: Vec3| {
+            world.spawn((Position { position }, Compartment::default()))
+        };
+        let touched = compartment_at(&mut world, Vec3::ZERO);
+        let far = compartment_at(&mut world, 10.0 * Vec3::X);
+
+        fire_nearby(&mut world, 0.5 * Vec3::Z);
+
+        let voltage = |entity| world.get::<&Compartment>(entity).unwrap().voltage;
+        assert_eq!(voltage(touched), COMPARTMENT_FIRE_VOLTAGE);
+        assert_eq!(voltage(far), Compartment::default().voltage);
     }
 }

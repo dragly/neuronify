@@ -242,6 +242,15 @@ pub enum NeuronType {
     Inhibitory,
 }
 
+impl NeuronType {
+    pub fn sign(self) -> f64 {
+        match self {
+            NeuronType::Excitatory => 1.0,
+            NeuronType::Inhibitory => -1.0,
+        }
+    }
+}
+
 pub fn neuron_type(world: &hecs::World, entity: Entity) -> NeuronType {
     world
         .get::<&NeuronType>(entity)
