@@ -23,6 +23,7 @@ mod tests;
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const VOLTMETER_REACH: f32 = NODE_RADIUS;
 const CORNER_REACH: f32 = 1.0;
+const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pan(pub Vec3);
@@ -30,7 +31,7 @@ pub struct Pan(pub Vec3);
 #[derive(Default)]
 pub struct Editor {
     pub tool: Tool,
-    pub dendrites: bool,
+    pub compartments: bool,
     pub selection: Option<Entity>,
     connection_tool: Option<ConnectionTool>,
     stimulation_tool: Option<StimulationTool>,
@@ -49,9 +50,13 @@ impl Editor {
         self.stimulation_tool.as_ref().map(|touch| touch.position)
     }
 
-    pub fn connection_being_drawn(&self) -> Option<(Vec3, Vec3)> {
+    pub fn connection_being_drawn(&self, world: &World) -> Option<(Vec3, Vec3)> {
         let connection = self.connection_tool.as_ref()?;
-        let drawn = matches!(self.tool, Tool::StaticConnection | Tool::Place(_));
+        let drawn = match self.tool {
+            Tool::StaticConnection => true,
+            Tool::Place(_) => !self.grows_axon(world, connection.from),
+            _ => false,
+        };
         drawn.then_some((connection.start, connection.end))
     }
 
@@ -71,7 +76,7 @@ impl Editor {
     pub fn forget_world(&mut self) {
         *self = Editor {
             tool: self.tool,
-            dendrites: self.dendrites,
+            compartments: self.compartments,
             ..Default::default()
         };
     }
@@ -259,14 +264,14 @@ impl Editor {
         self.dragging = Some(Drag::new(world, entity, offset));
     }
 
-    fn too_near_previous(&self, world: &World, position: Vec3) -> bool {
-        let minimum_distance = match self.tool {
-            Tool::Axon => MIN_CREATION_DISTANCE_AXON,
-            _ => MIN_CREATION_DISTANCE_DEFAULT,
-        };
+    fn too_near_previous(&self, world: &World, position: Vec3, minimum_distance: f32) -> bool {
         self.previous_creation
             .and_then(|previous| world.get::<&Position>(previous).ok().map(|p| p.position))
             .is_some_and(|previous| previous.distance(position) < minimum_distance)
+    }
+
+    fn grows_axon(&self, world: &World, from: Entity) -> bool {
+        self.compartments && world.get::<&NeuronType>(from).is_ok()
     }
 
     fn add(
@@ -279,8 +284,12 @@ impl Editor {
     ) {
         if let Some(drag) = &mut self.dragging {
             drag.move_to(world, recording, position);
-        } else if self.connection_tool.is_some() {
-            self.extend_connection(world, position, shift_down);
+        } else if let Some(connection) = &self.connection_tool {
+            if self.grows_axon(world, connection.from) {
+                self.extend_axon(world, position, shift_down);
+            } else {
+                self.extend_connection(world, position, shift_down);
+            }
         } else if self.previous_creation.is_some() {
             self.place(world, element, position);
         } else if self.pressed.is_none() {
@@ -289,7 +298,12 @@ impl Editor {
     }
 
     fn press_to_add(&mut self, world: &mut World, element: Element, position: Vec3) {
-        let connection = start_connection(sources(world), position);
+        let candidates = if self.compartments {
+            axon_sources(world)
+        } else {
+            sources(world)
+        };
+        let connection = start_connection(candidates, position);
         let under = entity_at(world, &voltmeter_frames(world), position).map(|(entity, _)| entity);
         self.pressed = connection
             .as_ref()
@@ -310,12 +324,21 @@ impl Editor {
         }
     }
 
+    fn crowds_previous(&self, world: &World, element: Element, position: Vec3) -> bool {
+        match self.previous_creation {
+            Some(previous) if element.is_neuron() && self.compartments => {
+                dendrites_would_overlap(world, previous, position)
+            }
+            _ => self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT),
+        }
+    }
+
     fn place(&mut self, world: &mut World, element: Element, position: Vec3) {
-        if self.too_near_previous(world, position) {
+        if self.crowds_previous(world, element, position) {
             return;
         }
         let entity = element.spawn(world, position);
-        if element.is_neuron() && self.dendrites {
+        if element.is_neuron() && self.compartments {
             spawn_dendrites(world, entity);
         }
         if element == Element::Note {
@@ -325,7 +348,7 @@ impl Editor {
     }
 
     fn place_voltmeter(&mut self, world: &mut World, position: Vec3) {
-        if self.too_near_previous(world, position) {
+        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
             return;
         }
         let target = first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
@@ -353,15 +376,18 @@ impl Editor {
     }
 
     fn grow_axon(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
+        if self.connection_tool.is_some() {
+            self.extend_axon(world, position, shift_down);
+            return;
+        }
+        self.connection_tool = start_connection(axon_sources(world), position);
+        if let Some(connection) = &self.connection_tool {
+            self.previous_creation = Some(connection.from);
+        }
+    }
+
+    fn extend_axon(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
         let Some(connection) = &mut self.connection_tool else {
-            let axon_sources = [
-                positions_with::<StaticConnectionSource>(world),
-                sources(world),
-            ];
-            self.connection_tool = start_connection(axon_sources.concat(), position);
-            if let Some(connection) = &self.connection_tool {
-                self.previous_creation = Some(connection.from);
-            }
             return;
         };
         connection.end = position;
@@ -373,7 +399,7 @@ impl Editor {
             |world, from, to| spawn_cable(world, from, to, true),
         );
         let from = connection.from;
-        if reached_neuron || self.too_near_previous(world, position) {
+        if reached_neuron || self.too_near_previous(world, position, MIN_CREATION_DISTANCE_AXON) {
             return;
         }
         let Ok(neuron_type) = world.get::<&NeuronType>(from).map(|t| *t) else {
@@ -435,6 +461,21 @@ impl Editor {
     }
 }
 
+fn dendrites_would_overlap(world: &World, neuron: Entity, position: Vec3) -> bool {
+    let Ok(soma) = world.get::<&Position>(neuron).map(|soma| soma.position) else {
+        return false;
+    };
+    let tree: Vec<Vec3> = compartment_tree(world, neuron)
+        .into_iter()
+        .filter_map(|dendrite| world.get::<&Position>(dendrite).ok().map(|p| p.position))
+        .collect();
+    let low = tree.iter().fold(soma, |low, &position| low.min(position));
+    let high = tree.iter().fold(soma, |high, &position| high.max(position));
+    let footprint = high - low + Vec3::splat(DENDRITE_GAP);
+    let offset = (position - soma).abs();
+    offset.x < footprint.x && offset.z < footprint.z
+}
+
 fn voltmeter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
     world
         .query::<(&Position, &VoltmeterSize)>()
@@ -491,6 +532,14 @@ fn sources(world: &World) -> Vec<(Entity, Vec3)> {
         positions_with::<LeakyNeuron>(world),
         positions_with::<CurrentClamp>(world),
         positions_with::<GeneratorDynamics>(world),
+    ]
+    .concat()
+}
+
+fn axon_sources(world: &World) -> Vec<(Entity, Vec3)> {
+    [
+        positions_with::<StaticConnectionSource>(world),
+        sources(world),
     ]
     .concat()
 }

@@ -240,7 +240,7 @@ fn the_neurons_flyout_decides_whether_new_neurons_get_dendrites() {
     let mut harness = Harness::new(true);
     harness.click_text("Neurons");
     harness.click_text("New neurons get dendrites");
-    assert!(harness.editor.dendrites);
+    assert!(harness.editor.compartments);
 }
 
 #[test]

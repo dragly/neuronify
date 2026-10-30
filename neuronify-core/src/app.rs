@@ -372,7 +372,7 @@ impl visula::Simulation for Neuronify {
             application,
             &self.world,
             self.theme,
-            self.editor.connection_being_drawn(),
+            self.editor.connection_being_drawn(&self.world),
             self.editor.selection,
             self.eraser(application),
         );

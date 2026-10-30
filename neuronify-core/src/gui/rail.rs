@@ -225,7 +225,7 @@ impl Rail {
                             ui,
                             chrome,
                             "New neurons get dendrites",
-                            &mut editor.dendrites,
+                            &mut editor.compartments,
                         );
                     }
                 });
@@ -412,7 +412,7 @@ impl Rail {
                                 ui,
                                 chrome,
                                 "New neurons get dendrites",
-                                &mut editor.dendrites,
+                                &mut editor.compartments,
                             );
                         });
                 });

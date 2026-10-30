@@ -69,7 +69,7 @@ fn a_new_note_is_selected() {
 fn only_neurons_grow_dendrites() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::CurrentSource));
-    editor.dendrites = true;
+    editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     assert_eq!(count::<Dendrite>(&world), 0);
 
@@ -166,7 +166,7 @@ fn the_connection_being_added_is_drawn() {
     editor.edit(&mut world, at(0.0, 0.5), false);
     editor.edit(&mut world, at(0.0, 5.0), false);
     assert_eq!(
-        editor.connection_being_drawn(),
+        editor.connection_being_drawn(&world),
         Some((at(0.0, 0.0), at(0.0, 5.0)))
     );
 }
@@ -181,6 +181,115 @@ fn inputs_connect_to_the_neuron_they_are_pulled_to() {
     let sources = positions_with::<CurrentClamp>(&world);
     assert_eq!(sources.len(), 1);
     assert!(connected(&world, sources[0].0, target));
+}
+
+#[test]
+fn with_compartments_dragging_from_a_neuron_while_adding_grows_an_axon() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.compartments = true;
+    let path: Vec<Vec3> = (0..=40).map(|step| at(0.0, step as f32 * 0.5)).collect();
+    editor.edit(&mut world, path[0], false);
+    editor.edit(&mut world, path[10], false);
+    assert_eq!(editor.connection_being_drawn(&world), None);
+    drag(&mut editor, &mut world, &path[10..]);
+
+    assert!(chain(&world, source, target).unwrap().len() > 3);
+    assert_eq!(count::<CurrentSynapse>(&world), 0);
+    assert_eq!(count::<LeakyNeuron>(&world), 2);
+}
+
+#[test]
+fn with_compartments_dragging_from_near_a_dendrite_grows_an_axon_from_it() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.compartments = true;
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+    let (_, tip) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .max_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
+        .unwrap();
+    let outwards = tip.normalize();
+    let path: Vec<Vec3> = (0..=20)
+        .map(|step| tip + outwards * (1.5 + step as f32 * 0.5))
+        .collect();
+    drag(&mut editor, &mut world, &path);
+
+    assert_eq!(count::<LeakyNeuron>(&world), 1);
+    let grown_from_dendrite = world
+        .query::<&Connection>()
+        .with::<&CompartmentCurrent>()
+        .iter()
+        .any(|(_, cable)| {
+            world.get::<&Dendrite>(cable.from).is_ok()
+                && world.get::<&Dendrite>(cable.to).is_err()
+                && world.get::<&Compartment>(cable.to).is_ok()
+        });
+    assert!(grown_from_dendrite);
+}
+
+#[test]
+fn with_compartments_inputs_still_connect_directly() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::Place(Element::RegularSpikeGenerator));
+    editor.compartments = true;
+    let path: Vec<Vec3> = (0..=20).map(|step| at(0.0, step as f32 * 0.5)).collect();
+    drag(&mut editor, &mut world, &path);
+    let generators = positions_with::<RegularSpikeGenerator>(&world);
+    assert!(connected(&world, generators[0].0, target));
+    assert_eq!(count::<Compartment>(&world), 0);
+}
+
+fn closest_neighbouring_trees(world: &World) -> f32 {
+    let trees: Vec<Vec<Vec3>> = positions_with::<LeakyNeuron>(world)
+        .into_iter()
+        .map(|(soma, soma_position)| {
+            compartment_tree(world, soma)
+                .into_iter()
+                .map(|dendrite| position(world, dendrite))
+                .chain([soma_position])
+                .collect()
+        })
+        .collect();
+    let mut closest = f32::INFINITY;
+    for (index, tree) in trees.iter().enumerate() {
+        for other in &trees[index + 1..] {
+            for a in tree {
+                for b in other {
+                    closest = closest.min(a.distance(*b));
+                }
+            }
+        }
+    }
+    closest
+}
+
+#[test]
+fn painted_neurons_keep_their_dendrites_apart() {
+    for (element, direction) in [
+        (Element::ExcitatoryNeuron, at(0.0, 1.0)),
+        (Element::ExcitatoryNeuron, at(1.0, 0.0)),
+        (Element::ExcitatoryNeuron, at(-1.0, 0.0)),
+        (Element::ExcitatoryNeuron, at(1.0, 1.0).normalize()),
+        (Element::InhibitoryNeuron, at(0.0, 1.0)),
+    ] {
+        let mut world = World::new();
+        let mut editor = editor(Tool::Place(element));
+        editor.compartments = true;
+        let path: Vec<Vec3> = (0..=200)
+            .map(|step| direction * step as f32 * 0.5)
+            .collect();
+        drag(&mut editor, &mut world, &path);
+        assert!(count::<LeakyNeuron>(&world) >= 3, "{element:?} {direction}");
+        let closest = closest_neighbouring_trees(&world);
+        assert!(
+            closest > SEGMENT_LENGTH,
+            "{element:?} {direction}: {closest}"
+        );
+    }
 }
 
 #[test]
@@ -209,7 +318,7 @@ fn holding_an_element_while_adding_moves_it() {
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(&mut world, at(0.0, 1.5), false);
     assert!(editor.hold(&world, at(0.0, 1.5)));
-    assert_eq!(editor.connection_being_drawn(), None);
+    assert_eq!(editor.connection_being_drawn(&world), None);
     drag(&mut editor, &mut world, &[at(0.0, 10.0), at(5.0, 3.5)]);
     assert_eq!(position(&world, a), at(5.0, 2.0));
     assert_eq!(editor.selection, Some(a));
@@ -247,7 +356,7 @@ fn undo_puts_back_an_element_moved_while_adding() {
 fn erasing_removes_what_is_under_the_pointer() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.dendrites = true;
+    editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
     let b = neuron(&mut world, at(0.0, 10.0));
@@ -268,7 +377,7 @@ fn erasing_removes_what_is_under_the_pointer() {
 fn erasing_the_selection_takes_its_dendrites_connections_and_voltmeters() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.dendrites = true;
+    editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
     let b = neuron(&mut world, at(0.0, 10.0));
@@ -552,7 +661,7 @@ fn evenly_spaced(world: &World, chain: &[Entity]) -> bool {
 fn dendrites_move_along_with_a_dragged_neuron() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.dendrites = true;
+    editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     let before: Vec<(Entity, Vec3)> = positions_with::<Dendrite>(&world);
 
@@ -834,7 +943,7 @@ fn entities(world: &World) -> HashSet<Entity> {
 fn undo_brings_back_what_was_erased() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.dendrites = true;
+    editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
     let b = neuron(&mut world, at(0.0, 10.0));
@@ -902,7 +1011,7 @@ fn step(editor: &mut Editor, world: &mut World, tool: Tool, path: &[Vec3]) -> La
 fn undo_and_redo_step_through_every_kind_of_edit() {
     let mut world = World::new();
     let mut editor = editor(Tool::Select);
-    editor.dendrites = true;
+    editor.compartments = true;
     let excitatory = Tool::Place(Element::ExcitatoryNeuron);
     let mut layouts = vec![layout(&world)];
     let edits: [(Tool, &[Vec3]); 7] = [
