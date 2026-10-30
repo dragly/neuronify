@@ -16,6 +16,7 @@ pub fn create_floor(
             position: Vec3::new(0.0, FLOOR_HEIGHT, 0.0).into(),
             rotation: Quat::IDENTITY.into(),
             scale: Vec3::splat(FLOOR_SIZE).into(),
+            ..Default::default()
         },
         // Plain lighting, since `shaded` loses the shadows on meshes in visula aa83a2b
         &MeshMaterial {
