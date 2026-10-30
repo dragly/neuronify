@@ -77,6 +77,7 @@ impl Gui {
     pub fn show(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
         if *controls.edit_enabled {
             history_shortcuts(context, controls.editor, controls.world);
+            self.rail.shortcuts(context, controls.editor);
         }
         if is_compact(context.content_rect()) {
             self.compact(context, controls)

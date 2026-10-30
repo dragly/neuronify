@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use egui::text::LayoutJob;
 use egui::{
-    pos2, vec2, Align, Align2, Color32, Context, FontId, Galley, Id, Order, Painter, Rect,
-    Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, WidgetType,
+    pos2, vec2, Align, Align2, Color32, Context, Event, FontId, Galley, Id, Key, Order, Painter,
+    Rect, Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, WidgetType,
 };
 
 use crate::editor::Editor;
@@ -57,18 +57,18 @@ enum Slot {
     Group(ToolGroup),
 }
 
-const SECTIONS: [&[Slot]; 2] = [
+const SECTIONS: [&[(Slot, Key)]; 2] = [
     &[
-        Slot::Tool(Tool::Select),
-        Slot::Tool(Tool::Stimulate),
-        Slot::Tool(Tool::Erase),
+        (Slot::Tool(Tool::Select), Key::V),
+        (Slot::Tool(Tool::Stimulate), Key::S),
+        (Slot::Tool(Tool::Erase), Key::E),
     ],
     &[
-        Slot::Group(ToolGroup::Neurons),
-        Slot::Group(ToolGroup::Inputs),
-        Slot::Group(ToolGroup::Connections),
-        Slot::Tool(Tool::Voltmeter),
-        Slot::Tool(Tool::Place(Element::Note)),
+        (Slot::Group(ToolGroup::Neurons), Key::N),
+        (Slot::Group(ToolGroup::Inputs), Key::I),
+        (Slot::Group(ToolGroup::Connections), Key::C),
+        (Slot::Tool(Tool::Voltmeter), Key::M),
+        (Slot::Tool(Tool::Place(Element::Note)), Key::T),
     ],
 ];
 
@@ -111,6 +111,44 @@ impl Rail {
         self.adding = false;
     }
 
+    pub fn shortcuts(&mut self, context: &Context, editor: &mut Editor) {
+        if context.egui_wants_keyboard_input() {
+            return;
+        }
+        let pressed = context.input(|input| {
+            if input.pointer.any_down() {
+                return None;
+            }
+            input.events.iter().find_map(|event| match *event {
+                Event::Key {
+                    key,
+                    pressed: true,
+                    repeat: false,
+                    modifiers,
+                    ..
+                } if modifiers.is_none() => SECTIONS
+                    .into_iter()
+                    .flatten()
+                    .find(|(_, shortcut)| *shortcut == key),
+                _ => None,
+            })
+        });
+        let Some(&(slot, _)) = pressed else {
+            return;
+        };
+        let tool = match slot {
+            Slot::Tool(tool) => tool,
+            Slot::Group(group) => {
+                let tools = group.tools();
+                match tools.iter().position(|tool| *tool == editor.tool) {
+                    Some(index) => tools[(index + 1) % tools.len()],
+                    None => self.shown_for(group, editor.tool),
+                }
+            }
+        };
+        self.choose(editor, tool);
+    }
+
     pub fn show(
         &mut self,
         context: &Context,
@@ -141,8 +179,8 @@ impl Rail {
                         );
                         for section in SECTIONS {
                             separator(ui, chrome);
-                            for slot in section {
-                                match *slot {
+                            for &(slot, key) in section {
+                                match slot {
                                     Slot::Tool(tool) => {
                                         let response = tool_item(
                                             ui,
@@ -152,7 +190,12 @@ impl Rail {
                                             tool.name(),
                                             editor.tool == tool,
                                         )
-                                        .on_hover_text(tool.description());
+                                        .on_hover_text(format!(
+                                            "{} ({})\n{}",
+                                            tool.name(),
+                                            key.name(),
+                                            tool.description()
+                                        ));
                                         if response.clicked() {
                                             self.choose(editor, tool);
                                         }
@@ -177,7 +220,12 @@ impl Rail {
                                                     compartments,
                                                 )
                                             },
-                                        );
+                                        )
+                                        .on_hover_text(format!(
+                                            "{} ({})",
+                                            group.label(),
+                                            key.name()
+                                        ));
                                         groups.push((group, response.rect));
                                         if response.clicked() {
                                             toggled = Some(group);
