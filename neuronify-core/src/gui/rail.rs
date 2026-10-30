@@ -37,6 +37,7 @@ const OPTION_INSET: f32 = 8.0;
 const CARD_SPACING: f32 = 6.0;
 const CARD_GAP: f32 = 6.0;
 const CARD_PICTURE: Vec2 = vec2(80.0, 40.0);
+const INPUT_HINT: &str = "Press and drag to place an input and connect it to a neuron.";
 const MORPHOLOGIES: [(bool, &str, &str); 2] = [
     (
         false,
@@ -231,8 +232,16 @@ impl Rail {
                     ui.set_width(FLYOUT_WIDTH);
                     ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
                     heading(ui, chrome, group.label(), ROW_INSET);
-                    if group == ToolGroup::Neurons {
-                        morphology_picker(ui, chrome, theme, &mut editor.compartments, ROW_INSET);
+                    match group {
+                        ToolGroup::Neurons => morphology_picker(
+                            ui,
+                            chrome,
+                            theme,
+                            &mut editor.compartments,
+                            ROW_INSET,
+                        ),
+                        ToolGroup::Inputs => hint(ui, chrome, INPUT_HINT, ROW_INSET),
+                        ToolGroup::Connections => {}
                     }
                     for &tool in group.tools() {
                         if option(ui, chrome, theme, tool, editor.tool == tool).clicked() {
@@ -393,14 +402,16 @@ impl Rail {
                                 measuring,
                             )]) {
                                 heading(ui, chrome, label, 0.0);
-                                if group == Some(ToolGroup::Neurons) {
-                                    morphology_picker(
+                                match group {
+                                    Some(ToolGroup::Neurons) => morphology_picker(
                                         ui,
                                         chrome,
                                         theme,
                                         &mut editor.compartments,
                                         0.0,
-                                    );
+                                    ),
+                                    Some(ToolGroup::Inputs) => hint(ui, chrome, INPUT_HINT, 0.0),
+                                    _ => {}
                                 }
                                 for row in tools.chunks(TILES_PER_ROW) {
                                     ui.horizontal(|ui| {
@@ -456,13 +467,17 @@ fn morphology_picker(
             }
         }
     });
-    let hint = MORPHOLOGIES
+    let text = MORPHOLOGIES
         .iter()
         .find(|(value, _, _)| value == compartments)
         .map_or("", |(_, _, hint)| hint);
+    hint(ui, chrome, text, inset);
+}
+
+fn hint(ui: &mut Ui, chrome: &Chrome, text: &str, inset: f32) {
     let width = ui.available_width();
     let galley = ui.painter().layout(
-        hint.to_string(),
+        text.to_string(),
         FontId::proportional(12.0),
         chrome.subtext,
         width - 2.0 * inset,

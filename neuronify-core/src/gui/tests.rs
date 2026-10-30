@@ -248,6 +248,20 @@ fn the_neurons_flyout_chooses_between_point_and_compartmental_neurons() {
 }
 
 #[test]
+fn the_inputs_say_how_to_connect_them() {
+    let hint = "Press and drag to place an input and connect it to a neuron.";
+    let mut harness = Harness::new(true);
+    harness.click_text("Inputs");
+    assert!(harness.shows(hint));
+
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Add");
+    let height = |harness: &Harness, text: &str| harness.text_position(text).unwrap().y;
+    assert!(height(&harness, "INPUTS") < height(&harness, hint));
+    assert!(height(&harness, hint) < height(&harness, "Current source"));
+}
+
+#[test]
 fn the_menu_switches_the_theme() {
     let mut harness = Harness::new(true);
     harness.click_text("Menu");
