@@ -235,7 +235,7 @@ pub fn compartment_tree(world: &hecs::World, root: Entity) -> Vec<Entity> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::step_simulation;
+    use crate::simulation::{fire_nearby, step_simulation};
 
     fn driven_neuron(world: &mut hecs::World) -> Entity {
         let neuron = world.spawn((
@@ -299,6 +299,45 @@ mod tests {
         assert!(!plain_spikes.is_empty());
         assert_eq!(plain_spikes, branched_spikes);
         assert!(peak > BRIDGE_VOLTAGE_THRESHOLD, "peak was {peak}");
+    }
+
+    fn spikes_after_touching_the_farthest_dendrite(neuron_type: NeuronType) -> usize {
+        let mut world = hecs::World::new();
+        let neuron = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            Position {
+                position: Vec3::ZERO,
+            },
+            neuron_type,
+        ));
+        spawn_dendrites(&mut world, neuron);
+        let farthest = compartment_tree(&world, neuron)
+            .into_iter()
+            .map(|compartment| world.get::<&Position>(compartment).unwrap().position)
+            .max_by(|a, b| a.length().total_cmp(&b.length()))
+            .unwrap();
+        fire_nearby(&mut world, farthest);
+        let mut time = 0.0;
+        (0..4000)
+            .filter(|_| {
+                step_simulation(&mut world, &mut time, 1, None);
+                world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0
+            })
+            .count()
+    }
+
+    #[test]
+    fn a_spike_in_a_dendrite_fires_its_neuron_once() {
+        assert_eq!(
+            spikes_after_touching_the_farthest_dendrite(NeuronType::Excitatory),
+            1
+        );
+        assert_eq!(
+            spikes_after_touching_the_farthest_dendrite(NeuronType::Inhibitory),
+            1
+        );
     }
 
     #[test]
