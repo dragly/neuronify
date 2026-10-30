@@ -399,7 +399,7 @@ impl Editor {
             connection,
             position,
             shift_down,
-            |world, from, to| spawn_cable(world, from, to, true),
+            |world, from, to| lay_axon(world, from, to, true),
         );
         let from = connection.from;
         if reached_neuron || self.too_near_previous(world, position, MIN_CREATION_DISTANCE_AXON) {
@@ -409,7 +409,7 @@ impl Editor {
             return;
         };
         let compartment = spawn_compartment(world, position, neuron_type);
-        spawn_cable(world, from, compartment, false);
+        lay_axon(world, from, compartment, false);
         self.previous_creation = Some(compartment);
         self.connection_tool = Some(ConnectionTool {
             start: position,
@@ -545,6 +545,25 @@ fn axon_sources(world: &World) -> Vec<(Entity, Vec3)> {
         sources(world),
     ]
     .concat()
+}
+
+fn lay_axon(world: &mut World, from: Entity, to: Entity, directional: bool) -> Entity {
+    let ends = [from, to].map(|end| world.get::<&Position>(end).map(|p| p.position));
+    let neuron_type = world
+        .get::<&NeuronType>(from)
+        .map(|t| *t)
+        .unwrap_or_default();
+    let mut previous = from;
+    if let [Ok(start), Ok(end)] = ends {
+        let segments = (start.distance(end) / SEGMENT_LENGTH).round() as usize;
+        for step in 1..segments {
+            let position = start.lerp(end, step as f32 / segments as f32);
+            let compartment = spawn_compartment(world, position, neuron_type);
+            spawn_cable(world, previous, compartment, false);
+            previous = compartment;
+        }
+    }
+    spawn_cable(world, previous, to, directional)
 }
 
 fn start_connection(sources: Vec<(Entity, Vec3)>, position: Vec3) -> Option<ConnectionTool> {
