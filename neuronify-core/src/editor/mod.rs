@@ -304,7 +304,10 @@ impl Editor {
             sources(world)
         };
         let connection = start_connection(candidates, position);
-        let under = entity_at(world, &voltmeter_frames(world), position).map(|(entity, _)| entity);
+        let compartments = positions_with::<Compartment>(world);
+        let under = entity_at(world, &voltmeter_frames(world), position)
+            .or_else(|| nearest_within(compartments, position, CONNECTION_REACH))
+            .map(|(entity, _)| entity);
         self.pressed = connection
             .as_ref()
             .map(|connection| connection.from)
