@@ -80,10 +80,9 @@ pub fn collect_cylinders(
                 colored_by.get::<&Compartment>(),
                 colored_by.get::<&NeuronType>(),
             ) {
-                (Some(compartment), Some(neuron_type)) => palette.neurocolor(
-                    &neuron_type,
-                    ((compartment.voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32,
-                ),
+                (Some(compartment), Some(neuron_type)) => {
+                    palette.compartment(&neuron_type, compartment.voltage)
+                }
                 _ => palette.neutral,
             };
             Some(CylinderData {

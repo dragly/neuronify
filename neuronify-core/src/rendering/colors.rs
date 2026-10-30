@@ -65,6 +65,10 @@ pub fn burst_gauge_color() -> Vec3 {
 /// How far a neuron at threshold has gone from the colour of its type towards white.
 pub const VOLTAGE_TINT: f32 = 0.55;
 
+const GLARE_START: f64 = 90.0;
+const GLARE_FULL: f64 = 130.0;
+const GLARE_PEAK: f32 = 2.0;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Theme {
     #[default]
@@ -135,5 +139,35 @@ impl Palette {
     pub fn neurocolor(&self, neuron_type: &NeuronType, value: f32) -> Vec3 {
         let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
         self.soma(neuron_type, v)
+    }
+
+    pub fn compartment(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
+        let value = ((voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32;
+        let color = self.neurocolor(neuron_type, value);
+        let glare = ((voltage - GLARE_START) / (GLARE_FULL - GLARE_START)).clamp(0.0, 1.0) as f32;
+        color.lerp(color / color.max_element() * GLARE_PEAK, glare)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rendering::lighting::BLOOM_THRESHOLD;
+
+    #[test]
+    fn only_the_crest_of_a_spike_glares() {
+        for theme in [Theme::Dark, Theme::Light] {
+            for neuron_type in [NeuronType::Excitatory, NeuronType::Inhibitory] {
+                let brightest = |voltage| {
+                    theme
+                        .palette()
+                        .compartment(&neuron_type, voltage)
+                        .max_element()
+                };
+                assert!(brightest(-10.0) < BLOOM_THRESHOLD);
+                assert!(brightest(GLARE_START) < BLOOM_THRESHOLD);
+                assert!(brightest(GLARE_FULL) > BLOOM_THRESHOLD);
+            }
+        }
     }
 }
