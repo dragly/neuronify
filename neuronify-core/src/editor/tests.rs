@@ -712,6 +712,19 @@ fn stretched_axons_grow_compartments() {
 }
 
 #[test]
+fn axons_drawn_fast_fill_the_gaps_with_compartments() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 30.0));
+    let path = [at(0.0, 0.5), at(0.0, 12.0), at(0.0, 29.5)];
+    drag(&mut editor(Tool::Axon), &mut world, &path);
+
+    let axon = chain(&world, source, target).unwrap();
+    assert_eq!(axon.len(), 16);
+    assert!(evenly_spaced(&world, &axon));
+}
+
+#[test]
 fn compressed_axons_lose_compartments_but_keep_one() {
     let mut world = World::new();
     let source = neuron(&mut world, at(0.0, 0.0));
