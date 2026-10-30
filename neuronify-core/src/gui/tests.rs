@@ -236,11 +236,15 @@ fn pressing_outside_closes_the_flyout() {
 }
 
 #[test]
-fn the_neurons_flyout_decides_whether_new_neurons_get_dendrites() {
+fn the_neurons_flyout_chooses_between_point_and_compartmental_neurons() {
     let mut harness = Harness::new(true);
     harness.click_text("Neurons");
-    harness.click_text("New neurons get dendrites");
+    assert!(harness.shows("Drag from a neuron to connect it to another."));
+    harness.click_text("Compartmental neurons");
     assert!(harness.editor.compartments);
+    assert!(harness.shows("Drag from a neuron or dendrite to grow an axon."));
+    harness.click_text("Point neurons");
+    assert!(!harness.editor.compartments);
 }
 
 #[test]
@@ -459,6 +463,19 @@ fn the_add_sheet_starts_editing_with_what_to_place() {
     assert_eq!(harness.editor.tool, Tool::Place(Element::PoissonGenerator));
     assert!(harness.edit_enabled);
     assert!(!harness.shows("Poisson generator"));
+}
+
+#[test]
+fn the_add_sheet_chooses_the_kind_of_neuron_right_under_the_neurons() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Add");
+    let height = |harness: &Harness, text: &str| harness.text_position(text).unwrap().y;
+    let choice = height(&harness, "Compartmental neurons");
+    assert!(height(&harness, "NEURONS") < choice);
+    assert!(choice < height(&harness, "Excitatory neuron"));
+    harness.click_text("Compartmental neurons");
+    assert!(harness.editor.compartments);
+    assert!(harness.shows("Excitatory neuron"));
 }
 
 #[test]

@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use egui::text::LayoutJob;
 use egui::{
-    pos2, vec2, Align, Align2, Color32, Context, FontId, Id, Order, Painter, Rect, Response,
-    ScrollArea, Sense, Ui, Vec2, WidgetInfo, WidgetType,
+    pos2, vec2, Align, Align2, Color32, Context, FontId, Galley, Id, Order, Painter, Rect,
+    Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, WidgetType,
 };
 
 use crate::editor::Editor;
@@ -9,10 +11,10 @@ use crate::elements::Element;
 use crate::rendering::Theme;
 use crate::tools::{Tool, ToolGroup};
 
-use super::icons::{paint_icon, paint_tool, Icon};
+use super::icons::{paint_icon, paint_morphology, paint_tool, Icon};
 use super::sheet::{self, Sheet, HANDLE_HEIGHT};
 use super::style::{Chrome, MARGIN, PANEL_RADIUS};
-use super::widgets::{heading, paint_flyout_marker, separator, switch, ROW_INSET, ROW_RADIUS};
+use super::widgets::{heading, paint_flyout_marker, separator, ROW_INSET, ROW_RADIUS};
 
 pub const RAIL_WIDTH: f32 = 64.0;
 pub const POPOVER_GAP: f32 = 10.0;
@@ -32,6 +34,21 @@ const FLYOUT_WIDTH: f32 = 272.0;
 const FLYOUT_PADDING: i8 = 8;
 const OPTION_GLYPH: f32 = 34.0;
 const OPTION_INSET: f32 = 8.0;
+const CARD_SPACING: f32 = 6.0;
+const CARD_GAP: f32 = 6.0;
+const CARD_PICTURE: Vec2 = vec2(80.0, 40.0);
+const MORPHOLOGIES: [(bool, &str, &str); 2] = [
+    (
+        false,
+        "Point neurons",
+        "Drag from a neuron to connect it to another.",
+    ),
+    (
+        true,
+        "Compartmental neurons",
+        "Drag from a neuron or dendrite to grow an axon.",
+    ),
+];
 
 #[derive(Clone, Copy)]
 enum Slot {
@@ -214,19 +231,13 @@ impl Rail {
                     ui.set_width(FLYOUT_WIDTH);
                     ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
                     heading(ui, chrome, group.label(), ROW_INSET);
+                    if group == ToolGroup::Neurons {
+                        morphology_picker(ui, chrome, theme, &mut editor.compartments, ROW_INSET);
+                    }
                     for &tool in group.tools() {
                         if option(ui, chrome, theme, tool, editor.tool == tool).clicked() {
                             self.choose(editor, tool);
                         }
-                    }
-                    if group == ToolGroup::Neurons {
-                        separator(ui, chrome);
-                        switch(
-                            ui,
-                            chrome,
-                            "New neurons get dendrites",
-                            &mut editor.compartments,
-                        );
                     }
                 });
             })
@@ -374,13 +385,23 @@ impl Rail {
                                 ToolGroup::Inputs,
                                 ToolGroup::Connections,
                             ]
-                            .map(|group| (group.label(), group.tools()));
+                            .map(|group| (Some(group), group.label(), group.tools()));
                             let measuring: &[Tool] = &[Tool::Voltmeter, Tool::Place(Element::Note)];
-                            for (label, tools) in groups
-                                .into_iter()
-                                .chain([("Measure and annotate", measuring)])
-                            {
+                            for (group, label, tools) in groups.into_iter().chain([(
+                                None,
+                                "Measure and annotate",
+                                measuring,
+                            )]) {
                                 heading(ui, chrome, label, 0.0);
+                                if group == Some(ToolGroup::Neurons) {
+                                    morphology_picker(
+                                        ui,
+                                        chrome,
+                                        theme,
+                                        &mut editor.compartments,
+                                        0.0,
+                                    );
+                                }
                                 for row in tools.chunks(TILES_PER_ROW) {
                                     ui.horizontal(|ui| {
                                         ui.spacing_mut().item_spacing.x = 0.0;
@@ -407,19 +428,105 @@ impl Rail {
                                     });
                                 }
                             }
-                            separator(ui, chrome);
-                            switch(
-                                ui,
-                                chrome,
-                                "New neurons get dendrites",
-                                &mut editor.compartments,
-                            );
                         });
                 });
             })
             .response
             .rect
     }
+}
+
+fn morphology_picker(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    theme: Theme,
+    compartments: &mut bool,
+    inset: f32,
+) {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = CARD_GAP;
+        let width = (ui.available_width() - CARD_GAP) / 2.0;
+        let names = MORPHOLOGIES.map(|(_, label, _)| card_name(ui, chrome, label, width));
+        let tallest = names.iter().map(|name| name.size().y).fold(0.0, f32::max);
+        let size = vec2(width, CARD_PICTURE.y + tallest + 4.0 * CARD_SPACING);
+        for ((value, _, _), name) in MORPHOLOGIES.into_iter().zip(names) {
+            let on = *compartments == value;
+            if morphology_card(ui, chrome, theme, value, name, size, on).clicked() {
+                *compartments = value;
+            }
+        }
+    });
+    let hint = MORPHOLOGIES
+        .iter()
+        .find(|(value, _, _)| value == compartments)
+        .map_or("", |(_, _, hint)| hint);
+    let width = ui.available_width();
+    let galley = ui.painter().layout(
+        hint.to_string(),
+        FontId::proportional(12.0),
+        chrome.subtext,
+        width - 2.0 * inset,
+    );
+    let (rect, _) = ui.allocate_exact_size(vec2(width, galley.size().y + 10.0), Sense::hover());
+    ui.painter().galley(
+        pos2(rect.left() + inset, rect.top() + 4.0),
+        galley,
+        chrome.subtext,
+    );
+}
+
+fn card_name(ui: &Ui, chrome: &Chrome, label: &str, width: f32) -> Arc<Galley> {
+    let mut name = LayoutJob::simple(
+        label.to_string(),
+        FontId::proportional(11.5),
+        chrome.text,
+        width - 2.0 * CARD_SPACING,
+    );
+    name.halign = Align::Center;
+    ui.fonts_mut(|fonts| fonts.layout_job(name))
+}
+
+fn morphology_card(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    theme: Theme,
+    compartments: bool,
+    name: Arc<Galley>,
+    size: Vec2,
+    on: bool,
+) -> Response {
+    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    let painter = ui.painter();
+    let (fill, border) = if on {
+        (chrome.selected(), chrome.accent)
+    } else if response.hovered() {
+        (chrome.raised, chrome.border)
+    } else {
+        (Color32::TRANSPARENT, chrome.border)
+    };
+    painter.rect(
+        rect,
+        ROW_RADIUS,
+        fill,
+        Stroke::new(1.0_f32, border),
+        StrokeKind::Inside,
+    );
+    let picture = Rect::from_center_size(
+        pos2(
+            rect.center().x,
+            rect.top() + CARD_SPACING + CARD_PICTURE.y / 2.0,
+        ),
+        CARD_PICTURE,
+    );
+    paint_morphology(painter, compartments, picture, theme);
+    let label = name.text().to_string();
+    painter.galley(
+        pos2(rect.center().x, picture.bottom() + CARD_SPACING),
+        name,
+        chrome.text,
+    );
+    response.widget_info(|| WidgetInfo::selected(WidgetType::RadioButton, true, on, &label));
+    response
 }
 
 fn tile(ui: &mut Ui, chrome: &Chrome, theme: Theme, tool: Tool, size: Vec2, on: bool) -> Response {

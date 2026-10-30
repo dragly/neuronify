@@ -10,8 +10,6 @@ pub const ROW_RADIUS: u8 = 8;
 const ROW_HEIGHT: f32 = 34.0;
 pub const ROW_INSET: f32 = 8.0;
 const ROW_ICON: f32 = 18.0;
-const SWITCH_SIZE: Vec2 = vec2(34.0, 20.0);
-const SWITCH_KNOB: f32 = 7.0;
 
 pub fn separator(ui: &mut Ui, chrome: &Chrome) {
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 9.0), Sense::hover());
@@ -65,43 +63,6 @@ pub fn icon_row(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str) -> Respon
         chrome.text,
     );
     response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, label));
-    response
-}
-
-pub fn switch(ui: &mut Ui, chrome: &Chrome, label: &str, on: &mut bool) -> Response {
-    let (rect, mut response) = row(ui, chrome, "", Sense::click());
-    if response.clicked() {
-        *on = !*on;
-        response.mark_changed();
-    }
-    let painter = ui.painter();
-    painter.text(
-        pos2(rect.left() + ROW_INSET, rect.center().y),
-        Align2::LEFT_CENTER,
-        label,
-        FontId::proportional(13.0),
-        chrome.text,
-    );
-    let track = Rect::from_center_size(
-        pos2(
-            rect.right() - ROW_INSET - SWITCH_SIZE.x / 2.0,
-            rect.center().y,
-        ),
-        SWITCH_SIZE,
-    );
-    painter.rect_filled(
-        track,
-        SWITCH_SIZE.y / 2.0,
-        if *on { chrome.accent } else { chrome.hovered },
-    );
-    let knob_offset = SWITCH_SIZE.x / 2.0 - SWITCH_SIZE.y / 2.0;
-    painter.circle_filled(
-        track.center() + vec2(if *on { knob_offset } else { -knob_offset }, 0.0),
-        SWITCH_KNOB,
-        chrome.panel,
-    );
-    let on = *on;
-    response.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, true, on, label));
     response
 }
 
