@@ -20,6 +20,16 @@ const STROKE: f32 = 1.8;
 const SPHERE_STEPS: usize = 40;
 const CREAM: Color32 = Color32::from_rgb(255, 244, 214);
 const MORPHOLOGY_GRID: Vec2 = vec2(64.0, 32.0);
+const SOMA_SHARE: f32 = 0.62;
+const PYRAMIDAL_SOMA: (f32, f32) = (16.0, 19.0);
+const PYRAMIDAL: [&[(f32, f32)]; 4] = [
+    &[(16.0, 19.0), (16.0, 13.0), (15.5, 8.0), (12.0, 3.5)],
+    &[(15.5, 8.0), (20.0, 3.5)],
+    &[(16.0, 19.0), (11.0, 23.5), (7.0, 28.0)],
+    &[(16.0, 19.0), (21.0, 24.0), (24.5, 28.5)],
+];
+const STAR_SOMA: (f32, f32) = (16.0, 16.0);
+const STAR_ARMS: usize = 5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
@@ -340,13 +350,7 @@ pub fn paint_morphology(painter: &Painter, compartments: bool, rect: Rect, theme
     }
     let beads = |points: &[(f32, f32)]| {
         let points: Vec<Pos2> = points.iter().copied().map(at).collect();
-        painter.add(Shape::line(
-            points.clone(),
-            Stroke::new(1.2 * scale, excitatory),
-        ));
-        for &point in &points[1..] {
-            painter.circle_filled(point, 1.5 * scale, excitatory);
-        }
+        beads(painter, &points, scale, excitatory);
     };
     for (x, y) in [(12.0, 18.0), (52.0, 18.0)] {
         beads(&[
@@ -373,7 +377,69 @@ pub fn paint_morphology(painter: &Painter, compartments: bool, rect: Rect, theme
     }
 }
 
-pub fn paint_tool(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: Color32) {
+fn beads(painter: &Painter, points: &[Pos2], scale: f32, color: Color32) {
+    painter.add(Shape::line(
+        points.to_vec(),
+        Stroke::new(1.2 * scale, color),
+    ));
+    for &point in &points[1..] {
+        painter.circle_filled(point, 1.5 * scale, color);
+    }
+}
+
+pub fn paint_tool(
+    painter: &Painter,
+    tool: Tool,
+    rect: Rect,
+    theme: Theme,
+    color: Color32,
+    compartments: bool,
+) {
+    match tool {
+        Tool::Place(element) if compartments && element.is_neuron() => {
+            paint_compartmental(painter, element, rect, theme, color)
+        }
+        _ => paint_glyph(painter, tool, rect, theme, color),
+    }
+}
+
+fn paint_compartmental(
+    painter: &Painter,
+    element: Element,
+    rect: Rect,
+    theme: Theme,
+    color: Color32,
+) {
+    let palette = theme.palette();
+    let scale = rect.width().min(rect.height()) / GLYPH_GRID;
+    let origin = rect.center() - Vec2::splat(GLYPH_GRID / 2.0) * scale;
+    let at = |(x, y): (f32, f32)| origin + vec2(x, y) * scale;
+    let (soma, branches, dendrite) = if element == Element::InhibitoryNeuron {
+        let (x, y) = STAR_SOMA;
+        let arms: Vec<Vec<(f32, f32)>> = (0..STAR_ARMS)
+            .map(|arm| {
+                let angle = -FRAC_PI_2 + TAU * arm as f32 / STAR_ARMS as f32;
+                let reach = |distance: f32, turn: f32| {
+                    let direction = Vec2::angled(angle + turn) * distance;
+                    (x + direction.x, y + direction.y)
+                };
+                vec![STAR_SOMA, reach(7.5, 0.0), reach(13.5, 0.25)]
+            })
+            .collect();
+        (STAR_SOMA, arms, palette.inhibitory)
+    } else {
+        let branches = PYRAMIDAL.iter().map(|branch| branch.to_vec()).collect();
+        (PYRAMIDAL_SOMA, branches, palette.excitatory)
+    };
+    for branch in branches {
+        let points: Vec<Pos2> = branch.into_iter().map(at).collect();
+        beads(painter, &points, scale, linear(dendrite));
+    }
+    let glyph = Rect::from_center_size(at(soma), Vec2::splat(GLYPH_GRID * SOMA_SHARE * scale));
+    paint_glyph(painter, Tool::Place(element), glyph, theme, color);
+}
+
+fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: Color32) {
     let icon = match tool {
         Tool::Select => Some(Icon::Select),
         Tool::Stimulate => Some(Icon::Stimulate),

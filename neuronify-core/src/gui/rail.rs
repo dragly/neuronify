@@ -151,7 +151,6 @@ impl Rail {
                                             tool,
                                             tool.name(),
                                             editor.tool == tool,
-                                            false,
                                         )
                                         .on_hover_text(tool.description());
                                         if response.clicked() {
@@ -161,14 +160,23 @@ impl Rail {
                                     Slot::Group(group) => {
                                         let shown = self.shown_for(group, editor.tool);
                                         let on = group.tools().contains(&editor.tool);
-                                        let response = tool_item(
+                                        let compartments = editor.compartments;
+                                        let response = item(
                                             ui,
                                             chrome,
-                                            theme,
-                                            shown,
                                             group.label(),
                                             on,
                                             true,
+                                            |painter, rect, color| {
+                                                paint_tool(
+                                                    painter,
+                                                    shown,
+                                                    rect,
+                                                    theme,
+                                                    color,
+                                                    compartments,
+                                                )
+                                            },
                                         );
                                         groups.push((group, response.rect));
                                         if response.clicked() {
@@ -244,7 +252,8 @@ impl Rail {
                         ToolGroup::Connections => {}
                     }
                     for &tool in group.tools() {
-                        if option(ui, chrome, theme, tool, editor.tool == tool).clicked() {
+                        let on = editor.tool == tool;
+                        if option(ui, chrome, theme, tool, on, editor.compartments).clicked() {
                             self.choose(editor, tool);
                         }
                     }
@@ -286,7 +295,7 @@ impl Rail {
                                 let on = editor.tool == tool;
                                 let response = ui
                                     .allocate_ui(slot, |ui| {
-                                        tool_item(ui, chrome, theme, tool, tool.name(), on, false)
+                                        tool_item(ui, chrome, theme, tool, tool.name(), on)
                                     })
                                     .inner;
                                 if response.clicked() {
@@ -312,6 +321,7 @@ impl Rail {
                                                     rect,
                                                     theme,
                                                     color,
+                                                    editor.compartments,
                                                 );
                                             } else {
                                                 paint_icon(painter, Icon::Plus, rect, color);
@@ -428,6 +438,7 @@ impl Rail {
                                                 tool,
                                                 size,
                                                 editor.tool == tool,
+                                                editor.compartments,
                                             )
                                             .clicked()
                                             {
@@ -544,7 +555,15 @@ fn morphology_card(
     response
 }
 
-fn tile(ui: &mut Ui, chrome: &Chrome, theme: Theme, tool: Tool, size: Vec2, on: bool) -> Response {
+fn tile(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    theme: Theme,
+    tool: Tool,
+    size: Vec2,
+    on: bool,
+    compartments: bool,
+) -> Response {
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let painter = ui.painter();
     if on {
@@ -561,6 +580,7 @@ fn tile(ui: &mut Ui, chrome: &Chrome, theme: Theme, tool: Tool, size: Vec2, on: 
         ),
         theme,
         chrome.text,
+        compartments,
     );
     let mut name = LayoutJob::simple(
         tool.name().to_string(),
@@ -633,14 +653,20 @@ fn tool_item(
     tool: Tool,
     label: &str,
     on: bool,
-    has_flyout: bool,
 ) -> Response {
-    item(ui, chrome, label, on, has_flyout, |painter, rect, color| {
-        paint_tool(painter, tool, rect, theme, color)
+    item(ui, chrome, label, on, false, |painter, rect, color| {
+        paint_tool(painter, tool, rect, theme, color, false)
     })
 }
 
-fn option(ui: &mut Ui, chrome: &Chrome, theme: Theme, tool: Tool, on: bool) -> Response {
+fn option(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    theme: Theme,
+    tool: Tool,
+    on: bool,
+    compartments: bool,
+) -> Response {
     let width = ui.available_width();
     let text_width = width - OPTION_GLYPH - 3.0 * OPTION_INSET;
     let name = ui.painter().layout_no_wrap(
@@ -670,7 +696,7 @@ fn option(ui: &mut Ui, chrome: &Chrome, theme: Theme, tool: Tool, on: bool) -> R
         ),
         Vec2::splat(OPTION_GLYPH),
     );
-    paint_tool(painter, tool, glyph, theme, chrome.text);
+    paint_tool(painter, tool, glyph, theme, chrome.text, compartments);
     let text_left = glyph.right() + OPTION_INSET;
     let text_top = rect.center().y - text_height / 2.0;
     let name_height = name.size().y;
