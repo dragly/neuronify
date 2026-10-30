@@ -79,7 +79,7 @@ fn cylinder_from_above(
     scale: f32,
     to_screen: impl Fn(Vec3) -> Pos2,
 ) -> Shape {
-    let color = egui_color_from_linear(cylinder.color);
+    let color = egui_color_from_linear(cylinder.start_color.lerp(cylinder.end_color, 0.5));
     let start = to_screen(cylinder.start);
     let end = to_screen(cylinder.end);
     let along = end - start;

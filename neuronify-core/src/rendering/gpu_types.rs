@@ -30,8 +30,9 @@ pub struct CylinderData {
     pub start_radius: f32,
     pub end: Vec3,
     pub end_radius: f32,
-    pub color: Vec3,
-    pub _padding: f32,
+    pub start_color: Vec3,
+    pub end_color: Vec3,
+    pub _padding: [f32; 2],
 }
 
 #[repr(C, align(16))]

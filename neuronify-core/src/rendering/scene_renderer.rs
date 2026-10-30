@@ -99,7 +99,8 @@ impl SceneRenderer {
                 end: cylinder.end,
                 start_radius: cylinder.start_radius,
                 end_radius: cylinder.end_radius,
-                color: cylinder.color,
+                start_color: cylinder.start_color,
+                end_color: cylinder.end_color,
             },
             &CylinderMaterial {
                 color: shaded(Expression::InputColor),

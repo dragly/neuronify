@@ -130,7 +130,8 @@ fn pad(scene: &mut Scene, center: Vec3, color: Vec3) {
         start_radius: PAD_RADIUS,
         end: center + Vec3::Y * PAD_HALF_HEIGHT,
         end_radius: PAD_RADIUS,
-        color,
+        start_color: color,
+        end_color: color,
         _padding: Default::default(),
     });
 }
@@ -260,7 +261,8 @@ mod tests {
             TouchSensor,
         ));
         let palette = Theme::Dark.palette();
-        let pad_color = |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].color;
+        let pad_color =
+            |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
         let resting = pad_color(&world);
         fire_nearby(&mut world, Vec3::ZERO);
         assert_ne!(pad_color(&world), resting);
