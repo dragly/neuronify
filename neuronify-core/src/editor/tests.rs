@@ -231,6 +231,23 @@ fn with_compartments_dragging_from_near_a_dendrite_grows_an_axon_from_it() {
 }
 
 #[test]
+fn with_point_neurons_pressing_near_a_dendrite_adds_nothing() {
+    let mut world = World::new();
+    neuron_with_dendrites(&mut world, at(0.0, 0.0));
+    let (tip, tip_position) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .max_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
+        .unwrap();
+    let beside_tip = tip_position * (1.0 + 1.5 / tip_position.length());
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.edit(&mut world, beside_tip, false);
+    editor.select_pressed();
+    editor.release(&world);
+    assert_eq!(count::<LeakyNeuron>(&world), 1);
+    assert_eq!(editor.selection, Some(tip));
+}
+
+#[test]
 fn with_compartments_inputs_still_connect_directly() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 10.0));
