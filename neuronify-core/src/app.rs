@@ -157,6 +157,8 @@ impl Neuronify {
         if self.edit_enabled {
             if self.editor.pressed_background() {
                 self.tapped_background = true;
+            } else {
+                self.editor.select_pressed();
             }
         } else if let Some(position) = self.mouse.position {
             let position = camera::ground_position(application, position);
@@ -320,10 +322,15 @@ impl visula::Simulation for Neuronify {
             self.move_pointer(application, position);
             self.press_pointer(application, true);
         }
-        if !self.edit_enabled && is_compact(application) {
+        let holds = if self.edit_enabled {
+            matches!(self.editor.tool, Tool::Place(_))
+        } else {
+            is_compact(application)
+        };
+        if holds {
             if let Some(position) = self.mouse.take_hold(input::now()) {
                 let position = camera::ground_position(application, position);
-                self.edit_enabled = self.editor.hold(&self.world, position);
+                self.edit_enabled |= self.editor.hold(&self.world, position);
             }
         }
         if self.running {
