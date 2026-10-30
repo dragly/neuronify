@@ -294,7 +294,7 @@ fn header(ui: &mut Ui, chrome: &Chrome, theme: Theme, tool: Tool, name: &str) ->
         pos2(row.left(), row.center().y - HEADER_GLYPH / 2.0),
         Vec2::splat(HEADER_GLYPH),
     );
-    paint_tool(ui.painter(), tool, glyph, theme, chrome.text);
+    paint_tool(ui.painter(), tool, glyph, theme, chrome.text, false);
     ui.painter().text(
         pos2(glyph.right() + 10.0, row.center().y),
         Align2::LEFT_CENTER,
