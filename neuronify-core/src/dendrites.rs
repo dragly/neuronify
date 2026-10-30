@@ -221,6 +221,7 @@ pub fn compartment_tree(world: &hecs::World, root: Entity) -> Vec<Entity> {
     while let Some(parent) = frontier.pop() {
         for (_, connection) in world.query::<&Connection>().iter() {
             if connection.from == parent
+                && !connection.directional
                 && world.get::<&Compartment>(connection.to).is_ok()
                 && !tree.contains(&connection.to)
             {

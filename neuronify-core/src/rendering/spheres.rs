@@ -92,7 +92,7 @@ pub fn collect_spheres(
                 Some(Sphere {
                     position: *path.points.last()?,
                     color: terminal_color(),
-                    radius: 0.5 * NODE_RADIUS,
+                    radius: path.terminal_radius,
                     _padding: Default::default(),
                 })
             }),

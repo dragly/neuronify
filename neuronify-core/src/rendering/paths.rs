@@ -17,6 +17,8 @@ const MAX_BEND: f32 = 0.1;
 const CONNECTION_RADIUS: f32 = 0.16;
 /// Distance from the synapse marker to the centre of the target.
 const SYNAPSE_GAP: f32 = 2.0 * NODE_RADIUS;
+const SOMA_TERMINAL_RADIUS: f32 = 0.5 * NODE_RADIUS;
+const COMPARTMENT_TERMINAL_RADIUS: f32 = 0.3 * NODE_RADIUS;
 
 /// The tube a connection is drawn as, from the source towards the target.
 ///
@@ -29,6 +31,7 @@ pub struct ConnectionPath {
     pub directional: bool,
     /// The source inhibits its target, so the path ends in a bar rather than a knob
     pub inhibitory: bool,
+    pub terminal_radius: f32,
 }
 
 impl ConnectionPath {
@@ -159,10 +162,15 @@ pub fn connection_paths(
             } else {
                 ((entity.id() as f32 * 0.618_034).fract() * 2.0 - 1.0) * MAX_BEND
             };
-            let trim = if connection.directional {
-                SYNAPSE_GAP
-            } else {
-                0.0
+            let target_radius = radii.get(&connection.to).copied();
+            let terminal_radius = match target_radius {
+                Some(_) => COMPARTMENT_TERMINAL_RADIUS,
+                None => SOMA_TERMINAL_RADIUS,
+            };
+            let trim = match (connection.directional, target_radius) {
+                (false, _) => 0.0,
+                (true, Some(radius)) => radius + terminal_radius,
+                (true, None) => SYNAPSE_GAP,
             };
             let radius = match radii.get(&connection.from) {
                 Some(&radius) if from_compartment => radius,
@@ -180,6 +188,7 @@ pub fn connection_paths(
                     inhibitory: from
                         .get::<&NeuronType>()
                         .is_some_and(|neuron_type| *neuron_type == NeuronType::Inhibitory),
+                    terminal_radius,
                 },
             ))
         })
@@ -198,6 +207,7 @@ mod tests {
             end_color: Vec3::ONE,
             directional: trim > 0.0,
             inhibitory: false,
+            terminal_radius: SOMA_TERMINAL_RADIUS,
         }
     }
 
@@ -233,6 +243,35 @@ mod tests {
         assert_eq!(points.len(), MAX_SEGMENTS + 1);
         let end = *points.last().unwrap();
         assert!((end.distance(target) - SYNAPSE_GAP).abs() < 0.1);
+    }
+
+    #[test]
+    fn an_axon_ending_on_a_compartment_touches_it() {
+        let mut world = hecs::World::new();
+        let compartment_at = |world: &mut hecs::World, x: f32| {
+            world.spawn((
+                Position {
+                    position: Vec3::new(x, 0.0, 0.0),
+                },
+                Compartment::default(),
+                NeuronType::Excitatory,
+            ))
+        };
+        let tip = compartment_at(&mut world, 0.0);
+        let dendrite = compartment_at(&mut world, 2.0);
+        let ending = crate::elements::spawn_cable(&mut world, tip, dendrite, true);
+        let radii = crate::rendering::compartment_radii(&world);
+
+        let paths = connection_paths(&world, &radii, &Theme::default().palette());
+
+        let path = &paths[&ending];
+        let gap = path
+            .points
+            .last()
+            .unwrap()
+            .distance(Vec3::new(2.0, 0.0, 0.0));
+        assert!((gap - radii[&dendrite] - path.terminal_radius).abs() < 1e-4);
+        assert_eq!(path.terminal_radius, COMPARTMENT_TERMINAL_RADIUS);
     }
 
     #[test]
