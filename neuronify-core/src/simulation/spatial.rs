@@ -24,11 +24,15 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
         positions.push(position.position);
         moving.push(dynamics.is_some());
     }
-    let cables: Vec<(usize, usize)> = world
+    let cables: Vec<(usize, usize, bool)> = world
         .query::<&Connection>()
         .with::<&CompartmentCurrent>()
         .iter()
-        .filter_map(|(_, cable)| Some((*slot_of.get(&cable.from)?, *slot_of.get(&cable.to)?)))
+        .filter_map(|(_, cable)| {
+            let from = *slot_of.get(&cable.from)?;
+            let to = *slot_of.get(&cable.to)?;
+            Some((from, to, cable.directional))
+        })
         .collect();
 
     let mut forces = vec![Vec3::ZERO; positions.len()];
@@ -75,12 +79,15 @@ fn add_repulsion(positions: &[Vec3], moving: &[bool], forces: &mut [Vec3]) {
     }
 }
 
-fn add_cable_bending(positions: &[Vec3], cables: &[(usize, usize)], forces: &mut [Vec3]) {
+fn add_cable_bending(positions: &[Vec3], cables: &[(usize, usize, bool)], forces: &mut [Vec3]) {
     let mut children = vec![Vec::new(); positions.len()];
-    for &(parent, child) in cables {
+    for &(parent, child, _) in cables {
         children[parent].push(child);
     }
-    for &(a, b) in cables {
+    for &(a, b, directional) in cables {
+        if directional {
+            continue;
+        }
         for &c in &children[b] {
             let ab = (positions[b] - positions[a]).normalize();
             let bc = (positions[c] - positions[b]).normalize();
@@ -98,8 +105,8 @@ fn add_cable_bending(positions: &[Vec3], cables: &[(usize, usize)], forces: &mut
     }
 }
 
-fn add_cable_springs(positions: &[Vec3], cables: &[(usize, usize)], forces: &mut [Vec3]) {
-    for &(from, to) in cables {
+fn add_cable_springs(positions: &[Vec3], cables: &[(usize, usize, bool)], forces: &mut [Vec3]) {
+    for &(from, to, _) in cables {
         let stretch = positions[from].distance_squared(positions[to]) - SEGMENT_LENGTH.powi(2);
         let force =
             SPRING_STRENGTH * stretch * (positions[to] - positions[from]).normalize_or_zero();
@@ -126,6 +133,7 @@ pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::elements::spawn_cable;
     use hecs::{Entity, World};
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
@@ -145,17 +153,11 @@ mod tests {
     }
 
     fn cable(world: &mut World, from: Entity, to: Entity) {
-        world.spawn((
-            Connection {
-                from,
-                to,
-                strength: 1.0,
-                directional: false,
-            },
-            CompartmentCurrent {
-                capacitance: COUPLING_CAPACITANCE,
-            },
-        ));
+        spawn_cable(world, from, to, false);
+    }
+
+    fn axon_ending(world: &mut World, from: Entity, to: Entity) {
+        spawn_cable(world, from, to, true);
     }
 
     fn acceleration(world: &World, entity: Entity) -> Vec3 {
@@ -227,6 +229,20 @@ mod tests {
         }
 
         assert!(bend(&world) < initial_bend / 2.0, "bend {}", bend(&world));
+    }
+
+    #[test]
+    fn an_axon_ending_does_not_bend_the_dendrite_it_ends_on() {
+        let mut world = World::new();
+        let axon = compartment(&mut world, 0.0, 0.0);
+        let dendrite = compartment(&mut world, 2.0, 0.0);
+        let beyond = compartment(&mut world, 2.0, 2.0);
+        axon_ending(&mut world, axon, dendrite);
+        cable(&mut world, dendrite, beyond);
+
+        apply_spatial_forces(&mut world);
+
+        assert_eq!(acceleration(&world, beyond), Vec3::ZERO);
     }
 
     #[test]

@@ -22,6 +22,7 @@ mod history;
 mod tests;
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
+const COMPARTMENT_REACH: f32 = NODE_RADIUS;
 const VOLTMETER_REACH: f32 = NODE_RADIUS;
 const CORNER_REACH: f32 = 1.0;
 const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
@@ -127,6 +128,16 @@ impl Editor {
             end: position,
             from,
         })
+    }
+
+    pub fn lift(&mut self, world: &mut World) {
+        if let Some(axon) = &self.connection_tool {
+            let target = foreign_compartment_near(world, axon.from, axon.end);
+            if let Some(target) = target.filter(|&target| !connected(world, axon.from, target)) {
+                lay_axon(world, axon.from, target, true);
+            }
+        }
+        self.release(world);
     }
 
     pub fn release(&mut self, world: &World) {
@@ -662,11 +673,7 @@ fn connect_to_neuron_near(
     else {
         return false;
     };
-    let exists = world
-        .query::<&Connection>()
-        .iter()
-        .any(|(_, existing)| existing.from == connection.from && existing.to == target);
-    if !exists && connection.from != target {
+    if !connected(world, connection.from, target) && connection.from != target {
         spawn(world, connection.from, target);
     }
     if !shift_down {
@@ -674,6 +681,50 @@ fn connect_to_neuron_near(
         connection.from = target;
     }
     true
+}
+
+fn connected(world: &World, from: Entity, to: Entity) -> bool {
+    world
+        .query::<&Connection>()
+        .iter()
+        .any(|(_, connection)| connection.from == from && connection.to == to)
+}
+
+fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
+    let cables: Vec<(Entity, Entity)> = world
+        .query::<&Connection>()
+        .with::<&CompartmentCurrent>()
+        .iter()
+        .filter(|(_, cable)| !cable.directional)
+        .map(|(_, cable)| (cable.from, cable.to))
+        .collect();
+    let mut network = HashSet::from([start]);
+    let mut frontier = vec![start];
+    while let Some(node) = frontier.pop() {
+        for &(from, to) in &cables {
+            let neighbour = if node == from {
+                to
+            } else if node == to {
+                from
+            } else {
+                continue;
+            };
+            if network.insert(neighbour) {
+                frontier.push(neighbour);
+            }
+        }
+    }
+    network
+}
+
+fn foreign_compartment_near(world: &World, axon: Entity, position: Vec3) -> Option<Entity> {
+    world.get::<&Compartment>(axon).ok()?;
+    let own = cable_network(world, axon);
+    let foreign = positions_with::<Compartment>(world)
+        .into_iter()
+        .filter(|(compartment, _)| !own.contains(compartment))
+        .collect();
+    nearest_within(foreign, position, COMPARTMENT_REACH).map(|(compartment, _)| compartment)
 }
 
 fn element_near(world: &World, position: Vec3) -> Option<(Entity, Vec3)> {

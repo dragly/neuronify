@@ -61,7 +61,9 @@ impl Tool {
             Tool::Place(Element::Note) => "Text on the canvas.",
             Tool::Voltmeter => "Click a neuron or compartment to plot its voltage.",
             Tool::StaticConnection => "Drag from a neuron or source to the neuron it should drive.",
-            Tool::Axon => "Drag from a neuron to grow a cable of compartments.",
+            Tool::Axon => {
+                "Drag from a neuron to grow a cable of compartments to a neuron or its dendrites."
+            }
         }
     }
 }

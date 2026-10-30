@@ -4,7 +4,6 @@ use glam::Vec3;
 use hecs::Entity;
 
 use crate::components::*;
-use crate::constants::NODE_RADIUS;
 use crate::rendering::colors::{terminal_color, Palette};
 use crate::rendering::gpu_types::CylinderData;
 use crate::rendering::paths::ConnectionPath;
@@ -117,9 +116,9 @@ pub fn collect_cylinders(
             let direction = (*end - *before).normalize_or_zero();
             cylinders.push(CylinderData {
                 start: *end - direction * 0.12,
-                start_radius: 0.6 * NODE_RADIUS,
+                start_radius: 1.2 * path.terminal_radius,
                 end: *end + direction * 0.12,
-                end_radius: 0.6 * NODE_RADIUS,
+                end_radius: 1.2 * path.terminal_radius,
                 color: terminal_color(),
                 _padding: Default::default(),
             });
