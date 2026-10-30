@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use glam::Vec3;
-use hecs::Entity;
+use hecs::{Entity, EntityRef};
 
 use crate::components::*;
 use crate::rendering::colors::{terminal_color, Palette};
@@ -15,9 +15,17 @@ const TAPER: f32 = 0.85;
 /// Floor so that long processes never disappear.
 const MIN_RADIUS: f32 = 0.16;
 const FULLY_TAPERED_DISTANCE: f32 = 12.0;
+const PIECES_PER_CABLE: usize = 8;
 
 fn radius_from_soma_distance(distance: f32) -> f32 {
     (ROOT_RADIUS * TAPER.powf(distance / 3.0)).max(MIN_RADIUS)
+}
+
+fn compartment_state(entity: EntityRef) -> Option<(NeuronType, f64)> {
+    Some((
+        *entity.get::<&NeuronType>()?,
+        entity.get::<&Compartment>()?.voltage,
+    ))
 }
 
 /// Radius of every compartment, thick next to a soma and tapering away from it.
@@ -75,25 +83,31 @@ pub fn collect_cylinders(
             let to = world.entity(connection.to).ok()?;
             let start = from.get::<&Position>()?.position;
             let end = to.get::<&Position>()?.position;
-            let colored_by = if to.has::<Compartment>() { to } else { from };
-            let color = match (
-                colored_by.get::<&Compartment>(),
-                colored_by.get::<&NeuronType>(),
-            ) {
-                (Some(compartment), Some(neuron_type)) => {
-                    palette.compartment(&neuron_type, compartment.voltage)
+            let (from, to) = (compartment_state(from), compartment_state(to));
+            let (from, to) = (from.or(to), to.or(from));
+            let (start_radius, end_radius) = (radius(connection.from), radius(connection.to));
+            Some((0..PIECES_PER_CABLE).map(move |piece| {
+                let fraction = |piece: usize| piece as f32 / PIECES_PER_CABLE as f32;
+                let (near, far) = (fraction(piece), fraction(piece + 1));
+                let color = match (from, to) {
+                    (Some((neuron_type, from_voltage)), Some((_, to_voltage))) => {
+                        let middle = f64::from(0.5 * (near + far));
+                        let voltage = from_voltage + (to_voltage - from_voltage) * middle;
+                        palette.compartment(&neuron_type, voltage)
+                    }
+                    _ => palette.neutral,
+                };
+                CylinderData {
+                    start: start.lerp(end, near),
+                    start_radius: start_radius + (end_radius - start_radius) * near,
+                    end: start.lerp(end, far),
+                    end_radius: start_radius + (end_radius - start_radius) * far,
+                    color,
+                    _padding: Default::default(),
                 }
-                _ => palette.neutral,
-            };
-            Some(CylinderData {
-                start,
-                start_radius: radius(connection.from),
-                end,
-                end_radius: radius(connection.to),
-                color,
-                _padding: Default::default(),
-            })
+            }))
         })
+        .flatten()
         .collect();
     cylinders.reserve(paths.values().map(|path| path.points.len()).sum());
     for path in paths.values() {
