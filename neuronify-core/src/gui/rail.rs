@@ -27,6 +27,10 @@ const TILES_PER_ROW: usize = 4;
 const SHEET_HEIGHT: f32 = 0.8;
 
 const RAIL_PADDING: i8 = 6;
+const HIDE_HEIGHT: f32 = 22.0;
+const HIDE_ICON: f32 = 14.0;
+const HIDE_OPACITY: f32 = 0.6;
+const SHOW_SIZE: f32 = 40.0;
 const ITEM_HEIGHT: f32 = 52.0;
 const ITEM_RADIUS: u8 = 10;
 const ITEM_ICON: f32 = 24.0;
@@ -59,7 +63,8 @@ enum Slot {
 
 const SECTIONS: [&[(Slot, Key)]; 2] = [
     &[
-        (Slot::Tool(Tool::Select), Key::V),
+        (Slot::Tool(Tool::View), Key::H),
+        (Slot::Tool(Tool::Edit), Key::V),
         (Slot::Tool(Tool::Stimulate), Key::S),
         (Slot::Tool(Tool::Erase), Key::E),
     ],
@@ -74,7 +79,7 @@ const SECTIONS: [&[(Slot, Key)]; 2] = [
 
 pub struct RailResponse {
     pub rect: Rect,
-    pub menu: Response,
+    pub menu: Option<Response>,
 }
 
 #[derive(Default)]
@@ -83,9 +88,14 @@ pub struct Rail {
     adding: bool,
     sheet: Sheet,
     recent: Vec<Tool>,
+    hidden: bool,
 }
 
 impl Rail {
+    pub fn is_shown(&self) -> bool {
+        !self.hidden
+    }
+
     pub fn close(&mut self) {
         self.flyout = None;
         self.adding = false;
@@ -157,7 +167,21 @@ impl Rail {
         editor: &mut Editor,
     ) -> RailResponse {
         let chrome = Chrome::of(theme);
+        if self.hidden {
+            let shown = egui::Area::new(Id::new("show_rail"))
+                .anchor(Align2::LEFT_BOTTOM, [MARGIN, -MARGIN])
+                .show(context, |ui| show_button(ui, chrome, theme, editor))
+                .inner;
+            if shown.clicked() {
+                self.hidden = false;
+            }
+            return RailResponse {
+                rect: shown.rect,
+                menu: None,
+            };
+        }
         let height = context.content_rect().height() - 2.0 * MARGIN;
+        let mut hide = false;
         let mut toggled = None;
         let mut groups = Vec::new();
         let inner = egui::Area::new(Id::new("rail"))
@@ -166,8 +190,8 @@ impl Rail {
                 chrome
                     .panel_frame(RAIL_PADDING)
                     .show(ui, |ui| {
+                        let inner_height = height - 2.0 * RAIL_PADDING as f32 - 2.0;
                         ui.set_width(RAIL_WIDTH - 2.0 * RAIL_PADDING as f32);
-                        ui.set_min_height(height - 2.0 * RAIL_PADDING as f32 - 2.0);
                         ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
                         let menu = item(
                             ui,
@@ -234,10 +258,18 @@ impl Rail {
                                 }
                             }
                         }
+                        let spacing = ui.spacing().item_spacing.y;
+                        let used = ui.min_rect().height();
+                        ui.add_space((inner_height - used - HIDE_HEIGHT - spacing).max(0.0));
+                        hide = hide_button(ui, chrome).clicked();
                         menu
                     })
                     .inner
             });
+        if hide {
+            self.hidden = true;
+            self.flyout = None;
+        }
         let rail = inner.response.rect;
         if let Some(group) = toggled {
             self.flyout = (self.flyout != Some(group)).then_some(group);
@@ -263,7 +295,7 @@ impl Rail {
         }
         RailResponse {
             rect: rail,
-            menu: inner.inner,
+            menu: Some(inner.inner),
         }
     }
 
@@ -318,7 +350,6 @@ impl Rail {
         context: &Context,
         theme: Theme,
         editor: &mut Editor,
-        edit_enabled: &mut bool,
         playback_open: &mut bool,
     ) {
         let chrome = Chrome::of(theme);
@@ -339,7 +370,7 @@ impl Rail {
                                     / TOOL_BAR_SLOTS as f32,
                                 ITEM_HEIGHT,
                             );
-                            for tool in [Tool::Select, Tool::Stimulate, Tool::Erase] {
+                            for tool in [Tool::Edit, Tool::Stimulate, Tool::Erase] {
                                 let on = editor.tool == tool;
                                 let response = ui
                                     .allocate_ui(slot, |ui| {
@@ -348,10 +379,9 @@ impl Rail {
                                     .inner;
                                 if response.clicked() {
                                     self.choose(editor, tool);
-                                    *edit_enabled = true;
                                 }
                             }
-                            let placing = ![Tool::Select, Tool::Stimulate, Tool::Erase]
+                            let placing = ![Tool::View, Tool::Edit, Tool::Stimulate, Tool::Erase]
                                 .contains(&editor.tool);
                             let response = ui
                                 .allocate_ui(slot, |ui| {
@@ -403,7 +433,7 @@ impl Rail {
                     });
             });
         if self.adding {
-            let sheet = self.add_sheet(context, theme, editor, edit_enabled);
+            let sheet = self.add_sheet(context, theme, editor);
             let pressed_elsewhere = context.input(|input| {
                 input.pointer.any_pressed()
                     && input.pointer.interact_pos().is_some_and(|position| {
@@ -416,13 +446,7 @@ impl Rail {
         }
     }
 
-    fn add_sheet(
-        &mut self,
-        context: &Context,
-        theme: Theme,
-        editor: &mut Editor,
-        edit_enabled: &mut bool,
-    ) -> Rect {
+    fn add_sheet(&mut self, context: &Context, theme: Theme, editor: &mut Editor) -> Rect {
         let chrome = Chrome::of(theme);
         let width = context.content_rect().width();
         let padding = 16;
@@ -492,7 +516,6 @@ impl Rail {
                                             {
                                                 self.choose(editor, tool);
                                                 editor.selection = None;
-                                                *edit_enabled = true;
                                             }
                                         }
                                     });
@@ -645,6 +668,44 @@ fn tile(
     );
     response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, on, tool.name()));
     response
+}
+
+fn hide_button(ui: &mut Ui, chrome: &Chrome) -> Response {
+    let (rect, response) =
+        ui.allocate_exact_size(vec2(ui.available_width(), HIDE_HEIGHT), Sense::click());
+    let color = if response.hovered() {
+        chrome.text
+    } else {
+        chrome.subtext.gamma_multiply(HIDE_OPACITY)
+    };
+    paint_icon(
+        ui.painter(),
+        Icon::Back,
+        Rect::from_center_size(rect.center(), Vec2::splat(HIDE_ICON)),
+        color,
+    );
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Hide tools"));
+    response.on_hover_text("Hide tools")
+}
+
+fn show_button(ui: &mut Ui, chrome: &Chrome, theme: Theme, editor: &Editor) -> Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(SHOW_SIZE), Sense::click());
+    let fill = if response.hovered() {
+        chrome.hovered
+    } else {
+        chrome.panel
+    };
+    chrome.paint_floating(ui.painter(), rect, (SHOW_SIZE / 2.0) as u8, fill);
+    paint_tool(
+        ui.painter(),
+        editor.tool,
+        Rect::from_center_size(rect.center(), Vec2::splat(ITEM_ICON * 0.85)),
+        theme,
+        chrome.text,
+        editor.compartments,
+    );
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Show tools"));
+    response.on_hover_text(format!("Show tools ({})", editor.tool.name()))
 }
 
 fn item(

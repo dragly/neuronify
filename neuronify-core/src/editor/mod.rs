@@ -184,7 +184,8 @@ impl Editor {
         shift_down: bool,
     ) -> Option<Pan> {
         match self.tool {
-            Tool::Select => return self.select(world, recording, position),
+            Tool::View => return self.view(world, position),
+            Tool::Edit => return self.select(world, recording, position),
             Tool::Place(element) => self.add(world, recording, element, position, shift_down),
             Tool::Voltmeter => self.place_voltmeter(world, position),
             Tool::StaticConnection => self.connect(world, position, shift_down),
@@ -238,7 +239,9 @@ impl Editor {
 
     fn select_entity(&mut self, entity: Entity) {
         self.selection = Some(entity);
-        self.tool = Tool::Select;
+        if self.tool.edits() {
+            self.tool = Tool::Edit;
+        }
     }
 
     pub fn hold(&mut self, world: &World, position: Vec3, select: bool) -> bool {
@@ -258,6 +261,9 @@ impl Editor {
         self.connection_tool = None;
         if select {
             self.select_entity(entity);
+        }
+        if self.tool == Tool::View {
+            self.tool = Tool::Edit;
         }
         self.grab(world, entity, entity_position, position);
         true

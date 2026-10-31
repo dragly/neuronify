@@ -19,7 +19,6 @@ use crate::tools::Tool;
 const SAVED_NAME: &str = "circuit.neuronify";
 
 pub struct Neuronify {
-    edit_enabled: bool,
     tapped_background: bool,
     pub landing: Option<LandingScreen>,
     editor: Editor,
@@ -123,7 +122,6 @@ impl Neuronify {
 
         let opened = world_from_command_line();
         Neuronify {
-            edit_enabled: false,
             tapped_background: false,
             landing: opened.is_none().then(|| LandingScreen::new(false)),
             editor: Editor::default(),
@@ -154,8 +152,12 @@ impl Neuronify {
         self.handle_tool(application);
     }
 
+    fn editing(&self) -> bool {
+        self.editor.tool.edits()
+    }
+
     fn tap(&mut self, application: &visula::Application) {
-        if self.edit_enabled {
+        if self.editing() {
             if self.editor.pressed_background() {
                 self.tapped_background = true;
             }
@@ -206,9 +208,7 @@ impl Neuronify {
 
     fn eraser(&self, application: &visula::Application) -> Option<Vec3> {
         let hover = self.hover.filter(|&hover| {
-            self.edit_enabled
-                && self.editor.tool == Tool::Erase
-                && !gui_takes_press(application, hover)
+            self.editor.tool == Tool::Erase && !gui_takes_press(application, hover)
         })?;
         Some(camera::ground_position(application, hover))
     }
@@ -222,7 +222,7 @@ impl Neuronify {
             return;
         };
         let position = camera::ground_position(application, screen_position);
-        let requested_pan = if self.edit_enabled {
+        let requested_pan = if self.editing() {
             self.editor
                 .edit(&mut self.world, position, self.keyboard.shift_down)
         } else {
@@ -268,7 +268,7 @@ impl Neuronify {
         self.time = time;
         self.speed = speed;
         self.running = true;
-        self.edit_enabled = false;
+        self.editor.tool = Tool::View;
         self.editor.forget_world();
         self.landing = None;
         self.frame_scene_requested = true;
@@ -329,15 +329,15 @@ impl visula::Simulation for Neuronify {
         if self.tapped_background && !self.touches.may_double_tap(input::now()) {
             self.tapped_background = false;
             self.editor.selection = None;
-            if self.edit_enabled && is_compact(application) {
-                self.edit_enabled = false;
+            if self.editing() && is_compact(application) {
+                self.editor.tool = Tool::View;
             }
         }
         if let TouchGesture::Press(position) = self.touches.poll(input::now()) {
             self.move_pointer(application, position);
             self.press_pointer(application, true);
         }
-        let holds = if self.edit_enabled {
+        let holds = if self.editing() {
             matches!(self.editor.tool, Tool::Place(_))
         } else {
             is_compact(application)
@@ -345,8 +345,8 @@ impl visula::Simulation for Neuronify {
         if holds {
             if let Some(position) = self.mouse.take_hold(input::now()) {
                 let position = camera::ground_position(application, position);
-                let select = !self.edit_enabled;
-                self.edit_enabled |= self.editor.hold(&self.world, position, select);
+                let select = !self.editing();
+                self.editor.hold(&self.world, position, select);
             }
         }
         if self.running {
@@ -376,7 +376,7 @@ impl visula::Simulation for Neuronify {
                     application.config.height as f32,
                 ) / pixels_per_point,
             );
-            let free = gui::canvas_area(screen, self.edit_enabled);
+            let free = gui::canvas_area(screen, self.gui.rail_shown());
             let free = egui::Rect::from_min_max(
                 (free.min.to_vec2() * pixels_per_point).to_pos2(),
                 (free.max.to_vec2() * pixels_per_point).to_pos2(),
@@ -425,7 +425,6 @@ impl visula::Simulation for Neuronify {
             gui::load_error(context, error);
         }
         let controls = gui::Controls {
-            edit_enabled: &mut self.edit_enabled,
             editor: &mut self.editor,
             world: &mut self.world,
             theme: &mut self.theme,
@@ -498,8 +497,7 @@ impl visula::Simulation for Neuronify {
                         self.touches.forget_tap();
                     }
                 }
-                let wait = self.edit_enabled
-                    && !matches!(self.editor.tool, Tool::Select | Tool::Stimulate);
+                let wait = !matches!(self.editor.tool, Tool::View | Tool::Edit | Tool::Stimulate);
                 let scale_factor = application.window.scale_factor();
                 match self.touches.update(touch, input::now(), wait, scale_factor) {
                     TouchGesture::Press(position) => {

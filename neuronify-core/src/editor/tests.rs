@@ -63,7 +63,7 @@ fn a_new_note_is_selected() {
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     let note = editor.selection.unwrap();
     assert!(world.get::<&Annotation>(note).is_ok());
-    assert_eq!(editor.tool, Tool::Select);
+    assert_eq!(editor.tool, Tool::Edit);
 }
 
 #[test]
@@ -445,7 +445,7 @@ fn voltmeters_attach_to_the_neuron_under_the_pointer() {
 fn selecting_drags_the_element_under_the_pointer() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     let pans = drag(&mut editor, &mut world, &[at(0.5, 0.0), at(5.5, 3.0)]);
     assert_eq!(pans, [None, None]);
     assert_eq!(editor.selection, Some(a));
@@ -456,7 +456,7 @@ fn selecting_drags_the_element_under_the_pointer() {
 fn dragging_empty_space_pans_and_keeps_the_selection() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     editor.selection = Some(a);
     let pans = drag(&mut editor, &mut world, &[at(10.0, 10.0), at(12.0, 10.0)]);
     assert_eq!(pans, [None, Some(Pan(at(2.0, 0.0)))]);
@@ -467,7 +467,7 @@ fn dragging_empty_space_pans_and_keeps_the_selection() {
 fn the_editor_knows_whether_a_press_landed_on_the_background() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     editor.edit(&mut world, at(0.5, 0.0), false);
     assert!(!editor.pressed_background());
     editor.release(&world);
@@ -482,7 +482,7 @@ fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
     let voltmeter = spawn_voltmeter(&mut world, target, at(10.0, 5.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
 
     drag(&mut editor, &mut world, &[at(12.0, 13.0), at(13.0, 15.0)]);
     let size = world
@@ -507,7 +507,7 @@ fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
 fn selected_notes_are_resized_by_their_corners() {
     let mut world = World::new();
     let note = Element::Note.spawn(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     let size = |world: &World| {
         world
             .get::<&NoteSize>(note)
@@ -543,7 +543,7 @@ fn notes_lie_under_the_circuit() {
     let mut world = World::new();
     let note = Element::Note.spawn(&mut world, at(0.0, 0.0));
     let inside = neuron(&mut world, at(1.0, 1.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     drag(&mut editor, &mut world, &[at(1.2, 1.0)]);
     assert_eq!(editor.selection, Some(inside));
     drag(&mut editor, &mut world, &[at(-1.5, -2.0)]);
@@ -554,7 +554,7 @@ fn notes_lie_under_the_circuit() {
 fn viewers_touch_sensors_and_pan_everywhere_else() {
     let mut world = World::new();
     Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
 
     assert_eq!(editor.view(&mut world, at(0.5, 0.0)), None);
     assert_eq!(editor.view(&mut world, at(5.0, 5.0)), None);
@@ -591,13 +591,13 @@ fn touch_sensors_fire_once_per_press() {
 fn viewers_select_with_a_tap() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    let mut editor = editor(Tool::View);
 
     editor.view(&mut world, at(0.5, 0.0));
     editor.tap(&world, at(0.5, 0.0));
     editor.release(&world);
     assert_eq!(editor.selection, Some(target));
-    assert_eq!(editor.tool, Tool::Select);
+    assert_eq!(editor.tool, Tool::View);
 
     editor.view(&mut world, at(10.0, 10.0));
     editor.tap(&world, at(10.0, 10.0));
@@ -610,7 +610,7 @@ fn touching_a_sensor_leaves_the_selection_alone() {
     let mut world = World::new();
     let target = neuron(&mut world, at(10.0, 0.0));
     Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     editor.selection = Some(target);
 
     editor.view(&mut world, at(0.5, 0.0));
@@ -622,7 +622,7 @@ fn touching_a_sensor_leaves_the_selection_alone() {
 fn holding_an_element_grabs_it() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    let mut editor = editor(Tool::View);
 
     editor.view(&mut world, at(10.0, 10.0));
     assert!(!editor.hold(&world, at(10.0, 10.0), true));
@@ -631,7 +631,7 @@ fn holding_an_element_grabs_it() {
     editor.view(&mut world, at(0.5, 0.0));
     assert!(editor.hold(&world, at(0.5, 0.0), true));
     assert_eq!(editor.selection, Some(target));
-    assert_eq!(editor.tool, Tool::Select);
+    assert_eq!(editor.tool, Tool::Edit);
     assert_eq!(editor.edit(&mut world, at(3.5, 2.0), false), None);
     assert_eq!(
         world.get::<&Position>(target).unwrap().position,
@@ -651,7 +651,7 @@ fn drag_in_steps(world: &mut World, from: Vec3, to: Vec3) {
     let path: Vec<Vec3> = (0..=50)
         .map(|step| from.lerp(to, step as f32 / 50.0))
         .collect();
-    drag(&mut editor(Tool::Select), world, &path);
+    drag(&mut editor(Tool::Edit), world, &path);
 }
 
 fn position(world: &World, entity: Entity) -> Vec3 {
@@ -879,7 +879,7 @@ fn swinging_around_a_neuron_moves_nothing_far_in_one_step() {
     let target = neuron(&mut world, at(0.0, 30.0));
     neuron_with_dendrites(&mut world, at(0.0, 0.0));
     grow_axon(&mut world, at(0.0, 0.0), at(0.0, 30.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     let centre = position(&world, target);
 
     let mut previous = positions_with::<Compartment>(&world);
@@ -1052,7 +1052,7 @@ fn step(editor: &mut Editor, world: &mut World, tool: Tool, path: &[Vec3]) -> La
 #[test]
 fn undo_and_redo_step_through_every_kind_of_edit() {
     let mut world = World::new();
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     editor.compartments = true;
     let excitatory = Tool::Place(Element::ExcitatoryNeuron);
     let mut layouts = vec![layout(&world)];
@@ -1061,7 +1061,7 @@ fn undo_and_redo_step_through_every_kind_of_edit() {
         (excitatory, &[at(0.0, 20.0)]),
         (Tool::StaticConnection, &[at(0.0, 0.5), at(0.0, 19.5)]),
         (Tool::Axon, &[at(0.0, 20.5), at(20.0, 20.0)]),
-        (Tool::Select, &[at(0.0, 0.5), at(-5.0, 3.5)]),
+        (Tool::Edit, &[at(0.0, 0.5), at(-5.0, 3.5)]),
         (Tool::Voltmeter, &[at(-4.5, 3.0)]),
         (Tool::Erase, &[at(0.0, 20.0)]),
     ];
@@ -1088,18 +1088,18 @@ fn undo_puts_back_axons_that_a_drag_stretched_or_compressed() {
     neuron(&mut world, at(0.0, 0.0));
     neuron(&mut world, at(0.0, 20.0));
     grow_axon(&mut world, at(0.0, 0.0), at(0.0, 20.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     let grown = layout(&world);
     let stretched = step(
         &mut editor,
         &mut world,
-        Tool::Select,
+        Tool::Edit,
         &[at(0.0, 0.0), at(0.0, -30.0)],
     );
     let compressed = step(
         &mut editor,
         &mut world,
-        Tool::Select,
+        Tool::Edit,
         &[at(0.0, -30.0), at(0.0, 15.0)],
     );
     assert!(stretched.len() > grown.len() && compressed.len() < grown.len());
@@ -1131,7 +1131,7 @@ fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
     let voltmeter = spawn_voltmeter(&mut world, target, at(10.0, 5.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     drag(&mut editor, &mut world, &[at(12.0, 13.0), at(13.0, 15.0)]);
     drag(&mut editor, &mut world, &[at(10.0, 9.0), at(11.0, 9.0)]);
     world
@@ -1154,7 +1154,7 @@ fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
 fn undo_puts_back_a_resized_note() {
     let mut world = World::new();
     let note = Element::Note.spawn(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     editor.selection = Some(note);
     let size = |world: &World| {
         world
@@ -1190,7 +1190,7 @@ fn adjusting_a_parameter_until_it_settles_is_one_undo_step() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
     let original = threshold(&world, a);
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Edit);
     editor.adjust(&world, a, true, || false);
     assert!(!editor.can_undo());
 

@@ -15,7 +15,6 @@ struct Harness {
     context: Context,
     screen: Vec2,
     gui: Gui,
-    edit_enabled: bool,
     editor: Editor,
     world: World,
     theme: Theme,
@@ -45,7 +44,6 @@ impl Harness {
             context: Context::default(),
             screen,
             gui: Gui::default(),
-            edit_enabled,
             editor: Editor::default(),
             world,
             theme: Theme::Dark,
@@ -56,6 +54,7 @@ impl Harness {
             time: 0.0,
             saving: Saving::Save,
         };
+        harness.editor.tool = if edit_enabled { Tool::Edit } else { Tool::View };
         harness.editor.selection = selection;
         for _ in 0..3 {
             harness.frame(vec![]);
@@ -73,7 +72,6 @@ impl Harness {
         let Harness {
             context,
             gui,
-            edit_enabled,
             editor,
             world,
             theme,
@@ -86,7 +84,6 @@ impl Harness {
         } = self;
         let output = context.run_ui(input, |ui| {
             let controls = Controls {
-                edit_enabled,
                 editor,
                 world,
                 theme,
@@ -102,6 +99,10 @@ impl Harness {
         });
         self.output = Some(output);
         self.time += 0.1;
+    }
+
+    fn editing(&self) -> bool {
+        self.editor.tool.edits()
     }
 
     fn click(&mut self, position: Pos2) {
@@ -190,26 +191,49 @@ fn corner_button(from_right: usize) -> Pos2 {
 }
 
 #[test]
-fn the_pencil_switches_editing_on_and_off() {
+fn view_and_edit_sit_at_the_top_of_the_rail() {
     let mut harness = Harness::new(true);
-    harness.click(corner_button(0));
-    assert!(!harness.edit_enabled);
-    harness.click(corner_button(0));
-    assert!(harness.edit_enabled);
+    harness.click_text("View");
+    assert!(!harness.editing());
+    harness.click_text("Edit");
+    assert!(harness.editing());
+    assert!(harness.text_position("View").unwrap().y < harness.text_position("Edit").unwrap().y);
 }
 
 #[test]
 fn the_examples_button_asks_for_the_landing_screen() {
     let mut harness = Harness::new(true);
-    harness.click(corner_button(1));
+    harness.click(corner_button(0));
     assert!(matches!(harness.choice, Some(MenuChoice::Examples)));
-    assert!(harness.edit_enabled);
+    assert!(harness.editing());
 }
 
 #[test]
-fn the_rail_shows_only_while_editing() {
+fn the_rail_shows_while_viewing_too() {
     assert!(Harness::new(true).shows("Neurons"));
-    assert!(!Harness::new(false).shows("Neurons"));
+    assert!(Harness::new(false).shows("Neurons"));
+}
+
+#[test]
+fn the_rail_hides_behind_a_round_button() {
+    let mut harness = Harness::new(false);
+    let area = |harness: &Harness, id: &str| {
+        harness
+            .context
+            .memory(|memory| memory.area_rect(Id::new(id)))
+            .unwrap()
+    };
+    let rail = area(&harness, "rail");
+    assert_eq!(rail.bottom(), SCREEN.y - MARGIN);
+    harness.click(rail.center_bottom() - vec2(0.0, 12.0));
+    assert!(!harness.shows("Neurons"));
+    assert!(!harness.gui.rail_shown());
+    harness.frame(vec![]);
+    let button = area(&harness, "show_rail");
+    assert!(button.width() < RAIL_WIDTH && button.bottom() > rail.center().y);
+    harness.click(button.center());
+    assert!(harness.shows("Neurons"));
+    assert_eq!(harness.editor.tool, Tool::View);
 }
 
 #[test]
@@ -236,7 +260,7 @@ fn pressing_outside_closes_the_flyout() {
     assert!(harness.shows("Touch sensor"));
     harness.click(pos2(700.0, 400.0));
     assert!(!harness.shows("Touch sensor"));
-    assert_eq!(harness.editor.tool, Tool::Select);
+    assert_eq!(harness.editor.tool, Tool::Edit);
 }
 
 #[test]
@@ -344,9 +368,9 @@ fn undo_and_redo_what_the_inspector_deleted() {
     let mut harness = Harness::with(true, world, Some(neuron));
     harness.click_button(inspector::DELETE);
     assert!(!harness.world.contains(neuron));
-    harness.click(corner_button(3));
-    assert!(harness.world.contains(neuron));
     harness.click(corner_button(2));
+    assert!(harness.world.contains(neuron));
+    harness.click(corner_button(1));
     assert!(!harness.world.contains(neuron));
 }
 
@@ -393,7 +417,9 @@ fn letters_choose_tools_and_step_through_a_group() {
     harness.press(Modifiers::SHIFT, Key::E);
     assert_eq!(harness.editor.tool, Tool::Place(Element::InhibitoryNeuron));
     harness.press(Modifiers::NONE, Key::V);
-    assert_eq!(harness.editor.tool, Tool::Select);
+    assert_eq!(harness.editor.tool, Tool::Edit);
+    harness.press(Modifiers::NONE, Key::H);
+    assert_eq!(harness.editor.tool, Tool::View);
 }
 
 #[test]
@@ -403,7 +429,7 @@ fn tool_letters_are_left_to_the_text_of_a_note() {
     let mut harness = Harness::with(true, world, Some(note));
     harness.click_text("New note");
     harness.press(Modifiers::NONE, Key::N);
-    assert_eq!(harness.editor.tool, Tool::Select);
+    assert_eq!(harness.editor.tool, Tool::Edit);
 }
 
 #[test]
@@ -417,7 +443,7 @@ fn dragging_a_slider_is_one_step_to_undo() {
     harness.drag(slider, slider + vec2(120.0, 0.0));
     assert_ne!(threshold(&harness), original);
 
-    harness.click(corner_button(3));
+    harness.click(corner_button(2));
     assert_eq!(threshold(&harness), original);
     assert!(!harness.editor.can_undo());
 }
@@ -470,12 +496,12 @@ fn the_playback_bar_keeps_the_speed_within_bounds() {
 #[test]
 fn the_canvas_area_leaves_out_the_rail_and_the_playback_bar() {
     let screen = Rect::from_min_size(Pos2::ZERO, SCREEN);
-    let editing = canvas_area(screen, true);
-    let viewing = canvas_area(screen, false);
-    assert_eq!(editing.left(), MARGIN + RAIL_WIDTH);
-    assert_eq!(viewing.left(), 0.0);
-    assert_eq!(editing.bottom(), SCREEN.y - MARGIN - BAR_HEIGHT);
-    assert_eq!(editing.right(), SCREEN.x);
+    let shown = canvas_area(screen, true);
+    let hidden = canvas_area(screen, false);
+    assert_eq!(shown.left(), MARGIN + RAIL_WIDTH);
+    assert_eq!(hidden.left(), 0.0);
+    assert_eq!(shown.bottom(), SCREEN.y - MARGIN - BAR_HEIGHT);
+    assert_eq!(shown.right(), SCREEN.x);
 }
 
 fn top_corner(right: bool) -> Pos2 {
@@ -497,7 +523,7 @@ fn a_tool_on_the_tool_bar_starts_editing() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Erase");
     assert_eq!(harness.editor.tool, Tool::Erase);
-    assert!(harness.edit_enabled);
+    assert!(harness.editing());
 }
 
 #[test]
@@ -506,7 +532,7 @@ fn the_add_sheet_starts_editing_with_what_to_place() {
     harness.click_text("Add");
     harness.click_text("Poisson generator");
     assert_eq!(harness.editor.tool, Tool::Place(Element::PoissonGenerator));
-    assert!(harness.edit_enabled);
+    assert!(harness.editing());
     assert!(!harness.shows("Poisson generator"));
 }
 
@@ -545,9 +571,9 @@ fn done_stops_editing_on_phones() {
     let mut harness = Harness::phone(true, world, Some(neuron));
     harness.editor.tool = Tool::Erase;
     harness.click(top_corner(true));
-    assert!(!harness.edit_enabled);
+    assert!(!harness.editing());
     assert_eq!(harness.editor.selection, None);
-    assert_eq!(harness.editor.tool, Tool::Select);
+    assert_eq!(harness.editor.tool, Tool::View);
 }
 
 #[test]
@@ -586,7 +612,7 @@ fn the_playback_bar_hides_behind_a_button_on_phones() {
 fn selecting_starts_editing_on_phones() {
     let (world, neuron) = one_neuron();
     let harness = Harness::phone(false, world, Some(neuron));
-    assert!(harness.edit_enabled);
+    assert!(harness.editing());
     assert!(harness.shows("Threshold"));
 }
 
@@ -671,8 +697,8 @@ fn the_inspector_sheet_follows_its_handle() {
 #[test]
 fn the_canvas_area_on_phones_leaves_out_the_bars() {
     let screen = Rect::from_min_size(Pos2::ZERO, PHONE);
-    for edit_enabled in [true, false] {
-        let area = canvas_area(screen, edit_enabled);
+    for rail_shown in [true, false] {
+        let area = canvas_area(screen, rail_shown);
         assert_eq!(area.left(), 0.0);
         assert_eq!(area.top(), MARGIN + FAB_SIZE);
         assert_eq!(area.bottom(), PHONE.y - TOOL_BAR_MARGIN - TOOL_BAR_HEIGHT);
