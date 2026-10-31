@@ -19,7 +19,7 @@ fn drag(editor: &mut Editor, world: &mut World, path: &[Vec3]) -> Vec<Option<Pan
         .iter()
         .map(|&position| editor.edit(world, position, false))
         .collect();
-    editor.release(world);
+    editor.lift(world);
     pans
 }
 
@@ -27,15 +27,18 @@ fn count<T: Component>(world: &World) -> usize {
     world.query::<&T>().iter().count()
 }
 
-fn connected(world: &World, from: Entity, to: Entity) -> bool {
-    world
-        .query::<&Connection>()
-        .iter()
-        .any(|(_, connection)| connection.from == from && connection.to == to)
-}
-
 fn neuron(world: &mut World, position: Vec3) -> Entity {
     Element::ExcitatoryNeuron.spawn(world, position)
+}
+
+fn axon_endings(world: &World) -> Vec<Connection> {
+    world
+        .query::<&Connection>()
+        .with::<&CompartmentCurrent>()
+        .iter()
+        .filter(|(_, connection)| connection.directional)
+        .map(|(_, connection)| connection.clone())
+        .collect()
 }
 
 #[test]
@@ -99,6 +102,98 @@ fn static_connections_chain_from_neuron_to_neuron_unless_shift_is_held() {
     editor.release(&world);
     assert!(connected(&world, a, c));
     assert_eq!(count::<CurrentSynapse>(&world), 3);
+}
+
+fn straight(from: Vec3, to: Vec3) -> Vec<Vec3> {
+    (0..=80)
+        .map(|step| from.lerp(to, step as f32 / 80.0))
+        .collect()
+}
+
+fn axon_released_on_a_dendrite(mut editor: Editor) -> (World, Entity, Entity) {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 30.0));
+    spawn_dendrites(&mut world, target);
+    let (_, nearest) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .min_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
+        .unwrap();
+    drag(&mut editor, &mut world, &straight(Vec3::ZERO, nearest));
+    (world, source, target)
+}
+
+fn single_ending(world: &World) -> Connection {
+    let [ending] = &axon_endings(world)[..] else {
+        panic!("expected one ending, got {:?}", axon_endings(world));
+    };
+    ending.clone()
+}
+
+#[test]
+fn axons_end_on_the_dendrite_they_are_released_on() {
+    let (world, _, target) = axon_released_on_a_dendrite(editor(Tool::Axon));
+    let tree = compartment_tree(&world, target);
+    let ending = single_ending(&world);
+    assert!(tree.contains(&ending.to));
+    assert!(!tree.contains(&ending.from));
+}
+
+#[test]
+fn with_compartments_the_add_tools_end_axons_on_dendrites_too() {
+    let mut adding = editor(Tool::Place(Element::ExcitatoryNeuron));
+    adding.compartments = true;
+    let (world, _, target) = axon_released_on_a_dendrite(adding);
+    assert!(compartment_tree(&world, target).contains(&single_ending(&world).to));
+    assert_eq!(count::<LeakyNeuron>(&world), 2);
+}
+
+#[test]
+fn erasing_a_neuron_leaves_the_dendrite_its_axon_ends_on() {
+    let (mut world, source, target) = axon_released_on_a_dendrite(editor(Tool::Axon));
+    let tree = compartment_tree(&world, target);
+    let mut editor = editor(Tool::Select);
+    editor.selection = Some(source);
+    editor.erase_selection(&mut world);
+
+    assert!(tree.iter().all(|&compartment| world.contains(compartment)));
+    assert!(axon_endings(&world).is_empty());
+}
+
+#[test]
+fn axons_pass_over_dendrites_on_their_way_to_a_neuron() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 30.0));
+    spawn_dendrites(&mut world, target);
+    let mut editor = editor(Tool::Axon);
+    drag(
+        &mut editor,
+        &mut world,
+        &straight(Vec3::ZERO, at(0.0, 30.0)),
+    );
+
+    let [ending] = &axon_endings(&world)[..] else {
+        panic!("expected one ending, got {:?}", axon_endings(&world));
+    };
+    assert_eq!(ending.to, target);
+}
+
+#[test]
+fn axons_do_not_end_on_their_own_dendrites() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    spawn_dendrites(&mut world, source);
+    let dendrites = count::<Compartment>(&world);
+    let (_, apical_tip) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .max_by(|(_, a), (_, b)| a.x.total_cmp(&b.x))
+        .unwrap();
+    let mut editor = editor(Tool::Axon);
+    drag(&mut editor, &mut world, &straight(Vec3::ZERO, apical_tip));
+
+    assert!(count::<Compartment>(&world) > dendrites);
+    assert!(axon_endings(&world).is_empty());
 }
 
 #[test]

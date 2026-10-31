@@ -200,7 +200,7 @@ impl Neuronify {
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
-            self.editor.release(&self.world);
+            self.editor.lift(&mut self.world);
             return;
         }
         let Some(screen_position) = self.mouse.position else {
@@ -499,7 +499,7 @@ impl visula::Simulation for Neuronify {
                     }
                     TouchGesture::Cancel => {
                         self.mouse.cancel();
-                        self.handle_tool(application);
+                        self.editor.release(&self.world);
                     }
                     TouchGesture::Pinch { previous, current } => {
                         camera::pinch(application, previous, current)

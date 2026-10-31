@@ -1,9 +1,33 @@
 use std::collections::{HashMap, HashSet};
 
+use hecs::{Entity, World};
+
 use crate::components::*;
 use crate::constants::*;
 
-pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &HashSet<hecs::Entity>) {
+struct OutgoingSpike;
+
+fn spike_excess(compartment: &Compartment) -> f64 {
+    (compartment.voltage - BRIDGE_VOLTAGE_THRESHOLD).clamp(0.0, BRIDGE_VOLTAGE_CLAMP)
+}
+
+fn current_into_neuron(world: &World, cable: &Connection) -> Option<(Entity, f64)> {
+    let (compartment, neuron, sign) = if world.get::<&LeakyDynamics>(cable.to).is_ok() {
+        (cable.from, cable.to, neuron_type(world, cable.from).sign())
+    } else if world.get::<&OutgoingSpike>(cable.to).is_err() {
+        (cable.to, cable.from, 1.0)
+    } else {
+        return None;
+    };
+    world.get::<&LeakyDynamics>(neuron).ok()?;
+    let excess = spike_excess(&*world.get::<&Compartment>(compartment).ok()?);
+    (excess > 0.0).then(|| {
+        let current = excess / BRIDGE_VOLTAGE_CLAMP * BRIDGE_CURRENT_SCALE;
+        (neuron, sign * current)
+    })
+}
+
+pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
     for (_, compartment) in world.query_mut::<&mut Compartment>() {
         let v = (compartment.voltage - FHN_OFFSET) / FHN_SCALE;
         let w = compartment.m;
@@ -15,11 +39,12 @@ pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &HashSet<hecs
         compartment.m = new_w;
     }
 
-    let mut new_compartments: HashMap<hecs::Entity, Compartment> = world
+    let mut new_compartments: HashMap<Entity, Compartment> = world
         .query::<&Compartment>()
         .iter()
         .map(|(entity, &compartment)| (entity, compartment))
         .collect();
+    let mut outgoing = Vec::new();
 
     for (_, (connection, current)) in world.query::<(&Connection, &CompartmentCurrent)>().iter() {
         if let Ok(_compartment_to) = world.get::<&Compartment>(connection.to) {
@@ -27,18 +52,29 @@ pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &HashSet<hecs
                 let new_compartment_to = new_compartments
                     .get_mut(&connection.to)
                     .expect("Could not get new compartment");
-                new_compartment_to.voltage = FHN_FIRE_VOLTAGE * FHN_SCALE + FHN_OFFSET;
+                new_compartment_to.voltage = COMPARTMENT_FIRE_VOLTAGE;
+                outgoing.push(connection.to);
             } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from) {
-                let voltage_diff = compartment_from.voltage - _compartment_to.voltage;
-                let delta_voltage = voltage_diff / current.capacitance;
-                let new_compartment_to = new_compartments
-                    .get_mut(&connection.to)
-                    .expect("Could not get new compartment");
-                new_compartment_to.voltage += delta_voltage * cdt;
-                let new_compartment_from = new_compartments
-                    .get_mut(&connection.from)
-                    .expect("Could not get new compartment");
-                new_compartment_from.voltage -= delta_voltage * cdt;
+                if connection.directional {
+                    let sign = neuron_type(world, connection.from).sign();
+                    let delta_voltage =
+                        sign * spike_excess(&compartment_from) / current.capacitance;
+                    let new_compartment_to = new_compartments
+                        .get_mut(&connection.to)
+                        .expect("Could not get new compartment");
+                    new_compartment_to.voltage += delta_voltage * cdt;
+                } else {
+                    let voltage_diff = compartment_from.voltage - _compartment_to.voltage;
+                    let delta_voltage = voltage_diff / current.capacitance;
+                    let new_compartment_to = new_compartments
+                        .get_mut(&connection.to)
+                        .expect("Could not get new compartment");
+                    new_compartment_to.voltage += delta_voltage * cdt;
+                    let new_compartment_from = new_compartments
+                        .get_mut(&connection.from)
+                        .expect("Could not get new compartment");
+                    new_compartment_from.voltage -= delta_voltage * cdt;
+                }
             }
         }
     }
@@ -50,34 +86,99 @@ pub fn fhn_step(world: &mut hecs::World, cdt: f64, recently_fired: &HashSet<hecs
         *old_compartment = new_compartment;
     }
 
-    let compartment_to_neuron: Vec<(hecs::Entity, f64)> = world
+    for compartment in outgoing {
+        world
+            .insert_one(compartment, OutgoingSpike)
+            .expect("Could not mark compartment");
+    }
+    let passed: Vec<Entity> = world
+        .query::<&Compartment>()
+        .with::<&OutgoingSpike>()
+        .iter()
+        .filter(|(_, compartment)| spike_excess(compartment) == 0.0)
+        .map(|(entity, _)| entity)
+        .collect();
+    for compartment in passed {
+        world
+            .remove_one::<OutgoingSpike>(compartment)
+            .expect("Could not unmark compartment");
+    }
+
+    let compartment_to_neuron: Vec<(Entity, f64)> = world
         .query::<&Connection>()
         .with::<&CompartmentCurrent>()
         .iter()
-        .filter_map(|(_, conn)| {
-            let compartment = world.get::<&Compartment>(conn.from).ok()?;
-            let excess =
-                (compartment.voltage - BRIDGE_VOLTAGE_THRESHOLD).clamp(0.0, BRIDGE_VOLTAGE_CLAMP);
-            if excess == 0.0 {
-                return None;
-            }
-            let current = excess / BRIDGE_VOLTAGE_CLAMP * BRIDGE_CURRENT_SCALE;
-            world.get::<&LeakyDynamics>(conn.to).ok()?;
-            let sign = match world.get::<&NeuronType>(conn.from) {
-                Ok(nt) => match *nt {
-                    NeuronType::Excitatory => 1.0,
-                    NeuronType::Inhibitory => -1.0,
-                },
-                Err(_) => 1.0,
-            };
-            Some((conn.to, sign * current))
-        })
+        .filter_map(|(_, cable)| current_into_neuron(world, cable))
         .collect();
 
     for (target, current) in compartment_to_neuron {
         if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(target) {
             dynamics.received_currents += current;
         }
+    }
+}
+
+#[cfg(test)]
+mod ending_tests {
+    use super::*;
+    use crate::elements::spawn_cable;
+    use crate::simulation::step_simulation;
+
+    fn chain(world: &mut World, neuron_type: NeuronType) -> Vec<Entity> {
+        let compartments: Vec<Entity> = (0..4)
+            .map(|_| world.spawn((Compartment::default(), neuron_type)))
+            .collect();
+        for pair in compartments.windows(2) {
+            spawn_cable(world, pair[0], pair[1], false);
+        }
+        compartments
+    }
+
+    fn voltage_range_after_exciting(
+        world: &mut World,
+        excited: Entity,
+        watched: Entity,
+    ) -> (f64, f64) {
+        world.get::<&mut Compartment>(excited).unwrap().voltage = COMPARTMENT_FIRE_VOLTAGE;
+        let mut time = 0.0;
+        let mut range = (f64::MAX, f64::MIN);
+        for _ in 0..800 {
+            step_simulation(world, &mut time, 1, None);
+            let voltage = world.get::<&Compartment>(watched).unwrap().voltage;
+            range = (range.0.min(voltage), range.1.max(voltage));
+        }
+        range
+    }
+
+    fn axon_ending_on_dendrite(axon_type: NeuronType) -> (World, Vec<Entity>, Vec<Entity>) {
+        let mut world = World::new();
+        let axon = chain(&mut world, axon_type);
+        let dendrite = chain(&mut world, NeuronType::Excitatory);
+        spawn_cable(&mut world, axon[3], dendrite[0], true);
+        (world, axon, dendrite)
+    }
+
+    #[test]
+    fn an_axon_ending_on_a_compartment_passes_spikes_onwards() {
+        let (mut world, axon, dendrite) = axon_ending_on_dendrite(NeuronType::Excitatory);
+        let (_, highest) = voltage_range_after_exciting(&mut world, axon[0], dendrite[3]);
+        assert!(highest > BRIDGE_VOLTAGE_THRESHOLD, "highest was {highest}");
+    }
+
+    #[test]
+    fn spikes_do_not_travel_back_into_an_axon_ending() {
+        let (mut world, axon, dendrite) = axon_ending_on_dendrite(NeuronType::Excitatory);
+        let (_, highest) = voltage_range_after_exciting(&mut world, dendrite[3], axon[0]);
+        assert!(highest < BRIDGE_VOLTAGE_THRESHOLD, "highest was {highest}");
+    }
+
+    #[test]
+    fn an_inhibitory_axon_ending_holds_a_compartment_down() {
+        let (mut world, axon, dendrite) = axon_ending_on_dendrite(NeuronType::Inhibitory);
+        let rest = Compartment::default().voltage;
+        let (lowest, highest) = voltage_range_after_exciting(&mut world, axon[0], dendrite[0]);
+        assert!(lowest < rest - 10.0, "lowest was {lowest}");
+        assert!(highest < BRIDGE_VOLTAGE_THRESHOLD, "highest was {highest}");
     }
 }
 
