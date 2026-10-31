@@ -152,13 +152,13 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
             },
             Example {
                 name: "Lateral Inhibition 1",
-                description: "The center neuron inhibits its neighbours, \
+                description: "The center neuron inhibits its neighbors, \
                     so the center dominates the output.",
                 contents: legacy!("lateral_inhibition_1.nfy"),
             },
             Example {
                 name: "Lateral Inhibition 2",
-                description: "Every neuron inhibits its neighbours, \
+                description: "Every neuron inhibits its neighbors, \
                     which sharpens the difference between center and surround.",
                 contents: legacy!("lateral_inhibition_2.nfy"),
             },
