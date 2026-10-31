@@ -7,6 +7,7 @@ use crate::components::*;
 use crate::rendering::colors::{terminal_color, Palette};
 use crate::rendering::gpu_types::CylinderData;
 use crate::rendering::paths::ConnectionPath;
+use crate::rendering::shapes::shown_voltage;
 
 /// Radius where a process leaves the soma.
 const ROOT_RADIUS: f32 = 0.30;
@@ -20,10 +21,14 @@ fn radius_from_soma_distance(distance: f32) -> f32 {
     (ROOT_RADIUS * TAPER.powf(distance / 3.0)).max(MIN_RADIUS)
 }
 
-fn compartment_color(entity: EntityRef, palette: &Palette) -> Option<Vec3> {
+fn compartment_color(
+    entity: EntityRef,
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> Option<Vec3> {
     Some(palette.compartment(
         &*entity.get::<&NeuronType>()?,
-        entity.get::<&Compartment>()?.voltage,
+        shown_voltage(&*entity.get::<&Compartment>()?, display),
     ))
 }
 
@@ -72,6 +77,7 @@ pub fn collect_cylinders(
     palette: &Palette,
 ) -> Vec<CylinderData> {
     let radius = |entity: Entity| radii.get(&entity).copied().unwrap_or(ROOT_RADIUS);
+    let display = NeuronDisplay::of(world);
     let mut cylinders: Vec<CylinderData> = world
         .query::<&Connection>()
         .with::<&CompartmentCurrent>()
@@ -83,8 +89,8 @@ pub fn collect_cylinders(
             let start = from.get::<&Position>()?.position;
             let end = to.get::<&Position>()?.position;
             let (from, to) = (
-                compartment_color(from, palette),
-                compartment_color(to, palette),
+                compartment_color(from, &display, palette),
+                compartment_color(to, &display, palette),
             );
             Some(CylinderData {
                 start,

@@ -69,17 +69,36 @@ fn flash(time_since_fire: f64) -> f32 {
     remaining * remaining
 }
 
+pub fn voltage_fraction(
+    neuron: &LeakyNeuron,
+    dynamics: &LeakyDynamics,
+    display: &NeuronDisplay,
+) -> f32 {
+    if !display.voltage {
+        return 0.0;
+    }
+    ((dynamics.voltage - neuron.resting_potential) / (neuron.threshold - neuron.resting_potential))
+        .clamp(0.0, 1.0) as f32
+}
+
+pub fn shown_voltage(compartment: &Compartment, display: &NeuronDisplay) -> f64 {
+    if display.voltage {
+        compartment.voltage
+    } else {
+        Compartment::default().voltage
+    }
+}
+
 /// The colour of a soma, from its voltage and how recently it fired.
 pub fn soma_color(
     world: &hecs::World,
     entity: Entity,
     neuron: &LeakyNeuron,
     dynamics: &LeakyDynamics,
+    display: &NeuronDisplay,
     palette: &Palette,
 ) -> Vec3 {
-    let value = ((dynamics.voltage - neuron.resting_potential)
-        / (neuron.threshold - neuron.resting_potential))
-        .clamp(0.0, 1.0) as f32;
+    let value = voltage_fraction(neuron, dynamics, display);
     palette.soma(&neuron_type(world, entity), value).lerp(
         palette.flash * FLASH_BRIGHTNESS,
         flash(dynamics.time_since_fire),
@@ -271,6 +290,27 @@ mod tests {
             lif_step(&mut world, LIF_DT, step as f64 * LIF_DT);
         }
         assert_eq!(pad_color(&world), resting);
+    }
+
+    #[test]
+    fn a_soma_keeps_its_resting_colour_when_the_voltage_is_hidden() {
+        let mut world = hecs::World::new();
+        let entity = world.spawn((NeuronType::Excitatory,));
+        let neuron = LeakyNeuron::default();
+        let dynamics = LeakyDynamics {
+            voltage: neuron.threshold,
+            ..Default::default()
+        };
+        let palette = Theme::Dark.palette();
+        let color = |voltage: bool| {
+            let display = NeuronDisplay {
+                voltage,
+                firing_rate: false,
+            };
+            soma_color(&world, entity, &neuron, &dynamics, &display, &palette)
+        };
+        assert_eq!(color(false), palette.excitatory);
+        assert_ne!(color(true), palette.excitatory);
     }
 
     #[test]

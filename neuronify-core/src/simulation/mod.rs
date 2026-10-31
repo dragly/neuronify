@@ -1,9 +1,11 @@
 pub mod fhn;
+pub mod firing_rate;
 pub mod lif;
 pub mod spatial;
 pub mod stimulation;
 
 pub use fhn::fhn_step;
+pub use firing_rate::update_firing_rates;
 pub use lif::{lif_step, run_headless, SpikeRecord};
 pub use spatial::{apply_spatial_forces, integrate_motion};
 pub use stimulation::{fire_nearby, stimulate_nearby, touch_sensor_near};
@@ -22,6 +24,7 @@ pub fn step_simulation(world: &mut World, time: &mut f64, steps: u32, touch: Opt
             stimulate_nearby(world, position);
         }
         lif_step(world, LIF_DT, *time);
+        update_firing_rates(world, LIF_DT);
         *time += LIF_DT;
 
         let recently_fired: HashSet<Entity> = world

@@ -5,6 +5,7 @@ pub mod cylinders;
 pub mod floor;
 pub mod gauges;
 pub mod gpu_types;
+pub mod halos;
 pub mod lighting;
 pub mod notes;
 pub mod paths;

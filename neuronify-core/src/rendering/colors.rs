@@ -62,6 +62,27 @@ pub fn burst_gauge_color() -> Vec3 {
     srgb(228, 92, 152)
 }
 
+const PLASMA: [(u8, u8, u8); 11] = [
+    (13, 8, 135),
+    (65, 4, 157),
+    (106, 0, 168),
+    (143, 13, 164),
+    (177, 42, 144),
+    (204, 71, 120),
+    (225, 100, 98),
+    (242, 132, 75),
+    (252, 166, 54),
+    (252, 206, 37),
+    (240, 249, 33),
+];
+
+pub fn firing_rate_color(level: f32) -> Vec3 {
+    let position = level.clamp(0.0, 1.0) * (PLASMA.len() - 1) as f32;
+    let index = (position as usize).min(PLASMA.len() - 2);
+    let [low, high] = [PLASMA[index], PLASMA[index + 1]].map(|(r, g, b)| srgb(r, g, b));
+    low.lerp(high, position - index as f32)
+}
+
 /// How far a neuron at threshold has gone from the colour of its type towards white.
 pub const VOLTAGE_TINT: f32 = 0.55;
 
@@ -95,6 +116,7 @@ pub struct Palette {
     /// Connections from anything that is not a neuron or a source
     pub neutral: Vec3,
     pub selection: Vec3,
+    pub halo: f32,
 }
 
 impl Theme {
@@ -110,6 +132,7 @@ impl Theme {
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: crust(),
                 selection: srgb(137, 180, 250),
+                halo: 0.6,
             },
             Theme::Light => Palette {
                 floor: srgb(236, 239, 245),
@@ -121,6 +144,7 @@ impl Theme {
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: srgb(140, 143, 161),
                 selection: srgb(30, 102, 245),
+                halo: 1.0,
             },
         }
     }

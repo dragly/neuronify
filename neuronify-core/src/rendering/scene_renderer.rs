@@ -11,7 +11,8 @@ use crate::rendering::colors::{terminal_color, Theme};
 use crate::rendering::connections::{collect_voltmeter_wires, connection_being_drawn};
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
-use crate::rendering::gpu_types::{ConnectionData, CylinderData, Sphere, TorusData};
+use crate::rendering::gpu_types::{ConnectionData, CylinderData, HaloData, Sphere, TorusData};
+use crate::rendering::halos::{collect_halos, create_halos};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::notes::NoteRenderer;
 use crate::rendering::scene::collect_scene;
@@ -25,6 +26,8 @@ const MAX_SHADOW_EXTENT: f32 = 625.0;
 pub struct SceneRenderer {
     theme: Theme,
     floor: MeshPipeline,
+    halos: MeshPipeline,
+    halo_buffer: InstanceBuffer<HaloData>,
     spheres: Spheres,
     sphere_buffer: InstanceBuffer<Sphere>,
     cylinders: Cylinders,
@@ -131,11 +134,21 @@ impl SceneRenderer {
             theme.palette().floor,
         )
         .unwrap();
+        let halo_buffer = InstanceBuffer::<HaloData>::new(&application.device);
+        let halos = create_halos(
+            &application.rendering_descriptor(),
+            &application.device,
+            &halo_buffer,
+            &theme.palette(),
+        )
+        .unwrap();
         configure_lighting(application, theme);
 
         SceneRenderer {
             theme,
             floor,
+            halos,
+            halo_buffer,
             spheres,
             sphere_buffer,
             cylinders,
@@ -164,6 +177,13 @@ impl SceneRenderer {
                 &application.rendering_descriptor(),
                 &application.device,
                 theme.palette().floor,
+            )
+            .unwrap();
+            self.halos = create_halos(
+                &application.rendering_descriptor(),
+                &application.device,
+                &self.halo_buffer,
+                &theme.palette(),
             )
             .unwrap();
             set_theme_lighting(application, theme);
@@ -195,12 +215,18 @@ impl SceneRenderer {
             .update(&application.device, &application.queue, &scene.rings);
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
+        self.halo_buffer.update(
+            &application.device,
+            &application.queue,
+            &collect_halos(world),
+        );
         self.notes.update(application, world);
         self.gauges.update(application, world, &palette);
     }
 
     pub fn render(&mut self, data: &mut RenderData) {
         self.floor.render(data);
+        self.halos.render(data);
         self.spheres.render(data);
         self.cylinders.render(data);
         self.rings.render(data);

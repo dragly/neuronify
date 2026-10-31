@@ -1,6 +1,14 @@
 use bytemuck::{Pod, Zeroable};
-use glam::{Quat, Vec3};
+use glam::{Quat, Vec3, Vec4};
 use visula_derive::Instance;
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, Instance, Pod, Zeroable)]
+pub struct HaloData {
+    pub position: Vec3,
+    pub _padding: f32,
+    pub color: Vec4,
+}
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Instance, Pod, Zeroable)]

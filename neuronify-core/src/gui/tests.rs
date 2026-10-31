@@ -266,6 +266,18 @@ fn the_inputs_say_how_to_connect_them() {
 }
 
 #[test]
+fn the_menu_switches_firing_rates_on_and_voltages_off() {
+    use crate::components::{NeuronDisplay, Setting};
+    let mut harness = Harness::new(true);
+    harness.click_text("Menu");
+    harness.click_text("Show firing rate");
+    harness.click_text("Show voltage");
+    let display = NeuronDisplay::of(&harness.world);
+    assert!(display.firing_rate);
+    assert!(!display.voltage);
+}
+
+#[test]
 fn the_menu_switches_the_theme() {
     let mut harness = Harness::new(true);
     harness.click_text("Menu");

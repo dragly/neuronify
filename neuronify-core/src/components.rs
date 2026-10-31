@@ -1,6 +1,49 @@
 use glam::Vec3;
-use hecs::Entity;
+use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
+
+pub trait Setting: hecs::Component + Copy + Default {
+    fn of(world: &World) -> Self {
+        world
+            .query::<&Self>()
+            .iter()
+            .next()
+            .map(|(_, setting)| *setting)
+            .unwrap_or_default()
+    }
+
+    fn set_in(self, world: &mut World) {
+        let existing = world.query_mut::<&mut Self>().into_iter().next();
+        match existing {
+            Some((_, setting)) => *setting = self,
+            None => {
+                world.spawn((self,));
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+pub struct NeuronDisplay {
+    pub voltage: bool,
+    pub firing_rate: bool,
+}
+
+impl Default for NeuronDisplay {
+    fn default() -> Self {
+        Self {
+            voltage: true,
+            firing_rate: false,
+        }
+    }
+}
+
+impl Setting for NeuronDisplay {}
+
+#[derive(Clone, Debug, Default)]
+pub struct FiringRate {
+    pub rate: f64,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LeakyNeuron {
