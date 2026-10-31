@@ -133,6 +133,22 @@ pub fn spawn_synapse(world: &mut World, from: Entity, to: Entity) -> Entity {
     ))
 }
 
+pub fn spawn_connection(world: &mut World, from: Entity, to: Entity) -> Entity {
+    if world.get::<&CurrentClamp>(from).is_ok() {
+        world.spawn((
+            Connection {
+                from,
+                to,
+                strength: 1.0,
+                directional: true,
+            },
+            Deletable {},
+        ))
+    } else {
+        spawn_synapse(world, from, to)
+    }
+}
+
 pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: bool) -> Entity {
     world.spawn((
         Connection {

@@ -282,6 +282,10 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             if world.get::<&LeakyDynamics>(to).is_err() {
                 return;
             }
+            if world.get::<&CurrentClamp>(from).is_ok() {
+                world.spawn((connection, Deletable {}));
+                return;
+            }
             let e = &edge.engine;
             let synapse = CurrentSynapse {
                 tau: e.tau.unwrap_or(0.002),

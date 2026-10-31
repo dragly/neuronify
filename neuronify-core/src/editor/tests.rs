@@ -1,4 +1,5 @@
 use super::*;
+use crate::elements::spawn_synapse;
 use crate::measurement::voltmeter::VoltageSeries;
 use crate::simulation::step_simulation;
 use std::collections::HashMap;
@@ -1466,4 +1467,55 @@ fn an_adjustment_comes_before_the_stroke_that_follows_it() {
     assert_eq!(threshold(&world, a), -0.04);
     editor.undo(&mut world);
     assert_eq!(threshold(&world, a), original);
+}
+
+fn two_connected_neurons(world: &mut World) -> (Entity, Entity, Entity) {
+    let a = neuron(world, at(0.0, 0.0));
+    let b = neuron(world, at(0.0, 20.0));
+    let synapse = spawn_synapse(world, a, b);
+    (a, b, synapse)
+}
+
+#[test]
+fn tapping_a_connection_in_view_mode_selects_it() {
+    let mut world = World::new();
+    let (a, _, synapse) = two_connected_neurons(&mut world);
+    let mut editor = editor(Tool::Edit);
+    editor.tap(&world, at(0.3, 9.0));
+    assert_eq!(editor.selection, Some(synapse));
+    assert!(!editor.empty_at(&world, at(0.3, 9.0)));
+
+    editor.tap(&world, at(0.0, 0.5));
+    assert_eq!(editor.selection, Some(a));
+    editor.tap(&world, at(5.0, 9.0));
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn a_tap_on_a_connection_while_editing_selects_it_and_a_drag_pans() {
+    let mut world = World::new();
+    let (_, _, synapse) = two_connected_neurons(&mut world);
+    let mut editor = editor(Tool::Edit);
+    editor.edit(&mut world, at(0.3, 9.0), false);
+    assert!(!editor.tap_while_editing());
+    assert_eq!(editor.selection, Some(synapse));
+    editor.release(&world);
+
+    editor.selection = None;
+    editor.edit(&mut world, at(0.3, 9.0), false);
+    let pan = editor.edit(&mut world, at(0.3, 12.0), false);
+    assert_eq!(pan, Some(Pan(at(0.0, 3.0))));
+    editor.release(&world);
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn current_sources_connect_without_a_synapse() {
+    let mut world = World::new();
+    let source = Element::CurrentSource.spawn(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::StaticConnection);
+    drag(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 9.5)]);
+    assert!(connected(&world, source, target));
+    assert_eq!(count::<CurrentSynapse>(&world), 0);
 }

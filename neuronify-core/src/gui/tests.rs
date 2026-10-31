@@ -4,7 +4,8 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    Connection, CurrentClamp, LeakyDynamics, LeakyNeuron, NeuronType, RegularSpikeGenerator,
+    Connection, CurrentClamp, CurrentSynapse, LeakyDynamics, LeakyNeuron, NeuronType,
+    RegularSpikeGenerator,
 };
 use crate::constants::DEFAULT_SPEED;
 use crate::elements::{spawn_cable, spawn_compartment, Element};
@@ -554,6 +555,52 @@ fn undoing_a_refractory_period_leaves_the_voltage_alone() {
     assert_eq!(
         harness.world.get::<&LeakyDynamics>(neuron).unwrap().voltage,
         -0.06
+    );
+}
+
+#[test]
+fn a_selected_synapse_shows_its_settings_and_undoes_them() {
+    let mut world = World::new();
+    let a = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    let b = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::X * 10.0);
+    let synapse = crate::elements::spawn_synapse(&mut world, a, b);
+    let mut harness = Harness::with(true, world, Some(synapse));
+    assert!(harness.shows("Synapse"));
+    for setting in [
+        Setting::MaximumCurrent,
+        Setting::SynapseTimeConstant,
+        Setting::Delay,
+    ] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    let maximum_current = |harness: &Harness| {
+        harness
+            .world
+            .get::<&CurrentSynapse>(synapse)
+            .unwrap()
+            .maximum_current
+    };
+    let slider = harness
+        .text_position(Setting::MaximumCurrent.label())
+        .unwrap()
+        + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    assert_eq!(maximum_current(&harness), 10e-9);
+    harness
+        .world
+        .get::<&mut CurrentSynapse>(synapse)
+        .unwrap()
+        .time = 3.0;
+
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(
+        maximum_current(&harness),
+        CurrentSynapse::default().maximum_current
+    );
+    assert_eq!(
+        harness.world.get::<&CurrentSynapse>(synapse).unwrap().time,
+        3.0
     );
 }
 

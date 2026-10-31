@@ -62,6 +62,28 @@ impl Settings<AdaptationCurrent> for Adaptation {
     }
 }
 
+struct Synapse {
+    maximum_current: f64,
+    tau: f64,
+    delay: f64,
+}
+
+impl Settings<CurrentSynapse> for Synapse {
+    fn of(synapse: &CurrentSynapse) -> Self {
+        Synapse {
+            maximum_current: synapse.maximum_current,
+            tau: synapse.tau,
+            delay: synapse.delay,
+        }
+    }
+
+    fn swap(&mut self, synapse: &mut CurrentSynapse) {
+        std::mem::swap(&mut self.maximum_current, &mut synapse.maximum_current);
+        std::mem::swap(&mut self.tau, &mut synapse.tau);
+        std::mem::swap(&mut self.delay, &mut synapse.delay);
+    }
+}
+
 const fn edited_settings<C: Component, S: Settings<C>>() -> Edited {
     Edited {
         copy: copy_settings::<C, S>,
@@ -99,7 +121,7 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 13] = [
+const EDITED: [Edited; 14] = [
     edited::<Position>(),
     edited::<VoltmeterSize>(),
     edited::<NoteSize>(),
@@ -113,6 +135,7 @@ const EDITED: [Edited; 13] = [
     edited::<LeakCurrent>(),
     edited_settings::<LeakyDynamics, RefractoryPeriod>(),
     edited_settings::<AdaptationCurrent, Adaptation>(),
+    edited_settings::<CurrentSynapse, Synapse>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {

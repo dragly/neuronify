@@ -49,6 +49,9 @@ const RESISTANCES: (RangeInclusive<f64>, f64) = (1e6..=200e6, 1e6);
 const CAPACITANCES: (RangeInclusive<f64>, f64) = (10e-12..=2e-9, 10e-12);
 const ADAPTATIONS: (RangeInclusive<f64>, f64) = (0.0..=100e-9, 0.1e-9);
 const ADAPTATION_TIME_CONSTANTS: RangeInclusive<f64> = 0.0..=0.6;
+const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10e-9;
+const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1e-3..=6e-3;
+const DELAYS: RangeInclusive<f64> = 0.0..=30e-3;
 const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30e-9, 0.01e-9);
 const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
@@ -263,6 +266,10 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
             None => "Compartment",
         };
         return Some((Tool::Axon, name));
+    } else if world.get::<&CurrentSynapse>(entity).is_ok() {
+        return Some((Tool::StaticConnection, "Synapse"));
+    } else if world.get::<&Connection>(entity).is_ok() {
+        return Some((Tool::StaticConnection, "Connection"));
     } else if world.get::<&CurrentClamp>(entity).is_ok() {
         Tool::Place(Element::CurrentSource)
     } else if world.get::<&TouchSensor>(entity).is_ok() {
@@ -706,6 +713,33 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     let hertz = |value: f64| format!("{value:.0} Hz");
     if world.get::<&LeakyNeuron>(entity).is_ok() {
         changed |= neuron_parameters(ui, chrome, world, entity);
+    }
+    if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {
+        heading(ui, chrome, "Parameters", 0.0);
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::MaximumCurrent,
+            &mut synapse.maximum_current,
+            SYNAPSE_CURRENTS,
+            nanoamperes,
+        );
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::SynapseTimeConstant,
+            &mut synapse.tau,
+            SYNAPSE_TIME_CONSTANTS,
+            milliseconds,
+        );
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::Delay,
+            &mut synapse.delay,
+            DELAYS,
+            milliseconds,
+        );
     }
     if let Ok(mut clamp) = world.get::<&mut CurrentClamp>(entity) {
         heading(ui, chrome, "Parameters", 0.0);

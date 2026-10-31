@@ -7,7 +7,7 @@ use hecs::{Component, Entity, World};
 use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
-use crate::elements::{spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element};
+use crate::elements::{spawn_cable, spawn_compartment, spawn_connection, spawn_voltmeter, Element};
 use crate::measurement::voltmeter::{Corner, Frame, Voltmeter};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
@@ -25,6 +25,7 @@ const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const COMPARTMENT_REACH: f32 = NODE_RADIUS;
 const VOLTMETER_REACH: f32 = NODE_RADIUS;
 const CORNER_REACH: f32 = 1.0;
+const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
 const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
 const HINT_SECONDS: f64 = 2.0;
 const HINT_FADE_SECONDS: f64 = 0.25;
@@ -47,6 +48,7 @@ pub struct Editor {
     stimulation_tool: Option<StimulationTool>,
     previous_creation: Option<Entity>,
     pressed: Option<Entity>,
+    pressed_connection: Option<Entity>,
     move_origin: Option<Vec3>,
     dragging: Option<Drag>,
     resizing: Option<(Entity, Corner, Vec3)>,
@@ -166,6 +168,7 @@ impl Editor {
         self.connection_tool = None;
         self.previous_creation = None;
         self.pressed = None;
+        self.pressed_connection = None;
         self.move_origin = None;
         self.dragging = None;
         self.resizing = None;
@@ -324,18 +327,32 @@ impl Editor {
         self.move_origin.is_some()
     }
 
+    pub fn tap_while_editing(&mut self) -> bool {
+        match self.pressed_connection {
+            Some(connection) => {
+                self.selection = Some(connection);
+                false
+            }
+            None => self.pressed_background(),
+        }
+    }
+
     pub fn tap(&mut self, world: &World, position: Vec3) {
         if self.stimulation_tool.is_some() {
             return;
         }
-        match entity_at(world, &voltmeter_frames(world), position) {
-            Some((entity, _)) => self.select_entity(entity),
+        let tapped = entity_at(world, &voltmeter_frames(world), position)
+            .map(|(entity, _)| entity)
+            .or_else(|| connection_at(world, position));
+        match tapped {
+            Some(entity) => self.select_entity(entity),
             None => self.selection = None,
         }
     }
 
     pub fn empty_at(&self, world: &World, position: Vec3) -> bool {
         entity_at(world, &voltmeter_frames(world), position).is_none()
+            && connection_at(world, position).is_none()
     }
 
     fn select_entity(&mut self, entity: Entity) {
@@ -490,7 +507,7 @@ impl Editor {
         let Some(connection) = &mut self.connection_tool else {
             return;
         };
-        connect_to_neuron_near(world, connection, position, shift_down, spawn_synapse);
+        connect_to_neuron_near(world, connection, position, shift_down, spawn_connection);
         connection.end = position;
     }
 
@@ -576,7 +593,10 @@ impl Editor {
                 self.selection = Some(entity);
                 self.grab(world, entity, entity_position, position);
             }
-            None => self.move_origin = Some(position),
+            None => {
+                self.pressed_connection = connection_at(world, position);
+                self.move_origin = Some(position);
+            }
         }
     }
 }
@@ -755,6 +775,22 @@ fn foreign_compartment_near(world: &World, axon: Entity, position: Vec3) -> Opti
         .filter(|(compartment, _)| !own.contains(compartment))
         .collect();
     nearest_within(foreign, position, COMPARTMENT_REACH).map(|(compartment, _)| compartment)
+}
+
+fn connection_at(world: &World, position: Vec3) -> Option<Entity> {
+    connection_paths(
+        world,
+        &compartment_radii(world),
+        &Theme::default().palette(),
+    )
+    .into_iter()
+    .filter_map(|(connection, path)| {
+        let to_ends = path.points.iter().map(|point| point.distance(position));
+        let distance = to_ends.chain(path.distance_to(position)).reduce(f32::min)?;
+        (distance < CONNECTION_SELECTION_RANGE + path.radius).then_some((connection, distance))
+    })
+    .min_by(|(_, a), (_, b)| a.total_cmp(b))
+    .map(|(connection, _)| connection)
 }
 
 fn element_near(world: &World, position: Vec3) -> Option<(Entity, Vec3)> {

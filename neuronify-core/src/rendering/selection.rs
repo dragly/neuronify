@@ -9,12 +9,14 @@ use crate::rendering::colors::Palette;
 use crate::rendering::cylinders::compartment_radii;
 use crate::rendering::gauges::gauge_reach;
 use crate::rendering::gpu_types::{Sphere, TorusData};
+use crate::rendering::paths::{connection_paths, ConnectionPath};
 use crate::rendering::scene::Scene;
 use crate::rendering::shapes::{GENERATOR_RING_RADIUS, GENERATOR_RING_THICKNESS, PAD_RADIUS};
 
 const GAP: f32 = 0.35 * NODE_RADIUS;
 const THICKNESS: f32 = 0.07 * NODE_RADIUS;
 const HANDLE_RADIUS: f32 = 0.3 * NODE_RADIUS;
+const SYNAPSE_END_RADIUS: f32 = 0.6 * NODE_RADIUS;
 
 pub fn collect_selection(world: &World, selection: Entity, palette: &Palette) -> Scene {
     let mut scene = Scene::default();
@@ -37,6 +39,19 @@ pub fn collect_selection(world: &World, selection: Entity, palette: &Palette) ->
                 radius: HANDLE_RADIUS,
                 _padding: Default::default(),
             }));
+    } else if let Some(path) = connection_path(world, selection, palette) {
+        let below = Vec3::Y * 2.0 * THICKNESS;
+        let points: Vec<Vec3> = path.points.iter().map(|&point| point - below).collect();
+        scene.stroke(&points, path.radius + THICKNESS, palette.selection);
+        if let (true, Some(&end)) = (path.directional, path.points.last()) {
+            scene.rings.push(TorusData {
+                position: end,
+                major_radius: SYNAPSE_END_RADIUS + GAP,
+                rotation: Quat::IDENTITY,
+                color: palette.selection,
+                minor_radius: THICKNESS,
+            });
+        }
     } else if let Ok(position) = world.get::<&Position>(selection) {
         scene.rings.push(TorusData {
             position: position.position,
@@ -47,6 +62,11 @@ pub fn collect_selection(world: &World, selection: Entity, palette: &Palette) ->
         });
     }
     scene
+}
+
+fn connection_path(world: &World, connection: Entity, palette: &Palette) -> Option<ConnectionPath> {
+    world.get::<&Connection>(connection).ok()?;
+    connection_paths(world, &compartment_radii(world), palette).remove(&connection)
 }
 
 pub fn eraser_outline(center: Vec3, palette: &Palette) -> TorusData {
@@ -112,6 +132,28 @@ mod tests {
             .max(gauge_reach(world, entity));
         assert_eq!(ring.position, center, "{what}");
         assert!(ring.major_radius - ring.minor_radius > drawn, "{what}");
+    }
+
+    #[test]
+    fn a_selected_connection_is_outlined_along_its_path() {
+        let mut world = World::new();
+        let a = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        let b = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(0.0, 0.0, 20.0));
+        let synapse = crate::elements::spawn_synapse(&mut world, a, b);
+        let path = connection_paths(&world, &compartment_radii(&world), &Theme::Dark.palette())
+            .remove(&synapse)
+            .unwrap();
+        let selection = select(&world, synapse);
+        assert_eq!(selection.cylinders.len(), path.points.len() - 1);
+        for (outline, tube) in selection.cylinders.iter().zip(path.points.windows(2)) {
+            assert!(outline.start_radius > path.radius);
+            assert!(outline.start.y < tube[0].y);
+            assert!(outline.start.with_y(0.0).distance(tube[0].with_y(0.0)) < 1e-5);
+        }
+        let [ring] = selection.rings[..] else {
+            panic!("the synapse end has no ring");
+        };
+        assert_eq!(ring.position, *path.points.last().unwrap());
     }
 
     #[test]
