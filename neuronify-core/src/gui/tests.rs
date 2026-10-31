@@ -3,7 +3,9 @@ use glam::Vec3;
 use hecs::Entity;
 
 use super::*;
-use crate::components::{Connection, CurrentClamp, LeakyNeuron, NeuronType, RegularSpikeGenerator};
+use crate::components::{
+    Connection, CurrentClamp, LeakyDynamics, LeakyNeuron, NeuronType, RegularSpikeGenerator,
+};
 use crate::constants::DEFAULT_SPEED;
 use crate::elements::{spawn_cable, spawn_compartment, Element};
 use crate::settings::Setting;
@@ -152,6 +154,22 @@ impl Harness {
 
     fn shows(&self, text: &str) -> bool {
         self.text_position(text).is_some()
+    }
+
+    fn scroll_inspector_to_the_end(&mut self) {
+        let inspector = pos2(self.screen.x - 100.0, self.screen.y / 2.0);
+        self.frame(vec![
+            Event::PointerMoved(inspector),
+            Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: vec2(0.0, -10_000.0),
+                modifiers: Default::default(),
+                phase: egui::TouchPhase::Move,
+            },
+        ]);
+        for _ in 0..3 {
+            self.frame(vec![]);
+        }
     }
 
     fn click_button(&mut self, id: &str) {
@@ -471,9 +489,79 @@ fn spike_generators_switch_type_but_touch_sensors_and_current_sources_do_not() {
 }
 
 #[test]
+fn the_inspector_shows_every_neuron_setting_from_neuronify_1() {
+    let mut world = World::new();
+    let leaky = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    let harness = Harness::with(true, world, Some(leaky));
+    for setting in [
+        Setting::Type,
+        Setting::RefractoryPeriod,
+        Setting::Threshold,
+        Setting::Reset,
+        Setting::RestingPotential,
+        Setting::Resistance,
+        Setting::Capacitance,
+        Setting::TimeConstant,
+    ] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    assert!(harness.shows("20.0 ms"));
+    assert!(!harness.shows(Setting::Adaptation.label()));
+
+    let (world, adaptive) = one_neuron();
+    let harness = Harness::with(true, world, Some(adaptive));
+    assert!(harness.shows(Setting::Adaptation.label()));
+    assert!(harness.shows(Setting::AdaptationTimeConstant.label()));
+}
+
+#[test]
+fn the_threshold_stays_above_the_reset() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    let slider = harness.text_position(Setting::Threshold.label()).unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider - vec2(400.0, 0.0));
+    let neuron = harness.world.get::<&LeakyNeuron>(neuron).unwrap();
+    assert!(neuron.threshold > neuron.initial_potential);
+    assert!(neuron.threshold - neuron.initial_potential < 1e-3);
+}
+
+#[test]
+fn undoing_a_refractory_period_leaves_the_voltage_alone() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    let slider = harness
+        .text_position(Setting::RefractoryPeriod.label())
+        .unwrap()
+        + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(120.0, 0.0));
+    let refractory_period = |harness: &Harness| {
+        harness
+            .world
+            .get::<&LeakyDynamics>(neuron)
+            .unwrap()
+            .refractory_period
+    };
+    assert_ne!(refractory_period(&harness), 0.002);
+    harness
+        .world
+        .get::<&mut LeakyDynamics>(neuron)
+        .unwrap()
+        .voltage = -0.06;
+
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(refractory_period(&harness), 0.002);
+    assert_eq!(
+        harness.world.get::<&LeakyDynamics>(neuron).unwrap().voltage,
+        -0.06
+    );
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));
+    harness.scroll_inspector_to_the_end();
     harness.click_button(inspector::DELETE);
     assert!(!harness.world.contains(neuron));
     assert_eq!(harness.editor.selection, None);
@@ -484,6 +572,7 @@ fn the_inspector_deletes_the_selection() {
 fn undo_and_redo_what_the_inspector_deleted() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));
+    harness.scroll_inspector_to_the_end();
     harness.click_button(inspector::DELETE);
     assert!(!harness.world.contains(neuron));
     harness.click(corner_button(2));
