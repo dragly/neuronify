@@ -16,7 +16,6 @@
         --background: #eceff5;
         --surface: #ffffff;
         --placeholder: rgba(76, 79, 105, 0.13);
-        --mark: #5c5f77;
         --scene: #f2f5fc;
         --accent: #1e66f5;
       }
@@ -25,7 +24,6 @@
           --background: #1e1e2e;
           --surface: #313244;
           --placeholder: rgba(205, 214, 244, 0.1);
-          --mark: #a6adc8;
           --scene: #383a51;
           --accent: #89b4fa;
         }
@@ -129,7 +127,8 @@
         left: 50%;
         top: 50%;
         transform: translate(-50%, -50%);
-        background: var(--mark);
+        background: var(--placeholder);
+        animation: pulse 1.2s ease-in-out infinite alternate;
       }
       .plus::before {
         width: 16.875%;
@@ -138,6 +137,11 @@
       .plus::after {
         width: 2px;
         height: 30%;
+        background: linear-gradient(
+          var(--placeholder) calc(50% - 1px),
+          transparent 0 calc(50% + 1px),
+          var(--placeholder) 0
+        );
       }
       .name {
         width: 55%;
@@ -201,6 +205,8 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .bar,
+        .plus::before,
+        .plus::after,
         .scene #loading::after {
           animation: none;
         }
