@@ -109,6 +109,8 @@ pub struct Palette {
     pub excitatory_active: Vec3,
     pub inhibitory: Vec3,
     pub inhibitory_active: Vec3,
+    pub excitatory_below: Vec3,
+    pub inhibitory_below: Vec3,
     /// A spike on its way along a synapse
     pub spike: Vec3,
     /// A soma right after it fired
@@ -128,6 +130,8 @@ impl Theme {
                 excitatory_active: blue().lerp(base(), VOLTAGE_TINT),
                 inhibitory: red(),
                 inhibitory_active: red().lerp(mantle(), VOLTAGE_TINT),
+                excitatory_below: srgb(18, 138, 138),
+                inhibitory_below: srgb(212, 98, 76),
                 spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: crust(),
@@ -140,6 +144,8 @@ impl Theme {
                 excitatory_active: srgb(66, 105, 199).lerp(base(), VOLTAGE_TINT),
                 inhibitory: srgb(184, 61, 85),
                 inhibitory_active: srgb(184, 61, 85).lerp(mantle(), VOLTAGE_TINT),
+                excitatory_below: srgb(26, 126, 126),
+                inhibitory_below: srgb(196, 94, 74),
                 spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: srgb(140, 143, 161),
@@ -156,6 +162,13 @@ impl Palette {
         match *neuron_type {
             NeuronType::Excitatory => self.excitatory.lerp(self.excitatory_active, value),
             NeuronType::Inhibitory => self.inhibitory.lerp(self.inhibitory_active, value),
+        }
+    }
+
+    pub fn soma_below_rest(&self, neuron_type: &NeuronType, depth: f32) -> Vec3 {
+        match *neuron_type {
+            NeuronType::Excitatory => self.excitatory.lerp(self.excitatory_below, depth),
+            NeuronType::Inhibitory => self.inhibitory.lerp(self.inhibitory_below, depth),
         }
     }
 
