@@ -1,5 +1,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Setting {
+    Type,
     Threshold,
     RestingPotential,
     Capacitance,
@@ -12,6 +13,7 @@ pub enum Setting {
 impl Setting {
     pub fn label(self) -> &'static str {
         match self {
+            Setting::Type => "Type",
             Setting::Threshold => "Threshold",
             Setting::RestingPotential => "Resting potential",
             Setting::Capacitance => "Capacitance",
@@ -24,6 +26,10 @@ impl Setting {
 
     pub fn description(self) -> &'static str {
         match self {
+            Setting::Type => {
+                "Excitatory spikes push the neurons they reach toward firing. \
+                 Inhibitory spikes hold them back."
+            }
             Setting::Threshold => "The neuron fires when its voltage climbs above this.",
             Setting::RestingPotential => "The voltage the neuron settles at when left alone.",
             Setting::Capacitance => {

@@ -49,7 +49,10 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
     match node.filename.as_str() {
         "neurons/LeakyNeuron.qml" => spawn_leaky_neuron(world, node, pos, node.inhibitory),
         "neurons/LeakyInhibitoryNeuron.qml" => spawn_leaky_neuron(world, node, pos, true),
-        "neurons/AdaptationNeuron.qml" => spawn_adaptation_neuron(world, node, pos),
+        "neurons/AdaptationNeuron.qml" => {
+            spawn_adaptation_neuron(world, node, pos, node.inhibitory)
+        }
+        "neurons/AdaptationInhibitoryNeuron.qml" => spawn_adaptation_neuron(world, node, pos, true),
         "neurons/BurstNeuron.qml" => {
             let entity = spawn_leaky_neuron(world, node, pos, node.inhibitory);
             world.insert_one(entity, BurstCurrent::default()).unwrap();
@@ -204,8 +207,13 @@ fn spawn_leaky_neuron(
     ))
 }
 
-fn spawn_adaptation_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> Entity {
-    let entity = spawn_leaky_neuron(world, node, pos, node.inhibitory);
+fn spawn_adaptation_neuron(
+    world: &mut World,
+    node: &LegacyNode,
+    pos: Position,
+    inhibitory: bool,
+) -> Entity {
+    let entity = spawn_leaky_neuron(world, node, pos, inhibitory);
 
     let e = &node.engine;
     let adapt = AdaptationCurrent {

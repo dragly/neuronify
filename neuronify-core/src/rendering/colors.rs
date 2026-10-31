@@ -195,6 +195,13 @@ impl Palette {
         }
     }
 
+    pub fn generator(&self, neuron_type: NeuronType) -> Vec3 {
+        match neuron_type {
+            NeuronType::Excitatory => orange(),
+            NeuronType::Inhibitory => self.inhibitory,
+        }
+    }
+
     /// A compartment, which turns over mostly around the middle of the range.
     pub fn neurocolor(&self, neuron_type: &NeuronType, value: f32) -> Vec3 {
         let v = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());

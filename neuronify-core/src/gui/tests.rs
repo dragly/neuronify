@@ -420,6 +420,56 @@ fn current_sources_reach_thirty_nanoamperes() {
     assert_eq!(current, 30e-9);
 }
 
+fn type_of(world: &World, entity: Entity) -> NeuronType {
+    *world.get::<&NeuronType>(entity).unwrap()
+}
+
+#[test]
+fn neurons_switch_between_excitatory_and_inhibitory_with_undo() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    harness.click_text("Inhibitory");
+    assert_eq!(type_of(&harness.world, neuron), NeuronType::Inhibitory);
+    assert!(harness.shows("Adaptive neuron"));
+
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(type_of(&harness.world, neuron), NeuronType::Excitatory);
+}
+
+#[test]
+fn switching_a_compartmental_neuron_switches_its_dendrites() {
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    crate::dendrites::spawn_dendrites(&mut world, neuron);
+    let dendrites = crate::dendrites::compartment_tree(&world, neuron);
+    assert!(!dendrites.is_empty());
+    let mut harness = Harness::with(true, world, Some(neuron));
+    harness.click_text("Inhibitory");
+    for &dendrite in &dendrites {
+        assert_eq!(type_of(&harness.world, dendrite), NeuronType::Inhibitory);
+    }
+
+    harness.press(Modifiers::COMMAND, Key::Z);
+    for &dendrite in &dendrites {
+        assert_eq!(type_of(&harness.world, dendrite), NeuronType::Excitatory);
+    }
+}
+
+#[test]
+fn spike_generators_switch_type_but_touch_sensors_and_current_sources_do_not() {
+    for (element, switches) in [
+        (Element::RegularSpikeGenerator, true),
+        (Element::PoissonGenerator, true),
+        (Element::TouchSensor, false),
+        (Element::CurrentSource, false),
+    ] {
+        let mut world = World::new();
+        let entity = element.spawn(&mut world, Vec3::ZERO);
+        let harness = Harness::with(true, world, Some(entity));
+        assert_eq!(harness.shows("Inhibitory"), switches, "{element:?}");
+    }
+}
+
 #[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();

@@ -73,12 +73,14 @@ impl Element {
                 position,
                 RegularSpikeGenerator::default(),
                 GeneratorDynamics::default(),
+                NeuronType::Excitatory,
                 Deletable {},
             )),
             Element::PoissonGenerator => world.spawn((
                 position,
                 PoissonGenerator::default(),
                 GeneratorDynamics::default(),
+                NeuronType::Excitatory,
                 Deletable {},
             )),
             Element::Note => world.spawn((

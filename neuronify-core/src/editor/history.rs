@@ -24,7 +24,7 @@ const fn edited<T: Component + Clone>() -> Edited {
     }
 }
 
-const EDITED: [Edited; 9] = [
+const EDITED: [Edited; 10] = [
     edited::<Position>(),
     edited::<VoltmeterSize>(),
     edited::<NoteSize>(),
@@ -34,6 +34,7 @@ const EDITED: [Edited; 9] = [
     edited::<RegularSpikeGenerator>(),
     edited::<PoissonGenerator>(),
     edited::<Annotation>(),
+    edited::<NeuronType>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {
@@ -112,12 +113,15 @@ impl Recording {
 
 pub struct Snapshot {
     pub entity: Entity,
-    edited: EntityBuilder,
+    edited: Vec<(Entity, EntityBuilder)>,
 }
 
 impl Snapshot {
-    pub fn of(world: &World, entity: Entity) -> Option<Self> {
-        let edited = copy_edited(world.entity(entity).ok()?);
+    pub fn of(world: &World, entity: Entity, parts: Vec<Entity>) -> Option<Self> {
+        let edited = std::iter::once(entity)
+            .chain(parts)
+            .map(|part| Some((part, copy_edited(world.entity(part).ok()?))))
+            .collect::<Option<_>>()?;
         Some(Snapshot { entity, edited })
     }
 }
@@ -134,7 +138,13 @@ impl History {
     }
 
     pub fn record_snapshot(&mut self, snapshot: Snapshot) {
-        self.push(vec![(snapshot.entity, State::Edited(snapshot.edited))]);
+        self.push(
+            snapshot
+                .edited
+                .into_iter()
+                .map(|(entity, edited)| (entity, State::Edited(edited)))
+                .collect(),
+        );
     }
 
     fn push(&mut self, change: Change) {

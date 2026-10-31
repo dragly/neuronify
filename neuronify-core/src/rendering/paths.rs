@@ -98,7 +98,11 @@ fn connection_colors(
         let color = current_color(clamp.current_output);
         (color, color)
     } else if from.has::<GeneratorDynamics>() {
-        (orange(), orange())
+        let color = palette.generator(
+            from.get::<&NeuronType>()
+                .map_or_else(Default::default, |t| *t),
+        );
+        (color, color)
     } else if let Some(neuron_type) = from.get::<&NeuronType>() {
         (
             palette.neurocolor(&neuron_type, start_value),
