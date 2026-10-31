@@ -733,6 +733,47 @@ fn a_loudspeaker_picks_its_sound_volume_and_mute() {
 }
 
 #[test]
+fn a_visual_input_picks_its_picture_and_receptive_field() {
+    use crate::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
+    let mut world = World::new();
+    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(input));
+    assert!(harness.shows("Visual input"));
+    for setting in [
+        Setting::Picture,
+        Setting::PictureAngle,
+        Setting::ReceptiveField,
+        Setting::FieldAngle,
+        Setting::FieldSideways,
+        Setting::FieldUpDown,
+    ] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    harness.click_text(Pattern::Dot.name());
+    harness.click_text("Center");
+    let state = |harness: &Harness| {
+        let input = harness.world.get::<&VisualInput>(input).unwrap();
+        (input.pattern, input.field)
+    };
+    assert_eq!(
+        state(&harness),
+        (
+            Pattern::Dot,
+            ReceptiveField::CenterSurround {
+                off_center: false,
+                x: 0.0,
+                y: 0.0
+            }
+        )
+    );
+    assert!(harness.shows(Setting::OffCenter.label()));
+    harness.press(Modifiers::COMMAND, Key::Z);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(state(&harness), (Pattern::Bar, ReceptiveField::default()));
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

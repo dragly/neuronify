@@ -22,6 +22,7 @@ use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::collect_scene;
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spike_detector::collect_spike_detectors;
+use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::voltmeter::collect_voltmeter_traces;
 
 pub struct EditorMarks<'a> {
@@ -223,6 +224,7 @@ impl SceneRenderer {
         connections.extend(collect_voltmeter_traces(world));
         connections.extend(collect_spike_detectors(world, &palette));
         connections.extend(collect_rate_plots(world));
+        connections.extend(collect_visual_input_lines(world));
 
         self.sphere_buffer
             .update(&application.device, &application.queue, &scene.spheres);

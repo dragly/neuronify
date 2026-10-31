@@ -17,6 +17,7 @@ use crate::elements::{axon_ending, Element};
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
+use crate::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::Theme;
 use crate::settings::Setting;
@@ -58,6 +59,9 @@ const PLOTTED_VOLTAGE_GAP: f64 = 1.0;
 const RATE_WINDOWS: RangeInclusive<f64> = 0.01..=1.0;
 const PLOTTED_RATES: RangeInclusive<f64> = 0.0..=2500.0;
 const PLOTTED_RATE_GAP: f64 = 1.0;
+const HALF_TURN: RangeInclusive<f64> = 0.0..=std::f64::consts::PI;
+const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
+const SENSITIVITIES: (RangeInclusive<f64>, f64) = (0.0..=10_000.0, 10.0);
 const TIME_RANGES: RangeInclusive<f64> = 1e-3..=1.0;
 const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10e-9;
 const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1e-3..=6e-3;
@@ -309,6 +313,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::Place(Element::RegularSpikeGenerator)
     } else if world.get::<&PoissonGenerator>(entity).is_ok() {
         Tool::Place(Element::PoissonGenerator)
+    } else if world.get::<&VisualInput>(entity).is_ok() {
+        Tool::Place(Element::VisualInput)
     } else if world.get::<&Voltmeter>(entity).is_ok() {
         Tool::Voltmeter
     } else if world.get::<&SpikeDetector>(entity).is_ok() {
@@ -767,6 +773,80 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
     changed
 }
 
+fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput) -> bool {
+    let mut changed = false;
+    heading(ui, chrome, "Picture", 0.0);
+    let patterns = Pattern::ALL.map(|pattern| (pattern, pattern.name()));
+    changed |= choice(ui, chrome, Setting::Picture, &mut input.pattern, &patterns);
+    changed |= parameter(
+        ui,
+        chrome,
+        Setting::PictureAngle,
+        &mut input.pattern_angle,
+        HALF_TURN,
+        degrees,
+    );
+    heading(ui, chrome, "Receptive field", 0.0);
+    let kinds = ReceptiveField::KINDS.map(|kind| kind.name());
+    let mut kind = ReceptiveField::KINDS
+        .iter()
+        .position(|kind| kind.same_kind(input.field))
+        .unwrap_or_default();
+    let options: Vec<(usize, &str)> = kinds.iter().copied().enumerate().collect();
+    if choice(ui, chrome, Setting::ReceptiveField, &mut kind, &options) {
+        input.field = ReceptiveField::KINDS[kind];
+        changed = true;
+    }
+    let offset = |value: f64| format!("{:.1}", value * 10.0).replace('-', "\u{2212}");
+    match &mut input.field {
+        ReceptiveField::Orientation { angle, x, y } => {
+            changed |= parameter(ui, chrome, Setting::FieldAngle, angle, HALF_TURN, degrees);
+            changed |= parameter(ui, chrome, Setting::FieldSideways, x, OFFSETS, offset);
+            changed |= parameter(ui, chrome, Setting::FieldUpDown, y, OFFSETS, offset);
+        }
+        ReceptiveField::CenterSurround { off_center, x, y } => {
+            changed |= choice(
+                ui,
+                chrome,
+                Setting::OffCenter,
+                off_center,
+                &[(true, "On"), (false, "Off")],
+            );
+            changed |= parameter(ui, chrome, Setting::FieldSideways, x, OFFSETS, offset);
+            changed |= parameter(ui, chrome, Setting::FieldUpDown, y, OFFSETS, offset);
+        }
+        ReceptiveField::Edge { angle } => {
+            let quarters = [0.0, 0.5, 1.0, 1.5].map(|turn| turn * std::f64::consts::PI);
+            let options = quarters.map(|quarter| (quarter, degrees(quarter)));
+            let options: Vec<(f64, &str)> = options
+                .iter()
+                .map(|(quarter, name)| (*quarter, name.as_str()))
+                .collect();
+            changed |= choice(ui, chrome, Setting::FieldAngle, angle, &options);
+        }
+    }
+    changed |= logarithmic_parameter(
+        ui,
+        chrome,
+        Setting::Sensitivity,
+        &mut input.sensitivity,
+        SENSITIVITIES,
+        |rate| format!("{rate:.0} Hz"),
+    );
+    changed |= choice(
+        ui,
+        chrome,
+        Setting::ShowField,
+        &mut input.show_field,
+        &[(true, "On"), (false, "Off")],
+    );
+    changed
+}
+
+fn degrees(radians: f64) -> String {
+    format!("{:.0}\u{b0}", radians.to_degrees())
+}
+
 fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
     let mut changed = false;
     let hertz = |value: f64| format!("{value:.0} Hz");
@@ -852,6 +932,9 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             plot.minimum = plot.minimum.min(plot.maximum - PLOTTED_RATE_GAP);
         }
         changed |= highest || lowest;
+    }
+    if let Ok(mut input) = world.get::<&mut VisualInput>(entity) {
+        changed |= visual_input_parameters(ui, chrome, &mut input);
     }
     if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(entity) {
         heading(ui, chrome, "Parameters", 0.0);

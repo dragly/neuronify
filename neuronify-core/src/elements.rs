@@ -6,6 +6,7 @@ use crate::constants::COUPLING_CAPACITANCE;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
 
 const VOLTMETER_MEASUREMENTS: usize = 100000;
@@ -21,6 +22,7 @@ pub enum Element {
     TouchSensor,
     RegularSpikeGenerator,
     PoissonGenerator,
+    VisualInput,
     Note,
 }
 
@@ -43,6 +45,7 @@ impl Element {
                 | Element::TouchSensor
                 | Element::RegularSpikeGenerator
                 | Element::PoissonGenerator
+                | Element::VisualInput
         )
     }
 
@@ -92,6 +95,13 @@ impl Element {
             Element::PoissonGenerator => world.spawn((
                 position,
                 PoissonGenerator::default(),
+                GeneratorDynamics::default(),
+                NeuronType::Excitatory,
+                Deletable {},
+            )),
+            Element::VisualInput => world.spawn((
+                position,
+                VisualInput::default(),
                 GeneratorDynamics::default(),
                 NeuronType::Excitatory,
                 Deletable {},

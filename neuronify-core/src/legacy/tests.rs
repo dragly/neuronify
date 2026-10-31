@@ -722,3 +722,51 @@ fn loudspeakers_play_the_closest_sound_for_each_neuron_wired_to_them() {
         .collect();
     assert_eq!(wired, [entities[1]]);
 }
+
+#[test]
+fn retinas_become_visual_inputs_with_their_receptive_fields() {
+    use crate::measurement::visual_input::{ReceptiveField, VisualInput};
+    let sim = parse_legacy_nfy(include_str!("../../examples/visualInput.nfy")).unwrap();
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &sim);
+    let edge = world.get::<&VisualInput>(entities[0]).unwrap().clone();
+    let orientation = world.get::<&VisualInput>(entities[6]).unwrap().clone();
+    assert_eq!(
+        edge.field,
+        ReceptiveField::Edge {
+            angle: 4.71238898038469
+        }
+    );
+    assert_eq!((edge.sensitivity, edge.show_field), (1000.0, true));
+    assert_eq!(
+        orientation.field,
+        ReceptiveField::Orientation {
+            angle: 0.0,
+            x: 0.0,
+            y: 0.0
+        }
+    );
+    assert_eq!(orientation.sensitivity, 1600.0);
+    for input in [entities[0], entities[6]] {
+        let synapses = world
+            .query::<(&Connection, &CurrentSynapse)>()
+            .iter()
+            .filter(|(_, (connection, _))| connection.from == input && connection.to == entities[1])
+            .count();
+        assert_eq!(synapses, 1);
+    }
+}
+
+#[test]
+fn a_visual_input_drives_the_neuron_it_connects_to() {
+    let sim = parse_legacy_nfy(include_str!("../../examples/visualInput.nfy")).unwrap();
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &sim);
+    let spikes = run_headless(&mut world, 20_000, 0.0001);
+    let neuron = world
+        .query::<&LeakyNeuron>()
+        .iter()
+        .position(|(entity, _)| entity == entities[1])
+        .unwrap();
+    assert!(spikes.iter().any(|spike| spike.entity_index == neuron));
+}

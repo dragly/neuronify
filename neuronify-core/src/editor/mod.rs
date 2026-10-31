@@ -15,6 +15,7 @@ use crate::elements::{
 use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::SpikeDetector;
+use crate::measurement::visual_input::{visual_input_frame, VisualInput};
 use crate::measurement::voltmeter::{measured, Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
@@ -670,14 +671,21 @@ fn dendrites_would_overlap(world: &World, neuron: Entity, position: Vec3) -> boo
 }
 
 fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
-    world
+    let meters = world
         .query::<(&Position, &MeterSize)>()
         .iter()
         .map(|(meter, (meter_position, size))| {
             let frame = Frame::new(meter_position.position, size);
             (meter, meter_position.position, frame)
         })
-        .collect()
+        .collect::<Vec<_>>();
+    let visual_inputs = world
+        .query::<&Position>()
+        .with::<&VisualInput>()
+        .iter()
+        .map(|(input, center)| (input, center.position, visual_input_frame(center.position)))
+        .collect::<Vec<_>>();
+    [meters, visual_inputs].concat()
 }
 
 fn entity_at(

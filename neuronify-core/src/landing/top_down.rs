@@ -2,6 +2,7 @@ use egui::{vec2, Color32, Pos2, Rect, Shape, Stroke};
 use glam::Vec3;
 use hecs::World;
 
+use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::{
     collect_meter_wires, collect_rate_plots, collect_scene, collect_spike_detectors,
     collect_voltmeter_traces, Bounds, ConnectionData, CylinderData, Palette,
@@ -63,6 +64,7 @@ pub fn top_down_shapes(
             .into_iter()
             .chain(collect_spike_detectors(world, palette))
             .chain(collect_rate_plots(world))
+            .chain(collect_visual_input_lines(world))
             .collect(),
         scale,
         to_screen,

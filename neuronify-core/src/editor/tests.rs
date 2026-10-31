@@ -1625,3 +1625,14 @@ fn a_loudspeaker_listens_to_each_neuron_connected_onto_it() {
     assert_eq!(wired, [first, second]);
     assert_eq!(count::<CurrentSynapse>(&world), 0);
 }
+
+#[test]
+fn a_visual_input_is_picked_anywhere_on_its_picture() {
+    let mut world = World::new();
+    let input = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Edit);
+    editor.tap(&world, at(3.0, 3.0));
+    assert_eq!(editor.selection, Some(input));
+    editor.tap(&world, at(5.0, 5.0));
+    assert_eq!(editor.selection, None);
+}

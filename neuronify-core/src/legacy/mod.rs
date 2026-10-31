@@ -28,6 +28,10 @@ pub struct LegacyNode {
     pub window_duration: Option<f64>,
     pub temporal_resolution: Option<f64>,
     pub source: Option<String>,
+    pub kernel_type: Option<String>,
+    pub kernel_properties: Option<Value>,
+    pub sensitivity: Option<f64>,
+    pub plot_kernel: Option<bool>,
     pub target: Option<String>,
 }
 
@@ -146,6 +150,13 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
         let time_range = get_f64(props, "timeRange");
         let window_duration = get_f64(props, "windowDuration");
         let temporal_resolution = get_f64(props, "temporalResolution");
+        let kernel_type = props
+            .get("kernelType")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let kernel_properties = props.get("kernelProperties").cloned();
+        let sensitivity = get_f64(props, "sensitivity");
+        let plot_kernel = props.get("plotKernel").and_then(|v| v.as_bool());
         let source = props
             .get("source")
             .and_then(|v| v.as_str())
@@ -172,6 +183,10 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
             window_duration,
             temporal_resolution,
             source,
+            kernel_type,
+            kernel_properties,
+            sensitivity,
+            plot_kernel,
             target,
         });
     }
