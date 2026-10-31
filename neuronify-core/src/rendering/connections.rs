@@ -1,19 +1,19 @@
 use glam::Vec3;
 
 use crate::components::*;
-use crate::measurement::voltmeter::{measured, Frame, Voltmeter};
+use crate::measurement::voltmeter::{measured, Frame};
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::ConnectionData;
 
 const MIN_SEGMENT_LENGTH: f32 = 1e-4;
 
-pub fn collect_voltmeter_wires(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
+pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
     let mut wires = Vec::new();
-    for (voltmeter, _) in world.query::<()>().with::<&Voltmeter>().iter() {
-        let Some(frame) = Frame::of(world, voltmeter) else {
+    for (meter, _) in world.query::<()>().with::<&MeterSize>().iter() {
+        let Some(frame) = Frame::of(world, meter) else {
             continue;
         };
-        let measured = measured(world, voltmeter);
+        let measured = measured(world, meter);
         for (row, (_, neuron)) in measured.iter().enumerate() {
             let Ok(start) = world.get::<&Position>(*neuron).map(|p| p.position) else {
                 continue;

@@ -2,7 +2,8 @@ use glam::Vec3;
 use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::elements::spawn_voltmeter_wire;
+use crate::elements::{spawn_spike_detector_wire, spawn_voltmeter_wire};
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
 use crate::{Connection, Deletable, NeuronType, Position};
 
@@ -117,16 +118,18 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
         "sensors/TouchSensor.qml" => {
             world.spawn((pos, TouchSensor, GeneratorDynamics::default(), Deletable {}))
         }
+        "meters/SpikeDetector.qml" => {
+            let (left_middle, size) = meter_frame(node);
+            let detector = SpikeDetector {
+                time_range: node
+                    .time_range
+                    .unwrap_or(SpikeDetector::default().time_range),
+                ..Default::default()
+            };
+            world.spawn((left_middle, detector, size, Deletable {}))
+        }
         "meters/Voltmeter.qml" => {
-            let width = node.width.unwrap_or(LEGACY_METER_WIDTH);
-            let height = node.height.unwrap_or(LEGACY_METER_HEIGHT);
-            let left_middle = Position {
-                position: convert_position(node.x, node.y + height / 2.0),
-            };
-            let size = VoltmeterSize {
-                width: width as f32 / PIXELS_PER_UNIT,
-                height: height as f32 / PIXELS_PER_UNIT,
-            };
+            let (left_middle, size) = meter_frame(node);
             let default_range = VoltmeterRange::default();
             let range = VoltmeterRange {
                 minimum: node.minimum_value.unwrap_or(default_range.minimum),
@@ -134,7 +137,6 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             };
             world.spawn((left_middle, Voltmeter {}, size, range, Deletable {}))
         }
-        "meters/SpikeDetector.qml" => world.spawn((pos,)),
         "annotations/NextTutorial.qml" => world.spawn((
             Position {
                 position: convert_position(
@@ -172,6 +174,19 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
         }
         _ => world.spawn((pos,)),
     }
+}
+
+fn meter_frame(node: &LegacyNode) -> (Position, MeterSize) {
+    let width = node.width.unwrap_or(LEGACY_METER_WIDTH);
+    let height = node.height.unwrap_or(LEGACY_METER_HEIGHT);
+    let left_middle = Position {
+        position: convert_position(node.x, node.y + height / 2.0),
+    };
+    let size = MeterSize {
+        width: width as f32 / PIXELS_PER_UNIT,
+        height: height as f32 / PIXELS_PER_UNIT,
+    };
+    (left_middle, size)
 }
 
 fn spawn_generator(
@@ -290,15 +305,19 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             world.spawn((connection, ImmediateFireSynapse::default(), Deletable {}));
         }
         "edges/MeterEdge.qml" => {
-            let (meter, neuron) = if world.get::<&Voltmeter>(from).is_ok() {
+            let (meter, neuron) = if world.get::<&MeterSize>(from).is_ok() {
                 (from, to)
-            } else if world.get::<&Voltmeter>(to).is_ok() {
+            } else if world.get::<&MeterSize>(to).is_ok() {
                 (to, from)
             } else {
                 world.spawn((connection,));
                 return;
             };
-            spawn_voltmeter_wire(world, neuron, meter);
+            if world.get::<&SpikeDetector>(meter).is_ok() {
+                spawn_spike_detector_wire(world, neuron, meter);
+            } else {
+                spawn_voltmeter_wire(world, neuron, meter);
+            }
         }
         "Edge.qml" => {
             if world.get::<&LeakyDynamics>(to).is_err() {

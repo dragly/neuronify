@@ -72,7 +72,7 @@ const SECTIONS: [&[(Slot, Key)]; 2] = [
         (Slot::Group(ToolGroup::Neurons), Key::N),
         (Slot::Group(ToolGroup::Inputs), Key::I),
         (Slot::Group(ToolGroup::Connections), Key::C),
-        (Slot::Tool(Tool::Voltmeter), Key::M),
+        (Slot::Group(ToolGroup::Meters), Key::M),
         (Slot::Tool(Tool::Place(Element::Note)), Key::T),
     ],
 ];
@@ -329,7 +329,7 @@ impl Rail {
                             ROW_INSET,
                         ),
                         ToolGroup::Inputs => hint(ui, chrome, INPUT_HINT, ROW_INSET),
-                        ToolGroup::Connections => {}
+                        ToolGroup::Connections | ToolGroup::Meters => {}
                     }
                     for &tool in group.tools() {
                         let on = editor.tool == tool;
@@ -477,11 +477,16 @@ impl Rail {
                                 ToolGroup::Connections,
                             ]
                             .map(|group| (Some(group), group.label(), group.tools()));
-                            let measuring: &[Tool] = &[Tool::Voltmeter, Tool::Place(Element::Note)];
+                            let measuring: Vec<Tool> = ToolGroup::Meters
+                                .tools()
+                                .iter()
+                                .copied()
+                                .chain([Tool::Place(Element::Note)])
+                                .collect();
                             for (group, label, tools) in groups.into_iter().chain([(
                                 None,
                                 "Measure and annotate",
-                                measuring,
+                                &measuring[..],
                             )]) {
                                 heading(ui, chrome, label, 0.0);
                                 match group {

@@ -4,7 +4,7 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
-use crate::components::{Connection, Position, VoltmeterSize};
+use crate::components::{Connection, MeterSize, Position};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RollingWindow<T> {
@@ -74,7 +74,7 @@ impl Default for VoltmeterRange {
     }
 }
 
-pub fn measured(world: &hecs::World, voltmeter: Entity) -> Vec<(Entity, Entity)> {
+pub fn measured(world: &hecs::World, meter: Entity) -> Vec<(Entity, Entity)> {
     let height = |entity: Entity| {
         world
             .get::<&Position>(entity)
@@ -82,9 +82,8 @@ pub fn measured(world: &hecs::World, voltmeter: Entity) -> Vec<(Entity, Entity)>
     };
     let mut wires: Vec<(Entity, Entity)> = world
         .query::<&Connection>()
-        .with::<&VoltageSeries>()
         .iter()
-        .filter(|(_, connection)| connection.to == voltmeter)
+        .filter(|(_, connection)| connection.to == meter)
         .map(|(wire, connection)| (wire, connection.from))
         .collect();
     wires.sort_by(|(a_wire, a), (b_wire, b)| {
@@ -140,7 +139,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(position: Vec3, size: &VoltmeterSize) -> Frame {
+    pub fn new(position: Vec3, size: &MeterSize) -> Frame {
         Frame {
             bottom_left: position - Vec3::new(size.height * 0.5, 0.0, 0.0),
             width: size.width,
@@ -150,7 +149,7 @@ impl Frame {
 
     pub fn of(world: &hecs::World, voltmeter: Entity) -> Option<Frame> {
         let position = world.get::<&Position>(voltmeter).ok()?;
-        let size = world.get::<&VoltmeterSize>(voltmeter).ok()?;
+        let size = world.get::<&MeterSize>(voltmeter).ok()?;
         Some(Frame::new(position.position, &size))
     }
 
@@ -158,8 +157,8 @@ impl Frame {
         self.bottom_left + Vec3::new(self.height * 0.5, 0.0, 0.0)
     }
 
-    pub fn size(&self) -> VoltmeterSize {
-        VoltmeterSize {
+    pub fn size(&self) -> MeterSize {
+        MeterSize {
             width: self.width,
             height: self.height,
         }
@@ -234,7 +233,7 @@ mod tests {
     fn frame() -> Frame {
         Frame::new(
             Vec3::new(10.0, 0.0, 5.0),
-            &VoltmeterSize {
+            &MeterSize {
                 width: 8.0,
                 height: 4.0,
             },

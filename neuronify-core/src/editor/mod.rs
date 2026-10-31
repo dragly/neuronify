@@ -8,9 +8,10 @@ use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{
-    spawn_cable, spawn_compartment, spawn_connection, spawn_voltmeter, spawn_voltmeter_wire,
-    Element,
+    spawn_cable, spawn_compartment, spawn_connection, spawn_spike_detector,
+    spawn_spike_detector_wire, spawn_voltmeter, spawn_voltmeter_wire, Element,
 };
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{measured, Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
@@ -293,6 +294,7 @@ impl Editor {
             Tool::Edit => return self.select(world, recording, position),
             Tool::Place(element) => self.add(world, recording, element, position, shift_down),
             Tool::Voltmeter => self.place_voltmeter(world, position),
+            Tool::SpikeDetector => self.place_spike_detector(world, position),
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon => self.grow_axon(world, position, shift_down),
             Tool::Erase => erase(world, recording, position),
@@ -342,7 +344,7 @@ impl Editor {
         if self.stimulation_tool.is_some() {
             return;
         }
-        let tapped = entity_at(world, &voltmeter_frames(world), position)
+        let tapped = entity_at(world, &meter_frames(world), position)
             .map(|(entity, _)| entity)
             .or_else(|| connection_at(world, position));
         match tapped {
@@ -352,7 +354,7 @@ impl Editor {
     }
 
     pub fn empty_at(&self, world: &World, position: Vec3) -> bool {
-        entity_at(world, &voltmeter_frames(world), position).is_none()
+        entity_at(world, &meter_frames(world), position).is_none()
             && connection_at(world, position).is_none()
     }
 
@@ -372,7 +374,7 @@ impl Editor {
             Some((pressed, pressed_position))
         });
         let Some((entity, entity_position)) =
-            pressed.or_else(|| entity_at(world, &voltmeter_frames(world), position))
+            pressed.or_else(|| entity_at(world, &meter_frames(world), position))
         else {
             return false;
         };
@@ -439,7 +441,7 @@ impl Editor {
             start_connection(candidates, position).or_else(|| self.pull_offer(world, position));
         self.offer = None;
         let compartments = positions_with::<Compartment>(world);
-        let under = entity_at(world, &voltmeter_frames(world), position)
+        let under = entity_at(world, &meter_frames(world), position)
             .or_else(|| nearest_within(compartments, position, CONNECTION_REACH))
             .map(|(entity, _)| entity);
         self.pressed = connection
@@ -496,6 +498,21 @@ impl Editor {
         }
     }
 
+    fn place_spike_detector(&mut self, world: &mut World, position: Vec3) {
+        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
+            return;
+        }
+        if let Some((target, target_position)) =
+            first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
+        {
+            self.previous_creation = Some(spawn_spike_detector(
+                world,
+                target,
+                target_position + Vec3::X,
+            ));
+        }
+    }
+
     fn connect(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
         if self.connection_tool.is_some() {
             self.extend_connection(world, position, shift_down);
@@ -509,7 +526,7 @@ impl Editor {
             return;
         };
         if !connect_to_neuron_near(world, connection, position, shift_down, spawn_connection) {
-            measure_with_voltmeter_at(world, connection.from, position);
+            measure_with_meter_at(world, connection.from, position);
         }
         connection.end = position;
     }
@@ -573,7 +590,7 @@ impl Editor {
     }
 
     fn pick(&mut self, world: &World, position: Vec3) {
-        let frames = voltmeter_frames(world);
+        let frames = meter_frames(world);
         let selected = self
             .selection
             .and_then(|selected| Some((selected, resizable(world, selected)?)));
@@ -619,14 +636,13 @@ fn dendrites_would_overlap(world: &World, neuron: Entity, position: Vec3) -> boo
     offset.x < footprint.x && offset.z < footprint.z
 }
 
-fn voltmeter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
+fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
     world
-        .query::<(&Position, &VoltmeterSize)>()
-        .with::<&Voltmeter>()
+        .query::<(&Position, &MeterSize)>()
         .iter()
-        .map(|(voltmeter, (voltmeter_position, size))| {
-            let frame = Frame::new(voltmeter_position.position, size);
-            (voltmeter, voltmeter_position.position, frame)
+        .map(|(meter, (meter_position, size))| {
+            let frame = Frame::new(meter_position.position, size);
+            (meter, meter_position.position, frame)
         })
         .collect()
 }
@@ -714,21 +730,25 @@ fn start_connection(sources: Vec<(Entity, Vec3)>, position: Vec3) -> Option<Conn
     })
 }
 
-fn measure_with_voltmeter_at(world: &mut World, source: Entity, position: Vec3) {
-    let measurable = world
-        .satisfies::<hecs::Or<&LeakyNeuron, &Compartment>>(source)
-        .unwrap_or(false);
-    let Some(&(voltmeter, _, _)) = voltmeter_frames(world)
+fn measure_with_meter_at(world: &mut World, source: Entity, position: Vec3) {
+    let Some(&(meter, _, _)) = meter_frames(world)
         .iter()
         .find(|(_, _, frame)| frame.contains(position))
     else {
         return;
     };
-    let measured = measured(world, voltmeter)
+    if measured(world, meter)
         .iter()
-        .any(|&(_, target)| target == source);
-    if measurable && !measured {
-        spawn_voltmeter_wire(world, source, voltmeter);
+        .any(|&(_, target)| target == source)
+    {
+        return;
+    }
+    let neuron = world.satisfies::<&LeakyNeuron>(source).unwrap_or(false);
+    let compartment = world.satisfies::<&Compartment>(source).unwrap_or(false);
+    if world.satisfies::<&Voltmeter>(meter).unwrap_or(false) && (neuron || compartment) {
+        spawn_voltmeter_wire(world, source, meter);
+    } else if world.satisfies::<&SpikeDetector>(meter).unwrap_or(false) && neuron {
+        spawn_spike_detector_wire(world, source, meter);
     }
 }
 
@@ -870,7 +890,7 @@ fn resize(
         };
         resized.point(0.5, 0.5)
     } else {
-        if let Ok(mut size) = world.get::<&mut VoltmeterSize>(entity) {
+        if let Ok(mut size) = world.get::<&mut MeterSize>(entity) {
             *size = resized.size();
         }
         resized.position()

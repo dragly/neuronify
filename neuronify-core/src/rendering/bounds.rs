@@ -3,7 +3,7 @@ use glam::Vec3;
 use crate::components::*;
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::colors::Theme;
-use crate::rendering::connections::collect_voltmeter_wires;
+use crate::rendering::connections::collect_meter_wires;
 use crate::rendering::scene::collect_scene;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -56,11 +56,11 @@ fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
             ring.major_radius + ring.minor_radius,
         ));
     }
-    for connection in collect_voltmeter_wires(world, &palette) {
+    for connection in collect_meter_wires(world, &palette) {
         points.push(connection.position_a);
         points.push(connection.position_b);
     }
-    for (_, (position, size)) in world.query::<(&Position, &VoltmeterSize)>().iter() {
+    for (_, (position, size)) in world.query::<(&Position, &MeterSize)>().iter() {
         let frame = Frame::new(position.position, size);
         points.push(frame.corner(Corner::BottomLeft));
         points.push(frame.corner(Corner::TopRight));
@@ -108,7 +108,7 @@ mod tests {
             Position {
                 position: Vec3::new(10.0, 0.0, 5.0),
             },
-            VoltmeterSize {
+            MeterSize {
                 width: 8.0,
                 height: 4.0,
             },

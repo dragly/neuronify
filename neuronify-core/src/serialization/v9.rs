@@ -1,4 +1,5 @@
 use crate::components::*;
+use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::World;
 
@@ -16,7 +17,7 @@ schema!(
     GeneratorDynamics,
     RegularSpikeGenerator,
     PoissonGenerator,
-    VoltmeterSize,
+    MeterSize,
     Annotation,
     NoteSize,
     StaticConnectionSource,
@@ -36,6 +37,8 @@ schema!(
     VoltmeterRange,
     Label,
     AlternatingCurrent,
+    SpikeDetector,
+    SpikeTrain,
 );
 
 pub fn upgrade_from_v8(world: &mut World) {

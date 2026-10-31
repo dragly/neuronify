@@ -428,7 +428,7 @@ mod tests {
         assert_eq!(count::<GeneratorDynamics>(world), 16);
         assert_eq!(count::<RegularSpikeGenerator>(world), 1);
         assert_eq!(count::<PoissonGenerator>(world), 1);
-        assert_eq!(count::<VoltmeterSize>(world), 14);
+        assert_eq!(count::<MeterSize>(world), 14);
         assert_eq!(count::<Annotation>(world), notes);
         assert_eq!(count::<NoteSize>(world), notes);
         assert_eq!(count::<StaticConnectionSource>(world), 1);
