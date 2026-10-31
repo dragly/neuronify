@@ -20,6 +20,15 @@ macro_rules! legacy {
     };
 }
 
+macro_rules! saved {
+    ($file:literal) => {
+        Contents::Saved {
+            file: $file,
+            bytes: include_bytes!(concat!("../examples/", $file)),
+        }
+    };
+}
+
 pub struct Example {
     pub name: &'static str,
     pub description: &'static str,
@@ -63,22 +72,36 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
         name: "Getting started",
         examples: &[
             Example {
-                name: "Tutorial 1: Intro",
-                description: "A single neuron driven by a current source, \
-                    with a voltmeter showing its membrane potential.",
-                contents: legacy!("tutorial_1_intro.nfy"),
+                name: "1. Spikes",
+                description: "Press the touch sensor and the neuron fires a spike.",
+                contents: saved!("tutorial/1_spikes.neuronify"),
             },
             Example {
-                name: "Tutorial 2: Circuits",
-                description: "Neuron A drives neuron B through a synapse. \
-                    Connect B to C and see how C responds.",
-                contents: legacy!("tutorial_2_circuits.nfy"),
+                name: "2. Leak currents",
+                description: "The neuron builds up potential from incoming currents, \
+                    but a continuous leak current brings it down again.",
+                contents: saved!("tutorial/2_leaks.neuronify"),
             },
             Example {
-                name: "Tutorial 3: Creation",
-                description: "A ring of four neurons, ready for new items \
-                    such as a touch sensor.",
-                contents: legacy!("tutorial_3_creation.nfy"),
+                name: "3. Push and pull",
+                description: "Excitatory neurons push others toward firing. \
+                    Inhibitory neurons pull them back.",
+                contents: saved!("tutorial/3_push_and_pull.neuronify"),
+            },
+            Example {
+                name: "4. Choosing sides",
+                description: "Two sides pull each other down, so only one of them fires.",
+                contents: saved!("tutorial/4_choosing.neuronify"),
+            },
+            Example {
+                name: "5. Sharpening edges",
+                description: "Neighbors pull on each other and make an edge stand out.",
+                contents: saved!("tutorial/5_sharpening_edges.neuronify"),
+            },
+            Example {
+                name: "6. Keeping a rhythm",
+                description: "Close a loop of neurons and it keeps a beat on its own.",
+                contents: saved!("tutorial/6_keeping_a_rhythm.neuronify"),
             },
         ],
     },
