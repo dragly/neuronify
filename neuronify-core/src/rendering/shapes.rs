@@ -60,6 +60,7 @@ const HAND: [Digit; 4] = [
 const HAND_SCALE: f32 = 0.45 * NODE_RADIUS;
 const HAND_TILT: f32 = FRAC_PI_6;
 const FINGERTIP_STEPS: usize = 8;
+const WAVE_STEPS: usize = 16;
 
 /// How much brighter than white a flash starts, so that only flashes bloom.
 const FLASH_BRIGHTNESS: f32 = 3.0;
@@ -199,7 +200,29 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
             Some((connection.from, target.position))
         })
         .collect();
-    for (entity, (position, clamp)) in world.query::<(&Position, &CurrentClamp)>().iter() {
+    for (_, (position, clamp)) in world
+        .query::<(&Position, &CurrentClamp)>()
+        .with::<&AlternatingCurrent>()
+        .iter()
+    {
+        let center = position.position;
+        pad(&mut shapes, center, current_color(clamp.current_output));
+        let wave: Vec<Vec3> = (0..=WAVE_STEPS)
+            .map(|step| {
+                let u = 2.0 * step as f32 / WAVE_STEPS as f32 - 1.0;
+                let v = 0.45 * (u * PI).sin();
+                center
+                    + Vec3::Y * GLYPH_HEIGHT
+                    + (SCREEN_RIGHT * u * 0.62 + SCREEN_UP * v) * 0.85 * NODE_RADIUS
+            })
+            .collect();
+        shapes.stroke(&wave, 0.11 * NODE_RADIUS, glyph_color());
+    }
+    for (entity, (position, clamp)) in world
+        .query::<(&Position, &CurrentClamp)>()
+        .without::<&AlternatingCurrent>()
+        .iter()
+    {
         let center = position.position;
         pad(&mut shapes, center, current_color(clamp.current_output));
         let forward = targets
@@ -374,6 +397,35 @@ mod tests {
         };
         assert_eq!(color(false), palette.excitatory);
         assert_ne!(color(true), palette.excitatory);
+    }
+
+    #[test]
+    fn alternating_current_sources_carry_a_wave_instead_of_an_arrow() {
+        let mut world = hecs::World::new();
+        crate::elements::Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+        let shapes = collect_shapes(&world, &Theme::Dark.palette());
+        let (pad, wave) = shapes.cylinders.split_first().unwrap();
+        assert_eq!(wave.len(), WAVE_STEPS);
+        let heights: Vec<f32> = wave.iter().map(|segment| segment.start.x).collect();
+        assert!(heights.iter().any(|&x| x > 0.2) && heights.iter().any(|&x| x < -0.2));
+        assert!(wave.iter().all(|segment| segment.start.y > pad.end.y));
+    }
+
+    #[test]
+    fn an_alternating_current_source_glows_with_the_size_of_its_current() {
+        let pad_brightness = |current: f64| {
+            let mut world = hecs::World::new();
+            let source =
+                crate::elements::Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+            world
+                .get::<&mut CurrentClamp>(source)
+                .unwrap()
+                .current_output = current;
+            let pad = collect_shapes(&world, &Theme::Dark.palette()).cylinders[0].start_color;
+            pad.x + pad.y + pad.z
+        };
+        assert!(pad_brightness(0.0) < pad_brightness(0.3e-9));
+        assert_eq!(pad_brightness(0.3e-9), pad_brightness(-0.3e-9));
     }
 
     #[test]

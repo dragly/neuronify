@@ -162,6 +162,35 @@ impl Default for CurrentClamp {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AlternatingCurrent {
+    pub amplitude: f64,
+    pub frequency: f64,
+}
+
+impl Default for AlternatingCurrent {
+    fn default() -> Self {
+        Self {
+            amplitude: 300e-12,
+            frequency: 50.0,
+        }
+    }
+}
+
+impl AlternatingCurrent {
+    pub fn at(&self, time: f64) -> f64 {
+        self.amplitude * (std::f64::consts::TAU * self.frequency * time).sin()
+    }
+
+    pub fn charge_until(&self, time: f64) -> f64 {
+        let angular_frequency = std::f64::consts::TAU * self.frequency;
+        if angular_frequency == 0.0 {
+            return 0.0;
+        }
+        self.amplitude * (1.0 - (angular_frequency * time).cos()) / angular_frequency
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CurrentSynapse {
     pub tau: f64,
     pub maximum_current: f64,

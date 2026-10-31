@@ -87,6 +87,17 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 Deletable {},
             ))
         }
+        "generators/ACClamp.qml" => {
+            let default = AlternatingCurrent::default();
+            let alternating = AlternatingCurrent {
+                amplitude: node.engine.amplitude.unwrap_or(default.amplitude),
+                frequency: node.engine.frequency.unwrap_or(default.frequency),
+            };
+            let clamp = CurrentClamp {
+                current_output: 0.0,
+            };
+            world.spawn((pos, clamp, alternating, Deletable {}))
+        }
         "generators/RegularSpikeGenerator.qml" => spawn_generator(
             world,
             node,

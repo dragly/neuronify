@@ -52,6 +52,8 @@ pub struct LegacyEngine {
     pub exponential: Option<f64>,
     pub linear: Option<f64>,
     pub rate: Option<f64>,
+    pub amplitude: Option<f64>,
+    pub frequency: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -243,6 +245,8 @@ fn parse_engine(engine_val: Option<&Value>) -> LegacyEngine {
         exponential: get_f64(e, "exponential"),
         linear: get_f64(e, "linear"),
         rate: get_f64(e, "rate"),
+        amplitude: get_f64(e, "amplitude"),
+        frequency: get_f64(e, "frequency"),
     }
 }
 

@@ -29,6 +29,7 @@ impl Tool {
             Tool::Place(Element::AdaptiveNeuron) => "Adaptive neuron",
             Tool::Place(Element::BurstNeuron) => "Bursting neuron",
             Tool::Place(Element::CurrentSource) => "Current source",
+            Tool::Place(Element::AlternatingCurrentSource) => "Alternating current",
             Tool::Place(Element::TouchSensor) => "Touch sensor",
             Tool::Place(Element::RegularSpikeGenerator) => "Regular spikes",
             Tool::Place(Element::PoissonGenerator) => "Random spikes",
@@ -59,6 +60,9 @@ impl Tool {
             }
             Tool::Place(Element::CurrentSource) => {
                 "Feeds a steady current into the neurons it connects to."
+            }
+            Tool::Place(Element::AlternatingCurrentSource) => {
+                "Injects a current that swings up and down like a wave."
             }
             Tool::Place(Element::TouchSensor) => "Fires a spike each time you press it.",
             Tool::Place(Element::RegularSpikeGenerator) => "Sends spikes at a steady beat.",
@@ -105,6 +109,7 @@ impl ToolGroup {
             ],
             ToolGroup::Inputs => &[
                 Tool::Place(Element::CurrentSource),
+                Tool::Place(Element::AlternatingCurrentSource),
                 Tool::Place(Element::TouchSensor),
                 Tool::Place(Element::RegularSpikeGenerator),
                 Tool::Place(Element::PoissonGenerator),
