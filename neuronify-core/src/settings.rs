@@ -12,6 +12,8 @@ pub enum Setting {
     Adaptation,
     AdaptationTimeConstant,
     Current,
+    Amplitude,
+    AlternatingFrequency,
     Frequency,
     Strength,
     Rate,
@@ -37,6 +39,8 @@ impl Setting {
             Setting::Adaptation => "Adaptation",
             Setting::AdaptationTimeConstant => "Recovery time",
             Setting::Current => "Current",
+            Setting::Amplitude => "Amplitude",
+            Setting::AlternatingFrequency => "Frequency",
             Setting::Frequency => "Frequency",
             Setting::Strength => "Strength",
             Setting::Rate => "Rate",
@@ -73,6 +77,8 @@ impl Setting {
                 "How long the neuron takes to recover from adapting."
             }
             Setting::Current => "How strongly it pushes the neurons it is connected to.",
+            Setting::Amplitude => "How far the current swings up and down.",
+            Setting::AlternatingFrequency => "How many times a second the current swings.",
             Setting::Frequency => "How many spikes it sends each second.",
             Setting::Strength => "How strongly each spike at this ending affects the next neuron.",
             Setting::Rate => "How many spikes it sends each second on average.",

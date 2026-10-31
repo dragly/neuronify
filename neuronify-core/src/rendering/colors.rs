@@ -46,7 +46,7 @@ const CURRENT_RAMP: [(f32, (u8, u8, u8)); 3] = [
 ];
 
 pub fn current_color(amperes: f64) -> Vec3 {
-    let level = (1.0 - (-amperes.max(0.0) / CURRENT_BRIGHTNESS_SCALE).exp()) as f32;
+    let level = (1.0 - (-amperes.abs() / CURRENT_BRIGHTNESS_SCALE).exp()) as f32;
     let upper = CURRENT_RAMP
         .iter()
         .position(|&(at, _)| level <= at)

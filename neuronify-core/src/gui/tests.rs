@@ -648,6 +648,19 @@ fn a_neuron_gets_a_label_that_undo_takes_back() {
 }
 
 #[test]
+fn an_alternating_current_source_sets_its_amplitude_and_frequency() {
+    let mut world = World::new();
+    let source = Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+    let harness = Harness::with(true, world, Some(source));
+    assert!(harness.shows("Alternating current"));
+    for setting in [Setting::Amplitude, Setting::AlternatingFrequency] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    assert!(!harness.shows(Setting::Current.label()));
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use glam::Vec3;
 use hecs::Entity;
 
-use crate::components::{Connection, CurrentClamp};
+use crate::components::{AlternatingCurrent, Connection, CurrentClamp};
 use crate::constants::NODE_RADIUS;
 use crate::rendering::colors::current_color;
 use crate::rendering::gpu_types::Sphere;
@@ -28,19 +28,29 @@ pub fn collect_current_flow(
         let Some(path) = paths.get(&entity) else {
             continue;
         };
-        particles.extend(flow_along(path, clamp.current_output, time));
+        let charge = shown_charge(world, connection.from, clamp.current_output, time);
+        particles.extend(flow_along(path, clamp.current_output, charge));
     }
     particles
 }
 
-fn flow_along(path: &ConnectionPath, current: f64, time: f64) -> Vec<Sphere> {
+fn shown_charge(world: &hecs::World, source: Entity, current: f64, time: f64) -> f64 {
+    match world.get::<&AlternatingCurrent>(source) {
+        Ok(alternating) => {
+            let slowdown = (FASTEST_SHOWN_CURRENT / alternating.amplitude.abs()).min(1.0);
+            alternating.charge_until(time) * slowdown
+        }
+        Err(_) => current.clamp(-FASTEST_SHOWN_CURRENT, FASTEST_SHOWN_CURRENT) * time,
+    }
+}
+
+fn flow_along(path: &ConnectionPath, current: f64, charge: f64) -> Vec<Sphere> {
     let length = path.length();
-    if current <= 0.0 || length <= 0.0 {
+    if current == 0.0 || length <= 0.0 {
         return Vec::new();
     }
-    let speed =
-        DISTANCE_PER_SIMULATED_SECOND_AND_NANOAMPERE * current.min(FASTEST_SHOWN_CURRENT) * 1e9;
-    let offset = (time * speed).rem_euclid(PARTICLE_SPACING as f64) as f32;
+    let travelled = DISTANCE_PER_SIMULATED_SECOND_AND_NANOAMPERE * charge * 1e9;
+    let offset = travelled.rem_euclid(PARTICLE_SPACING as f64) as f32;
     let color = current_color(current).lerp(Vec3::ONE, PARTICLE_WHITENESS);
     let radius = path.radius * PARTICLE_RADIUS_PER_PATH_RADIUS;
     (0..)
@@ -58,9 +68,11 @@ fn flow_along(path: &ConnectionPath, current: f64, time: f64) -> Vec<Sphere> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::LIF_DT;
     use crate::elements::{spawn_synapse, Element};
     use crate::rendering::paths::connection_paths;
     use crate::rendering::Theme;
+    use crate::simulation::step_simulation;
     use std::collections::HashMap;
 
     fn source_and_paths(current: f64) -> (hecs::World, BTreeMap<Entity, ConnectionPath>) {
@@ -103,5 +115,30 @@ mod tests {
         assert!(weak > 0.0);
         assert!((strong / weak - 2.0).abs() < 0.05, "{weak} {strong}");
         assert!((moved(5e-9) - moved(FASTEST_SHOWN_CURRENT)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn particles_of_an_alternating_source_follow_the_charge_it_has_delivered() {
+        let mut world = hecs::World::new();
+        let source = Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+        let alternating = (*world.get::<&AlternatingCurrent>(source).unwrap()).clone();
+        let scale = alternating.amplitude / (std::f64::consts::TAU * alternating.frequency);
+        let mut time = 0.0;
+        let mut delivered = 0.0;
+        let mut previous = 0.0;
+        let mut went_back = false;
+        while time < 2.0 / alternating.frequency {
+            step_simulation(&mut world, &mut time, 1, None);
+            let current = world.get::<&CurrentClamp>(source).unwrap().current_output;
+            delivered += current * LIF_DT;
+            let shown = shown_charge(&world, source, current, time);
+            assert!(
+                (shown - delivered).abs() < 0.02 * scale,
+                "{shown} {delivered}"
+            );
+            went_back |= shown < previous;
+            previous = shown;
+        }
+        assert!(went_back);
     }
 }

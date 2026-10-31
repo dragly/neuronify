@@ -11,6 +11,10 @@ pub struct SpikeRecord {
 }
 
 pub fn lif_step(world: &mut World, dt: f64, time: f64) {
+    for (_, (alternating, clamp)) in world.query_mut::<(&AlternatingCurrent, &mut CurrentClamp)>() {
+        clamp.current_output = alternating.at(time);
+    }
+
     for (_, (generator, dynamics)) in
         world.query_mut::<(&RegularSpikeGenerator, &mut GeneratorDynamics)>()
     {
@@ -356,6 +360,41 @@ mod tests {
         assert!(spikes.len() > 3);
         assert!(spikes.last().unwrap().time < 0.25);
         assert_eq!(world.get::<&BurstCurrent>(neuron).unwrap().boost, 0.0);
+    }
+
+    #[test]
+    fn an_alternating_current_pushes_a_neuron_up_and_down() {
+        let mut world = World::new();
+        let neuron = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+        ));
+        let source = world.spawn((
+            CurrentClamp {
+                current_output: 0.0,
+            },
+            AlternatingCurrent {
+                amplitude: 100e-12,
+                frequency: 10.0,
+            },
+        ));
+        world.spawn((Connection {
+            from: source,
+            to: neuron,
+            strength: 1.0,
+            directional: true,
+        },));
+        let resting = LeakyNeuron::default().resting_potential;
+        let (mut lowest, mut highest) = (resting, resting);
+        for step in 0..2000 {
+            lif_step(&mut world, 0.0001, step as f64 * 0.0001);
+            let voltage = world.get::<&LeakyDynamics>(neuron).unwrap().voltage;
+            lowest = lowest.min(voltage);
+            highest = highest.max(voltage);
+        }
+        assert!(highest > resting + 0.005, "{highest}");
+        assert!(lowest < resting - 0.005, "{lowest}");
     }
 
     #[test]

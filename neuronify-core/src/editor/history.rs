@@ -122,7 +122,7 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 16] = [
+const EDITED: [Edited; 17] = [
     edited::<Position>(),
     edited::<VoltmeterSize>(),
     edited::<NoteSize>(),
@@ -139,6 +139,7 @@ const EDITED: [Edited; 16] = [
     edited_settings::<CurrentSynapse, Synapse>(),
     edited::<VoltmeterRange>(),
     edited::<Label>(),
+    edited::<AlternatingCurrent>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {

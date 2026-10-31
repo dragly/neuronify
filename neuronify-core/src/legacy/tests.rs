@@ -637,3 +637,26 @@ fn labels_lose_the_spaces_around_them() {
         "with refractory period"
     );
 }
+
+#[test]
+fn loads_alternating_current_sources() {
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
+    let sources: Vec<(hecs::Entity, f64, f64)> = world
+        .query::<&AlternatingCurrent>()
+        .with::<&CurrentClamp>()
+        .iter()
+        .map(|(source, alternating)| (source, alternating.amplitude, alternating.frequency))
+        .collect();
+    let [(source, amplitude, frequency)] = sources[..] else {
+        panic!("expected one alternating current source, got {sources:?}");
+    };
+    assert_eq!((amplitude, frequency), (1e-9, 34.0));
+    let targets = world
+        .query::<&Connection>()
+        .without::<&CurrentSynapse>()
+        .iter()
+        .filter(|(_, connection)| connection.from == source)
+        .count();
+    assert_eq!(targets, 1);
+}

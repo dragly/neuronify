@@ -35,6 +35,7 @@ schema!(
     NeuronDisplay,
     VoltmeterRange,
     Label,
+    AlternatingCurrent,
 );
 
 pub fn upgrade_from_v8(world: &mut World) {

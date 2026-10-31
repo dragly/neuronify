@@ -14,6 +14,7 @@ pub enum Element {
     AdaptiveNeuron,
     BurstNeuron,
     CurrentSource,
+    AlternatingCurrentSource,
     TouchSensor,
     RegularSpikeGenerator,
     PoissonGenerator,
@@ -35,6 +36,7 @@ impl Element {
         matches!(
             self,
             Element::CurrentSource
+                | Element::AlternatingCurrentSource
                 | Element::TouchSensor
                 | Element::RegularSpikeGenerator
                 | Element::PoissonGenerator
@@ -63,6 +65,14 @@ impl Element {
             Element::CurrentSource => {
                 world.spawn((position, CurrentClamp::default(), Deletable {}))
             }
+            Element::AlternatingCurrentSource => world.spawn((
+                position,
+                CurrentClamp {
+                    current_output: 0.0,
+                },
+                AlternatingCurrent::default(),
+                Deletable {},
+            )),
             Element::TouchSensor => world.spawn((
                 position,
                 TouchSensor,

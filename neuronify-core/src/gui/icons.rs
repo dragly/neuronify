@@ -18,6 +18,7 @@ const GRID: f32 = 24.0;
 const GLYPH_GRID: f32 = 32.0;
 const STROKE: f32 = 1.8;
 const SPHERE_STEPS: usize = 40;
+const SINE_STEPS: usize = 24;
 const CREAM: Color32 = Color32::from_rgb(255, 244, 214);
 const MORPHOLOGY_GRID: Vec2 = vec2(64.0, 32.0);
 const SOMA_SHARE: f32 = 0.62;
@@ -390,6 +391,13 @@ fn beads(painter: &Painter, points: &[Pos2], scale: f32, color: Color32) {
     }
 }
 
+fn sine_wave() -> impl Iterator<Item = (f32, f32)> {
+    (0..=SINE_STEPS).map(|step| {
+        let x = 2.0 * step as f32 / SINE_STEPS as f32 - 1.0;
+        (x, (x * PI).sin())
+    })
+}
+
 pub fn paint_tool(
     painter: &Painter,
     tool: Tool,
@@ -494,6 +502,13 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 vec![at(11.8, 14.0), at(16.0, 9.8), at(20.2, 14.0)],
                 arrow,
             ));
+        }
+        Tool::Place(Element::AlternatingCurrentSource) => {
+            painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(yellow()));
+            let wave = sine_wave()
+                .map(|(x, y)| at(16.0 + 7.5 * x, 16.0 - 5.0 * y))
+                .collect();
+            painter.add(Shape::line(wave, stroke(2.4, CREAM)));
         }
         Tool::Place(Element::TouchSensor) => {
             painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(orange()));

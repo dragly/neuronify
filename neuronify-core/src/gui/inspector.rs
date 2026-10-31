@@ -55,6 +55,8 @@ const PLOTTED_VOLTAGE_GAP: f64 = 1.0;
 const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10e-9;
 const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1e-3..=6e-3;
 const DELAYS: RangeInclusive<f64> = 0.0..=30e-3;
+const AMPLITUDES: RangeInclusive<f64> = 0.0..=1e-9;
+const ALTERNATING_FREQUENCIES: RangeInclusive<f64> = 0.0..=200.0;
 const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30e-9, 0.01e-9);
 const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
@@ -274,6 +276,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         return Some((Tool::StaticConnection, "Synapse"));
     } else if world.get::<&Connection>(entity).is_ok() {
         return Some((Tool::StaticConnection, "Connection"));
+    } else if world.get::<&AlternatingCurrent>(entity).is_ok() {
+        Tool::Place(Element::AlternatingCurrentSource)
     } else if world.get::<&CurrentClamp>(entity).is_ok() {
         Tool::Place(Element::CurrentSource)
     } else if world.get::<&TouchSensor>(entity).is_ok() {
@@ -794,7 +798,25 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             milliseconds,
         );
     }
-    if let Ok(mut clamp) = world.get::<&mut CurrentClamp>(entity) {
+    if let Ok(mut alternating) = world.get::<&mut AlternatingCurrent>(entity) {
+        heading(ui, chrome, "Parameters", 0.0);
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::Amplitude,
+            &mut alternating.amplitude,
+            AMPLITUDES,
+            |amperes| format!("{:.0} pA", amperes * 1e12),
+        );
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::AlternatingFrequency,
+            &mut alternating.frequency,
+            ALTERNATING_FREQUENCIES,
+            hertz,
+        );
+    } else if let Ok(mut clamp) = world.get::<&mut CurrentClamp>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
         changed |= logarithmic_parameter(
             ui,
