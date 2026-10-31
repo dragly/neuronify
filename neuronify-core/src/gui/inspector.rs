@@ -254,6 +254,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::Place(Element::PoissonGenerator)
     } else if world.get::<&Voltmeter>(entity).is_ok() {
         Tool::Voltmeter
+    } else if world.get::<&Link>(entity).is_ok() {
+        return Some((Tool::Place(Element::Note), "Link"));
     } else if world.get::<&Annotation>(entity).is_ok() {
         Tool::Place(Element::Note)
     } else {

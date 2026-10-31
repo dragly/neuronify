@@ -1,4 +1,5 @@
 use crate::camera;
+use crate::components::Link;
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan};
 use crate::frame_clock::{FrameClock, StepClock};
@@ -164,7 +165,23 @@ impl Neuronify {
                 self.tapped_background = true;
             } else {
                 self.editor.tap(&self.world, position);
+                self.follow_link();
             }
+        }
+    }
+
+    fn follow_link(&mut self) {
+        let Some(file) = self.editor.selection.and_then(|selected| {
+            let link = self.world.get::<&Link>(selected).ok()?;
+            Some(link.example.clone())
+        }) else {
+            return;
+        };
+        self.editor.selection = None;
+        match crate::examples::find(&file).map(|example| example.spawn()) {
+            Some(Ok(world)) => self.open_world(world, 0.0, DEFAULT_SPEED),
+            Some(Err(error)) => self.load_error = Some(error),
+            None => self.landing = Some(LandingScreen::new(true)),
         }
     }
 
