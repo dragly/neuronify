@@ -112,8 +112,12 @@ pub fn soma_color(
     )
 }
 
-pub fn generator_color(dynamics: &GeneratorDynamics, palette: &Palette) -> Vec3 {
-    orange().lerp(
+pub fn generator_color(
+    dynamics: &GeneratorDynamics,
+    neuron_type: NeuronType,
+    palette: &Palette,
+) -> Vec3 {
+    palette.generator(neuron_type).lerp(
         palette.flash * FLASH_BRIGHTNESS,
         flash(dynamics.time_since_fire),
     )
@@ -172,7 +176,11 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
         .iter()
     {
         let center = position.position;
-        pad(&mut shapes, center, generator_color(dynamics, palette));
+        pad(
+            &mut shapes,
+            center,
+            generator_color(dynamics, NeuronType::Excitatory, palette),
+        );
         let outline: Vec<Vec3> = hand
             .iter()
             .map(|point| {
@@ -218,14 +226,14 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
 /// The rings around spike generators, which flash with the generator.
 pub fn collect_rings(world: &hecs::World, palette: &Palette) -> Vec<TorusData> {
     world
-        .query::<(&GeneratorDynamics, &Position)>()
+        .query::<(&GeneratorDynamics, &Position, Option<&NeuronType>)>()
         .without::<&TouchSensor>()
         .iter()
-        .map(|(_, (dynamics, position))| TorusData {
+        .map(|(_, (dynamics, position, neuron_type))| TorusData {
             position: position.position,
             major_radius: GENERATOR_RING_RADIUS,
             rotation: Quat::IDENTITY,
-            color: generator_color(dynamics, palette),
+            color: generator_color(dynamics, neuron_type.copied().unwrap_or_default(), palette),
             minor_radius: GENERATOR_RING_THICKNESS,
         })
         .collect()
@@ -288,6 +296,20 @@ mod tests {
         assert_eq!(collect_rings(&world, &palette).len(), 1);
         let pad = collect_shapes(&world, &palette).cylinders[0];
         assert!((pad.end - pad.start).cross(Vec3::Y).length() < 1e-6);
+    }
+
+    #[test]
+    fn inhibitory_generators_have_the_inhibitory_colour() {
+        let mut world = hecs::World::new();
+        world.spawn((
+            Position {
+                position: Vec3::ZERO,
+            },
+            GeneratorDynamics::default(),
+            NeuronType::Inhibitory,
+        ));
+        let palette = Theme::Light.palette();
+        assert_eq!(collect_rings(&world, &palette)[0].color, palette.inhibitory);
     }
 
     #[test]

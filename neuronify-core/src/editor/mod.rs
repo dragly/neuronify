@@ -220,7 +220,7 @@ impl Editor {
         let before = self
             .adjusting
             .take()
-            .or_else(|| Snapshot::of(world, entity));
+            .or_else(|| Snapshot::of(world, entity, compartment_tree(world, entity)));
         if adjust() || ongoing {
             self.adjusting = before;
         }

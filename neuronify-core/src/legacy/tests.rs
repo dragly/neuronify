@@ -532,3 +532,21 @@ fn spikes_from_an_inhibitory_generator_push_the_voltage_down() {
         assert_eq!(furthest < 0.0, inhibitory);
     }
 }
+
+#[test]
+fn loads_inhibitory_adaptive_neurons() {
+    let file = r#"{"fileFormatVersion": 4, "edges": [], "nodes": [
+        {"filename": "neurons/AdaptationInhibitoryNeuron.qml",
+         "savedProperties": {"engine": {"adaptation": 2e-08}, "x": 0, "y": 0}}
+    ]}"#;
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &parse_legacy_nfy(file).unwrap());
+    assert_eq!(neuron_type(&world, entities[0]), NeuronType::Inhibitory);
+    assert_eq!(
+        world
+            .get::<&AdaptationCurrent>(entities[0])
+            .unwrap()
+            .adaptation,
+        2e-8
+    );
+}

@@ -73,7 +73,8 @@ pub fn segmented<T: PartialEq + Copy>(
     chrome: &Chrome,
     value: &mut T,
     options: &[(T, &str)],
-) {
+) -> bool {
+    let mut changed = false;
     let font = FontId::proportional(12.5);
     let widths: Vec<f32> = options
         .iter()
@@ -108,11 +109,13 @@ pub fn segmented<T: PartialEq + Copy>(
                 chrome.subtext
             },
         );
-        if response.clicked() {
+        if response.clicked() && !chosen {
             *value = *option;
+            changed = true;
         }
         response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, chosen, *label));
     }
+    changed
 }
 
 pub fn paint_flyout_marker(painter: &Painter, tip: egui::Pos2, color: Color32) {

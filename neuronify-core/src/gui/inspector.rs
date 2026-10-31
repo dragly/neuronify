@@ -3,14 +3,15 @@ use std::ops::RangeInclusive;
 
 use egui::emath::Numeric;
 use egui::{
-    pos2, style::HandleShape, vec2, Align2, Context, CornerRadius, FontId, Frame, Id, Margin,
-    Order, Rect, Response, ScrollArea, Sense, Shape, Slider, SliderClamping, Stroke, Style,
-    TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
+    pos2, style::HandleShape, vec2, Align, Align2, Context, CornerRadius, FontId, Frame, Id,
+    Layout, Margin, Order, Rect, Response, RichText, ScrollArea, Sense, Shape, Slider,
+    SliderClamping, Stroke, Style, TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::constants::MAX_ENDING_STRENGTH;
+use crate::dendrites::compartment_tree;
 use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
@@ -21,7 +22,7 @@ use crate::tools::Tool;
 use super::icons::{paint_icon, paint_tool, Icon};
 use super::sheet::{self, Sheet, HANDLE_HEIGHT};
 use super::style::{Chrome, MARGIN};
-use super::widgets::{heading, ROW_RADIUS};
+use super::widgets::{heading, segmented, ROW_RADIUS};
 
 pub const INSPECTOR_WIDTH: f32 = 296.0;
 pub const DELETE: &str = "inspector_delete";
@@ -40,6 +41,7 @@ const HEADER_ICON: f32 = 18.0;
 const DELETE_HEIGHT: f32 = 36.0;
 const DELETE_GAP: f32 = 8.0;
 const DESCRIPTION_SIZE: f32 = 11.5;
+const SWITCH_HEIGHT: f32 = 30.0;
 const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30e-9, 0.01e-9);
 const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
@@ -232,19 +234,19 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
     let has = |present: bool, element: Element| present.then_some(Tool::Place(element));
     let tool = if world.get::<&LeakyNeuron>(entity).is_ok() {
         has(
-            neuron_type(world, entity) == NeuronType::Inhibitory,
-            Element::InhibitoryNeuron,
+            world.get::<&AdaptationCurrent>(entity).is_ok(),
+            Element::AdaptiveNeuron,
         )
-        .or_else(|| {
-            has(
-                world.get::<&AdaptationCurrent>(entity).is_ok(),
-                Element::AdaptiveNeuron,
-            )
-        })
         .or_else(|| {
             has(
                 world.get::<&BurstCurrent>(entity).is_ok(),
                 Element::BurstNeuron,
+            )
+        })
+        .or_else(|| {
+            has(
+                neuron_type(world, entity) == NeuronType::Inhibitory,
+                Element::InhibitoryNeuron,
             )
         })
         .unwrap_or(Tool::Place(Element::ExcitatoryNeuron))
@@ -530,11 +532,67 @@ fn reading(ui: &mut Ui, chrome: &Chrome, label: &str, value: String, size: f32) 
     );
 }
 
+fn choice<T: PartialEq + Copy>(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    setting: Setting,
+    value: &mut T,
+    options: &[(T, &str)],
+) -> bool {
+    let mut changed = false;
+    ui.allocate_ui_with_layout(
+        vec2(ui.available_width(), SWITCH_HEIGHT),
+        Layout::left_to_right(Align::Center),
+        |ui| {
+            ui.label(
+                RichText::new(setting.label())
+                    .size(12.5)
+                    .color(chrome.subtext),
+            );
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                changed = segmented(ui, chrome, value, options);
+            });
+        },
+    );
+    description(ui, chrome, setting.description());
+    ui.add_space(8.0);
+    changed
+}
+
+fn type_switch(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
+    let Some(current) = world.get::<&NeuronType>(entity).ok().map(|t| *t) else {
+        return false;
+    };
+    let mut chosen = current;
+    choice(
+        ui,
+        chrome,
+        Setting::Type,
+        &mut chosen,
+        &[
+            (NeuronType::Inhibitory, "Inhibitory"),
+            (NeuronType::Excitatory, "Excitatory"),
+        ],
+    );
+    if chosen == current {
+        return false;
+    }
+    for part in std::iter::once(entity).chain(compartment_tree(world, entity)) {
+        if let Ok(mut neuron_type) = world.get::<&mut NeuronType>(part) {
+            *neuron_type = chosen;
+        }
+    }
+    true
+}
+
 fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
     let mut changed = false;
     let hertz = |value: f64| format!("{value:.0} Hz");
-    if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
+    if world.get::<&LeakyNeuron>(entity).is_ok() {
         heading(ui, chrome, "Parameters", 0.0);
+        changed |= type_switch(ui, chrome, world, entity);
+    }
+    if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
         changed |= parameter(
             ui,
             chrome,
@@ -571,8 +629,11 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             nanoamperes,
         );
     }
-    if let Ok(mut generator) = world.get::<&mut RegularSpikeGenerator>(entity) {
+    if world.get::<&RegularSpikeGenerator>(entity).is_ok() {
         heading(ui, chrome, "Parameters", 0.0);
+        changed |= type_switch(ui, chrome, world, entity);
+    }
+    if let Ok(mut generator) = world.get::<&mut RegularSpikeGenerator>(entity) {
         changed |= logarithmic_parameter(
             ui,
             chrome,
@@ -582,8 +643,11 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             hertz,
         );
     }
-    if let Ok(mut generator) = world.get::<&mut PoissonGenerator>(entity) {
+    if world.get::<&PoissonGenerator>(entity).is_ok() {
         heading(ui, chrome, "Parameters", 0.0);
+        changed |= type_switch(ui, chrome, world, entity);
+    }
+    if let Ok(mut generator) = world.get::<&mut PoissonGenerator>(entity) {
         changed |= logarithmic_parameter(
             ui,
             chrome,

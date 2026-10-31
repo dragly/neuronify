@@ -450,7 +450,7 @@ fn menu(
                         chrome,
                         controls.theme,
                         &[(Theme::Dark, "Dark"), (Theme::Light, "Light")],
-                    )
+                    );
                 });
                 let mut display = NeuronDisplay::of(controls.world);
                 let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);
