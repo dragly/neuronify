@@ -5,7 +5,8 @@ use crate::editor::{Editor, Pan};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
-use crate::rendering::{canvas_bounds, EditorMarks, SceneRenderer, Theme};
+use crate::rendering::ghost::{self, GHOST_HEIGHT};
+use crate::rendering::{canvas_bounds, EditorMarks, Ghost, SceneRenderer, Theme};
 use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
@@ -30,8 +31,10 @@ pub struct Neuronify {
     speed: f64,
     mouse: Mouse,
     hover: Option<PhysicalPosition<f64>>,
+    touch_input: bool,
     keyboard: Keyboard,
     touches: Touches,
+    ghost: Option<Ghost>,
     renderer: SceneRenderer,
     frame_clock: FrameClock,
     simulation_clock: StepClock,
@@ -134,8 +137,10 @@ impl Neuronify {
             speed: DEFAULT_SPEED,
             mouse: Mouse::default(),
             hover: None,
+            touch_input: false,
             keyboard: Keyboard::default(),
             touches: Touches::default(),
+            ghost: None,
             renderer,
             frame_clock: FrameClock::default(),
             simulation_clock: StepClock::default(),
@@ -213,6 +218,23 @@ impl Neuronify {
             self.editor.tool == Tool::Erase && !gui_takes_press(application, hover)
         })?;
         Some(camera::ground_position(application, hover))
+    }
+
+    fn dangle_ghost(&mut self, application: &visula::Application, seconds: f64) {
+        let painting = self
+            .editor
+            .painting()
+            .filter(|_| self.editing() && self.mouse.moved_while_pressed());
+        let (Some(element), Some(pointer)) = (painting, self.mouse.position) else {
+            self.ghost = None;
+            return;
+        };
+        let offset = ghost::offset_points(self.touch_input) * application.window.scale_factor();
+        let above = PhysicalPosition::new(pointer.x, pointer.y - offset);
+        let anchor = camera::position_at_height(application, above, GHOST_HEIGHT);
+        self.ghost
+            .get_or_insert_with(|| Ghost::new(element, anchor))
+            .follow(element, anchor, self.touch_input, seconds as f32);
     }
 
     fn connection_hint(&mut self) -> Option<ConnectionHint> {
@@ -391,6 +413,7 @@ impl visula::Simulation for Neuronify {
             camera::frame(application, canvas_bounds(&self.world), free);
         }
 
+        self.dangle_ghost(application, seconds);
         let drawn_connection = match self.editor.connection_being_drawn(&self.world) {
             Some((start, end)) => vec![start, end],
             None => self
@@ -406,6 +429,7 @@ impl visula::Simulation for Neuronify {
             EditorMarks {
                 drawn_connection: &drawn_connection,
                 axon: self.editor.axon_being_grown(&self.world),
+                ghost: self.ghost,
                 selection: self.editor.selection,
                 eraser: self.eraser(application),
             },
@@ -489,6 +513,7 @@ impl visula::Simulation for Neuronify {
                     },
                 ..
             } => {
+                self.touch_input = false;
                 self.press_pointer(application, *state == ElementState::Pressed);
             }
             Event::WindowEvent {
@@ -503,6 +528,7 @@ impl visula::Simulation for Neuronify {
                 ..
             } => {
                 self.hover = Some(*position);
+                self.touch_input = false;
                 self.move_pointer(application, *position);
             }
             Event::WindowEvent {
@@ -514,6 +540,7 @@ impl visula::Simulation for Neuronify {
                 ..
             } => {
                 self.hover = None;
+                self.touch_input = true;
                 if touch.phase == TouchPhase::Started {
                     if gui_takes_press(application, touch.location) {
                         self.touches.forget_tap();

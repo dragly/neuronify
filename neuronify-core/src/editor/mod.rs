@@ -81,6 +81,17 @@ impl Editor {
         grows.then_some((connection.from, connection.start, connection.end))
     }
 
+    pub fn painting(&self) -> Option<Element> {
+        let Tool::Place(element) = self.tool else {
+            return None;
+        };
+        let painting = element.is_neuron()
+            && self.previous_creation.is_some()
+            && self.connection_tool.is_none()
+            && self.dragging.is_none();
+        painting.then_some(element)
+    }
+
     pub fn offer_connection(&mut self, now: f64) {
         let Some(connection) = &self.connection_tool else {
             return;

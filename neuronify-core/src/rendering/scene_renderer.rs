@@ -12,6 +12,7 @@ use crate::rendering::connections::{collect_voltmeter_wires, connection_being_dr
 use crate::rendering::cylinders::growing_axon;
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
+use crate::rendering::ghost::Ghost;
 use crate::rendering::gpu_types::{ConnectionData, CylinderData, HaloData, Sphere, TorusData};
 use crate::rendering::halos::{collect_halos, create_halos};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
@@ -23,6 +24,7 @@ use crate::rendering::voltmeter::collect_voltmeter_traces;
 pub struct EditorMarks<'a> {
     pub drawn_connection: &'a [Vec3],
     pub axon: Option<(Entity, Vec3, Vec3)>,
+    pub ghost: Option<Ghost>,
     pub selection: Option<Entity>,
     pub eraser: Option<Vec3>,
 }
@@ -210,6 +212,9 @@ impl SceneRenderer {
         if let Some(axon) = axon {
             scene.extend(axon);
         }
+        scene
+            .spheres
+            .extend(marks.ghost.and_then(|ghost| ghost.sphere(&palette)));
         if let Some(selection) = marks.selection {
             scene.extend(collect_selection(world, selection, &palette));
         }

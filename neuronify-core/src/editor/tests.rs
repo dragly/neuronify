@@ -297,6 +297,40 @@ fn the_connection_being_added_is_hidden_until_its_terminal_clears_the_source() {
 }
 
 #[test]
+fn painting_neurons_lasts_until_release() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::InhibitoryNeuron));
+    assert_eq!(editor.painting(), None);
+    editor.edit(&mut world, at(0.0, 0.0), false);
+    assert_eq!(editor.painting(), Some(Element::InhibitoryNeuron));
+    editor.edit(&mut world, at(0.0, 3.0), false);
+    assert_eq!(editor.painting(), Some(Element::InhibitoryNeuron));
+    editor.release(&world);
+    assert_eq!(editor.painting(), None);
+}
+
+#[test]
+fn holding_after_placing_stops_painting() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.edit(&mut world, at(0.0, 0.0), false);
+    assert!(editor.hold(&world, at(0.0, 0.0), false));
+    assert_eq!(editor.painting(), None);
+}
+
+#[test]
+fn pulling_a_connection_or_placing_an_input_is_not_painting() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut pulling = editor(Tool::Place(Element::ExcitatoryNeuron));
+    pulling.edit(&mut world, at(0.0, 0.5), false);
+    assert_eq!(pulling.painting(), None);
+    let mut placing = editor(Tool::Place(Element::CurrentSource));
+    placing.edit(&mut world, at(10.0, 10.0), false);
+    assert_eq!(placing.painting(), None);
+}
+
+#[test]
 fn a_growing_axon_reaches_from_its_last_compartment_to_the_pointer() {
     let mut world = World::new();
     let source = neuron(&mut world, at(0.0, 0.0));
@@ -314,6 +348,7 @@ fn a_growing_axon_reaches_from_its_last_compartment_to_the_pointer() {
     assert!(world.get::<&Compartment>(from).is_ok());
     assert_eq!((start, end), (at(0.0, 2.5), at(0.0, 3.5)));
     assert_eq!(editor.connection_being_drawn(&world), None);
+    assert_eq!(editor.painting(), None);
 }
 
 #[test]

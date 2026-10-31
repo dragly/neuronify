@@ -23,6 +23,14 @@ pub fn set_up(application: &mut visula::Application) {
 }
 
 pub fn ground_position(application: &visula::Application, position: PhysicalPosition<f64>) -> Vec3 {
+    position_at_height(application, position, 0.0)
+}
+
+pub fn position_at_height(
+    application: &visula::Application,
+    position: PhysicalPosition<f64>,
+    height: f32,
+) -> Vec3 {
     let ndc_x = 2.0 * position.x as f32 / application.config.width as f32 - 1.0;
     let ndc_y = 1.0 - 2.0 * position.y as f32 / application.config.height as f32;
     let ray_clip = Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
@@ -34,7 +42,7 @@ pub fn ground_position(application: &visula::Application, position: PhysicalPosi
         .truncate()
         .normalize();
     let ray_origin = camera.position();
-    let t = -ray_origin.y / ray_world.y;
+    let t = (height - ray_origin.y) / ray_world.y;
     ray_origin + t * ray_world
 }
 
