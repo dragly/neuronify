@@ -15,6 +15,7 @@ use crate::dendrites::compartment_tree;
 use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
+use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::Theme;
@@ -314,6 +315,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::SpikeDetector
     } else if world.get::<&RatePlot>(entity).is_ok() {
         Tool::RatePlot
+    } else if world.get::<&Loudspeaker>(entity).is_ok() {
+        Tool::Loudspeaker
     } else if world.get::<&Link>(entity).is_ok() {
         return Some((Tool::Place(Element::Note), "Link"));
     } else if world.get::<&Annotation>(entity).is_ok() {
@@ -849,6 +852,26 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             plot.minimum = plot.minimum.min(plot.maximum - PLOTTED_RATE_GAP);
         }
         changed |= highest || lowest;
+    }
+    if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(entity) {
+        heading(ui, chrome, "Parameters", 0.0);
+        let sounds = Sound::ALL.map(|sound| (sound, sound.name()));
+        changed |= choice(ui, chrome, Setting::Sound, &mut speaker.sound, &sounds);
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::Volume,
+            &mut speaker.volume,
+            0.0..=1.0,
+            |volume| format!("{:.0} %", volume * 100.0),
+        );
+        changed |= choice(
+            ui,
+            chrome,
+            Setting::Mute,
+            &mut speaker.muted,
+            &[(true, "On"), (false, "Off")],
+        );
     }
     if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {
         heading(ui, chrome, "Parameters", 0.0);

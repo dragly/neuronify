@@ -2,8 +2,12 @@ use glam::Vec3;
 use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::elements::{spawn_rate_plot_wire, spawn_spike_detector_wire, spawn_voltmeter_wire};
+use crate::elements::{
+    spawn_loudspeaker_wire, spawn_rate_plot_wire, spawn_spike_detector_wire, spawn_voltmeter_wire,
+};
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
+use crate::measurement::is_meter;
+use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
 use crate::{Connection, Deletable, NeuronType, Position};
@@ -128,6 +132,13 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 ..Default::default()
             };
             world.spawn((left_middle, detector, size, Deletable {}))
+        }
+        "meters/Loudspeaker.qml" => {
+            let speaker = Loudspeaker {
+                sound: Sound::from_legacy(node.source.as_deref().unwrap_or_default()),
+                ..Default::default()
+            };
+            world.spawn((pos, speaker, Deletable {}))
         }
         "meters/RatePlot.qml" => {
             let (left_middle, size) = meter_frame(node);
@@ -317,9 +328,9 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             world.spawn((connection, ImmediateFireSynapse::default(), Deletable {}));
         }
         "edges/MeterEdge.qml" => {
-            let (meter, neuron) = if world.get::<&MeterSize>(from).is_ok() {
+            let (meter, neuron) = if is_meter(world, from) {
                 (from, to)
-            } else if world.get::<&MeterSize>(to).is_ok() {
+            } else if is_meter(world, to) {
                 (to, from)
             } else {
                 world.spawn((connection,));
@@ -329,6 +340,8 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
                 spawn_spike_detector_wire(world, neuron, meter);
             } else if world.get::<&RatePlot>(meter).is_ok() {
                 spawn_rate_plot_wire(world, neuron, meter);
+            } else if world.get::<&Loudspeaker>(meter).is_ok() {
+                spawn_loudspeaker_wire(world, neuron, meter);
             } else {
                 spawn_voltmeter_wire(world, neuron, meter);
             }

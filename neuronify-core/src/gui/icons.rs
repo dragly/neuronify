@@ -6,9 +6,9 @@ use glam::Vec3;
 
 use crate::elements::Element;
 use crate::rendering::colors::{
-    adaptation_gauge_color, burst_gauge_color, orange, terminal_color, yellow,
+    adaptation_gauge_color, burst_gauge_color, orange, speaker_color, terminal_color, yellow,
 };
-use crate::rendering::shapes::hand_outline;
+use crate::rendering::shapes::{hand_outline, speaker_outline, speaker_waves};
 use crate::rendering::Theme;
 use crate::tools::Tool;
 
@@ -606,6 +606,21 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 })
                 .collect();
             painter.add(Shape::line(curve, stroke(1.8, chrome.accent)));
+        }
+        Tool::Loudspeaker => {
+            painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(speaker_color()));
+            let cone = speaker_outline()
+                .iter()
+                .map(|&(x, y)| at(16.0 + 9.0 * x, 16.0 - 9.0 * y))
+                .collect();
+            painter.add(Shape::closed_line(cone, stroke(1.6, CREAM)));
+            for wave in speaker_waves() {
+                let points = wave
+                    .iter()
+                    .map(|&(x, y)| at(16.0 + 9.0 * x, 16.0 - 9.0 * y))
+                    .collect();
+                painter.add(Shape::line(points, stroke(1.6, CREAM)));
+            }
         }
         Tool::StaticConnection => {
             let curve: Vec<Pos2> = (0..=SPHERE_STEPS)

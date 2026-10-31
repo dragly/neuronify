@@ -11,6 +11,7 @@ use hecs::Entity;
 
 use crate::components::*;
 use crate::constants::*;
+use crate::measurement::loudspeaker::Loudspeaker;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{CylinderData, TorusData};
 use crate::rendering::scene::Scene;
@@ -243,7 +244,55 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
             color,
         );
     }
+    collect_loudspeakers(world, palette, &mut shapes);
     shapes
+}
+
+pub fn speaker_outline() -> Vec<(f32, f32)> {
+    vec![
+        (-0.55, -0.2),
+        (-0.3, -0.2),
+        (0.0, -0.5),
+        (0.0, 0.5),
+        (-0.3, 0.2),
+        (-0.55, 0.2),
+    ]
+}
+
+pub fn speaker_waves() -> Vec<Vec<(f32, f32)>> {
+    [0.25, 0.48]
+        .map(|radius| {
+            (0..=WAVE_STEPS / 2)
+                .map(|step| {
+                    let angle = (step as f32 / (WAVE_STEPS / 2) as f32 - 0.5) * 1.6;
+                    (0.08 + radius * angle.cos(), radius * angle.sin())
+                })
+                .collect()
+        })
+        .to_vec()
+}
+
+fn collect_loudspeakers(world: &hecs::World, palette: &Palette, shapes: &mut Scene) {
+    for (_, (speaker, position)) in world.query::<(&Loudspeaker, &Position)>().iter() {
+        let center = position.position;
+        let color = speaker_color().lerp(
+            palette.flash * FLASH_BRIGHTNESS,
+            flash(speaker.time_since_heard),
+        );
+        pad(shapes, center, color);
+        let point = |&(x, y): &(f32, f32)| {
+            center
+                + Vec3::Y * GLYPH_HEIGHT
+                + (SCREEN_RIGHT * x + SCREEN_UP * y) * 0.85 * NODE_RADIUS
+        };
+        let mut cone: Vec<Vec3> = speaker_outline().iter().map(point).collect();
+        cone.push(cone[0]);
+        shapes.stroke(&cone, 0.07 * NODE_RADIUS, glyph_color());
+        for wave in speaker_waves() {
+            let wave: Vec<Vec3> = wave.iter().map(point).collect();
+            shapes.stroke(&wave, 0.07 * NODE_RADIUS, glyph_color());
+        }
+    }
 }
 
 /// The rings around spike generators, which flash with the generator.
@@ -426,6 +475,22 @@ mod tests {
         };
         assert!(pad_brightness(0.0) < pad_brightness(0.3e-9));
         assert_eq!(pad_brightness(0.3e-9), pad_brightness(-0.3e-9));
+    }
+
+    #[test]
+    fn a_loudspeaker_flashes_when_it_plays() {
+        let mut world = hecs::World::new();
+        let neuron = world.spawn((Position { position: Vec3::X },));
+        let speaker = crate::elements::spawn_loudspeaker(&mut world, neuron, Vec3::ZERO);
+        let palette = Theme::Dark.palette();
+        let pad_color =
+            |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
+        assert_eq!(pad_color(&world), speaker_color());
+        world
+            .get::<&mut Loudspeaker>(speaker)
+            .unwrap()
+            .time_since_heard = 0.0;
+        assert_ne!(pad_color(&world), speaker_color());
     }
 
     #[test]

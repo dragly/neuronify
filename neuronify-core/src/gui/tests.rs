@@ -709,6 +709,30 @@ fn a_rate_plot_sets_its_window_smoothing_and_range() {
 }
 
 #[test]
+fn a_loudspeaker_picks_its_sound_volume_and_mute() {
+    use crate::measurement::loudspeaker::{Loudspeaker, Sound};
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    let speaker = crate::elements::spawn_loudspeaker(&mut world, neuron, Vec3::Z * 3.0);
+    let mut harness = Harness::with(true, world, Some(speaker));
+    for setting in [Setting::Sound, Setting::Volume, Setting::Mute] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    harness.click_text(Sound::Tone.name());
+    harness.click_text("On");
+    let state = |harness: &Harness| {
+        let speaker = harness.world.get::<&Loudspeaker>(speaker).unwrap();
+        (speaker.sound, speaker.muted)
+    };
+    assert_eq!(state(&harness), (Sound::Tone, true));
+
+    harness.press(Modifiers::COMMAND, Key::Z);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(state(&harness), (Sound::Click, false));
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

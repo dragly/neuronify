@@ -27,6 +27,9 @@ pub enum Setting {
     KernelWidth,
     HighestRate,
     LowestRate,
+    Sound,
+    Volume,
+    Mute,
 }
 
 impl Setting {
@@ -59,6 +62,9 @@ impl Setting {
             Setting::KernelWidth => "Smoothing",
             Setting::HighestRate => "Highest rate",
             Setting::LowestRate => "Lowest rate",
+            Setting::Sound => "Sound",
+            Setting::Volume => "Volume",
+            Setting::Mute => "Mute",
         }
     }
 
@@ -104,6 +110,9 @@ impl Setting {
             }
             Setting::HighestRate => "The rate at the top of the plot.",
             Setting::LowestRate => "The rate at the bottom of the plot.",
+            Setting::Sound => "What it plays each time a connected neuron fires.",
+            Setting::Volume => "How loud it plays.",
+            Setting::Mute => "Silences it without disconnecting it.",
         }
     }
 }

@@ -3,6 +3,7 @@ use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::constants::{COMPARTMENT_SPHERE_SCALE, ERASE_RADIUS, NODE_RADIUS};
+use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::colors::Palette;
@@ -92,7 +93,10 @@ fn rectangle(world: &World, entity: Entity) -> Option<[Vec3; 2]> {
 }
 
 fn reach(world: &World, entity: Entity) -> f32 {
-    if world.get::<&TouchSensor>(entity).is_ok() || world.get::<&CurrentClamp>(entity).is_ok() {
+    if world
+        .satisfies::<hecs::Or<&TouchSensor, hecs::Or<&CurrentClamp, &Loudspeaker>>>(entity)
+        .unwrap_or(false)
+    {
         PAD_RADIUS
     } else if world.get::<&GeneratorDynamics>(entity).is_ok() {
         GENERATOR_RING_RADIUS + GENERATOR_RING_THICKNESS

@@ -4,6 +4,7 @@ use hecs::{Entity, EntityBuilder, World};
 use crate::components::*;
 use crate::constants::COUPLING_CAPACITANCE;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
+use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
 
@@ -243,6 +244,24 @@ pub fn spawn_rate_plot_wire(world: &mut World, target: Entity, plot: Entity) -> 
             directional: true,
         },
         SpikeTrain::default(),
+        Deletable {},
+    ))
+}
+
+pub fn spawn_loudspeaker(world: &mut World, target: Entity, position: Vec3) -> Entity {
+    let speaker = world.spawn((Loudspeaker::default(), Position { position }, Deletable {}));
+    spawn_loudspeaker_wire(world, target, speaker);
+    speaker
+}
+
+pub fn spawn_loudspeaker_wire(world: &mut World, target: Entity, speaker: Entity) -> Entity {
+    world.spawn((
+        Connection {
+            from: target,
+            to: speaker,
+            strength: 1.0,
+            directional: true,
+        },
         Deletable {},
     ))
 }
