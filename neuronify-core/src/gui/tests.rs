@@ -3,7 +3,7 @@ use glam::Vec3;
 use hecs::Entity;
 
 use super::*;
-use crate::components::{Connection, LeakyNeuron, NeuronType, RegularSpikeGenerator};
+use crate::components::{Connection, CurrentClamp, LeakyNeuron, NeuronType, RegularSpikeGenerator};
 use crate::constants::DEFAULT_SPEED;
 use crate::elements::{spawn_cable, spawn_compartment, Element};
 use crate::settings::Setting;
@@ -403,6 +403,21 @@ fn spike_generators_reach_a_thousand_spikes_a_second() {
         .unwrap()
         .frequency;
     assert_eq!(frequency, 1000.0);
+}
+
+#[test]
+fn current_sources_reach_thirty_nanoamperes() {
+    let mut world = World::new();
+    let source = Element::CurrentSource.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(source));
+    let slider = harness.text_position(Setting::Current.label()).unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    let current = harness
+        .world
+        .get::<&CurrentClamp>(source)
+        .unwrap()
+        .current_output;
+    assert_eq!(current, 30e-9);
 }
 
 #[test]

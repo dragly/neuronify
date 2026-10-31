@@ -40,6 +40,7 @@ const HEADER_ICON: f32 = 18.0;
 const DELETE_HEIGHT: f32 = 36.0;
 const DELETE_GAP: f32 = 8.0;
 const DESCRIPTION_SIZE: f32 = 11.5;
+const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30e-9, 0.01e-9);
 const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
 enum Action {
@@ -412,6 +413,10 @@ fn sparkline(ui: &mut Ui, chrome: &Chrome, history: &VecDeque<f64>, threshold: O
     ));
 }
 
+fn nanoamperes(amperes: f64) -> String {
+    format!("{:.2} nA", amperes * 1e9)
+}
+
 fn millivolts(volts: f64) -> String {
     format!("{:.1} mV", volts * 1e3).replace('-', "\u{2212}")
 }
@@ -557,13 +562,13 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     }
     if let Ok(mut clamp) = world.get::<&mut CurrentClamp>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        changed |= parameter(
+        changed |= logarithmic_parameter(
             ui,
             chrome,
             Setting::Current,
             &mut clamp.current_output,
-            0.0..=1e-8,
-            |amperes| format!("{:.2} nA", amperes * 1e9),
+            CURRENTS,
+            nanoamperes,
         );
     }
     if let Ok(mut generator) = world.get::<&mut RegularSpikeGenerator>(entity) {
