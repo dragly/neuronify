@@ -378,7 +378,7 @@ mod tests {
         let context = egui::Context::default();
         let mut landing = LandingScreen::new(false);
         let (output, _) = run(&context, &mut landing, vec![]);
-        let position = text_position(&output, "Tutorial 1: Intro").unwrap() + vec2(4.0, 4.0);
+        let position = text_position(&output, "1. Spikes").unwrap() + vec2(4.0, 4.0);
 
         let click = |pressed| Event::PointerButton {
             pos: position,
@@ -396,7 +396,7 @@ mod tests {
         let Some(LandingChoice::Example { world, .. }) = choice else {
             panic!("clicking the card did not open an example");
         };
-        assert_eq!(world.query::<&LeakyNeuron>().iter().count(), 1);
+        assert_eq!(world.query::<&LeakyNeuron>().iter().count(), 2);
     }
 
     #[test]
