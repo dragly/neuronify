@@ -17,6 +17,8 @@ pub enum Setting {
     MaximumCurrent,
     SynapseTimeConstant,
     Delay,
+    HighestVoltage,
+    LowestVoltage,
 }
 
 impl Setting {
@@ -39,6 +41,8 @@ impl Setting {
             Setting::MaximumCurrent => "Maximum current",
             Setting::SynapseTimeConstant => "Time constant",
             Setting::Delay => "Delay",
+            Setting::HighestVoltage => "Highest voltage",
+            Setting::LowestVoltage => "Lowest voltage",
         }
     }
 
@@ -72,6 +76,8 @@ impl Setting {
             Setting::MaximumCurrent => "How hard each spike pushes the neuron it reaches.",
             Setting::SynapseTimeConstant => "How long the push from each spike lasts.",
             Setting::Delay => "How long a spike takes to arrive.",
+            Setting::HighestVoltage => "The voltage at the top of each plot.",
+            Setting::LowestVoltage => "The voltage at the bottom of each plot.",
         }
     }
 }

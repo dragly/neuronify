@@ -605,6 +605,34 @@ fn a_selected_synapse_shows_its_settings_and_undoes_them() {
 }
 
 #[test]
+fn a_voltmeter_sets_the_voltages_at_the_top_and_bottom_of_its_plots() {
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    let voltmeter = crate::elements::spawn_voltmeter(&mut world, neuron, Vec3::Z * 3.0);
+    let mut harness = Harness::with(true, world, Some(voltmeter));
+    for setting in [Setting::HighestVoltage, Setting::LowestVoltage] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    let slider = harness
+        .text_position(Setting::LowestVoltage.label())
+        .unwrap()
+        + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    let range = |harness: &Harness| {
+        let range = harness
+            .world
+            .get::<&crate::measurement::voltmeter::VoltmeterRange>(voltmeter)
+            .unwrap();
+        (*range).clone()
+    };
+    assert_eq!(range(&harness).minimum, range(&harness).maximum - 1.0);
+
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(range(&harness), Default::default());
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

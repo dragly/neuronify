@@ -3,7 +3,7 @@ use hecs::{Entity, EntityBuilder, World};
 
 use crate::components::*;
 use crate::constants::COUPLING_CAPACITANCE;
-use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter};
+use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
 
 const VOLTMETER_MEASUREMENTS: usize = 100000;
 
@@ -177,19 +177,26 @@ pub fn spawn_voltmeter(world: &mut World, target: Entity, position: Vec3) -> Ent
     let voltmeter = world.spawn((
         Voltmeter {},
         Position { position },
+        VoltmeterSize::default(),
+        VoltmeterRange::default(),
+        Deletable {},
+    ));
+    spawn_voltmeter_wire(world, target, voltmeter);
+    voltmeter
+}
+
+pub fn spawn_voltmeter_wire(world: &mut World, target: Entity, voltmeter: Entity) -> Entity {
+    world.spawn((
+        Connection {
+            from: target,
+            to: voltmeter,
+            strength: 1.0,
+            directional: true,
+        },
         VoltageSeries {
             measurements: RollingWindow::new(VOLTMETER_MEASUREMENTS),
             spike_times: Vec::new(),
         },
-        Connection {
-            from: target,
-            to: Entity::DANGLING,
-            strength: 1.0,
-            directional: true,
-        },
-        VoltmeterSize::default(),
         Deletable {},
-    ));
-    world.get::<&mut Connection>(voltmeter).unwrap().to = voltmeter;
-    voltmeter
+    ))
 }

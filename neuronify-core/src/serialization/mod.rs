@@ -30,9 +30,10 @@ mod v5;
 mod v6;
 mod v7;
 mod v8;
+mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -46,7 +47,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v8::SaveContext, &mut serializer)
+    serialize(world, &mut v9::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -92,6 +93,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v8::deserialize(body)?, time, speed)
         }
+        9 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v9::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -108,6 +114,7 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             5 => v6::upgrade_from_v5(&mut world),
             6 => v7::upgrade_from_v6(&mut world),
             7 => v8::upgrade_from_v7(&mut world),
+            8 => v9::upgrade_from_v8(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -147,7 +154,9 @@ mod tests {
     use super::*;
     use crate::components::*;
     use crate::elements::{spawn_cable, spawn_compartment, Element};
-    use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
+    use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
+    use std::any::TypeId;
+    use std::collections::BTreeMap;
 
     const LEAKY_NFY: &str = include_str!("../../examples/leaky.nfy");
     const FIXTURE_TIME: f64 = 2.5;
@@ -306,6 +315,29 @@ mod tests {
     }
 
     #[test]
+    fn loads_version_9() {
+        let saved = load(include_bytes!("fixtures/v9.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    fn composition(world: &World) -> BTreeMap<Vec<TypeId>, u32> {
+        world
+            .archetypes()
+            .filter(|archetype| !archetype.is_empty())
+            .map(|archetype| {
+                let mut types: Vec<TypeId> = archetype.component_types().collect();
+                types.sort();
+                (types, archetype.len())
+            })
+            .fold(BTreeMap::new(), |mut composition, (types, len)| {
+                *composition.entry(types).or_default() += len;
+                composition
+            })
+    }
+
+    #[test]
     fn keeps_dendrites() {
         let mut world = World::new();
         let soma = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::ZERO);
@@ -373,7 +405,7 @@ mod tests {
     fn assert_fixture(saved: &SavedWorld, notes: usize, burst_neurons: usize) {
         let world = &saved.world;
         let neurons = 44 + burst_neurons;
-        assert_eq!(world.len(), 190);
+        assert_eq!(world.len(), 204);
         assert_eq!(count::<Position>(world), 125);
         assert_eq!(count::<LeakyNeuron>(world), neurons);
         assert_eq!(count::<LeakyDynamics>(world), neurons);
@@ -400,10 +432,14 @@ mod tests {
         assert_eq!(count::<Annotation>(world), notes);
         assert_eq!(count::<NoteSize>(world), notes);
         assert_eq!(count::<StaticConnectionSource>(world), 1);
-        assert_eq!(count::<Deletable>(world), 145 + notes + burst_neurons);
+        assert_eq!(count::<Deletable>(world), 159 + notes + burst_neurons);
         assert_eq!(count::<Selectable>(world), 1);
         assert_eq!(count::<Voltmeter>(world), 14);
         assert_eq!(count::<VoltageSeries>(world), 14);
+        assert_eq!(count::<VoltmeterRange>(world), 14);
+        for (voltmeter, _) in world.query::<&Voltmeter>().iter() {
+            assert_eq!(measured(world, voltmeter).len(), 1);
+        }
         assert_eq!(count::<Connection>(world), 79);
         assert_eq!(count::<CompartmentCurrent>(world), 1);
         assert_eq!(count::<Compartment>(world), 1);

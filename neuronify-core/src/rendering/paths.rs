@@ -5,7 +5,7 @@ use hecs::{Entity, EntityRef};
 
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::voltmeter::Voltmeter;
+use crate::measurement::voltmeter::VoltageSeries;
 use crate::rendering::colors::*;
 use crate::rendering::shapes::{shown_voltage, voltage_fraction};
 
@@ -159,7 +159,7 @@ pub fn connection_paths(
         .collect();
     world
         .query::<(&Connection, Option<&CompartmentCurrent>)>()
-        .without::<&Voltmeter>()
+        .without::<&VoltageSeries>()
         .iter()
         .filter(|(_, (connection, cable))| connection.directional || cable.is_none())
         .filter_map(|(entity, (connection, _))| {
