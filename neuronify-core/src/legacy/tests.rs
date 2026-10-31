@@ -770,3 +770,77 @@ fn a_visual_input_drives_the_neuron_it_connects_to() {
         .unwrap();
     assert!(spikes.iter().any(|spike| spike.entity_index == neuron));
 }
+
+fn bundled_neuronify_1_files() -> Vec<(String, String)> {
+    let examples = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
+    let mut files: Vec<(String, String)> = std::fs::read_dir(examples)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "nfy"))
+        .map(|path| {
+            let name = path.file_name().unwrap().to_string_lossy().into_owned();
+            (name, std::fs::read_to_string(path).unwrap())
+        })
+        .collect();
+    files.sort();
+    files
+}
+
+fn converted(world: &hecs::World, entity: hecs::Entity) -> bool {
+    use crate::measurement::{is_meter, visual_input::VisualInput};
+    world
+        .satisfies::<hecs::Or<
+            &LeakyNeuron,
+            hecs::Or<
+                &CurrentClamp,
+                hecs::Or<&GeneratorDynamics, hecs::Or<&VisualInput, &Annotation>>,
+            >,
+        >>(entity)
+        .unwrap_or(false)
+        || is_meter(world, entity)
+}
+
+#[test]
+fn every_bundled_neuronify_1_file_loads_with_nothing_dropped() {
+    let files = bundled_neuronify_1_files();
+    assert_eq!(files.len(), 24);
+    for (name, json) in files {
+        let sim = parse_legacy_nfy(&json).unwrap();
+        let mut world = hecs::World::new();
+        let entities = spawn_legacy_simulation(&mut world, &sim);
+        for (node, &entity) in sim.nodes.iter().zip(&entities) {
+            assert!(
+                converted(&world, entity),
+                "{name}: {} was dropped",
+                node.filename
+            );
+        }
+        let connections: Vec<(hecs::Entity, hecs::Entity)> = world
+            .query::<&Connection>()
+            .iter()
+            .map(|(_, connection)| (connection.from, connection.to))
+            .collect();
+        for edge in &sim.edges {
+            let (from, to) = (entities[edge.from], entities[edge.to]);
+            let kept = connections.contains(&(from, to))
+                || (crate::measurement::is_meter(&world, from)
+                    && connections.contains(&(to, from)));
+            assert!(
+                kept,
+                "{name}: {} from {} to {} was dropped",
+                edge.filename, edge.from, edge.to
+            );
+        }
+        assert_eq!(connections.len(), sim.edges.len(), "{name}");
+    }
+}
+
+#[test]
+fn a_negative_legacy_fire_output_makes_a_leaky_neuron_inhibitory() {
+    let sim = parse_legacy_nfy(TWO_NEURON_OSCILLATOR_NFY).unwrap();
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &sim);
+    for neuron in &entities[..2] {
+        assert_eq!(neuron_type(&world, *neuron), NeuronType::Inhibitory);
+    }
+}
