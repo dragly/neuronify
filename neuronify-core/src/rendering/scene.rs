@@ -1,6 +1,7 @@
 use glam::Vec3;
 
 use crate::rendering::colors::Palette;
+use crate::rendering::current_flow::collect_current_flow;
 use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
 use crate::rendering::gpu_types::{CylinderData, Sphere, TorusData};
 use crate::rendering::paths::connection_paths;
@@ -45,7 +46,7 @@ impl Scene {
     }
 }
 
-pub fn collect_scene(world: &hecs::World, palette: &Palette) -> Scene {
+pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene {
     let radii = compartment_radii(world);
     let paths = connection_paths(world, &radii, palette);
     let mut scene = Scene {
@@ -53,6 +54,9 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette) -> Scene {
         cylinders: collect_cylinders(world, &radii, &paths, palette),
         rings: collect_rings(world, palette),
     };
+    scene
+        .spheres
+        .extend(collect_current_flow(world, &paths, time));
     scene.extend(collect_shapes(world, palette));
     scene
 }

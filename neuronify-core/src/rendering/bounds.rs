@@ -42,7 +42,7 @@ pub fn canvas_bounds(world: &hecs::World) -> Option<Bounds> {
 fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
     let mut points = Vec::new();
     let palette = Theme::default().palette();
-    let scene = collect_scene(world, &palette);
+    let scene = collect_scene(world, &palette, 0.0);
     for sphere in &scene.spheres {
         points.extend(footprint(sphere.position, sphere.radius));
     }

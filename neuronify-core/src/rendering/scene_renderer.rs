@@ -19,6 +19,12 @@ use crate::rendering::scene::collect_scene;
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::voltmeter::collect_voltmeter_traces;
 
+pub struct EditorMarks<'a> {
+    pub drawn_connection: &'a [Vec3],
+    pub selection: Option<Entity>,
+    pub eraser: Option<Vec3>,
+}
+
 const SHADOW_EXTENT_PER_CAMERA_DISTANCE: f32 = 2.0;
 const MIN_SHADOW_EXTENT: f32 = 50.0;
 const MAX_SHADOW_EXTENT: f32 = 625.0;
@@ -167,10 +173,9 @@ impl SceneRenderer {
         &mut self,
         application: &mut visula::Application,
         world: &hecs::World,
+        time: f64,
         theme: Theme,
-        drawn_connection: &[Vec3],
-        selection: Option<Entity>,
-        eraser: Option<Vec3>,
+        marks: EditorMarks,
     ) {
         if self.theme != theme {
             self.floor = create_floor(
@@ -196,15 +201,15 @@ impl SceneRenderer {
             .clamp(MIN_SHADOW_EXTENT, MAX_SHADOW_EXTENT);
 
         let palette = theme.palette();
-        let mut scene = collect_scene(world, &palette);
-        if let Some(selection) = selection {
+        let mut scene = collect_scene(world, &palette, time);
+        if let Some(selection) = marks.selection {
             scene.extend(collect_selection(world, selection, &palette));
         }
-        if let Some(center) = eraser {
+        if let Some(center) = marks.eraser {
             scene.rings.push(eraser_outline(center, &palette));
         }
         let mut connections = collect_voltmeter_wires(world, &palette);
-        connections.extend(connection_being_drawn(drawn_connection, &palette));
+        connections.extend(connection_being_drawn(marks.drawn_connection, &palette));
         connections.extend(collect_voltmeter_traces(world));
 
         self.sphere_buffer

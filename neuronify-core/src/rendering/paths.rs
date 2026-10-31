@@ -36,10 +36,13 @@ pub struct ConnectionPath {
 }
 
 impl ConnectionPath {
+    pub fn length(&self) -> f32 {
+        self.points.windows(2).map(|w| w[0].distance(w[1])).sum()
+    }
+
     /// The point a fraction `t` of the way along the path.
     pub fn point_at(&self, t: f32) -> Vec3 {
-        let total: f32 = self.points.windows(2).map(|w| w[0].distance(w[1])).sum();
-        let mut remaining = t.clamp(0.0, 1.0) * total;
+        let mut remaining = t.clamp(0.0, 1.0) * self.length();
         for w in self.points.windows(2) {
             let length = w[0].distance(w[1]);
             if remaining <= length && length > 0.0 {
@@ -89,8 +92,9 @@ fn connection_colors(
     };
     let start_value = value(to);
     let end_value = value(from);
-    if from.has::<CurrentClamp>() {
-        (yellow(), yellow())
+    if let Some(clamp) = from.get::<&CurrentClamp>() {
+        let color = current_color(clamp.current_output);
+        (color, color)
     } else if from.has::<GeneratorDynamics>() {
         (orange(), orange())
     } else if let Some(neuron_type) = from.get::<&NeuronType>() {

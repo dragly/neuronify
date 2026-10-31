@@ -5,7 +5,7 @@ use crate::editor::{Editor, Pan};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
-use crate::rendering::{canvas_bounds, SceneRenderer, Theme};
+use crate::rendering::{canvas_bounds, EditorMarks, SceneRenderer, Theme};
 use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
@@ -401,10 +401,13 @@ impl visula::Simulation for Neuronify {
         self.renderer.update(
             application,
             &self.world,
+            self.time,
             self.theme,
-            &drawn_connection,
-            self.editor.selection,
-            self.eraser(application),
+            EditorMarks {
+                drawn_connection: &drawn_connection,
+                selection: self.editor.selection,
+                eraser: self.eraser(application),
+            },
         );
     }
 
