@@ -683,6 +683,32 @@ fn a_spike_detector_sets_its_time_range() {
 }
 
 #[test]
+fn a_rate_plot_sets_its_window_smoothing_and_range() {
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    let plot = crate::elements::spawn_rate_plot(&mut world, neuron, Vec3::Z * 3.0);
+    let mut harness = Harness::with(true, world, Some(plot));
+    assert!(harness.shows("Firing rate plot"));
+    for setting in [
+        Setting::Window,
+        Setting::KernelWidth,
+        Setting::HighestRate,
+        Setting::LowestRate,
+    ] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    harness.scroll_inspector_to_the_end();
+    let slider = harness.text_position(Setting::LowestRate.label()).unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    let plot = harness
+        .world
+        .get::<&crate::measurement::firing_rate::RatePlot>(plot)
+        .unwrap();
+    assert_eq!(plot.minimum, plot.maximum - 1.0);
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

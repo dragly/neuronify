@@ -8,9 +8,11 @@ use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{
-    spawn_cable, spawn_compartment, spawn_connection, spawn_spike_detector,
-    spawn_spike_detector_wire, spawn_voltmeter, spawn_voltmeter_wire, Element,
+    spawn_cable, spawn_compartment, spawn_connection, spawn_rate_plot, spawn_rate_plot_wire,
+    spawn_spike_detector, spawn_spike_detector_wire, spawn_voltmeter, spawn_voltmeter_wire,
+    Element,
 };
+use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{measured, Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::bounds::note_corners;
@@ -295,6 +297,7 @@ impl Editor {
             Tool::Place(element) => self.add(world, recording, element, position, shift_down),
             Tool::Voltmeter => self.place_voltmeter(world, position),
             Tool::SpikeDetector => self.place_spike_detector(world, position),
+            Tool::RatePlot => self.place_rate_plot(world, position),
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon => self.grow_axon(world, position, shift_down),
             Tool::Erase => erase(world, recording, position),
@@ -510,6 +513,18 @@ impl Editor {
                 target,
                 target_position + Vec3::X,
             ));
+        }
+    }
+
+    fn place_rate_plot(&mut self, world: &mut World, position: Vec3) {
+        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
+            return;
+        }
+        if let Some((target, target_position)) =
+            first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
+        {
+            self.previous_creation =
+                Some(spawn_rate_plot(world, target, target_position + Vec3::X));
         }
     }
 
@@ -749,6 +764,8 @@ fn measure_with_meter_at(world: &mut World, source: Entity, position: Vec3) {
         spawn_voltmeter_wire(world, source, meter);
     } else if world.satisfies::<&SpikeDetector>(meter).unwrap_or(false) && neuron {
         spawn_spike_detector_wire(world, source, meter);
+    } else if world.satisfies::<&RatePlot>(meter).unwrap_or(false) && neuron {
+        spawn_rate_plot_wire(world, source, meter);
     }
 }
 

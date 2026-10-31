@@ -680,3 +680,23 @@ fn spike_detectors_keep_their_rows_time_range_and_size() {
     let size = world.get::<&MeterSize>(detector).unwrap();
     assert_eq!((size.width, size.height), (448.0 / 25.0, 352.0 / 25.0));
 }
+
+#[test]
+fn rate_plots_keep_their_window_smoothing_and_range() {
+    let sim = parse_legacy_nfy(include_str!("../../examples/types_of_inhibition.nfy")).unwrap();
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &sim);
+    let plots: Vec<(hecs::Entity, crate::measurement::firing_rate::RatePlot)> = world
+        .query::<&crate::measurement::firing_rate::RatePlot>()
+        .iter()
+        .map(|(plot, settings)| (plot, settings.clone()))
+        .collect();
+    assert_eq!(plots.len(), 2);
+    for (plot, settings) in plots {
+        assert_eq!(
+            (settings.window, settings.kernel_width, settings.maximum),
+            (0.4, 0.3, 50.0)
+        );
+        assert!(!crate::measurement::voltmeter::measured(&world, plot).is_empty());
+    }
+}

@@ -18,6 +18,7 @@ use crate::rendering::halos::{collect_halos, create_halos};
 use crate::rendering::labels::LabelRenderer;
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::notes::NoteRenderer;
+use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::collect_scene;
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spike_detector::collect_spike_detectors;
@@ -221,6 +222,7 @@ impl SceneRenderer {
         connections.extend(connection_being_drawn(marks.drawn_connection, &palette));
         connections.extend(collect_voltmeter_traces(world));
         connections.extend(collect_spike_detectors(world, &palette));
+        connections.extend(collect_rate_plots(world));
 
         self.sphere_buffer
             .update(&application.device, &application.queue, &scene.spheres);

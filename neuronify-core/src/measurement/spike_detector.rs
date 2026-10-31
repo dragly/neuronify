@@ -4,6 +4,7 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
+use crate::measurement::firing_rate::RatePlot;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SpikeDetector {
@@ -35,14 +36,7 @@ pub struct SpikeTrain {
 }
 
 pub fn record_spikes(world: &mut World, time: f64) {
-    let mut detectors = world
-        .query_mut::<&mut SpikeDetector>()
-        .into_iter()
-        .peekable();
-    if detectors.peek().is_none() {
-        return;
-    }
-    for (_, detector) in detectors {
+    for (_, detector) in world.query_mut::<&mut SpikeDetector>() {
         detector.time = time;
     }
     let wires: Vec<(Entity, bool, f64)> = world
@@ -50,7 +44,10 @@ pub fn record_spikes(world: &mut World, time: f64) {
         .with::<&SpikeTrain>()
         .iter()
         .filter_map(|(wire, connection)| {
-            let range = world.get::<&SpikeDetector>(connection.to).ok()?.time_range;
+            let range = match world.get::<&SpikeDetector>(connection.to) {
+                Ok(detector) => detector.time_range,
+                Err(_) => world.get::<&RatePlot>(connection.to).ok()?.window,
+            };
             let fired = world
                 .get::<&LeakyDynamics>(connection.from)
                 .is_ok_and(|dynamics| dynamics.time_since_fire == 0.0);

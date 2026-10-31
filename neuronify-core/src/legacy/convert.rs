@@ -2,7 +2,8 @@ use glam::Vec3;
 use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::elements::{spawn_spike_detector_wire, spawn_voltmeter_wire};
+use crate::elements::{spawn_rate_plot_wire, spawn_spike_detector_wire, spawn_voltmeter_wire};
+use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
 use crate::{Connection, Deletable, NeuronType, Position};
@@ -127,6 +128,17 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 ..Default::default()
             };
             world.spawn((left_middle, detector, size, Deletable {}))
+        }
+        "meters/RatePlot.qml" => {
+            let (left_middle, size) = meter_frame(node);
+            let default = RatePlot::default();
+            let plot = RatePlot {
+                window: node.window_duration.unwrap_or(default.window),
+                kernel_width: node.temporal_resolution.unwrap_or(default.kernel_width),
+                minimum: node.minimum_value.unwrap_or(default.minimum),
+                maximum: node.maximum_value.unwrap_or(default.maximum),
+            };
+            world.spawn((left_middle, plot, RateSeries::default(), size, Deletable {}))
         }
         "meters/Voltmeter.qml" => {
             let (left_middle, size) = meter_frame(node);
@@ -315,6 +327,8 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             };
             if world.get::<&SpikeDetector>(meter).is_ok() {
                 spawn_spike_detector_wire(world, neuron, meter);
+            } else if world.get::<&RatePlot>(meter).is_ok() {
+                spawn_rate_plot_wire(world, neuron, meter);
             } else {
                 spawn_voltmeter_wire(world, neuron, meter);
             }
