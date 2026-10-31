@@ -1636,3 +1636,27 @@ fn a_visual_input_is_picked_anywhere_on_its_picture() {
     editor.tap(&world, at(5.0, 5.0));
     assert_eq!(editor.selection, None);
 }
+
+#[test]
+fn a_touch_sensor_makes_its_neuron_fire_right_away() {
+    let mut world = World::new();
+    let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::StaticConnection);
+    drag(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 9.5)]);
+    assert!(connected(&world, sensor, target));
+    assert_eq!(count::<ImmediateFireSynapse>(&world), 1);
+
+    editor.tool = Tool::Stimulate;
+    editor.edit(&mut world, at(0.0, 0.5), false);
+    editor.release(&world);
+    let mut time = 0.0;
+    let fired_within = (0..10).find(|_| {
+        step_simulation(&mut world, &mut time, 1, None);
+        world.get::<&LeakyDynamics>(target).unwrap().time_since_fire == 0.0
+    });
+    assert!(
+        fired_within.is_some_and(|steps| steps < 3),
+        "{fired_within:?}"
+    );
+}
