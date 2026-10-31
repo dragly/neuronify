@@ -18,6 +18,7 @@ use hecs::{Entity, World};
 use crate::components::LeakyDynamics;
 use crate::constants::*;
 use crate::measurement::firing_rate::record_rates;
+use crate::measurement::loudspeaker::listen;
 use crate::measurement::spike_detector::record_spikes;
 
 pub fn step_simulation(world: &mut World, time: &mut f64, steps: u32, touch: Option<Vec3>) {
@@ -29,6 +30,7 @@ pub fn step_simulation(world: &mut World, time: &mut f64, steps: u32, touch: Opt
         update_firing_rates(world, LIF_DT);
         record_spikes(world, *time);
         record_rates(world, *time);
+        listen(world, *time, LIF_DT);
         *time += LIF_DT;
 
         let recently_fired: HashSet<Entity> = world

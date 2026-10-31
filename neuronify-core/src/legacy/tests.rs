@@ -700,3 +700,25 @@ fn rate_plots_keep_their_window_smoothing_and_range() {
         assert!(!crate::measurement::voltmeter::measured(&world, plot).is_empty());
     }
 }
+
+#[test]
+fn loudspeakers_play_the_closest_sound_for_each_neuron_wired_to_them() {
+    let file = r#"{"fileFormatVersion": 4, "nodes": [
+        {"filename": "meters/Loudspeaker.qml", "savedProperties": {"source": "drip.wav", "x": 0, "y": 0}},
+        {"filename": "neurons/LeakyNeuron.qml", "savedProperties": {"x": 100, "y": 0}}
+    ], "edges": [
+        {"filename": "edges/MeterEdge.qml", "from": 0, "to": 1, "savedProperties": {}}
+    ]}"#;
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &parse_legacy_nfy(file).unwrap());
+    let speaker = world
+        .get::<&crate::measurement::loudspeaker::Loudspeaker>(entities[0])
+        .unwrap()
+        .clone();
+    assert_eq!(speaker.sound, crate::measurement::loudspeaker::Sound::Drop);
+    let wired: Vec<hecs::Entity> = crate::measurement::voltmeter::measured(&world, entities[0])
+        .into_iter()
+        .map(|(_, neuron)| neuron)
+        .collect();
+    assert_eq!(wired, [entities[1]]);
+}

@@ -1601,3 +1601,27 @@ fn a_rate_plot_averages_the_neurons_connected_onto_it() {
         .collect();
     assert_eq!(measured, [first, second]);
 }
+
+#[test]
+fn a_loudspeaker_listens_to_each_neuron_connected_onto_it() {
+    let mut world = World::new();
+    let first = neuron(&mut world, at(0.0, 0.0));
+    let second = neuron(&mut world, at(0.0, -10.0));
+    let mut editor = editor(Tool::Loudspeaker);
+    drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
+    let (speaker, position) = world
+        .query::<&Position>()
+        .with::<&crate::measurement::loudspeaker::Loudspeaker>()
+        .iter()
+        .map(|(speaker, position)| (speaker, position.position))
+        .next()
+        .unwrap();
+    editor.tool = Tool::StaticConnection;
+    drag(&mut editor, &mut world, &[at(0.0, -9.5), position]);
+    let wired: Vec<Entity> = measured(&world, speaker)
+        .into_iter()
+        .map(|(_, target)| target)
+        .collect();
+    assert_eq!(wired, [first, second]);
+    assert_eq!(count::<CurrentSynapse>(&world), 0);
+}

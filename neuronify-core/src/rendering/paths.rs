@@ -5,6 +5,7 @@ use hecs::{Entity, EntityRef};
 
 use crate::components::*;
 use crate::constants::*;
+use crate::measurement::is_meter;
 use crate::rendering::colors::*;
 use crate::rendering::shapes::{shown_voltage, voltage_fraction};
 
@@ -159,11 +160,7 @@ pub fn connection_paths(
     world
         .query::<(&Connection, Option<&CompartmentCurrent>)>()
         .iter()
-        .filter(|(_, (connection, _))| {
-            !world
-                .satisfies::<&MeterSize>(connection.to)
-                .unwrap_or(false)
-        })
+        .filter(|(_, (connection, _))| !is_meter(world, connection.to))
         .filter(|(_, (connection, cable))| connection.directional || cable.is_none())
         .filter_map(|(entity, (connection, _))| {
             let from = world.entity(connection.from).ok()?;

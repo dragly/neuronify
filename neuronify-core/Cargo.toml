@@ -28,6 +28,14 @@ serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.122"
 postcard = { version = "1.0.8", features = ["use-std"] }
 web-sys = { version = "0.3.69", features = [
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "AudioContext",
+    "AudioDestinationNode",
+    "AudioNode",
+    "AudioParam",
+    "AudioScheduledSourceNode",
+    "BaseAudioContext",
     "Blob",
     "Document",
     "DomException",
@@ -35,6 +43,7 @@ web-sys = { version = "0.3.69", features = [
     "File",
     "FileList",
     "FilePropertyBag",
+    "GainNode",
     "HtmlAnchorElement",
     "HtmlElement",
     "HtmlInputElement",
@@ -54,3 +63,6 @@ winit = "0.30"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # rand 0.8 depends on getrandom 0.2, which only builds for the web with its js feature
 getrandom = { version = "0.2", features = ["js"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cpal = "0.18.2"

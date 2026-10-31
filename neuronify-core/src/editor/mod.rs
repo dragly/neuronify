@@ -8,11 +8,12 @@ use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{
-    spawn_cable, spawn_compartment, spawn_connection, spawn_rate_plot, spawn_rate_plot_wire,
-    spawn_spike_detector, spawn_spike_detector_wire, spawn_voltmeter, spawn_voltmeter_wire,
-    Element,
+    spawn_cable, spawn_compartment, spawn_connection, spawn_loudspeaker, spawn_loudspeaker_wire,
+    spawn_rate_plot, spawn_rate_plot_wire, spawn_spike_detector, spawn_spike_detector_wire,
+    spawn_voltmeter, spawn_voltmeter_wire, Element,
 };
 use crate::measurement::firing_rate::RatePlot;
+use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{measured, Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::bounds::note_corners;
@@ -31,6 +32,7 @@ const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const COMPARTMENT_REACH: f32 = NODE_RADIUS;
 const VOLTMETER_REACH: f32 = NODE_RADIUS;
 const CORNER_REACH: f32 = 1.0;
+const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
 const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
 const HINT_SECONDS: f64 = 2.0;
@@ -298,6 +300,7 @@ impl Editor {
             Tool::Voltmeter => self.place_voltmeter(world, position),
             Tool::SpikeDetector => self.place_spike_detector(world, position),
             Tool::RatePlot => self.place_rate_plot(world, position),
+            Tool::Loudspeaker => self.place_loudspeaker(world, position),
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon => self.grow_axon(world, position, shift_down),
             Tool::Erase => erase(world, recording, position),
@@ -528,6 +531,21 @@ impl Editor {
         }
     }
 
+    fn place_loudspeaker(&mut self, world: &mut World, position: Vec3) {
+        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
+            return;
+        }
+        if let Some((target, target_position)) =
+            first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
+        {
+            self.previous_creation = Some(spawn_loudspeaker(
+                world,
+                target,
+                target_position + SPEAKER_OFFSET,
+            ));
+        }
+    }
+
     fn connect(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
         if self.connection_tool.is_some() {
             self.extend_connection(world, position, shift_down);
@@ -746,10 +764,14 @@ fn start_connection(sources: Vec<(Entity, Vec3)>, position: Vec3) -> Option<Conn
 }
 
 fn measure_with_meter_at(world: &mut World, source: Entity, position: Vec3) {
-    let Some(&(meter, _, _)) = meter_frames(world)
-        .iter()
+    let framed = meter_frames(world)
+        .into_iter()
         .find(|(_, _, frame)| frame.contains(position))
-    else {
+        .map(|(meter, _, _)| meter);
+    let speakers = positions_with::<Loudspeaker>(world);
+    let Some(meter) = framed.or_else(|| {
+        nearest_within(speakers, position, CONNECTION_REACH).map(|(speaker, _)| speaker)
+    }) else {
         return;
     };
     if measured(world, meter)
@@ -766,6 +788,8 @@ fn measure_with_meter_at(world: &mut World, source: Entity, position: Vec3) {
         spawn_spike_detector_wire(world, source, meter);
     } else if world.satisfies::<&RatePlot>(meter).unwrap_or(false) && neuron {
         spawn_rate_plot_wire(world, source, meter);
+    } else if world.satisfies::<&Loudspeaker>(meter).unwrap_or(false) && neuron {
+        spawn_loudspeaker_wire(world, source, meter);
     }
 }
 

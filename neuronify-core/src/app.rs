@@ -1,3 +1,4 @@
+use crate::audio::{schedule, Speakers};
 use crate::camera;
 use crate::components::Link;
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
@@ -5,6 +6,7 @@ use crate::editor::{Editor, Pan};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
+use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
 use crate::rendering::ghost::{self, GHOST_HEIGHT};
 use crate::rendering::{canvas_bounds, EditorMarks, Ghost, SceneRenderer, Theme};
 use glam::Vec3;
@@ -42,6 +44,7 @@ pub struct Neuronify {
     load_error: Option<String>,
     frame_scene_requested: bool,
     saving: Saving,
+    speakers: Speakers,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -90,6 +93,22 @@ fn is_press_scroll_or_touch(event: &Event<CustomEvent>) -> bool {
             event: WindowEvent::MouseInput { .. }
                 | WindowEvent::MouseWheel { .. }
                 | WindowEvent::Touch(_),
+            ..
+        }
+    )
+}
+
+fn is_press(event: &Event<CustomEvent>) -> bool {
+    matches!(
+        event,
+        Event::WindowEvent {
+            event: WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                ..
+            } | WindowEvent::Touch(visula::winit::event::Touch {
+                phase: TouchPhase::Started,
+                ..
+            }),
             ..
         }
     )
@@ -147,6 +166,7 @@ impl Neuronify {
             physics_clock: StepClock::default(),
             load_error: None,
             saving: saving(),
+            speakers: Speakers::default(),
         }
     }
 
@@ -379,12 +399,15 @@ impl visula::Simulation for Neuronify {
             }
         }
         if self.running {
+            let start = self.time;
             simulation::step_simulation(
                 &mut self.world,
                 &mut self.time,
                 simulation_steps,
                 self.editor.touch(),
             );
+            let plays = schedule(take_heard(&mut self.world), start, self.time, seconds);
+            self.speakers.play(&plays);
         }
         simulation::step_physics(&mut self.world, physics_steps);
 
@@ -495,6 +518,10 @@ impl visula::Simulation for Neuronify {
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
+        if is_press(event) {
+            let needed = self.world.query::<&Loudspeaker>().iter().next().is_some();
+            self.speakers.unlock(needed);
+        }
         if self.landing.is_some() && is_press_scroll_or_touch(event) {
             return;
         }
