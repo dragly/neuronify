@@ -27,6 +27,7 @@ use super::widgets::{heading, segmented, ROW_RADIUS};
 pub const INSPECTOR_WIDTH: f32 = 296.0;
 pub const DELETE: &str = "inspector_delete";
 pub const CLOSE: &str = "inspector_close";
+pub const LABEL: &str = "inspector_label";
 const PADDING: i8 = 14;
 const ROOM_BELOW: f32 = 80.0;
 const SHEET_PADDING: i8 = 16;
@@ -553,6 +554,25 @@ fn reading(ui: &mut Ui, chrome: &Chrome, label: &str, value: String, size: f32) 
     );
 }
 
+fn label_field(ui: &mut Ui, chrome: &Chrome, text: &mut String) -> bool {
+    ui.label(
+        RichText::new(Setting::Label.label())
+            .size(12.5)
+            .color(chrome.subtext),
+    );
+    let changed = ui
+        .add(
+            TextEdit::singleline(text)
+                .id(Id::new(LABEL))
+                .desired_width(f32::INFINITY)
+                .margin(Margin::symmetric(8, 6)),
+        )
+        .changed();
+    description(ui, chrome, Setting::Label.description());
+    ui.add_space(8.0);
+    changed
+}
+
 fn choice<T: PartialEq + Copy>(
     ui: &mut Ui,
     chrome: &Chrome,
@@ -609,6 +629,9 @@ fn type_switch(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> b
 fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
     let mut changed = false;
     heading(ui, chrome, "General", 0.0);
+    if let Ok(mut label) = world.get::<&mut Label>(entity) {
+        changed |= label_field(ui, chrome, &mut label.text);
+    }
     changed |= type_switch(ui, chrome, world, entity);
     if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(entity) {
         changed |= parameter(

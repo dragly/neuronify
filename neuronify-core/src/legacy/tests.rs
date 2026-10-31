@@ -603,3 +603,37 @@ fn a_voltmeter_keeps_its_range_and_sits_where_neuronify_1_drew_it() {
     let top_left = frame.corner(crate::measurement::voltmeter::Corner::TopLeft);
     assert!(top_left.abs_diff_eq(glam::Vec3::ZERO, 1e-5), "{top_left}");
 }
+
+#[test]
+fn neurons_keep_their_labels() {
+    let sim = parse_legacy_nfy(TUTORIAL_2_CIRCUITS_NFY).unwrap();
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &sim);
+    let mut labels: Vec<String> = world
+        .query::<&Label>()
+        .with::<&LeakyNeuron>()
+        .iter()
+        .map(|(_, label)| label.text.clone())
+        .filter(|text| !text.is_empty())
+        .collect();
+    labels.sort();
+    assert_eq!(labels, ["A", "B", "C"]);
+    assert_eq!(
+        world.query::<&Label>().iter().count(),
+        world.query::<&LeakyNeuron>().iter().count()
+    );
+}
+
+#[test]
+fn labels_lose_the_spaces_around_them() {
+    let file = r#"{"fileFormatVersion": 4, "edges": [], "nodes": [
+        {"filename": "neurons/LeakyNeuron.qml",
+         "savedProperties": {"label": "with refractory period ", "x": 0, "y": 0}}
+    ]}"#;
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &parse_legacy_nfy(file).unwrap());
+    assert_eq!(
+        world.get::<&Label>(entities[0]).unwrap().text,
+        "with refractory period"
+    );
+}

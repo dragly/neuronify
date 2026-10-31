@@ -45,6 +45,17 @@ pub fn spawn_legacy_simulation(world: &mut World, sim: &LegacySimulation) -> Vec
 }
 
 fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
+    let entity = spawn_element(world, node);
+    if !node.label.is_empty() || world.get::<&LeakyNeuron>(entity).is_ok() {
+        let label = Label {
+            text: node.label.trim().to_string(),
+        };
+        world.insert_one(entity, label).unwrap();
+    }
+    entity
+}
+
+fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
     let pos = Position {
         position: convert_position(node.x, node.y),
     };
