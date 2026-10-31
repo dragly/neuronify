@@ -217,6 +217,12 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 description: "Presynaptic and postsynaptic inhibition side by side.",
                 contents: legacy!("types_of_inhibition.nfy"),
             },
+            Example {
+                name: "Tiring Inhibition",
+                description: "An inhibitory neuron tires, \
+                    and the neuron it holds back fires more and more.",
+                contents: saved!("tiring_inhibition.neuronify"),
+            },
         ],
     },
     ExampleCategory {
@@ -240,6 +246,12 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 description: "Two visual inputs look at a moving bar \
                     through different receptive fields and drive one neuron.",
                 contents: legacy!("visualInput.nfy"),
+            },
+            Example {
+                name: "Listening to a Neuron",
+                description: "Hear a neuron click as a bar of light passes \
+                    at the angle it prefers.",
+                contents: saved!("listening_to_a_neuron.neuronify"),
             },
         ],
     },
@@ -283,7 +295,7 @@ mod tests {
         let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
         for entry in std::fs::read_dir(folder).unwrap() {
             let file = entry.unwrap().file_name().to_string_lossy().into_owned();
-            let example = file.ends_with(".nfy");
+            let example = file.ends_with(".nfy") || file.ends_with(".neuronify");
             let replaced_by_the_tutorial = file.starts_with("tutorial_");
             if example && file != "empty.nfy" && !replaced_by_the_tutorial {
                 assert!(listed.contains(&file.as_str()), "{file} is not listed");
