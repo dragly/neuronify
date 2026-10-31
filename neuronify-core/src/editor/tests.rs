@@ -1579,3 +1579,25 @@ fn a_spike_detector_gets_a_row_for_each_neuron_connected_onto_it() {
     assert_eq!(rows, [first, second]);
     assert!(!rows.contains(&compartment));
 }
+
+#[test]
+fn a_rate_plot_averages_the_neurons_connected_onto_it() {
+    let mut world = World::new();
+    let first = neuron(&mut world, at(0.0, 0.0));
+    let second = neuron(&mut world, at(0.0, -10.0));
+    let mut editor = editor(Tool::RatePlot);
+    drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
+    let (plot, _) = world
+        .query::<&crate::measurement::firing_rate::RatePlot>()
+        .iter()
+        .next()
+        .unwrap();
+    let inside = Frame::of(&world, plot).unwrap().point(0.5, 0.5);
+    editor.tool = Tool::StaticConnection;
+    drag(&mut editor, &mut world, &[at(0.0, -9.5), inside]);
+    let measured: Vec<Entity> = measured(&world, plot)
+        .into_iter()
+        .map(|(_, target)| target)
+        .collect();
+    assert_eq!(measured, [first, second]);
+}

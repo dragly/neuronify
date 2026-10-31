@@ -23,6 +23,10 @@ pub enum Setting {
     HighestVoltage,
     LowestVoltage,
     TimeRange,
+    Window,
+    KernelWidth,
+    HighestRate,
+    LowestRate,
 }
 
 impl Setting {
@@ -51,6 +55,10 @@ impl Setting {
             Setting::HighestVoltage => "Highest voltage",
             Setting::LowestVoltage => "Lowest voltage",
             Setting::TimeRange => "Time range",
+            Setting::Window => "Window",
+            Setting::KernelWidth => "Smoothing",
+            Setting::HighestRate => "Highest rate",
+            Setting::LowestRate => "Lowest rate",
         }
     }
 
@@ -90,6 +98,12 @@ impl Setting {
             Setting::HighestVoltage => "The voltage at the top of each plot.",
             Setting::LowestVoltage => "The voltage at the bottom of each plot.",
             Setting::TimeRange => "How far back in time the plot reaches.",
+            Setting::Window => "Only spikes this recent count toward the rate.",
+            Setting::KernelWidth => {
+                "How long each spike counts. More gives a smoother but slower curve."
+            }
+            Setting::HighestRate => "The rate at the top of the plot.",
+            Setting::LowestRate => "The rate at the bottom of the plot.",
         }
     }
 }

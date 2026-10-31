@@ -8,6 +8,7 @@ use visula::{
 
 use crate::components::{Label, MeterSize, Position};
 use crate::constants::NODE_RADIUS;
+use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::notes::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
@@ -109,7 +110,20 @@ fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
         .filter(|(_, (label, _))| !label.text.is_empty())
         .map(|(_, (label, position))| (label.text.clone(), Placement::Above, position.position))
         .collect();
-    for (meter, _) in world.query::<()>().with::<&MeterSize>().iter() {
+    for (_, (plot, position, size)) in world.query::<(&RatePlot, &Position, &MeterSize)>().iter() {
+        let corner = Frame::new(position.position, size).corner(Corner::TopLeft);
+        placed.push((
+            format!("{:.0} Hz", plot.maximum),
+            Placement::TopLeft,
+            corner,
+        ));
+    }
+    for (meter, _) in world
+        .query::<()>()
+        .with::<&MeterSize>()
+        .without::<&RatePlot>()
+        .iter()
+    {
         let Some(frame) = Frame::of(world, meter) else {
             continue;
         };

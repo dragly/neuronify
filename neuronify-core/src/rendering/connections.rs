@@ -1,6 +1,7 @@
 use glam::Vec3;
 
 use crate::components::*;
+use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::voltmeter::{measured, Frame};
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::ConnectionData;
@@ -14,13 +15,18 @@ pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<Connec
             continue;
         };
         let measured = measured(world, meter);
-        for (row, (_, neuron)) in measured.iter().enumerate() {
+        let rows = if world.satisfies::<&RatePlot>(meter).unwrap_or(false) {
+            1
+        } else {
+            measured.len()
+        };
+        for (index, (_, neuron)) in measured.iter().enumerate() {
             let Ok(start) = world.get::<&Position>(*neuron).map(|p| p.position) else {
                 continue;
             };
             wires.push(ConnectionData {
                 position_a: start,
-                position_b: frame.row(row, measured.len()).point(0.0, 0.5),
+                position_b: frame.row(index.min(rows - 1), rows).point(0.0, 0.5),
                 strength: 1.0,
                 directional: 0.0,
                 start_color: palette.neutral,

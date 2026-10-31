@@ -3,8 +3,8 @@ use glam::Vec3;
 use hecs::World;
 
 use crate::rendering::{
-    collect_meter_wires, collect_scene, collect_spike_detectors, collect_voltmeter_traces, Bounds,
-    ConnectionData, CylinderData, Palette,
+    collect_meter_wires, collect_rate_plots, collect_scene, collect_spike_detectors,
+    collect_voltmeter_traces, Bounds, ConnectionData, CylinderData, Palette,
 };
 
 const THUMBNAIL_MIN_CANVAS_EXTENT: f32 = 20.0;
@@ -62,6 +62,7 @@ pub fn top_down_shapes(
         collect_voltmeter_traces(world)
             .into_iter()
             .chain(collect_spike_detectors(world, palette))
+            .chain(collect_rate_plots(world))
             .collect(),
         scale,
         to_screen,

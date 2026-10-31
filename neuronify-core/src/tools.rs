@@ -12,6 +12,7 @@ pub enum Tool {
     Place(Element),
     Voltmeter,
     SpikeDetector,
+    RatePlot,
     StaticConnection,
     Axon,
     Erase,
@@ -37,6 +38,7 @@ impl Tool {
             Tool::Place(Element::Note) => "Note",
             Tool::Voltmeter => "Voltmeter",
             Tool::SpikeDetector => "Spike detector",
+            Tool::RatePlot => "Firing rate plot",
             Tool::StaticConnection => "Connection",
             Tool::Axon => "Axon",
         }
@@ -65,6 +67,10 @@ impl Tool {
             }
             Tool::Place(Element::AlternatingCurrentSource) => {
                 "Injects a current that swings up and down like a wave."
+            }
+            Tool::RatePlot => {
+                "Press a neuron to plot how often it fires. \
+                 Connect more neurons to plot their average."
             }
             Tool::SpikeDetector => {
                 "Press a neuron to draw a tick each time it fires. \
@@ -123,7 +129,7 @@ impl ToolGroup {
                 Tool::Place(Element::PoissonGenerator),
             ],
             ToolGroup::Connections => &[Tool::StaticConnection, Tool::Axon],
-            ToolGroup::Meters => &[Tool::Voltmeter, Tool::SpikeDetector],
+            ToolGroup::Meters => &[Tool::Voltmeter, Tool::SpikeDetector, Tool::RatePlot],
         }
     }
 }

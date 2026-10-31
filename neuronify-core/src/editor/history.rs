@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use hecs::{Component, Entity, EntityBuilder, EntityRef, World};
 
 use crate::components::*;
+use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::VoltmeterRange;
 
@@ -135,7 +136,7 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 18] = [
+const EDITED: [Edited; 19] = [
     edited::<Position>(),
     edited::<MeterSize>(),
     edited::<NoteSize>(),
@@ -154,6 +155,7 @@ const EDITED: [Edited; 18] = [
     edited::<Label>(),
     edited::<AlternatingCurrent>(),
     edited_settings::<SpikeDetector, TimeRange>(),
+    edited::<RatePlot>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {

@@ -14,6 +14,7 @@ use crate::constants::MAX_ENDING_STRENGTH;
 use crate::dendrites::compartment_tree;
 use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
+use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::Theme;
@@ -53,6 +54,9 @@ const ADAPTATIONS: (RangeInclusive<f64>, f64) = (0.0..=100e-9, 0.1e-9);
 const ADAPTATION_TIME_CONSTANTS: RangeInclusive<f64> = 0.0..=0.6;
 const PLOTTED_VOLTAGES: RangeInclusive<f64> = -250.0..=250.0;
 const PLOTTED_VOLTAGE_GAP: f64 = 1.0;
+const RATE_WINDOWS: RangeInclusive<f64> = 0.01..=1.0;
+const PLOTTED_RATES: RangeInclusive<f64> = 0.0..=2500.0;
+const PLOTTED_RATE_GAP: f64 = 1.0;
 const TIME_RANGES: RangeInclusive<f64> = 1e-3..=1.0;
 const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10e-9;
 const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1e-3..=6e-3;
@@ -214,6 +218,22 @@ impl Inspector {
     }
 
     fn live(&self, ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
+        let rate = world
+            .get::<&RateSeries>(entity)
+            .ok()
+            .and_then(|series| series.samples.back().map(|&(_, rate)| rate));
+        if let Some(rate) = rate {
+            Frame::new()
+                .fill(chrome.raised)
+                .corner_radius(ROW_RADIUS + 2)
+                .inner_margin(Margin::same(10))
+                .show(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    reading(ui, chrome, "Firing rate", format!("{rate:.1} Hz"), 17.0);
+                });
+            ui.add_space(12.0);
+            return;
+        }
         let (voltage, threshold) = if let (Ok(neuron), Ok(dynamics)) = (
             world.get::<&LeakyNeuron>(entity),
             world.get::<&LeakyDynamics>(entity),
@@ -292,6 +312,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::Voltmeter
     } else if world.get::<&SpikeDetector>(entity).is_ok() {
         Tool::SpikeDetector
+    } else if world.get::<&RatePlot>(entity).is_ok() {
+        Tool::RatePlot
     } else if world.get::<&Link>(entity).is_ok() {
         return Some((Tool::Place(Element::Note), "Link"));
     } else if world.get::<&Annotation>(entity).is_ok() {
@@ -785,6 +807,48 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             TIME_RANGES,
             milliseconds,
         );
+    }
+    if let Ok(mut plot) = world.get::<&mut RatePlot>(entity) {
+        heading(ui, chrome, "Parameters", 0.0);
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::Window,
+            &mut plot.window,
+            RATE_WINDOWS,
+            milliseconds,
+        );
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::KernelWidth,
+            &mut plot.kernel_width,
+            RATE_WINDOWS,
+            milliseconds,
+        );
+        let highest = parameter(
+            ui,
+            chrome,
+            Setting::HighestRate,
+            &mut plot.maximum,
+            PLOTTED_RATES,
+            hertz,
+        );
+        if highest {
+            plot.maximum = plot.maximum.max(plot.minimum + PLOTTED_RATE_GAP);
+        }
+        let lowest = parameter(
+            ui,
+            chrome,
+            Setting::LowestRate,
+            &mut plot.minimum,
+            PLOTTED_RATES,
+            hertz,
+        );
+        if lowest {
+            plot.minimum = plot.minimum.min(plot.maximum - PLOTTED_RATE_GAP);
+        }
+        changed |= highest || lowest;
     }
     if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {
         heading(ui, chrome, "Parameters", 0.0);

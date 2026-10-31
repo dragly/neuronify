@@ -3,6 +3,7 @@ use hecs::{Entity, EntityBuilder, World};
 
 use crate::components::*;
 use crate::constants::COUPLING_CAPACITANCE;
+use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
 
@@ -213,6 +214,31 @@ pub fn spawn_spike_detector_wire(world: &mut World, target: Entity, detector: En
         Connection {
             from: target,
             to: detector,
+            strength: 1.0,
+            directional: true,
+        },
+        SpikeTrain::default(),
+        Deletable {},
+    ))
+}
+
+pub fn spawn_rate_plot(world: &mut World, target: Entity, position: Vec3) -> Entity {
+    let plot = world.spawn((
+        RatePlot::default(),
+        RateSeries::default(),
+        Position { position },
+        RatePlot::size(),
+        Deletable {},
+    ));
+    spawn_rate_plot_wire(world, target, plot);
+    plot
+}
+
+pub fn spawn_rate_plot_wire(world: &mut World, target: Entity, plot: Entity) -> Entity {
+    world.spawn((
+        Connection {
+            from: target,
+            to: plot,
             strength: 1.0,
             directional: true,
         },

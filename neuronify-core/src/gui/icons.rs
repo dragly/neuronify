@@ -587,6 +587,26 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 }
             }
         }
+        Tool::RatePlot => {
+            painter.rect(
+                Rect::from_min_max(at(4.0, 7.0), at(28.0, 25.0)),
+                3.0 * scale,
+                chrome.raised,
+                stroke(1.5, chrome.subtext),
+                StrokeKind::Inside,
+            );
+            let curve: Vec<Pos2> = (0..=SINE_STEPS)
+                .map(|step| {
+                    let x = step as f32 / SINE_STEPS as f32;
+                    let rise = 1.0 / (1.0 + (-12.0 * (x - 0.45)).exp());
+                    at(
+                        7.0 + 18.0 * x,
+                        21.5 - 10.0 * rise + 2.0 * (x * TAU).sin() * rise,
+                    )
+                })
+                .collect();
+            painter.add(Shape::line(curve, stroke(1.8, chrome.accent)));
+        }
         Tool::StaticConnection => {
             let curve: Vec<Pos2> = (0..=SPHERE_STEPS)
                 .map(|step| {

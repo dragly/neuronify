@@ -78,6 +78,10 @@ pub fn adaptation_gauge_color() -> Vec3 {
     srgb(32, 170, 150)
 }
 
+pub fn rate_color() -> Vec3 {
+    srgb(232, 176, 75)
+}
+
 pub fn burst_gauge_color() -> Vec3 {
     srgb(228, 92, 152)
 }

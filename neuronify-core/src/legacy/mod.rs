@@ -25,6 +25,8 @@ pub struct LegacyNode {
     pub maximum_value: Option<f64>,
     pub minimum_value: Option<f64>,
     pub time_range: Option<f64>,
+    pub window_duration: Option<f64>,
+    pub temporal_resolution: Option<f64>,
     pub target: Option<String>,
 }
 
@@ -141,6 +143,8 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
         let maximum_value = get_f64(props, "maximumValue");
         let minimum_value = get_f64(props, "minimumValue");
         let time_range = get_f64(props, "timeRange");
+        let window_duration = get_f64(props, "windowDuration");
+        let temporal_resolution = get_f64(props, "temporalResolution");
         let target = props
             .get("targetSimulation")
             .and_then(|v| v.as_str())
@@ -160,6 +164,8 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
             maximum_value,
             minimum_value,
             time_range,
+            window_duration,
+            temporal_resolution,
             target,
         });
     }
