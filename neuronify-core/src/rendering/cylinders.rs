@@ -5,8 +5,9 @@ use hecs::{Entity, EntityRef};
 
 use crate::components::*;
 use crate::rendering::colors::{terminal_color, Palette};
-use crate::rendering::gpu_types::CylinderData;
+use crate::rendering::gpu_types::{CylinderData, Sphere};
 use crate::rendering::paths::ConnectionPath;
+use crate::rendering::scene::Scene;
 use crate::rendering::shapes::shown_voltage;
 
 /// Radius where a process leaves the soma.
@@ -16,6 +17,8 @@ const TAPER: f32 = 0.85;
 /// Floor so that long processes never disappear.
 const MIN_RADIUS: f32 = 0.16;
 const FULLY_TAPERED_DISTANCE: f32 = 12.0;
+
+const MIN_GROWN_LENGTH: f32 = 1e-4;
 
 fn radius_from_soma_distance(distance: f32) -> f32 {
     (ROOT_RADIUS * TAPER.powf(distance / 3.0)).max(MIN_RADIUS)
@@ -30,6 +33,32 @@ fn compartment_color(
         &*entity.get::<&NeuronType>()?,
         shown_voltage(&*entity.get::<&Compartment>()?, display),
     ))
+}
+
+fn radius_at(world: &hecs::World, position: Vec3) -> f32 {
+    let distance = world
+        .query::<&Position>()
+        .with::<&LeakyNeuron>()
+        .iter()
+        .map(|(_, soma)| soma.position.distance(position))
+        .fold(f32::MAX, f32::min);
+    radius_from_soma_distance(distance)
+}
+
+fn cable(
+    palette: &Palette,
+    (start, start_radius, from): (Vec3, f32, Option<Vec3>),
+    (end, end_radius, to): (Vec3, f32, Option<Vec3>),
+) -> CylinderData {
+    CylinderData {
+        start,
+        start_radius,
+        end,
+        end_radius,
+        start_color: from.or(to).unwrap_or(palette.neutral),
+        end_color: to.or(from).unwrap_or(palette.neutral),
+        _padding: Default::default(),
+    }
 }
 
 /// Radius of every compartment, thick next to a soma and tapering away from it.
@@ -88,19 +117,19 @@ pub fn collect_cylinders(
             let to = world.entity(connection.to).ok()?;
             let start = from.get::<&Position>()?.position;
             let end = to.get::<&Position>()?.position;
-            let (from, to) = (
-                compartment_color(from, &display, palette),
-                compartment_color(to, &display, palette),
-            );
-            Some(CylinderData {
-                start,
-                start_radius: radius(connection.from),
-                end,
-                end_radius: radius(connection.to),
-                start_color: from.or(to).unwrap_or(palette.neutral),
-                end_color: to.or(from).unwrap_or(palette.neutral),
-                _padding: Default::default(),
-            })
+            Some(cable(
+                palette,
+                (
+                    start,
+                    radius(connection.from),
+                    compartment_color(from, &display, palette),
+                ),
+                (
+                    end,
+                    radius(connection.to),
+                    compartment_color(to, &display, palette),
+                ),
+            ))
         })
         .collect();
     cylinders.reserve(paths.values().map(|path| path.points.len()).sum());
@@ -138,11 +167,117 @@ pub fn collect_cylinders(
     cylinders
 }
 
+pub fn growing_axon(
+    world: &hecs::World,
+    from: Entity,
+    start: Vec3,
+    end: Vec3,
+    palette: &Palette,
+) -> Option<Scene> {
+    if start.distance(end) < MIN_GROWN_LENGTH {
+        return None;
+    }
+    let source = world.entity(from).ok()?;
+    let neuron_type = *source.get::<&NeuronType>()?;
+    let tip = palette.compartment(&neuron_type, Compartment::default().voltage);
+    let end_radius = radius_at(world, end);
+    Some(Scene {
+        spheres: vec![Sphere {
+            position: end,
+            color: tip,
+            radius: end_radius,
+            _padding: Default::default(),
+        }],
+        cylinders: vec![cable(
+            palette,
+            (
+                start,
+                radius_at(world, start),
+                compartment_color(source, &NeuronDisplay::of(world), palette),
+            ),
+            (end, end_radius, Some(tip)),
+        )],
+        rings: Vec::new(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::elements::{spawn_cable, spawn_compartment};
+    use crate::rendering::colors::Theme;
+    use crate::rendering::paths::connection_paths;
+    use crate::rendering::spheres::collect_spheres;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
+
+    #[test]
+    fn a_growing_axon_looks_like_the_cable_it_lays() {
+        let palette = Theme::Light.palette();
+        let mut world = hecs::World::new();
+        world.spawn((
+            Position {
+                position: Vec3::new(2.0, 0.0, 9.0),
+            },
+            LeakyNeuron::default(),
+        ));
+        let soma = Vec3::ZERO;
+        let source = world.spawn((
+            Position { position: soma },
+            LeakyNeuron::default(),
+            NeuronType::Inhibitory,
+        ));
+        let mut from = source;
+        let mut start = soma;
+        for step in 1..=4 {
+            let tip = Vec3::new(0.5, 0.0, 2.5) * step as f32;
+            let growing = growing_axon(&world, from, start, tip, &palette).unwrap();
+            let compartment = spawn_compartment(&mut world, tip, NeuronType::Inhibitory);
+            spawn_cable(&mut world, from, compartment, false);
+            let radii = compartment_radii(&world);
+            let paths = connection_paths(&world, &radii, &palette);
+            let cylinders = collect_cylinders(&world, &radii, &paths, &palette);
+            let laid = cylinders
+                .iter()
+                .find(|cylinder| cylinder.end == tip)
+                .unwrap();
+            let [preview] = growing.cylinders[..] else {
+                panic!("expected one cylinder, got {}", growing.cylinders.len());
+            };
+            assert_eq!(
+                (preview.start, preview.start_color, preview.start_radius),
+                (laid.start, laid.start_color, laid.start_radius)
+            );
+            assert_eq!(
+                (preview.end, preview.end_color, preview.end_radius),
+                (laid.end, laid.end_color, laid.end_radius)
+            );
+            let spheres = collect_spheres(&world, &radii, &paths, &palette);
+            let joint = spheres
+                .iter()
+                .find(|sphere| sphere.position == tip)
+                .unwrap();
+            let bead = growing.spheres[0];
+            assert_eq!((bead.radius, bead.color), (joint.radius, joint.color));
+            world.get::<&mut Compartment>(compartment).unwrap().voltage = 30.0 * step as f64;
+            from = compartment;
+            start = tip;
+        }
+    }
+
+    #[test]
+    fn an_axon_that_has_not_grown_yet_is_not_drawn() {
+        let palette = Theme::Light.palette();
+        let mut world = hecs::World::new();
+        let source = world.spawn((
+            Position {
+                position: Vec3::ZERO,
+            },
+            LeakyNeuron::default(),
+            NeuronType::Excitatory,
+        ));
+        assert!(growing_axon(&world, source, Vec3::ZERO, Vec3::ZERO, &palette).is_none());
+    }
 
     #[test]
     fn compartments_beyond_the_taper_are_thinnest() {

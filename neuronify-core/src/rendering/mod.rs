@@ -20,7 +20,7 @@ pub mod voltmeter;
 pub use bounds::{canvas_bounds, circuit_bounds, Bounds};
 pub use colors::{srgb, srgb_component, Palette, Theme};
 pub use connections::{collect_voltmeter_wires, connection_being_drawn};
-pub use cylinders::{collect_cylinders, compartment_radii};
+pub use cylinders::{collect_cylinders, compartment_radii, growing_axon};
 pub use floor::create_floor;
 pub use gauges::GaugeRenderer;
 pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere, TorusData};

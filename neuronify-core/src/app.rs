@@ -405,6 +405,7 @@ impl visula::Simulation for Neuronify {
             self.theme,
             EditorMarks {
                 drawn_connection: &drawn_connection,
+                axon: self.editor.axon_being_grown(&self.world),
                 selection: self.editor.selection,
                 eraser: self.eraser(application),
             },
