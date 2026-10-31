@@ -40,6 +40,7 @@ const HEADER_ICON: f32 = 18.0;
 const DELETE_HEIGHT: f32 = 36.0;
 const DELETE_GAP: f32 = 8.0;
 const DESCRIPTION_SIZE: f32 = 11.5;
+const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
 enum Action {
     Delete,
@@ -433,6 +434,28 @@ fn parameter<N: Numeric>(
     )
 }
 
+fn logarithmic_parameter(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    setting: Setting,
+    value: &mut f64,
+    (range, smallest_positive): (RangeInclusive<f64>, f64),
+    shown: impl Fn(f64) -> String,
+) -> bool {
+    slider_row(
+        ui,
+        chrome,
+        setting,
+        value,
+        |value| {
+            Slider::new(value, range)
+                .logarithmic(true)
+                .smallest_positive(smallest_positive)
+        },
+        shown,
+    )
+}
+
 fn slider_row<N: Numeric>(
     ui: &mut Ui,
     chrome: &Chrome,
@@ -545,23 +568,23 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     }
     if let Ok(mut generator) = world.get::<&mut RegularSpikeGenerator>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        changed |= parameter(
+        changed |= logarithmic_parameter(
             ui,
             chrome,
             Setting::Frequency,
             &mut generator.frequency,
-            1.0..=200.0,
+            SPIKE_RATES,
             hertz,
         );
     }
     if let Ok(mut generator) = world.get::<&mut PoissonGenerator>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        changed |= parameter(
+        changed |= logarithmic_parameter(
             ui,
             chrome,
             Setting::Rate,
             &mut generator.rate,
-            1.0..=200.0,
+            SPIKE_RATES,
             hertz,
         );
     }

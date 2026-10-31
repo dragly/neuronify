@@ -382,7 +382,10 @@ impl Editor {
     }
 
     fn grows_axon(&self, world: &World, from: Entity) -> bool {
-        self.compartments && world.get::<&NeuronType>(from).is_ok()
+        self.compartments
+            && world
+                .satisfies::<hecs::Or<&LeakyNeuron, &Compartment>>(from)
+                .unwrap_or(false)
     }
 
     fn add(

@@ -14,6 +14,7 @@ const LINK_SIZE: NoteSize = NoteSize {
     width: 7.2,
     height: 2.0,
 };
+const LEGACY_GENERATOR_RATE: f64 = 500.0;
 
 fn convert_position(x: f64, y: f64) -> Vec3 {
     Vec3::new(
@@ -69,6 +70,22 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
                 Deletable {},
             ))
         }
+        "generators/RegularSpikeGenerator.qml" => spawn_generator(
+            world,
+            node,
+            pos,
+            RegularSpikeGenerator {
+                frequency: node.engine.rate.unwrap_or(LEGACY_GENERATOR_RATE),
+            },
+        ),
+        "generators/IrregularSpikeGenerator.qml" => spawn_generator(
+            world,
+            node,
+            pos,
+            PoissonGenerator {
+                rate: node.engine.rate.unwrap_or(LEGACY_GENERATOR_RATE),
+            },
+        ),
         "sensors/TouchSensor.qml" => {
             world.spawn((pos, TouchSensor, GeneratorDynamics::default(), Deletable {}))
         }
@@ -122,6 +139,29 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
     }
 }
 
+fn spawn_generator(
+    world: &mut World,
+    node: &LegacyNode,
+    pos: Position,
+    generator: impl hecs::Component,
+) -> Entity {
+    world.spawn((
+        pos,
+        generator,
+        GeneratorDynamics::default(),
+        legacy_type(node.inhibitory),
+        Deletable {},
+    ))
+}
+
+fn legacy_type(inhibitory: bool) -> NeuronType {
+    if inhibitory {
+        NeuronType::Inhibitory
+    } else {
+        NeuronType::Excitatory
+    }
+}
+
 fn spawn_leaky_neuron(
     world: &mut World,
     node: &LegacyNode,
@@ -154,13 +194,14 @@ fn spawn_leaky_neuron(
         current: 0.0,
     };
 
-    let neuron_type = if inhibitory {
-        NeuronType::Inhibitory
-    } else {
-        NeuronType::Excitatory
-    };
-
-    world.spawn((pos, neuron, dynamics, leak, neuron_type, Deletable {}))
+    world.spawn((
+        pos,
+        neuron,
+        dynamics,
+        leak,
+        legacy_type(inhibitory),
+        Deletable {},
+    ))
 }
 
 fn spawn_adaptation_neuron(world: &mut World, node: &LegacyNode, pos: Position) -> Entity {

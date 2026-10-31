@@ -19,6 +19,8 @@ const INHIBITORY_NFY: &str = include_str!("../../examples/inhibitory.nfy");
 
 const TUTORIAL_2_CIRCUITS_NFY: &str = include_str!("../../examples/tutorial_2_circuits.nfy");
 
+const GENERATORS_NFY: &str = include_str!("../../examples/generators.nfy");
+
 #[test]
 fn test_parse_empty() {
     let sim = parse_legacy_nfy(EMPTY_NFY).unwrap();
@@ -458,4 +460,75 @@ fn the_next_tutorial_button_becomes_a_link_to_the_next_tutorial() {
             "Next tutorial ›".to_string()
         )]
     );
+}
+
+#[test]
+fn loads_regular_and_irregular_spike_generators() {
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
+
+    let frequencies: Vec<f64> = world
+        .query::<&RegularSpikeGenerator>()
+        .iter()
+        .map(|(_, generator)| generator.frequency)
+        .collect();
+    let rates: Vec<f64> = world
+        .query::<&PoissonGenerator>()
+        .iter()
+        .map(|(_, generator)| generator.rate)
+        .collect();
+    assert_eq!(frequencies, [200.0]);
+    assert_eq!(rates, [200.0]);
+    for (generator, _) in world.query::<&GeneratorDynamics>().iter() {
+        let synapses = world
+            .query::<(&Connection, &CurrentSynapse)>()
+            .iter()
+            .filter(|(_, (connection, _))| connection.from == generator)
+            .count();
+        assert_eq!(synapses, 1);
+    }
+}
+
+fn generator_driving_a_neuron(inhibitory: bool) -> String {
+    format!(
+        r#"{{"fileFormatVersion": 4, "nodes": [
+            {{"filename": "generators/RegularSpikeGenerator.qml",
+              "savedProperties": {{"engine": {{"rate": 100}}, "inhibitory": {inhibitory}, "x": 0, "y": 0}}}},
+            {{"filename": "neurons/LeakyNeuron.qml",
+              "savedProperties": {{"engine": {{"voltage": -0.07}}, "x": 100, "y": 0}}}}
+        ], "edges": [
+            {{"filename": "edges/CurrentSynapse.qml", "from": 0, "to": 1,
+              "savedProperties": {{"engine": {{"maximumCurrent": 3e-10, "tau": 0.002, "delay": 0}}}}}}
+        ]}}"#
+    )
+}
+
+#[test]
+fn spikes_from_an_inhibitory_generator_push_the_voltage_down() {
+    for inhibitory in [false, true] {
+        let simulation = parse_legacy_nfy(&generator_driving_a_neuron(inhibitory)).unwrap();
+        let mut world = hecs::World::new();
+        let entities = spawn_legacy_simulation(&mut world, &simulation);
+        let expected = if inhibitory {
+            NeuronType::Inhibitory
+        } else {
+            NeuronType::Excitatory
+        };
+        assert_eq!(neuron_type(&world, entities[0]), expected);
+
+        let resting = world
+            .get::<&LeakyNeuron>(entities[1])
+            .unwrap()
+            .resting_potential;
+        let mut furthest: f64 = 0.0;
+        for step in 0..150 {
+            lif_step(&mut world, 0.0001, step as f64 * 0.0001);
+            let change = world.get::<&LeakyDynamics>(entities[1]).unwrap().voltage - resting;
+            if change.abs() > furthest.abs() {
+                furthest = change;
+            }
+        }
+        assert!(furthest.abs() > 0.001);
+        assert_eq!(furthest < 0.0, inhibitory);
+    }
 }

@@ -51,6 +51,7 @@ pub struct LegacyEngine {
     pub alpha_function: Option<bool>,
     pub exponential: Option<f64>,
     pub linear: Option<f64>,
+    pub rate: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -241,6 +242,7 @@ fn parse_engine(engine_val: Option<&Value>) -> LegacyEngine {
         alpha_function: e.get("alphaFunction").and_then(|v| v.as_bool()),
         exponential: get_f64(e, "exponential"),
         linear: get_f64(e, "linear"),
+        rate: get_f64(e, "rate"),
     }
 }
 
