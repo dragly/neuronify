@@ -51,7 +51,7 @@ pub enum Icon {
     Playback,
     Plus,
     Minus,
-    Select,
+    Eye,
     Stimulate,
     Erase,
 }
@@ -257,15 +257,18 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
         Icon::Minus => {
             painter.line_segment([at(vec2(5.0, 12.0)), at(vec2(19.0, 12.0))], stroke);
         }
-        Icon::Select => outline(&[
-            vec2(6.5, 3.8),
-            vec2(17.5, 12.6),
-            vec2(12.6, 13.5),
-            vec2(15.4, 19.5),
-            vec2(13.1, 20.6),
-            vec2(10.3, 14.6),
-            vec2(6.5, 18.1),
-        ]),
+        Icon::Eye => {
+            let steps = 16;
+            let lid = |sign: f32| {
+                (0..=steps).map(move |step| {
+                    let t = step as f32 / steps as f32;
+                    vec2(3.0 + 18.0 * t, 12.0 + sign * 6.8 * (PI * t).sin())
+                })
+            };
+            let points: Vec<Vec2> = lid(-1.0).chain(lid(1.0).rev().skip(1)).collect();
+            outline(&points);
+            painter.circle_stroke(at(vec2(12.0, 12.0)), 3.0 * scale, stroke);
+        }
         Icon::Stimulate => outline(&[
             vec2(13.5, 3.2),
             vec2(5.8, 13.4),
@@ -441,7 +444,8 @@ fn paint_compartmental(
 
 fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: Color32) {
     let icon = match tool {
-        Tool::Select => Some(Icon::Select),
+        Tool::View => Some(Icon::Eye),
+        Tool::Edit => Some(Icon::Pencil),
         Tool::Stimulate => Some(Icon::Stimulate),
         Tool::Erase => Some(Icon::Erase),
         _ => None,
@@ -588,6 +592,6 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 painter.line_segment([at(10.0, y), at(end, y)], stroke(1.6, chrome.subtext));
             }
         }
-        Tool::Select | Tool::Stimulate | Tool::Erase => {}
+        Tool::View | Tool::Edit | Tool::Stimulate | Tool::Erase => {}
     }
 }

@@ -57,7 +57,6 @@ pub enum Saving {
 }
 
 pub struct Controls<'a> {
-    pub edit_enabled: &'a mut bool,
     pub editor: &'a mut Editor,
     pub world: &'a mut World,
     pub theme: &'a mut Theme,
@@ -77,11 +76,15 @@ pub struct Gui {
 }
 
 impl Gui {
+    pub fn rail_shown(&self) -> bool {
+        self.rail.is_shown()
+    }
+
     pub fn show(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
-        if *controls.edit_enabled {
+        if controls.editor.tool.edits() {
             history_shortcuts(context, controls.editor, controls.world);
-            self.rail.shortcuts(context, controls.editor);
         }
+        self.rail.shortcuts(context, controls.editor);
         if is_compact(context.content_rect()) {
             self.compact(context, controls)
         } else {
@@ -92,9 +95,9 @@ impl Gui {
     fn wide(&mut self, context: &Context, mut controls: Controls) -> Option<MenuChoice> {
         let theme = *controls.theme;
         let chrome = Chrome::of(theme);
-        let editing = *controls.edit_enabled;
+        let editing = controls.editor.tool.edits();
         let mut choice = None;
-        if corner_buttons(context, theme, controls.edit_enabled) {
+        if corner_buttons(context, theme) {
             choice = Some(MenuChoice::Examples);
         }
         if editing {
@@ -102,34 +105,20 @@ impl Gui {
                 context,
                 "history_buttons",
                 Align2::RIGHT_BOTTOM,
-                vec2(-(MARGIN + 2.0 * (FAB_SIZE + FAB_GAP)), -MARGIN),
+                vec2(-(MARGIN + FAB_SIZE + FAB_GAP), -MARGIN),
                 |ui| history_buttons(ui, chrome, controls.editor, controls.world),
             );
         }
-        let (menu_button, menu_position) = if editing {
-            let rail = self
-                .rail
-                .show(context, theme, self.menu_open, controls.editor);
+        let rail = self
+            .rail
+            .show(context, theme, self.menu_open, controls.editor);
+        let menu_button = rail.menu.map(|menu| {
             let position = pos2(
                 rail.rect.right() + POPOVER_GAP,
-                rail.menu.rect.top() - MENU_PADDING as f32,
+                menu.rect.top() - MENU_PADDING as f32,
             );
-            (rail.menu, position)
-        } else {
-            let open = self.menu_open;
-            let button = floating(
-                context,
-                "menu_button",
-                Align2::LEFT_TOP,
-                vec2(MARGIN, MARGIN),
-                |ui| fab(ui, chrome, Icon::Menu, "Menu", open),
-            );
-            let position = pos2(button.rect.left(), button.rect.bottom() + FAB_GAP);
-            (button, position)
-        };
-        if !editing {
-            self.rail.close();
-        }
+            (menu, position)
+        });
         self.inspector.show(
             context,
             theme,
@@ -138,7 +127,7 @@ impl Gui {
             controls.time,
             Placement::Panel,
         );
-        let shift = if editing {
+        let shift = if self.rail.is_shown() {
             (MARGIN + RAIL_WIDTH) / 2.0
         } else {
             0.0
@@ -152,6 +141,10 @@ impl Gui {
             controls.speed,
             controls.time,
         );
+        let Some((menu_button, menu_position)) = menu_button else {
+            self.menu_open = false;
+            return choice;
+        };
         let picked = self.menu(
             context,
             &menu_button,
@@ -162,12 +155,12 @@ impl Gui {
     }
 
     fn compact(&mut self, context: &Context, mut controls: Controls) -> Option<MenuChoice> {
-        if controls.editor.selection.is_some() {
-            *controls.edit_enabled = true;
+        if controls.editor.selection.is_some() && !controls.editor.tool.edits() {
+            controls.editor.tool = Tool::Edit;
         }
         let theme = *controls.theme;
         let chrome = Chrome::of(theme);
-        let editing = *controls.edit_enabled;
+        let editing = controls.editor.tool.edits();
         let mut choice = None;
         let back = floating(
             context,
@@ -201,9 +194,8 @@ impl Gui {
                 |ui| fab(ui, chrome, Icon::Check, "Done", true),
             );
             if done.clicked() {
-                *controls.edit_enabled = false;
                 controls.editor.selection = None;
-                controls.editor.tool = Tool::Select;
+                controls.editor.tool = Tool::View;
                 self.rail.close();
             }
             floating(
@@ -214,13 +206,8 @@ impl Gui {
                 |ui| history_buttons(ui, chrome, controls.editor, controls.world),
             );
         }
-        self.rail.bar(
-            context,
-            theme,
-            controls.editor,
-            controls.edit_enabled,
-            &mut self.playback_open,
-        );
+        self.rail
+            .bar(context, theme, controls.editor, &mut self.playback_open);
         if self.playback_open {
             playback::bar(
                 context,
@@ -276,13 +263,13 @@ pub fn is_compact(screen: Rect) -> bool {
     screen.width() < COMPACT_WIDTH || screen.height() < COMPACT_HEIGHT
 }
 
-pub fn canvas_area(screen: Rect, edit_enabled: bool) -> Rect {
+pub fn canvas_area(screen: Rect, rail_shown: bool) -> Rect {
     let mut area = screen;
     if is_compact(screen) {
         area.min.y += MARGIN + FAB_SIZE;
         area.max.y -= TOOL_BAR_MARGIN + TOOL_BAR_HEIGHT;
     } else {
-        if edit_enabled {
+        if rail_shown {
             area.min.x += MARGIN + RAIL_WIDTH;
         }
         area.max.y -= MARGIN + BAR_HEIGHT;
@@ -411,7 +398,7 @@ fn floating(
         .inner
 }
 
-fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) -> bool {
+fn corner_buttons(context: &Context, theme: Theme) -> bool {
     let chrome = Chrome::of(theme);
     let mut examples_clicked = false;
     egui::Area::new("corner_buttons".into())
@@ -420,9 +407,6 @@ fn corner_buttons(context: &Context, theme: Theme, edit_enabled: &mut bool) -> b
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = FAB_GAP;
                 examples_clicked = fab(ui, chrome, Icon::Grid, "Examples", false).clicked();
-                if fab(ui, chrome, Icon::Pencil, "Edit", *edit_enabled).clicked() {
-                    *edit_enabled = !*edit_enabled;
-                }
             });
         });
     examples_clicked
