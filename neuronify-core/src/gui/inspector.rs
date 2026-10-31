@@ -4,8 +4,8 @@ use std::ops::RangeInclusive;
 use egui::emath::Numeric;
 use egui::{
     pos2, style::HandleShape, vec2, Align2, Context, CornerRadius, FontId, Frame, Id, Margin,
-    Order, Rect, Response, ScrollArea, Sense, Shape, Slider, Stroke, Style, TextEdit, Ui, Vec2,
-    WidgetInfo, WidgetType,
+    Order, Rect, Response, ScrollArea, Sense, Shape, Slider, SliderClamping, Stroke, Style,
+    TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::{Entity, World};
 
@@ -15,6 +15,7 @@ use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::rendering::Theme;
+use crate::settings::Setting;
 use crate::tools::Tool;
 
 use super::icons::{paint_icon, paint_tool, Icon};
@@ -38,6 +39,7 @@ const HEADER_BUTTON: f32 = 32.0;
 const HEADER_ICON: f32 = 18.0;
 const DELETE_HEIGHT: f32 = 36.0;
 const DELETE_GAP: f32 = 8.0;
+const DESCRIPTION_SIZE: f32 = 11.5;
 
 enum Action {
     Delete,
@@ -416,20 +418,42 @@ fn millivolts(volts: f64) -> String {
 fn parameter<N: Numeric>(
     ui: &mut Ui,
     chrome: &Chrome,
-    label: &str,
+    setting: Setting,
     value: &mut N,
     range: RangeInclusive<N>,
+    shown: impl Fn(N) -> String,
+) -> bool {
+    slider_row(
+        ui,
+        chrome,
+        setting,
+        value,
+        |value| Slider::new(value, range),
+        shown,
+    )
+}
+
+fn slider_row<N: Numeric>(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    setting: Setting,
+    value: &mut N,
+    slider: impl for<'a> FnOnce(&'a mut N) -> Slider<'a>,
     shown: impl Fn(N) -> String,
 ) -> bool {
     let (row, _) = ui.allocate_exact_size(vec2(ui.available_width(), 20.0), Sense::hover());
     ui.spacing_mut().slider_width = ui.available_width();
     let changed = ui
-        .add(Slider::new(value, range).show_value(false))
+        .add(
+            slider(value)
+                .show_value(false)
+                .clamping(SliderClamping::Edits),
+        )
         .changed();
     ui.painter().text(
         row.left_center(),
         Align2::LEFT_CENTER,
-        label,
+        setting.label(),
         FontId::proportional(12.5),
         chrome.subtext,
     );
@@ -440,8 +464,24 @@ fn parameter<N: Numeric>(
         FontId::monospace(12.5),
         chrome.text,
     );
+    description(ui, chrome, setting.description());
     ui.add_space(8.0);
     changed
+}
+
+fn description(ui: &mut Ui, chrome: &Chrome, text: &str) {
+    let galley = ui.painter().layout(
+        text.to_owned(),
+        FontId::proportional(DESCRIPTION_SIZE),
+        chrome.subtext,
+        ui.available_width(),
+    );
+    let (rect, _) = ui.allocate_exact_size(
+        vec2(ui.available_width(), galley.size().y + 2.0),
+        Sense::hover(),
+    );
+    ui.painter()
+        .galley(rect.left_top() + vec2(0.0, 2.0), galley, chrome.subtext);
 }
 
 fn reading(ui: &mut Ui, chrome: &Chrome, label: &str, value: String, size: f32) {
@@ -470,7 +510,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            "Threshold",
+            Setting::Threshold,
             &mut neuron.threshold,
             -0.08..=-0.03,
             millivolts,
@@ -478,7 +518,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            "Resting potential",
+            Setting::RestingPotential,
             &mut neuron.resting_potential,
             -0.09..=-0.05,
             millivolts,
@@ -486,7 +526,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            "Capacitance",
+            Setting::Capacitance,
             &mut neuron.capacitance,
             1e-11..=1e-9,
             |farads| format!("{:.0} pF", farads * 1e12),
@@ -497,7 +537,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            "Current",
+            Setting::Current,
             &mut clamp.current_output,
             0.0..=1e-8,
             |amperes| format!("{:.2} nA", amperes * 1e9),
@@ -508,7 +548,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            "Frequency",
+            Setting::Frequency,
             &mut generator.frequency,
             1.0..=200.0,
             hertz,
@@ -516,7 +556,14 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     }
     if let Ok(mut generator) = world.get::<&mut PoissonGenerator>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        changed |= parameter(ui, chrome, "Rate", &mut generator.rate, 1.0..=200.0, hertz);
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::Rate,
+            &mut generator.rate,
+            1.0..=200.0,
+            hertz,
+        );
     }
     if let Ok(mut annotation) = world.get::<&mut Annotation>(entity) {
         heading(ui, chrome, "Text", 0.0);
@@ -535,7 +582,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            "Strength",
+            Setting::Strength,
             &mut world.get::<&mut Connection>(ending).unwrap().strength,
             0.0..=MAX_ENDING_STRENGTH,
             |strength| format!("{strength:.2}"),
