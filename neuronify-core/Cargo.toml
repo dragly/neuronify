@@ -7,9 +7,9 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-visula = { git = "https://github.com/dragly/visula", rev = "f528fb6076e3529872411598a09fde06a629aa45" }
-visula-derive = { git = "https://github.com/dragly/visula", rev = "f528fb6076e3529872411598a09fde06a629aa45" }
-visula-core = { git = "https://github.com/dragly/visula", rev = "f528fb6076e3529872411598a09fde06a629aa45" }
+visula = { git = "https://github.com/dragly/visula", rev = "5ca06222437fc1c6182aa866970ac6c2ccc50b0f" }
+visula-derive = { git = "https://github.com/dragly/visula", rev = "5ca06222437fc1c6182aa866970ac6c2ccc50b0f" }
+visula-core = { git = "https://github.com/dragly/visula", rev = "5ca06222437fc1c6182aa866970ac6c2ccc50b0f" }
 wgpu = { version = "29", features = ["webgl"] }
 glam = { version = "0.30", features = ["bytemuck", "serde"] }
 bytemuck = { version = "1.24", features = ["derive"] }
