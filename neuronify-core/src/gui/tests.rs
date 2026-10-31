@@ -3,7 +3,7 @@ use glam::Vec3;
 use hecs::Entity;
 
 use super::*;
-use crate::components::{Connection, LeakyNeuron, NeuronType};
+use crate::components::{Connection, LeakyNeuron, NeuronType, RegularSpikeGenerator};
 use crate::constants::DEFAULT_SPEED;
 use crate::elements::{spawn_cable, spawn_compartment, Element};
 use crate::settings::Setting;
@@ -388,6 +388,21 @@ fn the_inspector_leaves_values_beyond_a_slider_alone() {
         harness.world.get::<&LeakyNeuron>(neuron).unwrap().threshold,
         0.5
     );
+}
+
+#[test]
+fn spike_generators_reach_a_thousand_spikes_a_second() {
+    let mut world = World::new();
+    let generator = Element::RegularSpikeGenerator.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(generator));
+    let slider = harness.text_position(Setting::Frequency.label()).unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    let frequency = harness
+        .world
+        .get::<&RegularSpikeGenerator>(generator)
+        .unwrap()
+        .frequency;
+    assert_eq!(frequency, 1000.0);
 }
 
 #[test]

@@ -97,6 +97,21 @@ fn only_neurons_grow_dendrites() {
 }
 
 #[test]
+fn with_compartments_an_inhibitory_generator_connects_with_a_synapse() {
+    let mut world = World::new();
+    let generator = Element::RegularSpikeGenerator.spawn(&mut world, at(0.0, 0.0));
+    world.insert_one(generator, NeuronType::Inhibitory).unwrap();
+    let target = neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::StaticConnection);
+    editor.compartments = true;
+    drag(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 9.5)]);
+
+    assert!(connected(&world, generator, target));
+    assert_eq!(count::<CurrentSynapse>(&world), 1);
+    assert_eq!(count::<Compartment>(&world), 0);
+}
+
+#[test]
 fn static_connections_chain_from_neuron_to_neuron_unless_shift_is_held() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
