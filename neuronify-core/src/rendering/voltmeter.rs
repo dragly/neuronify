@@ -32,7 +32,7 @@ fn line(position_a: glam::Vec3, position_b: glam::Vec3, color: glam::Vec3) -> Co
 pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
     let mut result = Vec::new();
     for (voltmeter, (position, size, range)) in world
-        .query::<(&Position, &VoltmeterSize, Option<&VoltmeterRange>)>()
+        .query::<(&Position, &MeterSize, Option<&VoltmeterRange>)>()
         .with::<&Voltmeter>()
         .iter()
     {
@@ -181,7 +181,7 @@ mod tests {
     fn row() -> Frame {
         Frame::new(
             Vec3::new(1.0, 0.0, 0.0),
-            &VoltmeterSize {
+            &MeterSize {
                 width: 6.0,
                 height: 3.0,
             },

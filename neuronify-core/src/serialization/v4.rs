@@ -16,7 +16,7 @@ schema!(
     GeneratorDynamics,
     RegularSpikeGenerator,
     PoissonGenerator,
-    VoltmeterSize,
+    MeterSize,
     Annotation,
     NoteSize,
     StaticConnectionSource,

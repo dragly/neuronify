@@ -8,7 +8,7 @@ use visula::{
 
 use crate::constants::{NODE_RADIUS, TERMINAL_INSET};
 use crate::rendering::colors::{terminal_color, Theme};
-use crate::rendering::connections::{collect_voltmeter_wires, connection_being_drawn};
+use crate::rendering::connections::{collect_meter_wires, connection_being_drawn};
 use crate::rendering::cylinders::growing_axon;
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
@@ -20,6 +20,7 @@ use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded}
 use crate::rendering::notes::NoteRenderer;
 use crate::rendering::scene::collect_scene;
 use crate::rendering::selection::{collect_selection, eraser_outline};
+use crate::rendering::spike_detector::collect_spike_detectors;
 use crate::rendering::voltmeter::collect_voltmeter_traces;
 
 pub struct EditorMarks<'a> {
@@ -216,9 +217,10 @@ impl SceneRenderer {
         if let Some(center) = marks.eraser {
             scene.rings.push(eraser_outline(center, &palette));
         }
-        let mut connections = collect_voltmeter_wires(world, &palette);
+        let mut connections = collect_meter_wires(world, &palette);
         connections.extend(connection_being_drawn(marks.drawn_connection, &palette));
         connections.extend(collect_voltmeter_traces(world));
+        connections.extend(collect_spike_detectors(world, &palette));
 
         self.sphere_buffer
             .update(&application.device, &application.queue, &scene.spheres);

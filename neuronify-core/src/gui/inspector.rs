@@ -14,6 +14,7 @@ use crate::constants::MAX_ENDING_STRENGTH;
 use crate::dendrites::compartment_tree;
 use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::Theme;
 use crate::settings::Setting;
@@ -52,6 +53,7 @@ const ADAPTATIONS: (RangeInclusive<f64>, f64) = (0.0..=100e-9, 0.1e-9);
 const ADAPTATION_TIME_CONSTANTS: RangeInclusive<f64> = 0.0..=0.6;
 const PLOTTED_VOLTAGES: RangeInclusive<f64> = -250.0..=250.0;
 const PLOTTED_VOLTAGE_GAP: f64 = 1.0;
+const TIME_RANGES: RangeInclusive<f64> = 1e-3..=1.0;
 const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10e-9;
 const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1e-3..=6e-3;
 const DELAYS: RangeInclusive<f64> = 0.0..=30e-3;
@@ -288,6 +290,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::Place(Element::PoissonGenerator)
     } else if world.get::<&Voltmeter>(entity).is_ok() {
         Tool::Voltmeter
+    } else if world.get::<&SpikeDetector>(entity).is_ok() {
+        Tool::SpikeDetector
     } else if world.get::<&Link>(entity).is_ok() {
         return Some((Tool::Place(Element::Note), "Link"));
     } else if world.get::<&Annotation>(entity).is_ok() {
@@ -770,6 +774,17 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             range.minimum = range.minimum.min(range.maximum - PLOTTED_VOLTAGE_GAP);
         }
         changed |= highest || lowest;
+    }
+    if let Ok(mut detector) = world.get::<&mut SpikeDetector>(entity) {
+        heading(ui, chrome, "Parameters", 0.0);
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::TimeRange,
+            &mut detector.time_range,
+            TIME_RANGES,
+            milliseconds,
+        );
     }
     if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {
         heading(ui, chrome, "Parameters", 0.0);

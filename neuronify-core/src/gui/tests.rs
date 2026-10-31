@@ -661,6 +661,28 @@ fn an_alternating_current_source_sets_its_amplitude_and_frequency() {
 }
 
 #[test]
+fn a_spike_detector_sets_its_time_range() {
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    let detector = crate::elements::spawn_spike_detector(&mut world, neuron, Vec3::Z * 3.0);
+    let mut harness = Harness::with(true, world, Some(detector));
+    assert!(harness.shows("Spike detector"));
+    assert!(harness.shows(Setting::TimeRange.description()));
+    let slider = harness.text_position(Setting::TimeRange.label()).unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    let time_range = |harness: &Harness| {
+        harness
+            .world
+            .get::<&crate::measurement::spike_detector::SpikeDetector>(detector)
+            .unwrap()
+            .time_range
+    };
+    assert_eq!(time_range(&harness), 1.0);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(time_range(&harness), 0.1);
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

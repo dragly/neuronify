@@ -6,9 +6,9 @@ use visula::{
     Expression, GlyphDelegate, GlyphVertex, Glyphs,
 };
 
-use crate::components::{Label, Position};
+use crate::components::{Label, MeterSize, Position};
 use crate::constants::NODE_RADIUS;
-use crate::measurement::voltmeter::{measured, Corner, Frame, Voltmeter};
+use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::notes::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
 
@@ -109,11 +109,11 @@ fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
         .filter(|(_, (label, _))| !label.text.is_empty())
         .map(|(_, (label, position))| (label.text.clone(), Placement::Above, position.position))
         .collect();
-    for (voltmeter, _) in world.query::<()>().with::<&Voltmeter>().iter() {
-        let Some(frame) = Frame::of(world, voltmeter) else {
+    for (meter, _) in world.query::<()>().with::<&MeterSize>().iter() {
+        let Some(frame) = Frame::of(world, meter) else {
             continue;
         };
-        let measured = measured(world, voltmeter);
+        let measured = measured(world, meter);
         for (row, (_, target)) in measured.iter().enumerate() {
             let Ok(label) = world.get::<&Label>(*target) else {
                 continue;

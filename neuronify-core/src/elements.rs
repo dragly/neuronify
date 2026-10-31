@@ -3,6 +3,7 @@ use hecs::{Entity, EntityBuilder, World};
 
 use crate::components::*;
 use crate::constants::COUPLING_CAPACITANCE;
+use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
 
 const VOLTMETER_MEASUREMENTS: usize = 100000;
@@ -188,12 +189,36 @@ pub fn spawn_voltmeter(world: &mut World, target: Entity, position: Vec3) -> Ent
     let voltmeter = world.spawn((
         Voltmeter {},
         Position { position },
-        VoltmeterSize::default(),
+        MeterSize::default(),
         VoltmeterRange::default(),
         Deletable {},
     ));
     spawn_voltmeter_wire(world, target, voltmeter);
     voltmeter
+}
+
+pub fn spawn_spike_detector(world: &mut World, target: Entity, position: Vec3) -> Entity {
+    let detector = world.spawn((
+        SpikeDetector::default(),
+        Position { position },
+        SpikeDetector::size(),
+        Deletable {},
+    ));
+    spawn_spike_detector_wire(world, target, detector);
+    detector
+}
+
+pub fn spawn_spike_detector_wire(world: &mut World, target: Entity, detector: Entity) -> Entity {
+    world.spawn((
+        Connection {
+            from: target,
+            to: detector,
+            strength: 1.0,
+            directional: true,
+        },
+        SpikeTrain::default(),
+        Deletable {},
+    ))
 }
 
 pub fn spawn_voltmeter_wire(world: &mut World, target: Entity, voltmeter: Entity) -> Entity {

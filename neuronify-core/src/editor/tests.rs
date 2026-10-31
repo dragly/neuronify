@@ -733,7 +733,7 @@ fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
 
     drag(&mut editor, &mut world, &[at(12.0, 13.0), at(13.0, 15.0)]);
     let size = world
-        .get::<&VoltmeterSize>(voltmeter)
+        .get::<&MeterSize>(voltmeter)
         .map(|size| (size.width, size.height))
         .unwrap();
     assert_eq!(size, (10.0, 5.0));
@@ -1392,7 +1392,7 @@ fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
     editor.undo(&mut world);
 
     assert_eq!(position(&world, voltmeter), at(10.0, 5.0));
-    let size = world.get::<&VoltmeterSize>(voltmeter).unwrap();
+    let size = world.get::<&MeterSize>(voltmeter).unwrap();
     assert_eq!((size.width, size.height), (8.0, 4.0));
     let series = world.get::<&VoltageSeries>(wire).unwrap();
     assert_eq!(series.spike_times, [1.0]);
@@ -1556,4 +1556,26 @@ fn erasing_one_of_two_measured_neurons_keeps_the_voltmeter() {
     editor.selection = Some(second);
     editor.erase_selection(&mut world);
     assert!(!world.contains(voltmeter));
+}
+
+#[test]
+fn a_spike_detector_gets_a_row_for_each_neuron_connected_onto_it() {
+    let mut world = World::new();
+    let first = neuron(&mut world, at(0.0, 0.0));
+    let second = neuron(&mut world, at(0.0, -10.0));
+    let compartment = spawn_compartment(&mut world, at(0.0, -20.0), NeuronType::Excitatory);
+    let mut editor = editor(Tool::SpikeDetector);
+    drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
+    let (detector, _) = world.query::<&SpikeDetector>().iter().next().unwrap();
+    let inside = Frame::of(&world, detector).unwrap().point(0.5, 0.5);
+
+    editor.tool = Tool::StaticConnection;
+    drag(&mut editor, &mut world, &[at(0.0, -9.5), inside]);
+    drag(&mut editor, &mut world, &[at(0.0, -19.8), inside]);
+    let rows: Vec<Entity> = measured(&world, detector)
+        .into_iter()
+        .map(|(_, target)| target)
+        .collect();
+    assert_eq!(rows, [first, second]);
+    assert!(!rows.contains(&compartment));
 }

@@ -22,6 +22,7 @@ pub enum Setting {
     Delay,
     HighestVoltage,
     LowestVoltage,
+    TimeRange,
 }
 
 impl Setting {
@@ -49,6 +50,7 @@ impl Setting {
             Setting::Delay => "Delay",
             Setting::HighestVoltage => "Highest voltage",
             Setting::LowestVoltage => "Lowest voltage",
+            Setting::TimeRange => "Time range",
         }
     }
 
@@ -87,6 +89,7 @@ impl Setting {
             Setting::Delay => "How long a spike takes to arrive.",
             Setting::HighestVoltage => "The voltage at the top of each plot.",
             Setting::LowestVoltage => "The voltage at the bottom of each plot.",
+            Setting::TimeRange => "How far back in time the plot reaches.",
         }
     }
 }

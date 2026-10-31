@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use hecs::{Component, Entity, EntityBuilder, EntityRef, World};
 
 use crate::components::*;
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::VoltmeterRange;
 
 enum State {
@@ -60,6 +61,18 @@ impl Settings<AdaptationCurrent> for Adaptation {
     fn swap(&mut self, current: &mut AdaptationCurrent) {
         std::mem::swap(&mut self.adaptation, &mut current.adaptation);
         std::mem::swap(&mut self.time_constant, &mut current.time_constant);
+    }
+}
+
+struct TimeRange(f64);
+
+impl Settings<SpikeDetector> for TimeRange {
+    fn of(detector: &SpikeDetector) -> Self {
+        TimeRange(detector.time_range)
+    }
+
+    fn swap(&mut self, detector: &mut SpikeDetector) {
+        std::mem::swap(&mut self.0, &mut detector.time_range);
     }
 }
 
@@ -122,9 +135,9 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 17] = [
+const EDITED: [Edited; 18] = [
     edited::<Position>(),
-    edited::<VoltmeterSize>(),
+    edited::<MeterSize>(),
     edited::<NoteSize>(),
     edited::<Connection>(),
     edited::<LeakyNeuron>(),
@@ -140,6 +153,7 @@ const EDITED: [Edited; 17] = [
     edited::<VoltmeterRange>(),
     edited::<Label>(),
     edited::<AlternatingCurrent>(),
+    edited_settings::<SpikeDetector, TimeRange>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {

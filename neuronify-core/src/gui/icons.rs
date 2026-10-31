@@ -566,6 +566,27 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 stroke(1.8, chrome.accent),
             ));
         }
+        Tool::SpikeDetector => {
+            painter.rect(
+                Rect::from_min_max(at(4.0, 7.0), at(28.0, 25.0)),
+                3.0 * scale,
+                chrome.raised,
+                stroke(1.5, chrome.subtext),
+                StrokeKind::Inside,
+            );
+            for (row, ticks) in [
+                (11.5, [8.5, 13.5, 21.5]),
+                (16.0, [10.5, 17.5, 23.5]),
+                (20.5, [7.5, 15.0, 19.5]),
+            ] {
+                for tick in ticks {
+                    painter.line_segment(
+                        [at(tick, row - 1.8), at(tick, row + 1.8)],
+                        stroke(1.6, chrome.accent),
+                    );
+                }
+            }
+        }
         Tool::StaticConnection => {
             let curve: Vec<Pos2> = (0..=SPHERE_STEPS)
                 .map(|step| {

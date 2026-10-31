@@ -236,12 +236,12 @@ impl Default for ImmediateFireSynapse {
 pub struct TouchSensor;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct VoltmeterSize {
+pub struct MeterSize {
     pub width: f32,
     pub height: f32,
 }
 
-impl Default for VoltmeterSize {
+impl Default for MeterSize {
     fn default() -> Self {
         Self {
             width: 8.0,

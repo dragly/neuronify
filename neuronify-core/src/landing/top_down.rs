@@ -3,8 +3,8 @@ use glam::Vec3;
 use hecs::World;
 
 use crate::rendering::{
-    collect_scene, collect_voltmeter_traces, collect_voltmeter_wires, Bounds, ConnectionData,
-    CylinderData, Palette,
+    collect_meter_wires, collect_scene, collect_spike_detectors, collect_voltmeter_traces, Bounds,
+    ConnectionData, CylinderData, Palette,
 };
 
 const THUMBNAIL_MIN_CANVAS_EXTENT: f32 = 20.0;
@@ -48,7 +48,7 @@ pub fn top_down_shapes(
         ));
     }
 
-    for wire in collect_voltmeter_wires(world, palette) {
+    for wire in collect_meter_wires(world, palette) {
         shapes.push(Shape::line_segment(
             [to_screen(wire.position_a), to_screen(wire.position_b)],
             Stroke::new(
@@ -59,7 +59,10 @@ pub fn top_down_shapes(
     }
 
     shapes.extend(joined_voltmeter_traces(
-        collect_voltmeter_traces(world),
+        collect_voltmeter_traces(world)
+            .into_iter()
+            .chain(collect_spike_detectors(world, palette))
+            .collect(),
         scale,
         to_screen,
     ));

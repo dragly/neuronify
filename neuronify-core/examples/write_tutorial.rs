@@ -9,8 +9,8 @@ use neuronify_core::elements::{
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::serialization;
 use neuronify_core::{
-    Annotation, Connection, CurrentClamp, CurrentSynapse, LeakyDynamics, Link, NeuronDisplay,
-    NeuronType, NoteSize, Position, Setting, Tool, ToolGroup, VoltmeterSize, DEFAULT_SPEED,
+    Annotation, Connection, CurrentClamp, CurrentSynapse, LeakyDynamics, Link, MeterSize,
+    NeuronDisplay, NeuronType, NoteSize, Position, Setting, Tool, ToolGroup, DEFAULT_SPEED,
     SEGMENT_LENGTH,
 };
 
@@ -169,9 +169,9 @@ impl Canvas {
         self.connect(source, to);
     }
 
-    fn voltmeter(&mut self, target: Entity, left: f32, up: f32, size: VoltmeterSize) {
+    fn voltmeter(&mut self, target: Entity, left: f32, up: f32, size: MeterSize) {
         let voltmeter = spawn_voltmeter(&mut self.world, target, Canvas::at(left, up));
-        *self.world.get::<&mut VoltmeterSize>(voltmeter).unwrap() = size;
+        *self.world.get::<&mut MeterSize>(voltmeter).unwrap() = size;
     }
 
     fn axon(&mut self, from: Entity, waypoints: &[(f32, f32)], to: Entity) -> Entity {
@@ -264,7 +264,7 @@ fn leaks() -> World {
         neuron,
         11.0,
         up,
-        VoltmeterSize {
+        MeterSize {
             width: 13.0,
             height: 5.0,
         },
@@ -305,7 +305,7 @@ fn push_and_pull() -> World {
         middle,
         14.0,
         up,
-        VoltmeterSize {
+        MeterSize {
             width: 10.0,
             height: 5.0,
         },
