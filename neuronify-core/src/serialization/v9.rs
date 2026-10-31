@@ -34,9 +34,19 @@ schema!(
     Link,
     NeuronDisplay,
     VoltmeterRange,
+    Label,
 );
 
 pub fn upgrade_from_v8(world: &mut World) {
+    let neurons: Vec<hecs::Entity> = world
+        .query::<()>()
+        .with::<&LeakyNeuron>()
+        .iter()
+        .map(|(neuron, _)| neuron)
+        .collect();
+    for neuron in neurons {
+        world.insert_one(neuron, Label::default()).unwrap();
+    }
     let voltmeters: Vec<hecs::Entity> = world
         .query::<()>()
         .with::<&Voltmeter>()

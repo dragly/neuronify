@@ -242,7 +242,7 @@ fn build_note_geometry(
 /// Maps the polygons' local (x, y, 0) onto the ground at height `y`.
 /// Local x goes to world +Z (screen right) and local y to world +X (screen up),
 /// matching how `convert_position` rotates the legacy QML scene.
-fn note_plane(y: f32) -> Mat4 {
+pub(super) fn note_plane(y: f32) -> Mat4 {
     Mat4::from_cols(
         Vec4::new(0.0, 0.0, 1.0, 0.0),
         Vec4::new(1.0, 0.0, 0.0, 0.0),
@@ -252,14 +252,14 @@ fn note_plane(y: f32) -> Mat4 {
 }
 
 /// Moves geometry around a note's center to the note's position on the ground.
-fn translated<V: PlaneVertex>(
+pub(super) fn translated<V: PlaneVertex>(
     geometry: &TessellatedGeometry<V>,
     position: Vec3,
 ) -> TessellatedGeometry<V> {
     shifted(geometry, position.z, position.x)
 }
 
-fn shifted<V: PlaneVertex>(
+pub(super) fn shifted<V: PlaneVertex>(
     geometry: &TessellatedGeometry<V>,
     dx: f32,
     dy: f32,
@@ -270,7 +270,7 @@ fn shifted<V: PlaneVertex>(
     }
 }
 
-trait PlaneVertex: Copy {
+pub(super) trait PlaneVertex: Copy {
     fn position(&self) -> [f32; 2];
     fn moved(self, dx: f32, dy: f32) -> Self;
     fn toward(self, other: Self, t: f32) -> Self;

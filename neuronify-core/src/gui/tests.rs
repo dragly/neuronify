@@ -4,7 +4,7 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    Connection, CurrentClamp, CurrentSynapse, LeakyDynamics, LeakyNeuron, NeuronType,
+    Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics, LeakyNeuron, NeuronType,
     RegularSpikeGenerator,
 };
 use crate::constants::DEFAULT_SPEED;
@@ -630,6 +630,21 @@ fn a_voltmeter_sets_the_voltages_at_the_top_and_bottom_of_its_plots() {
 
     harness.press(Modifiers::COMMAND, Key::Z);
     assert_eq!(range(&harness), Default::default());
+}
+
+#[test]
+fn a_neuron_gets_a_label_that_undo_takes_back() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    assert!(harness.shows(Setting::Label.description()));
+    harness.click_button(inspector::LABEL);
+    harness.frame(vec![Event::Text("Output".to_string())]);
+    harness.frame(vec![]);
+    assert_eq!(harness.world.get::<&Label>(neuron).unwrap().text, "Output");
+
+    harness.click(pos2(SCREEN.x / 2.0, SCREEN.y / 2.0));
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(harness.world.get::<&Label>(neuron).unwrap().text, "");
 }
 
 #[test]

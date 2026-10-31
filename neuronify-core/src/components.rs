@@ -226,6 +226,11 @@ pub struct Annotation {
     pub text: String,
 }
 
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct Label {
+    pub text: String,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NoteSize {
     pub width: f32,

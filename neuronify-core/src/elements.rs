@@ -103,6 +103,7 @@ fn neuron(position: Position, neuron_type: NeuronType) -> EntityBuilder {
         LeakyDynamics::default(),
         LeakCurrent::default(),
         neuron_type,
+        Label::default(),
         Deletable {},
     ));
     neuron

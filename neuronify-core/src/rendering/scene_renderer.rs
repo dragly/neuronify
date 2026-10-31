@@ -15,6 +15,7 @@ use crate::rendering::gauges::GaugeRenderer;
 use crate::rendering::ghost::Ghost;
 use crate::rendering::gpu_types::{ConnectionData, CylinderData, HaloData, Sphere, TorusData};
 use crate::rendering::halos::{collect_halos, create_halos};
+use crate::rendering::labels::LabelRenderer;
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::notes::NoteRenderer;
 use crate::rendering::scene::collect_scene;
@@ -48,6 +49,7 @@ pub struct SceneRenderer {
     connection_spheres: Spheres,
     connection_buffer: InstanceBuffer<ConnectionData>,
     notes: NoteRenderer,
+    labels: LabelRenderer,
     gauges: GaugeRenderer,
 }
 
@@ -168,6 +170,7 @@ impl SceneRenderer {
             connection_spheres,
             connection_buffer,
             notes: NoteRenderer::new(application),
+            labels: LabelRenderer::new(application, theme),
             gauges: GaugeRenderer::new(application),
         }
     }
@@ -230,6 +233,7 @@ impl SceneRenderer {
         self.halo_buffer
             .update(&application.device, &application.queue, &halos);
         self.notes.update(application, world);
+        self.labels.update(application, world, theme);
         self.gauges.update(application, world, &palette);
     }
 
@@ -242,6 +246,7 @@ impl SceneRenderer {
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
         self.notes.render(data);
+        self.labels.render(data);
         self.gauges.render(data);
     }
 

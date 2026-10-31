@@ -1,5 +1,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Setting {
+    Label,
     Type,
     RefractoryPeriod,
     Threshold,
@@ -24,6 +25,7 @@ pub enum Setting {
 impl Setting {
     pub fn label(self) -> &'static str {
         match self {
+            Setting::Label => "Label",
             Setting::Type => "Type",
             Setting::RefractoryPeriod => "Refractory period",
             Setting::Threshold => "Threshold",
@@ -48,6 +50,7 @@ impl Setting {
 
     pub fn description(self) -> &'static str {
         match self {
+            Setting::Label => "A name shown above the neuron.",
             Setting::Type => {
                 "Excitatory spikes push the neurons they reach toward firing. \
                  Inhibitory spikes hold them back."

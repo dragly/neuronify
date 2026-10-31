@@ -437,6 +437,7 @@ mod tests {
         assert_eq!(count::<Voltmeter>(world), 14);
         assert_eq!(count::<VoltageSeries>(world), 14);
         assert_eq!(count::<VoltmeterRange>(world), 14);
+        assert_eq!(count::<Label>(world), neurons);
         for (voltmeter, _) in world.query::<&Voltmeter>().iter() {
             assert_eq!(measured(world, voltmeter).len(), 1);
         }

@@ -8,6 +8,7 @@ pub mod gauges;
 pub mod ghost;
 pub mod gpu_types;
 pub mod halos;
+pub mod labels;
 pub mod lighting;
 pub mod notes;
 pub mod paths;
