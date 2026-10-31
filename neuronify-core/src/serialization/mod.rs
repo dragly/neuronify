@@ -28,9 +28,10 @@ mod v3;
 mod v4;
 mod v5;
 mod v6;
+mod v7;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -44,7 +45,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v6::SaveContext, &mut serializer)
+    serialize(world, &mut v7::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -80,6 +81,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v6::deserialize(body)?, time, speed)
         }
+        7 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v7::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -94,6 +100,7 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             3 => v4::upgrade_from_v3(&mut world),
             4 => v5::upgrade_from_v4(&mut world),
             5 => v6::upgrade_from_v5(&mut world),
+            6 => v7::upgrade_from_v6(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -247,6 +254,15 @@ mod tests {
     fn loads_version_6() {
         let saved = load(include_bytes!("fixtures/v6.neuronify")).unwrap();
         assert_fixture(&saved, 29, 1);
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn loads_version_7() {
+        let saved = load(include_bytes!("fixtures/v7.neuronify")).unwrap();
+        assert_fixture(&saved, 30, 1);
+        assert_eq!(count::<Link>(&saved.world), 1);
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
     }

@@ -189,6 +189,11 @@ pub struct NoteSize {
     pub height: f32,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Link {
+    pub example: String,
+}
+
 impl Default for NoteSize {
     fn default() -> Self {
         Self {

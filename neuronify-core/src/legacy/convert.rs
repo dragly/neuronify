@@ -8,6 +8,12 @@ use crate::{Connection, Deletable, NeuronType, Position};
 use super::{LegacyEdge, LegacyNode, LegacySimulation};
 
 const PIXELS_PER_UNIT: f32 = 50.0 / 2.0;
+const NEXT_TUTORIAL: &str = "Next tutorial ›";
+const NEXT_TUTORIAL_PIXELS: f64 = 196.0;
+const LINK_SIZE: NoteSize = NoteSize {
+    width: 7.2,
+    height: 2.0,
+};
 
 fn convert_position(x: f64, y: f64) -> Vec3 {
     Vec3::new(
@@ -77,7 +83,22 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
             Deletable {},
         )),
         "meters/SpikeDetector.qml" => world.spawn((pos,)),
-        "annotations/NextTutorial.qml" => world.spawn((pos,)),
+        "annotations/NextTutorial.qml" => world.spawn((
+            Position {
+                position: convert_position(
+                    node.x + NEXT_TUTORIAL_PIXELS / 2.0,
+                    node.y + NEXT_TUTORIAL_PIXELS / 2.0,
+                ),
+            },
+            Annotation {
+                text: NEXT_TUTORIAL.to_string(),
+            },
+            LINK_SIZE,
+            Link {
+                example: node.target.clone().unwrap_or_default(),
+            },
+            Deletable {},
+        )),
         "annotations/Note.qml" => {
             let text = node.text.clone().unwrap_or_default();
             let default_size = NoteSize::default();

@@ -7,7 +7,8 @@ use visula::{
     Expression, GlyphDelegate, GlyphVertex, Glyphs, PolygonDelegate, PolygonVertex, Polygons,
 };
 
-use crate::components::{Annotation, NoteSize, Position};
+use crate::components::{Annotation, Link, NoteSize, Position};
+use crate::rendering::colors::srgb;
 
 /// DejaVu Sans 2.37, cut down to Latin, Greek, punctuation, super- and subscripts,
 /// arrows and math operators with
@@ -23,10 +24,18 @@ pub const NOTE_TEXT_Y: f32 = 0.02;
 
 const PREPARED_CHARACTERS: RangeInclusive<char> = ' '..='~';
 const PREPARED_GLYPHS_PER_FRAME: usize = 2;
+const NOTE_BACKGROUND: Vec4 = Vec4::new(0.95, 0.95, 0.85, 1.0);
+const NOTE_TEXT: Vec4 = Vec4::new(0.1, 0.1, 0.15, 1.0);
+const LINK_TEXT: Vec4 = Vec4::ONE;
+
+fn link_background() -> Vec4 {
+    srgb(30, 102, 245).extend(1.0)
+}
 
 /// The geometry of one note around its own center, rebuilt only when its text or size changes.
 struct NoteGeometry {
     text: String,
+    link: bool,
     width: f32,
     height: f32,
     half_extent: [f32; 2],
@@ -34,24 +43,18 @@ struct NoteGeometry {
     glyphs: TessellatedGeometry<GlyphVertex>,
 }
 
-/// Draws every note with two pipelines, one for the backgrounds and one for the text.
-/// Moving a note only uploads new vertices.
-pub struct NoteRenderer {
+struct Layer {
     backgrounds: Polygons,
     text: Glyphs,
-    atlas: GlyphAtlas,
-    unprepared: RangeInclusive<char>,
-    notes: HashMap<Entity, NoteGeometry>,
-    uploaded: Vec<(Entity, Vec3)>,
 }
 
-impl NoteRenderer {
-    pub fn new(application: &visula::Application) -> Self {
-        Self {
+impl Layer {
+    fn new(application: &visula::Application, background: Vec4, text: Vec4) -> Layer {
+        Layer {
             backgrounds: Polygons::new(
                 &application.rendering_descriptor(),
                 &PolygonDelegate {
-                    color: Vec4::new(0.95, 0.95, 0.85, 1.0).into(),
+                    color: background.into(),
                     transform: Expression::from(note_plane(NOTE_BACKGROUND_Y)),
                 },
                 &[],
@@ -61,11 +64,60 @@ impl NoteRenderer {
             text: Glyphs::new(
                 &application.rendering_descriptor(),
                 &GlyphDelegate {
-                    color: Vec4::new(0.1, 0.1, 0.15, 1.0).into(),
+                    color: text.into(),
                     transform: Expression::from(note_plane(NOTE_TEXT_Y)),
                 },
             )
             .unwrap(),
+        }
+    }
+
+    fn upload(
+        &mut self,
+        application: &visula::Application,
+        atlas: &GlyphAtlas,
+        (backgrounds, text): &(TessellatedGeometry, TessellatedGeometry<GlyphVertex>),
+    ) {
+        self.backgrounds.update_geometry(
+            &application.device,
+            &application.queue,
+            &backgrounds.vertices,
+            &backgrounds.indices,
+        );
+        self.text
+            .update_atlas(&application.device, &application.queue, atlas);
+        self.text.update_geometry(
+            &application.device,
+            &application.queue,
+            &text.vertices,
+            &text.indices,
+        );
+    }
+
+    fn render(&self, data: &mut visula::RenderData) {
+        use visula::Renderable;
+        self.backgrounds.render(data);
+        self.text.render(data);
+    }
+}
+
+/// Draws every note, and every link as a note in other colours,
+/// with a pipeline for the backgrounds and one for the text of each.
+/// Moving a note only uploads new vertices.
+pub struct NoteRenderer {
+    notes_layer: Layer,
+    links_layer: Layer,
+    atlas: GlyphAtlas,
+    unprepared: RangeInclusive<char>,
+    notes: HashMap<Entity, NoteGeometry>,
+    uploaded: Vec<(Entity, Vec3)>,
+}
+
+impl NoteRenderer {
+    pub fn new(application: &visula::Application) -> Self {
+        Self {
+            notes_layer: Layer::new(application, NOTE_BACKGROUND, NOTE_TEXT),
+            links_layer: Layer::new(application, link_background(), LINK_TEXT),
             atlas: GlyphAtlas::new(NOTE_FONT_DATA).unwrap(),
             unprepared: PREPARED_CHARACTERS,
             notes: HashMap::new(),
@@ -77,18 +129,20 @@ impl NoteRenderer {
         prepare_glyphs(&mut self.atlas, &mut self.unprepared);
         let mut changed = false;
         let mut placed = Vec::new();
-        for (entity, (annotation, position, size)) in
-            world.query::<(&Annotation, &Position, &NoteSize)>().iter()
+        for (entity, (annotation, position, size, link)) in world
+            .query::<(&Annotation, &Position, &NoteSize, Option<&Link>)>()
+            .iter()
         {
             let current = self.notes.get(&entity).is_some_and(|note| {
                 note.text == annotation.text
+                    && note.link == link.is_some()
                     && note.width == size.width
                     && note.height == size.height
             });
             if !current {
                 self.notes.insert(
                     entity,
-                    build_note_geometry(&mut self.atlas, &annotation.text, size),
+                    build_note_geometry(&mut self.atlas, &annotation.text, size, link.is_some()),
                 );
                 changed = true;
             }
@@ -102,43 +156,30 @@ impl NoteRenderer {
         if !changed && placed == self.uploaded {
             return;
         }
-        let (backgrounds, text) = layout(&self.notes, &placed);
-        self.backgrounds.update_geometry(
-            &application.device,
-            &application.queue,
-            &backgrounds.vertices,
-            &backgrounds.indices,
-        );
-        self.text
-            .update_atlas(&application.device, &application.queue, &self.atlas);
-        self.text.update_geometry(
-            &application.device,
-            &application.queue,
-            &text.vertices,
-            &text.indices,
-        );
+        let [notes, links] = layout(&self.notes, &placed);
+        self.notes_layer.upload(application, &self.atlas, &notes);
+        self.links_layer.upload(application, &self.atlas, &links);
         self.uploaded = placed;
     }
 
     pub fn render(&self, data: &mut visula::RenderData) {
-        use visula::Renderable;
-        self.backgrounds.render(data);
-        self.text.render(data);
+        self.notes_layer.render(data);
+        self.links_layer.render(data);
     }
 }
 
 /// Places every note's geometry at its position, in drawing order,
-/// returning the backgrounds and the text.
+/// returning the backgrounds and the text of the notes and of the links.
 fn layout(
     notes: &HashMap<Entity, NoteGeometry>,
     placed: &[(Entity, Vec3)],
-) -> (TessellatedGeometry, TessellatedGeometry<GlyphVertex>) {
+) -> [(TessellatedGeometry, TessellatedGeometry<GlyphVertex>); 2] {
     let rectangles: Vec<Rectangle> = placed
         .iter()
         .map(|(entity, position)| Rectangle::around(*position, notes[entity].half_extent))
         .collect();
-    let mut backgrounds = TessellatedGeometry::default();
-    let mut text = TessellatedGeometry::default();
+    let mut layers: [(TessellatedGeometry, TessellatedGeometry<GlyphVertex>); 2] =
+        Default::default();
     for (index, (entity, position)) in placed.iter().enumerate() {
         let note = &notes[entity];
         // The notes are flat, so a note on top hides whatever lies under it
@@ -147,10 +188,11 @@ fn layout(
             .filter(|cover| cover.overlaps(&rectangles[index]))
             .copied()
             .collect();
+        let (backgrounds, text) = &mut layers[usize::from(note.link)];
         backgrounds.merge(&uncovered(translated(&note.background, *position), &covers));
         text.merge(&uncovered(translated(&note.glyphs, *position), &covers));
     }
-    (backgrounds, text)
+    layers
 }
 
 fn prepare_glyphs(atlas: &mut GlyphAtlas, unprepared: &mut RangeInclusive<char>) {
@@ -161,7 +203,12 @@ fn prepare_glyphs(atlas: &mut GlyphAtlas, unprepared: &mut RangeInclusive<char>)
     }
 }
 
-fn build_note_geometry(atlas: &mut GlyphAtlas, text: &str, size: &NoteSize) -> NoteGeometry {
+fn build_note_geometry(
+    atlas: &mut GlyphAtlas,
+    text: &str,
+    size: &NoteSize,
+    link: bool,
+) -> NoteGeometry {
     let width = size.width.max(0.5);
     let height = size.height.max(0.5);
     let inner_width = (width - 2.0 * NOTE_MARGIN).max(0.5);
@@ -183,6 +230,7 @@ fn build_note_geometry(atlas: &mut GlyphAtlas, text: &str, size: &NoteSize) -> N
     };
     NoteGeometry {
         text: text.to_string(),
+        link,
         width: size.width,
         height: size.height,
         half_extent: [width * 0.5, height * 0.5],
@@ -504,8 +552,29 @@ mod tests {
     }
 
     #[test]
+    fn links_are_laid_out_apart_from_notes() {
+        let mut world = hecs::World::new();
+        let [note, link] = [world.spawn(()), world.spawn(())];
+        let mut atlas = atlas();
+        let size = NoteSize::default();
+        let geometry = HashMap::from([
+            (
+                note,
+                build_note_geometry(&mut atlas, "A note", &size, false),
+            ),
+            (link, build_note_geometry(&mut atlas, "Next ›", &size, true)),
+        ]);
+        let placed = [(note, Vec3::ZERO), (link, Vec3::Z * 20.0)];
+        let [notes, links] = layout(&geometry, &placed);
+        let note_background = rectangle(size.width, size.height).vertices.len();
+        assert_eq!(notes.0.vertices.len(), note_background);
+        assert_eq!(links.0.vertices.len(), note_background);
+        assert!(!notes.1.vertices.is_empty() && !links.1.vertices.is_empty());
+    }
+
+    #[test]
     fn hidden_text_keeps_its_texels_in_place() {
-        let note = build_note_geometry(&mut atlas(), "H", &NoteSize::default());
+        let note = build_note_geometry(&mut atlas(), "H", &NoteSize::default(), false);
         let [first, opposite] = [note.glyphs.vertices[0], note.glyphs.vertices[2]];
         let cover = Rectangle {
             min: [-0.1, -1.0],
@@ -527,7 +596,7 @@ mod tests {
 
     #[test]
     fn centers_text_in_the_note() {
-        let note = build_note_geometry(&mut atlas(), "Hello there", &NoteSize::default());
+        let note = build_note_geometry(&mut atlas(), "Hello there", &NoteSize::default(), false);
         let xs = note.glyphs.vertices.iter().map(|v| v.position[0]);
         let (min, max) = xs.fold((f32::MAX, f32::MIN), |(a, b), x| (a.min(x), b.max(x)));
         assert!((min + max).abs() < 0.1, "min={min} max={max}");

@@ -440,3 +440,22 @@ fn test_burst_neuron_loads_with_burst_current() {
     spawn_legacy_simulation(&mut world, &sim);
     assert_eq!(world.query::<&BurstCurrent>().iter().count(), 1);
 }
+
+#[test]
+fn the_next_tutorial_button_becomes_a_link_to_the_next_tutorial() {
+    let sim = parse_legacy_nfy(TUTORIAL_1_INTRO_NFY).unwrap();
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &sim);
+    let links: Vec<(String, String)> = world
+        .query::<(&Link, &Annotation)>()
+        .iter()
+        .map(|(_, (link, note))| (link.example.clone(), note.text.clone()))
+        .collect();
+    assert_eq!(
+        links,
+        [(
+            "tutorial_2_circuits.nfy".to_string(),
+            "Next tutorial ›".to_string()
+        )]
+    );
+}
