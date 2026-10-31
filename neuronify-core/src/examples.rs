@@ -220,6 +220,30 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
         ],
     },
     ExampleCategory {
+        name: "Inputs and Meters",
+        examples: &[
+            Example {
+                name: "Generators",
+                description: "A steady current, an alternating current, regular spikes \
+                    and random spikes each drive a neuron, \
+                    and a spike detector shows when each one fires.",
+                contents: legacy!("generators.nfy"),
+            },
+            Example {
+                name: "Firing Rate Plot",
+                description: "A spike generator drives a neuron, \
+                    and a plot shows how often the neuron fires.",
+                contents: legacy!("frPlot.nfy"),
+            },
+            Example {
+                name: "Visual Input",
+                description: "Two visual inputs look at a moving bar \
+                    through different receptive fields and drive one neuron.",
+                contents: legacy!("visualInput.nfy"),
+            },
+        ],
+    },
+    ExampleCategory {
         name: "Textbook",
         examples: &[
             Example {
@@ -247,6 +271,24 @@ mod tests {
     fn examples_are_found_by_their_file() {
         assert_eq!(find("leaky.nfy").unwrap().name, "Leaky");
         assert!(find("missing.nfy").is_none());
+    }
+
+    #[test]
+    fn every_bundled_neuronify_1_file_is_listed() {
+        let listed: Vec<&str> = EXAMPLE_CATEGORIES
+            .iter()
+            .flat_map(|category| category.examples)
+            .map(Example::file)
+            .collect();
+        let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
+        for entry in std::fs::read_dir(folder).unwrap() {
+            let file = entry.unwrap().file_name().to_string_lossy().into_owned();
+            let example = file.ends_with(".nfy");
+            let replaced_by_the_tutorial = file.starts_with("tutorial_");
+            if example && file != "empty.nfy" && !replaced_by_the_tutorial {
+                assert!(listed.contains(&file.as_str()), "{file} is not listed");
+            }
+        }
     }
 
     #[test]
