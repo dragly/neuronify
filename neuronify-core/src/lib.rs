@@ -14,6 +14,7 @@ pub mod legacy;
 pub mod measurement;
 pub mod rendering;
 pub mod serialization;
+pub mod settings;
 pub mod simulation;
 pub mod tools;
 #[cfg(target_arch = "wasm32")]

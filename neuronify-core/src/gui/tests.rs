@@ -6,6 +6,7 @@ use super::*;
 use crate::components::{Connection, LeakyNeuron, NeuronType};
 use crate::constants::DEFAULT_SPEED;
 use crate::elements::{spawn_cable, spawn_compartment, Element};
+use crate::settings::Setting;
 use crate::tools::Tool;
 
 const SCREEN: Vec2 = vec2(1280.0, 800.0);
@@ -362,6 +363,31 @@ fn the_inspector_shows_the_selection() {
         assert!(harness.shows("Threshold"));
     }
     assert!(!Harness::new(true).shows("Threshold"));
+}
+
+#[test]
+fn the_inspector_explains_each_setting() {
+    let (world, neuron) = one_neuron();
+    let harness = Harness::with(true, world, Some(neuron));
+    for setting in [
+        Setting::Threshold,
+        Setting::RestingPotential,
+        Setting::Capacitance,
+    ] {
+        assert!(harness.shows(setting.label()));
+        assert!(harness.shows(setting.description()));
+    }
+}
+
+#[test]
+fn the_inspector_leaves_values_beyond_a_slider_alone() {
+    let (world, neuron) = one_neuron();
+    world.get::<&mut LeakyNeuron>(neuron).unwrap().threshold = 0.5;
+    let harness = Harness::with(true, world, Some(neuron));
+    assert_eq!(
+        harness.world.get::<&LeakyNeuron>(neuron).unwrap().threshold,
+        0.5
+    );
 }
 
 #[test]
