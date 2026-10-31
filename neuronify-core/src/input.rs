@@ -56,6 +56,10 @@ impl Mouse {
         self.left_down = false;
         self.tap_start = None;
     }
+
+    pub fn moved_while_pressed(&self) -> bool {
+        self.left_down && self.tap_start.is_none()
+    }
 }
 
 #[derive(Default)]
@@ -295,6 +299,21 @@ mod tests {
 
     fn at(x: f64, y: f64) -> PhysicalPosition<f64> {
         PhysicalPosition::new(x, y)
+    }
+
+    #[test]
+    fn a_press_counts_as_moved_once_it_leaves_the_tap_slop() {
+        let mut mouse = Mouse::default();
+        mouse.move_to(at(10.0, 10.0), 2.0);
+        mouse.press(true, 0.0);
+        mouse.move_to(at(10.0 + TAP_SLOP, 10.0), 2.0);
+        assert!(!mouse.moved_while_pressed());
+        mouse.move_to(at(10.0 + 3.0 * TAP_SLOP, 10.0), 2.0);
+        assert!(mouse.moved_while_pressed());
+        mouse.move_to(at(10.0, 10.0), 2.0);
+        assert!(mouse.moved_while_pressed());
+        mouse.press(false, 1.0);
+        assert!(!mouse.moved_while_pressed());
     }
 
     #[test]
