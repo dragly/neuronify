@@ -341,6 +341,54 @@ mod tests {
         );
     }
 
+    fn fires_after_endings_on(neuron_type: NeuronType, site: usize, endings: usize) -> bool {
+        let mut world = hecs::World::new();
+        let neuron = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            Position {
+                position: Vec3::ZERO,
+            },
+            neuron_type,
+        ));
+        spawn_dendrites(&mut world, neuron);
+        let target = compartment_tree(&world, neuron)[site];
+        for _ in 0..endings {
+            let tip = spawn_compartment(&mut world, Vec3::X, NeuronType::Excitatory);
+            spawn_cable(&mut world, tip, target, true);
+            world.get::<&mut Compartment>(tip).unwrap().voltage = COMPARTMENT_FIRE_VOLTAGE;
+        }
+        let mut time = 0.0;
+        (0..300).any(|_| {
+            step_simulation(&mut world, &mut time, 1, None);
+            world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0
+        })
+    }
+
+    #[test]
+    fn one_axon_ending_is_not_enough_to_fire_a_neuron_but_two_together_mostly_are() {
+        for neuron_type in [NeuronType::Excitatory, NeuronType::Inhibitory] {
+            let mut world = hecs::World::new();
+            let neuron = world.spawn((
+                Position {
+                    position: Vec3::ZERO,
+                },
+                neuron_type,
+            ));
+            spawn_dendrites(&mut world, neuron);
+            let sites = compartment_tree(&world, neuron).len();
+            assert!((0..sites).all(|site| !fires_after_endings_on(neuron_type, site, 1)));
+            let fired_by_two = (0..sites)
+                .filter(|&site| fires_after_endings_on(neuron_type, site, 2))
+                .count();
+            assert!(
+                2 * fired_by_two > sites,
+                "two endings fired {neuron_type:?} from {fired_by_two} of {sites} sites"
+            );
+        }
+    }
+
     #[test]
     fn the_tree_holds_every_compartment() {
         let mut world = hecs::World::new();
