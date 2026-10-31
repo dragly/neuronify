@@ -288,6 +288,9 @@ impl Neuronify {
             self.editor.lift(&mut self.world);
             return;
         }
+        if self.mouse.moved_while_pressed() {
+            self.editor.move_held();
+        }
         let Some(screen_position) = self.mouse.position else {
             return;
         };

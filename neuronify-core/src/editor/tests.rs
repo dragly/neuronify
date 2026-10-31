@@ -877,13 +877,57 @@ fn holding_an_element_grabs_it() {
 
     editor.view(&mut world, at(0.5, 0.0));
     assert!(editor.hold(&world, at(0.5, 0.0), true));
-    assert_eq!(editor.selection, Some(target));
     assert_eq!(editor.tool, Tool::Edit);
     assert_eq!(editor.edit(&mut world, at(3.5, 2.0), false), None);
     assert_eq!(
         world.get::<&Position>(target).unwrap().position,
         at(3.0, 2.0)
     );
+}
+
+#[test]
+fn a_hold_let_go_without_moving_selects() {
+    let mut world = World::new();
+    let earlier = neuron(&mut world, at(0.0, 10.0));
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::View);
+    editor.selection = Some(earlier);
+
+    editor.view(&mut world, at(0.5, 0.0));
+    assert!(editor.hold(&world, at(0.5, 0.0), true));
+    assert_eq!(editor.selection, Some(earlier));
+    editor.lift(&mut world);
+    assert_eq!(editor.selection, Some(target));
+}
+
+#[test]
+fn a_hold_that_moves_selects_nothing() {
+    let mut world = World::new();
+    let earlier = neuron(&mut world, at(0.0, 10.0));
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::View);
+    editor.selection = Some(earlier);
+
+    editor.view(&mut world, at(0.5, 0.0));
+    assert!(editor.hold(&world, at(0.5, 0.0), true));
+    editor.move_held();
+    assert_eq!(editor.selection, None);
+    drag(&mut editor, &mut world, &[at(3.5, 2.0)]);
+    assert_eq!(position(&world, target), at(3.0, 2.0));
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn a_cancelled_hold_selects_nothing() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::View);
+
+    editor.view(&mut world, at(0.5, 0.0));
+    assert!(editor.hold(&world, at(0.5, 0.0), true));
+    editor.release(&world);
+    editor.lift(&mut world);
+    assert_eq!(editor.selection, None);
 }
 
 fn grow_axon(world: &mut World, from: Vec3, to: Vec3) {

@@ -20,11 +20,13 @@ pub struct Mouse {
     pub left_down: bool,
     pub position: Option<PhysicalPosition<f64>>,
     tap_start: Option<(PhysicalPosition<f64>, f64)>,
+    held: bool,
 }
 
 impl Mouse {
     pub fn press(&mut self, pressed: bool, now: f64) -> bool {
-        let tapped = !pressed && self.tap_start.take().is_some();
+        let tapped = !pressed && self.tap_start.take().is_some() && !self.held;
+        self.held = false;
         self.left_down = pressed;
         if pressed {
             self.tap_start = self.position.map(|position| (position, now));
@@ -34,8 +36,8 @@ impl Mouse {
 
     pub fn take_hold(&mut self, now: f64) -> Option<PhysicalPosition<f64>> {
         match self.tap_start {
-            Some((_, since)) if self.left_down && now - since >= HOLD => {
-                self.tap_start = None;
+            Some((_, since)) if self.left_down && !self.held && now - since >= HOLD => {
+                self.held = true;
                 self.position
             }
             _ => None,
@@ -55,6 +57,7 @@ impl Mouse {
     pub fn cancel(&mut self) {
         self.left_down = false;
         self.tap_start = None;
+        self.held = false;
     }
 
     pub fn moved_while_pressed(&self) -> bool {
@@ -673,6 +676,17 @@ mod tests {
         assert_eq!(mouse.take_hold(0.4), Some(at(12.0, 10.0)));
         assert_eq!(mouse.take_hold(0.5), None);
         assert!(!mouse.press(false, 0.6));
+    }
+
+    #[test]
+    fn a_hold_counts_as_moved_once_it_leaves_the_tap_slop() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        assert!(mouse.take_hold(0.4).is_some());
+        mouse.move_to(at(14.0, 15.0), 1.0);
+        assert!(!mouse.moved_while_pressed());
+        mouse.move_to(at(30.0, 10.0), 1.0);
+        assert!(mouse.moved_while_pressed());
+        assert!(!mouse.press(false, 1.0));
     }
 
     #[test]

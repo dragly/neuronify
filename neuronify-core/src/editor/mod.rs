@@ -60,6 +60,7 @@ pub struct Editor {
     pressed_connection: Option<Entity>,
     move_origin: Option<Vec3>,
     dragging: Option<Drag>,
+    held: Option<Entity>,
     resizing: Option<(Entity, Corner, Vec3)>,
     recording: Option<Recording>,
     adjusting: Option<Snapshot>,
@@ -170,6 +171,9 @@ impl Editor {
                 lay_axon(world, axon.from, target, true, self.myelinates());
             }
         }
+        if let Some(held) = self.held {
+            self.selection = Some(held);
+        }
         self.release(world);
     }
 
@@ -185,6 +189,7 @@ impl Editor {
         self.pressed_connection = None;
         self.move_origin = None;
         self.dragging = None;
+        self.held = None;
         self.resizing = None;
         if let Some(recording) = self.recording.take() {
             self.edited |= self.history.record(recording, world);
@@ -395,13 +400,19 @@ impl Editor {
         self.move_origin = None;
         self.connection_tool = None;
         if select {
-            self.select_entity(entity);
+            self.held = Some(entity);
         }
         if self.tool == Tool::View {
             self.tool = Tool::Edit;
         }
         self.grab(world, entity, entity_position, position);
         true
+    }
+
+    pub fn move_held(&mut self) {
+        if self.held.take().is_some() {
+            self.selection = None;
+        }
     }
 
     fn grab(&mut self, world: &World, entity: Entity, entity_position: Vec3, position: Vec3) {
