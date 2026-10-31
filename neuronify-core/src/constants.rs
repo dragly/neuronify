@@ -20,6 +20,7 @@ pub const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
 pub const ATTACHMENT_RANGE: f32 = 1.5 * NODE_RADIUS;
 pub const SELECTION_RANGE: f32 = 0.9 * NODE_RADIUS;
 pub const SEGMENT_LENGTH: f32 = 2.0 * NODE_RADIUS;
+pub const TERMINAL_INSET: f32 = 2.0 * NODE_RADIUS;
 
 pub const VOLTMETER_TIME_WINDOW: f64 = 1.0 / 9.0;
 pub const LIF_VOLTAGE_MIN: f64 = -100.0;

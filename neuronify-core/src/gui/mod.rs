@@ -33,6 +33,8 @@ const MENU_PADDING: i8 = 6;
 const MENU_ROW_HEIGHT: f32 = 34.0;
 const COMPACT_WIDTH: f32 = 640.0;
 const COMPACT_HEIGHT: f32 = 560.0;
+const HINT_GAP: f32 = 20.0;
+const HINT_PADDING: i8 = 8;
 const UNDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Z);
 const REDO: KeyboardShortcut =
     KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::Z);
@@ -302,6 +304,23 @@ pub fn load_error(context: &Context, error: &str) {
     egui::Window::new("Could not load file").show(context, |ui| {
         ui.label(error);
     });
+}
+
+pub fn connection_hint(context: &Context, theme: Theme, tip: Pos2, shown: f32) {
+    let chrome = Chrome::of(theme);
+    egui::Area::new(Id::new("connection_hint"))
+        .order(Order::Tooltip)
+        .interactable(false)
+        .pivot(Align2::CENTER_BOTTOM)
+        .fixed_pos(tip - vec2(0.0, HINT_GAP))
+        .show(context, |ui| {
+            ui.multiply_opacity(shown);
+            chrome.panel_frame(HINT_PADDING).show(ui, |ui| {
+                ui.add(
+                    egui::Label::new(RichText::new("Drag to connect").color(chrome.text)).extend(),
+                );
+            });
+        });
 }
 
 fn fab(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str, on: bool) -> Response {

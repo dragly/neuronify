@@ -336,6 +336,62 @@ fn tapping_an_element_while_adding_does_nothing() {
     assert_eq!(count::<LeakyNeuron>(&world), 1);
 }
 
+fn offer_from_neuron(world: &mut World) -> (Entity, Editor) {
+    let a = neuron(world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.edit(world, at(0.5, 0.0), false);
+    editor.offer_connection(10.0);
+    editor.release(world);
+    (a, editor)
+}
+
+#[test]
+fn tapping_a_neuron_while_adding_offers_a_connection_for_two_seconds() {
+    let mut world = World::new();
+    let (a, mut editor) = offer_from_neuron(&mut world);
+    let hint = editor.connection_hint(&world, 11.0).unwrap();
+    let bead = hint.string[HINT_SEGMENTS];
+    assert_eq!(hint.string[0], position(&world, a));
+    assert_eq!(bead.y, HINT_LENGTH);
+    assert!((hint.string[HINT_SEGMENTS + 1].distance(bead) - TERMINAL_INSET).abs() < 1e-5);
+    assert!(hint.label.x > bead.x);
+    assert_eq!(hint.shown, 1.0);
+    let later = editor.connection_hint(&world, 11.3).unwrap();
+    assert!(later.string[HINT_SEGMENTS].distance(bead) > 0.1);
+    assert_eq!(later.label, hint.label);
+    assert_eq!(editor.connection_hint(&world, 12.0), None);
+    assert_eq!(editor.connection_hint(&world, 11.0), None);
+}
+
+#[test]
+fn placing_an_input_offers_no_connection() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::CurrentSource));
+    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.offer_connection(10.0);
+    editor.release(&world);
+    assert_eq!(editor.connection_hint(&world, 11.0), None);
+}
+
+#[test]
+fn pulling_the_offered_connection_connects() {
+    let mut world = World::new();
+    let (a, mut editor) = offer_from_neuron(&mut world);
+    let b = neuron(&mut world, at(10.0, 10.0));
+    drag(&mut editor, &mut world, &[at(3.0, 0.0), at(10.0, 10.0)]);
+    assert!(connected(&world, a, b));
+    assert_eq!(count::<LeakyNeuron>(&world), 2);
+}
+
+#[test]
+fn pressing_where_the_hint_was_adds_once_it_is_gone() {
+    let mut world = World::new();
+    let (_, mut editor) = offer_from_neuron(&mut world);
+    assert_eq!(editor.connection_hint(&world, 12.5), None);
+    drag(&mut editor, &mut world, &[at(3.0, 0.0)]);
+    assert_eq!(count::<LeakyNeuron>(&world), 2);
+}
+
 #[test]
 fn holding_an_element_while_adding_moves_it() {
     let mut world = World::new();
