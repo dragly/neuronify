@@ -7,6 +7,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::measurement::voltmeter::Voltmeter;
 use crate::rendering::colors::*;
+use crate::rendering::shapes::{shown_voltage, voltage_fraction};
 
 /// Spacing between the joints along a connection, the same as between compartments.
 const JOINT_SPACING: f32 = 2.0 * NODE_RADIUS;
@@ -66,16 +67,19 @@ pub fn distance_to_segment(start: Vec3, end: Vec3, point: Vec3) -> Option<f32> {
         .then(|| point.distance(start + t * along))
 }
 
-fn connection_colors(from: EntityRef, to: EntityRef, palette: &Palette) -> (Vec3, Vec3) {
+fn connection_colors(
+    from: EntityRef,
+    to: EntityRef,
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> (Vec3, Vec3) {
     let value = |target: EntityRef| -> f32 {
         if let Some(compartment) = target.get::<&Compartment>() {
-            ((compartment.voltage + 50.0) / 200.0) as f32
+            ((shown_voltage(&compartment, display) + 50.0) / 200.0) as f32
         } else if let Some(dynamics) = target.get::<&LeakyDynamics>() {
             let neuron = target.get::<&LeakyNeuron>();
             if let Some(neuron) = neuron {
-                ((dynamics.voltage - neuron.resting_potential)
-                    / (neuron.threshold - neuron.resting_potential))
-                    .clamp(0.0, 1.0) as f32
+                voltage_fraction(&neuron, &dynamics, display)
             } else {
                 0.5
             }
@@ -137,6 +141,7 @@ pub fn connection_paths(
     radii: &HashMap<Entity, f32>,
     palette: &Palette,
 ) -> BTreeMap<Entity, ConnectionPath> {
+    let display = NeuronDisplay::of(world);
     let pairs: HashSet<(Entity, Entity)> = world
         .query::<&Connection>()
         .iter()
@@ -176,7 +181,7 @@ pub fn connection_paths(
                 Some(&radius) if from_compartment => radius,
                 _ => (CONNECTION_RADIUS * connection.strength as f32).max(0.05),
             };
-            let (start_color, end_color) = connection_colors(from, to, palette);
+            let (start_color, end_color) = connection_colors(from, to, &display, palette);
             Some((
                 entity,
                 ConnectionPath {

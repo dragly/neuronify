@@ -24,7 +24,7 @@ pub fn configure_lighting(application: &mut visula::Application, theme: Theme) {
     set_theme_lighting(application, theme);
     application.post_processor.config.bloom = Some(BloomConfig {
         threshold: BLOOM_THRESHOLD,
-        intensity: 2.5,
+        intensity: 1.75,
         mip_levels: 5,
     });
     application.post_processor.enable_bloom(

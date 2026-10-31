@@ -7,7 +7,7 @@ use crate::constants::*;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
-use crate::rendering::shapes::{generator_color, soma_color};
+use crate::rendering::shapes::{generator_color, shown_voltage, soma_color};
 
 /// `radii` comes from `compartment_radii`, so the joints match the cylinders.
 pub fn collect_spheres(
@@ -17,6 +17,7 @@ pub fn collect_spheres(
     palette: &Palette,
 ) -> Vec<Sphere> {
     let mut spheres = Vec::new();
+    let display = NeuronDisplay::of(world);
 
     spheres.extend(
         world
@@ -24,7 +25,7 @@ pub fn collect_spheres(
             .iter()
             .map(|(entity, (neuron, dynamics, position))| Sphere {
                 position: position.position,
-                color: soma_color(world, entity, neuron, dynamics, palette),
+                color: soma_color(world, entity, neuron, dynamics, &display, palette),
                 radius: NODE_RADIUS,
                 _padding: Default::default(),
             }),
@@ -50,7 +51,7 @@ pub fn collect_spheres(
             .iter()
             .map(|(entity, (compartment, position, neuron_type))| Sphere {
                 position: position.position,
-                color: palette.compartment(neuron_type, compartment.voltage),
+                color: palette.compartment(neuron_type, shown_voltage(compartment, &display)),
                 radius: radii
                     .get(&entity)
                     .copied()

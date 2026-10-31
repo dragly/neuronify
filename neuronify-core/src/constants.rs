@@ -7,6 +7,7 @@ pub const FHN_OFFSET: f64 = 50.0;
 pub const FHN_CDT: f64 = 0.01;
 
 pub const LIF_DT: f64 = 0.0001;
+pub const FIRING_RATE_TIME_CONSTANT: f64 = 0.05;
 pub const PHYSICS_DT: f64 = 0.001;
 
 pub const SIMULATION_STEPS_PER_SECOND: f64 = 1000.0 / 16.0;

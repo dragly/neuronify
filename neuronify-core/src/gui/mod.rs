@@ -14,6 +14,7 @@ use egui::{
 };
 use hecs::World;
 
+use crate::components::{NeuronDisplay, Setting};
 use crate::editor::Editor;
 use crate::rendering::Theme;
 use crate::tools::Tool;
@@ -22,7 +23,7 @@ use inspector::{Inspector, Placement};
 use playback::BAR_HEIGHT;
 use rail::{Rail, POPOVER_GAP, RAIL_WIDTH, TOOL_BAR_HEIGHT, TOOL_BAR_MARGIN};
 use style::{Chrome, MARGIN, PANEL_RADIUS};
-use widgets::{icon_row, segmented, separator};
+use widgets::{icon_row, segmented, separator, switch};
 
 const FAB_SIZE: f32 = 46.0;
 const FAB_GAP: f32 = 8.0;
@@ -88,7 +89,7 @@ impl Gui {
         }
     }
 
-    fn wide(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
+    fn wide(&mut self, context: &Context, mut controls: Controls) -> Option<MenuChoice> {
         let theme = *controls.theme;
         let chrome = Chrome::of(theme);
         let editing = *controls.edit_enabled;
@@ -155,14 +156,12 @@ impl Gui {
             context,
             &menu_button,
             (Align2::LEFT_TOP, menu_position),
-            controls.theme,
-            controls.fps,
-            controls.saving,
+            &mut controls,
         );
         choice.or(picked)
     }
 
-    fn compact(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
+    fn compact(&mut self, context: &Context, mut controls: Controls) -> Option<MenuChoice> {
         if controls.editor.selection.is_some() {
             *controls.edit_enabled = true;
         }
@@ -242,14 +241,7 @@ impl Gui {
             Placement::Sheet,
         );
         let position = pos2(more.rect.right(), more.rect.bottom() + FAB_GAP);
-        let picked = self.menu(
-            context,
-            &more,
-            (Align2::RIGHT_TOP, position),
-            controls.theme,
-            controls.fps,
-            controls.saving,
-        );
+        let picked = self.menu(context, &more, (Align2::RIGHT_TOP, position), &mut controls);
         choice.or(picked)
     }
 
@@ -258,9 +250,7 @@ impl Gui {
         context: &Context,
         button: &Response,
         (pivot, position): (Align2, Pos2),
-        theme: &mut Theme,
-        fps: f64,
-        saving: Saving,
+        controls: &mut Controls,
     ) -> Option<MenuChoice> {
         if button.clicked() {
             self.menu_open = !self.menu_open;
@@ -268,7 +258,7 @@ impl Gui {
         if !self.menu_open {
             return None;
         }
-        let (picked, rect) = menu(context, pivot, position, theme, fps, saving);
+        let (picked, rect) = menu(context, pivot, position, controls);
         let pressed_elsewhere = context.input(|input| {
             input.pointer.any_pressed()
                 && input.pointer.interact_pos().is_some_and(|position| {
@@ -442,11 +432,10 @@ fn menu(
     context: &Context,
     pivot: Align2,
     position: Pos2,
-    theme: &mut Theme,
-    fps: f64,
-    saving: Saving,
+    controls: &mut Controls,
 ) -> (Option<MenuChoice>, Rect) {
-    let chrome = Chrome::of(*theme);
+    let chrome = Chrome::of(*controls.theme);
+    let saving = controls.saving;
     let mut picked = None;
     let rect = egui::Area::new(Id::new("menu"))
         .order(Order::Foreground)
@@ -475,13 +464,19 @@ fn menu(
                     segmented(
                         ui,
                         chrome,
-                        theme,
+                        controls.theme,
                         &[(Theme::Dark, "Dark"), (Theme::Light, "Light")],
                     )
                 });
+                let mut display = NeuronDisplay::of(controls.world);
+                let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);
+                let firing_rate = switch(ui, chrome, "Show firing rate", &mut display.firing_rate);
+                if voltage.changed() || firing_rate.changed() {
+                    display.set_in(controls.world);
+                }
                 labelled_row(ui, chrome, "Frame rate", |ui| {
                     ui.label(
-                        RichText::new(format!("{fps:.0} fps"))
+                        RichText::new(format!("{:.0} fps", controls.fps))
                             .size(13.0)
                             .color(chrome.subtext),
                     );
