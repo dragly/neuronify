@@ -542,10 +542,10 @@ fn a_tool_on_the_tool_bar_starts_editing() {
 fn the_add_sheet_starts_editing_with_what_to_place() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Add");
-    harness.click_text("Poisson generator");
+    harness.click_text("Random spikes");
     assert_eq!(harness.editor.tool, Tool::Place(Element::PoissonGenerator));
     assert!(harness.editing());
-    assert!(!harness.shows("Poisson generator"));
+    assert!(!harness.shows("Random spikes"));
 }
 
 #[test]
@@ -565,16 +565,16 @@ fn the_add_sheet_chooses_the_kind_of_neuron_right_under_the_neurons() {
 fn the_add_sheet_closes_when_pulled_down() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Add");
-    let tile = harness.text_position("Poisson generator").unwrap();
+    let tile = harness.text_position("Random spikes").unwrap();
     let sheet = harness
         .context
         .memory(|memory| memory.area_rect(Id::new("add_sheet")))
         .unwrap();
     let handle = sheet.center_top() + vec2(0.0, 10.0);
     harness.drag(handle, handle + vec2(0.0, 40.0));
-    assert_eq!(harness.text_position("Poisson generator"), Some(tile));
+    assert_eq!(harness.text_position("Random spikes"), Some(tile));
     harness.drag(handle, handle + vec2(0.0, 500.0));
-    assert!(!harness.shows("Poisson generator"));
+    assert!(!harness.shows("Random spikes"));
 }
 
 #[test]

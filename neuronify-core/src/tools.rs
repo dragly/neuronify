@@ -27,14 +27,14 @@ impl Tool {
             Tool::Place(Element::ExcitatoryNeuron) => "Excitatory neuron",
             Tool::Place(Element::InhibitoryNeuron) => "Inhibitory neuron",
             Tool::Place(Element::AdaptiveNeuron) => "Adaptive neuron",
-            Tool::Place(Element::BurstNeuron) => "Burst neuron",
+            Tool::Place(Element::BurstNeuron) => "Bursting neuron",
             Tool::Place(Element::CurrentSource) => "Current source",
             Tool::Place(Element::TouchSensor) => "Touch sensor",
-            Tool::Place(Element::RegularSpikeGenerator) => "Spike generator",
-            Tool::Place(Element::PoissonGenerator) => "Poisson generator",
+            Tool::Place(Element::RegularSpikeGenerator) => "Regular spikes",
+            Tool::Place(Element::PoissonGenerator) => "Random spikes",
             Tool::Place(Element::Note) => "Note",
             Tool::Voltmeter => "Voltmeter",
-            Tool::StaticConnection => "Static connection",
+            Tool::StaticConnection => "Connection",
             Tool::Axon => "Axon",
         }
     }
@@ -43,30 +43,34 @@ impl Tool {
         match self {
             Tool::View => "Watch the circuit, press touch sensors and tap things to inspect them.",
             Tool::Edit => "Select things to change them, and drag them around.",
-            Tool::Stimulate => "Touch neurons to make them fire.",
-            Tool::Erase => "Erase elements and connections.",
+            Tool::Stimulate => "Press a neuron to make it fire. Hold to keep it firing.",
+            Tool::Erase => "Drag over things and connections to erase them.",
             Tool::Place(Element::ExcitatoryNeuron) => {
-                "Its spikes push the neurons it connects to towards threshold."
+                "Blue. Its spikes push the neurons it connects to toward firing."
             }
             Tool::Place(Element::InhibitoryNeuron) => {
-                "Its spikes pull the neurons it connects to away from threshold."
+                "Red. Its spikes pull the neurons it connects to away from firing."
             }
-            Tool::Place(Element::AdaptiveNeuron) => "Fires less often the longer it is driven.",
+            Tool::Place(Element::AdaptiveNeuron) => {
+                "Fires less and less while it is driven, and recovers when left alone."
+            }
             Tool::Place(Element::BurstNeuron) => {
-                "Fires a short burst of spikes when it reaches threshold."
+                "Once it fires after a rest, it keeps firing for a short burst."
             }
             Tool::Place(Element::CurrentSource) => {
-                "Injects a steady current into the neurons it connects to."
+                "Feeds a steady current into the neurons it connects to."
             }
-            Tool::Place(Element::TouchSensor) => "Fires while you touch or hold it.",
-            Tool::Place(Element::RegularSpikeGenerator) => "Fires at a regular frequency.",
-            Tool::Place(Element::PoissonGenerator) => "Fires at random around a mean rate.",
-            Tool::Place(Element::Note) => "Text on the canvas.",
-            Tool::Voltmeter => "Click a neuron or compartment to plot its voltage.",
-            Tool::StaticConnection => "Drag from a neuron or source to the neuron it should drive.",
-            Tool::Axon => {
-                "Drag from a neuron to grow a cable of compartments to a neuron or its dendrites."
+            Tool::Place(Element::TouchSensor) => "Fires a spike each time you press it.",
+            Tool::Place(Element::RegularSpikeGenerator) => "Sends spikes at a steady beat.",
+            Tool::Place(Element::PoissonGenerator) => {
+                "Sends spikes at random moments, at a set average rate."
             }
+            Tool::Place(Element::Note) => "Write a note on the canvas.",
+            Tool::Voltmeter => "Press a neuron to plot its voltage over time.",
+            Tool::StaticConnection => {
+                "Drag from a neuron or an input to the neuron it should reach."
+            }
+            Tool::Axon => "Drag from a neuron to grow an axon to another neuron or its dendrites.",
         }
     }
 
