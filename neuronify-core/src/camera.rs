@@ -38,6 +38,19 @@ pub fn ground_position(application: &visula::Application, position: PhysicalPosi
     ray_origin + t * ray_world
 }
 
+pub fn screen_position(application: &visula::Application, position: Vec3) -> PhysicalPosition<f64> {
+    let width = application.config.width as f32;
+    let height = application.config.height as f32;
+    let camera = &application.camera_controller;
+    let clip =
+        camera.projection_matrix(width / height) * camera.view_matrix() * position.extend(1.0);
+    let ndc = clip.truncate() / clip.w;
+    PhysicalPosition::new(
+        ((ndc.x + 1.0) / 2.0 * width) as f64,
+        ((1.0 - ndc.y) / 2.0 * height) as f64,
+    )
+}
+
 pub fn pan(application: &mut visula::Application, offset: Vec3) {
     let camera = &mut application.camera_controller;
     camera.target_transform.center -= offset;

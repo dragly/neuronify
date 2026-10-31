@@ -13,7 +13,7 @@ use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, Shadow
 
 use crate::input::{self, Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
-use crate::tools::Tool;
+use crate::tools::{ConnectionHint, Tool};
 
 #[cfg(target_arch = "wasm32")]
 const SAVED_NAME: &str = "circuit.neuronify";
@@ -158,6 +158,8 @@ impl Neuronify {
         if self.edit_enabled {
             if self.editor.pressed_background() {
                 self.tapped_background = true;
+            } else {
+                self.editor.offer_connection(input::now());
             }
         } else if let Some(position) = self.mouse.position {
             let position = camera::ground_position(application, position);
@@ -211,6 +213,11 @@ impl Neuronify {
                 && !gui_takes_press(application, hover)
         })?;
         Some(camera::ground_position(application, hover))
+    }
+
+    fn connection_hint(&mut self) -> Option<ConnectionHint> {
+        let hint = self.editor.connection_hint(&self.world, input::now());
+        hint.filter(|_| self.edit_enabled)
     }
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
@@ -384,11 +391,18 @@ impl visula::Simulation for Neuronify {
             camera::frame(application, canvas_bounds(&self.world), free);
         }
 
+        let drawn_connection = match self.editor.connection_being_drawn(&self.world) {
+            Some((start, end)) => vec![start, end],
+            None => self
+                .connection_hint()
+                .map(|hint| hint.string)
+                .unwrap_or_default(),
+        };
         self.renderer.update(
             application,
             &self.world,
             self.theme,
-            self.editor.connection_being_drawn(&self.world),
+            &drawn_connection,
             self.editor.selection,
             self.eraser(application),
         );
@@ -402,7 +416,7 @@ impl visula::Simulation for Neuronify {
         self.renderer.render_shadow(data);
     }
 
-    fn gui(&mut self, _application: &visula::Application, context: &egui::Context) {
+    fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
         context.set_theme(match self.theme {
             Theme::Dark => egui::Theme::Dark,
             Theme::Light => egui::Theme::Light,
@@ -441,6 +455,15 @@ impl visula::Simulation for Neuronify {
             Some(MenuChoice::Share) => self.share(),
             Some(MenuChoice::Open) => self.open(),
             None => {}
+        }
+        if let Some(hint) = self.connection_hint() {
+            let tip = camera::screen_position(application, hint.label);
+            let pixels_per_point = context.pixels_per_point();
+            let tip = egui::pos2(
+                tip.x as f32 / pixels_per_point,
+                tip.y as f32 / pixels_per_point,
+            );
+            gui::connection_hint(context, self.theme, tip, hint.shown);
         }
     }
 

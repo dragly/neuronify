@@ -108,6 +108,19 @@ pub struct ConnectionTool {
     pub from: Entity,
 }
 
+#[derive(Clone, Debug)]
+pub struct ConnectionOffer {
+    pub from: Entity,
+    pub since: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConnectionHint {
+    pub string: Vec<Vec3>,
+    pub label: Vec3,
+    pub shown: f32,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StimulationTool {
     pub position: Vec3,

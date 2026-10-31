@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::f32::consts::TAU;
 
 use glam::Vec3;
 use hecs::{Component, Entity, World};
@@ -11,7 +12,7 @@ use crate::measurement::voltmeter::{Corner, Frame, Voltmeter};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{fire_nearby, touch_sensor_near};
-use crate::tools::{ConnectionTool, StimulationTool, Tool};
+use crate::tools::{ConnectionHint, ConnectionOffer, ConnectionTool, StimulationTool, Tool};
 use drag::Drag;
 use history::{History, Recording, Snapshot};
 
@@ -24,6 +25,13 @@ const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const VOLTMETER_REACH: f32 = NODE_RADIUS;
 const CORNER_REACH: f32 = 1.0;
 const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
+const HINT_SECONDS: f64 = 2.0;
+const HINT_FADE_SECONDS: f64 = 0.25;
+const HINT_LENGTH: f32 = 4.0 * NODE_RADIUS;
+const HINT_SWAY: f32 = NODE_RADIUS;
+const HINT_SEGMENTS: usize = 8;
+const HINT_WIGGLES_PER_SECOND: f32 = 0.7;
+const HINT_WIGGLE_LAG: f32 = 1.5;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pan(pub Vec3);
@@ -34,6 +42,7 @@ pub struct Editor {
     pub compartments: bool,
     pub selection: Option<Entity>,
     connection_tool: Option<ConnectionTool>,
+    offer: Option<ConnectionOffer>,
     stimulation_tool: Option<StimulationTool>,
     previous_creation: Option<Entity>,
     pressed: Option<Entity>,
@@ -58,6 +67,65 @@ impl Editor {
             _ => false,
         };
         drawn.then_some((connection.start, connection.end))
+    }
+
+    pub fn offer_connection(&mut self, now: f64) {
+        let Some(connection) = &self.connection_tool else {
+            return;
+        };
+        if self.pressed == Some(connection.from) {
+            self.offer = Some(ConnectionOffer {
+                from: connection.from,
+                since: now,
+            });
+        }
+    }
+
+    pub fn connection_hint(&mut self, world: &World, now: f64) -> Option<ConnectionHint> {
+        let age = now - self.offer.as_ref()?.since;
+        if age >= HINT_SECONDS {
+            self.offer = None;
+            return None;
+        }
+        if !matches!(self.tool, Tool::Place(_)) {
+            return None;
+        }
+        let (_, start) = self.offered_source(world)?;
+        let shown = (age.min(HINT_SECONDS - age) / HINT_FADE_SECONDS).clamp(0.0, 1.0) as f32;
+        let grown = 1.0 - (1.0 - shown).powi(3);
+        let wiggle = age as f32 * TAU * HINT_WIGGLES_PER_SECOND;
+        let mut string: Vec<Vec3> = (0..=HINT_SEGMENTS)
+            .map(|index| {
+                let along = index as f32 / HINT_SEGMENTS as f32;
+                let phase = wiggle - HINT_WIGGLE_LAG * along;
+                let sway = Vec3::new(phase.sin(), 0.0, (1.3 * phase).sin());
+                start + (Vec3::Y * HINT_LENGTH * along + sway * HINT_SWAY * along * along) * grown
+            })
+            .collect();
+        let bead = string[HINT_SEGMENTS];
+        let pull = (bead - string[HINT_SEGMENTS - 1]).normalize_or_zero();
+        string.push(bead + pull * TERMINAL_INSET);
+        let above = Vec3::Y * HINT_LENGTH + Vec3::X * (HINT_SWAY + NODE_RADIUS);
+        Some(ConnectionHint {
+            string,
+            label: start + above * grown,
+            shown,
+        })
+    }
+
+    fn offered_source(&self, world: &World) -> Option<(Entity, Vec3)> {
+        let from = self.offer.as_ref()?.from;
+        let start = world.get::<&Position>(from).ok()?.position;
+        Some((from, start))
+    }
+
+    fn pull_offer(&self, world: &World, position: Vec3) -> Option<ConnectionTool> {
+        let (from, start) = self.offered_source(world)?;
+        (position.distance(start) < HINT_LENGTH + HINT_SWAY).then_some(ConnectionTool {
+            start,
+            end: position,
+            from,
+        })
     }
 
     pub fn release(&mut self, world: &World) {
@@ -307,7 +375,9 @@ impl Editor {
         } else {
             sources(world)
         };
-        let connection = start_connection(candidates, position);
+        let connection =
+            start_connection(candidates, position).or_else(|| self.pull_offer(world, position));
+        self.offer = None;
         let compartments = positions_with::<Compartment>(world);
         let under = entity_at(world, &voltmeter_frames(world), position)
             .or_else(|| nearest_within(compartments, position, CONNECTION_REACH))

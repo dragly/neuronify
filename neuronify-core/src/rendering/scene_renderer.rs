@@ -6,7 +6,7 @@ use visula::{
     SphereMaterial, Spheres, Torus, TorusGeometry, TorusMaterial,
 };
 
-use crate::constants::NODE_RADIUS;
+use crate::constants::{NODE_RADIUS, TERMINAL_INSET};
 use crate::rendering::colors::{terminal_color, Theme};
 use crate::rendering::connections::{collect_voltmeter_wires, connection_being_drawn};
 use crate::rendering::floor::create_floor;
@@ -62,8 +62,7 @@ impl SceneRenderer {
         let connection_endpoint = connection.position_a.clone() + connection_vector.clone()
             - connection.directional.clone() * connection_vector.clone()
                 / connection_vector.clone().length()
-                * NODE_RADIUS
-                * 2.0;
+                * TERMINAL_INSET;
         let connection_lines = Lines::new(
             &application.rendering_descriptor(),
             &LineGeometry {
@@ -155,7 +154,7 @@ impl SceneRenderer {
         application: &mut visula::Application,
         world: &hecs::World,
         theme: Theme,
-        drawn_connection: Option<(Vec3, Vec3)>,
+        drawn_connection: &[Vec3],
         selection: Option<Entity>,
         eraser: Option<Vec3>,
     ) {
@@ -184,9 +183,7 @@ impl SceneRenderer {
             scene.rings.push(eraser_outline(center, &palette));
         }
         let mut connections = collect_voltmeter_wires(world, &palette);
-        if let Some((start, end)) = drawn_connection {
-            connections.push(connection_being_drawn(start, end, &palette));
-        }
+        connections.extend(connection_being_drawn(drawn_connection, &palette));
         connections.extend(collect_voltmeter_traces(world));
 
         self.sphere_buffer
