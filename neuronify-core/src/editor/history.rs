@@ -15,16 +15,91 @@ type Change = Vec<(Entity, State)>;
 struct Edited {
     copy: fn(EntityRef, &mut EntityBuilder),
     swap: fn(&World, Entity, &mut EntityBuilder),
+    restore: fn(&mut EntityBuilder, &mut EntityBuilder),
 }
 
 const fn edited<T: Component + Clone>() -> Edited {
     Edited {
         copy: copy::<T>,
         swap: swap::<T>,
+        restore: restore::<T>,
     }
 }
 
-const EDITED: [Edited; 10] = [
+trait Settings<C: Component>: Component {
+    fn of(component: &C) -> Self;
+    fn swap(&mut self, component: &mut C);
+}
+
+struct RefractoryPeriod(f64);
+
+impl Settings<LeakyDynamics> for RefractoryPeriod {
+    fn of(dynamics: &LeakyDynamics) -> Self {
+        RefractoryPeriod(dynamics.refractory_period)
+    }
+
+    fn swap(&mut self, dynamics: &mut LeakyDynamics) {
+        std::mem::swap(&mut self.0, &mut dynamics.refractory_period);
+    }
+}
+
+struct Adaptation {
+    adaptation: f64,
+    time_constant: f64,
+}
+
+impl Settings<AdaptationCurrent> for Adaptation {
+    fn of(current: &AdaptationCurrent) -> Self {
+        Adaptation {
+            adaptation: current.adaptation,
+            time_constant: current.time_constant,
+        }
+    }
+
+    fn swap(&mut self, current: &mut AdaptationCurrent) {
+        std::mem::swap(&mut self.adaptation, &mut current.adaptation);
+        std::mem::swap(&mut self.time_constant, &mut current.time_constant);
+    }
+}
+
+const fn edited_settings<C: Component, S: Settings<C>>() -> Edited {
+    Edited {
+        copy: copy_settings::<C, S>,
+        swap: swap_settings::<C, S>,
+        restore: restore_settings::<C, S>,
+    }
+}
+
+fn restore_settings<C: Component, S: Settings<C>>(
+    whole: &mut EntityBuilder,
+    edited: &mut EntityBuilder,
+) {
+    if let (Some(recorded), Some(component)) =
+        (edited.get_mut::<&mut S>(), whole.get_mut::<&mut C>())
+    {
+        recorded.swap(component);
+    }
+}
+
+fn copy_settings<C: Component, S: Settings<C>>(entity: EntityRef, edited: &mut EntityBuilder) {
+    if let Some(component) = entity.get::<&C>() {
+        edited.add(S::of(&component));
+    }
+}
+
+fn swap_settings<C: Component, S: Settings<C>>(
+    world: &World,
+    entity: Entity,
+    edited: &mut EntityBuilder,
+) {
+    if let (Some(recorded), Ok(mut current)) =
+        (edited.get_mut::<&mut S>(), world.get::<&mut C>(entity))
+    {
+        recorded.swap(&mut current);
+    }
+}
+
+const EDITED: [Edited; 13] = [
     edited::<Position>(),
     edited::<VoltmeterSize>(),
     edited::<NoteSize>(),
@@ -35,6 +110,9 @@ const EDITED: [Edited; 10] = [
     edited::<PoissonGenerator>(),
     edited::<Annotation>(),
     edited::<NeuronType>(),
+    edited::<LeakCurrent>(),
+    edited_settings::<LeakyDynamics, RefractoryPeriod>(),
+    edited_settings::<AdaptationCurrent, Adaptation>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {
@@ -48,6 +126,12 @@ fn copy_edited(entity: EntityRef) -> EntityBuilder {
 fn copy<T: Component + Clone>(entity: EntityRef, edited: &mut EntityBuilder) {
     if let Some(component) = entity.get::<&T>() {
         edited.add((*component).clone());
+    }
+}
+
+fn restore<T: Component + Clone>(whole: &mut EntityBuilder, edited: &mut EntityBuilder) {
+    if let Some(recorded) = edited.get::<&T>() {
+        whole.add(recorded.clone());
     }
 }
 
@@ -96,7 +180,9 @@ impl Recording {
             return;
         }
         if let Some(State::Edited(mut edited)) = self.before.remove(&entity) {
-            components.add_bundle(edited.build());
+            for component in &EDITED {
+                (component.restore)(&mut components, &mut edited);
+            }
         }
         self.before.insert(entity, State::Whole(components));
     }

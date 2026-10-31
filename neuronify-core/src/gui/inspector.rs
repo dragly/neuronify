@@ -42,6 +42,13 @@ const DELETE_HEIGHT: f32 = 36.0;
 const DELETE_GAP: f32 = 8.0;
 const DESCRIPTION_SIZE: f32 = 11.5;
 const SWITCH_HEIGHT: f32 = 30.0;
+const POTENTIALS: RangeInclusive<f64> = -0.1..=0.05;
+const POTENTIAL_GAP: f64 = 0.05e-3;
+const REFRACTORY_PERIODS: RangeInclusive<f64> = 0.0..=0.05;
+const RESISTANCES: (RangeInclusive<f64>, f64) = (1e6..=200e6, 1e6);
+const CAPACITANCES: (RangeInclusive<f64>, f64) = (10e-12..=2e-9, 10e-12);
+const ADAPTATIONS: (RangeInclusive<f64>, f64) = (0.0..=100e-9, 0.1e-9);
+const ADAPTATION_TIME_CONSTANTS: RangeInclusive<f64> = 0.0..=0.6;
 const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30e-9, 0.01e-9);
 const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
@@ -415,6 +422,10 @@ fn sparkline(ui: &mut Ui, chrome: &Chrome, history: &VecDeque<f64>, threshold: O
     ));
 }
 
+fn milliseconds(seconds: f64) -> String {
+    format!("{:.1} ms", seconds * 1e3)
+}
+
 fn nanoamperes(amperes: f64) -> String {
     format!("{:.2} nA", amperes * 1e9)
 }
@@ -585,38 +596,116 @@ fn type_switch(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> b
     true
 }
 
-fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
+fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
     let mut changed = false;
-    let hertz = |value: f64| format!("{value:.0} Hz");
-    if world.get::<&LeakyNeuron>(entity).is_ok() {
-        heading(ui, chrome, "Parameters", 0.0);
-        changed |= type_switch(ui, chrome, world, entity);
+    heading(ui, chrome, "General", 0.0);
+    changed |= type_switch(ui, chrome, world, entity);
+    if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(entity) {
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::RefractoryPeriod,
+            &mut dynamics.refractory_period,
+            REFRACTORY_PERIODS,
+            milliseconds,
+        );
     }
     if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
-        changed |= parameter(
+        heading(ui, chrome, "Potentials", 0.0);
+        let threshold = parameter(
             ui,
             chrome,
             Setting::Threshold,
             &mut neuron.threshold,
-            -0.08..=-0.03,
+            POTENTIALS,
             millivolts,
         );
+        if threshold {
+            neuron.threshold = neuron
+                .threshold
+                .max(neuron.initial_potential + POTENTIAL_GAP);
+        }
+        let reset = parameter(
+            ui,
+            chrome,
+            Setting::Reset,
+            &mut neuron.initial_potential,
+            POTENTIALS,
+            millivolts,
+        );
+        if reset {
+            neuron.initial_potential = neuron
+                .initial_potential
+                .min(neuron.threshold - POTENTIAL_GAP);
+        }
+        changed |= threshold || reset;
         changed |= parameter(
             ui,
             chrome,
             Setting::RestingPotential,
             &mut neuron.resting_potential,
-            -0.09..=-0.05,
+            POTENTIALS,
             millivolts,
         );
-        changed |= parameter(
+    }
+    if let (Ok(mut neuron), Ok(mut leak)) = (
+        world.get::<&mut LeakyNeuron>(entity),
+        world.get::<&mut LeakCurrent>(entity),
+    ) {
+        heading(ui, chrome, "Membrane", 0.0);
+        changed |= logarithmic_parameter(
+            ui,
+            chrome,
+            Setting::Resistance,
+            &mut leak.resistance,
+            RESISTANCES,
+            |ohms| format!("{:.0} M\u{3a9}", ohms * 1e-6),
+        );
+        changed |= logarithmic_parameter(
             ui,
             chrome,
             Setting::Capacitance,
             &mut neuron.capacitance,
-            1e-11..=1e-9,
+            CAPACITANCES,
             |farads| format!("{:.0} pF", farads * 1e12),
         );
+        reading(
+            ui,
+            chrome,
+            Setting::TimeConstant.label(),
+            milliseconds(leak.resistance * neuron.capacitance),
+            12.5,
+        );
+        description(ui, chrome, Setting::TimeConstant.description());
+        ui.add_space(8.0);
+    }
+    if let Ok(mut adaptation) = world.get::<&mut AdaptationCurrent>(entity) {
+        heading(ui, chrome, "Adaptation", 0.0);
+        changed |= logarithmic_parameter(
+            ui,
+            chrome,
+            Setting::Adaptation,
+            &mut adaptation.adaptation,
+            ADAPTATIONS,
+            |siemens| format!("{:.1} nS", siemens * 1e9),
+        );
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::AdaptationTimeConstant,
+            &mut adaptation.time_constant,
+            ADAPTATION_TIME_CONSTANTS,
+            milliseconds,
+        );
+    }
+    changed
+}
+
+fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
+    let mut changed = false;
+    let hertz = |value: f64| format!("{value:.0} Hz");
+    if world.get::<&LeakyNeuron>(entity).is_ok() {
+        changed |= neuron_parameters(ui, chrome, world, entity);
     }
     if let Ok(mut clamp) = world.get::<&mut CurrentClamp>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
