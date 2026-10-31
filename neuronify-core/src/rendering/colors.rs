@@ -38,6 +38,26 @@ pub fn yellow() -> Vec3 {
     srgb(223, 142, 29)
 }
 
+const CURRENT_BRIGHTNESS_SCALE: f64 = 0.5e-9;
+const CURRENT_RAMP: [(f32, (u8, u8, u8)); 3] = [
+    (0.0, (96, 40, 8)),
+    (0.7, (240, 116, 20)),
+    (1.0, (255, 178, 104)),
+];
+
+pub fn current_color(amperes: f64) -> Vec3 {
+    let level = (1.0 - (-amperes.max(0.0) / CURRENT_BRIGHTNESS_SCALE).exp()) as f32;
+    let upper = CURRENT_RAMP
+        .iter()
+        .position(|&(at, _)| level <= at)
+        .unwrap_or(CURRENT_RAMP.len() - 1)
+        .max(1);
+    let (low_at, low) = CURRENT_RAMP[upper - 1];
+    let (high_at, high) = CURRENT_RAMP[upper];
+    let color = |(red, green, blue): (u8, u8, u8)| srgb(red, green, blue);
+    color(low).lerp(color(high), (level - low_at) / (high_at - low_at))
+}
+
 pub fn orange() -> Vec3 {
     srgb(254, 100, 11)
 }

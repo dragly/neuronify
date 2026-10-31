@@ -191,9 +191,9 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
             Some((connection.from, target.position))
         })
         .collect();
-    for (entity, position) in world.query::<&Position>().with::<&CurrentClamp>().iter() {
+    for (entity, (position, clamp)) in world.query::<(&Position, &CurrentClamp)>().iter() {
         let center = position.position;
-        pad(&mut shapes, center, yellow());
+        pad(&mut shapes, center, current_color(clamp.current_output));
         let forward = targets
             .get(&entity)
             .map(|target| (*target - center).with_y(0.0).normalize_or_zero())
@@ -375,5 +375,25 @@ mod tests {
         let shapes = collect_shapes(&world, &Theme::Dark.palette());
         let shaft = &shapes.cylinders[1];
         assert!((shaft.end - shaft.start).normalize().dot(Vec3::Z) > 0.99);
+    }
+
+    #[test]
+    fn a_stronger_current_source_has_a_brighter_pad() {
+        let pad_brightness = |current: f64| {
+            let mut world = hecs::World::new();
+            world.spawn((
+                Position {
+                    position: Vec3::ZERO,
+                },
+                CurrentClamp {
+                    current_output: current,
+                },
+            ));
+            let pad = collect_shapes(&world, &Theme::Dark.palette()).cylinders[0].start_color;
+            pad.x + pad.y + pad.z
+        };
+        assert!(pad_brightness(0.0) < pad_brightness(0.35e-9));
+        assert!(pad_brightness(0.35e-9) < pad_brightness(0.7e-9));
+        assert!(pad_brightness(0.7e-9) < pad_brightness(2e-9));
     }
 }

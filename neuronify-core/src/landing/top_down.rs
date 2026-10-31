@@ -31,7 +31,7 @@ pub fn top_down_shapes(
         .min(area.height() / size.x.max(THUMBNAIL_MIN_CANVAS_EXTENT));
     let center = bounds.center();
     let to_screen = |p: Vec3| area.center() + vec2(p.z - center.z, center.x - p.x) * scale;
-    let scene = collect_scene(world, palette);
+    let scene = collect_scene(world, palette, 0.0);
     let mut shapes: Vec<Shape> = scene
         .cylinders
         .iter()

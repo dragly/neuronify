@@ -1,6 +1,7 @@
 pub mod bounds;
 pub mod colors;
 pub mod connections;
+pub mod current_flow;
 pub mod cylinders;
 pub mod floor;
 pub mod gauges;
@@ -26,7 +27,7 @@ pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sp
 pub use notes::NoteRenderer;
 pub use paths::{connection_paths, distance_to_segment, ConnectionPath};
 pub use scene::{collect_scene, Scene};
-pub use scene_renderer::SceneRenderer;
+pub use scene_renderer::{EditorMarks, SceneRenderer};
 pub use selection::collect_selection;
 pub use spheres::collect_spheres;
 pub use voltmeter::collect_voltmeter_traces;
