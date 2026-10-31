@@ -7,7 +7,8 @@ use crate::elements::Element;
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Tool {
     #[default]
-    Select,
+    View,
+    Edit,
     Place(Element),
     Voltmeter,
     StaticConnection,
@@ -19,7 +20,8 @@ pub enum Tool {
 impl Tool {
     pub fn name(self) -> &'static str {
         match self {
-            Tool::Select => "Select",
+            Tool::View => "View",
+            Tool::Edit => "Edit",
             Tool::Stimulate => "Stimulate",
             Tool::Erase => "Erase",
             Tool::Place(Element::ExcitatoryNeuron) => "Excitatory neuron",
@@ -39,7 +41,8 @@ impl Tool {
 
     pub fn description(self) -> &'static str {
         match self {
-            Tool::Select => "Select elements and drag them around.",
+            Tool::View => "Watch the circuit, press touch sensors and tap things to inspect them.",
+            Tool::Edit => "Select things to change them, and drag them around.",
             Tool::Stimulate => "Touch neurons to make them fire.",
             Tool::Erase => "Erase elements and connections.",
             Tool::Place(Element::ExcitatoryNeuron) => {
@@ -65,6 +68,10 @@ impl Tool {
                 "Drag from a neuron to grow a cable of compartments to a neuron or its dendrites."
             }
         }
+    }
+
+    pub fn edits(self) -> bool {
+        self != Tool::View
     }
 }
 
