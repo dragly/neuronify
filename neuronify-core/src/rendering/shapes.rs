@@ -77,10 +77,16 @@ pub fn soma_color(
     dynamics: &LeakyDynamics,
     palette: &Palette,
 ) -> Vec3 {
-    let value = ((dynamics.voltage - neuron.resting_potential)
-        / (neuron.threshold - neuron.resting_potential))
-        .clamp(0.0, 1.0) as f32;
-    palette.soma(&neuron_type(world, entity), value).lerp(
+    let neuron_type = neuron_type(world, entity);
+    let rest = neuron.resting_potential;
+    let color = if dynamics.voltage < rest {
+        let depth = ((rest - dynamics.voltage) / (rest - neuron.minimum_voltage)).clamp(0.0, 1.0);
+        palette.soma_below_rest(&neuron_type, depth as f32)
+    } else {
+        let value = ((dynamics.voltage - rest) / (neuron.threshold - rest)).clamp(0.0, 1.0);
+        palette.soma(&neuron_type, value as f32)
+    };
+    color.lerp(
         palette.flash * FLASH_BRIGHTNESS,
         flash(dynamics.time_since_fire),
     )
@@ -207,7 +213,34 @@ pub fn collect_rings(world: &hecs::World, palette: &Palette) -> Vec<TorusData> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::elements::Element;
     use crate::simulation::{fire_nearby, lif_step};
+
+    #[test]
+    fn a_soma_below_rest_turns_towards_its_own_colder_colour() {
+        let mut world = hecs::World::new();
+        let palette = Theme::Dark.palette();
+        for (element, below) in [
+            (Element::ExcitatoryNeuron, palette.excitatory_below),
+            (Element::InhibitoryNeuron, palette.inhibitory_below),
+        ] {
+            let entity = element.spawn(&mut world, Vec3::ZERO);
+            let neuron = world.get::<&LeakyNeuron>(entity).unwrap().clone();
+            let color_at = |voltage: f64| {
+                let dynamics = LeakyDynamics {
+                    voltage,
+                    ..Default::default()
+                };
+                soma_color(&world, entity, &neuron, &dynamics, &palette)
+            };
+            let rest = color_at(neuron.resting_potential);
+            let halfway = color_at((neuron.resting_potential + neuron.minimum_voltage) / 2.0);
+            let floor = color_at(neuron.minimum_voltage);
+            assert!(floor.abs_diff_eq(below, 1e-6));
+            assert!(halfway.distance(below) < rest.distance(below));
+            assert!(halfway.abs_diff_eq(rest.lerp(below, 0.5), 1e-6));
+        }
+    }
 
     #[test]
     fn generators_have_rings_and_touch_sensors_are_pads() {
