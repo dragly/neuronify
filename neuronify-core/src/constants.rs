@@ -51,3 +51,4 @@ pub const MIN_CREATION_DISTANCE_DEFAULT: f32 = 6.0 * NODE_RADIUS;
 
 pub const FLOOR_HEIGHT: f32 = -NODE_RADIUS;
 pub const FLOOR_SIZE: f32 = 100_000.0;
+pub const FLOOR_RINGS: i32 = 17;
