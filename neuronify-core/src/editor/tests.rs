@@ -297,6 +297,36 @@ fn the_connection_being_added_is_hidden_until_its_terminal_clears_the_source() {
 }
 
 #[test]
+fn a_growing_axon_reaches_from_its_last_compartment_to_the_pointer() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.compartments = true;
+    editor.edit(&mut world, at(0.0, 0.5), false);
+    editor.edit(&mut world, at(0.0, 1.5), false);
+    assert_eq!(
+        editor.axon_being_grown(&world),
+        Some((source, at(0.0, 0.0), at(0.0, 1.5)))
+    );
+    editor.edit(&mut world, at(0.0, 2.5), false);
+    editor.edit(&mut world, at(0.0, 3.5), false);
+    let (from, start, end) = editor.axon_being_grown(&world).unwrap();
+    assert!(world.get::<&Compartment>(from).is_ok());
+    assert_eq!((start, end), (at(0.0, 2.5), at(0.0, 3.5)));
+    assert_eq!(editor.connection_being_drawn(&world), None);
+}
+
+#[test]
+fn a_plain_connection_is_not_a_growing_axon() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.edit(&mut world, at(0.0, 0.5), false);
+    editor.edit(&mut world, at(0.0, 5.0), false);
+    assert_eq!(editor.axon_being_grown(&world), None);
+}
+
+#[test]
 fn inputs_connect_to_the_neuron_they_are_pulled_to() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 10.0));

@@ -71,6 +71,16 @@ impl Editor {
         (drawn && clear_of_source).then_some((connection.start, connection.end))
     }
 
+    pub fn axon_being_grown(&self, world: &World) -> Option<(Entity, Vec3, Vec3)> {
+        let connection = self.connection_tool.as_ref()?;
+        let grows = match self.tool {
+            Tool::Axon => true,
+            Tool::Place(_) => self.grows_axon(world, connection.from),
+            _ => false,
+        };
+        grows.then_some((connection.from, connection.start, connection.end))
+    }
+
     pub fn offer_connection(&mut self, now: f64) {
         let Some(connection) = &self.connection_tool else {
             return;
