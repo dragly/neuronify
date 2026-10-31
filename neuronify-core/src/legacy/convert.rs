@@ -69,7 +69,10 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
     };
 
     match node.filename.as_str() {
-        "neurons/LeakyNeuron.qml" => spawn_leaky_neuron(world, node, pos, node.inhibitory),
+        "neurons/LeakyNeuron.qml" => {
+            let negative_output = node.engine.fire_output.is_some_and(|output| output < 0.0);
+            spawn_leaky_neuron(world, node, pos, node.inhibitory || negative_output)
+        }
         "neurons/LeakyInhibitoryNeuron.qml" => spawn_leaky_neuron(world, node, pos, true),
         "neurons/AdaptationNeuron.qml" => {
             spawn_adaptation_neuron(world, node, pos, node.inhibitory)
@@ -223,6 +226,18 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
     }
 }
 
+fn wire_meter(world: &mut World, meter: Entity, neuron: Entity) {
+    if world.get::<&SpikeDetector>(meter).is_ok() {
+        spawn_spike_detector_wire(world, neuron, meter);
+    } else if world.get::<&RatePlot>(meter).is_ok() {
+        spawn_rate_plot_wire(world, neuron, meter);
+    } else if world.get::<&Loudspeaker>(meter).is_ok() {
+        spawn_loudspeaker_wire(world, neuron, meter);
+    } else {
+        spawn_voltmeter_wire(world, neuron, meter);
+    }
+}
+
 fn receptive_field(node: &LegacyNode) -> ReceptiveField {
     let property = |name: &str| {
         node.kernel_properties
@@ -358,6 +373,13 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
         directional: true,
     };
 
+    let meter_and_neuron = if is_meter(world, from) {
+        Some((from, to))
+    } else if is_meter(world, to) {
+        Some((to, from))
+    } else {
+        None
+    };
     match edge.filename.as_str() {
         "edges/CurrentSynapse.qml" => {
             let e = &edge.engine;
@@ -377,24 +399,13 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
         "edges/ImmediateFireSynapse.qml" => {
             world.spawn((connection, ImmediateFireSynapse::default(), Deletable {}));
         }
-        "edges/MeterEdge.qml" => {
-            let (meter, neuron) = if is_meter(world, from) {
-                (from, to)
-            } else if is_meter(world, to) {
-                (to, from)
-            } else {
-                world.spawn((connection,));
-                return;
-            };
-            if world.get::<&SpikeDetector>(meter).is_ok() {
-                spawn_spike_detector_wire(world, neuron, meter);
-            } else if world.get::<&RatePlot>(meter).is_ok() {
-                spawn_rate_plot_wire(world, neuron, meter);
-            } else if world.get::<&Loudspeaker>(meter).is_ok() {
-                spawn_loudspeaker_wire(world, neuron, meter);
-            } else {
-                spawn_voltmeter_wire(world, neuron, meter);
+        "edges/MeterEdge.qml" | "Edge.qml" if meter_and_neuron.is_some() => {
+            if let Some((meter, neuron)) = meter_and_neuron {
+                wire_meter(world, meter, neuron);
             }
+        }
+        "edges/MeterEdge.qml" => {
+            world.spawn((connection,));
         }
         "Edge.qml" => {
             if world.get::<&LeakyDynamics>(to).is_err() {
