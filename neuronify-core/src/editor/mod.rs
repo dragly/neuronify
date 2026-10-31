@@ -66,7 +66,8 @@ impl Editor {
             Tool::Place(_) => !self.grows_axon(world, connection.from),
             _ => false,
         };
-        drawn.then_some((connection.start, connection.end))
+        let clear_of_source = connection.start.distance(connection.end) > TERMINAL_INSET;
+        (drawn && clear_of_source).then_some((connection.start, connection.end))
     }
 
     pub fn offer_connection(&mut self, now: f64) {

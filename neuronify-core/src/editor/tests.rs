@@ -187,6 +187,21 @@ fn the_connection_being_added_is_drawn() {
 }
 
 #[test]
+fn the_connection_being_added_is_hidden_until_its_terminal_clears_the_source() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.edit(&mut world, at(0.0, 0.5), false);
+    editor.edit(&mut world, at(0.3, 1.2), false);
+    assert_eq!(editor.connection_being_drawn(&world), None);
+    editor.edit(&mut world, at(0.0, 2.5), false);
+    assert_eq!(
+        editor.connection_being_drawn(&world),
+        Some((at(0.0, 0.0), at(0.0, 2.5)))
+    );
+}
+
+#[test]
 fn inputs_connect_to_the_neuron_they_are_pulled_to() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 10.0));
