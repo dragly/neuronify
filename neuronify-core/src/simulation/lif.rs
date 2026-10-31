@@ -2,6 +2,7 @@ use hecs::World;
 use rand::Rng;
 
 use crate::components::*;
+use crate::measurement::visual_input::see;
 use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries};
 
 #[derive(Clone, Debug)]
@@ -11,6 +12,7 @@ pub struct SpikeRecord {
 }
 
 pub fn lif_step(world: &mut World, dt: f64, time: f64) {
+    see(world, dt, time);
     for (_, (alternating, clamp)) in world.query_mut::<(&AlternatingCurrent, &mut CurrentClamp)>() {
         clamp.current_output = alternating.at(time);
     }

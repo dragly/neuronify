@@ -20,6 +20,7 @@ pub mod shapes;
 pub mod spheres;
 pub mod spike_detector;
 pub mod transmitter;
+pub mod visual_input;
 pub mod voltmeter;
 
 pub use bounds::{canvas_bounds, circuit_bounds, Bounds};

@@ -1,6 +1,7 @@
 pub mod firing_rate;
 pub mod loudspeaker;
 pub mod spike_detector;
+pub mod visual_input;
 pub mod voltmeter;
 
 use hecs::{Entity, World};

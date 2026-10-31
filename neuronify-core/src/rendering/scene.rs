@@ -8,6 +8,7 @@ use crate::rendering::paths::connection_paths;
 use crate::rendering::shapes::{collect_rings, collect_shapes};
 use crate::rendering::spheres::collect_spheres;
 use crate::rendering::transmitter::collect_transmitter;
+use crate::rendering::visual_input::collect_visual_input_tiles;
 
 /// The shapes of the 3D view. The example previews draw the solid ones from above.
 #[derive(Default)]
@@ -62,5 +63,6 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene
         .spheres
         .extend(collect_current_flow(world, &paths, time));
     scene.extend(collect_shapes(world, palette));
+    scene.cylinders.extend(collect_visual_input_tiles(world));
     scene
 }

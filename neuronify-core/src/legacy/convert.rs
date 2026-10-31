@@ -9,6 +9,7 @@ use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::is_meter;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
+use crate::measurement::visual_input::{ReceptiveField, VisualInput};
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
 use crate::{Connection, Deletable, NeuronType, Position};
 
@@ -24,6 +25,7 @@ const LINK_SIZE: NoteSize = NoteSize {
 const LEGACY_GENERATOR_RATE: f64 = 500.0;
 const LEGACY_METER_WIDTH: f64 = 320.0;
 const LEGACY_METER_HEIGHT: f64 = 240.0;
+const LEGACY_RETINA_SIZE: f64 = 240.0;
 
 fn convert_position(x: f64, y: f64) -> Vec3 {
     Vec3::new(
@@ -133,6 +135,28 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             };
             world.spawn((left_middle, detector, size, Deletable {}))
         }
+        "sensors/Retina.qml" => {
+            let center = Position {
+                position: convert_position(
+                    node.x + LEGACY_RETINA_SIZE / 2.0,
+                    node.y + LEGACY_RETINA_SIZE / 2.0,
+                ),
+            };
+            let default = VisualInput::default();
+            let input = VisualInput {
+                field: receptive_field(node),
+                sensitivity: node.sensitivity.unwrap_or(default.sensitivity),
+                show_field: node.plot_kernel.unwrap_or(default.show_field),
+                ..default
+            };
+            world.spawn((
+                center,
+                input,
+                GeneratorDynamics::default(),
+                legacy_type(node.inhibitory),
+                Deletable {},
+            ))
+        }
         "meters/Loudspeaker.qml" => {
             let speaker = Loudspeaker {
                 sound: Sound::from_legacy(node.source.as_deref().unwrap_or_default()),
@@ -196,6 +220,32 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             world.spawn((center, Annotation { text }, size, Deletable {}))
         }
         _ => world.spawn((pos,)),
+    }
+}
+
+fn receptive_field(node: &LegacyNode) -> ReceptiveField {
+    let property = |name: &str| {
+        node.kernel_properties
+            .as_ref()
+            .and_then(|properties| properties.get(name))
+    };
+    let number = |name: &str| property(name).and_then(|v| v.as_f64()).unwrap_or(0.0);
+    match node.kernel_type.as_deref() {
+        Some("kernels/DogKernel.qml") => ReceptiveField::CenterSurround {
+            off_center: property("isOffCenter")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            x: number("xOffset"),
+            y: number("yOffset"),
+        },
+        Some("kernels/RectangularKernel.qml") => ReceptiveField::Edge {
+            angle: number("orientation"),
+        },
+        _ => ReceptiveField::Orientation {
+            angle: number("theta"),
+            x: number("xOffset"),
+            y: number("yOffset"),
+        },
     }
 }
 

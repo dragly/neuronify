@@ -36,6 +36,7 @@ impl Tool {
             Tool::Place(Element::TouchSensor) => "Touch sensor",
             Tool::Place(Element::RegularSpikeGenerator) => "Regular spikes",
             Tool::Place(Element::PoissonGenerator) => "Random spikes",
+            Tool::Place(Element::VisualInput) => "Visual input",
             Tool::Place(Element::Note) => "Note",
             Tool::Voltmeter => "Voltmeter",
             Tool::SpikeDetector => "Spike detector",
@@ -69,6 +70,9 @@ impl Tool {
             }
             Tool::Place(Element::AlternatingCurrentSource) => {
                 "Injects a current that swings up and down like a wave."
+            }
+            Tool::Place(Element::VisualInput) => {
+                "Looks at a moving picture and fires when it matches its receptive field."
             }
             Tool::Loudspeaker => {
                 "Press a neuron to hear a sound each time it fires. \
@@ -133,6 +137,7 @@ impl ToolGroup {
                 Tool::Place(Element::TouchSensor),
                 Tool::Place(Element::RegularSpikeGenerator),
                 Tool::Place(Element::PoissonGenerator),
+                Tool::Place(Element::VisualInput),
             ],
             ToolGroup::Connections => &[Tool::StaticConnection, Tool::Axon],
             ToolGroup::Meters => &[

@@ -510,6 +510,24 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 .collect();
             painter.add(Shape::line(wave, stroke(2.4, CREAM)));
         }
+        Tool::Place(Element::VisualInput) => {
+            painter.rect_filled(
+                Rect::from_center_size(at(16.0, 16.0), Vec2::splat(23.0 * scale)),
+                5.0 * scale,
+                linear(orange()),
+            );
+            let lid = |sign: f32| {
+                (0..=SINE_STEPS)
+                    .map(|step| {
+                        let x = 2.0 * step as f32 / SINE_STEPS as f32 - 1.0;
+                        at(16.0 + 8.5 * x, 16.0 + sign * 5.0 * (1.0 - x * x))
+                    })
+                    .collect::<Vec<Pos2>>()
+            };
+            painter.add(Shape::line(lid(1.0), stroke(1.6, CREAM)));
+            painter.add(Shape::line(lid(-1.0), stroke(1.6, CREAM)));
+            painter.circle_filled(at(16.0, 16.0), 2.8 * scale, CREAM);
+        }
         Tool::Place(Element::TouchSensor) => {
             painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(orange()));
             let hand = hand_outline();

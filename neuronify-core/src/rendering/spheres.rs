@@ -4,6 +4,7 @@ use hecs::Entity;
 
 use crate::components::*;
 use crate::constants::*;
+use crate::measurement::visual_input::VisualInput;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
@@ -35,7 +36,7 @@ pub fn collect_spheres(
     spheres.extend(
         world
             .query::<(&Position, &GeneratorDynamics, Option<&NeuronType>)>()
-            .without::<&TouchSensor>()
+            .without::<hecs::Or<&TouchSensor, &VisualInput>>()
             .iter()
             .map(|(_, (position, dynamics, neuron_type))| Sphere {
                 position: position.position,

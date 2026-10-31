@@ -30,6 +30,15 @@ pub enum Setting {
     Sound,
     Volume,
     Mute,
+    Picture,
+    PictureAngle,
+    ReceptiveField,
+    FieldAngle,
+    FieldSideways,
+    FieldUpDown,
+    OffCenter,
+    Sensitivity,
+    ShowField,
 }
 
 impl Setting {
@@ -65,6 +74,15 @@ impl Setting {
             Setting::Sound => "Sound",
             Setting::Volume => "Volume",
             Setting::Mute => "Mute",
+            Setting::Picture => "Picture",
+            Setting::PictureAngle => "Picture angle",
+            Setting::ReceptiveField => "Receptive field",
+            Setting::FieldAngle => "Field angle",
+            Setting::FieldSideways => "Field sideways",
+            Setting::FieldUpDown => "Field up or down",
+            Setting::OffCenter => "Off center",
+            Setting::Sensitivity => "Sensitivity",
+            Setting::ShowField => "Show field",
         }
     }
 
@@ -113,6 +131,17 @@ impl Setting {
             Setting::Sound => "What it plays each time a connected neuron fires.",
             Setting::Volume => "How loud it plays.",
             Setting::Mute => "Silences it without disconnecting it.",
+            Setting::Picture => "What the visual input looks at.",
+            Setting::PictureAngle => "Which way the picture is turned.",
+            Setting::ReceptiveField => "The pattern of light that makes it fire.",
+            Setting::FieldAngle => "Which way the stripes of the field are turned.",
+            Setting::FieldSideways => "Where the field sits, from left to right.",
+            Setting::FieldUpDown => "Where the field sits, from bottom to top.",
+            Setting::OffCenter => "Fire for darkness in the center instead of light.",
+            Setting::Sensitivity => "How often it fires when the picture matches the field perfectly.",
+            Setting::ShowField => {
+                "Tints the picture orange where light excites it and blue where light holds it back."
+            }
         }
     }
 }
