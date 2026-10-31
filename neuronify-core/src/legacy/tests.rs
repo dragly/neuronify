@@ -550,3 +550,17 @@ fn loads_inhibitory_adaptive_neurons() {
         2e-8
     );
 }
+
+#[test]
+fn current_sources_load_without_a_synapse() {
+    let mut world = hecs::World::new();
+    spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
+    let (source, _) = world.query::<&CurrentClamp>().iter().next().unwrap();
+    let mut connections = world.query::<(&Connection, Option<&CurrentSynapse>)>();
+    let from_source: Vec<bool> = connections
+        .iter()
+        .filter(|(_, (connection, _))| connection.from == source)
+        .map(|(_, (_, synapse))| synapse.is_some())
+        .collect();
+    assert_eq!(from_source, [false]);
+}

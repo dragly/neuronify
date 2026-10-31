@@ -163,7 +163,7 @@ impl Neuronify {
 
     fn tap(&mut self, application: &visula::Application) {
         if self.editing() {
-            if self.editor.pressed_background() {
+            if self.editor.tap_while_editing() {
                 self.tapped_background = true;
             } else {
                 self.editor.offer_connection(input::now());

@@ -14,6 +14,9 @@ pub enum Setting {
     Frequency,
     Strength,
     Rate,
+    MaximumCurrent,
+    SynapseTimeConstant,
+    Delay,
 }
 
 impl Setting {
@@ -33,6 +36,9 @@ impl Setting {
             Setting::Frequency => "Frequency",
             Setting::Strength => "Strength",
             Setting::Rate => "Rate",
+            Setting::MaximumCurrent => "Maximum current",
+            Setting::SynapseTimeConstant => "Time constant",
+            Setting::Delay => "Delay",
         }
     }
 
@@ -63,6 +69,9 @@ impl Setting {
             Setting::Frequency => "How many spikes it sends each second.",
             Setting::Strength => "How strongly each spike at this ending affects the next neuron.",
             Setting::Rate => "How many spikes it sends each second on average.",
+            Setting::MaximumCurrent => "How hard each spike pushes the neuron it reaches.",
+            Setting::SynapseTimeConstant => "How long the push from each spike lasts.",
+            Setting::Delay => "How long a spike takes to arrive.",
         }
     }
 }
