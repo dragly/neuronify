@@ -35,8 +35,9 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
         let dw = FHN_TAU * FHN_EPS * (v + FHN_A - FHN_B * w);
         let new_v = v + dv * cdt;
         let new_w = w + dw * cdt;
-        compartment.voltage = new_v * FHN_SCALE + FHN_OFFSET;
+        compartment.voltage = new_v * FHN_SCALE + FHN_OFFSET + compartment.injected_current * cdt;
         compartment.m = new_w;
+        compartment.injected_current -= compartment.injected_current * cdt / ENDING_TIME_CONSTANT;
     }
 
     let mut new_compartments: HashMap<Entity, Compartment> = world
@@ -57,12 +58,12 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
             } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from) {
                 if connection.directional {
                     let sign = neuron_type(world, connection.from).sign();
-                    let delta_voltage =
-                        sign * spike_excess(&compartment_from) / current.capacitance;
+                    let charge = sign * ENDING_STRENGTH * spike_excess(&compartment_from)
+                        / current.capacitance;
                     let new_compartment_to = new_compartments
                         .get_mut(&connection.to)
                         .expect("Could not get new compartment");
-                    new_compartment_to.voltage += delta_voltage * cdt;
+                    new_compartment_to.injected_current += charge / ENDING_TIME_CONSTANT * cdt;
                 } else {
                     let voltage_diff = compartment_from.voltage - _compartment_to.voltage;
                     let delta_voltage = voltage_diff / current.capacitance;
@@ -124,8 +125,11 @@ mod ending_tests {
     use crate::elements::spawn_cable;
     use crate::simulation::step_simulation;
 
-    fn chain(world: &mut World, neuron_type: NeuronType) -> Vec<Entity> {
-        let compartments: Vec<Entity> = (0..4)
+    const DENDRITE_LENGTH: usize = 8;
+    const MILLISECOND: usize = 10;
+
+    fn chain(world: &mut World, neuron_type: NeuronType, length: usize) -> Vec<Entity> {
+        let compartments: Vec<Entity> = (0..length)
             .map(|_| world.spawn((Compartment::default(), neuron_type)))
             .collect();
         for pair in compartments.windows(2) {
@@ -134,51 +138,116 @@ mod ending_tests {
         compartments
     }
 
-    fn voltage_range_after_exciting(
+    fn voltage_ranges(
         world: &mut World,
-        excited: Entity,
-        watched: Entity,
-    ) -> (f64, f64) {
-        world.get::<&mut Compartment>(excited).unwrap().voltage = COMPARTMENT_FIRE_VOLTAGE;
+        fired: &[(Entity, usize)],
+        watched: &[Entity],
+    ) -> Vec<(f64, f64)> {
+        let mut ranges = vec![(f64::MAX, f64::MIN); watched.len()];
         let mut time = 0.0;
-        let mut range = (f64::MAX, f64::MIN);
-        for _ in 0..800 {
+        for step in 0..800 {
+            for &(compartment, at) in fired {
+                if step == at {
+                    world.get::<&mut Compartment>(compartment).unwrap().voltage =
+                        COMPARTMENT_FIRE_VOLTAGE;
+                }
+            }
             step_simulation(world, &mut time, 1, None);
-            let voltage = world.get::<&Compartment>(watched).unwrap().voltage;
-            range = (range.0.min(voltage), range.1.max(voltage));
+            for (range, &compartment) in ranges.iter_mut().zip(watched) {
+                let voltage = world.get::<&Compartment>(compartment).unwrap().voltage;
+                *range = (range.0.min(voltage), range.1.max(voltage));
+            }
         }
-        range
+        ranges
     }
 
-    fn axon_ending_on_dendrite(axon_type: NeuronType) -> (World, Vec<Entity>, Vec<Entity>) {
+    fn dendrite_receiving(endings: &[(NeuronType, usize)]) -> ((f64, f64), (f64, f64)) {
         let mut world = World::new();
-        let axon = chain(&mut world, axon_type);
-        let dendrite = chain(&mut world, NeuronType::Excitatory);
-        spawn_cable(&mut world, axon[3], dendrite[0], true);
-        (world, axon, dendrite)
+        let dendrite = chain(&mut world, NeuronType::Excitatory, DENDRITE_LENGTH);
+        let fired: Vec<(Entity, usize)> = endings
+            .iter()
+            .map(|&(axon_type, at)| {
+                let axon = chain(&mut world, axon_type, 3);
+                spawn_cable(&mut world, axon[2], dendrite[0], true);
+                (axon[0], at)
+            })
+            .collect();
+        let watched = [dendrite[0], dendrite[DENDRITE_LENGTH - 1]];
+        let ranges = voltage_ranges(&mut world, &fired, &watched);
+        (ranges[0], ranges[1])
+    }
+
+    const EXCITATORY: NeuronType = NeuronType::Excitatory;
+    const INHIBITORY: NeuronType = NeuronType::Inhibitory;
+
+    #[test]
+    fn one_axon_ending_only_stirs_the_dendrite_where_it_ends() {
+        let rest = Compartment::default().voltage;
+        let (near, far) = dendrite_receiving(&[(EXCITATORY, 0)]);
+        assert!(near.1 > rest + 15.0, "the ending reached {}", near.1);
+        assert!(
+            far.1 < BRIDGE_VOLTAGE_THRESHOLD,
+            "the far end reached {}",
+            far.1
+        );
     }
 
     #[test]
-    fn an_axon_ending_on_a_compartment_passes_spikes_onwards() {
-        let (mut world, axon, dendrite) = axon_ending_on_dendrite(NeuronType::Excitatory);
-        let (_, highest) = voltage_range_after_exciting(&mut world, axon[0], dendrite[3]);
-        assert!(highest > BRIDGE_VOLTAGE_THRESHOLD, "highest was {highest}");
+    fn two_axon_endings_arriving_together_start_a_dendritic_spike() {
+        let (_, far) = dendrite_receiving(&[(EXCITATORY, 0), (EXCITATORY, 0)]);
+        assert!(
+            far.1 > BRIDGE_VOLTAGE_THRESHOLD,
+            "the far end reached {}",
+            far.1
+        );
     }
 
     #[test]
-    fn spikes_do_not_travel_back_into_an_axon_ending() {
-        let (mut world, axon, dendrite) = axon_ending_on_dendrite(NeuronType::Excitatory);
-        let (_, highest) = voltage_range_after_exciting(&mut world, dendrite[3], axon[0]);
-        assert!(highest < BRIDGE_VOLTAGE_THRESHOLD, "highest was {highest}");
+    fn axon_endings_a_few_milliseconds_apart_do_not_add_up() {
+        let (_, far) = dendrite_receiving(&[(EXCITATORY, 0), (EXCITATORY, 3 * MILLISECOND)]);
+        assert!(
+            far.1 < BRIDGE_VOLTAGE_THRESHOLD,
+            "the far end reached {}",
+            far.1
+        );
     }
 
     #[test]
     fn an_inhibitory_axon_ending_holds_a_compartment_down() {
-        let (mut world, axon, dendrite) = axon_ending_on_dendrite(NeuronType::Inhibitory);
         let rest = Compartment::default().voltage;
-        let (lowest, highest) = voltage_range_after_exciting(&mut world, axon[0], dendrite[0]);
-        assert!(lowest < rest - 10.0, "lowest was {lowest}");
-        assert!(highest < BRIDGE_VOLTAGE_THRESHOLD, "highest was {highest}");
+        let (near, _) = dendrite_receiving(&[(INHIBITORY, 0)]);
+        assert!(near.0 < rest - 5.0, "the ending fell to {}", near.0);
+        assert!(
+            near.1 < BRIDGE_VOLTAGE_THRESHOLD,
+            "the ending reached {}",
+            near.1
+        );
+    }
+
+    #[test]
+    fn an_inhibitory_axon_ending_vetoes_excitatory_ones_arriving_with_it() {
+        let endings = [(EXCITATORY, 0), (EXCITATORY, 0), (INHIBITORY, 0)];
+        let (_, far) = dendrite_receiving(&endings);
+        assert!(
+            far.1 < BRIDGE_VOLTAGE_THRESHOLD,
+            "the far end reached {}",
+            far.1
+        );
+    }
+
+    #[test]
+    fn spikes_do_not_travel_back_into_an_axon_ending() {
+        let mut world = World::new();
+        let axon = chain(&mut world, EXCITATORY, 3);
+        let dendrite = chain(&mut world, EXCITATORY, DENDRITE_LENGTH);
+        spawn_cable(&mut world, axon[2], dendrite[0], true);
+        let fired = [(dendrite[DENDRITE_LENGTH - 1], 0)];
+        let ranges = voltage_ranges(&mut world, &fired, &[axon[0]]);
+        assert!(
+            ranges[0].1 < BRIDGE_VOLTAGE_THRESHOLD,
+            "the axon reached {}",
+            ranges[0].1
+        );
     }
 }
 
