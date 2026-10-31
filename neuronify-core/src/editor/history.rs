@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use hecs::{Component, Entity, EntityBuilder, EntityRef, World};
 
 use crate::components::*;
+use crate::measurement::voltmeter::VoltmeterRange;
 
 enum State {
     Absent,
@@ -121,7 +122,7 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 14] = [
+const EDITED: [Edited; 15] = [
     edited::<Position>(),
     edited::<VoltmeterSize>(),
     edited::<NoteSize>(),
@@ -136,6 +137,7 @@ const EDITED: [Edited; 14] = [
     edited_settings::<LeakyDynamics, RefractoryPeriod>(),
     edited_settings::<AdaptationCurrent, Adaptation>(),
     edited_settings::<CurrentSynapse, Synapse>(),
+    edited::<VoltmeterRange>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {

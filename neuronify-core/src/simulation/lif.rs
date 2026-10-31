@@ -2,7 +2,7 @@ use hecs::World;
 use rand::Rng;
 
 use crate::components::*;
-use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries, Voltmeter};
+use crate::measurement::voltmeter::{VoltageMeasurement, VoltageSeries};
 
 #[derive(Clone, Debug)]
 pub struct SpikeRecord {
@@ -268,9 +268,10 @@ pub fn lif_step(world: &mut World, dt: f64, time: f64) {
     }
 
     let voltmeter_updates: Vec<(hecs::Entity, f64, bool)> = world
-        .query::<(&Voltmeter, &Connection)>()
+        .query::<&Connection>()
+        .with::<&VoltageSeries>()
         .iter()
-        .filter_map(|(entity, (_, conn))| {
+        .filter_map(|(entity, conn)| {
             if let Ok(dynamics) = world.get::<&LeakyDynamics>(conn.from) {
                 return Some((
                     entity,

@@ -21,6 +21,8 @@ const TUTORIAL_2_CIRCUITS_NFY: &str = include_str!("../../examples/tutorial_2_ci
 
 const GENERATORS_NFY: &str = include_str!("../../examples/generators.nfy");
 
+const LATERAL_INHIBITION_1_NFY: &str = include_str!("../../examples/lateral_inhibition_1.nfy");
+
 #[test]
 fn test_parse_empty() {
     let sim = parse_legacy_nfy(EMPTY_NFY).unwrap();
@@ -563,4 +565,41 @@ fn current_sources_load_without_a_synapse() {
         .map(|(_, (_, synapse))| synapse.is_some())
         .collect();
     assert_eq!(from_source, [false]);
+}
+
+#[test]
+fn a_voltmeter_measures_every_neuron_wired_to_it_from_the_highest_down() {
+    let sim = parse_legacy_nfy(LATERAL_INHIBITION_1_NFY).unwrap();
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &sim);
+    let measured = |voltmeter: usize| -> Vec<hecs::Entity> {
+        crate::measurement::voltmeter::measured(&world, entities[voltmeter])
+            .into_iter()
+            .map(|(_, neuron)| neuron)
+            .collect()
+    };
+    assert_eq!(measured(6), [entities[9], entities[8], entities[0]]);
+    assert_eq!(measured(7), [entities[1], entities[3], entities[2]]);
+
+    let size = world.get::<&VoltmeterSize>(entities[6]).unwrap();
+    assert_eq!((size.width, size.height), (384.0 / 25.0, 288.0 / 25.0));
+}
+
+#[test]
+fn a_voltmeter_keeps_its_range_and_sits_where_neuronify_1_drew_it() {
+    let file = r#"{"fileFormatVersion": 4, "edges": [], "nodes": [
+        {"filename": "meters/Voltmeter.qml",
+         "savedProperties": {"x": 960, "y": 540, "width": 200, "height": 100,
+                             "minimumValue": -200, "maximumValue": 20}}
+    ]}"#;
+    let mut world = hecs::World::new();
+    let entities = spawn_legacy_simulation(&mut world, &parse_legacy_nfy(file).unwrap());
+    let range = world
+        .get::<&crate::measurement::voltmeter::VoltmeterRange>(entities[0])
+        .unwrap()
+        .clone();
+    assert_eq!((range.minimum, range.maximum), (-200.0, 20.0));
+    let frame = crate::measurement::voltmeter::Frame::of(&world, entities[0]).unwrap();
+    let top_left = frame.corner(crate::measurement::voltmeter::Corner::TopLeft);
+    assert!(top_left.abs_diff_eq(glam::Vec3::ZERO, 1e-5), "{top_left}");
 }

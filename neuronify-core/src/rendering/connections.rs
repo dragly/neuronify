@@ -1,31 +1,35 @@
 use glam::Vec3;
 
 use crate::components::*;
-use crate::measurement::voltmeter::Voltmeter;
+use crate::measurement::voltmeter::{measured, Frame, Voltmeter};
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::ConnectionData;
 
 const MIN_SEGMENT_LENGTH: f32 = 1e-4;
 
 pub fn collect_voltmeter_wires(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
-    world
-        .query::<&Connection>()
-        .with::<&Voltmeter>()
-        .iter()
-        .filter_map(|(_, connection)| {
-            let start = world.get::<&Position>(connection.from).ok()?.position;
-            let end = world.get::<&Position>(connection.to).ok()?.position;
-            Some(ConnectionData {
+    let mut wires = Vec::new();
+    for (voltmeter, _) in world.query::<()>().with::<&Voltmeter>().iter() {
+        let Some(frame) = Frame::of(world, voltmeter) else {
+            continue;
+        };
+        let measured = measured(world, voltmeter);
+        for (row, (_, neuron)) in measured.iter().enumerate() {
+            let Ok(start) = world.get::<&Position>(*neuron).map(|p| p.position) else {
+                continue;
+            };
+            wires.push(ConnectionData {
                 position_a: start,
-                position_b: end,
-                strength: connection.strength as f32,
+                position_b: frame.row(row, measured.len()).point(0.0, 0.5),
+                strength: 1.0,
                 directional: 0.0,
                 start_color: palette.neutral,
                 end_color: palette.neutral,
                 _padding: Default::default(),
-            })
-        })
-        .collect()
+            });
+        }
+    }
+    wires
 }
 
 pub fn connection_being_drawn(points: &[Vec3], palette: &Palette) -> Vec<ConnectionData> {

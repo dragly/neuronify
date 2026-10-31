@@ -1381,8 +1381,9 @@ fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
     let mut editor = editor(Tool::Edit);
     drag(&mut editor, &mut world, &[at(12.0, 13.0), at(13.0, 15.0)]);
     drag(&mut editor, &mut world, &[at(10.0, 9.0), at(11.0, 9.0)]);
+    let (wire, _) = measured(&world, voltmeter)[0];
     world
-        .get::<&mut VoltageSeries>(voltmeter)
+        .get::<&mut VoltageSeries>(wire)
         .unwrap()
         .spike_times
         .push(1.0);
@@ -1393,7 +1394,7 @@ fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
     assert_eq!(position(&world, voltmeter), at(10.0, 5.0));
     let size = world.get::<&VoltmeterSize>(voltmeter).unwrap();
     assert_eq!((size.width, size.height), (8.0, 4.0));
-    let series = world.get::<&VoltageSeries>(voltmeter).unwrap();
+    let series = world.get::<&VoltageSeries>(wire).unwrap();
     assert_eq!(series.spike_times, [1.0]);
 }
 
@@ -1518,4 +1519,41 @@ fn current_sources_connect_without_a_synapse() {
     drag(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 9.5)]);
     assert!(connected(&world, source, target));
     assert_eq!(count::<CurrentSynapse>(&world), 0);
+}
+
+#[test]
+fn connecting_a_neuron_onto_a_voltmeter_adds_its_plot_once() {
+    let mut world = World::new();
+    let first = neuron(&mut world, at(0.0, 0.0));
+    let second = neuron(&mut world, at(0.0, -10.0));
+    let voltmeter = spawn_voltmeter(&mut world, first, at(0.0, 5.0));
+    let inside = Frame::of(&world, voltmeter).unwrap().point(0.5, 0.5);
+    let mut editor = editor(Tool::StaticConnection);
+    for _ in 0..2 {
+        drag(&mut editor, &mut world, &[at(0.0, -9.5), inside]);
+    }
+    let measured: Vec<Entity> = measured(&world, voltmeter)
+        .into_iter()
+        .map(|(_, target)| target)
+        .collect();
+    assert_eq!(measured, [first, second]);
+    assert_eq!(count::<CurrentSynapse>(&world), 0);
+}
+
+#[test]
+fn erasing_one_of_two_measured_neurons_keeps_the_voltmeter() {
+    let mut world = World::new();
+    let first = neuron(&mut world, at(0.0, 0.0));
+    let second = neuron(&mut world, at(0.0, -10.0));
+    let voltmeter = spawn_voltmeter(&mut world, first, at(0.0, 5.0));
+    crate::elements::spawn_voltmeter_wire(&mut world, second, voltmeter);
+    let mut editor = editor(Tool::Edit);
+    editor.selection = Some(first);
+    editor.erase_selection(&mut world);
+    assert!(world.contains(voltmeter));
+    assert_eq!(measured(&world, voltmeter).len(), 1);
+
+    editor.selection = Some(second);
+    editor.erase_selection(&mut world);
+    assert!(!world.contains(voltmeter));
 }

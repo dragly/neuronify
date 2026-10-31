@@ -4,7 +4,7 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
-use crate::components::{Position, VoltmeterSize};
+use crate::components::{Connection, Position, VoltmeterSize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RollingWindow<T> {
@@ -58,6 +58,42 @@ pub struct VoltageSeries {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Voltmeter {}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct VoltmeterRange {
+    pub minimum: f64,
+    pub maximum: f64,
+}
+
+impl Default for VoltmeterRange {
+    fn default() -> Self {
+        Self {
+            minimum: -100.0,
+            maximum: 50.0,
+        }
+    }
+}
+
+pub fn measured(world: &hecs::World, voltmeter: Entity) -> Vec<(Entity, Entity)> {
+    let height = |entity: Entity| {
+        world
+            .get::<&Position>(entity)
+            .map_or(0.0, |position| position.position.x)
+    };
+    let mut wires: Vec<(Entity, Entity)> = world
+        .query::<&Connection>()
+        .with::<&VoltageSeries>()
+        .iter()
+        .filter(|(_, connection)| connection.to == voltmeter)
+        .map(|(wire, connection)| (wire, connection.from))
+        .collect();
+    wires.sort_by(|(a_wire, a), (b_wire, b)| {
+        height(*b)
+            .total_cmp(&height(*a))
+            .then(a_wire.id().cmp(&b_wire.id()))
+    });
+    wires
+}
 
 const MIN_FRAME_WIDTH: f32 = 2.0;
 const MIN_FRAME_HEIGHT: f32 = 1.0;
@@ -129,6 +165,15 @@ impl Frame {
         }
     }
 
+    pub fn row(&self, index: usize, count: usize) -> Frame {
+        let height = self.height / count.max(1) as f32;
+        Frame {
+            bottom_left: self.bottom_left + Vec3::X * (self.height - (index as f32 + 1.0) * height),
+            width: self.width,
+            height,
+        }
+    }
+
     pub fn point(&self, right: f32, up: f32) -> Vec3 {
         self.bottom_left + Vec3::new(up * self.height, 0.0, right * self.width)
     }
@@ -194,6 +239,31 @@ mod tests {
                 height: 4.0,
             },
         )
+    }
+
+    #[test]
+    fn rows_follow_the_measured_neurons_from_the_highest_down() {
+        let mut world = hecs::World::new();
+        let neuron_at = |world: &mut hecs::World, up: f32| {
+            crate::elements::Element::ExcitatoryNeuron.spawn(world, Vec3::new(up, 0.0, 0.0))
+        };
+        let low = neuron_at(&mut world, -5.0);
+        let high = neuron_at(&mut world, 5.0);
+        let middle = neuron_at(&mut world, 0.0);
+        let voltmeter =
+            crate::elements::spawn_voltmeter(&mut world, low, Vec3::new(0.0, 0.0, 10.0));
+        crate::elements::spawn_voltmeter_wire(&mut world, high, voltmeter);
+        crate::elements::spawn_voltmeter_wire(&mut world, middle, voltmeter);
+        let rows = |world: &hecs::World| -> Vec<Entity> {
+            measured(world, voltmeter)
+                .into_iter()
+                .map(|(_, neuron)| neuron)
+                .collect()
+        };
+        assert_eq!(rows(&world), [high, middle, low]);
+
+        world.get::<&mut Position>(low).unwrap().position.x = 10.0;
+        assert_eq!(rows(&world), [low, high, middle]);
     }
 
     #[test]

@@ -7,8 +7,11 @@ use hecs::{Component, Entity, World};
 use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
-use crate::elements::{spawn_cable, spawn_compartment, spawn_connection, spawn_voltmeter, Element};
-use crate::measurement::voltmeter::{Corner, Frame, Voltmeter};
+use crate::elements::{
+    spawn_cable, spawn_compartment, spawn_connection, spawn_voltmeter, spawn_voltmeter_wire,
+    Element,
+};
+use crate::measurement::voltmeter::{measured, Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{fire_nearby, touch_sensor_near};
@@ -263,9 +266,7 @@ impl Editor {
             })
             .map(|(connection, _)| connection)
             .collect();
-        for connection in dangling {
-            recording.take(world, connection);
-        }
+        take_connections(world, &mut recording, dangling);
         self.history.record(recording, world);
     }
 
@@ -507,7 +508,9 @@ impl Editor {
         let Some(connection) = &mut self.connection_tool else {
             return;
         };
-        connect_to_neuron_near(world, connection, position, shift_down, spawn_connection);
+        if !connect_to_neuron_near(world, connection, position, shift_down, spawn_connection) {
+            measure_with_voltmeter_at(world, connection.from, position);
+        }
         connection.end = position;
     }
 
@@ -711,6 +714,24 @@ fn start_connection(sources: Vec<(Entity, Vec3)>, position: Vec3) -> Option<Conn
     })
 }
 
+fn measure_with_voltmeter_at(world: &mut World, source: Entity, position: Vec3) {
+    let measurable = world
+        .satisfies::<hecs::Or<&LeakyNeuron, &Compartment>>(source)
+        .unwrap_or(false);
+    let Some(&(voltmeter, _, _)) = voltmeter_frames(world)
+        .iter()
+        .find(|(_, _, frame)| frame.contains(position))
+    else {
+        return;
+    };
+    let measured = measured(world, voltmeter)
+        .iter()
+        .any(|&(_, target)| target == source);
+    if measurable && !measured {
+        spawn_voltmeter_wire(world, source, voltmeter);
+    }
+}
+
 fn connect_to_neuron_near(
     world: &mut World,
     connection: &mut ConnectionTool,
@@ -892,8 +913,25 @@ fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
         })
         .map(|(entity, _)| entity)
         .collect();
-    for connection in cut.into_iter().chain(dangling) {
+    take_connections(world, recording, cut.into_iter().chain(dangling).collect());
+}
+
+fn take_connections(world: &mut World, recording: &mut Recording, connections: Vec<Entity>) {
+    let meters: HashSet<Entity> = connections
+        .iter()
+        .filter(|&&wire| world.satisfies::<&VoltageSeries>(wire).unwrap_or(false))
+        .filter_map(|&wire| {
+            let wire = world.get::<&Connection>(wire).ok()?;
+            (!world.contains(wire.from)).then_some(wire.to)
+        })
+        .collect();
+    for connection in connections {
         recording.take(world, connection);
+    }
+    for meter in meters {
+        if world.contains(meter) && measured(world, meter).is_empty() {
+            recording.take(world, meter);
+        }
     }
 }
 
