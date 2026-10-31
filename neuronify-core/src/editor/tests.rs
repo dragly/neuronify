@@ -63,6 +63,21 @@ fn a_new_note_is_selected() {
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     let note = editor.selection.unwrap();
     assert!(world.get::<&Annotation>(note).is_ok());
+    assert_eq!(editor.tool, Tool::Select);
+}
+
+#[test]
+fn dragging_a_new_note_moves_it() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::Note));
+    drag(
+        &mut editor,
+        &mut world,
+        &[at(0.0, 0.0), at(0.5, 0.0), at(3.0, 0.0)],
+    );
+    let notes = positions_with::<Annotation>(&world);
+    assert_eq!(notes.len(), 1);
+    assert_eq!(notes[0].1, at(2.5, 0.0));
 }
 
 #[test]
@@ -234,17 +249,16 @@ fn with_compartments_dragging_from_near_a_dendrite_grows_an_axon_from_it() {
 fn with_point_neurons_pressing_near_a_dendrite_adds_nothing() {
     let mut world = World::new();
     neuron_with_dendrites(&mut world, at(0.0, 0.0));
-    let (tip, tip_position) = positions_with::<Dendrite>(&world)
+    let (_, tip_position) = positions_with::<Dendrite>(&world)
         .into_iter()
         .max_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
         .unwrap();
     let beside_tip = tip_position * (1.0 + 1.5 / tip_position.length());
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(&mut world, beside_tip, false);
-    editor.select_pressed();
     editor.release(&world);
     assert_eq!(count::<LeakyNeuron>(&world), 1);
-    assert_eq!(editor.selection, Some(tip));
+    assert_eq!(editor.selection, None);
 }
 
 #[test]
@@ -310,21 +324,16 @@ fn painted_neurons_keep_their_dendrites_apart() {
 }
 
 #[test]
-fn tapping_an_element_while_adding_selects_it() {
+fn tapping_an_element_while_adding_does_nothing() {
     let mut world = World::new();
-    let a = neuron(&mut world, at(0.0, 0.0));
+    neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(&mut world, at(0.5, 0.0), false);
-    editor.select_pressed();
+    assert!(!editor.pressed_background());
     editor.release(&world);
-    assert_eq!(editor.selection, Some(a));
+    assert_eq!(editor.selection, None);
+    assert_eq!(editor.tool, Tool::Place(Element::ExcitatoryNeuron));
     assert_eq!(count::<LeakyNeuron>(&world), 1);
-
-    editor.edit(&mut world, at(20.0, 0.0), false);
-    editor.select_pressed();
-    editor.release(&world);
-    assert_eq!(editor.selection, Some(a));
-    assert_eq!(count::<LeakyNeuron>(&world), 2);
 }
 
 #[test]
@@ -334,11 +343,12 @@ fn holding_an_element_while_adding_moves_it() {
     let b = neuron(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(&mut world, at(0.0, 1.5), false);
-    assert!(editor.hold(&world, at(0.0, 1.5)));
+    assert!(editor.hold(&world, at(0.0, 1.5), false));
     assert_eq!(editor.connection_being_drawn(&world), None);
     drag(&mut editor, &mut world, &[at(0.0, 10.0), at(5.0, 3.5)]);
     assert_eq!(position(&world, a), at(5.0, 2.0));
-    assert_eq!(editor.selection, Some(a));
+    assert_eq!(editor.selection, None);
+    assert_eq!(editor.tool, Tool::Place(Element::ExcitatoryNeuron));
     assert!(!connected(&world, a, b));
     assert_eq!(count::<LeakyNeuron>(&world), 2);
 }
@@ -348,7 +358,7 @@ fn holding_after_placing_moves_the_new_element() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::CurrentSource));
     editor.edit(&mut world, at(0.0, 0.0), false);
-    assert!(editor.hold(&world, at(0.0, 0.0)));
+    assert!(editor.hold(&world, at(0.0, 0.0), false));
     drag(&mut editor, &mut world, &[at(3.0, 4.0), at(6.0, 8.0)]);
     let placed = positions_with::<CurrentClamp>(&world);
     assert_eq!(placed[0].1, at(6.0, 8.0));
@@ -361,7 +371,7 @@ fn undo_puts_back_an_element_moved_while_adding() {
     let a = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(&mut world, at(0.0, 0.5), false);
-    assert!(editor.hold(&world, at(0.0, 0.5)));
+    assert!(editor.hold(&world, at(0.0, 0.5), false));
     drag(&mut editor, &mut world, &[at(5.0, 3.5)]);
     assert_eq!(position(&world, a), at(5.0, 3.0));
     editor.undo(&mut world);
@@ -581,12 +591,13 @@ fn touch_sensors_fire_once_per_press() {
 fn viewers_select_with_a_tap() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
 
     editor.view(&mut world, at(0.5, 0.0));
     editor.tap(&world, at(0.5, 0.0));
     editor.release(&world);
     assert_eq!(editor.selection, Some(target));
+    assert_eq!(editor.tool, Tool::Select);
 
     editor.view(&mut world, at(10.0, 10.0));
     editor.tap(&world, at(10.0, 10.0));
@@ -611,15 +622,16 @@ fn touching_a_sensor_leaves_the_selection_alone() {
 fn holding_an_element_grabs_it() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Select);
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
 
     editor.view(&mut world, at(10.0, 10.0));
-    assert!(!editor.hold(&world, at(10.0, 10.0)));
+    assert!(!editor.hold(&world, at(10.0, 10.0), true));
     editor.release(&world);
 
     editor.view(&mut world, at(0.5, 0.0));
-    assert!(editor.hold(&world, at(0.5, 0.0)));
+    assert!(editor.hold(&world, at(0.5, 0.0), true));
     assert_eq!(editor.selection, Some(target));
+    assert_eq!(editor.tool, Tool::Select);
     assert_eq!(editor.edit(&mut world, at(3.5, 2.0), false), None);
     assert_eq!(
         world.get::<&Position>(target).unwrap().position,

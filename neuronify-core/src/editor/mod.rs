@@ -223,9 +223,12 @@ impl Editor {
     }
 
     pub fn tap(&mut self, world: &World, position: Vec3) {
-        if self.stimulation_tool.is_none() {
-            self.selection =
-                entity_at(world, &voltmeter_frames(world), position).map(|(entity, _)| entity);
+        if self.stimulation_tool.is_some() {
+            return;
+        }
+        match entity_at(world, &voltmeter_frames(world), position) {
+            Some((entity, _)) => self.select_entity(entity),
+            None => self.selection = None,
         }
     }
 
@@ -233,13 +236,12 @@ impl Editor {
         entity_at(world, &voltmeter_frames(world), position).is_none()
     }
 
-    pub fn select_pressed(&mut self) {
-        if let Some(pressed) = self.pressed {
-            self.selection = Some(pressed);
-        }
+    fn select_entity(&mut self, entity: Entity) {
+        self.selection = Some(entity);
+        self.tool = Tool::Select;
     }
 
-    pub fn hold(&mut self, world: &World, position: Vec3) -> bool {
+    pub fn hold(&mut self, world: &World, position: Vec3, select: bool) -> bool {
         if self.stimulation_tool.is_some() {
             return false;
         }
@@ -254,12 +256,14 @@ impl Editor {
         };
         self.move_origin = None;
         self.connection_tool = None;
+        if select {
+            self.select_entity(entity);
+        }
         self.grab(world, entity, entity_position, position);
         true
     }
 
     fn grab(&mut self, world: &World, entity: Entity, entity_position: Vec3, position: Vec3) {
-        self.selection = Some(entity);
         let offset = (entity_position - position).with_y(0.0);
         self.dragging = Some(Drag::new(world, entity, offset));
     }
@@ -345,7 +349,7 @@ impl Editor {
             spawn_dendrites(world, entity);
         }
         if element == Element::Note {
-            self.selection = Some(entity);
+            self.select_entity(entity);
         }
         self.previous_creation = Some(entity);
     }
@@ -457,6 +461,7 @@ impl Editor {
         }
         match entity_at(world, &frames, position) {
             Some((entity, entity_position)) => {
+                self.selection = Some(entity);
                 self.grab(world, entity, entity_position, position);
             }
             None => self.move_origin = Some(position),
