@@ -12,6 +12,7 @@ pub mod gui;
 pub mod input;
 pub mod landing;
 pub mod legacy;
+pub mod library;
 pub mod measurement;
 pub mod rendering;
 pub mod serialization;

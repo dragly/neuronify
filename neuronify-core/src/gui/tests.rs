@@ -890,6 +890,27 @@ fn the_strength_of_an_axon_ending_is_one_step_to_undo() {
 }
 
 #[test]
+fn the_inspector_reports_changes_as_edits() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(false, world, Some(neuron));
+    let threshold = |harness: &Harness| {
+        let neuron = harness.world.get::<&LeakyNeuron>(neuron).unwrap();
+        neuron.threshold
+    };
+    let before = threshold(&harness);
+    assert!(!harness.editor.take_edited());
+
+    let label = harness.text_position("Threshold").unwrap();
+    harness.click(label + vec2(0.0, 22.0));
+    assert_ne!(threshold(&harness), before);
+    assert!(harness.editor.take_edited());
+
+    harness.scroll_inspector_to_the_end();
+    harness.click_button(inspector::DELETE);
+    assert!(harness.editor.take_edited());
+}
+
+#[test]
 fn closing_the_inspector_clears_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

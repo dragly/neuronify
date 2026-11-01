@@ -18,8 +18,14 @@ use web_sys::{
 const REVOKE_DELAY_MS: i32 = 10_000;
 const SHARED_TYPE: &str = "application/octet-stream";
 
+pub struct LoadedFile {
+    pub name: String,
+    pub bytes: Vec<u8>,
+    pub picked: bool,
+}
+
 thread_local! {
-    static LOADED: RefCell<Option<Result<Vec<u8>, String>>> = const { RefCell::new(None) };
+    static LOADED: RefCell<Option<Result<LoadedFile, String>>> = const { RefCell::new(None) };
     static FETCHING: Cell<bool> = const { Cell::new(false) };
     static LOADING_SCREEN_SHOWN: Cell<bool> = const { Cell::new(true) };
 }
@@ -32,15 +38,22 @@ pub fn fetch_requested_file() -> bool {
     };
     FETCHING.set(true);
     wasm_bindgen_futures::spawn_local(async move {
-        let result = fetch_bytes(&url).await.map_err(|e| {
-            // fetch rejects with a TypeError, while fetch_bytes rejects with a string
-            let reason = e
-                .dyn_ref::<js_sys::Error>()
-                .map(|error| String::from(error.message()))
-                .or_else(|| e.as_string())
-                .unwrap_or_else(|| format!("{e:?}"));
-            format!("Could not fetch {url}: {reason}")
-        });
+        let result = fetch_bytes(&url)
+            .await
+            .map(|bytes| LoadedFile {
+                name: name_in(&url),
+                bytes,
+                picked: false,
+            })
+            .map_err(|e| {
+                // fetch rejects with a TypeError, while fetch_bytes rejects with a string
+                let reason = e
+                    .dyn_ref::<js_sys::Error>()
+                    .map(|error| String::from(error.message()))
+                    .or_else(|| e.as_string())
+                    .unwrap_or_else(|| format!("{e:?}"));
+                format!("Could not fetch {url}: {reason}")
+            });
         LOADED.with(|loaded| *loaded.borrow_mut() = Some(result));
         FETCHING.set(false);
     });
@@ -48,7 +61,7 @@ pub fn fetch_requested_file() -> bool {
 }
 
 /// Returns a fetched or picked file once, after it has been read.
-pub fn take_loaded_file() -> Option<Result<Vec<u8>, String>> {
+pub fn take_loaded_file() -> Option<Result<LoadedFile, String>> {
     LOADED.with(|loaded| loaded.borrow_mut().take())
 }
 
@@ -78,7 +91,11 @@ pub fn pick_file() -> Result<(), JsValue> {
         wasm_bindgen_futures::spawn_local(async move {
             let result = JsFuture::from(file.array_buffer())
                 .await
-                .map(|buffer| js_sys::Uint8Array::new(&buffer).to_vec())
+                .map(|buffer| LoadedFile {
+                    name: stem(&file.name()).to_owned(),
+                    bytes: js_sys::Uint8Array::new(&buffer).to_vec(),
+                    picked: true,
+                })
                 .map_err(|error| format!("Could not read {}: {error:?}", file.name()));
             LOADED.with(|loaded| *loaded.borrow_mut() = Some(result));
         });
@@ -146,6 +163,13 @@ pub fn share(bytes: &[u8], name: &str) -> Result<(), JsValue> {
     Ok(())
 }
 
+pub fn prompt(message: &str, default: &str) -> Option<String> {
+    web_sys::window()?
+        .prompt_with_message_and_default(message, default)
+        .ok()
+        .flatten()
+}
+
 fn file(bytes: &[u8], name: &str) -> Result<File, JsValue> {
     let parts = js_sys::Array::of1(&js_sys::Uint8Array::from(bytes));
     let options = FilePropertyBag::new();
@@ -163,6 +187,20 @@ fn document() -> Result<Document, JsValue> {
     Ok(web_sys::window()
         .and_then(|window| window.document())
         .ok_or("no document")?)
+}
+
+fn stem(file_name: &str) -> &str {
+    file_name
+        .rsplit_once('.')
+        .map_or(file_name, |(stem, _)| stem)
+}
+
+fn name_in(url: &str) -> String {
+    let path = url.split(['?', '#']).next().unwrap_or_default();
+    let file_name = stem(path.rsplit('/').next().unwrap_or_default());
+    js_sys::decode_uri_component(file_name)
+        .map(String::from)
+        .unwrap_or_else(|_| file_name.to_owned())
 }
 
 fn requested_file() -> Option<String> {

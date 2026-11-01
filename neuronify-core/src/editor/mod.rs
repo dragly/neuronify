@@ -64,6 +64,7 @@ pub struct Editor {
     recording: Option<Recording>,
     adjusting: Option<Snapshot>,
     history: History,
+    edited: bool,
 }
 
 impl Editor {
@@ -172,6 +173,10 @@ impl Editor {
         self.release(world);
     }
 
+    pub fn take_edited(&mut self) -> bool {
+        std::mem::take(&mut self.edited)
+    }
+
     pub fn release(&mut self, world: &World) {
         self.stimulation_tool = None;
         self.connection_tool = None;
@@ -182,7 +187,7 @@ impl Editor {
         self.dragging = None;
         self.resizing = None;
         if let Some(recording) = self.recording.take() {
-            self.history.record(recording, world);
+            self.edited |= self.history.record(recording, world);
         }
     }
 
@@ -205,13 +210,13 @@ impl Editor {
     pub fn undo(&mut self, world: &mut World) {
         self.release(world);
         self.settle();
-        self.history.undo(world);
+        self.edited |= self.history.undo(world);
     }
 
     pub fn redo(&mut self, world: &mut World) {
         self.release(world);
         self.settle();
-        self.history.redo(world);
+        self.edited |= self.history.redo(world);
     }
 
     pub fn adjust(
@@ -233,7 +238,9 @@ impl Editor {
             .adjusting
             .take()
             .or_else(|| Snapshot::of(world, entity, compartment_tree(world, entity)));
-        if adjust() || ongoing {
+        let adjusted = adjust();
+        self.edited |= adjusted;
+        if adjusted || ongoing {
             self.adjusting = before;
         }
         if settled {
@@ -273,7 +280,7 @@ impl Editor {
             .map(|(connection, _)| connection)
             .collect();
         take_connections(world, &mut recording, dangling);
-        self.history.record(recording, world);
+        self.edited |= self.history.record(recording, world);
     }
 
     pub fn edit(&mut self, world: &mut World, position: Vec3, shift_down: bool) -> Option<Pan> {
