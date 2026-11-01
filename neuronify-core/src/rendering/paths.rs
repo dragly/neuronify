@@ -20,6 +20,7 @@ const CONNECTION_RADIUS: f32 = 0.16;
 const SYNAPSE_GAP: f32 = 2.0 * NODE_RADIUS;
 const SOMA_TERMINAL_RADIUS: f32 = 0.5 * NODE_RADIUS;
 const COMPARTMENT_TERMINAL_RADIUS: f32 = 0.3 * NODE_RADIUS;
+const MIN_TERMINAL_SCALE: f32 = 0.4;
 
 /// The tube a connection is drawn as, from the source towards the target.
 ///
@@ -176,6 +177,11 @@ pub fn connection_paths(
                 Some(_) => COMPARTMENT_TERMINAL_RADIUS,
                 None => SOMA_TERMINAL_RADIUS,
             };
+            let terminal_radius = if from_compartment {
+                terminal_radius * (connection.strength as f32).sqrt().max(MIN_TERMINAL_SCALE)
+            } else {
+                terminal_radius
+            };
             let trim = match (connection.directional, target_radius) {
                 (false, _) => 0.0,
                 (true, Some(radius)) => radius + terminal_radius,
@@ -281,6 +287,33 @@ mod tests {
             .distance(Vec3::new(2.0, 0.0, 0.0));
         assert!((gap - radii[&dendrite] - path.terminal_radius).abs() < 1e-4);
         assert_eq!(path.terminal_radius, COMPARTMENT_TERMINAL_RADIUS);
+    }
+
+    #[test]
+    fn a_stronger_axon_ending_has_a_bigger_terminal() {
+        let terminal_radius = |strength: f64| {
+            let mut world = hecs::World::new();
+            let compartment_at = |world: &mut hecs::World, x: f32| {
+                world.spawn((
+                    Position {
+                        position: Vec3::new(x, 0.0, 0.0),
+                    },
+                    Compartment::default(),
+                    NeuronType::Excitatory,
+                ))
+            };
+            let tip = compartment_at(&mut world, 0.0);
+            let dendrite = compartment_at(&mut world, 2.0);
+            let ending = crate::elements::spawn_cable(&mut world, tip, dendrite, true);
+            world.get::<&mut Connection>(ending).unwrap().strength = strength;
+            let radii = crate::rendering::compartment_radii(&world);
+            connection_paths(&world, &radii, &Theme::default().palette())[&ending].terminal_radius
+        };
+        assert_eq!(terminal_radius(4.0), 2.0 * COMPARTMENT_TERMINAL_RADIUS);
+        assert_eq!(
+            terminal_radius(0.0),
+            MIN_TERMINAL_SCALE * COMPARTMENT_TERMINAL_RADIUS
+        );
     }
 
     #[test]

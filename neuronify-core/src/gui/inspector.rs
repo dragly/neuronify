@@ -10,8 +10,9 @@ use egui::{
 use hecs::{Entity, World};
 
 use crate::components::*;
+use crate::constants::MAX_ENDING_STRENGTH;
 use crate::editor::Editor;
-use crate::elements::Element;
+use crate::elements::{axon_ending, Element};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::rendering::Theme;
 use crate::tools::Tool;
@@ -103,7 +104,8 @@ impl Inspector {
                 .min_scrolled_height(room)
                 .show(ui, |ui| {
                     inspector.live(ui, chrome, world, entity);
-                    editor.adjust(world, entity, settled, || {
+                    let adjusted = axon_ending(world, entity).unwrap_or(entity);
+                    editor.adjust(world, adjusted, settled, || {
                         parameters(ui, chrome, world, entity)
                     });
                     if world.get::<&Deletable>(entity).is_ok()
@@ -243,7 +245,11 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         })
         .unwrap_or(Tool::Place(Element::ExcitatoryNeuron))
     } else if world.get::<&Compartment>(entity).is_ok() {
-        return Some((Tool::Axon, "Compartment"));
+        let name = match axon_ending(world, entity) {
+            Some(_) => "Axon terminal",
+            None => "Compartment",
+        };
+        return Some((Tool::Axon, name));
     } else if world.get::<&CurrentClamp>(entity).is_ok() {
         Tool::Place(Element::CurrentSource)
     } else if world.get::<&TouchSensor>(entity).is_ok() {
@@ -523,6 +529,17 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             )
             .changed();
         ui.add_space(8.0);
+    }
+    if let Some(ending) = axon_ending(world, entity) {
+        heading(ui, chrome, "Parameters", 0.0);
+        changed |= parameter(
+            ui,
+            chrome,
+            "Strength",
+            &mut world.get::<&mut Connection>(ending).unwrap().strength,
+            0.0..=MAX_ENDING_STRENGTH,
+            |strength| format!("{strength:.2}"),
+        );
     }
     if let Ok(compartment) = world.get::<&Compartment>(entity) {
         heading(ui, chrome, "Gating", 0.0);

@@ -3,9 +3,9 @@ use glam::Vec3;
 use hecs::Entity;
 
 use super::*;
-use crate::components::LeakyNeuron;
+use crate::components::{Connection, LeakyNeuron, NeuronType};
 use crate::constants::DEFAULT_SPEED;
-use crate::elements::Element;
+use crate::elements::{spawn_cable, spawn_compartment, Element};
 use crate::tools::Tool;
 
 const SCREEN: Vec2 = vec2(1280.0, 800.0);
@@ -457,6 +457,24 @@ fn dragging_a_slider_is_one_step_to_undo() {
 
     harness.click(corner_button(2));
     assert_eq!(threshold(&harness), original);
+    assert!(!harness.editor.can_undo());
+}
+
+#[test]
+fn the_strength_of_an_axon_ending_is_one_step_to_undo() {
+    let mut world = World::new();
+    let terminal = spawn_compartment(&mut world, Vec3::ZERO, NeuronType::Excitatory);
+    let dendrite = spawn_compartment(&mut world, Vec3::X, NeuronType::Excitatory);
+    let ending = spawn_cable(&mut world, terminal, dendrite, true);
+    let mut harness = Harness::with(true, world, Some(terminal));
+    assert!(harness.shows("Axon terminal"));
+    let strength = |harness: &Harness| harness.world.get::<&Connection>(ending).unwrap().strength;
+    let slider = harness.text_position("Strength").unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(120.0, 0.0));
+    assert!(strength(&harness) > 1.0);
+
+    harness.click(corner_button(2));
+    assert_eq!(strength(&harness), 1.0);
     assert!(!harness.editor.can_undo());
 }
 
