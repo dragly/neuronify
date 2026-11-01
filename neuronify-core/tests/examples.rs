@@ -251,6 +251,19 @@ fn two_inputs_far_apart_leak_away() {
 }
 
 #[test]
+fn one_press_keeps_the_loop_going_until_the_adaptive_neuron_tires() {
+    let mut experiment = Experiment::new(write_examples::reverberation());
+    let sensor = experiment.sensors_from_left()[0];
+    experiment.press(sensor);
+    let early = experiment.spikes_during(0.05, "Adaptive");
+    let later = experiment.spikes_during(0.05, "Adaptive");
+    experiment.spikes_during(0.3, "Adaptive");
+    let at_rest = experiment.spikes_during(0.2, "Adaptive");
+    assert!(early >= 2 && later >= 1, "{early} and {later} spikes");
+    assert_eq!(at_rest, 0);
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world

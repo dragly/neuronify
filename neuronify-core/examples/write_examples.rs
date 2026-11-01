@@ -3,8 +3,8 @@ use hecs::{Entity, World};
 
 use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::elements::{
-    spawn_loudspeaker, spawn_rate_plot, spawn_spike_detector, spawn_synapse, spawn_voltmeter,
-    Element,
+    spawn_loudspeaker, spawn_rate_plot, spawn_spike_detector, spawn_spike_detector_wire,
+    spawn_synapse, spawn_voltmeter, Element,
 };
 use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
@@ -108,6 +108,14 @@ impl Sheet {
             width: 14.5,
             height: 4.0,
         };
+    }
+
+    fn spike_detector(&mut self, targets: &[Entity], left: f32, up: f32, width: f32, height: f32) {
+        let detector = spawn_spike_detector(&mut self.world, targets[0], Sheet::at(left, up));
+        for &target in &targets[1..] {
+            spawn_spike_detector_wire(&mut self.world, target, detector);
+        }
+        *self.world.get::<&mut MeterSize>(detector).unwrap() = MeterSize { width, height };
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, width: f32, height: f32) {
@@ -332,6 +340,33 @@ pub fn summation() -> World {
     sheet.world
 }
 
+pub fn reverberation() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "These four neurons form a loop, as in tutorial 6, but the one on the left adapts. \
+         Press the touch sensor to send a spike around the loop.",
+    );
+    let middle = sheet.row(10.0);
+    let sensor = sheet.add(Element::TouchSensor, 1.5, middle);
+    let adaptive = sheet.add(Element::AdaptiveNeuron, 6.0, middle);
+    sheet.label(adaptive, "Adaptive");
+    let top = sheet.add(Element::ExcitatoryNeuron, 10.0, middle + 4.0);
+    let right = sheet.add(Element::ExcitatoryNeuron, 14.0, middle);
+    let bottom = sheet.add(Element::ExcitatoryNeuron, 10.0, middle - 4.0);
+    sheet.connect(sensor, adaptive);
+    let ring = [adaptive, top, right, bottom];
+    for (index, &from) in ring.iter().enumerate() {
+        sheet.synapse(from, ring[(index + 1) % ring.len()], 3.0 * NANOAMPERE);
+    }
+    sheet.spike_detector(&[right], 16.5, middle, 7.5, 4.0);
+    sheet.text(
+        "The spikes keep circling long after your press, until the adaptive neuron \
+         grows too tired to pass them on. Activity that outlasts its input like this \
+         is called reverberation.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -339,6 +374,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("firing_threshold.neuronify", firing_threshold()),
         ("refractory_period.neuronify", refractory_period()),
         ("summation.neuronify", summation()),
+        ("reverberation.neuronify", reverberation()),
     ]
 }
 
