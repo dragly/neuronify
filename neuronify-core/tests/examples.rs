@@ -319,6 +319,20 @@ fn the_brake_holds_the_output_until_a_press_releases_it() {
 }
 
 #[test]
+fn feedback_inhibition_halves_the_output_rate() {
+    let mut experiment = Experiment::new(write_examples::feedback_inhibition());
+    let from_top = experiment.neurons_from_top();
+    let neurons = [from_top[0], from_top[3]];
+    let [input, output] = experiment.spike_counts(1.0, &neurons)[..] else {
+        unreachable!()
+    };
+    assert!(
+        (input * 2 / 5..input * 3 / 5).contains(&output),
+        "{output} against {input}"
+    );
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world

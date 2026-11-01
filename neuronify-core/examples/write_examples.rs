@@ -476,6 +476,33 @@ pub fn disinhibition() -> World {
     sheet.world
 }
 
+pub fn feedback_inhibition() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "A steady current makes the input neuron fire, \
+         and the signal passes down the chain to the output.",
+    );
+    let middle = sheet.row(13.0) - 0.5;
+    let input = sheet.add(Element::ExcitatoryNeuron, 6.0, middle + 5.0);
+    sheet.current(input, 0.3 * NANOAMPERE, 1.5, middle + 5.0);
+    let relay = sheet.add(Element::ExcitatoryNeuron, 6.0, middle);
+    let output = sheet.add(Element::ExcitatoryNeuron, 6.0, middle - 5.0);
+    let feedback = sheet.add(Element::InhibitoryNeuron, 10.0, middle);
+    sheet.label(input, "Input");
+    sheet.synapse(input, relay, 3.0 * NANOAMPERE);
+    sheet.synapse(relay, output, 3.0 * NANOAMPERE);
+    sheet.synapse(output, feedback, 3.0 * NANOAMPERE);
+    sheet.synapse(feedback, relay, 3.0 * NANOAMPERE);
+    sheet.spike_detector(&[input, output], 13.0, middle, 11.0, 8.0);
+    sheet.text(
+        "Each time the output fires, it wakes the inhibitory neuron, \
+         which reaches back and holds the chain down for a moment. \
+         The output fires about half as often as the input. \
+         This is called feedback inhibition.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -487,6 +514,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("half_center_oscillator.neuronify", half_center_oscillator()),
         ("feedback_loops.neuronify", feedback_loops()),
         ("disinhibition.neuronify", disinhibition()),
+        ("feedback_inhibition.neuronify", feedback_inhibition()),
     ]
 }
 

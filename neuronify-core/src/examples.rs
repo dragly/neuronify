@@ -199,7 +199,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Feedback inhibition",
                 description: "The output wakes an inhibitory neuron \
                     that reaches back and slows the chain down.",
-                contents: legacy!("recurrent_inhibition.nfy"),
+                contents: saved!("feedback_inhibition.neuronify"),
             },
             Example {
                 name: "Lateral inhibition",
