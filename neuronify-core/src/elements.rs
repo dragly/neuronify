@@ -146,6 +146,15 @@ pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: boo
     ))
 }
 
+pub fn axon_ending(world: &World, terminal: Entity) -> Option<Entity> {
+    world
+        .query::<&Connection>()
+        .with::<&CompartmentCurrent>()
+        .iter()
+        .find(|(_, connection)| connection.directional && connection.from == terminal)
+        .map(|(ending, _)| ending)
+}
+
 pub fn spawn_voltmeter(world: &mut World, target: Entity, position: Vec3) -> Entity {
     let voltmeter = world.spawn((
         Voltmeter {},
