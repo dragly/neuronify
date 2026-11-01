@@ -198,6 +198,7 @@ pub fn growing_axon(
             (end, end_radius, Some(tip)),
         )],
         rings: Vec::new(),
+        transmitter: Vec::new(),
     })
 }
 
