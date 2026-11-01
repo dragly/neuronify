@@ -103,6 +103,21 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 description: "Close a loop of neurons and it keeps a beat on its own.",
                 contents: saved!("tutorial/6_keeping_a_rhythm.neuronify"),
             },
+            Example {
+                name: "7. Axons",
+                description: "Spikes travel as action potentials along axons in real neurons.",
+                contents: saved!("tutorial/7_axons.neuronify"),
+            },
+            Example {
+                name: "8. Dendrites",
+                description: "Axons can be connected to dendrites with synaptic connections.",
+                contents: saved!("tutorial/8_dendrites.neuronify"),
+            },
+            Example {
+                name: "9. Coincidence",
+                description: "Weak inputs make a neuron fire only when they arrive together.",
+                contents: saved!("tutorial/9_coincidence.neuronify"),
+            },
         ],
     },
     ExampleCategory {
