@@ -208,8 +208,30 @@ pub fn adaptation() -> World {
     sheet.world
 }
 
+pub fn bursting() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "A bursting neuron answers a single spike with a quick run of them. \
+         Press the touch sensor once.",
+    );
+    let up = sheet.row(5.0);
+    let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+    let bursting = sheet.add(Element::BurstNeuron, 7.0, up);
+    sheet.label(bursting, "Bursting");
+    sheet.connect(sensor, bursting);
+    sheet.voltmeter(bursting, 10.5, up, 13.5, 5.0);
+    sheet.text(
+        "The first spike switches on a current inside the neuron. \
+         It keeps the neuron firing until it drains away a moment later.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
-    vec![("adaptation.neuronify", adaptation())]
+    vec![
+        ("adaptation.neuronify", adaptation()),
+        ("bursting.neuronify", bursting()),
+    ]
 }
 
 pub fn examples() -> Vec<(&'static str, World)> {

@@ -155,6 +155,16 @@ fn the_adaptive_neuron_recovers_after_a_rest() {
 }
 
 #[test]
+fn one_press_sets_off_a_burst_that_ends_on_its_own() {
+    let mut experiment = Experiment::new(write_examples::bursting());
+    let sensor = experiment.sensors_from_left()[0];
+    experiment.press(sensor);
+    let burst = experiment.spikes_during(0.25, "Bursting");
+    assert!((10..40).contains(&burst), "{burst} spikes");
+    assert_eq!(experiment.spikes_during(0.3, "Bursting"), 0);
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world
