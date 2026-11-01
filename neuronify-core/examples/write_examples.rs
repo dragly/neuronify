@@ -306,12 +306,39 @@ pub fn refractory_period() -> World {
     sheet.world
 }
 
+pub fn summation() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "Each neuron on the left fires once when you press its touch sensor. \
+         One spike alone is too weak to make the output neuron fire.",
+    );
+    let middle = sheet.row(12.0);
+    let output = sheet.add(Element::ExcitatoryNeuron, 13.5, middle);
+    sheet.label(output, "Output");
+    for offset in [4.5, 0.0, -4.5] {
+        let up = middle + offset;
+        let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+        let input = sheet.add(Element::ExcitatoryNeuron, 6.5, up);
+        sheet.connect(sensor, input);
+        sheet.synapse(input, output, 1.4 * NANOAMPERE);
+    }
+    sheet.voltmeter(output, 16.0, middle, 8.0, 5.0);
+    sheet.text(
+        "Press two sensors right after each other: \
+         the two inputs add up and lift the output over its threshold. \
+         Pressing one sensor twice in quick succession works too, \
+         because the second spike arrives before the first has leaked away.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
         ("bursting.neuronify", bursting()),
         ("firing_threshold.neuronify", firing_threshold()),
         ("refractory_period.neuronify", refractory_period()),
+        ("summation.neuronify", summation()),
     ]
 }
 
