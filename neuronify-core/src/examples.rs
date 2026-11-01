@@ -205,7 +205,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Lateral inhibition",
                 description: "Neighbors hold each other back, \
                     so the strongest touch stands out clearly.",
-                contents: legacy!("lateral_inhibition_2.nfy"),
+                contents: saved!("lateral_inhibition.neuronify"),
             },
             Example {
                 name: "Adaptive inhibition",

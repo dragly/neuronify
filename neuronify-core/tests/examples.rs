@@ -333,6 +333,17 @@ fn feedback_inhibition_halves_the_output_rate() {
 }
 
 #[test]
+fn lateral_inhibition_sharpens_the_middle_of_the_touch() {
+    let mut experiment = Experiment::new(write_examples::lateral_inhibition());
+    let neurons = experiment.neurons_from_top();
+    let counts = experiment.spike_counts(1.0, &neurons);
+    let (skin, outputs) = (&counts[..5], &counts[10..]);
+    assert!(skin[2] < 2 * skin[1], "skin {skin:?}");
+    assert!(outputs[2] > 4 * outputs[1], "outputs {outputs:?}");
+    assert_eq!(outputs[1], outputs[3]);
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world
