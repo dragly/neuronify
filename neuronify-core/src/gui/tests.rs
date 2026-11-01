@@ -790,6 +790,8 @@ fn a_visual_input_picks_its_picture_and_receptive_field() {
     for setting in [
         Setting::Picture,
         Setting::PictureAngle,
+        Setting::PictureSpeed,
+        Setting::PicturePhase,
         Setting::ReceptiveField,
         Setting::FieldAngle,
         Setting::FieldSideways,
@@ -1226,4 +1228,25 @@ fn the_canvas_area_on_phones_leaves_out_the_bars() {
         assert_eq!(area.top(), MARGIN + FAB_SIZE);
         assert_eq!(area.bottom(), PHONE.y - TOOL_BAR_MARGIN - TOOL_BAR_HEIGHT);
     }
+}
+
+#[test]
+fn a_visual_input_stops_at_zero_speed_and_takes_a_phase_set_by_hand() {
+    use crate::measurement::visual_input::VisualInput;
+    let mut world = World::new();
+    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(input));
+    let speed = harness
+        .text_position(Setting::PictureSpeed.label())
+        .unwrap()
+        + vec2(0.0, 22.0);
+    harness.drag(speed, speed - vec2(400.0, 0.0));
+    let phase = harness
+        .text_position(Setting::PicturePhase.label())
+        .unwrap()
+        + vec2(0.0, 22.0);
+    harness.drag(phase, phase + vec2(400.0, 0.0));
+    let input = harness.world.get::<&VisualInput>(input).unwrap();
+    assert_eq!(input.speed, 0.0);
+    assert_eq!(input.phase, 1.0);
 }

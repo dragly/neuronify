@@ -60,6 +60,8 @@ const RATE_WINDOWS: RangeInclusive<f64> = 0.01..=1.0;
 const PLOTTED_RATES: RangeInclusive<f64> = 0.0..=2500.0;
 const PLOTTED_RATE_GAP: f64 = 1.0;
 const HALF_TURN: RangeInclusive<f64> = 0.0..=std::f64::consts::PI;
+const PICTURE_SPEEDS: (RangeInclusive<f64>, f64) = (0.0..=50.0, 0.1);
+const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
 const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
 const SENSITIVITIES: (RangeInclusive<f64>, f64) = (0.0..=10_000.0, 10.0);
 const TIME_RANGES: RangeInclusive<f64> = 1e-3..=1.0;
@@ -785,6 +787,22 @@ fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput
         &mut input.pattern_angle,
         HALF_TURN,
         degrees,
+    );
+    changed |= logarithmic_parameter(
+        ui,
+        chrome,
+        Setting::PictureSpeed,
+        &mut input.speed,
+        PICTURE_SPEEDS,
+        |speed| format!("{speed:.1} Hz"),
+    );
+    changed |= parameter(
+        ui,
+        chrome,
+        Setting::PicturePhase,
+        &mut input.phase,
+        PICTURE_PHASES,
+        |phase| format!("{:.0}\u{b0}", phase * 360.0),
     );
     heading(ui, chrome, "Receptive field", 0.0);
     let kinds = ReceptiveField::KINDS.map(|kind| kind.name());

@@ -33,6 +33,8 @@ pub enum Setting {
     Mute,
     Picture,
     PictureAngle,
+    PictureSpeed,
+    PicturePhase,
     ReceptiveField,
     FieldAngle,
     FieldSideways,
@@ -78,6 +80,8 @@ impl Setting {
             Setting::Mute => "Mute",
             Setting::Picture => "Picture",
             Setting::PictureAngle => "Picture angle",
+            Setting::PictureSpeed => "Speed",
+            Setting::PicturePhase => "Phase",
             Setting::ReceptiveField => "Receptive field",
             Setting::FieldAngle => "Field angle",
             Setting::FieldSideways => "Field sideways",
@@ -136,6 +140,12 @@ impl Setting {
             Setting::Mute => "Silences it without disconnecting it.",
             Setting::Picture => "What the visual input looks at.",
             Setting::PictureAngle => "Which way the picture is turned.",
+            Setting::PictureSpeed => {
+                "How many times a second the picture runs through its motion. Zero stops it."
+            }
+            Setting::PicturePhase => {
+                "How far the picture is through its motion. Drag it to move the picture by hand."
+            }
             Setting::ReceptiveField => "The pattern of light that makes it fire.",
             Setting::FieldAngle => "Which way the stripes of the field are turned.",
             Setting::FieldSideways => "Where the field sits, from left to right.",

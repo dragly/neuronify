@@ -2,9 +2,19 @@ use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::VisualInput;
+use crate::measurement::visual_input::{Pattern, ReceptiveField};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::World;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct VisualInput {
+    pub field: ReceptiveField,
+    pub sensitivity: f64,
+    pub show_field: bool,
+    pub pattern: Pattern,
+    pub pattern_angle: f64,
+}
 
 schema!(
     Position,
