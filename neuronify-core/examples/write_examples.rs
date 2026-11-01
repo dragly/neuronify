@@ -6,6 +6,7 @@ use neuronify_core::elements::{
     spawn_loudspeaker, spawn_rate_plot, spawn_spike_detector, spawn_synapse, spawn_voltmeter,
     Element,
 };
+use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use neuronify_core::{
     AdaptationCurrent, Annotation, CurrentSynapse, Label, NeuronType, NoteSize, PoissonGenerator,
@@ -36,7 +37,7 @@ fn synapse(world: &mut World, from: Entity, to: Entity, maximum_current: f64) {
 
 pub fn listening_to_a_neuron() -> World {
     let mut world = World::new();
-    let eye = Element::VisualInput.spawn(&mut world, at(0.0, -12.0));
+    let eye = Element::VisualInput.spawn(&mut world, at(0.0, -9.0));
     *world.get::<&mut VisualInput>(eye).unwrap() = VisualInput {
         field: ReceptiveField::Orientation {
             angle: 0.0,
@@ -44,17 +45,18 @@ pub fn listening_to_a_neuron() -> World {
             y: 0.0,
         },
         pattern: Pattern::Grating,
-        sensitivity: 3000.0,
+        sensitivity: 10000.0,
+        phase: 0.75,
         ..Default::default()
     };
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, neuron, "Cortex");
     synapse(&mut world, eye, neuron, 1.5e-9);
-    spawn_loudspeaker(&mut world, neuron, at(0.0, 5.0));
-    spawn_spike_detector(&mut world, neuron, at(-7.0, 9.0));
+    spawn_loudspeaker(&mut world, neuron, at(3.0, 4.0));
+    spawn_spike_detector(&mut world, neuron, at(-5.0, 3.0));
     note(
         &mut world,
-        at(9.0, -2.0),
+        at(9.0, -1.0),
         22.0,
         5.0,
         "Hubel and Wiesel found the neurons that see edges by listening to their spikes \
@@ -66,18 +68,18 @@ pub fn listening_to_a_neuron() -> World {
 
 pub fn adaptive_inhibition() -> World {
     let mut world = World::new();
-    let drive = Element::RegularSpikeGenerator.spawn(&mut world, at(0.0, -12.0));
+    let drive = Element::RegularSpikeGenerator.spawn(&mut world, at(0.0, -11.0));
     world
         .get::<&mut RegularSpikeGenerator>(drive)
         .unwrap()
-        .frequency = 50.0;
+        .frequency = 400.0;
     let output = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, output, "Output");
     let adaptive = Element::AdaptiveNeuron.spawn(&mut world, at(5.0, -5.0));
     *world.get::<&mut NeuronType>(adaptive).unwrap() = NeuronType::Inhibitory;
     *world.get::<&mut AdaptationCurrent>(adaptive).unwrap() = AdaptationCurrent {
-        adaptation: 3.5e-9,
-        time_constant: 2.0,
+        adaptation: 8e-9,
+        time_constant: 0.4,
         ..Default::default()
     };
     label(&mut world, adaptive, "Adaptive");
@@ -86,10 +88,16 @@ pub fn adaptive_inhibition() -> World {
     world.get::<&mut PoissonGenerator>(noise).unwrap().rate = 30.0;
     synapse(&mut world, drive, output, 3e-9);
     synapse(&mut world, drive, adaptive, 6e-9);
-    synapse(&mut world, adaptive, output, 6e-9);
+    synapse(&mut world, adaptive, output, 4e-9);
     synapse(&mut world, noise, output, 2e-9);
-    spawn_voltmeter(&mut world, output, at(-2.0, 6.0));
-    spawn_rate_plot(&mut world, output, at(-9.0, 6.0));
+    spawn_voltmeter(&mut world, output, at(-2.0, 5.0));
+    let plot = spawn_rate_plot(&mut world, output, at(-9.0, 5.0));
+    *world.get::<&mut RatePlot>(plot).unwrap() = RatePlot {
+        window: 0.15,
+        kernel_width: 0.05,
+        maximum: 200.0,
+        ..Default::default()
+    };
     note(
         &mut world,
         at(12.5, 2.0),
