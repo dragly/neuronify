@@ -384,7 +384,7 @@ pub struct Compartment {
     pub m: f64,
     pub h: f64,
     pub n: f64,
-    pub influence: f64,
+    pub inhibition: f64,
     pub capacitance: f64,
     pub injected_current: f64,
     #[serde(default)]
@@ -394,11 +394,11 @@ pub struct Compartment {
 impl Default for Compartment {
     fn default() -> Self {
         Self {
-            voltage: -10.0,
+            voltage: crate::constants::COMPARTMENT_RESTING_VOLTAGE,
             m: -0.625,
             h: 0.0,
             n: 0.0,
-            influence: 0.0,
+            inhibition: 0.0,
             capacitance: 1.0,
             injected_current: 0.0,
             fire_impulse: 0.0,

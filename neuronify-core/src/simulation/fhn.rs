@@ -28,16 +28,24 @@ fn current_into_neuron(world: &World, cable: &Connection) -> Option<(Entity, f64
 }
 
 pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
-    for (_, compartment) in world.query_mut::<&mut Compartment>() {
+    for (_, (compartment, dendrite)) in world.query_mut::<(&mut Compartment, Option<&Dendrite>)>() {
+        let tau = match dendrite {
+            Some(_) => FHN_TAU / DENDRITE_SLOWDOWN,
+            None => FHN_TAU,
+        };
         let v = (compartment.voltage - FHN_OFFSET) / FHN_SCALE;
         let w = compartment.m;
-        let dv = FHN_TAU * (v - v * v * v / 3.0 - w);
-        let dw = FHN_TAU * FHN_EPS * (v + FHN_A - FHN_B * w);
+        let dv = tau * (v - v * v * v / 3.0 - w);
+        let dw = tau * FHN_EPS * (v + FHN_A - FHN_B * w);
         let new_v = v + dv * cdt;
         let new_w = w + dw * cdt;
-        compartment.voltage = new_v * FHN_SCALE + FHN_OFFSET + compartment.injected_current * cdt;
+        let shunt = (compartment.inhibition * cdt).min(1.0)
+            * (COMPARTMENT_RESTING_VOLTAGE - compartment.voltage);
+        compartment.voltage =
+            new_v * FHN_SCALE + FHN_OFFSET + compartment.injected_current * cdt + shunt;
         compartment.m = new_w;
         compartment.injected_current -= compartment.injected_current * cdt / ENDING_TIME_CONSTANT;
+        compartment.inhibition -= compartment.inhibition * cdt / INHIBITION_TIME_CONSTANT;
     }
 
     let mut new_compartments: HashMap<Entity, Compartment> = world
@@ -57,16 +65,21 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
                 outgoing.push(connection.to);
             } else if let Ok(compartment_from) = world.get::<&Compartment>(connection.from) {
                 if connection.directional {
-                    let sign = neuron_type(world, connection.from).sign();
-                    let charge = sign
-                        * ENDING_STRENGTH
-                        * connection.strength
-                        * spike_excess(&compartment_from)
-                        / current.capacitance;
+                    let charge =
+                        connection.strength * spike_excess(&compartment_from) / current.capacitance;
                     let new_compartment_to = new_compartments
                         .get_mut(&connection.to)
                         .expect("Could not get new compartment");
-                    new_compartment_to.injected_current += charge / ENDING_TIME_CONSTANT * cdt;
+                    match neuron_type(world, connection.from) {
+                        NeuronType::Excitatory => {
+                            new_compartment_to.injected_current +=
+                                ENDING_STRENGTH * charge / ENDING_TIME_CONSTANT * cdt;
+                        }
+                        NeuronType::Inhibitory => {
+                            new_compartment_to.inhibition +=
+                                INHIBITION_STRENGTH * charge / INHIBITION_TIME_CONSTANT * cdt;
+                        }
+                    }
                 } else {
                     let voltage_diff = compartment_from.voltage - _compartment_to.voltage;
                     let delta_voltage = voltage_diff / current.capacitance;
@@ -74,16 +87,22 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
                         - _compartment_to.injected_current)
                         * ENDING_SPREAD
                         * cdt;
+                    let inhibition_spread = (compartment_from.inhibition
+                        - _compartment_to.inhibition)
+                        * ENDING_SPREAD
+                        * cdt;
                     let new_compartment_to = new_compartments
                         .get_mut(&connection.to)
                         .expect("Could not get new compartment");
                     new_compartment_to.voltage += delta_voltage * cdt;
                     new_compartment_to.injected_current += spread;
+                    new_compartment_to.inhibition += inhibition_spread;
                     let new_compartment_from = new_compartments
                         .get_mut(&connection.from)
                         .expect("Could not get new compartment");
                     new_compartment_from.voltage -= delta_voltage * cdt;
                     new_compartment_from.injected_current -= spread;
+                    new_compartment_from.inhibition -= inhibition_spread;
                 }
             }
         }
@@ -147,6 +166,14 @@ mod ending_tests {
         compartments
     }
 
+    fn dendrite(world: &mut World) -> Vec<Entity> {
+        let dendrite = chain(world, NeuronType::Excitatory, DENDRITE_LENGTH);
+        for &compartment in &dendrite {
+            world.insert_one(compartment, Dendrite).unwrap();
+        }
+        dendrite
+    }
+
     fn voltage_ranges(
         world: &mut World,
         fired: &[(Entity, usize)],
@@ -175,7 +202,7 @@ mod ending_tests {
         endings: &[(NeuronType, usize, usize)],
     ) -> Vec<(f64, f64)> {
         let mut world = World::new();
-        let dendrite = chain(&mut world, NeuronType::Excitatory, DENDRITE_LENGTH);
+        let dendrite = dendrite(&mut world);
         let fired: Vec<(Entity, usize)> = endings
             .iter()
             .map(|&(axon_type, site, at)| {
@@ -236,15 +263,22 @@ mod ending_tests {
     }
 
     #[test]
-    fn weak_axon_endings_at_opposite_ends_do_not_add_up() {
-        let endings = [(EXCITATORY, 0, 0), (EXCITATORY, DENDRITE_LENGTH - 1, 0)];
+    fn weak_axon_endings_far_apart_do_not_add_up() {
+        let endings = [(EXCITATORY, 1, 0), (EXCITATORY, DENDRITE_LENGTH - 2, 0)];
         let ranges = dendrite_receiving(WEAK, &endings);
         assert!(stayed_below_threshold(&ranges), "{ranges:?}");
     }
 
     #[test]
-    fn weak_axon_endings_a_few_milliseconds_apart_do_not_add_up() {
-        let endings = [(EXCITATORY, 0, 0), (EXCITATORY, 0, 3 * MILLISECOND)];
+    fn weak_axon_endings_two_milliseconds_apart_add_up() {
+        let endings = [(EXCITATORY, 0, 0), (EXCITATORY, 0, 2 * MILLISECOND)];
+        let ranges = dendrite_receiving(WEAK, &endings);
+        assert!(spiked_along(&ranges), "{ranges:?}");
+    }
+
+    #[test]
+    fn weak_axon_endings_ten_milliseconds_apart_do_not_add_up() {
+        let endings = [(EXCITATORY, 0, 0), (EXCITATORY, 0, 10 * MILLISECOND)];
         let ranges = dendrite_receiving(WEAK, &endings);
         assert!(stayed_below_threshold(&ranges), "{ranges:?}");
     }
@@ -275,15 +309,53 @@ mod ending_tests {
     }
 
     #[test]
-    fn an_inhibitory_axon_ending_holds_a_compartment_down() {
+    fn an_inhibitory_axon_ending_never_pulls_a_compartment_below_rest() {
         let rest = Compartment::default().voltage;
         let ranges = dendrite_receiving(1.0, &[(INHIBITORY, 0, 0)]);
         assert!(
-            ranges[0].0 < rest - 5.0,
-            "the ending fell to {}",
-            ranges[0].0
+            ranges.iter().all(|range| range.0 > rest - 0.5),
+            "{ranges:?}"
         );
-        assert!(stayed_below_threshold(&ranges), "{ranges:?}");
+    }
+
+    #[test]
+    fn an_inhibitory_axon_ending_blocks_spikes_passing_it_for_several_milliseconds() {
+        let passing = |after: usize| {
+            let endings = [
+                (INHIBITORY, DENDRITE_LENGTH / 2, 0),
+                (EXCITATORY, 0, after * MILLISECOND),
+            ];
+            dendrite_receiving(1.0, &endings)[DENDRITE_LENGTH - 1].1 > BRIDGE_VOLTAGE_THRESHOLD
+        };
+        assert!(!passing(10));
+        assert!(passing(40));
+    }
+
+    #[test]
+    fn spikes_cross_a_dendrite_more_slowly_than_an_axon() {
+        let crossing_time = |world: &mut World, compartments: &[Entity]| {
+            world
+                .get::<&mut Compartment>(compartments[0])
+                .unwrap()
+                .voltage = COMPARTMENT_FIRE_VOLTAGE;
+            let mut time = 0.0;
+            (0..800)
+                .position(|_| {
+                    step_simulation(world, &mut time, 1, None);
+                    let far = compartments[compartments.len() - 1];
+                    world.get::<&Compartment>(far).unwrap().voltage > BRIDGE_VOLTAGE_THRESHOLD
+                })
+                .unwrap()
+        };
+        let mut world = World::new();
+        let axon = chain(&mut world, EXCITATORY, DENDRITE_LENGTH);
+        let dendrite = dendrite(&mut world);
+        let through_axon = crossing_time(&mut world, &axon);
+        let through_dendrite = crossing_time(&mut world, &dendrite);
+        assert!(
+            2 * through_dendrite > 3 * through_axon,
+            "{through_dendrite} against {through_axon} steps"
+        );
     }
 
     #[test]
@@ -296,7 +368,7 @@ mod ending_tests {
     fn spikes_do_not_travel_back_into_an_axon_ending() {
         let mut world = World::new();
         let axon = chain(&mut world, EXCITATORY, 3);
-        let dendrite = chain(&mut world, EXCITATORY, DENDRITE_LENGTH);
+        let dendrite = dendrite(&mut world);
         spawn_cable(&mut world, axon[2], dendrite[0], true);
         let fired = [(dendrite[DENDRITE_LENGTH - 1], 0)];
         let ranges = voltage_ranges(&mut world, &fired, &[axon[0]]);
