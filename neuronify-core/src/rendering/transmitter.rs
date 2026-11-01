@@ -33,8 +33,8 @@ fn release(world: &World, entity: Entity, connection: &Connection) -> f32 {
     world
         .get::<&Compartment>(connection.from)
         .map(|terminal| {
-            ((terminal.voltage - BRIDGE_VOLTAGE_THRESHOLD) / FULL_RELEASE_EXCESS).clamp(0.0, 1.0)
-                as f32
+            let excess = (terminal.voltage - BRIDGE_VOLTAGE_THRESHOLD) / FULL_RELEASE_EXCESS;
+            (excess.clamp(0.0, 1.0) * connection.strength.clamp(0.0, 1.0)) as f32
         })
         .unwrap_or(0.0)
 }
@@ -165,8 +165,7 @@ mod tests {
         assert!(cloud.color.w > 0.95 * full && cloud.color.w <= full);
     }
 
-    #[test]
-    fn an_axon_terminal_releases_transmitter_when_its_spike_arrives() {
+    fn inhibitory_axon_ending(strength: f64) -> (World, Entity) {
         let mut world = World::new();
         let source = Element::InhibitoryNeuron.spawn(&mut world, Vec3::ZERO);
         let target = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(10.0, 0.0, 0.0));
@@ -177,7 +176,27 @@ mod tests {
             spawn_cable(&mut world, previous, compartment, false);
             previous = compartment;
         }
-        spawn_cable(&mut world, previous, target, true);
+        let ending = spawn_cable(&mut world, previous, target, true);
+        world.get::<&mut Connection>(ending).unwrap().strength = strength;
+        (world, source)
+    }
+
+    #[test]
+    fn a_weaker_axon_ending_releases_fainter_transmitter() {
+        let strongest = |strength: f64| {
+            let (mut world, source) = inhibitory_axon_ending(strength);
+            fire(&mut world, source);
+            strongest_release(&mut world, 2000).map(|cloud| cloud.color.w)
+        };
+        let full = strongest(1.0).unwrap();
+        assert_eq!(strongest(2.0), Some(full));
+        assert!((strongest(0.5).unwrap() - 0.5 * full).abs() < 1e-6);
+        assert_eq!(strongest(0.0), None);
+    }
+
+    #[test]
+    fn an_axon_terminal_releases_transmitter_when_its_spike_arrives() {
+        let (mut world, source) = inhibitory_axon_ending(1.0);
         assert!(strongest_release(&mut world, 200).is_none());
 
         fire(&mut world, source);
