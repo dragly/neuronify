@@ -414,6 +414,36 @@ pub fn half_center_oscillator() -> World {
     sheet.world
 }
 
+pub fn feedback_loops() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "Both chains get the same steady input. In the top chain the output excites a partner \
+         that excites it back. In the bottom chain the partner is inhibitory and holds it back.",
+    );
+    for (name, partner_element) in [
+        ("Faster", Element::ExcitatoryNeuron),
+        ("Slower", Element::InhibitoryNeuron),
+    ] {
+        let up = sheet.row(9.0);
+        let input = sheet.add(Element::ExcitatoryNeuron, 5.5, up + 2.5);
+        sheet.current(input, 0.3 * NANOAMPERE, 1.5, up + 2.5);
+        let output = sheet.add(Element::ExcitatoryNeuron, 9.5, up - 0.5);
+        let partner = sheet.add(partner_element, 9.5, up - 4.0);
+        sheet.label(input, "Input");
+        sheet.label(output, name);
+        sheet.synapse(input, output, 3.0 * NANOAMPERE);
+        sheet.synapse(output, partner, 3.0 * NANOAMPERE);
+        sheet.synapse(partner, output, 3.0 * NANOAMPERE);
+        sheet.spike_detector(&[input, output], 13.0, up + 1.0, 11.0, 6.0);
+    }
+    sheet.text(
+        "The excitatory loop keeps itself going and fires much faster than its input. \
+         The inhibitory loop slows its output down. \
+         These are positive and negative feedback.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -423,6 +453,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("summation.neuronify", summation()),
         ("reverberation.neuronify", reverberation()),
         ("half_center_oscillator.neuronify", half_center_oscillator()),
+        ("feedback_loops.neuronify", feedback_loops()),
     ]
 }
 
