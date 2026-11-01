@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use glam::Vec3;
 use hecs::Entity;
 
 use crate::components::*;
@@ -9,6 +10,69 @@ use crate::rendering::colors::*;
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::shapes::{generator_color, shown_voltage, soma_color};
+
+pub const SPINES_PER_CABLE: usize = 4;
+const SPINE_RADIUS: f32 = 0.12;
+
+fn spines(
+    world: &hecs::World,
+    radii: &HashMap<Entity, f32>,
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> Vec<Sphere> {
+    let mut spines = Vec::new();
+    for (cable, connection) in world
+        .query::<&Connection>()
+        .with::<&CompartmentCurrent>()
+        .iter()
+        .filter(|(_, connection)| !connection.directional)
+    {
+        let (Ok(from), Ok(to)) = (world.entity(connection.from), world.entity(connection.to))
+        else {
+            continue;
+        };
+        let (Some(neuron_type), true, true) = (
+            from.get::<&NeuronType>().map(|neuron_type| *neuron_type),
+            from.has::<Dendrite>(),
+            to.has::<Dendrite>(),
+        ) else {
+            continue;
+        };
+        if neuron_type != NeuronType::Excitatory {
+            continue;
+        }
+        let ends = [from, to].map(|end| {
+            let position = end.get::<&Position>().map(|position| position.position);
+            let voltage = end
+                .get::<&Compartment>()
+                .map(|compartment| shown_voltage(&compartment, display));
+            (position, voltage, radii.get(&end.entity()).copied())
+        });
+        let [(Some(start), Some(start_voltage), Some(start_radius)), (Some(end), Some(end_voltage), Some(end_radius))] =
+            ends
+        else {
+            continue;
+        };
+        let side = Vec3::Y.cross(end - start).normalize_or_zero();
+        for spine in 0..SPINES_PER_CABLE {
+            let fraction = (spine as f32 + 0.5) / SPINES_PER_CABLE as f32;
+            let flip = if (cable.id() as usize + spine).is_multiple_of(2) {
+                1.0
+            } else {
+                -1.0
+            };
+            let thickness = start_radius + (end_radius - start_radius) * fraction;
+            let voltage = start_voltage + (end_voltage - start_voltage) * f64::from(fraction);
+            spines.push(Sphere {
+                position: start.lerp(end, fraction) + side * flip * thickness,
+                color: palette.dendrite(&neuron_type, voltage),
+                radius: SPINE_RADIUS,
+                _padding: Default::default(),
+            });
+        }
+    }
+    spines
+}
 
 /// `radii` comes from `compartment_radii`, so the joints match the cylinders.
 pub fn collect_spheres(
@@ -48,19 +112,29 @@ pub fn collect_spheres(
 
     spheres.extend(
         world
-            .query::<(&Compartment, &Position, &NeuronType)>()
+            .query::<(&Compartment, &Position, &NeuronType, Option<&Dendrite>)>()
             .iter()
-            .map(|(entity, (compartment, position, neuron_type))| Sphere {
-                position: position.position,
-                color: palette.compartment(neuron_type, shown_voltage(compartment, &display)),
-                radius: radii
-                    .get(&entity)
-                    .copied()
-                    .unwrap_or(COMPARTMENT_SPHERE_SCALE * NODE_RADIUS),
-                _padding: Default::default(),
-            }),
+            .map(
+                |(entity, (compartment, position, neuron_type, dendrite))| Sphere {
+                    position: position.position,
+                    color: match dendrite {
+                        Some(_) => {
+                            palette.dendrite(neuron_type, shown_voltage(compartment, &display))
+                        }
+                        None => {
+                            palette.compartment(neuron_type, shown_voltage(compartment, &display))
+                        }
+                    },
+                    radius: radii
+                        .get(&entity)
+                        .copied()
+                        .unwrap_or(COMPARTMENT_SPHERE_SCALE * NODE_RADIUS),
+                    _padding: Default::default(),
+                },
+            ),
     );
 
+    spheres.extend(spines(world, radii, &display, palette));
     spheres.reserve(paths.values().map(|path| path.points.len()).sum());
     for path in paths.values() {
         let segments = path.points.len().saturating_sub(1);

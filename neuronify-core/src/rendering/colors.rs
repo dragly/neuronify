@@ -115,6 +115,8 @@ pub fn firing_rate_color(level: f32) -> Vec3 {
 pub const VOLTAGE_TINT: f32 = 0.55;
 
 const GLARE_START: f64 = 90.0;
+const DENDRITE_DESATURATION: f32 = 0.2;
+const LUMINANCE: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
 const GLARE_FULL: f64 = 130.0;
 const GLARE_PEAK: f32 = 2.0;
 
@@ -216,6 +218,12 @@ impl Palette {
         self.soma(neuron_type, v)
     }
 
+    pub fn dendrite(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
+        let color = self.compartment(neuron_type, voltage);
+        let luminance = color.dot(LUMINANCE);
+        color.lerp(Vec3::splat(luminance), DENDRITE_DESATURATION)
+    }
+
     pub fn compartment(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
         let value = ((voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32;
         let color = self.neurocolor(neuron_type, value);
@@ -228,6 +236,22 @@ impl Palette {
 mod tests {
     use super::*;
     use crate::rendering::lighting::BLOOM_THRESHOLD;
+
+    #[test]
+    fn dendrites_are_paler_but_not_brighter() {
+        for theme in [Theme::Dark, Theme::Light] {
+            for neuron_type in [NeuronType::Excitatory, NeuronType::Inhibitory] {
+                for voltage in [-10.0, 60.0, GLARE_FULL] {
+                    let palette = theme.palette();
+                    let axon = palette.compartment(&neuron_type, voltage);
+                    let dendrite = palette.dendrite(&neuron_type, voltage);
+                    let spread = |color: Vec3| color.max_element() - color.min_element();
+                    assert!((axon.dot(LUMINANCE) - dendrite.dot(LUMINANCE)).abs() < 1e-5);
+                    assert!(spread(dendrite) < spread(axon));
+                }
+            }
+        }
+    }
 
     #[test]
     fn only_the_crest_of_a_spike_glares() {
