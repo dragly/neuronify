@@ -264,6 +264,31 @@ fn one_press_keeps_the_loop_going_until_the_adaptive_neuron_tires() {
 }
 
 #[test]
+fn the_two_neurons_take_turns() {
+    let mut experiment = Experiment::new(write_examples::half_center_oscillator());
+    let neurons = experiment.neurons_from_top();
+    experiment.spike_counts(0.2, &neurons);
+    let mut last = None;
+    let mut turns = 0;
+    let mut spikes = [0, 0];
+    for _ in 0..10_000 {
+        let fired = experiment.spike_counts(0.0001, &neurons);
+        for (side, &count) in fired.iter().enumerate() {
+            spikes[side] += count;
+            if count > 0 && last != Some(side) {
+                turns += 1;
+                last = Some(side);
+            }
+        }
+    }
+    assert!(turns >= 10, "{turns} turns");
+    assert!(
+        spikes.iter().all(|&count| count >= 2 * turns / 2),
+        "{spikes:?}"
+    );
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world

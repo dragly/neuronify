@@ -70,6 +70,19 @@ impl Sheet {
         label(&mut self.world, entity, text);
     }
 
+    fn inhibitory(&mut self, neuron: Entity) {
+        *self.world.get::<&mut NeuronType>(neuron).unwrap() = NeuronType::Inhibitory;
+    }
+
+    fn lasting_inhibition(&mut self, from: Entity, to: Entity) -> Entity {
+        let synapse = self.synapse(from, to, 3.0 * NANOAMPERE);
+        let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
+        current.tau = 10.0 * MILLISECOND;
+        current.delay = MILLISECOND;
+        drop(current);
+        synapse
+    }
+
     fn connect(&mut self, from: Entity, to: Entity) -> Entity {
         spawn_synapse(&mut self.world, from, to)
     }
@@ -367,6 +380,40 @@ pub fn reverberation() -> World {
     sheet.world
 }
 
+pub fn half_center_oscillator() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "Each inhibitory neuron gets a steady current and holds the other one back, \
+         so only one of them fires at a time. Both adapt, so the one that fires slowly tires \
+         until the other breaks free.",
+    );
+    let middle = sheet.row(9.0);
+    let top = sheet.add(Element::AdaptiveNeuron, 7.0, middle + 3.0);
+    let bottom = sheet.add(Element::AdaptiveNeuron, 7.0, middle - 3.0);
+    for (neuron, up) in [(top, middle + 3.0), (bottom, middle - 3.0)] {
+        sheet.inhibitory(neuron);
+        sheet
+            .world
+            .get::<&mut AdaptationCurrent>(neuron)
+            .unwrap()
+            .time_constant = 0.15;
+        sheet.current(neuron, 0.5 * NANOAMPERE, 1.5, up);
+    }
+    sheet.lasting_inhibition(top, bottom);
+    sheet.lasting_inhibition(bottom, top);
+    sheet
+        .world
+        .get::<&mut LeakyDynamics>(bottom)
+        .unwrap()
+        .voltage = -0.075;
+    sheet.spike_detector(&[top, bottom], 10.5, middle, 13.5, 9.0);
+    sheet.text(
+        "Pairs like this take turns in the circuits that drive walking and swimming, \
+         and in the heartbeat of leeches. Such a pair is called a half-center oscillator.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -375,6 +422,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("refractory_period.neuronify", refractory_period()),
         ("summation.neuronify", summation()),
         ("reverberation.neuronify", reverberation()),
+        ("half_center_oscillator.neuronify", half_center_oscillator()),
     ]
 }
 
