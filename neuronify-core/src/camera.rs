@@ -8,7 +8,9 @@ const MIN_DISTANCE: f32 = 5.0;
 const MAX_DISTANCE: f32 = 200.0;
 const DEFAULT_DISTANCE: f32 = 50.0;
 const FIELD_OF_VIEW_DEGREES: f32 = 40.0;
+const TILT_DEGREES: f32 = 6.7;
 const FRAMING_MARGIN: f32 = 1.15;
+const SIDE_FRAMING_MARGIN: f32 = 1.25;
 const ZOOM_PER_SCROLL_LINE: f32 = 0.1;
 const PIXELS_PER_SCROLL_LINE: f32 = 100.0;
 const POINTS_PER_ZOOM_DOUBLING: f64 = 150.0;
@@ -17,7 +19,8 @@ pub fn set_up(application: &mut visula::Application) {
     let camera = &mut application.camera_controller;
     camera.enabled = false;
     camera.target_transform.center = Vec3::ZERO;
-    camera.target_transform.forward = Vec3::new(0.3, -1.0, 0.0).normalize();
+    let tilt = TILT_DEGREES.to_radians();
+    camera.target_transform.forward = Vec3::new(tilt.sin(), -tilt.cos(), 0.0);
     camera.target_transform.distance = DEFAULT_DISTANCE;
     camera.current_transform = camera.target_transform.clone();
 }
@@ -128,9 +131,9 @@ pub fn frame(application: &mut visula::Application, bounds: Option<Bounds>, free
             let height_on_screen = bounds.size().x / (free.height() / screen_height);
             let width_on_screen = bounds.size().z / (free.width() / screen_width);
             let tangent = (FIELD_OF_VIEW_DEGREES.to_radians() / 2.0).tan();
-            let fit = (height_on_screen / tangent).max(width_on_screen / (tangent * aspect_ratio))
-                / 2.0
-                * FRAMING_MARGIN;
+            let fit = (height_on_screen / tangent * FRAMING_MARGIN)
+                .max(width_on_screen / (tangent * aspect_ratio) * SIDE_FRAMING_MARGIN)
+                / 2.0;
             (bounds.center().with_y(0.0), fit)
         }
         None => (Vec3::ZERO, DEFAULT_DISTANCE),

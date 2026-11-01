@@ -2,12 +2,16 @@ use std::path::Path;
 
 use glam::Vec3;
 use hecs::{Entity, World};
-use neuronify_core::elements::{spawn_synapse, spawn_voltmeter, Element};
+use neuronify_core::dendrites::{compartment_tree, spawn_dendrites};
+use neuronify_core::elements::{
+    spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element,
+};
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::serialization;
 use neuronify_core::{
     Annotation, Connection, CurrentClamp, CurrentSynapse, LeakyDynamics, Link, NeuronDisplay,
-    NoteSize, Setting, Tool, VoltmeterSize, DEFAULT_SPEED,
+    NeuronType, NoteSize, Position, Setting, Tool, ToolGroup, VoltmeterSize, DEFAULT_SPEED,
+    SEGMENT_LENGTH,
 };
 
 const NANOAMPERE: f64 = 1e-9;
@@ -23,6 +27,10 @@ fn choose(tool: Tool) -> String {
     format!("Choose {}", tool.name())
 }
 
+fn choose_in(tool: Tool, group: ToolGroup) -> String {
+    format!("Choose {} under {}", tool.name(), group.label())
+}
+
 fn main() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/tutorial");
     std::fs::create_dir_all(&directory).unwrap();
@@ -33,6 +41,9 @@ fn main() {
         ("4_choosing.neuronify", choosing()),
         ("5_sharpening_edges.neuronify", sharpening_edges()),
         ("6_keeping_a_rhythm.neuronify", keeping_a_rhythm()),
+        ("7_axons.neuronify", axons()),
+        ("8_dendrites.neuronify", dendrites()),
+        ("9_coincidence.neuronify", coincidence()),
     ] {
         let path = directory.join(file);
         std::fs::write(
@@ -161,6 +172,52 @@ impl Canvas {
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, size: VoltmeterSize) {
         let voltmeter = spawn_voltmeter(&mut self.world, target, Canvas::at(left, up));
         *self.world.get::<&mut VoltmeterSize>(voltmeter).unwrap() = size;
+    }
+
+    fn axon(&mut self, from: Entity, waypoints: &[(f32, f32)], to: Entity) -> Entity {
+        let position =
+            |world: &World, entity: Entity| world.get::<&Position>(entity).unwrap().position;
+        let neuron_type = *self.world.get::<&NeuronType>(from).unwrap();
+        let mut points = vec![position(&self.world, from)];
+        points.extend(waypoints.iter().map(|&(right, up)| Canvas::at(right, up)));
+        points.push(position(&self.world, to));
+        let mut along: Vec<Vec3> = Vec::new();
+        for pair in points.windows(2) {
+            let pieces = (pair[0].distance(pair[1]) / SEGMENT_LENGTH)
+                .round()
+                .max(1.0) as usize;
+            along.extend(
+                (1..=pieces).map(|piece| pair[0].lerp(pair[1], piece as f32 / pieces as f32)),
+            );
+        }
+        along.pop();
+        let mut previous = from;
+        for point in along {
+            let piece = spawn_compartment(&mut self.world, point, neuron_type);
+            spawn_cable(&mut self.world, previous, piece, false);
+            previous = piece;
+        }
+        spawn_cable(&mut self.world, previous, to, true)
+    }
+
+    fn weak_axon(&mut self, from: Entity, to: Entity, strength: f64) {
+        let ending = self.axon(from, &[], to);
+        self.world.get::<&mut Connection>(ending).unwrap().strength = strength;
+    }
+
+    fn branch_near(&self, neuron: Entity, right: f32, up: f32) -> Entity {
+        let target = Canvas::at(right, up);
+        let distance = |entity: &Entity| {
+            self.world
+                .get::<&Position>(*entity)
+                .unwrap()
+                .position
+                .distance(target)
+        };
+        compartment_tree(&self.world, neuron)
+            .into_iter()
+            .min_by(|a, b| distance(a).total_cmp(&distance(b)))
+            .unwrap()
     }
 
     fn start_at(&mut self, neuron: Entity, voltage: f64) {
@@ -387,6 +444,89 @@ fn keeping_a_rhythm() -> World {
     canvas.connect(hand, ring[0]);
     canvas.text("Add a connection and press the touch sensor.");
     canvas.text("A loop is one of the simplest ways a brain keeps something going.");
+    canvas.next("Axons", "tutorial/7_axons.neuronify");
+    canvas.world
+}
+
+fn axons() -> World {
+    let mut canvas = Canvas::new();
+    canvas.text(
+        "In real neurons, spikes travel as action potentials along an axon. \
+         That can be modeled as a long thin cable.",
+    );
+    let up = canvas.row(15.0) + 2.0;
+    let hand = canvas.add(Element::TouchSensor, 1.0, up + 2.0);
+    let sender = canvas.add(Element::ExcitatoryNeuron, 6.0, up + 2.0);
+    let near = canvas.add(Element::ExcitatoryNeuron, 13.0, up + 5.0);
+    let far = canvas.add(Element::ExcitatoryNeuron, 22.0, up + 5.0);
+    canvas.connect(hand, sender);
+    canvas.axon(sender, &[], near);
+    canvas.axon(
+        sender,
+        &[(8.0, up - 5.0), (14.0, up - 8.0), (20.0, up - 4.0)],
+        far,
+    );
+    canvas.text(
+        "Press the touch sensor to see how the action potentials travel along each axon. \
+         See how the distance affects the timing.",
+    );
+    canvas.next("Dendrites", "tutorial/8_dendrites.neuronify");
+    canvas.world
+}
+
+fn dendrites() -> World {
+    let mut canvas = Canvas::new();
+    canvas.text(
+        "Dendrites in the right neuron can receive signals from the left neuron, \
+         but you need to draw an axon first.",
+    );
+    let up = canvas.row(25.0);
+    let hand = canvas.add(Element::TouchSensor, 1.0, up + 2.0);
+    let sender = canvas.add(Element::ExcitatoryNeuron, 5.0, up + 2.0);
+    canvas.connect(hand, sender);
+    let receiver = canvas.add(Element::ExcitatoryNeuron, 17.0, up - 4.5);
+    spawn_dendrites(&mut canvas.world, receiver);
+    canvas.text(&format!(
+        "{}, then drag from the left neuron onto one of the branches. \
+         Now press the touch sensor: the spike travels from the axon to the dendrites, \
+         runs to the cell body and makes it fire.",
+        choose_in(Tool::Axon, ToolGroup::Connections)
+    ));
+    canvas.next("Coincidence", "tutorial/9_coincidence.neuronify");
+    canvas.world
+}
+
+fn coincidence() -> World {
+    let mut canvas = Canvas::new();
+    canvas.text(
+        "The synaptic connections from these two axons are weak. \
+         One alone will not trigger the rightmost neuron to fire.",
+    );
+    let up = canvas.row(25.0);
+    let receiver = canvas.add(Element::ExcitatoryNeuron, 18.0, up - 4.5);
+    spawn_dendrites(&mut canvas.world, receiver);
+    let branch = canvas.branch_near(receiver, 12.0, up);
+    let meeting = canvas.world.get::<&Position>(branch).unwrap().position;
+    let (right, up) = (meeting.z, meeting.x);
+    let upper = canvas.add(Element::ExcitatoryNeuron, right - 6.0, up + 4.5);
+    let lower = canvas.add(Element::ExcitatoryNeuron, right - 6.0, up - 4.5);
+    canvas.weak_axon(upper, branch, 0.25);
+    canvas.weak_axon(lower, branch, 0.25);
+    let top = canvas.add(Element::TouchSensor, 1.0, up + 4.5);
+    let middle = canvas.add(Element::TouchSensor, 1.0, up);
+    let bottom = canvas.add(Element::TouchSensor, 1.0, up - 4.5);
+    canvas.connect(top, upper);
+    canvas.connect(middle, upper);
+    canvas.connect(middle, lower);
+    canvas.connect(bottom, lower);
+    canvas.text(
+        "Pressing the top or bottom touch sensors will not fire the rightmost neuron, \
+         while pressing the middle will. The two spikes arrive close in time and add up.",
+    );
+    canvas.text(
+        "A neuron that fires only when its inputs arrive together is called \
+         a coincidence detector.",
+    );
     canvas.link("More examples ›", "examples");
     canvas.world
 }

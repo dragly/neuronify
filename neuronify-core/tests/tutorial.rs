@@ -1,12 +1,14 @@
 use glam::Vec3;
 use hecs::{Entity, World};
-use neuronify_core::elements::spawn_synapse;
+use neuronify_core::dendrites::compartment_tree;
+use neuronify_core::elements::{spawn_cable, spawn_compartment, spawn_synapse};
 use neuronify_core::examples::{find, EXAMPLE_CATEGORIES};
 use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::simulation::{fire_nearby, step_simulation};
 use neuronify_core::{
-    Annotation, LeakyDynamics, LeakyNeuron, Link, NeuronDisplay, NeuronType, Position, Setting,
-    TouchSensor, DEFAULT_SPEED, LIF_DT, SIMULATION_STEPS_PER_SECOND,
+    Annotation, LeakyDynamics, LeakyNeuron, Link, NeuronDisplay, NeuronType, NoteSize, Position,
+    Setting, TouchSensor, DEFAULT_SPEED, LIF_DT, NODE_RADIUS, SEGMENT_LENGTH,
+    SIMULATION_STEPS_PER_SECOND,
 };
 
 const STEPS_PER_SECOND: f64 = DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND;
@@ -114,7 +116,7 @@ fn tutorial() -> Vec<&'static str> {
 #[test]
 fn each_canvas_links_to_the_next_and_the_last_to_the_examples() {
     let files = tutorial();
-    assert_eq!(files.len(), 6);
+    assert_eq!(files.len(), 9);
     for (index, file) in files.iter().enumerate() {
         let canvas = Canvas::open(file);
         let links: Vec<String> = canvas
@@ -141,6 +143,36 @@ fn only_the_sharpening_edges_canvas_shows_firing_rates() {
 }
 
 #[test]
+fn no_note_covers_the_circuit() {
+    for file in tutorial() {
+        let canvas = Canvas::open(file);
+        let notes: Vec<(Vec3, NoteSize)> = canvas
+            .world
+            .query::<(&Position, &NoteSize)>()
+            .iter()
+            .map(|(_, (position, size))| (position.position, size.clone()))
+            .collect();
+        for (entity, position) in canvas
+            .world
+            .query::<&Position>()
+            .without::<&NoteSize>()
+            .iter()
+        {
+            for (center, size) in &notes {
+                let offset = position.position - *center;
+                let inside = offset.x.abs() < size.height / 2.0 + NODE_RADIUS
+                    && offset.z.abs() < size.width / 2.0 + NODE_RADIUS;
+                assert!(
+                    !inside,
+                    "{file}: {entity:?} at {:?} is under a note",
+                    position.position
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn each_canvas_fits_an_upright_phone() {
     for file in tutorial() {
         let bounds = canvas_bounds(&Canvas::open(file).world).unwrap();
@@ -151,7 +183,7 @@ fn each_canvas_fits_an_upright_phone() {
 
 #[test]
 fn notes_name_tools_that_exist() {
-    let tools: Vec<&str> = [neuronify_core::Tool::Erase]
+    let tools: Vec<&str> = [neuronify_core::Tool::Erase, neuronify_core::Tool::Axon]
         .map(|tool| tool.name())
         .to_vec();
     let text: String = tutorial()
@@ -341,4 +373,92 @@ fn closing_the_ring_keeps_the_beat() {
     assert!(ring
         .iter()
         .all(|(neuron, _)| !canvas.spikes_since(*neuron, late).is_empty()));
+}
+
+#[test]
+fn the_spike_reaches_the_near_neuron_before_the_far_one() {
+    let mut canvas = Canvas::open("tutorial/7_axons.neuronify");
+    let mut neurons = canvas.neurons(NeuronType::Excitatory);
+    neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
+    let (near, far) = (neurons[1].0, neurons[2].0);
+    canvas.press(canvas.hands()[0]);
+    canvas.wait(3.0);
+    let near_spike = canvas.spikes_since(near, 0.0)[0];
+    let far_spike = canvas.spikes_since(far, 0.0)[0];
+    let delay = (far_spike - near_spike) / SIMULATED_PER_REAL_SECOND;
+    assert!(delay > 0.25, "the far neuron fired only {delay} s later");
+}
+
+#[test]
+fn an_axon_grown_onto_a_branch_fires_the_neuron() {
+    let mut canvas = Canvas::open("tutorial/8_dendrites.neuronify");
+    let mut neurons = canvas.neurons(NeuronType::Excitatory);
+    neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
+    let (sender, receiver) = (neurons[0].0, neurons[1].0);
+    let hand = canvas.hands()[0];
+    canvas.press(hand);
+    canvas.wait(3.0);
+    assert!(canvas.spikes_since(receiver, 0.0).is_empty());
+
+    let start = canvas.world.get::<&Position>(sender).unwrap().position;
+    let branch = compartment_tree(&canvas.world, receiver)
+        .into_iter()
+        .min_by(|a, b| {
+            let distance = |entity: &Entity| {
+                canvas
+                    .world
+                    .get::<&Position>(*entity)
+                    .unwrap()
+                    .position
+                    .distance(start)
+            };
+            distance(a).total_cmp(&distance(b))
+        })
+        .unwrap();
+    let end = canvas.world.get::<&Position>(branch).unwrap().position;
+    let pieces = (start.distance(end) / SEGMENT_LENGTH).round() as usize;
+    let mut previous = sender;
+    for piece in 1..pieces {
+        let compartment = spawn_compartment(
+            &mut canvas.world,
+            start.lerp(end, piece as f32 / pieces as f32),
+            NeuronType::Excitatory,
+        );
+        spawn_cable(&mut canvas.world, previous, compartment, false);
+        previous = compartment;
+    }
+    spawn_cable(&mut canvas.world, previous, branch, true);
+
+    let pressed = canvas.now();
+    canvas.press(hand);
+    canvas.wait(3.0);
+    assert!(!canvas.spikes_since(receiver, pressed).is_empty());
+}
+
+#[test]
+fn weak_endings_fire_the_neuron_only_together() {
+    let mut canvas = Canvas::open("tutorial/9_coincidence.neuronify");
+    let mut neurons = canvas.neurons(NeuronType::Excitatory);
+    neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
+    let receiver = neurons.last().unwrap().0;
+    let hands = canvas.hands();
+    let (top, middle, bottom) = (hands[0], hands[1], hands[2]);
+    for hand in [top, bottom] {
+        let pressed = canvas.now();
+        canvas.press(hand);
+        canvas.wait(3.0);
+        assert!(canvas.spikes_since(receiver, pressed).is_empty());
+    }
+
+    let pressed = canvas.now();
+    canvas.press(top);
+    canvas.wait(0.3);
+    canvas.press(bottom);
+    canvas.wait(3.0);
+    assert!(canvas.spikes_since(receiver, pressed).is_empty());
+
+    let pressed = canvas.now();
+    canvas.press(middle);
+    canvas.wait(3.0);
+    assert!(!canvas.spikes_since(receiver, pressed).is_empty());
 }
