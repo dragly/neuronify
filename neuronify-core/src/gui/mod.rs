@@ -1,4 +1,4 @@
-mod icons;
+pub(crate) mod icons;
 mod inspector;
 mod playback;
 mod rail;

@@ -3,7 +3,6 @@ use egui::{pos2, Color32, Painter, Pos2, Rect, TextureHandle, TextureOptions};
 use hecs::World;
 
 use crate::constants::{DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND, VOLTMETER_TIME_WINDOW};
-use crate::examples::Example;
 use crate::frame_clock::StepClock;
 use crate::landing::raster::{tessellate_untextured_in_pixels, UnfinishedDrawing};
 use crate::landing::top_down::top_down_shapes;
@@ -31,7 +30,6 @@ fn preview_mode(world: &World) -> PreviewMode {
 }
 
 pub struct Preview {
-    pub example: &'static Example,
     pub world: World,
     pub time: f64,
     simulation_clock: StepClock,
@@ -43,13 +41,8 @@ pub struct Preview {
 }
 
 impl Preview {
-    pub fn new(example: &'static Example) -> Option<Preview> {
-        let mut world = example
-            .spawn()
-            .map_err(|e| log::error!("Could not load {}: {e}", example.name))
-            .ok()?;
+    pub fn new(mut world: World, mut time: f64) -> Preview {
         let mode = preview_mode(&world);
-        let mut time = 0.0;
         if mode == PreviewMode::Still {
             simulation::step_simulation(
                 &mut world,
@@ -58,8 +51,7 @@ impl Preview {
                 None,
             );
         }
-        Some(Preview {
-            example,
+        Preview {
             bounds: circuit_bounds(&world),
             mode,
             world,
@@ -68,7 +60,7 @@ impl Preview {
             on_screen: false,
             fade_in_started_at: None,
             still_drawing: None,
-        })
+        }
     }
 
     pub fn warmed_up(&self) -> bool {
@@ -177,7 +169,7 @@ fn paint_still_preview(
                 premultiplied_pixels: vec![[0.0; 4]; size_in_pixels[0] * size_in_pixels[1]],
             };
             let texture = painter.ctx().load_texture(
-                format!("{} preview", preview.example.name),
+                "preview",
                 unfinished.color_image(size_in_pixels),
                 TextureOptions::LINEAR,
             );

@@ -266,8 +266,8 @@ pub struct History {
 }
 
 impl History {
-    pub fn record(&mut self, recording: Recording, world: &World) {
-        self.push(recording.finish(world));
+    pub fn record(&mut self, recording: Recording, world: &World) -> bool {
+        self.push(recording.finish(world))
     }
 
     pub fn record_snapshot(&mut self, snapshot: Snapshot) {
@@ -280,11 +280,13 @@ impl History {
         );
     }
 
-    fn push(&mut self, change: Change) {
-        if !change.is_empty() {
-            self.undo.push(change);
-            self.redo.clear();
+    fn push(&mut self, change: Change) -> bool {
+        if change.is_empty() {
+            return false;
         }
+        self.undo.push(change);
+        self.redo.clear();
+        true
     }
 
     pub fn can_undo(&self) -> bool {
@@ -295,18 +297,22 @@ impl History {
         !self.redo.is_empty()
     }
 
-    pub fn undo(&mut self, world: &mut World) {
-        if let Some(change) = self.undo.pop() {
-            let inverse = self.apply(world, change);
-            self.redo.push(inverse);
-        }
+    pub fn undo(&mut self, world: &mut World) -> bool {
+        let Some(change) = self.undo.pop() else {
+            return false;
+        };
+        let inverse = self.apply(world, change);
+        self.redo.push(inverse);
+        true
     }
 
-    pub fn redo(&mut self, world: &mut World) {
-        if let Some(change) = self.redo.pop() {
-            let inverse = self.apply(world, change);
-            self.undo.push(inverse);
-        }
+    pub fn redo(&mut self, world: &mut World) -> bool {
+        let Some(change) = self.redo.pop() else {
+            return false;
+        };
+        let inverse = self.apply(world, change);
+        self.undo.push(inverse);
+        true
     }
 
     fn apply(&mut self, world: &mut World, change: Change) -> Change {

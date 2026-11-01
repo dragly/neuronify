@@ -6,6 +6,7 @@ use crate::editor::{Editor, Pan};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
+use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
 use crate::rendering::ghost::{self, GHOST_HEIGHT};
 use crate::rendering::{canvas_bounds, EditorMarks, Ghost, SceneRenderer, Theme};
@@ -45,10 +46,19 @@ pub struct Neuronify {
     frame_scene_requested: bool,
     saving: Saving,
     speakers: Speakers,
+    library: Library,
+    autosave: Autosave,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn world_from_command_line() -> Option<hecs::World> {
+fn file_stem(path: &std::path::Path) -> String {
+    path.file_stem().map_or(UNTITLED.to_owned(), |stem| {
+        stem.to_string_lossy().into_owned()
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn world_from_command_line() -> Option<(String, hecs::World)> {
     let path = std::env::args().nth(1)?;
     let contents = std::fs::read_to_string(&path)
         .map_err(|e| log::error!("Failed to read file {}: {}", path, e))
@@ -64,11 +74,11 @@ fn world_from_command_line() -> Option<hecs::World> {
     );
     let mut world = hecs::World::new();
     crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
-    Some(world)
+    Some((file_stem(std::path::Path::new(&path)), world))
 }
 
 #[cfg(target_arch = "wasm32")]
-fn world_from_command_line() -> Option<hecs::World> {
+fn world_from_command_line() -> Option<(String, hecs::World)> {
     None
 }
 
@@ -143,6 +153,7 @@ impl Neuronify {
         let renderer = SceneRenderer::new(application, theme);
 
         let opened = world_from_command_line();
+        let autosave = Autosave::copy_of(opened.as_ref().map_or(UNTITLED, |(name, _)| name));
         Neuronify {
             tapped_background: false,
             landing: opened.is_none().then(|| LandingScreen::new(false)),
@@ -150,7 +161,7 @@ impl Neuronify {
             gui: Gui::default(),
             theme,
             frame_scene_requested: opened.is_some(),
-            world: opened.unwrap_or_default(),
+            world: opened.map(|(_, world)| world).unwrap_or_default(),
             time: 0.0,
             running: true,
             speed: DEFAULT_SPEED,
@@ -167,6 +178,8 @@ impl Neuronify {
             load_error: None,
             saving: saving(),
             speakers: Speakers::default(),
+            library: Library::open(),
+            autosave,
         }
     }
 
@@ -207,10 +220,16 @@ impl Neuronify {
             return;
         };
         self.editor.selection = None;
-        match crate::examples::find(&file).map(|example| example.spawn()) {
-            Some(Ok(world)) => self.open_world(world, 0.0, DEFAULT_SPEED),
-            Some(Err(error)) => self.load_error = Some(error),
-            None => self.landing = Some(LandingScreen::new(true)),
+        let Some(example) = crate::examples::find(&file) else {
+            self.show_landing();
+            return;
+        };
+        match example.spawn() {
+            Ok(world) => {
+                let autosave = Autosave::copy_of(example.name);
+                self.open_world(world, 0.0, DEFAULT_SPEED, autosave)
+            }
+            Err(error) => self.load_error = Some(error),
         }
     }
 
@@ -312,7 +331,41 @@ impl Neuronify {
         }
     }
 
-    fn open_world(&mut self, world: hecs::World, time: f64, speed: f64) {
+    fn note_edits(&mut self) {
+        if self.editor.take_edited() {
+            self.autosave.edited(input::now());
+            #[cfg(target_arch = "wasm32")]
+            self.back_up_edits();
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn back_up_edits(&self) {
+        match crate::serialization::save(&self.world, self.time, self.speed) {
+            Ok(bytes) => self.autosave.back_up(&self.library, bytes),
+            Err(error) => log::error!("{error}"),
+        }
+    }
+
+    fn save_edits(&mut self) {
+        self.note_edits();
+        if !self.autosave.has_unsaved_edits() {
+            return;
+        }
+        match crate::serialization::save(&self.world, self.time, self.speed) {
+            Ok(bytes) => self.autosave.save(&mut self.library, bytes),
+            Err(error) => log::error!("{error}"),
+        }
+    }
+
+    fn show_landing(&mut self) {
+        self.save_edits();
+        self.landing = Some(LandingScreen::new(true));
+    }
+
+    fn open_world(&mut self, world: hecs::World, time: f64, speed: f64, autosave: Autosave) {
+        self.save_edits();
+        self.autosave = autosave;
         self.world = world;
         self.time = time;
         self.speed = speed;
@@ -328,8 +381,8 @@ impl Neuronify {
         let Some(path) = rfd::FileDialog::new().pick_file() else {
             return;
         };
-        let bytes = std::fs::read(path).unwrap();
-        if let Err(error) = self.load_from_bytes(&bytes) {
+        let bytes = std::fs::read(&path).unwrap();
+        if let Err(error) = self.open_file(&file_stem(&path), &bytes, true) {
             log::error!("{error}");
             self.load_error = Some(error);
         }
@@ -342,9 +395,16 @@ impl Neuronify {
         }
     }
 
-    fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
+    fn open_file(&mut self, name: &str, bytes: &[u8], import: bool) -> Result<(), String> {
         let saved = crate::serialization::load_from_bytes(bytes)?;
-        self.open_world(saved.world, saved.time, saved.speed);
+        let autosave = if import {
+            let bytes = crate::serialization::save(&saved.world, saved.time, saved.speed)?;
+            let id = self.library.create(name, bytes);
+            Autosave::saved(&self.library, id)
+        } else {
+            Autosave::copy_of(name)
+        };
+        self.open_world(saved.world, saved.time, saved.speed, autosave);
         Ok(())
     }
 }
@@ -367,13 +427,20 @@ impl visula::Simulation for Neuronify {
 
         #[cfg(target_arch = "wasm32")]
         if let Some(loaded) = crate::web::take_loaded_file() {
-            if let Err(error) = loaded.and_then(|bytes| self.load_from_bytes(&bytes)) {
+            let opened =
+                loaded.and_then(|file| self.open_file(&file.name, &file.bytes, file.picked));
+            if let Err(error) = opened {
                 log::error!("{error}");
                 self.load_error = Some(error);
             }
         }
         #[cfg(target_arch = "wasm32")]
         crate::web::hide_loading_screen_when_ready();
+        self.library.poll();
+        self.note_edits();
+        if self.autosave.is_due(input::now()) {
+            self.save_edits();
+        }
 
         if self.tapped_background && !self.touches.may_double_tap(input::now()) {
             self.tapped_background = false;
@@ -474,12 +541,22 @@ impl visula::Simulation for Neuronify {
         });
         self.sync_pointer_with_gui(context);
         if let Some(landing) = &mut self.landing {
-            match landing.show(context, self.theme) {
-                Some(LandingChoice::Example { world, time }) => {
-                    self.open_world(*world, time, DEFAULT_SPEED)
+            match landing.show(context, self.theme, &mut self.library) {
+                Some(LandingChoice::Example { name, world, time }) => {
+                    self.open_world(*world, time, DEFAULT_SPEED, Autosave::copy_of(name))
                 }
-                Some(LandingChoice::EmptyCanvas) => {
-                    self.open_world(hecs::World::new(), 0.0, DEFAULT_SPEED)
+                Some(LandingChoice::Saved {
+                    id,
+                    world,
+                    time,
+                    speed,
+                }) => {
+                    let autosave = Autosave::saved(&self.library, id);
+                    self.open_world(*world, time, speed, autosave)
+                }
+                Some(LandingChoice::NewSimulation) => {
+                    let autosave = Autosave::copy_of(UNTITLED);
+                    self.open_world(hecs::World::new(), 0.0, DEFAULT_SPEED, autosave)
                 }
                 Some(LandingChoice::BackToSimulation) => self.landing = None,
                 None => {}
@@ -500,7 +577,7 @@ impl visula::Simulation for Neuronify {
             saving: self.saving,
         };
         match self.gui.show(context, controls) {
-            Some(MenuChoice::Examples) => self.landing = Some(LandingScreen::new(true)),
+            Some(MenuChoice::Examples) => self.show_landing(),
             Some(MenuChoice::Save) => self.save(),
             Some(MenuChoice::Share) => self.share(),
             Some(MenuChoice::Open) => self.open(),
@@ -521,6 +598,15 @@ impl visula::Simulation for Neuronify {
         if is_press(event) {
             let needed = self.world.query::<&Loudspeaker>().iter().next().is_some();
             self.speakers.unlock(needed);
+        }
+        if matches!(
+            event,
+            Event::WindowEvent {
+                event: WindowEvent::Occluded(true) | WindowEvent::CloseRequested,
+                ..
+            }
+        ) {
+            self.save_edits();
         }
         if self.landing.is_some() && is_press_scroll_or_touch(event) {
             return;

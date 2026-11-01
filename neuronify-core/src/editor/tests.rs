@@ -1660,3 +1660,46 @@ fn a_touch_sensor_makes_its_neuron_fire_right_away() {
         "{fired_within:?}"
     );
 }
+
+#[test]
+fn changes_to_the_circuit_count_as_edits() {
+    let mut world = World::new();
+    let a = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Edit);
+    drag(&mut editor, &mut world, &[at(10.0, 10.0), at(12.0, 10.0)]);
+    drag(&mut editor, &mut world, &[at(0.5, 0.0)]);
+    editor.tool = Tool::View;
+    drag(&mut editor, &mut world, &[at(0.0, 0.0), at(1.0, 0.0)]);
+    editor.adjust(&world, a, true, || false);
+    editor.undo(&mut world);
+    assert!(
+        !editor.take_edited(),
+        "panning, selecting, stimulating and undoing nothing"
+    );
+
+    editor.tool = Tool::Place(Element::ExcitatoryNeuron);
+    drag(&mut editor, &mut world, &[at(0.0, 20.0)]);
+    assert!(editor.take_edited(), "placing");
+    assert!(!editor.take_edited());
+
+    editor.tool = Tool::Edit;
+    drag(&mut editor, &mut world, &[at(0.5, 0.0), at(3.0, 0.0)]);
+    assert!(editor.take_edited(), "dragging");
+
+    editor.tool = Tool::Erase;
+    drag(&mut editor, &mut world, &[at(30.0, 30.0)]);
+    assert!(!editor.take_edited(), "erasing nothing");
+    drag(&mut editor, &mut world, &[at(0.0, 20.0)]);
+    assert!(editor.take_edited(), "erasing");
+
+    editor.adjust(&world, a, false, || set_threshold(&world, a, -0.05));
+    assert!(editor.take_edited(), "adjusting before it settles");
+
+    editor.selection = Some(a);
+    editor.erase_selection(&mut world);
+    assert!(editor.take_edited(), "erasing the selection");
+    editor.undo(&mut world);
+    assert!(editor.take_edited(), "undoing");
+    editor.redo(&mut world);
+    assert!(editor.take_edited(), "redoing");
+}
