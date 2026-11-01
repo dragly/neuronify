@@ -8,10 +8,87 @@ use neuronify_core::elements::{
 };
 use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
+use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
-    AdaptationCurrent, Annotation, CurrentSynapse, Label, NeuronType, NoteSize, PoissonGenerator,
-    RegularSpikeGenerator,
+    AdaptationCurrent, Annotation, Connection, CurrentSynapse, Label, MeterSize, NeuronType,
+    NoteSize, PoissonGenerator, RegularSpikeGenerator,
 };
+
+const NANOAMPERE: f64 = 1e-9;
+const MILLISECOND: f64 = 1e-3;
+const CURRENT_DRAWN_AT_FULL_STRENGTH: f64 = 6.0 * NANOAMPERE;
+const WIDTH: f32 = 24.0;
+const GAP: f32 = 1.2;
+
+struct Sheet {
+    world: World,
+    top: f32,
+}
+
+impl Sheet {
+    fn new() -> Sheet {
+        Sheet {
+            world: World::new(),
+            top: 0.0,
+        }
+    }
+
+    fn at(right: f32, up: f32) -> Vec3 {
+        Vec3::new(up, 0.0, right)
+    }
+
+    fn text(&mut self, text: &str) {
+        let wrapped = visula::text::tessellate_text_wrapped(
+            NOTE_FONT_DATA,
+            text,
+            NOTE_TEXT_HEIGHT,
+            WIDTH - 2.0 * NOTE_MARGIN,
+        )
+        .unwrap();
+        let height = wrapped.height + 2.0 * NOTE_MARGIN;
+        note(
+            &mut self.world,
+            Sheet::at(WIDTH / 2.0, self.top - height / 2.0),
+            WIDTH,
+            height,
+            text,
+        );
+        self.top -= height + GAP;
+    }
+
+    fn row(&mut self, height: f32) -> f32 {
+        let middle = self.top - height / 2.0;
+        self.top -= height + GAP;
+        middle
+    }
+
+    fn add(&mut self, element: Element, right: f32, up: f32) -> Entity {
+        element.spawn(&mut self.world, Sheet::at(right, up))
+    }
+
+    fn label(&mut self, entity: Entity, text: &str) {
+        label(&mut self.world, entity, text);
+    }
+
+    fn connect(&mut self, from: Entity, to: Entity) -> Entity {
+        spawn_synapse(&mut self.world, from, to)
+    }
+
+    fn synapse(&mut self, from: Entity, to: Entity, maximum_current: f64) -> Entity {
+        let synapse = self.connect(from, to);
+        let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
+        current.maximum_current = maximum_current;
+        let charge =
+            maximum_current * current.tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * 2.0 * MILLISECOND);
+        self.world.get::<&mut Connection>(synapse).unwrap().strength = charge.clamp(0.4, 1.5);
+        synapse
+    }
+
+    fn voltmeter(&mut self, target: Entity, left: f32, up: f32, width: f32, height: f32) {
+        let voltmeter = spawn_voltmeter(&mut self.world, target, Sheet::at(left, up));
+        *self.world.get::<&mut MeterSize>(voltmeter).unwrap() = MeterSize { width, height };
+    }
+}
 
 fn at(up: f32, right: f32) -> Vec3 {
     Vec3::new(up, 0.0, right)
@@ -110,12 +187,43 @@ pub fn adaptive_inhibition() -> World {
     world
 }
 
-fn main() {
-    let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
-    for (file, world) in [
+pub fn adaptation() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "The neuron on the right adapts: each spike makes the next one harder. \
+         Press the touch sensor a few times in a row and watch it start to skip.",
+    );
+    let up = sheet.row(5.0);
+    let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+    let regular = sheet.add(Element::ExcitatoryNeuron, 6.5, up);
+    let adaptive = sheet.add(Element::AdaptiveNeuron, 11.5, up);
+    sheet.label(adaptive, "Adaptive");
+    sheet.connect(sensor, regular);
+    sheet.synapse(regular, adaptive, 3.0 * NANOAMPERE);
+    sheet.voltmeter(adaptive, 14.5, up, 9.5, 5.0);
+    sheet.text(
+        "Leave it alone for a while and it recovers, \
+         firing on every press again.",
+    );
+    sheet.world
+}
+
+pub fn sheets() -> Vec<(&'static str, World)> {
+    vec![("adaptation.neuronify", adaptation())]
+}
+
+pub fn examples() -> Vec<(&'static str, World)> {
+    let mut examples = vec![
         ("listening_to_a_neuron.neuronify", listening_to_a_neuron()),
         ("adaptive_inhibition.neuronify", adaptive_inhibition()),
-    ] {
+    ];
+    examples.extend(sheets());
+    examples
+}
+
+fn main() {
+    let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
+    for (file, world) in examples() {
         let bytes = neuronify_core::serialization::save(&world, 0.0, DEFAULT_SPEED).unwrap();
         std::fs::write(format!("{folder}/{file}"), bytes).unwrap();
         println!("Wrote {file}");
