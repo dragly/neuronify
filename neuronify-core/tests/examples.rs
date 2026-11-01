@@ -4,11 +4,15 @@ mod write_examples;
 
 use std::f64::consts::FRAC_PI_2;
 
-use hecs::World;
+use glam::Vec3;
+use hecs::{Entity, World};
 use neuronify_core::constants::{DEFAULT_SPEED, LIF_DT, SIMULATION_STEPS_PER_SECOND};
 use neuronify_core::measurement::visual_input::VisualInput;
-use neuronify_core::simulation::step_simulation;
-use neuronify_core::{Label, LeakyDynamics};
+use neuronify_core::rendering::canvas_bounds;
+use neuronify_core::simulation::{fire_nearby, step_simulation};
+use neuronify_core::{Label, LeakyDynamics, NoteSize, Position, TouchSensor, NODE_RADIUS};
+
+const PHONE_WIDTH: f32 = 27.0;
 
 fn on_screen(seconds: f64) -> f64 {
     seconds * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND * LIF_DT
@@ -71,18 +75,120 @@ fn the_output_fires_more_within_seconds_as_the_inhibitory_neuron_adapts() {
     assert!(late > 3 * early.max(1), "{early} early and {late} late");
 }
 
+struct Experiment {
+    world: World,
+    time: f64,
+}
+
+impl Experiment {
+    fn new(world: World) -> Experiment {
+        Experiment { world, time: 0.0 }
+    }
+
+    fn neuron(&self, label: &str) -> Entity {
+        self.world
+            .query::<&Label>()
+            .iter()
+            .find(|(_, neuron)| neuron.text == label)
+            .unwrap_or_else(|| panic!("no neuron labelled {label}"))
+            .0
+    }
+
+    fn sensors_from_left(&self) -> Vec<Vec3> {
+        let mut sensors: Vec<Vec3> = self
+            .world
+            .query::<&Position>()
+            .with::<&TouchSensor>()
+            .iter()
+            .map(|(_, position)| position.position)
+            .collect();
+        sensors.sort_by(|a, b| a.z.total_cmp(&b.z));
+        sensors
+    }
+
+    fn press(&mut self, sensor: Vec3) {
+        fire_nearby(&mut self.world, sensor);
+    }
+
+    fn spikes_during(&mut self, seconds: f64, label: &str) -> usize {
+        let neuron = self.neuron(label);
+        let end = self.time + seconds;
+        let mut spikes = 0;
+        while self.time < end {
+            step_simulation(&mut self.world, &mut self.time, 1, None);
+            let fired = self
+                .world
+                .get::<&LeakyDynamics>(neuron)
+                .unwrap()
+                .time_since_fire
+                == 0.0;
+            spikes += usize::from(fired);
+        }
+        spikes
+    }
+
+    fn presses(&mut self, sensor: Vec3, count: usize, interval: f64, label: &str) -> usize {
+        (0..count)
+            .map(|_| {
+                self.press(sensor);
+                self.spikes_during(interval, label)
+            })
+            .sum()
+    }
+}
+
+#[test]
+fn the_adaptive_neuron_starts_to_skip_presses() {
+    let mut experiment = Experiment::new(write_examples::adaptation());
+    let sensor = experiment.sensors_from_left()[0];
+    assert_eq!(experiment.presses(sensor, 3, 0.02, "Adaptive"), 3);
+    assert!(experiment.presses(sensor, 9, 0.02, "Adaptive") < 6);
+}
+
+#[test]
+fn the_adaptive_neuron_recovers_after_a_rest() {
+    let mut experiment = Experiment::new(write_examples::adaptation());
+    let sensor = experiment.sensors_from_left()[0];
+    experiment.presses(sensor, 12, 0.02, "Adaptive");
+    experiment.spikes_during(0.5, "Adaptive");
+    assert_eq!(experiment.presses(sensor, 3, 0.02, "Adaptive"), 3);
+}
+
+#[test]
+fn no_note_covers_the_circuit() {
+    for (file, world) in write_examples::sheets() {
+        let notes: Vec<(Vec3, NoteSize)> = world
+            .query::<(&Position, &NoteSize)>()
+            .iter()
+            .map(|(_, (position, size))| (position.position, size.clone()))
+            .collect();
+        for (entity, position) in world.query::<&Position>().without::<&NoteSize>().iter() {
+            for (center, size) in &notes {
+                let offset = position.position - *center;
+                let inside = offset.x.abs() < size.height / 2.0 + NODE_RADIUS
+                    && offset.z.abs() < size.width / 2.0 + NODE_RADIUS;
+                assert!(
+                    !inside,
+                    "{file}: {entity:?} at {:?} is under a note",
+                    position.position
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn each_example_fits_an_upright_phone() {
+    for (file, world) in write_examples::sheets() {
+        let bounds = canvas_bounds(&world).unwrap();
+        let width = bounds.max.z - bounds.min.z;
+        assert!(width <= PHONE_WIDTH, "{file} is {width} wide");
+    }
+}
+
 #[test]
 fn the_bundled_example_files_match_their_generators() {
-    for (file, world) in [
-        (
-            "listening_to_a_neuron.neuronify",
-            write_examples::listening_to_a_neuron(),
-        ),
-        (
-            "adaptive_inhibition.neuronify",
-            write_examples::adaptive_inhibition(),
-        ),
-    ] {
+    for (file, world) in write_examples::examples() {
         let path = format!("{}/examples/{file}", env!("CARGO_MANIFEST_DIR"));
         let bundled = std::fs::read(path).unwrap();
         let written = neuronify_core::serialization::save(

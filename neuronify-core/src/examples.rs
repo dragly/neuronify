@@ -137,7 +137,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Adaptation",
                 description: "This neuron gets harder to excite each time it fires, \
                     and recovers after a rest.",
-                contents: legacy!("adaptation.nfy"),
+                contents: saved!("adaptation.neuronify"),
             },
             Example {
                 name: "Bursting",
