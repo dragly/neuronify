@@ -17,6 +17,7 @@ use super::SavedSimulation;
 const DATABASE: &str = "neuronify";
 const DATABASE_VERSION: u32 = 1;
 const SIMULATIONS: &str = "simulations";
+const COUNT_FOR_LOADING_SCREEN: &str = "neuronify-saved-simulations";
 const BACKUP: &str = "neuronify-unsaved-";
 
 type Loaded = Rc<RefCell<Option<Vec<SavedSimulation>>>>;
@@ -132,6 +133,12 @@ impl Store {
         if let Err(error) = navigator.storage().persist() {
             log::warn!("Could not ask for persistent storage: {error:?}");
         }
+    }
+}
+
+pub fn remember_count(count: usize) {
+    if let Some(storage) = local_storage() {
+        let _ = storage.set_item(COUNT_FOR_LOADING_SCREEN, &count.to_string());
     }
 }
 

@@ -67,7 +67,7 @@
       .page {
         width: min(100% - 32px, 1100px);
         margin: 0 auto;
-        padding-top: 46px;
+        padding-top: 30px;
       }
       .bar {
         border-radius: 4px;
@@ -80,33 +80,32 @@
         margin-bottom: 20px;
       }
       .subtitle {
-        width: min(100%, 691px);
+        width: 292px;
+        max-width: 100%;
         height: 12px;
-        margin-bottom: 41px;
-      }
-      .subtitle + .subtitle {
-        display: none;
-      }
-      @media (max-width: 722px) {
-        .subtitle {
-          margin-bottom: 6px;
-        }
-        .subtitle + .subtitle {
-          display: block;
-          width: 85%;
-          margin-bottom: 41px;
-        }
       }
       .heading {
-        height: 15px;
-        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        margin: 37.5px 0 19.5px;
       }
-      .cards + .heading {
-        margin-top: 57px;
+      .cards ~ .heading {
+        margin-top: 50.5px;
+      }
+      .heading .bar {
+        height: 16px;
+      }
+      .heading .see-all {
+        width: 43px;
+        height: 12px;
+        margin-top: 2px;
+      }
+      .see-all[hidden] {
+        display: none;
       }
       .cards {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 19px 16px;
       }
       .card {
@@ -144,41 +143,46 @@
         );
       }
       .name {
-        width: 55%;
-        height: 11px;
-        margin-top: 14px;
-      }
-      .card:nth-child(3n + 2) .name {
-        width: 70%;
-      }
-      .card:nth-child(3n) .name {
-        width: 40%;
+        max-width: 100%;
+        height: 12px;
+        margin-top: 13px;
       }
       .line {
-        height: 9px;
-        margin-top: 11px;
+        max-width: 100%;
+        height: 11px;
+        margin-top: 9px;
       }
-      .line + .line {
-        width: 65%;
-        margin-top: 7px;
+      .line:not([style]) {
+        width: 95%;
       }
-      .wide {
+      .line + .line:not([style]) {
+        width: 90%;
+        margin-top: 5px;
+      }
+      .narrow {
         display: none;
       }
-      @media (min-width: 528px) {
-        .line + .line {
-          width: 100%;
+      @media (min-width: 664px) {
+        .page {
+          padding-top: 46px;
         }
-        .line + .wide {
+        .cards {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .line + .line:not([style]) {
+          width: 60%;
+        }
+        .card:nth-child(3n + 2) .line + .line:not([style]) {
+          width: 85%;
+        }
+        .card:nth-child(3n) .line + .line:not([style]) {
+          width: 35%;
+        }
+      }
+      @media (min-width: 664px) and (max-width: 1131px) {
+        .narrow {
           display: block;
-          width: 50%;
         }
-      }
-      .plus ~ .name {
-        width: 40%;
-      }
-      .plus ~ .line {
-        width: 60%;
       }
       .scene #loading {
         background: var(--scene);
@@ -220,27 +224,64 @@
       <div class="page">
         <div class="bar title"></div>
         <div class="bar subtitle"></div>
-        <div class="bar subtitle"></div>
-        <div class="bar heading" style="width: 134px"></div>
+        <div class="heading"><div class="bar" style="width: 148px"></div><div class="bar see-all" hidden></div></div>
         <div class="cards">
-          <div class="card"><div class="thumbnail plus"></div><div class="bar name"></div><div class="bar line"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail plus"></div><div class="bar name" style="width: 110px"></div><div class="bar line" style="width: 111px"></div></div>
         </div>
-        <div class="bar heading" style="width: 74px"></div>
+        <script>
+          (() => {
+            let saved = 0;
+            try {
+              saved = Number(localStorage.getItem("neuronify-saved-simulations")) || 0;
+            } catch {}
+            const cards = document.currentScript.previousElementSibling;
+            const names = [70, 95, 55, 110, 80];
+            const dates = [88, 118, 88, 60, 100];
+            for (let i = 0; i < Math.min(saved, names.length); i++) {
+              cards.insertAdjacentHTML(
+                "beforeend",
+                `<div class="card"><div class="thumbnail"></div><div class="bar name" style="width: ${names[i]}px"></div><div class="bar line" style="width: ${dates[i]}px"></div></div>`,
+              );
+            }
+            cards.previousElementSibling.lastElementChild.hidden = saved <= names.length;
+          })();
+        </script>
+        <div class="heading"><div class="bar" style="width: 135px"></div><div class="bar see-all"></div></div>
         <div class="cards">
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 61px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 112px"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line narrow"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 112px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 122px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 144px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 142px"></div><div class="bar line"></div><div class="bar line"></div></div>
         </div>
-        <div class="bar heading" style="width: 70px"></div>
+        <div class="heading"><div class="bar" style="width: 75px"></div></div>
         <div class="cards">
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
-          <div class="card"><div class="thumbnail"></div><div class="bar name"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line wide"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 40px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 68px"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line narrow"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 79px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 38px"></div><div class="bar line"></div><div class="bar line"></div></div>
+        </div>
+        <div class="heading"><div class="bar" style="width: 66px"></div><div class="bar see-all"></div></div>
+        <div class="cards">
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 122px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 131px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 88px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 142px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 144px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 120px"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line narrow"></div></div>
+        </div>
+        <div class="heading"><div class="bar" style="width: 161px"></div></div>
+        <div class="cards">
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 79px"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line narrow"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 110px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 83px"></div><div class="bar line"></div><div class="bar line"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 152px"></div><div class="bar line"></div><div class="bar line"></div></div>
+        </div>
+        <div class="heading"><div class="bar" style="width: 85px"></div></div>
+        <div class="cards">
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 84px"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line narrow"></div></div>
+          <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 125px"></div><div class="bar line"></div><div class="bar line"></div></div>
         </div>
       </div>
     </div>

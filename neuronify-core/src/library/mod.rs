@@ -155,6 +155,8 @@ impl Library {
     fn changed(&mut self) {
         self.sort();
         self.revision += 1;
+        #[cfg(target_arch = "wasm32")]
+        browser::remember_count(self.simulations.len());
     }
 
     fn sort(&mut self) {
