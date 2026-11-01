@@ -176,7 +176,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Half-center oscillator",
                 description: "Two neurons that hold each other back take turns firing, \
                     like the circuits behind walking.",
-                contents: legacy!("two_neuron_oscillator.nfy"),
+                contents: saved!("half_center_oscillator.neuronify"),
             },
             Example {
                 name: "Feedback loops",
