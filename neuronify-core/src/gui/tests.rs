@@ -4,8 +4,8 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics, LeakyNeuron, NeuronType,
-    RegularSpikeGenerator,
+    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics,
+    LeakyNeuron, NeuronType, RegularSpikeGenerator,
 };
 use crate::constants::DEFAULT_SPEED;
 use crate::elements::{spawn_cable, spawn_compartment, Element};
@@ -140,17 +140,31 @@ impl Harness {
         }
     }
 
-    fn text_position(&self, text: &str) -> Option<Pos2> {
+    fn text_rect(&self, text: &str) -> Option<Rect> {
         self.output
             .as_ref()?
             .shapes
             .iter()
             .find_map(|clipped| match &clipped.shape {
                 Shape::Text(shape) if shape.galley.text() == text => {
-                    Some(shape.pos + shape.galley.size() / 2.0)
+                    Some(Rect::from_min_size(shape.pos, shape.galley.size()))
                 }
                 _ => None,
             })
+    }
+
+    fn text_position(&self, text: &str) -> Option<Pos2> {
+        Some(self.text_rect(text)?.center())
+    }
+
+    fn press_the_middle_of_slider(&mut self, label: &str, value: &str) {
+        let label = self.text_rect(label).unwrap();
+        let value = self.text_rect(value).unwrap();
+        let middle = pos2(
+            (label.left() + value.right()) / 2.0,
+            label.center().y + 22.0,
+        );
+        self.drag(middle, middle);
     }
 
     fn shows(&self, text: &str) -> bool {
@@ -658,6 +672,18 @@ fn an_alternating_current_source_sets_its_amplitude_and_frequency() {
         assert!(harness.shows(setting.description()), "{setting:?}");
     }
     assert!(!harness.shows(Setting::Current.label()));
+}
+
+#[test]
+fn the_sliders_of_an_alternating_current_source_are_logarithmic() {
+    let mut world = World::new();
+    let source = Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(source));
+    harness.press_the_middle_of_slider(Setting::Amplitude.label(), "300 pA");
+    harness.press_the_middle_of_slider(Setting::AlternatingFrequency.label(), "50 Hz");
+    let alternating = harness.world.get::<&AlternatingCurrent>(source).unwrap();
+    assert!((alternating.amplitude / 100e-12 - 1.0).abs() < 0.05);
+    assert!((alternating.frequency / 200.0_f64.sqrt() - 1.0).abs() < 0.05);
 }
 
 #[test]

@@ -66,8 +66,8 @@ const TIME_RANGES: RangeInclusive<f64> = 1e-3..=1.0;
 const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10e-9;
 const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1e-3..=6e-3;
 const DELAYS: RangeInclusive<f64> = 0.0..=30e-3;
-const AMPLITUDES: RangeInclusive<f64> = 0.0..=1e-9;
-const ALTERNATING_FREQUENCIES: RangeInclusive<f64> = 0.0..=200.0;
+const AMPLITUDES: (RangeInclusive<f64>, f64) = (0.0..=1e-9, 10e-12);
+const ALTERNATING_FREQUENCIES: (RangeInclusive<f64>, f64) = (0.0..=200.0, 1.0);
 const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30e-9, 0.01e-9);
 const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
@@ -985,7 +985,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     }
     if let Ok(mut alternating) = world.get::<&mut AlternatingCurrent>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        changed |= parameter(
+        changed |= logarithmic_parameter(
             ui,
             chrome,
             Setting::Amplitude,
@@ -993,7 +993,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             AMPLITUDES,
             |amperes| format!("{:.0} pA", amperes * 1e12),
         );
-        changed |= parameter(
+        changed |= logarithmic_parameter(
             ui,
             chrome,
             Setting::AlternatingFrequency,
