@@ -170,7 +170,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
             Example {
                 name: "Reverberation",
                 description: "One press keeps a loop of neurons firing until one of them tires.",
-                contents: legacy!("prolonged_activity.nfy"),
+                contents: saved!("reverberation.neuronify"),
             },
             Example {
                 name: "Half-center oscillator",
