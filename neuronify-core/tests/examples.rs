@@ -289,6 +289,24 @@ fn the_two_neurons_take_turns() {
 }
 
 #[test]
+fn excitatory_feedback_speeds_the_output_up_and_inhibitory_feedback_slows_it_down() {
+    let mut experiment = Experiment::new(write_examples::feedback_loops());
+    let neurons = [
+        experiment.neurons_from_top()[0],
+        experiment.neuron("Faster"),
+        experiment.neuron("Slower"),
+    ];
+    let [input, faster, slower] = experiment.spike_counts(1.0, &neurons)[..] else {
+        unreachable!()
+    };
+    assert!(faster > 2 * input, "{faster} against {input}");
+    assert!(
+        slower > 0 && 5 * slower < 4 * input,
+        "{slower} against {input}"
+    );
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world

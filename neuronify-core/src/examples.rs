@@ -182,7 +182,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Feedback loops",
                 description: "Feedback that excites makes a rhythm faster, \
                     and feedback that inhibits makes it slower.",
-                contents: legacy!("rythm_transformation.nfy"),
+                contents: saved!("feedback_loops.neuronify"),
             },
         ],
     },
