@@ -36,7 +36,7 @@ pub fn collect_visual_input_tiles(world: &hecs::World) -> Vec<CylinderData> {
     let tile_radius = TILE_FILL * VISUAL_INPUT_SIZE / RESOLUTION as f32;
     let mut tiles = Vec::new();
     for (_, (input, position)) in world.query::<(&VisualInput, &Position)>().iter() {
-        let picture = input.picture(input.seen_at.unwrap_or(0.0));
+        let picture = input.picture();
         let weights = input.field_weights();
         for (index, (&brightness, &weight)) in picture.iter().zip(&weights).enumerate() {
             let gray = Vec3::splat(0.04 + 0.8 * brightness as f32);

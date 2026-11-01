@@ -24,6 +24,7 @@ use crate::constants::DEFAULT_SPEED;
 mod schema;
 mod v1;
 mod v10;
+mod v11;
 mod v2;
 mod v3;
 mod v4;
@@ -34,7 +35,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 10;
+pub const VERSION: u32 = 11;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -48,7 +49,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v10::SaveContext, &mut serializer)
+    serialize(world, &mut v11::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -104,6 +105,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v10::deserialize(body)?, time, speed)
         }
+        11 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v11::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -122,6 +128,7 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             7 => v8::upgrade_from_v7(&mut world),
             8 => v9::upgrade_from_v8(&mut world),
             9 => v10::upgrade_from_v9(&mut world),
+            10 => v11::upgrade_from_v10(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -161,6 +168,7 @@ mod tests {
     use super::*;
     use crate::components::*;
     use crate::elements::{spawn_cable, spawn_compartment, spawn_internode, Element};
+    use crate::measurement::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
     use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
     use std::any::TypeId;
     use std::collections::BTreeMap;
@@ -330,11 +338,25 @@ mod tests {
         );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
+        for (_, input) in saved.world.query::<&VisualInput>().iter() {
+            assert_eq!(input.speed, DEFAULT_PICTURE_SPEED);
+        }
     }
 
     #[test]
     fn loads_version_10() {
         let saved = load(include_bytes!("fixtures/v10.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+        for (_, input) in saved.world.query::<&VisualInput>().iter() {
+            assert_eq!(input.speed, DEFAULT_PICTURE_SPEED);
+        }
+    }
+
+    #[test]
+    fn loads_version_11() {
+        let saved = load(include_bytes!("fixtures/v11.neuronify")).unwrap();
         assert_eq!(composition(&saved.world), composition(&fixture_world()));
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);

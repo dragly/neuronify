@@ -1,4 +1,4 @@
-use std::f64::consts::{FRAC_PI_2, PI, TAU};
+use std::f64::consts::{FRAC_PI_2, TAU};
 
 use glam::Vec3;
 use hecs::World;
@@ -10,7 +10,8 @@ use crate::measurement::voltmeter::Frame;
 
 pub const RESOLUTION: usize = 20;
 pub const VISUAL_INPUT_SIZE: f32 = 8.0;
-pub const FRAME_INTERVAL: f64 = 0.01;
+pub const FRAME_INTERVAL: f64 = 0.001;
+pub const DEFAULT_PICTURE_SPEED: f64 = 10.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Pattern {
@@ -31,20 +32,23 @@ impl Pattern {
         }
     }
 
-    pub fn brightness(self, angle: f64, x: f64, y: f64, time: f64) -> f64 {
+    pub fn brightness(self, angle: f64, x: f64, y: f64, phase: f64) -> f64 {
         let across = x * angle.cos() + y * angle.sin();
         match self {
             Pattern::Bar => {
-                let center = (time * 0.7).rem_euclid(1.4) - 0.7;
+                let center = 1.4 * phase - 0.7;
                 if (across - center).abs() < 0.075 {
                     1.0
                 } else {
                     0.0
                 }
             }
-            Pattern::Grating => 0.5 + 0.5 * (TAU * (3.0 * across - 0.5 * time)).sin(),
+            Pattern::Grating => 0.5 + 0.5 * (TAU * (3.0 * across - phase)).sin(),
             Pattern::Dot => {
-                let (dx, dy) = (x - 0.25 * (PI * time).cos(), y - 0.25 * (PI * time).sin());
+                let (dx, dy) = (
+                    x - 0.25 * (TAU * phase).cos(),
+                    y - 0.25 * (TAU * phase).sin(),
+                );
                 if dx * dx + dy * dy < 0.12 * 0.12 {
                     1.0
                 } else {
@@ -146,6 +150,8 @@ pub struct VisualInput {
     pub show_field: bool,
     pub pattern: Pattern,
     pub pattern_angle: f64,
+    pub speed: f64,
+    pub phase: f64,
     #[serde(skip)]
     pub seen_at: Option<f64>,
     #[serde(skip)]
@@ -160,6 +166,8 @@ impl Default for VisualInput {
             show_field: true,
             pattern: Pattern::default(),
             pattern_angle: 0.0,
+            speed: DEFAULT_PICTURE_SPEED,
+            phase: 0.0,
             seen_at: None,
             response: 0.0,
         }
@@ -167,12 +175,12 @@ impl Default for VisualInput {
 }
 
 impl VisualInput {
-    pub fn picture(&self, time: f64) -> Vec<f64> {
+    pub fn picture(&self) -> Vec<f64> {
         (0..RESOLUTION)
             .flat_map(|row| (0..RESOLUTION).map(move |column| (column, row)))
             .map(|(column, row)| {
                 self.pattern
-                    .brightness(self.pattern_angle, grid(column), grid(row), time)
+                    .brightness(self.pattern_angle, grid(column), grid(row), self.phase)
             })
             .collect()
     }
@@ -184,8 +192,8 @@ impl VisualInput {
             .collect()
     }
 
-    pub fn respond(&self, time: f64) -> f64 {
-        let picture = self.picture(time);
+    pub fn respond(&self) -> f64 {
+        let picture = self.picture();
         let weights = self.field_weights();
         picture
             .iter()
@@ -208,11 +216,12 @@ pub fn see(world: &mut World, dt: f64, time: f64) {
     let mut rng = rand::thread_rng();
     for (_, (input, dynamics)) in world.query_mut::<(&mut VisualInput, &mut GeneratorDynamics)>() {
         dynamics.time_since_fire += dt;
+        input.phase = (input.phase + input.speed * dt).rem_euclid(1.0);
         let stale = input
             .seen_at
             .is_none_or(|seen_at| !(seen_at..seen_at + FRAME_INTERVAL).contains(&time));
         if stale {
-            input.response = input.respond(time);
+            input.response = input.respond();
             input.seen_at = Some(time);
         }
         if rng.gen::<f64>() < input.sensitivity * input.response * dt {
@@ -235,11 +244,35 @@ mod tests {
         }
     }
 
+    fn at_phase(input: &VisualInput, phase: f64) -> f64 {
+        VisualInput {
+            phase,
+            ..input.clone()
+        }
+        .respond()
+    }
+
     fn mean_response(input: &VisualInput) -> f64 {
         (0..200)
-            .map(|step| input.respond(step as f64 * 0.01))
+            .map(|step| at_phase(input, step as f64 / 200.0))
             .sum::<f64>()
             / 200.0
+    }
+
+    fn spikes(input: VisualInput, seconds: f64) -> (usize, f64) {
+        let mut world = World::new();
+        let entity = world.spawn((input, GeneratorDynamics::default()));
+        let mut spikes = 0;
+        let steps = (seconds / 1e-4) as usize;
+        for step in 0..steps {
+            see(&mut world, 1e-4, step as f64 * 1e-4);
+            for (_, dynamics) in world.query_mut::<&mut GeneratorDynamics>() {
+                spikes += usize::from(dynamics.fired);
+                dynamics.fired = false;
+            }
+        }
+        let phase = world.get::<&VisualInput>(entity).unwrap().phase;
+        (spikes, phase)
     }
 
     #[test]
@@ -253,7 +286,7 @@ mod tests {
         let across = input(field, Pattern::Bar, FRAC_PI_2);
         let peak = |input: &VisualInput| {
             (0..200)
-                .map(|step| input.respond(step as f64 * 0.01))
+                .map(|step| at_phase(input, step as f64 / 200.0))
                 .fold(f64::MIN, f64::max)
         };
         assert!(peak(&matching) > 4.0 * peak(&across).max(1e-3));
@@ -268,9 +301,9 @@ mod tests {
         };
         let on = input(center(false), Pattern::Dot, 0.0);
         let off = input(center(true), Pattern::Dot, 0.0);
-        assert!(on.respond(0.0) > 0.0);
-        assert!(off.respond(0.0) < 0.0);
-        assert!(on.respond(0.0) > on.respond(1.0));
+        assert!(at_phase(&on, 0.0) > 0.0);
+        assert!(at_phase(&off, 0.0) < 0.0);
+        assert!(at_phase(&on, 0.0) > at_phase(&on, 0.5));
     }
 
     #[test]
@@ -284,20 +317,11 @@ mod tests {
     #[test]
     fn a_visual_input_fires_more_the_better_the_picture_matches() {
         let rate = |pattern_angle: f64| {
-            let mut world = World::new();
-            world.spawn((
+            spikes(
                 input(ReceptiveField::default(), Pattern::Grating, pattern_angle),
-                GeneratorDynamics::default(),
-            ));
-            let mut spikes = 0;
-            for step in 0..20_000 {
-                see(&mut world, 1e-4, step as f64 * 1e-4);
-                for (_, dynamics) in world.query_mut::<&mut GeneratorDynamics>() {
-                    spikes += usize::from(dynamics.fired);
-                    dynamics.fired = false;
-                }
-            }
-            spikes
+                2.0,
+            )
+            .0
         };
         assert!(
             rate(0.0) > 3 * rate(FRAC_PI_2).max(1),
@@ -305,5 +329,41 @@ mod tests {
             rate(0.0),
             rate(FRAC_PI_2)
         );
+    }
+
+    #[test]
+    fn the_picture_moves_as_fast_as_its_speed_and_stands_still_at_zero() {
+        let phase_after_a_quarter_second = |speed: f64| {
+            spikes(
+                VisualInput {
+                    speed,
+                    ..Default::default()
+                },
+                0.25,
+            )
+            .1
+        };
+        assert!((phase_after_a_quarter_second(0.5) - 0.125).abs() < 1e-6);
+        assert!((phase_after_a_quarter_second(2.0) - 0.5).abs() < 1e-6);
+        assert_eq!(phase_after_a_quarter_second(0.0), 0.0);
+    }
+
+    #[test]
+    fn a_stopped_bar_keeps_the_input_firing_only_where_it_crosses_the_field() {
+        let stopped_at = |phase: f64| {
+            spikes(
+                VisualInput {
+                    speed: 0.0,
+                    phase,
+                    ..input(ReceptiveField::default(), Pattern::Bar, 0.0)
+                },
+                1.0,
+            )
+            .0
+        };
+        let crossing = stopped_at(0.5);
+        let beside = stopped_at(0.1);
+        assert!(crossing > 20, "{crossing}");
+        assert!(crossing > 10 * beside.max(1), "{crossing} {beside}");
     }
 }
