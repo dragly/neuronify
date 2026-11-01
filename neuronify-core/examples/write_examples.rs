@@ -10,8 +10,8 @@ use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
-    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, MeterSize,
-    NeuronType, NoteSize, PoissonGenerator, RegularSpikeGenerator,
+    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics,
+    MeterSize, NeuronType, NoteSize, PoissonGenerator, RegularSpikeGenerator,
 };
 
 const NANOAMPERE: f64 = 1e-9;
@@ -92,6 +92,22 @@ impl Sheet {
             .current_output = current;
         self.connect(source, to);
         source
+    }
+
+    fn refractory_period(&mut self, neuron: Entity, seconds: f64) {
+        self.world
+            .get::<&mut LeakyDynamics>(neuron)
+            .unwrap()
+            .refractory_period = seconds;
+    }
+
+    fn rate_plot(&mut self, target: Entity, left: f32, up: f32, maximum: f64) {
+        let plot = spawn_rate_plot(&mut self.world, target, Sheet::at(left, up));
+        self.world.get::<&mut RatePlot>(plot).unwrap().maximum = maximum;
+        *self.world.get::<&mut MeterSize>(plot).unwrap() = MeterSize {
+            width: 14.5,
+            height: 4.0,
+        };
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, width: f32, height: f32) {
@@ -261,11 +277,41 @@ pub fn firing_threshold() -> World {
     sheet.world
 }
 
+pub fn refractory_period() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "Both neurons get the same current. After each spike, the top neuron rests for 2 ms \
+         and the bottom one for 10 ms before it can fire again.",
+    );
+    let top = sheet.row(4.0);
+    let bottom = sheet.row(4.0);
+    let short = sheet.add(Element::ExcitatoryNeuron, 6.5, top);
+    let long = sheet.add(Element::ExcitatoryNeuron, 6.5, bottom);
+    sheet.label(short, "2 ms");
+    sheet.label(long, "10 ms");
+    sheet.refractory_period(short, 2.0 * MILLISECOND);
+    sheet.refractory_period(long, 10.0 * MILLISECOND);
+    let source = sheet.current(short, 1.0 * NANOAMPERE, 1.5, (top + bottom) / 2.0);
+    sheet.connect(source, long);
+    sheet.rate_plot(short, 9.5, top, 300.0);
+    sheet.rate_plot(long, 9.5, bottom, 300.0);
+    sheet.text(
+        "Select the current source and raise the current. The top neuron fires faster and faster, \
+         but the bottom one never passes 100 spikes per second, one every 10 ms.",
+    );
+    sheet.text(
+        "Based on figure 8.5b in Principles of Computational Modelling in Neuroscience \
+         by David Sterratt and others (Cambridge University Press, 2011).",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
         ("bursting.neuronify", bursting()),
         ("firing_threshold.neuronify", firing_threshold()),
+        ("refractory_period.neuronify", refractory_period()),
     ]
 }
 

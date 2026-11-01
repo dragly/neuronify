@@ -154,7 +154,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Refractory period",
                 description: "After each spike a neuron needs a short rest, \
                     which limits how fast it can fire.",
-                contents: legacy!("refractory_period.nfy"),
+                contents: saved!("refractory_period.neuronify"),
             },
         ],
     },
