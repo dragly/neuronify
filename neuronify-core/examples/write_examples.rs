@@ -11,7 +11,8 @@ use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualI
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
     AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics,
-    MeterSize, NeuronType, NoteSize, PoissonGenerator, RegularSpikeGenerator,
+    MeterSize, NeuronDisplay, NeuronType, NoteSize, PoissonGenerator, RegularSpikeGenerator,
+    Setting,
 };
 
 const NANOAMPERE: f64 = 1e-9;
@@ -503,6 +504,61 @@ pub fn feedback_inhibition() -> World {
     sheet.world
 }
 
+const PRESSURE: [f64; 5] = [0.18, 0.25, 0.4, 0.25, 0.18];
+const SIDEWAYS_PULL: f64 = 1.5 * NANOAMPERE;
+
+pub fn lateral_inhibition() -> World {
+    let mut sheet = Sheet::new();
+    NeuronDisplay {
+        voltage: true,
+        firing_rate: true,
+    }
+    .set_in(&mut sheet.world);
+    sheet.text(
+        "A pencil pressing on the skin pushes hardest under its tip. \
+         The current sources stand for the pressure on five spots of skin, \
+         strongest in the middle.",
+    );
+    let up = sheet.row(17.0) - 0.5;
+    let spacing = WIDTH / PRESSURE.len() as f32;
+    let right_of = |index: usize| spacing * (index as f32 + 0.5);
+    let skin: Vec<Entity> = (0..PRESSURE.len())
+        .map(|index| sheet.add(Element::ExcitatoryNeuron, right_of(index), up + 3.5))
+        .collect();
+    let partners: Vec<Entity> = (0..PRESSURE.len())
+        .map(|index| sheet.add(Element::InhibitoryNeuron, right_of(index), up - 1.5))
+        .collect();
+    let outputs: Vec<Entity> = (0..PRESSURE.len())
+        .map(|index| sheet.add(Element::ExcitatoryNeuron, right_of(index), up - 6.5))
+        .collect();
+    for (index, &pressure) in PRESSURE.iter().enumerate() {
+        sheet.current(
+            skin[index],
+            pressure * NANOAMPERE,
+            right_of(index),
+            up + 8.0,
+        );
+        sheet.synapse(skin[index], outputs[index], 3.0 * NANOAMPERE);
+        sheet.synapse(skin[index], partners[index], 3.0 * NANOAMPERE);
+        for neighbour in [index.wrapping_sub(1), index + 1] {
+            if neighbour < PRESSURE.len() {
+                sheet.synapse(partners[index], outputs[neighbour], SIDEWAYS_PULL);
+            }
+        }
+    }
+    sheet.text(
+        "Each sensory neuron passes its spikes to the output neuron below it, \
+         and through an inhibitory neuron it holds back the outputs next to it. \
+         The glow under each neuron shows how often it fires. \
+         The middle output stands out much more than the middle of the skin.",
+    );
+    sheet.text(
+        "This is called lateral inhibition, and it makes it easier to tell where the pencil is. \
+         Select a current source and change its current to press somewhere else.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -515,6 +571,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("feedback_loops.neuronify", feedback_loops()),
         ("disinhibition.neuronify", disinhibition()),
         ("feedback_inhibition.neuronify", feedback_inhibition()),
+        ("lateral_inhibition.neuronify", lateral_inhibition()),
     ]
 }
 
