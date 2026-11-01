@@ -1,6 +1,6 @@
 # Run `trunk serve --port <port>` in this directory,
 # then open http://localhost:<port>/ for the app
-# or http://localhost:<port>/?file=examples/leaky.nfy for a single file.
+# or http://localhost:<port>/?file=examples/tutorial/2_leaks.neuronify for a single file.
 # Add `--address 0.0.0.0` to reach it from other devices on the network, such as a phone.
 
 [build]

@@ -5,23 +5,23 @@ use crate::simulation::{lif_step, run_headless, SpikeRecord};
 
 const EMPTY_NFY: &str = r#"{"nodes": [], "edges": []}"#;
 
-const TUTORIAL_1_INTRO_NFY: &str = include_str!("../../examples/tutorial_1_intro.nfy");
+const TUTORIAL_1_INTRO_NFY: &str = include_str!("fixtures/tutorial_1_intro.nfy");
 
-const TWO_NEURON_OSCILLATOR_NFY: &str = include_str!("../../examples/two_neuron_oscillator.nfy");
+const TWO_NEURON_OSCILLATOR_NFY: &str = include_str!("fixtures/two_neuron_oscillator.nfy");
 
-const LEAKY_NFY: &str = include_str!("../../examples/leaky.nfy");
+const LEAKY_NFY: &str = include_str!("fixtures/leaky.nfy");
 
-const ADAPTATION_NFY: &str = include_str!("../../examples/adaptation.nfy");
+const ADAPTATION_NFY: &str = include_str!("fixtures/adaptation.nfy");
 
-const BURST_NFY: &str = include_str!("../../examples/burst.nfy");
+const BURST_NFY: &str = include_str!("fixtures/burst.nfy");
 
-const INHIBITORY_NFY: &str = include_str!("../../examples/inhibitory.nfy");
+const INHIBITORY_NFY: &str = include_str!("fixtures/inhibitory.nfy");
 
-const TUTORIAL_2_CIRCUITS_NFY: &str = include_str!("../../examples/tutorial_2_circuits.nfy");
+const TUTORIAL_2_CIRCUITS_NFY: &str = include_str!("fixtures/tutorial_2_circuits.nfy");
 
-const GENERATORS_NFY: &str = include_str!("../../examples/generators.nfy");
+const GENERATORS_NFY: &str = include_str!("fixtures/generators.nfy");
 
-const LATERAL_INHIBITION_1_NFY: &str = include_str!("../../examples/lateral_inhibition_1.nfy");
+const LATERAL_INHIBITION_1_NFY: &str = include_str!("fixtures/lateral_inhibition_1.nfy");
 
 #[test]
 fn test_parse_empty() {
@@ -683,7 +683,7 @@ fn spike_detectors_keep_their_rows_time_range_and_size() {
 
 #[test]
 fn rate_plots_keep_their_window_smoothing_and_range() {
-    let sim = parse_legacy_nfy(include_str!("../../examples/types_of_inhibition.nfy")).unwrap();
+    let sim = parse_legacy_nfy(include_str!("fixtures/types_of_inhibition.nfy")).unwrap();
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
     let plots: Vec<(hecs::Entity, crate::measurement::firing_rate::RatePlot)> = world
@@ -726,7 +726,7 @@ fn loudspeakers_play_the_closest_sound_for_each_neuron_wired_to_them() {
 #[test]
 fn retinas_become_visual_inputs_with_their_receptive_fields() {
     use crate::measurement::visual_input::{ReceptiveField, VisualInput};
-    let sim = parse_legacy_nfy(include_str!("../../examples/visualInput.nfy")).unwrap();
+    let sim = parse_legacy_nfy(include_str!("fixtures/visualInput.nfy")).unwrap();
     let mut world = hecs::World::new();
     let entities = spawn_legacy_simulation(&mut world, &sim);
     let edge = world.get::<&VisualInput>(entities[0]).unwrap().clone();
@@ -759,7 +759,7 @@ fn retinas_become_visual_inputs_with_their_receptive_fields() {
 
 #[test]
 fn a_visual_input_drives_the_neuron_it_connects_to() {
-    let sim = parse_legacy_nfy(include_str!("../../examples/visualInput.nfy")).unwrap();
+    let sim = parse_legacy_nfy(include_str!("fixtures/visualInput.nfy")).unwrap();
     let mut world = hecs::World::new();
     let entities = spawn_legacy_simulation(&mut world, &sim);
     let spikes = run_headless(&mut world, 20_000, 0.0001);
@@ -772,8 +772,8 @@ fn a_visual_input_drives_the_neuron_it_connects_to() {
 }
 
 fn bundled_neuronify_1_files() -> Vec<(String, String)> {
-    let examples = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
-    let mut files: Vec<(String, String)> = std::fs::read_dir(examples)
+    let fixtures = concat!(env!("CARGO_MANIFEST_DIR"), "/src/legacy/fixtures");
+    let mut files: Vec<(String, String)> = std::fs::read_dir(fixtures)
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension().is_some_and(|extension| extension == "nfy"))
@@ -803,7 +803,7 @@ fn converted(world: &hecs::World, entity: hecs::Entity) -> bool {
 #[test]
 fn every_bundled_neuronify_1_file_loads_with_nothing_dropped() {
     let files = bundled_neuronify_1_files();
-    assert_eq!(files.len(), 24);
+    assert_eq!(files.len(), 23);
     for (name, json) in files {
         let sim = parse_legacy_nfy(&json).unwrap();
         let mut world = hecs::World::new();

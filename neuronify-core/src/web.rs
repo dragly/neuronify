@@ -1,5 +1,5 @@
 //! Files in the browser: loading one named in the page URL, as in
-//! `index.html?file=examples/leaky.nfy`, loading one the user picks,
+//! `index.html?file=examples/tutorial/2_leaks.neuronify`, loading one the user picks,
 //! and downloading or sharing a save.
 //! Also hides the loading screen of `index.html` once there is something to show.
 //!

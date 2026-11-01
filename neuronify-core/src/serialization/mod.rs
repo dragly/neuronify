@@ -173,7 +173,7 @@ mod tests {
     use std::any::TypeId;
     use std::collections::BTreeMap;
 
-    const LEAKY_NFY: &str = include_str!("../../examples/leaky.nfy");
+    const LEAKY_NFY: &str = include_str!("../legacy/fixtures/leaky.nfy");
     const FIXTURE_TIME: f64 = 2.5;
     const FIXTURE_SPEED: f64 = 0.5;
 
@@ -418,19 +418,19 @@ mod tests {
     /// spawned the way the editor tools spawn them.
     fn fixture_world_of_version_9() -> World {
         let examples = [
-            include_str!("../../examples/adaptation.nfy"),
-            include_str!("../../examples/burst.nfy"),
-            include_str!("../../examples/disinhibition.nfy"),
-            include_str!("../../examples/frPlot.nfy"),
-            include_str!("../../examples/generators.nfy"),
-            include_str!("../../examples/if_response.nfy"),
-            include_str!("../../examples/inhibitory.nfy"),
-            include_str!("../../examples/input_summation.nfy"),
-            include_str!("../../examples/lateral_inhibition.nfy"),
-            include_str!("../../examples/leaky.nfy"),
-            include_str!("../../examples/tutorial_1_intro.nfy"),
-            include_str!("../../examples/two_neuron_oscillator.nfy"),
-            include_str!("../../examples/visualInput.nfy"),
+            include_str!("../legacy/fixtures/adaptation.nfy"),
+            include_str!("../legacy/fixtures/burst.nfy"),
+            include_str!("../legacy/fixtures/disinhibition.nfy"),
+            include_str!("../legacy/fixtures/frPlot.nfy"),
+            include_str!("../legacy/fixtures/generators.nfy"),
+            include_str!("../legacy/fixtures/if_response.nfy"),
+            include_str!("../legacy/fixtures/inhibitory.nfy"),
+            include_str!("../legacy/fixtures/input_summation.nfy"),
+            include_str!("../legacy/fixtures/lateral_inhibition.nfy"),
+            include_str!("../legacy/fixtures/leaky.nfy"),
+            include_str!("../legacy/fixtures/tutorial_1_intro.nfy"),
+            include_str!("../legacy/fixtures/two_neuron_oscillator.nfy"),
+            include_str!("../legacy/fixtures/visualInput.nfy"),
         ];
         let mut world = World::new();
         for example in examples {
