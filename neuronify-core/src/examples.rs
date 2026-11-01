@@ -193,7 +193,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Disinhibition",
                 description: "Holding back the neuron that holds back the output \
                     lets the output fire.",
-                contents: legacy!("disinhibition.nfy"),
+                contents: saved!("disinhibition.neuronify"),
             },
             Example {
                 name: "Feedback inhibition",
