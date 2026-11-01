@@ -142,7 +142,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
             Example {
                 name: "Bursting",
                 description: "One press makes this neuron fire a quick series of spikes.",
-                contents: legacy!("burst.nfy"),
+                contents: saved!("bursting.neuronify"),
             },
             Example {
                 name: "Firing threshold",
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn examples_are_found_by_their_file() {
-        assert_eq!(find("burst.nfy").unwrap().name, "Bursting");
+        assert_eq!(find("bursting.neuronify").unwrap().name, "Bursting");
         assert!(find("missing.nfy").is_none());
     }
 
