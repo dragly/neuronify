@@ -8,15 +8,11 @@ use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{
-    spawn_axon_cable, spawn_cable, spawn_compartment, spawn_connection, spawn_loudspeaker,
-    spawn_loudspeaker_wire, spawn_rate_plot, spawn_rate_plot_wire, spawn_spike_detector,
-    spawn_spike_detector_wire, spawn_voltmeter, spawn_voltmeter_wire, Element,
+    spawn_axon_cable, spawn_cable, spawn_compartment, spawn_connection, Element, Meter,
 };
-use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::visual_input::{visual_input_frame, VisualInput};
-use crate::measurement::voltmeter::{measured, Corner, Frame, VoltageSeries, Voltmeter};
+use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{fire_nearby, touch_sensor_near, Touch};
@@ -33,7 +29,6 @@ mod tests;
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const COMPARTMENT_REACH: f32 = NODE_RADIUS;
-const VOLTMETER_REACH: f32 = NODE_RADIUS;
 const CORNER_REACH: f32 = 1.0;
 const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
@@ -69,6 +64,8 @@ pub struct Editor {
     adjusting: Option<Snapshot>,
     history: History,
     edited: bool,
+    shortcut: Option<Meter>,
+    wired: bool,
 }
 
 impl Editor {
@@ -84,7 +81,7 @@ impl Editor {
         let drawn = match self.tool {
             Tool::StaticConnection => true,
             Tool::Place(_) => !self.grows_axon(world, connection.from),
-            _ => false,
+            tool => tool.meter().is_some(),
         };
         let clear_of_source = connection.start.distance(connection.end) > TERMINAL_INSET;
         (drawn && clear_of_source).then_some((connection.start, connection.end))
@@ -115,6 +112,9 @@ impl Editor {
         let Some(connection) = &self.connection_tool else {
             return;
         };
+        if self.shortcut.is_some() {
+            return;
+        }
         if self.pressed == Some(connection.from) {
             self.offer = Some(ConnectionOffer {
                 from: connection.from,
@@ -129,7 +129,7 @@ impl Editor {
             self.offer = None;
             return None;
         }
-        if !matches!(self.tool, Tool::Place(_)) {
+        if !matches!(self.tool, Tool::Place(_)) && self.tool.meter().is_none() {
             return None;
         }
         let (_, start) = self.offered_source(world)?;
@@ -172,9 +172,15 @@ impl Editor {
 
     pub fn lift(&mut self, world: &mut World) {
         if let Some(axon) = &self.connection_tool {
-            let target = foreign_compartment_near(world, axon.from, axon.end);
-            if let Some(target) = target.filter(|&target| !connected(world, axon.from, target)) {
-                lay_axon(world, axon.from, target, true, self.myelinates());
+            let measuring = self.tool.meter().is_some() || Meter::of(world, axon.from).is_some();
+            if !measuring {
+                let target = foreign_compartment_near(world, axon.from, axon.end);
+                if let Some(target) = target.filter(|&target| !connected(world, axon.from, target))
+                {
+                    lay_axon(world, axon.from, target, true, self.myelinates());
+                }
+            } else if let Some(meter) = self.shortcut.filter(|_| !self.wired) {
+                measure_where_released(world, meter, axon);
             }
         }
         if let Some(held) = self.held {
@@ -197,6 +203,8 @@ impl Editor {
         self.dragging = None;
         self.held = None;
         self.resizing = None;
+        self.shortcut = None;
+        self.wired = false;
         if let Some(recording) = self.recording.take() {
             self.edited |= self.history.record(recording, world);
         }
@@ -316,10 +324,9 @@ impl Editor {
             Tool::View => return self.view(world, position),
             Tool::Edit => return self.select(world, recording, position),
             Tool::Place(element) => self.add(world, recording, element, position, shift_down),
-            Tool::Voltmeter => self.place_voltmeter(world, position),
-            Tool::SpikeDetector => self.place_spike_detector(world, position),
-            Tool::RatePlot => self.place_rate_plot(world, position),
-            Tool::Loudspeaker => self.place_loudspeaker(world, position),
+            Tool::Voltmeter | Tool::SpikeDetector | Tool::RatePlot | Tool::Loudspeaker => {
+                self.measure(world, position)
+            }
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon | Tool::MyelinatedAxon => self.grow_axon(world, position, shift_down),
             Tool::Erase => erase(world, recording, position),
@@ -517,69 +524,74 @@ impl Editor {
         self.previous_creation = Some(entity);
     }
 
-    fn place_voltmeter(&mut self, world: &mut World, position: Vec3) {
-        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
+    fn measure(&mut self, world: &mut World, position: Vec3) {
+        let Some(meter) = self.tool.meter() else {
+            return;
+        };
+        if self.connection_tool.is_some() {
+            self.extend_wire(world, position);
             return;
         }
-        let target = first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
-            .or_else(|| first_within::<Compartment>(world, position, VOLTMETER_REACH));
-        if let Some((target, target_position)) = target {
-            self.previous_creation =
-                Some(spawn_voltmeter(world, target, target_position + Vec3::X));
+        if self.pressed.is_some() {
+            return;
         }
+        let pulled = self.pull_offer(world, position);
+        self.offer = None;
+        if let Some(wire) = pulled.or_else(|| start_wire(world, meter, position)) {
+            if Meter::of(world, wire.from).is_none() {
+                self.shortcut = Some(meter);
+            }
+            self.pressed = Some(wire.from);
+            self.connection_tool = Some(wire);
+            return;
+        }
+        let placed = spawn_meter_centered(world, meter, position);
+        self.previous_creation = Some(placed);
+        self.connection_tool = Some(ConnectionTool {
+            start: position,
+            end: position,
+            from: placed,
+        });
     }
 
-    fn place_spike_detector(&mut self, world: &mut World, position: Vec3) {
-        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
+    fn extend_wire(&mut self, world: &mut World, position: Vec3) {
+        let Some(connection) = &mut self.connection_tool else {
+            return;
+        };
+        connection.end = position;
+        let from = connection.from;
+        if self.wired {
             return;
         }
-        if let Some((target, target_position)) =
-            first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
-        {
-            self.previous_creation = Some(spawn_spike_detector(
-                world,
-                target,
-                target_position + Vec3::X,
-            ));
-        }
-    }
-
-    fn place_rate_plot(&mut self, world: &mut World, position: Vec3) {
-        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
-            return;
-        }
-        if let Some((target, target_position)) =
-            first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
-        {
-            self.previous_creation =
-                Some(spawn_rate_plot(world, target, target_position + Vec3::X));
-        }
-    }
-
-    fn place_loudspeaker(&mut self, world: &mut World, position: Vec3) {
-        if self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT) {
-            return;
-        }
-        if let Some((target, target_position)) =
-            first_within::<LeakyNeuron>(world, position, VOLTMETER_REACH)
-        {
-            self.previous_creation = Some(spawn_loudspeaker(
-                world,
-                target,
-                target_position + SPEAKER_OFFSET,
-            ));
-        }
+        self.wired = match Meter::of(world, from) {
+            Some(meter) => measure_neuron_near(world, meter, from, position),
+            None => measure_with_meter_at(world, from, position),
+        };
     }
 
     fn connect(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
         if self.connection_tool.is_some() {
             self.extend_connection(world, position, shift_down);
         } else {
-            self.connection_tool = start_connection(sources(world), position);
+            self.connection_tool = start_connection(sources(world), position).or_else(|| {
+                meter_at(world, position).map(|(meter, start)| ConnectionTool {
+                    start,
+                    end: position,
+                    from: meter,
+                })
+            });
         }
     }
 
     fn extend_connection(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
+        let from_meter = self
+            .connection_tool
+            .as_ref()
+            .is_some_and(|connection| Meter::of(world, connection.from).is_some());
+        if from_meter {
+            self.extend_wire(world, position);
+            return;
+        }
         let Some(connection) = &mut self.connection_tool else {
             return;
         };
@@ -743,12 +755,6 @@ fn positions_with<T: Component>(world: &World) -> Vec<(Entity, Vec3)> {
         .collect()
 }
 
-fn first_within<T: Component>(world: &World, position: Vec3, reach: f32) -> Option<(Entity, Vec3)> {
-    positions_with::<T>(world)
-        .into_iter()
-        .find(|(_, candidate)| candidate.distance(position) < reach)
-}
-
 fn nearest_within(
     candidates: Vec<(Entity, Vec3)>,
     position: Vec3,
@@ -829,34 +835,91 @@ fn start_connection(sources: Vec<(Entity, Vec3)>, position: Vec3) -> Option<Conn
     })
 }
 
-fn measure_with_meter_at(world: &mut World, source: Entity, position: Vec3) {
+fn meter_at(world: &World, position: Vec3) -> Option<(Entity, Vec3)> {
     let framed = meter_frames(world)
         .into_iter()
-        .find(|(_, _, frame)| frame.contains(position))
-        .map(|(meter, _, _)| meter);
-    let speakers = positions_with::<Loudspeaker>(world);
-    let Some(meter) = framed.or_else(|| {
-        nearest_within(speakers, position, CONNECTION_REACH).map(|(speaker, _)| speaker)
-    }) else {
+        .find(|&(meter, _, frame)| frame.contains(position) && Meter::of(world, meter).is_some())
+        .map(|(meter, _, _)| (meter, position));
+    framed.or_else(|| {
+        nearest_within(
+            positions_with::<Loudspeaker>(world),
+            position,
+            CONNECTION_REACH,
+        )
+    })
+}
+
+fn measurable_near(world: &World, meter: Meter, position: Vec3) -> Option<(Entity, Vec3)> {
+    let candidates = [
+        positions_with::<LeakyNeuron>(world),
+        positions_with::<Compartment>(world),
+    ]
+    .concat()
+    .into_iter()
+    .filter(|&(target, _)| meter.measures(world, target))
+    .collect();
+    nearest_within(candidates, position, CONNECTION_REACH)
+}
+
+fn start_wire(world: &World, meter: Meter, position: Vec3) -> Option<ConnectionTool> {
+    meter_at(world, position)
+        .or_else(|| measurable_near(world, meter, position))
+        .map(|(from, start)| ConnectionTool {
+            start,
+            end: position,
+            from,
+        })
+}
+
+fn measures(world: &World, meter: Entity, target: Entity) -> bool {
+    measured(world, meter)
+        .iter()
+        .any(|&(_, measured)| measured == target)
+}
+
+fn measure_neuron_near(world: &mut World, meter: Meter, entity: Entity, position: Vec3) -> bool {
+    let Some((target, _)) = measurable_near(world, meter, position) else {
+        return false;
+    };
+    if measures(world, entity, target) {
+        return false;
+    }
+    meter.wire(world, target, entity);
+    true
+}
+
+fn measure_with_meter_at(world: &mut World, source: Entity, position: Vec3) -> bool {
+    let Some((entity, _)) = meter_at(world, position) else {
+        return false;
+    };
+    let Some(meter) = Meter::of(world, entity) else {
+        return false;
+    };
+    if measures(world, entity, source) || !meter.measures(world, source) {
+        return false;
+    }
+    meter.wire(world, source, entity);
+    true
+}
+
+fn spawn_meter_centered(world: &mut World, meter: Meter, position: Vec3) -> Entity {
+    let width = meter.size().map_or(0.0, |size| size.width);
+    meter.spawn(world, position - Vec3::Z * width * 0.5)
+}
+
+fn measure_where_released(world: &mut World, meter: Meter, wire: &ConnectionTool) {
+    let placed = if wire.end.distance(wire.start) < CONNECTION_REACH {
+        let offset = match meter {
+            Meter::Loudspeaker => SPEAKER_OFFSET,
+            _ => Vec3::X,
+        };
+        meter.spawn(world, wire.start + offset)
+    } else if entity_at(world, &meter_frames(world), wire.end).is_none() {
+        spawn_meter_centered(world, meter, wire.end)
+    } else {
         return;
     };
-    if measured(world, meter)
-        .iter()
-        .any(|&(_, target)| target == source)
-    {
-        return;
-    }
-    let neuron = world.satisfies::<&LeakyNeuron>(source).unwrap_or(false);
-    let compartment = world.satisfies::<&Compartment>(source).unwrap_or(false);
-    if world.satisfies::<&Voltmeter>(meter).unwrap_or(false) && (neuron || compartment) {
-        spawn_voltmeter_wire(world, source, meter);
-    } else if world.satisfies::<&SpikeDetector>(meter).unwrap_or(false) && neuron {
-        spawn_spike_detector_wire(world, source, meter);
-    } else if world.satisfies::<&RatePlot>(meter).unwrap_or(false) && neuron {
-        spawn_rate_plot_wire(world, source, meter);
-    } else if world.satisfies::<&Loudspeaker>(meter).unwrap_or(false) && neuron {
-        spawn_loudspeaker_wire(world, source, meter);
-    }
+    meter.wire(world, wire.from, placed);
 }
 
 fn connect_to_neuron_near(
@@ -1044,21 +1107,8 @@ fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
 }
 
 fn take_connections(world: &mut World, recording: &mut Recording, connections: Vec<Entity>) {
-    let meters: HashSet<Entity> = connections
-        .iter()
-        .filter(|&&wire| world.satisfies::<&VoltageSeries>(wire).unwrap_or(false))
-        .filter_map(|&wire| {
-            let wire = world.get::<&Connection>(wire).ok()?;
-            (!world.contains(wire.from)).then_some(wire.to)
-        })
-        .collect();
     for connection in connections {
         recording.take(world, connection);
-    }
-    for meter in meters {
-        if world.contains(meter) && measured(world, meter).is_empty() {
-            recording.take(world, meter);
-        }
     }
 }
 

@@ -217,25 +217,80 @@ pub fn spawn_axon_cable(world: &mut World, from: Entity, to: Entity, myelinated:
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Meter {
+    Voltmeter,
+    SpikeDetector,
+    RatePlot,
+    Loudspeaker,
+}
+
+impl Meter {
+    pub fn of(world: &World, entity: Entity) -> Option<Meter> {
+        let has = |meter: Meter| match meter {
+            Meter::Voltmeter => world.satisfies::<&Voltmeter>(entity),
+            Meter::SpikeDetector => world.satisfies::<&SpikeDetector>(entity),
+            Meter::RatePlot => world.satisfies::<&RatePlot>(entity),
+            Meter::Loudspeaker => world.satisfies::<&Loudspeaker>(entity),
+        };
+        [
+            Meter::Voltmeter,
+            Meter::SpikeDetector,
+            Meter::RatePlot,
+            Meter::Loudspeaker,
+        ]
+        .into_iter()
+        .find(|&meter| has(meter).unwrap_or(false))
+    }
+
+    pub fn size(self) -> Option<MeterSize> {
+        match self {
+            Meter::Voltmeter => Some(MeterSize::default()),
+            Meter::SpikeDetector => Some(SpikeDetector::size()),
+            Meter::RatePlot => Some(RatePlot::size()),
+            Meter::Loudspeaker => None,
+        }
+    }
+
+    pub fn spawn(self, world: &mut World, position: Vec3) -> Entity {
+        let meter = world.spawn((Position { position }, Deletable {}));
+        if let Some(size) = self.size() {
+            world.insert_one(meter, size).unwrap();
+        }
+        match self {
+            Meter::Voltmeter => world.insert(meter, (Voltmeter {}, VoltmeterRange::default())),
+            Meter::SpikeDetector => world.insert_one(meter, SpikeDetector::default()),
+            Meter::RatePlot => world.insert(meter, (RatePlot::default(), RateSeries::default())),
+            Meter::Loudspeaker => world.insert_one(meter, Loudspeaker::default()),
+        }
+        .unwrap();
+        meter
+    }
+
+    pub fn measures(self, world: &World, target: Entity) -> bool {
+        let neuron = world.satisfies::<&LeakyNeuron>(target).unwrap_or(false);
+        let compartment = world.satisfies::<&Compartment>(target).unwrap_or(false);
+        neuron || (self == Meter::Voltmeter && compartment)
+    }
+
+    pub fn wire(self, world: &mut World, target: Entity, meter: Entity) -> Entity {
+        match self {
+            Meter::Voltmeter => spawn_voltmeter_wire(world, target, meter),
+            Meter::SpikeDetector => spawn_spike_detector_wire(world, target, meter),
+            Meter::RatePlot => spawn_rate_plot_wire(world, target, meter),
+            Meter::Loudspeaker => spawn_loudspeaker_wire(world, target, meter),
+        }
+    }
+}
+
 pub fn spawn_voltmeter(world: &mut World, target: Entity, position: Vec3) -> Entity {
-    let voltmeter = world.spawn((
-        Voltmeter {},
-        Position { position },
-        MeterSize::default(),
-        VoltmeterRange::default(),
-        Deletable {},
-    ));
+    let voltmeter = Meter::Voltmeter.spawn(world, position);
     spawn_voltmeter_wire(world, target, voltmeter);
     voltmeter
 }
 
 pub fn spawn_spike_detector(world: &mut World, target: Entity, position: Vec3) -> Entity {
-    let detector = world.spawn((
-        SpikeDetector::default(),
-        Position { position },
-        SpikeDetector::size(),
-        Deletable {},
-    ));
+    let detector = Meter::SpikeDetector.spawn(world, position);
     spawn_spike_detector_wire(world, target, detector);
     detector
 }
@@ -254,13 +309,7 @@ pub fn spawn_spike_detector_wire(world: &mut World, target: Entity, detector: En
 }
 
 pub fn spawn_rate_plot(world: &mut World, target: Entity, position: Vec3) -> Entity {
-    let plot = world.spawn((
-        RatePlot::default(),
-        RateSeries::default(),
-        Position { position },
-        RatePlot::size(),
-        Deletable {},
-    ));
+    let plot = Meter::RatePlot.spawn(world, position);
     spawn_rate_plot_wire(world, target, plot);
     plot
 }
@@ -279,7 +328,7 @@ pub fn spawn_rate_plot_wire(world: &mut World, target: Entity, plot: Entity) -> 
 }
 
 pub fn spawn_loudspeaker(world: &mut World, target: Entity, position: Vec3) -> Entity {
-    let speaker = world.spawn((Loudspeaker::default(), Position { position }, Deletable {}));
+    let speaker = Meter::Loudspeaker.spawn(world, position);
     spawn_loudspeaker_wire(world, target, speaker);
     speaker
 }
