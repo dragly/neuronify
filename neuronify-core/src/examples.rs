@@ -165,7 +165,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Summation",
                 description: "One input is not enough to make the neuron fire, \
                     but several together, or one repeated quickly, are.",
-                contents: legacy!("input_summation.nfy"),
+                contents: saved!("summation.neuronify"),
             },
             Example {
                 name: "Reverberation",

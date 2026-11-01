@@ -219,6 +219,37 @@ fn a_long_refractory_period_caps_the_firing_rate() {
     }
 }
 
+fn output_spikes_after_presses(presses: &[(usize, f64)]) -> usize {
+    let mut experiment = Experiment::new(write_examples::summation());
+    let mut sensors = experiment.sensors_from_left();
+    sensors.sort_by(|a, b| b.x.total_cmp(&a.x));
+    let mut spikes = 0;
+    for &(sensor, wait) in presses {
+        experiment.press(sensors[sensor]);
+        spikes += experiment.spikes_during(wait, "Output");
+    }
+    spikes + experiment.spikes_during(0.1, "Output")
+}
+
+#[test]
+fn one_input_alone_does_not_fire_the_output() {
+    for sensor in 0..3 {
+        assert_eq!(output_spikes_after_presses(&[(sensor, 0.0)]), 0);
+    }
+}
+
+#[test]
+fn two_inputs_close_together_fire_the_output() {
+    assert_eq!(output_spikes_after_presses(&[(0, 0.005), (2, 0.0)]), 1);
+    assert_eq!(output_spikes_after_presses(&[(1, 0.005), (1, 0.0)]), 1);
+}
+
+#[test]
+fn two_inputs_far_apart_leak_away() {
+    assert_eq!(output_spikes_after_presses(&[(0, 0.05), (2, 0.0)]), 0);
+    assert_eq!(output_spikes_after_presses(&[(1, 0.05), (1, 0.0)]), 0);
+}
+
 #[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
