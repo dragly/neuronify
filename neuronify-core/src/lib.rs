@@ -21,6 +21,8 @@ pub mod simulation;
 pub mod tools;
 #[cfg(target_arch = "wasm32")]
 mod web;
+#[cfg(not(target_arch = "wasm32"))]
+mod window;
 
 pub use app::Neuronify;
 pub use components::*;
