@@ -149,7 +149,6 @@ impl SceneRenderer {
             &application.rendering_descriptor(),
             &application.device,
             &halo_buffer,
-            &theme.palette(),
         )
         .unwrap();
         configure_lighting(application, theme);
@@ -186,13 +185,6 @@ impl SceneRenderer {
                 &application.rendering_descriptor(),
                 &application.device,
                 theme.palette().floor,
-            )
-            .unwrap();
-            self.halos = create_halos(
-                &application.rendering_descriptor(),
-                &application.device,
-                &self.halo_buffer,
-                &theme.palette(),
             )
             .unwrap();
             set_theme_lighting(application, theme);
@@ -233,11 +225,10 @@ impl SceneRenderer {
             .update(&application.device, &application.queue, &scene.rings);
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
-        self.halo_buffer.update(
-            &application.device,
-            &application.queue,
-            &collect_halos(world),
-        );
+        let mut halos = collect_halos(world, &palette);
+        halos.append(&mut scene.transmitter);
+        self.halo_buffer
+            .update(&application.device, &application.queue, &halos);
         self.notes.update(application, world);
         self.gauges.update(application, world, &palette);
     }

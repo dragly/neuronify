@@ -16,6 +16,7 @@ pub mod scene_renderer;
 pub mod selection;
 pub mod shapes;
 pub mod spheres;
+pub mod transmitter;
 pub mod voltmeter;
 
 pub use bounds::{canvas_bounds, circuit_bounds, Bounds};

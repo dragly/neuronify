@@ -6,7 +6,7 @@ use visula_derive::Instance;
 #[derive(Clone, Copy, Debug, Instance, Pod, Zeroable)]
 pub struct HaloData {
     pub position: Vec3,
-    pub _padding: f32,
+    pub radius: f32,
     pub color: Vec4,
 }
 

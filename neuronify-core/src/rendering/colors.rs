@@ -139,6 +139,7 @@ pub struct Palette {
     pub neutral: Vec3,
     pub selection: Vec3,
     pub halo: f32,
+    pub transmitter: f32,
 }
 
 impl Theme {
@@ -157,6 +158,7 @@ impl Theme {
                 neutral: crust(),
                 selection: srgb(137, 180, 250),
                 halo: 0.6,
+                transmitter: 0.6,
             },
             Theme::Light => Palette {
                 floor: srgb(236, 239, 245),
@@ -171,6 +173,7 @@ impl Theme {
                 neutral: srgb(140, 143, 161),
                 selection: srgb(30, 102, 245),
                 halo: 1.0,
+                transmitter: 0.8,
             },
         }
     }

@@ -52,7 +52,6 @@ pub fn create_halos(
     rendering_descriptor: &RenderingDescriptor,
     device: &wgpu::Device,
     halo_buffer: &InstanceBuffer<HaloData>,
-    palette: &Palette,
 ) -> Result<MeshPipeline, visula_core::ShaderError> {
     let halo = halo_buffer.instance();
     let lit = Expression::InputColor.directional_lit().shared();
@@ -60,7 +59,7 @@ pub fn create_halos(
         rendering_descriptor,
         &MeshGeometry {
             position: halo.position,
-            scale: Vec3::splat(HALO_RADIUS).into(),
+            scale: halo.radius * Vec3::ONE,
             color: halo.color,
             ..Default::default()
         },
@@ -69,9 +68,9 @@ pub fn create_halos(
                 x: lit.dot(Expression::from(Vec4::X)).into(),
                 y: lit.dot(Expression::from(Vec4::Y)).into(),
                 z: lit.dot(Expression::from(Vec4::Z)).into(),
-                w: Expression::UV
-                    .dot(Expression::from(Vec2::new(palette.halo, 0.0)))
-                    .into(),
+                w: (Expression::UV.dot(Expression::from(Vec2::X))
+                    * lit.dot(Expression::from(Vec4::W)))
+                .into(),
             },
         },
         MeshBlending::Transparent,
@@ -85,7 +84,7 @@ fn firing_rate_level(firing_rate: &FiringRate) -> f32 {
     (1.0 - (-firing_rate.rate / FIRING_RATE_SCALE).exp()) as f32
 }
 
-pub fn collect_halos(world: &hecs::World) -> Vec<HaloData> {
+pub fn collect_halos(world: &hecs::World, palette: &Palette) -> Vec<HaloData> {
     if !NeuronDisplay::of(world).firing_rate {
         return Vec::new();
     }
@@ -99,8 +98,8 @@ pub fn collect_halos(world: &hecs::World) -> Vec<HaloData> {
         .into_iter()
         .map(|(level, position)| HaloData {
             position: Vec3::new(position.x, FLOOR_HEIGHT + HALO_LIFT, position.z),
-            _padding: 0.0,
-            color: firing_rate_color(level).extend(1.0),
+            radius: HALO_RADIUS,
+            color: firing_rate_color(level).extend(palette.halo),
         })
         .collect()
 }
@@ -108,6 +107,7 @@ pub fn collect_halos(world: &hecs::World) -> Vec<HaloData> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rendering::Theme;
 
     fn world_with_rates(rates: &[f64], shown: bool) -> hecs::World {
         let mut world = hecs::World::new();
@@ -127,24 +127,28 @@ mod tests {
         world
     }
 
+    fn halos_of(world: &hecs::World) -> Vec<HaloData> {
+        collect_halos(world, &Theme::Dark.palette())
+    }
+
     #[test]
     fn halos_show_only_when_turned_on() {
-        assert!(collect_halos(&world_with_rates(&[50.0], false)).is_empty());
-        let halos = collect_halos(&world_with_rates(&[50.0], true));
+        assert!(halos_of(&world_with_rates(&[50.0], false)).is_empty());
+        let halos = halos_of(&world_with_rates(&[50.0], true));
         assert_eq!(halos.len(), 1);
         assert!(halos[0].position.y > FLOOR_HEIGHT);
     }
 
     #[test]
     fn silent_neurons_get_a_purple_halo() {
-        let halos = collect_halos(&world_with_rates(&[0.0], true));
+        let halos = halos_of(&world_with_rates(&[0.0], true));
         let color = halos[0].color;
         assert!(color.z > color.x.max(color.y));
     }
 
     #[test]
     fn busier_halos_are_drawn_on_top() {
-        let halos = collect_halos(&world_with_rates(&[150.0, 0.0, 50.0], true));
+        let halos = halos_of(&world_with_rates(&[150.0, 0.0, 50.0], true));
         let order: Vec<f32> = halos.iter().map(|halo| halo.position.x).collect();
         assert_eq!(order, [1.0, 2.0, 0.0]);
     }
