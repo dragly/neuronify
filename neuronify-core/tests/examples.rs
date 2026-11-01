@@ -10,7 +10,9 @@ use neuronify_core::constants::{DEFAULT_SPEED, LIF_DT, SIMULATION_STEPS_PER_SECO
 use neuronify_core::measurement::visual_input::VisualInput;
 use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::simulation::{fire_nearby, step_simulation};
-use neuronify_core::{Label, LeakyDynamics, NoteSize, Position, TouchSensor, NODE_RADIUS};
+use neuronify_core::{
+    CurrentClamp, Label, LeakyDynamics, NoteSize, Position, TouchSensor, NODE_RADIUS,
+};
 
 const PHONE_WIDTH: f32 = 27.0;
 
@@ -199,6 +201,22 @@ fn only_currents_above_the_threshold_fire_and_stronger_ones_fire_faster() {
     assert_eq!(weak, 0);
     assert!((10..40).contains(&medium), "{medium} spikes");
     assert!(strong > 2 * medium, "{strong} and {medium} spikes");
+}
+
+#[test]
+fn a_long_refractory_period_caps_the_firing_rate() {
+    for (nanoamperes, short_at_least, long_below) in [(1.0, 100, 70), (5.0, 250, 100)] {
+        let mut experiment = Experiment::new(write_examples::refractory_period());
+        for (_, source) in experiment.world.query_mut::<&mut CurrentClamp>() {
+            source.current_output = nanoamperes * 1e-9;
+        }
+        let neurons = [experiment.neuron("2 ms"), experiment.neuron("10 ms")];
+        let [short, long] = experiment.spike_counts(1.0, &neurons)[..] else {
+            unreachable!()
+        };
+        assert!(short >= short_at_least, "{nanoamperes} nA: {short} spikes");
+        assert!(long < long_below, "{nanoamperes} nA: {long} spikes");
+    }
 }
 
 #[test]
