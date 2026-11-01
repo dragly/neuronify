@@ -1285,7 +1285,7 @@ mod tests {
         let mut landing = LandingScreen::new(true);
         let category = EXAMPLE_CATEGORIES
             .iter()
-            .position(|category| category.name == "Circuits")
+            .position(|category| category.name == "Getting started")
             .unwrap();
         let names: Vec<&str> = EXAMPLE_CATEGORIES[category]
             .examples
@@ -1299,8 +1299,11 @@ mod tests {
                 .filter(|name| text_position(output, name).is_some())
                 .count()
         };
-        let last_preview_runs =
-            |landing: &LandingScreen| landing.examples_by_category[category][10].preview.on_screen;
+        let last_preview_runs = |landing: &LandingScreen| {
+            landing.examples_by_category[category][names.len() - 1]
+                .preview
+                .on_screen
+        };
         let primary = PointerButton::Primary;
 
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
@@ -1309,13 +1312,13 @@ mod tests {
             &context,
             &mut landing,
             &mut library,
-            see_all_of(&output, "Circuits"),
+            see_all_of(&output, "Getting started"),
             primary,
         );
         assert!(choice.is_none());
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
         assert_eq!(shown(&output), names.len());
-        assert!(text_position(&output, "Getting started").is_none());
+        assert!(text_position(&output, "Neurons").is_none());
         assert!(last_preview_runs(&landing));
 
         let (_, choice) = run_with(&context, &mut landing, &mut library, vec![escape()]);
@@ -1328,7 +1331,7 @@ mod tests {
             &context,
             &mut landing,
             &mut library,
-            see_all_of(&output, "Circuits"),
+            see_all_of(&output, "Getting started"),
             primary,
         );
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
@@ -1341,13 +1344,13 @@ mod tests {
             primary,
         );
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
-        assert!(text_position(&output, "Getting started").is_some());
+        assert!(text_position(&output, "Neurons").is_some());
 
         click(
             &context,
             &mut landing,
             &mut library,
-            see_all_of(&output, "Circuits"),
+            see_all_of(&output, "Getting started"),
             primary,
         );
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
@@ -1365,7 +1368,7 @@ mod tests {
         let mut landing = LandingScreen::new(false);
         let category = EXAMPLE_CATEGORIES
             .iter()
-            .position(|category| category.name == "Circuits")
+            .position(|category| category.name == "Getting started")
             .unwrap();
         let examples = EXAMPLE_CATEGORIES[category].examples;
         let first_hidden = CARDS_PER_SECTION - 1;

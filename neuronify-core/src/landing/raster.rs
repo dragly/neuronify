@@ -120,9 +120,10 @@ fn edge_crossing_at_row(p: Vec2, q: Vec2, y: f32) -> Option<f32> {
 mod tests {
     use super::*;
     use crate::elements::Element;
-    use crate::examples::EXAMPLE_CATEGORIES;
     use crate::landing::preview::THUMBNAIL_PADDING;
     use crate::landing::top_down::{egui_color_from_linear, top_down_shapes};
+    use crate::legacy::convert::spawn_legacy_simulation;
+    use crate::legacy::parse_legacy_nfy;
     use crate::rendering::{circuit_bounds, colors, Theme};
     use chrono::Duration;
     use egui::{pos2, vec2, Pos2, Rect, Vec2};
@@ -176,13 +177,10 @@ mod tests {
 
     #[test]
     fn still_preview_drawn_over_several_frames_matches_one_drawn_at_once() {
-        let world = EXAMPLE_CATEGORIES
-            .iter()
-            .flat_map(|c| c.examples)
-            .find(|e| e.name == "Lateral Inhibition 2")
-            .unwrap()
-            .spawn()
-            .unwrap();
+        let simulation =
+            parse_legacy_nfy(include_str!("../legacy/fixtures/lateral_inhibition_2.nfy")).unwrap();
+        let mut world = World::new();
+        spawn_legacy_simulation(&mut world, &simulation);
         let size = vec2(200.0, 120.0);
         let mut at_once = unfinished_drawing(&world, size, 1.0);
         assert!(at_once.fill_triangles_until([200, 120], Utc::now() + Duration::days(1)));

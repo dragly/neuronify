@@ -134,28 +134,27 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
         name: "Neurons",
         examples: &[
             Example {
-                name: "Leaky",
-                description: "A leaky integrate-and-fire neuron relaxes back to rest \
-                    unless something keeps driving it.",
-                contents: legacy!("leaky.nfy"),
-            },
-            Example {
-                name: "Inhibitory",
-                description: "An excitatory and an inhibitory neuron \
-                    push the membrane potential of a third neuron up and down.",
-                contents: legacy!("inhibitory.nfy"),
-            },
-            Example {
                 name: "Adaptation",
-                description: "An adaptive neuron gets harder to excite every time it fires, \
-                    and recovers after a while.",
+                description: "This neuron gets harder to excite each time it fires, \
+                    and recovers after a rest.",
                 contents: legacy!("adaptation.nfy"),
             },
             Example {
-                name: "Burst",
-                description: "A burst neuron keeps firing for a while \
-                    after a single touch.",
+                name: "Bursting",
+                description: "One press makes this neuron fire a quick series of spikes.",
                 contents: legacy!("burst.nfy"),
+            },
+            Example {
+                name: "Firing threshold",
+                description: "A steady current makes a neuron fire only when it is strong enough, \
+                    and faster the stronger it gets.",
+                contents: legacy!("if_response.nfy"),
+            },
+            Example {
+                name: "Refractory period",
+                description: "After each spike a neuron needs a short rest, \
+                    which limits how fast it can fire.",
+                contents: legacy!("refractory_period.nfy"),
             },
         ],
     },
@@ -163,72 +162,53 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
         name: "Circuits",
         examples: &[
             Example {
-                name: "Input Summation",
-                description: "Inputs add up across neurons and over time \
-                    before the output neuron reaches threshold.",
+                name: "Summation",
+                description: "One input is not enough to make the neuron fire, \
+                    but several together, or one repeated quickly, are.",
                 contents: legacy!("input_summation.nfy"),
             },
             Example {
-                name: "Prolonged Activity",
-                description: "One touch sets off a loop of neurons \
-                    that keeps firing until an adaptive neuron stops it.",
+                name: "Reverberation",
+                description: "One press keeps a loop of neurons firing until one of them tires.",
                 contents: legacy!("prolonged_activity.nfy"),
             },
             Example {
-                name: "Disinhibition",
-                description: "Inhibiting an inhibitory neuron \
-                    releases the brake on the output neuron.",
-                contents: legacy!("disinhibition.nfy"),
-            },
-            Example {
-                name: "Recurrent Inhibition",
-                description: "An inhibitory neuron feeds back into the chain \
-                    and lowers the output firing rate.",
-                contents: legacy!("recurrent_inhibition.nfy"),
-            },
-            Example {
-                name: "Reciprocal Inhibition",
-                description: "Two pathways inhibit each other so that only one fires. \
-                    Touch a sensor to switch sides.",
-                contents: legacy!("reciprocal_inhibition.nfy"),
-            },
-            Example {
-                name: "Lateral Inhibition",
-                description: "The output neuron fires when the sensors are touched \
-                    from right to left, but not from left to right.",
-                contents: legacy!("lateral_inhibition.nfy"),
-            },
-            Example {
-                name: "Lateral Inhibition 1",
-                description: "The center neuron inhibits its neighbors, \
-                    so the center dominates the output.",
-                contents: legacy!("lateral_inhibition_1.nfy"),
-            },
-            Example {
-                name: "Lateral Inhibition 2",
-                description: "Every neuron inhibits its neighbors, \
-                    which sharpens the difference between center and surround.",
-                contents: legacy!("lateral_inhibition_2.nfy"),
-            },
-            Example {
-                name: "Two Neuron Oscillator",
-                description: "Two neurons wired to each other, \
-                    each driven by a constant current.",
+                name: "Half-center oscillator",
+                description: "Two neurons that hold each other back take turns firing, \
+                    like the circuits behind walking.",
                 contents: legacy!("two_neuron_oscillator.nfy"),
             },
             Example {
-                name: "Rhythm Transformation",
-                description: "Regular spike trains change frequency \
-                    as they pass through synapses.",
+                name: "Feedback loops",
+                description: "Feedback that excites makes a rhythm faster, \
+                    and feedback that inhibits makes it slower.",
                 contents: legacy!("rythm_transformation.nfy"),
             },
+        ],
+    },
+    ExampleCategory {
+        name: "Inhibition",
+        examples: &[
             Example {
-                name: "Types of Inhibition",
-                description: "Presynaptic and postsynaptic inhibition side by side.",
-                contents: legacy!("types_of_inhibition.nfy"),
+                name: "Disinhibition",
+                description: "Holding back the neuron that holds back the output \
+                    lets the output fire.",
+                contents: legacy!("disinhibition.nfy"),
             },
             Example {
-                name: "Adaptive Inhibition",
+                name: "Feedback inhibition",
+                description: "The output wakes an inhibitory neuron \
+                    that reaches back and slows the chain down.",
+                contents: legacy!("recurrent_inhibition.nfy"),
+            },
+            Example {
+                name: "Lateral inhibition",
+                description: "Neighbors hold each other back, \
+                    so the strongest touch stands out clearly.",
+                contents: legacy!("lateral_inhibition_2.nfy"),
+            },
+            Example {
+                name: "Adaptive inhibition",
                 description: "An inhibitory neuron adapts, \
                     and the neuron it holds back fires more and more.",
                 contents: saved!("adaptive_inhibition.neuronify"),
@@ -236,49 +216,25 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
         ],
     },
     ExampleCategory {
-        name: "Inputs and Meters",
+        name: "Senses",
         examples: &[
             Example {
-                name: "Generators",
-                description: "A steady current, an alternating current, regular spikes \
-                    and random spikes each drive a neuron, \
-                    and a spike detector shows when each one fires.",
-                contents: legacy!("generators.nfy"),
-            },
-            Example {
-                name: "Firing Rate Plot",
-                description: "A spike generator drives a neuron, \
-                    and a plot shows how often the neuron fires.",
-                contents: legacy!("frPlot.nfy"),
-            },
-            Example {
-                name: "Visual Input",
-                description: "Two visual inputs look at a moving bar \
-                    through different receptive fields and drive one neuron.",
+                name: "Receptive fields",
+                description: "Two visual inputs watch a moving bar, \
+                    each looking for its own pattern, and drive one neuron.",
                 contents: legacy!("visualInput.nfy"),
             },
             Example {
-                name: "Listening to a Neuron",
+                name: "Listening to a neuron",
                 description: "Hear a neuron click as stripes of light pass \
                     at the angle it prefers.",
                 contents: saved!("listening_to_a_neuron.neuronify"),
             },
-        ],
-    },
-    ExampleCategory {
-        name: "Textbook",
-        examples: &[
             Example {
-                name: "IF Response",
-                description: "An integrate-and-fire neuron fires faster with more current, \
-                    once the current is enough to reach threshold.",
-                contents: legacy!("if_response.nfy"),
-            },
-            Example {
-                name: "Refractory Period",
-                description: "The refractory period caps the firing rate \
-                    as the input current grows.",
-                contents: legacy!("refractory_period.nfy"),
+                name: "Direction selectivity",
+                description: "The output fires when you press the sensors from right to left, \
+                    but not from left to right.",
+                contents: legacy!("lateral_inhibition.nfy"),
             },
         ],
     },
@@ -291,7 +247,7 @@ mod tests {
 
     #[test]
     fn examples_are_found_by_their_file() {
-        assert_eq!(find("leaky.nfy").unwrap().name, "Leaky");
+        assert_eq!(find("burst.nfy").unwrap().name, "Bursting");
         assert!(find("missing.nfy").is_none());
     }
 
