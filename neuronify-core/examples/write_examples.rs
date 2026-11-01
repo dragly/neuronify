@@ -559,6 +559,61 @@ pub fn lateral_inhibition() -> World {
     sheet.world
 }
 
+const DIRECTION_RELAY_TO_OUTPUT: f64 = 1.2 * NANOAMPERE;
+
+pub fn direction_selectivity() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "The five touch sensors stand for light falling on a row of cells in the eye. \
+         Press them one after another from right to left, and then from left to right.",
+    );
+    let up = sheet.row(23.0) + 0.5;
+    let columns = 5;
+    let spacing = WIDTH / columns as f32;
+    let right_of = |index: usize| spacing * (index as f32 + 0.5);
+    let output = sheet.add(Element::ExcitatoryNeuron, 7.5, up - 10.0);
+    sheet.label(output, "Output");
+    let mut relays = Vec::new();
+    let mut partners = Vec::new();
+    for index in 0..columns {
+        let sensor = sheet.add(Element::TouchSensor, right_of(index), up + 10.0);
+        let receptor = sheet.add(Element::ExcitatoryNeuron, right_of(index), up + 5.5);
+        let partner = sheet.add(Element::InhibitoryNeuron, right_of(index) + 1.6, up + 1.0);
+        let relay = sheet.add(Element::ExcitatoryNeuron, right_of(index), up - 3.5);
+        sheet.connect(sensor, receptor);
+        let partner_synapse = sheet.synapse(receptor, partner, 3.0 * NANOAMPERE);
+        sheet
+            .world
+            .get::<&mut CurrentSynapse>(partner_synapse)
+            .unwrap()
+            .delay = MILLISECOND;
+        let relay_synapse = sheet.synapse(receptor, relay, 3.0 * NANOAMPERE);
+        sheet
+            .world
+            .get::<&mut CurrentSynapse>(relay_synapse)
+            .unwrap()
+            .delay = 2.0 * MILLISECOND;
+        sheet.synapse(relay, output, DIRECTION_RELAY_TO_OUTPUT);
+        relays.push(relay);
+        partners.push(partner);
+    }
+    for index in 0..columns - 1 {
+        let synapse = sheet.lasting_inhibition(partners[index], relays[index + 1]);
+        sheet.world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = 20.0 * MILLISECOND;
+    }
+    sheet.voltmeter(output, 11.0, up - 10.0, 13.0, 4.0);
+    sheet.text(
+        "From right to left, the spikes reach the output close together and it fires. \
+         From left to right, each inhibitory neuron has already silenced \
+         the next neuron in the middle row, so the output stays quiet.",
+    );
+    sheet.text(
+        "Cells in the retina sense movement in one direction like this. \
+         This is called direction selectivity.",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -572,6 +627,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("disinhibition.neuronify", disinhibition()),
         ("feedback_inhibition.neuronify", feedback_inhibition()),
         ("lateral_inhibition.neuronify", lateral_inhibition()),
+        ("direction_selectivity.neuronify", direction_selectivity()),
     ]
 }
 

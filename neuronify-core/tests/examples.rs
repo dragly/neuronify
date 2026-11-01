@@ -343,6 +343,43 @@ fn lateral_inhibition_sharpens_the_middle_of_the_touch() {
     assert_eq!(outputs[1], outputs[3]);
 }
 
+fn output_spikes_after_a_sweep(right_to_left: bool, interval: f64) -> usize {
+    let mut experiment = Experiment::new(write_examples::direction_selectivity());
+    let mut sensors = experiment.sensors_from_left();
+    if right_to_left {
+        sensors.reverse();
+    }
+    let presses: usize = sensors
+        .into_iter()
+        .map(|sensor| experiment.presses(sensor, 1, interval, "Output"))
+        .sum();
+    presses + experiment.spikes_during(0.1, "Output")
+}
+
+#[test]
+fn the_output_fires_for_a_sweep_from_right_to_left_but_not_from_left_to_right() {
+    for interval in [0.001, 0.003, 0.008, 0.015] {
+        assert!(
+            output_spikes_after_a_sweep(true, interval) >= 1,
+            "{interval} s"
+        );
+        assert_eq!(
+            output_spikes_after_a_sweep(false, interval),
+            0,
+            "{interval} s"
+        );
+    }
+}
+
+#[test]
+fn a_single_press_does_not_fire_the_direction_detector() {
+    let mut experiment = Experiment::new(write_examples::direction_selectivity());
+    for sensor in experiment.sensors_from_left() {
+        experiment.press(sensor);
+        assert_eq!(experiment.spikes_during(0.1, "Output"), 0);
+    }
+}
+
 #[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
