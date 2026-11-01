@@ -1,6 +1,7 @@
 use super::*;
-use crate::elements::spawn_synapse;
-use crate::measurement::voltmeter::VoltageSeries;
+use crate::elements::{spawn_synapse, spawn_voltmeter};
+use crate::measurement::spike_detector::SpikeDetector;
+use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::simulation::step_simulation;
 use std::collections::HashMap;
 
@@ -565,6 +566,38 @@ fn placing_an_input_offers_no_connection() {
 }
 
 #[test]
+fn tapping_a_meter_with_a_meter_tool_offers_a_wire_to_pull_onto_a_neuron() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(10.0, 10.0));
+    let speaker = Meter::Loudspeaker.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Loudspeaker);
+    editor.edit(&mut world, at(0.3, 0.0), false);
+    editor.offer_connection(10.0);
+    editor.lift(&mut world);
+    let hint = editor.connection_hint(&world, 11.0).unwrap();
+    assert_eq!(hint.string[0], at(0.0, 0.0));
+    assert!(measured(&world, speaker).is_empty());
+
+    drag(&mut editor, &mut world, &[at(3.0, 0.0), at(10.0, 10.0)]);
+    assert!(connected(&world, target, speaker));
+    assert_eq!(editor_meters(&world).len(), 1);
+}
+
+#[test]
+fn placing_a_meter_or_tapping_a_neuron_with_a_meter_tool_offers_no_wire() {
+    for press in [at(20.0, 20.0), at(0.3, 0.0)] {
+        let mut world = World::new();
+        neuron(&mut world, at(0.0, 0.0));
+        let mut editor = editor(Tool::Voltmeter);
+        editor.edit(&mut world, press, false);
+        editor.offer_connection(10.0);
+        editor.lift(&mut world);
+        assert_eq!(editor.connection_hint(&world, 11.0), None, "{press}");
+        assert_eq!(editor_meters(&world).len(), 1, "{press}");
+    }
+}
+
+#[test]
 fn pulling_the_offered_connection_connects() {
     let mut world = World::new();
     let (a, mut editor) = offer_from_neuron(&mut world);
@@ -648,7 +681,7 @@ fn erasing_removes_what_is_under_the_pointer() {
 }
 
 #[test]
-fn erasing_the_selection_takes_its_dendrites_connections_and_voltmeters() {
+fn erasing_the_selection_takes_its_dendrites_and_connections_but_leaves_its_voltmeter() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.compartments = true;
@@ -656,7 +689,7 @@ fn erasing_the_selection_takes_its_dendrites_connections_and_voltmeters() {
     let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
     let b = neuron(&mut world, at(0.0, 10.0));
     spawn_synapse(&mut world, a, b);
-    spawn_voltmeter(&mut world, a, at(1.0, 0.0));
+    let voltmeter = spawn_voltmeter(&mut world, a, at(1.0, 0.0));
 
     editor.selection = Some(a);
     editor.erase_selection(&mut world);
@@ -665,17 +698,14 @@ fn erasing_the_selection_takes_its_dendrites_connections_and_voltmeters() {
     assert_eq!(count::<LeakyNeuron>(&world), 1);
     assert_eq!(count::<Dendrite>(&world), 0);
     assert_eq!(count::<Connection>(&world), 0);
-    assert_eq!(count::<Voltmeter>(&world), 0);
+    assert!(world.contains(voltmeter));
 }
 
 #[test]
-fn voltmeters_attach_to_the_neuron_under_the_pointer() {
+fn tapping_a_neuron_with_a_meter_tool_places_a_meter_beside_it_measuring_it() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Voltmeter);
-    drag(&mut editor, &mut world, &[at(10.0, 10.0)]);
-    assert_eq!(count::<Voltmeter>(&world), 0);
-
     drag(&mut editor, &mut world, &[at(0.5, 0.0)]);
     let (voltmeter, position) = world
         .query::<&Position>()
@@ -686,6 +716,118 @@ fn voltmeters_attach_to_the_neuron_under_the_pointer() {
         .unwrap();
     assert_eq!(position, at(1.0, 0.0));
     assert!(connected(&world, target, voltmeter));
+}
+
+#[test]
+fn a_meter_tool_places_an_empty_meter_centered_where_it_is_pressed() {
+    for tool in [
+        Tool::Voltmeter,
+        Tool::SpikeDetector,
+        Tool::RatePlot,
+        Tool::Loudspeaker,
+    ] {
+        let mut world = World::new();
+        neuron(&mut world, at(0.0, 0.0));
+        let mut editor = editor(tool);
+        drag(&mut editor, &mut world, &[at(10.0, 10.0)]);
+        let meter = editor_meters(&world);
+        assert_eq!(meter.len(), 1, "{tool:?}");
+        let (meter, _) = meter[0];
+        assert!(measured(&world, meter).is_empty(), "{tool:?}");
+        match Frame::of(&world, meter) {
+            Some(frame) => assert!(frame.point(0.5, 0.5).distance(at(10.0, 10.0)) < 1e-4),
+            None => assert_eq!(
+                world.get::<&Position>(meter).unwrap().position,
+                at(10.0, 10.0)
+            ),
+        }
+    }
+}
+
+fn editor_meters(world: &World) -> Vec<(Entity, Meter)> {
+    world
+        .iter()
+        .filter_map(|entity| Some((entity.entity(), Meter::of(world, entity.entity())?)))
+        .collect()
+}
+
+#[test]
+fn dragging_from_a_meter_to_a_neuron_measures_it_once_per_drag() {
+    for tool in [Tool::Loudspeaker, Tool::StaticConnection] {
+        let mut world = World::new();
+        let first = neuron(&mut world, at(0.0, 0.0));
+        let second = neuron(&mut world, at(0.0, -10.0));
+        let speaker = Meter::Loudspeaker.spawn(&mut world, at(10.0, 0.0));
+        let mut editor = editor(tool);
+        drag(
+            &mut editor,
+            &mut world,
+            &[at(10.0, 0.3), at(5.0, 0.0), at(0.3, 0.0), at(0.0, -9.8)],
+        );
+        let wired: Vec<Entity> = measured(&world, speaker)
+            .into_iter()
+            .map(|(_, target)| target)
+            .collect();
+        assert_eq!(wired, [first], "{tool:?}");
+
+        drag(&mut editor, &mut world, &[at(10.0, 0.3), at(0.0, -9.8)]);
+        let wired: Vec<Entity> = measured(&world, speaker)
+            .into_iter()
+            .map(|(_, target)| target)
+            .collect();
+        assert_eq!(wired, [first, second], "{tool:?}");
+        assert_eq!(editor_meters(&world).len(), 1, "{tool:?}");
+        assert_eq!(count::<CurrentSynapse>(&world), 0, "{tool:?}");
+    }
+}
+
+#[test]
+fn dragging_from_a_neuron_onto_a_meter_with_a_meter_tool_measures_it_without_a_new_meter() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let voltmeter = Meter::Voltmeter.spawn(&mut world, at(0.0, 10.0));
+    let inside = Frame::of(&world, voltmeter).unwrap().point(0.5, 0.5);
+    let mut editor = editor(Tool::SpikeDetector);
+    drag(
+        &mut editor,
+        &mut world,
+        &[at(0.3, 0.0), at(0.0, 5.0), inside],
+    );
+    assert!(connected(&world, target, voltmeter));
+    assert_eq!(editor_meters(&world).len(), 1);
+}
+
+#[test]
+fn dragging_from_a_neuron_to_an_empty_spot_places_the_meter_there() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::RatePlot);
+    drag(
+        &mut editor,
+        &mut world,
+        &[at(0.3, 0.0), at(0.0, 8.0), at(0.0, 15.0)],
+    );
+    let meters = editor_meters(&world);
+    assert_eq!(meters.len(), 1);
+    let (plot, _) = meters[0];
+    assert!(connected(&world, target, plot));
+    let center = Frame::of(&world, plot).unwrap().point(0.5, 0.5);
+    assert!(center.distance(at(0.0, 15.0)) < 1e-4);
+}
+
+#[test]
+fn placing_a_meter_and_dragging_on_to_a_neuron_measures_it() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Voltmeter);
+    drag(
+        &mut editor,
+        &mut world,
+        &[at(0.0, 15.0), at(0.0, 8.0), at(0.0, 0.5)],
+    );
+    let meters = editor_meters(&world);
+    assert_eq!(meters.len(), 1);
+    assert!(connected(&world, target, meters[0].0));
 }
 
 #[test]
@@ -1411,7 +1553,8 @@ fn undo_brings_back_what_was_erased() {
 
     editor.tool = Tool::Erase;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
-    assert_eq!(entities(&world), HashSet::from([b]));
+    assert_eq!(entities(&world), HashSet::from([b, voltmeter]));
+    assert!(measured(&world, voltmeter).is_empty());
     assert!(editor.can_undo());
 
     editor.undo(&mut world);
@@ -1435,7 +1578,8 @@ fn undo_reconnects_elements_whose_place_was_taken() {
     editor.undo(&mut world);
     editor.undo(&mut world);
 
-    let (restored, _) = first_within::<LeakyNeuron>(&world, at(0.0, 10.0), 0.1).unwrap();
+    let (restored, _) =
+        nearest_within(positions_with::<LeakyNeuron>(&world), at(0.0, 10.0), 0.1).unwrap();
     assert!(world.contains(c) && restored != c);
     assert!(connected(&world, a, restored));
     assert_eq!(count::<LeakyNeuron>(&world), 3);
@@ -1710,7 +1854,7 @@ fn connecting_a_neuron_onto_a_voltmeter_adds_its_plot_once() {
 }
 
 #[test]
-fn erasing_one_of_two_measured_neurons_keeps_the_voltmeter() {
+fn erasing_measured_neurons_keeps_the_voltmeter() {
     let mut world = World::new();
     let first = neuron(&mut world, at(0.0, 0.0));
     let second = neuron(&mut world, at(0.0, -10.0));
@@ -1724,7 +1868,8 @@ fn erasing_one_of_two_measured_neurons_keeps_the_voltmeter() {
 
     editor.selection = Some(second);
     editor.erase_selection(&mut world);
-    assert!(!world.contains(voltmeter));
+    assert!(world.contains(voltmeter));
+    assert!(measured(&world, voltmeter).is_empty());
 }
 
 #[test]

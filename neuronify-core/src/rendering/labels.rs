@@ -9,6 +9,7 @@ use visula::{
 use crate::components::{Label, MeterSize, Position};
 use crate::constants::NODE_RADIUS;
 use crate::measurement::firing_rate::RatePlot;
+use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::notes::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
@@ -18,11 +19,13 @@ pub const LABEL_GAP: f32 = 0.3;
 const TITLE_HEIGHT: f32 = 0.55;
 const TITLE_INSET: f32 = 0.25;
 const SINGLE_LINE: f32 = 1000.0;
+pub const EMPTY_METER_HINT: &str = "Connect a neuron";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 enum Placement {
     Above,
     TopLeft,
+    Center,
 }
 
 fn text_color(theme: Theme) -> Vec4 {
@@ -139,6 +142,21 @@ fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
             placed.push((label.text.clone(), Placement::TopLeft, corner));
         }
     }
+    for (meter, (position, size)) in world.query::<(&Position, &MeterSize)>().iter() {
+        if measured(world, meter).is_empty() {
+            let center = Frame::new(position.position, size).point(0.5, 0.5);
+            placed.push((EMPTY_METER_HINT.to_string(), Placement::Center, center));
+        }
+    }
+    for (speaker, position) in world.query::<&Position>().with::<&Loudspeaker>().iter() {
+        if measured(world, speaker).is_empty() {
+            placed.push((
+                EMPTY_METER_HINT.to_string(),
+                Placement::Above,
+                position.position,
+            ));
+        }
+    }
     placed
 }
 
@@ -149,7 +167,7 @@ fn lay_out(
 ) -> TessellatedGeometry<GlyphVertex> {
     let height = match placement {
         Placement::Above => LABEL_HEIGHT,
-        Placement::TopLeft => TITLE_HEIGHT,
+        Placement::TopLeft | Placement::Center => TITLE_HEIGHT,
     };
     match atlas.lay_out_wrapped(text, height, SINGLE_LINE) {
         Ok(wrapped) => match placement {
@@ -159,6 +177,11 @@ fn lay_out(
                 NODE_RADIUS + LABEL_GAP + wrapped.height,
             ),
             Placement::TopLeft => shifted(&wrapped.geometry, TITLE_INSET, -TITLE_INSET * 0.5),
+            Placement::Center => shifted(
+                &wrapped.geometry,
+                -wrapped.width * 0.5,
+                wrapped.height * 0.5,
+            ),
         },
         Err(e) => {
             log::error!("Failed to lay out a label: {e:?}");
@@ -170,7 +193,7 @@ fn lay_out(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_voltmeter, spawn_voltmeter_wire, Element};
+    use crate::elements::{spawn_voltmeter, spawn_voltmeter_wire, Element, Meter};
     use hecs::World;
 
     fn label(world: &mut World, entity: hecs::Entity, text: &str) {
@@ -233,5 +256,44 @@ mod tests {
                 ),
             ]
         );
+    }
+
+    #[test]
+    fn an_empty_meter_asks_for_a_neuron_until_it_measures_one() {
+        let mut world = World::new();
+        let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        let voltmeter = Meter::Voltmeter.spawn(&mut world, Vec3::X * 10.0);
+        let speaker = Meter::Loudspeaker.spawn(&mut world, Vec3::Z * 10.0);
+        let center = Frame::of(&world, voltmeter).unwrap().point(0.5, 0.5);
+        let hints = |world: &World| -> Vec<(Placement, Vec3)> {
+            placed_labels(world)
+                .into_iter()
+                .filter(|(text, _, _)| text == EMPTY_METER_HINT)
+                .map(|(_, placement, at)| (placement, at))
+                .collect()
+        };
+        assert_eq!(
+            hints(&world),
+            [
+                (Placement::Center, center),
+                (Placement::Above, Vec3::Z * 10.0)
+            ]
+        );
+
+        spawn_voltmeter_wire(&mut world, neuron, voltmeter);
+        Meter::Loudspeaker.wire(&mut world, neuron, speaker);
+        assert!(hints(&world).is_empty());
+    }
+
+    #[test]
+    fn the_empty_meter_hint_is_centred() {
+        let mut atlas = GlyphAtlas::new(NOTE_FONT_DATA).unwrap();
+        let laid = lay_out(&mut atlas, EMPTY_METER_HINT, Placement::Center);
+        let xs = laid.vertices.iter().map(|v| v.position[0]);
+        let ys = laid.vertices.iter().map(|v| v.position[1]);
+        let (left, right) = xs.fold((f32::MAX, f32::MIN), |(a, b), x| (a.min(x), b.max(x)));
+        let (low, high) = ys.fold((f32::MAX, f32::MIN), |(a, b), y| (a.min(y), b.max(y)));
+        assert!((left + right).abs() < 0.1, "{left} {right}");
+        assert!((low + high).abs() < 0.2, "{low} {high}");
     }
 }

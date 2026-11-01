@@ -3,7 +3,7 @@ use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
 use crate::constants::STIMULATION_CURRENT;
-use crate::elements::Element;
+use crate::elements::{Element, Meter};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Tool {
@@ -111,6 +111,16 @@ impl Tool {
 
     pub fn edits(self) -> bool {
         self != Tool::View
+    }
+
+    pub fn meter(self) -> Option<Meter> {
+        match self {
+            Tool::Voltmeter => Some(Meter::Voltmeter),
+            Tool::SpikeDetector => Some(Meter::SpikeDetector),
+            Tool::RatePlot => Some(Meter::RatePlot),
+            Tool::Loudspeaker => Some(Meter::Loudspeaker),
+            _ => None,
+        }
     }
 }
 
