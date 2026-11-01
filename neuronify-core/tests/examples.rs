@@ -307,6 +307,18 @@ fn excitatory_feedback_speeds_the_output_up_and_inhibitory_feedback_slows_it_dow
 }
 
 #[test]
+fn the_brake_holds_the_output_until_a_press_releases_it() {
+    let mut experiment = Experiment::new(write_examples::disinhibition());
+    let sensor = experiment.sensors_from_left()[0];
+    experiment.spikes_during(0.05, "Output");
+    assert_eq!(experiment.spikes_during(0.3, "Output"), 0);
+    experiment.press(sensor);
+    assert!(experiment.spikes_during(0.2, "Output") >= 4);
+    experiment.spikes_during(0.3, "Output");
+    assert_eq!(experiment.spikes_during(0.3, "Output"), 0);
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world

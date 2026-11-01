@@ -444,6 +444,38 @@ pub fn feedback_loops() -> World {
     sheet.world
 }
 
+pub fn disinhibition() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "The output neuron gets a steady current and would fire on its own, \
+         but the inhibitory neuron next to it holds it back like a brake.",
+    );
+    let up = sheet.row(8.0) + 1.5;
+    let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+    let release = sheet.add(Element::BurstNeuron, 5.5, up);
+    let brake = sheet.add(Element::InhibitoryNeuron, 10.0, up);
+    let output = sheet.add(Element::ExcitatoryNeuron, 14.5, up);
+    sheet.inhibitory(release);
+    sheet.label(brake, "Brake");
+    sheet.label(output, "Output");
+    sheet.current(brake, 0.3 * NANOAMPERE, 10.0, up - 4.5);
+    sheet.current(output, 0.3 * NANOAMPERE, 14.5, up - 4.5);
+    sheet.connect(sensor, release);
+    sheet.lasting_inhibition(release, brake);
+    sheet.lasting_inhibition(brake, output);
+    sheet.voltmeter(output, 17.0, up, 7.0, 4.0);
+    sheet.text(
+        "Press the touch sensor. Its neuron fires a burst that holds back the brake, \
+         and the output fires for a while. Holding back a neuron that holds back another \
+         is called disinhibition.",
+    );
+    sheet.text(
+        "Disinhibition is common in the brain. In the cortex it helps with learning \
+         (Letzkus, Wolff and Lüthi, Neuron, 2015).",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -454,6 +486,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("reverberation.neuronify", reverberation()),
         ("half_center_oscillator.neuronify", half_center_oscillator()),
         ("feedback_loops.neuronify", feedback_loops()),
+        ("disinhibition.neuronify", disinhibition()),
     ]
 }
 
