@@ -64,7 +64,7 @@ pub fn listening_to_a_neuron() -> World {
     world
 }
 
-pub fn tiring_inhibition() -> World {
+pub fn adaptive_inhibition() -> World {
     let mut world = World::new();
     let drive = Element::RegularSpikeGenerator.spawn(&mut world, at(0.0, -12.0));
     world
@@ -73,20 +73,20 @@ pub fn tiring_inhibition() -> World {
         .frequency = 50.0;
     let output = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, output, "Output");
-    let tiring = Element::AdaptiveNeuron.spawn(&mut world, at(5.0, -5.0));
-    *world.get::<&mut NeuronType>(tiring).unwrap() = NeuronType::Inhibitory;
-    *world.get::<&mut AdaptationCurrent>(tiring).unwrap() = AdaptationCurrent {
+    let adaptive = Element::AdaptiveNeuron.spawn(&mut world, at(5.0, -5.0));
+    *world.get::<&mut NeuronType>(adaptive).unwrap() = NeuronType::Inhibitory;
+    *world.get::<&mut AdaptationCurrent>(adaptive).unwrap() = AdaptationCurrent {
         adaptation: 3.5e-9,
         time_constant: 2.0,
         ..Default::default()
     };
-    label(&mut world, tiring, "Tiring");
+    label(&mut world, adaptive, "Adaptive");
     let noise = Element::PoissonGenerator.spawn(&mut world, at(-6.0, -6.0));
     *world.get::<&mut NeuronType>(noise).unwrap() = NeuronType::Inhibitory;
     world.get::<&mut PoissonGenerator>(noise).unwrap().rate = 30.0;
     synapse(&mut world, drive, output, 3e-9);
-    synapse(&mut world, drive, tiring, 6e-9);
-    synapse(&mut world, tiring, output, 6e-9);
+    synapse(&mut world, drive, adaptive, 6e-9);
+    synapse(&mut world, adaptive, output, 6e-9);
     synapse(&mut world, noise, output, 2e-9);
     spawn_voltmeter(&mut world, output, at(-2.0, 6.0));
     spawn_rate_plot(&mut world, output, at(-9.0, 6.0));
@@ -95,8 +95,8 @@ pub fn tiring_inhibition() -> World {
         at(12.5, 2.0),
         22.0,
         5.0,
-        "The tiring neuron is inhibitory and adapts. At first it holds the output back, \
-         but as it tires the output fires more and more. The random spikes from the \
+        "The adaptive neuron is inhibitory. At first it holds the output back, \
+         but as it adapts the output fires more and more. The random spikes from the \
          inhibitory generator below keep the output from firing like clockwork.",
     );
     world
@@ -106,7 +106,7 @@ fn main() {
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
     for (file, world) in [
         ("listening_to_a_neuron.neuronify", listening_to_a_neuron()),
-        ("tiring_inhibition.neuronify", tiring_inhibition()),
+        ("adaptive_inhibition.neuronify", adaptive_inhibition()),
     ] {
         let bytes = neuronify_core::serialization::save(&world, 0.0, DEFAULT_SPEED).unwrap();
         std::fs::write(format!("{folder}/{file}"), bytes).unwrap();
