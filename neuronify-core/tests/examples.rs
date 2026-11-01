@@ -106,6 +106,31 @@ impl Experiment {
         sensors
     }
 
+    fn neurons_from_top(&self) -> Vec<Entity> {
+        let mut neurons: Vec<(Entity, Vec3)> = self
+            .world
+            .query::<&Position>()
+            .with::<&LeakyDynamics>()
+            .iter()
+            .map(|(entity, position)| (entity, position.position))
+            .collect();
+        neurons.sort_by(|a, b| b.1.x.total_cmp(&a.1.x).then(a.1.z.total_cmp(&b.1.z)));
+        neurons.into_iter().map(|(entity, _)| entity).collect()
+    }
+
+    fn spike_counts(&mut self, seconds: f64, neurons: &[Entity]) -> Vec<usize> {
+        let end = self.time + seconds;
+        let mut counts = vec![0; neurons.len()];
+        while self.time < end {
+            step_simulation(&mut self.world, &mut self.time, 1, None);
+            for (count, &neuron) in counts.iter_mut().zip(neurons) {
+                let dynamics = self.world.get::<&LeakyDynamics>(neuron).unwrap();
+                *count += usize::from(dynamics.time_since_fire == 0.0);
+            }
+        }
+        counts
+    }
+
     fn press(&mut self, sensor: Vec3) {
         fire_nearby(&mut self.world, sensor);
     }
@@ -162,6 +187,18 @@ fn one_press_sets_off_a_burst_that_ends_on_its_own() {
     let burst = experiment.spikes_during(0.25, "Bursting");
     assert!((10..40).contains(&burst), "{burst} spikes");
     assert_eq!(experiment.spikes_during(0.3, "Bursting"), 0);
+}
+
+#[test]
+fn only_currents_above_the_threshold_fire_and_stronger_ones_fire_faster() {
+    let mut experiment = Experiment::new(write_examples::firing_threshold());
+    let neurons = experiment.neurons_from_top();
+    let [weak, medium, strong] = experiment.spike_counts(1.0, &neurons)[..] else {
+        panic!("expected three neurons");
+    };
+    assert_eq!(weak, 0);
+    assert!((10..40).contains(&medium), "{medium} spikes");
+    assert!(strong > 2 * medium, "{strong} and {medium} spikes");
 }
 
 #[test]

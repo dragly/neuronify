@@ -148,7 +148,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Firing threshold",
                 description: "A steady current makes a neuron fire only when it is strong enough, \
                     and faster the stronger it gets.",
-                contents: legacy!("if_response.nfy"),
+                contents: saved!("firing_threshold.neuronify"),
             },
             Example {
                 name: "Refractory period",

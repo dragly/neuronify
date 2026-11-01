@@ -10,8 +10,8 @@ use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
-    AdaptationCurrent, Annotation, Connection, CurrentSynapse, Label, MeterSize, NeuronType,
-    NoteSize, PoissonGenerator, RegularSpikeGenerator,
+    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, MeterSize,
+    NeuronType, NoteSize, PoissonGenerator, RegularSpikeGenerator,
 };
 
 const NANOAMPERE: f64 = 1e-9;
@@ -82,6 +82,16 @@ impl Sheet {
             maximum_current * current.tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * 2.0 * MILLISECOND);
         self.world.get::<&mut Connection>(synapse).unwrap().strength = charge.clamp(0.4, 1.5);
         synapse
+    }
+
+    fn current(&mut self, to: Entity, current: f64, right: f32, up: f32) -> Entity {
+        let source = self.add(Element::CurrentSource, right, up);
+        self.world
+            .get::<&mut CurrentClamp>(source)
+            .unwrap()
+            .current_output = current;
+        self.connect(source, to);
+        source
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, width: f32, height: f32) {
@@ -227,10 +237,35 @@ pub fn bursting() -> World {
     sheet.world
 }
 
+pub fn firing_threshold() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text("Each neuron gets a steady current from its source, the weakest at the top.");
+    for current in [0.14, 0.2, 0.4] {
+        let up = sheet.row(4.0);
+        let neuron = sheet.add(Element::ExcitatoryNeuron, 6.5, up);
+        sheet.current(neuron, current * NANOAMPERE, 1.5, up);
+        sheet.voltmeter(neuron, 9.5, up, 14.5, 4.0);
+    }
+    sheet.text(
+        "The weakest current never lifts the top neuron to its threshold at −55 mV, \
+         so it never fires. Above the threshold, a stronger current makes a neuron fire faster.",
+    );
+    sheet.text(
+        "Select a current source and change its current \
+         to find the weakest one that makes the neuron fire.",
+    );
+    sheet.text(
+        "Based on figure 8.5a in Principles of Computational Modelling in Neuroscience \
+         by David Sterratt and others (Cambridge University Press, 2011).",
+    );
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
         ("bursting.neuronify", bursting()),
+        ("firing_threshold.neuronify", firing_threshold()),
     ]
 }
 
