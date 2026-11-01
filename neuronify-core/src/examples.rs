@@ -15,7 +15,7 @@ macro_rules! legacy {
     ($file:literal) => {
         Contents::Legacy {
             file: $file,
-            json: include_str!(concat!("../examples/", $file)),
+            json: include_str!(concat!("legacy/fixtures/", $file)),
         }
     };
 }
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn every_bundled_neuronify_1_file_is_listed() {
+    fn every_bundled_example_file_is_listed() {
         let listed: Vec<&str> = EXAMPLE_CATEGORIES
             .iter()
             .flat_map(|category| category.examples)
@@ -305,9 +305,7 @@ mod tests {
         let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
         for entry in std::fs::read_dir(folder).unwrap() {
             let file = entry.unwrap().file_name().to_string_lossy().into_owned();
-            let example = file.ends_with(".nfy") || file.ends_with(".neuronify");
-            let replaced_by_the_tutorial = file.starts_with("tutorial_");
-            if example && file != "empty.nfy" && !replaced_by_the_tutorial {
+            if file.ends_with(".neuronify") {
                 assert!(listed.contains(&file.as_str()), "{file} is not listed");
             }
         }
