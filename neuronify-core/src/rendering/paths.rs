@@ -34,6 +34,7 @@ pub struct ConnectionPath {
     /// The source inhibits its target, so the path ends in a bar rather than a knob
     pub inhibitory: bool,
     pub terminal_radius: f32,
+    pub terminal_direction: Vec3,
 }
 
 impl ConnectionPath {
@@ -192,10 +193,16 @@ pub fn connection_paths(
                 _ => (CONNECTION_RADIUS * connection.strength as f32).max(0.05),
             };
             let (start_color, end_color) = connection_colors(from, to, &display, palette);
+            let points = bent_line(start, end, bend, trim);
+            let terminal_direction = match &points[..] {
+                [.., before, last] => *last - *before,
+                _ => end - start,
+            }
+            .normalize_or_zero();
             Some((
                 entity,
                 ConnectionPath {
-                    points: bent_line(start, end, bend, trim),
+                    points,
                     radius,
                     start_color,
                     end_color,
@@ -204,6 +211,7 @@ pub fn connection_paths(
                         .get::<&NeuronType>()
                         .is_some_and(|neuron_type| *neuron_type == NeuronType::Inhibitory),
                     terminal_radius,
+                    terminal_direction,
                 },
             ))
         })
@@ -223,6 +231,7 @@ mod tests {
             directional: trim > 0.0,
             inhibitory: false,
             terminal_radius: SOMA_TERMINAL_RADIUS,
+            terminal_direction: Vec3::X,
         }
     }
 

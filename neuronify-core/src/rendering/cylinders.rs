@@ -151,12 +151,12 @@ pub fn collect_cylinders(
             });
         }
         // The bar across the end of an inhibitory synapse, as in ⊣
-        if let (true, [.., before, end]) = (path.directional && path.inhibitory, &path.points[..]) {
-            let direction = (*end - *before).normalize_or_zero();
+        if let (true, Some(&end)) = (path.directional && path.inhibitory, path.points.last()) {
+            let direction = path.terminal_direction;
             cylinders.push(CylinderData {
-                start: *end - direction * 0.12,
+                start: end - direction * 0.12,
                 start_radius: 1.2 * path.terminal_radius,
-                end: *end + direction * 0.12,
+                end: end + direction * 0.12,
                 end_radius: 1.2 * path.terminal_radius,
                 start_color: terminal_color(),
                 end_color: terminal_color(),
@@ -263,6 +263,38 @@ mod tests {
             world.get::<&mut Compartment>(compartment).unwrap().voltage = 30.0 * step as f64;
             from = compartment;
             start = tip;
+        }
+    }
+
+    fn bar_of_inhibitory_ending(distance_to_soma: f32) -> Option<CylinderData> {
+        let palette = Theme::Light.palette();
+        let mut world = hecs::World::new();
+        let soma = world.spawn((
+            Position {
+                position: Vec3::ZERO,
+            },
+            LeakyNeuron::default(),
+        ));
+        let tip = Vec3::new(distance_to_soma, 0.0, 0.0);
+        let tip = spawn_compartment(&mut world, tip, NeuronType::Inhibitory);
+        spawn_cable(&mut world, tip, soma, true);
+        let radii = compartment_radii(&world);
+        let paths = connection_paths(&world, &radii, &palette);
+        collect_cylinders(&world, &radii, &paths, &palette)
+            .into_iter()
+            .find(|cylinder| cylinder.start_color == terminal_color())
+    }
+
+    #[test]
+    fn an_inhibitory_axon_ending_keeps_its_bar_as_its_tip_sways() {
+        for distance in [1.9, 1.99, 2.01, 2.1] {
+            let bar = bar_of_inhibitory_ending(distance)
+                .unwrap_or_else(|| panic!("no bar with the tip {distance} from the soma"));
+            let middle = (bar.start + bar.end) / 2.0;
+            assert!((middle.x - 2.0).abs() < 0.11, "bar at {middle}");
+            assert!((bar.end - bar.start)
+                .normalize()
+                .abs_diff_eq(-Vec3::X, 1e-5));
         }
     }
 
