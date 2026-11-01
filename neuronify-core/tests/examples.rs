@@ -381,6 +381,38 @@ fn a_single_press_does_not_fire_the_direction_detector() {
 }
 
 #[test]
+fn each_neuron_fires_when_the_dot_crosses_its_own_field_and_never_on_the_far_side() {
+    let mut experiment = Experiment::new(write_examples::receptive_fields());
+    let neurons = experiment.neurons_from_top();
+    let mut near = [0, 0];
+    let mut far = [0, 0];
+    for _ in 0..20_000 {
+        let fired = experiment.spike_counts(0.0001, &neurons);
+        let phase = experiment
+            .world
+            .query_mut::<&VisualInput>()
+            .into_iter()
+            .next()
+            .unwrap()
+            .1
+            .phase;
+        for (index, &count) in fired.iter().enumerate() {
+            let crossing = index as f64 * 0.5;
+            let distance = (phase - crossing).rem_euclid(1.0);
+            if distance.min(1.0 - distance) < 0.25 {
+                near[index] += count;
+            } else {
+                far[index] += count;
+            }
+        }
+    }
+    for index in 0..2 {
+        assert!(near[index] >= 15, "{near:?} {far:?}");
+        assert_eq!(far[index], 0, "{near:?} {far:?}");
+    }
+}
+
+#[test]
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world

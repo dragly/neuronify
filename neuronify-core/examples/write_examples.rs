@@ -614,6 +614,45 @@ pub fn direction_selectivity() -> World {
     sheet.world
 }
 
+const RECEPTIVE_FIELD_SENSITIVITY: f64 = 10000.0;
+const RECEPTIVE_FIELD_SYNAPSE: f64 = 2.0 * NANOAMPERE;
+
+pub fn receptive_fields() -> World {
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "Both visual inputs watch the same picture, a dot moving in a circle. \
+         Each one's receptive field, drawn over the picture, is a small spot inside a ring: \
+         light on the spot excites it, and light on the ring holds it back.",
+    );
+    let mut neurons = Vec::new();
+    let mut middle = 0.0;
+    for spot in [0.25, -0.25] {
+        let up = sheet.row(8.0);
+        middle += up / 2.0;
+        let eye = sheet.add(Element::VisualInput, 5.0, up);
+        *sheet.world.get::<&mut VisualInput>(eye).unwrap() = VisualInput {
+            field: ReceptiveField::CenterSurround {
+                off_center: false,
+                x: spot,
+                y: 0.0,
+            },
+            pattern: Pattern::Dot,
+            sensitivity: RECEPTIVE_FIELD_SENSITIVITY,
+            ..Default::default()
+        };
+        let neuron = sheet.add(Element::ExcitatoryNeuron, 12.5, up);
+        sheet.synapse(eye, neuron, RECEPTIVE_FIELD_SYNAPSE);
+        neurons.push(neuron);
+    }
+    sheet.spike_detector(&neurons, 15.5, middle, 8.5, 9.0);
+    sheet.text(
+        "Each neuron fires when the dot crosses its own spot, \
+         so the two take turns. Cells like these in the retina are the first step of seeing.",
+    );
+    sheet.text("Select a visual input to change its picture, its speed or its field.");
+    sheet.world
+}
+
 pub fn sheets() -> Vec<(&'static str, World)> {
     vec![
         ("adaptation.neuronify", adaptation()),
@@ -628,6 +667,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("feedback_inhibition.neuronify", feedback_inhibition()),
         ("lateral_inhibition.neuronify", lateral_inhibition()),
         ("direction_selectivity.neuronify", direction_selectivity()),
+        ("receptive_fields.neuronify", receptive_fields()),
     ]
 }
 

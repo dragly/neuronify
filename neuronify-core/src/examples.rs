@@ -1,23 +1,10 @@
 use hecs::World;
 
 pub enum Contents {
-    Legacy {
-        file: &'static str,
-        json: &'static str,
-    },
     Saved {
         file: &'static str,
         bytes: &'static [u8],
     },
-}
-
-macro_rules! legacy {
-    ($file:literal) => {
-        Contents::Legacy {
-            file: $file,
-            json: include_str!(concat!("legacy/fixtures/", $file)),
-        }
-    };
 }
 
 macro_rules! saved {
@@ -38,18 +25,12 @@ pub struct Example {
 impl Example {
     pub fn file(&self) -> &'static str {
         match self.contents {
-            Contents::Legacy { file, .. } | Contents::Saved { file, .. } => file,
+            Contents::Saved { file, .. } => file,
         }
     }
 
     pub fn spawn(&self) -> Result<World, String> {
         match self.contents {
-            Contents::Legacy { json, .. } => {
-                let simulation = crate::legacy::parse_legacy_nfy(json)?;
-                let mut world = World::new();
-                crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
-                Ok(world)
-            }
             Contents::Saved { bytes, .. } => Ok(crate::serialization::load(bytes)?.world),
         }
     }
@@ -220,9 +201,9 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
         examples: &[
             Example {
                 name: "Receptive fields",
-                description: "Two visual inputs watch a moving bar, \
-                    each looking for its own pattern, and drive one neuron.",
-                contents: legacy!("visualInput.nfy"),
+                description: "Each neuron watches its own spot of the picture \
+                    and fires when a moving dot crosses it.",
+                contents: saved!("receptive_fields.neuronify"),
             },
             Example {
                 name: "Listening to a neuron",
