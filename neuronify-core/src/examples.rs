@@ -234,7 +234,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 name: "Direction selectivity",
                 description: "The output fires when you press the sensors from right to left, \
                     but not from left to right.",
-                contents: legacy!("lateral_inhibition.nfy"),
+                contents: saved!("direction_selectivity.neuronify"),
             },
         ],
     },
