@@ -341,6 +341,118 @@ mod tests {
         );
     }
 
+    const TYPES: [NeuronType; 2] = [NeuronType::Excitatory, NeuronType::Inhibitory];
+    const WEAK: f64 = 0.25;
+
+    fn fresh_tree(neuron_type: NeuronType) -> (hecs::World, Entity, Vec<Entity>) {
+        let mut world = hecs::World::new();
+        let neuron = world.spawn((
+            LeakyNeuron::default(),
+            LeakyDynamics::default(),
+            LeakCurrent::default(),
+            Position {
+                position: Vec3::ZERO,
+            },
+            neuron_type,
+        ));
+        spawn_dendrites(&mut world, neuron);
+        let tree = compartment_tree(&world, neuron);
+        (world, neuron, tree)
+    }
+
+    fn layout(neuron_type: NeuronType) -> (Vec<Vec<usize>>, Vec<usize>) {
+        let (world, neuron, tree) = fresh_tree(neuron_type);
+        let index = |entity| tree.iter().position(|&compartment| compartment == entity);
+        let mut neighbours = vec![Vec::new(); tree.len()];
+        let mut roots = Vec::new();
+        for (_, cable) in world.query::<&Connection>().iter() {
+            match (index(cable.from), index(cable.to)) {
+                (Some(a), Some(b)) => {
+                    neighbours[a].push(b);
+                    neighbours[b].push(a);
+                }
+                (None, Some(b)) if cable.from == neuron => roots.push(b),
+                _ => {}
+            }
+        }
+        (neighbours, roots)
+    }
+
+    fn fires_after_endings_on(neuron_type: NeuronType, sites: &[usize], strength: f64) -> bool {
+        let (mut world, neuron, tree) = fresh_tree(neuron_type);
+        for &site in sites {
+            let tip = spawn_compartment(&mut world, Vec3::X, NeuronType::Excitatory);
+            let ending = spawn_cable(&mut world, tip, tree[site], true);
+            world.get::<&mut Connection>(ending).unwrap().strength = strength;
+            world.get::<&mut Compartment>(tip).unwrap().voltage = COMPARTMENT_FIRE_VOLTAGE;
+        }
+        let mut time = 0.0;
+        (0..300).any(|_| {
+            step_simulation(&mut world, &mut time, 1, None);
+            world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0
+        })
+    }
+
+    #[test]
+    fn one_axon_ending_fires_a_neuron_from_any_site() {
+        for neuron_type in TYPES {
+            let sites = fresh_tree(neuron_type).2.len();
+            assert!((0..sites).all(|site| fires_after_endings_on(neuron_type, &[site], 1.0)));
+        }
+    }
+
+    #[test]
+    fn one_weak_axon_ending_is_not_enough_to_fire_a_neuron_but_two_together_mostly_are() {
+        for neuron_type in TYPES {
+            let sites = fresh_tree(neuron_type).2.len();
+            assert!((0..sites).all(|site| !fires_after_endings_on(neuron_type, &[site], WEAK)));
+            let fired_by_two = (0..sites)
+                .filter(|&site| fires_after_endings_on(neuron_type, &[site, site], WEAK))
+                .count();
+            assert!(
+                2 * fired_by_two > sites,
+                "two endings fired {neuron_type:?} from {fired_by_two} of {sites} sites"
+            );
+        }
+    }
+
+    #[test]
+    fn two_weak_axon_endings_two_compartments_apart_mostly_fire_a_neuron() {
+        for neuron_type in TYPES {
+            let (neighbours, _) = layout(neuron_type);
+            let pairs: Vec<(usize, usize)> = (0..neighbours.len())
+                .flat_map(|a| {
+                    let neighbours = &neighbours;
+                    neighbours[a]
+                        .iter()
+                        .flat_map(move |&between| neighbours[between].iter().map(move |&b| (a, b)))
+                })
+                .filter(|&(a, b)| a < b && !neighbours[a].contains(&b))
+                .collect();
+            let fired = pairs
+                .iter()
+                .filter(|&&(a, b)| fires_after_endings_on(neuron_type, &[a, b], WEAK))
+                .count();
+            assert!(
+                2 * fired > pairs.len(),
+                "pairs fired {neuron_type:?} {fired} of {} times",
+                pairs.len()
+            );
+        }
+    }
+
+    #[test]
+    fn weak_axon_endings_on_different_dendrites_do_not_add_up() {
+        for neuron_type in TYPES {
+            let (_, roots) = layout(neuron_type);
+            for (i, &a) in roots.iter().enumerate() {
+                for &b in &roots[i + 1..] {
+                    assert!(!fires_after_endings_on(neuron_type, &[a, b], WEAK));
+                }
+            }
+        }
+    }
+
     #[test]
     fn the_tree_holds_every_compartment() {
         let mut world = hecs::World::new();
