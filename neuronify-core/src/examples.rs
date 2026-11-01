@@ -228,10 +228,10 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 contents: legacy!("types_of_inhibition.nfy"),
             },
             Example {
-                name: "Tiring Inhibition",
-                description: "An inhibitory neuron tires, \
+                name: "Adaptive Inhibition",
+                description: "An inhibitory neuron adapts, \
                     and the neuron it holds back fires more and more.",
-                contents: saved!("tiring_inhibition.neuronify"),
+                contents: saved!("adaptive_inhibition.neuronify"),
             },
         ],
     },

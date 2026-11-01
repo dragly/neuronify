@@ -38,9 +38,19 @@ fn the_listened_neuron_clicks_for_a_bar_at_its_angle_and_not_across_it() {
 }
 
 #[test]
-fn the_output_fires_more_as_the_inhibitory_neuron_tires() {
-    let early = spikes(&mut write_examples::tiring_inhibition(), "Output", 0.0, 2.0);
-    let late = spikes(&mut write_examples::tiring_inhibition(), "Output", 2.0, 4.0);
+fn the_output_fires_more_as_the_inhibitory_neuron_adapts() {
+    let early = spikes(
+        &mut write_examples::adaptive_inhibition(),
+        "Output",
+        0.0,
+        2.0,
+    );
+    let late = spikes(
+        &mut write_examples::adaptive_inhibition(),
+        "Output",
+        2.0,
+        4.0,
+    );
     assert!(late > 2 * early, "{early} early and {late} late");
 }
 
@@ -52,8 +62,8 @@ fn the_bundled_example_files_match_their_generators() {
             write_examples::listening_to_a_neuron(),
         ),
         (
-            "tiring_inhibition.neuronify",
-            write_examples::tiring_inhibition(),
+            "adaptive_inhibition.neuronify",
+            write_examples::adaptive_inhibition(),
         ),
     ] {
         let path = format!("{}/examples/{file}", env!("CARGO_MANIFEST_DIR"));
