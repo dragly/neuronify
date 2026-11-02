@@ -204,6 +204,19 @@ pub fn axon_ending(world: &World, terminal: Entity) -> Option<Entity> {
         .map(|(ending, _)| ending)
 }
 
+pub fn spawn_internode(world: &mut World, from: Entity, to: Entity) -> Entity {
+    let internode = spawn_cable(world, from, to, false);
+    world.insert_one(internode, Myelin).unwrap();
+    internode
+}
+
+pub fn spawn_axon_cable(world: &mut World, from: Entity, to: Entity, myelinated: bool) -> Entity {
+    match myelinated {
+        true => spawn_internode(world, from, to),
+        false => spawn_cable(world, from, to, false),
+    }
+}
+
 pub fn spawn_voltmeter(world: &mut World, target: Entity, position: Vec3) -> Entity {
     let voltmeter = world.spawn((
         Voltmeter {},

@@ -5,8 +5,8 @@ use glam::{DVec2, Vec3};
 use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::constants::SEGMENT_LENGTH;
-use crate::elements::{spawn_cable, spawn_compartment};
+use crate::constants::{INTERNODE_LENGTH, SEGMENT_LENGTH};
+use crate::elements::{spawn_axon_cable, spawn_compartment};
 
 use super::history::Recording;
 
@@ -44,7 +44,9 @@ impl Drag {
         }
         let mut resampled = false;
         for chain in &self.stretching_chains {
-            resampled |= resample(world, recording, chain);
+            for run in runs(world, chain) {
+                resampled |= resample(world, recording, run);
+            }
         }
         if resampled {
             self.measure(world);
@@ -380,6 +382,13 @@ fn fit(free: &[bool], pairs: &[(usize, usize)], fixed: &[DVec2], guide: &[DVec2]
         .collect()
 }
 
+fn runs<'a>(world: &World, chain: &'a [Entity]) -> Vec<&'a [Entity]> {
+    let myelinated = |cable: &Entity| world.satisfies::<&Myelin>(*cable).unwrap_or(false);
+    chain
+        .chunk_by(|a, b| myelinated(a) == myelinated(b))
+        .collect()
+}
+
 fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> bool {
     let Some(nodes) = chain_nodes(world, chain) else {
         return false;
@@ -405,7 +414,14 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
     } else {
         2
     };
-    let segments = ((length / SEGMENT_LENGTH).round() as usize).max(fewest);
+    let myelinated = chain
+        .iter()
+        .any(|&cable| world.satisfies::<&Myelin>(cable).unwrap_or(false));
+    let spacing = match myelinated {
+        true => INTERNODE_LENGTH,
+        false => SEGMENT_LENGTH,
+    };
+    let segments = ((length / spacing).round() as usize).max(fewest);
     if segments == chain.len() {
         return false;
     }
@@ -420,7 +436,7 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
     let mut previous = nodes[kept];
     for _ in kept + 1..segments {
         let compartment = spawn_compartment_like(world, [previous, end]);
-        spawn_cable(world, previous, compartment, false);
+        spawn_axon_cable(world, previous, compartment, myelinated);
         compartments.push(compartment);
         previous = compartment;
     }

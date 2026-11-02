@@ -927,10 +927,123 @@ fn chain(world: &World, from: Entity, to: Entity) -> Option<Vec<Entity>> {
 }
 
 fn evenly_spaced(world: &World, chain: &[Entity]) -> bool {
+    spaced_by(world, chain, SEGMENT_LENGTH)
+}
+
+fn spaced_by(world: &World, chain: &[Entity], spacing: f32) -> bool {
     chain.windows(2).all(|pair| {
         let length = position(world, pair[0]).distance(position(world, pair[1]));
-        (length - SEGMENT_LENGTH).abs() < 0.25 * SEGMENT_LENGTH
+        (length - spacing).abs() < 0.25 * spacing
     })
+}
+
+fn grow_myelinated_axon(world: &mut World, from: Vec3, to: Vec3) {
+    let steps = (from.distance(to) / 0.5) as usize;
+    let path: Vec<Vec3> = (0..=steps)
+        .map(|step| from.lerp(to, step as f32 / steps as f32))
+        .collect();
+    drag(&mut editor(Tool::MyelinatedAxon), world, &path);
+}
+
+fn myelinated(world: &World, from: Entity, to: Entity) -> bool {
+    world
+        .query::<&Connection>()
+        .with::<&Myelin>()
+        .iter()
+        .any(|(_, cable)| cable.from == from && cable.to == to)
+}
+
+fn wrapped_and_bare(world: &World, nodes: &[Entity]) -> (Vec<Entity>, Vec<Entity>) {
+    let internodes = nodes
+        .windows(2)
+        .take_while(|pair| myelinated(world, pair[0], pair[1]))
+        .count();
+    (nodes[..=internodes].to_vec(), nodes[internodes..].to_vec())
+}
+
+#[test]
+fn myelinated_axons_lay_their_nodes_an_internode_apart() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 40.0));
+    grow_myelinated_axon(&mut world, at(0.0, 0.0), at(0.0, 40.0));
+    let nodes = chain(&world, source, target).unwrap();
+    let (wrapped, _) = wrapped_and_bare(&world, &nodes);
+    assert!(wrapped.len() > 3);
+    assert!(spaced_by(&world, &wrapped, INTERNODE_LENGTH));
+    assert_eq!(count::<Myelin>(&world), wrapped.len() - 1);
+    assert_eq!(axon_endings(&world).len(), 1);
+}
+
+#[test]
+fn myelinated_axons_end_in_a_bare_terminal() {
+    for path in [
+        vec![at(0.0, 0.0), at(0.0, 40.0)],
+        vec![at(0.0, 0.0), at(0.0, 20.0), at(0.0, 40.0)],
+    ] {
+        let mut world = World::new();
+        let source = neuron(&mut world, at(0.0, 0.0));
+        let target = neuron(&mut world, at(0.0, 40.0));
+        drag(&mut editor(Tool::MyelinatedAxon), &mut world, &path);
+        let nodes = chain(&world, source, target).unwrap();
+        let (_, bare) = wrapped_and_bare(&world, &nodes);
+        let terminal = position(&world, bare[0]).distance(position(&world, target));
+        assert!(bare.len() > 1);
+        assert!(spaced_by(&world, &bare, SEGMENT_LENGTH));
+        assert!(terminal < INTERNODE_LENGTH + SEGMENT_LENGTH, "{terminal}");
+    }
+}
+
+#[test]
+fn stretched_myelinated_axons_keep_their_internodes() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 40.0));
+    grow_myelinated_axon(&mut world, at(0.0, 0.0), at(0.0, 40.0));
+    let grown = chain(&world, source, target).unwrap().len();
+
+    drag_in_steps(&mut world, at(0.0, 0.0), at(0.0, -40.0));
+
+    let stretched = chain(&world, source, target).unwrap();
+    assert!(
+        stretched.len() > grown,
+        "{grown} became {}",
+        stretched.len()
+    );
+    let (wrapped, bare) = wrapped_and_bare(&world, &stretched);
+    assert!(spaced_by(&world, &wrapped, INTERNODE_LENGTH));
+    assert!(spaced_by(&world, &bare, SEGMENT_LENGTH));
+    assert_eq!(count::<Myelin>(&world), wrapped.len() - 1);
+}
+
+fn steps_until_a_spike_crosses(tool: Tool, length: usize) -> usize {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, length as f32));
+    let path: Vec<Vec3> = (0..=2 * length)
+        .map(|step| at(0.0, step as f32 * 0.5))
+        .collect();
+    drag(&mut editor(tool), &mut world, &path);
+    world.get::<&mut LeakyDynamics>(source).unwrap().voltage = 0.0;
+    let mut time = 0.0;
+    (0..2000)
+        .position(|_| {
+            step_simulation(&mut world, &mut time, 1, None);
+            world.get::<&LeakyDynamics>(target).unwrap().time_since_fire == 0.0
+        })
+        .unwrap()
+}
+
+#[test]
+fn spikes_travel_ten_times_as_fast_along_myelinated_axons() {
+    let extra =
+        |tool| steps_until_a_spike_crosses(tool, 96) - steps_until_a_spike_crosses(tool, 48);
+    let plain = extra(Tool::Axon);
+    let myelinated = extra(Tool::MyelinatedAxon);
+    assert!(
+        10 * myelinated < plain,
+        "{myelinated} against {plain} steps"
+    );
 }
 
 #[test]

@@ -8,9 +8,9 @@ use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{
-    spawn_cable, spawn_compartment, spawn_connection, spawn_loudspeaker, spawn_loudspeaker_wire,
-    spawn_rate_plot, spawn_rate_plot_wire, spawn_spike_detector, spawn_spike_detector_wire,
-    spawn_voltmeter, spawn_voltmeter_wire, Element,
+    spawn_axon_cable, spawn_cable, spawn_compartment, spawn_connection, spawn_loudspeaker,
+    spawn_loudspeaker_wire, spawn_rate_plot, spawn_rate_plot_wire, spawn_spike_detector,
+    spawn_spike_detector_wire, spawn_voltmeter, spawn_voltmeter_wire, Element,
 };
 use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::Loudspeaker;
@@ -86,7 +86,7 @@ impl Editor {
     pub fn axon_being_grown(&self, world: &World) -> Option<(Entity, Vec3, Vec3)> {
         let connection = self.connection_tool.as_ref()?;
         let grows = match self.tool {
-            Tool::Axon => true,
+            Tool::Axon | Tool::MyelinatedAxon => true,
             Tool::Place(_) => self.grows_axon(world, connection.from),
             _ => false,
         };
@@ -167,7 +167,7 @@ impl Editor {
         if let Some(axon) = &self.connection_tool {
             let target = foreign_compartment_near(world, axon.from, axon.end);
             if let Some(target) = target.filter(|&target| !connected(world, axon.from, target)) {
-                lay_axon(world, axon.from, target, true);
+                lay_axon(world, axon.from, target, true, self.myelinates());
             }
         }
         self.release(world);
@@ -310,7 +310,7 @@ impl Editor {
             Tool::RatePlot => self.place_rate_plot(world, position),
             Tool::Loudspeaker => self.place_loudspeaker(world, position),
             Tool::StaticConnection => self.connect(world, position, shift_down),
-            Tool::Axon => self.grow_axon(world, position, shift_down),
+            Tool::Axon | Tool::MyelinatedAxon => self.grow_axon(world, position, shift_down),
             Tool::Erase => erase(world, recording, position),
             Tool::Stimulate => self.stimulate(world, position),
         }
@@ -583,7 +583,16 @@ impl Editor {
         }
     }
 
+    fn myelinates(&self) -> bool {
+        self.tool == Tool::MyelinatedAxon
+    }
+
     fn extend_axon(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
+        let myelinated = self.myelinates();
+        let spacing = match myelinated {
+            true => INTERNODE_LENGTH,
+            false => MIN_CREATION_DISTANCE_AXON,
+        };
         let Some(connection) = &mut self.connection_tool else {
             return;
         };
@@ -593,17 +602,17 @@ impl Editor {
             connection,
             position,
             shift_down,
-            |world, from, to| lay_axon(world, from, to, true),
+            |world, from, to| lay_axon(world, from, to, true, myelinated),
         );
         let from = connection.from;
-        if reached_neuron || self.too_near_previous(world, position, MIN_CREATION_DISTANCE_AXON) {
+        if reached_neuron || self.too_near_previous(world, position, spacing) {
             return;
         }
         let Ok(neuron_type) = world.get::<&NeuronType>(from).map(|t| *t) else {
             return;
         };
         let compartment = spawn_compartment(world, position, neuron_type);
-        lay_axon(world, from, compartment, false);
+        lay_axon(world, from, compartment, false, myelinated);
         self.previous_creation = Some(compartment);
         self.connection_tool = Some(ConnectionTool {
             start: position,
@@ -751,23 +760,48 @@ fn axon_sources(world: &World) -> Vec<(Entity, Vec3)> {
     .concat()
 }
 
-fn lay_axon(world: &mut World, from: Entity, to: Entity, directional: bool) -> Entity {
+fn lay_axon(
+    world: &mut World,
+    from: Entity,
+    to: Entity,
+    directional: bool,
+    myelinated: bool,
+) -> Entity {
     let ends = [from, to].map(|end| world.get::<&Position>(end).map(|p| p.position));
     let neuron_type = world
         .get::<&NeuronType>(from)
         .map(|t| *t)
         .unwrap_or_default();
+    if myelinated && directional {
+        let mut terminal_start = from;
+        if let [Ok(start), Ok(end)] = ends {
+            let internodes = ((start.distance(end) - SEGMENT_LENGTH) / INTERNODE_LENGTH).floor();
+            if internodes >= 1.0 {
+                let position = start + (end - start).normalize() * internodes * INTERNODE_LENGTH;
+                terminal_start = spawn_compartment(world, position, neuron_type);
+                lay_axon(world, from, terminal_start, false, true);
+            }
+        }
+        return lay_axon(world, terminal_start, to, true, false);
+    }
+    let spacing = match myelinated {
+        true => INTERNODE_LENGTH,
+        false => SEGMENT_LENGTH,
+    };
     let mut previous = from;
     if let [Ok(start), Ok(end)] = ends {
-        let segments = (start.distance(end) / SEGMENT_LENGTH).round() as usize;
+        let segments = (start.distance(end) / spacing).round() as usize;
         for step in 1..segments {
             let position = start.lerp(end, step as f32 / segments as f32);
             let compartment = spawn_compartment(world, position, neuron_type);
-            spawn_cable(world, previous, compartment, false);
+            spawn_axon_cable(world, previous, compartment, myelinated);
             previous = compartment;
         }
     }
-    spawn_cable(world, previous, to, directional)
+    match directional {
+        true => spawn_cable(world, previous, to, true),
+        false => spawn_axon_cable(world, previous, to, myelinated),
+    }
 }
 
 fn start_connection(sources: Vec<(Entity, Vec3)>, position: Vec3) -> Option<ConnectionTool> {

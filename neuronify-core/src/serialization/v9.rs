@@ -7,7 +7,6 @@ use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::World;
 
 schema!(
-    save,
     Position,
     LeakyNeuron,
     LeakyDynamics,

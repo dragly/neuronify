@@ -16,6 +16,7 @@ pub enum Tool {
     Loudspeaker,
     StaticConnection,
     Axon,
+    MyelinatedAxon,
     Erase,
     Stimulate,
 }
@@ -44,6 +45,7 @@ impl Tool {
             Tool::Loudspeaker => "Loudspeaker",
             Tool::StaticConnection => "Connection",
             Tool::Axon => "Axon",
+            Tool::MyelinatedAxon => "Myelinated axon",
         }
     }
 
@@ -97,6 +99,9 @@ impl Tool {
                 "Drag from a neuron or an input to the neuron it should reach."
             }
             Tool::Axon => "Drag from a neuron to grow an axon to another neuron or its dendrites.",
+            Tool::MyelinatedAxon => {
+                "Like an axon, but wrapped in myelin. Spikes jump from gap to gap and travel faster."
+            }
         }
     }
 
@@ -139,7 +144,7 @@ impl ToolGroup {
                 Tool::Place(Element::PoissonGenerator),
                 Tool::Place(Element::VisualInput),
             ],
-            ToolGroup::Connections => &[Tool::StaticConnection, Tool::Axon],
+            ToolGroup::Connections => &[Tool::StaticConnection, Tool::Axon, Tool::MyelinatedAxon],
             ToolGroup::Meters => &[
                 Tool::Voltmeter,
                 Tool::SpikeDetector,

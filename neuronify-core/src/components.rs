@@ -360,6 +360,9 @@ pub struct Deletable {}
 pub struct Dendrite;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Myelin;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Position {
     pub position: Vec3,
 }

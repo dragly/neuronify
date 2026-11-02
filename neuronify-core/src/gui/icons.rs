@@ -669,6 +669,19 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 painter.circle_filled(bead, 2.9 * scale, excitatory);
             }
         }
+        Tool::MyelinatedAxon => {
+            let nodes =
+                [(5.0, 23.0), (12.5, 15.0), (20.5, 14.0), (27.0, 20.5)].map(|(x, y)| at(x, y));
+            let myelin = linear(palette.myelin);
+            painter.add(Shape::line(nodes.to_vec(), stroke(1.4, excitatory)));
+            for pair in nodes.windows(2) {
+                let along = (pair[1] - pair[0]).normalized() * 2.0 * scale;
+                painter.line_segment([pair[0] + along, pair[1] - along], stroke(5.0, myelin));
+            }
+            for node in nodes {
+                painter.circle_filled(node, 1.9 * scale, excitatory);
+            }
+        }
         Tool::Place(Element::Note) => {
             painter.rect(
                 Rect::from_min_max(at(6.0, 6.0), at(26.0, 26.0)),

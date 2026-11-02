@@ -116,6 +116,7 @@ pub const VOLTAGE_TINT: f32 = 0.55;
 
 const GLARE_START: f64 = 90.0;
 const DENDRITE_DESATURATION: f32 = 0.2;
+const SHEATH_TINT: f32 = 0.5;
 const LUMINANCE: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
 const GLARE_FULL: f64 = 130.0;
 const GLARE_PEAK: f32 = 2.0;
@@ -147,6 +148,7 @@ pub struct Palette {
     pub flash: Vec3,
     /// Connections from anything that is not a neuron or a source
     pub neutral: Vec3,
+    pub myelin: Vec3,
     pub selection: Vec3,
     pub halo: f32,
     pub transmitter: f32,
@@ -166,6 +168,7 @@ impl Theme {
                 spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: crust(),
+                myelin: srgb(222, 214, 190),
                 selection: srgb(137, 180, 250),
                 halo: 0.6,
                 transmitter: 0.6,
@@ -181,6 +184,7 @@ impl Theme {
                 spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: srgb(140, 143, 161),
+                myelin: srgb(244, 233, 205),
                 selection: srgb(30, 102, 245),
                 halo: 1.0,
                 transmitter: 0.8,
@@ -224,6 +228,11 @@ impl Palette {
         color.lerp(Vec3::splat(luminance), DENDRITE_DESATURATION)
     }
 
+    pub fn sheath(&self, axon: Vec3) -> Vec3 {
+        let cream = self.myelin * axon.dot(LUMINANCE) / self.myelin.dot(LUMINANCE);
+        axon.lerp(cream, SHEATH_TINT)
+    }
+
     pub fn compartment(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
         let value = ((voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32;
         let color = self.neurocolor(neuron_type, value);
@@ -249,6 +258,21 @@ mod tests {
                     assert!((axon.dot(LUMINANCE) - dendrite.dot(LUMINANCE)).abs() < 1e-5);
                     assert!(spread(dendrite) < spread(axon));
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn sheaths_turn_towards_myelin_but_not_brighter() {
+        for theme in [Theme::Dark, Theme::Light] {
+            for voltage in [-10.0, 60.0, GLARE_FULL] {
+                let palette = theme.palette();
+                let axon = palette.compartment(&NeuronType::Excitatory, voltage);
+                let sheath = palette.sheath(axon);
+                let hue = |color: Vec3| color / color.dot(LUMINANCE);
+                let myelin = hue(palette.myelin);
+                assert!((axon.dot(LUMINANCE) - sheath.dot(LUMINANCE)).abs() < 1e-5);
+                assert!(hue(sheath).distance(myelin) < hue(axon).distance(myelin));
             }
         }
     }
