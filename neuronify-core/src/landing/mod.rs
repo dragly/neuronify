@@ -73,6 +73,9 @@ const CARD_RADIUS: u8 = 10;
 const TITLE_GAP: f32 = 4.0;
 const THUMBNAIL_ASPECT: f32 = 9.0 / 16.0;
 const THUMBNAIL_RADIUS: u8 = 6;
+const STACK_LAYERS: usize = 3;
+const STACK_TILE_SCALE: f32 = 0.74;
+const STACK_STEP: f32 = 0.07;
 const STILL_DRAWING_MICROSECONDS_PER_FRAME: i64 = 2000;
 const YOUR_SIMULATIONS: &str = "Your simulations";
 
@@ -97,6 +100,7 @@ enum Card {
     NewSimulation,
     Saved(usize),
     Example { category: usize, index: usize },
+    More { section: Section, hidden: usize },
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -262,7 +266,7 @@ impl LandingScreen {
             }
         }
         match picked? {
-            Picked::Section(section) => {
+            Picked::Section(section) | Picked::Card(Card::More { section, .. }) => {
                 self.section = Some(section);
                 None
             }
@@ -383,8 +387,17 @@ impl LandingScreen {
             picked = Some(Picked::Section(section));
         }
         ui.add_space(8.0);
-        let shown = &cards[..cards.len().min(CARDS_PER_SECTION)];
-        if let Some(card) = self.card_grid(ui, width, shown) {
+        let shown: Vec<Card> = if cards.len() > CARDS_PER_SECTION {
+            let kept = CARDS_PER_SECTION - 1;
+            let more = Card::More {
+                section,
+                hidden: cards.len() - kept,
+            };
+            cards[..kept].iter().copied().chain([more]).collect()
+        } else {
+            cards
+        };
+        if let Some(card) = self.card_grid(ui, width, &shown) {
             picked = Some(Picked::Card(card));
         }
         picked
@@ -445,15 +458,20 @@ impl LandingScreen {
                     rows,
                 )
             }
+            Card::More { hidden, .. } => ("See all".to_owned(), format!("{hidden} more"), rows),
         };
         let colors = Colors::of(self.theme);
+        let name_color = match card {
+            Card::More { .. } => colors.accent,
+            _ => colors.text,
+        };
         let layout = |text: String, size: f32, color: Color32, max_rows: usize| {
             let mut job = LayoutJob::simple(text, FontId::proportional(size), color, width);
             job.wrap.max_rows = max_rows;
             ui.painter().layout_job(job)
         };
         [
-            layout(name, 16.0, colors.text, rows),
+            layout(name, 16.0, name_color, rows),
             layout(description, 13.5, colors.subtext, description_rows),
         ]
     }
@@ -490,8 +508,12 @@ impl LandingScreen {
                 for (&card, [name, description]) in row.iter().zip(texts) {
                     let (rect, response) = ui.allocate_exact_size(card_size, Sense::click());
                     let on_screen = ui.is_rect_visible(rect);
+                    let previewed = match card {
+                        Card::More { section, .. } => self.cards(section)[CARDS_PER_SECTION - 1],
+                        card => card,
+                    };
                     let mut preview =
-                        preview_mut(&mut self.saved, &mut self.examples_by_category, card);
+                        preview_mut(&mut self.saved, &mut self.examples_by_category, previewed);
                     if let Some(preview) = &mut preview {
                         preview.on_screen = on_screen;
                     }
@@ -519,12 +541,21 @@ impl LandingScreen {
                         rect.min + vec2(CARD_PADDING, CARD_PADDING),
                         thumbnail_size,
                     );
-                    painter.rect_filled(thumbnail, THUMBNAIL_RADIUS, colors.background);
+                    if !matches!(card, Card::More { .. }) {
+                        painter.rect_filled(thumbnail, THUMBNAIL_RADIUS, colors.background);
+                    }
                     let thumbnail_painter = ui.painter_at(thumbnail);
                     match (card, preview) {
                         (Card::NewSimulation, _) => {
                             paint_plus(&thumbnail_painter, thumbnail, colors.subtext)
                         }
+                        (Card::More { .. }, preview) => paint_stack(
+                            &thumbnail_painter,
+                            thumbnail,
+                            preview,
+                            theme,
+                            &mut self.still_drawing_deadline,
+                        ),
                         (_, Some(preview)) => preview.paint(
                             &thumbnail_painter,
                             thumbnail,
@@ -580,7 +611,7 @@ fn preview_mut<'a>(
     card: Card,
 ) -> Option<&'a mut Preview> {
     match card {
-        Card::NewSimulation => None,
+        Card::NewSimulation | Card::More { .. } => None,
         Card::Saved(index) => saved[index].preview.as_mut().ok(),
         Card::Example { category, index } => {
             Some(&mut examples_by_category[category][index].preview)
@@ -673,6 +704,31 @@ fn paint_plus(painter: &Painter, area: Rect, color: Color32) {
     let stroke = Stroke::new(2.0_f32, color);
     painter.line_segment([center - vec2(arm, 0.0), center + vec2(arm, 0.0)], stroke);
     painter.line_segment([center - vec2(0.0, arm), center + vec2(0.0, arm)], stroke);
+}
+
+fn paint_stack(
+    painter: &Painter,
+    area: Rect,
+    preview: Option<&mut Preview>,
+    theme: Theme,
+    still_drawing_deadline: &mut Option<DateTime<Utc>>,
+) {
+    let colors = Colors::of(theme);
+    let tile = Rect::from_center_size(area.center(), area.size() * STACK_TILE_SCALE);
+    let step = vec2(area.width(), -area.height()) * STACK_STEP;
+    let front = tile.translate(-step);
+    for layer in (0..STACK_LAYERS).rev() {
+        let depth = layer as f32 / STACK_LAYERS as f32;
+        painter.rect_filled(
+            front.translate(step * layer as f32),
+            THUMBNAIL_RADIUS,
+            colors.background.lerp_to_gamma(colors.surface, depth),
+        );
+    }
+    if let Some(preview) = preview {
+        let tile_painter = painter.with_clip_rect(front);
+        preview.paint(&tile_painter, front, theme, still_drawing_deadline);
+    }
 }
 
 #[cfg(test)]
@@ -1218,7 +1274,7 @@ mod tests {
             .iter()
             .filter(|name| text_position(&output, name).is_some())
             .count();
-        assert_eq!(shown, CARDS_PER_SECTION - 1);
+        assert_eq!(shown, CARDS_PER_SECTION - 2);
         assert!(text_position(&output, "See all").is_some());
     }
 
@@ -1248,7 +1304,7 @@ mod tests {
         let primary = PointerButton::Primary;
 
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
-        assert_eq!(shown(&output), CARDS_PER_SECTION);
+        assert_eq!(shown(&output), CARDS_PER_SECTION - 1);
         let (_, choice) = click(
             &context,
             &mut landing,
@@ -1265,7 +1321,7 @@ mod tests {
         let (_, choice) = run_with(&context, &mut landing, &mut library, vec![escape()]);
         assert!(choice.is_none());
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
-        assert_eq!(shown(&output), CARDS_PER_SECTION);
+        assert_eq!(shown(&output), CARDS_PER_SECTION - 1);
         assert!(!last_preview_runs(&landing));
 
         click(
@@ -1300,6 +1356,43 @@ mod tests {
             panic!("clicking a card on the page did not open its example");
         };
         assert_eq!(name, last);
+    }
+
+    #[test]
+    fn the_last_card_shows_the_next_example_and_opens_the_whole_category() {
+        let context = egui::Context::default();
+        let mut library = Library::default();
+        let mut landing = LandingScreen::new(false);
+        let category = EXAMPLE_CATEGORIES
+            .iter()
+            .position(|category| category.name == "Circuits")
+            .unwrap();
+        let examples = EXAMPLE_CATEGORIES[category].examples;
+        let first_hidden = CARDS_PER_SECTION - 1;
+        let more = format!("{} more", examples.len() - first_hidden);
+
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        assert!(text_position(&output, examples[first_hidden].name).is_none());
+        assert!(
+            landing.examples_by_category[category][first_hidden]
+                .preview
+                .on_screen
+        );
+        let primary = PointerButton::Primary;
+        let (_, choice) = click_text(
+            &context,
+            &mut landing,
+            &mut library,
+            &output,
+            &more,
+            primary,
+        );
+        assert!(choice.is_none());
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        assert!(examples
+            .iter()
+            .all(|example| text_position(&output, example.name).is_some()));
+        assert!(text_position(&output, &more).is_none());
     }
 
     #[test]
