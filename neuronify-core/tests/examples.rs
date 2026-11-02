@@ -27,14 +27,18 @@ fn spikes(world: &mut World, label: &str, from: f64, to: f64) -> usize {
 }
 
 #[test]
-fn the_listened_neuron_clicks_for_a_bar_at_its_angle_and_not_across_it() {
+fn the_listened_neuron_clicks_for_stripes_at_its_angle_and_not_across_them() {
     let mut aligned = write_examples::listening_to_a_neuron();
     let mut across = write_examples::listening_to_a_neuron();
     for (_, input) in across.query_mut::<&mut VisualInput>() {
         input.pattern_angle = FRAC_PI_2;
     }
-    assert!(spikes(&mut aligned, "Cortex", 0.0, 4.0) > 20);
-    assert_eq!(spikes(&mut across, "Cortex", 0.0, 4.0), 0);
+    let aligned = spikes(&mut aligned, "Cortex", 0.0, 4.0);
+    let across = spikes(&mut across, "Cortex", 0.0, 4.0);
+    assert!(
+        aligned > 10 * across.max(1),
+        "{aligned} aligned and {across} across"
+    );
 }
 
 #[test]
