@@ -44,6 +44,10 @@ fn main() {
         ("7_axons.neuronify", axons()),
         ("8_dendrites.neuronify", dendrites()),
         ("9_coincidence.neuronify", coincidence()),
+        (
+            "10_inhibition_on_a_branch.neuronify",
+            inhibition_on_a_branch(),
+        ),
     ] {
         let path = directory.join(file);
         std::fs::write(
@@ -526,6 +530,53 @@ fn coincidence() -> World {
     canvas.text(
         "A neuron that fires only when its inputs arrive together is called \
          a coincidence detector.",
+    );
+    canvas.next(
+        "Inhibition on a branch",
+        "tutorial/10_inhibition_on_a_branch.neuronify",
+    );
+    canvas.world
+}
+
+fn inhibition_on_a_branch() -> World {
+    let mut canvas = Canvas::new();
+    canvas.text(
+        "The neuron in the middle is inhibitory and fires all the time. \
+         Its red axon ends partway down the dendrites, \
+         between the top branches and the cell body.",
+    );
+    let up = canvas.row(25.0);
+    let receiver = canvas.add(Element::ExcitatoryNeuron, 18.0, up - 4.5);
+    spawn_dendrites(&mut canvas.world, receiver);
+    let tuft = canvas.branch_near(receiver, 15.5, up + 11.0);
+    let trunk = canvas.branch_near(receiver, 18.0, up + 3.5);
+    let basal = canvas.branch_near(receiver, 12.0, up);
+    let position = |canvas: &Canvas, entity: Entity| {
+        let position = canvas.world.get::<&Position>(entity).unwrap().position;
+        (position.z, position.x)
+    };
+    let (tuft_right, tuft_up) = position(&canvas, tuft);
+    let (basal_right, basal_up) = position(&canvas, basal);
+    let upper = canvas.add(Element::ExcitatoryNeuron, tuft_right - 7.0, tuft_up);
+    let lower = canvas.add(Element::ExcitatoryNeuron, basal_right - 6.0, basal_up);
+    canvas.axon(upper, &[], tuft);
+    canvas.axon(lower, &[], basal);
+    let top = canvas.add(Element::TouchSensor, 1.0, tuft_up);
+    let bottom = canvas.add(Element::TouchSensor, 1.0, basal_up);
+    canvas.connect(top, upper);
+    canvas.connect(bottom, lower);
+    let (_, trunk_up) = position(&canvas, trunk);
+    let inhibitor = canvas.add(Element::InhibitoryNeuron, 10.0, trunk_up - 1.0);
+    canvas.axon(inhibitor, &[], trunk);
+    canvas.current(inhibitor, 0.6 * NANOAMPERE, 4.0, trunk_up - 1.0);
+    canvas.text(
+        "Press the top touch sensor: the spike runs down the dendrites \
+         but is stopped where the red axon ends. \
+         Press the bottom one: that spike takes another way and makes the neuron fire.",
+    );
+    canvas.text(
+        "Inhibition on a dendrite works locally. \
+         It silences the inputs beyond it and leaves the other branches alone.",
     );
     canvas.link("More examples ›", "examples");
     canvas.world
