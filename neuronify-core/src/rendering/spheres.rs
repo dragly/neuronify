@@ -7,6 +7,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::measurement::visual_input::VisualInput;
 use crate::rendering::colors::*;
+use crate::rendering::cylinders::{sheaths, SHEATH_RADIUS};
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::shapes::{generator_color, shown_voltage, soma_color};
@@ -135,6 +136,18 @@ pub fn collect_spheres(
     );
 
     spheres.extend(spines(world, radii, &display, palette));
+    spheres.extend(sheaths(world, palette).into_iter().flat_map(|sheath| {
+        [
+            (sheath.start, sheath.start_color),
+            (sheath.end, sheath.end_color),
+        ]
+        .map(|(position, color)| Sphere {
+            position,
+            color,
+            radius: SHEATH_RADIUS,
+            _padding: Default::default(),
+        })
+    }));
     spheres.reserve(paths.values().map(|path| path.points.len()).sum());
     for path in paths.values() {
         let segments = path.points.len().saturating_sub(1);

@@ -24,21 +24,25 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
         positions.push(position.position);
         moving.push(dynamics.is_some());
     }
-    let cables: Vec<(usize, usize, bool)> = world
-        .query::<&Connection>()
+    let (cables, rest_lengths): (Vec<(usize, usize, bool)>, Vec<f32>) = world
+        .query::<(&Connection, Option<&Myelin>)>()
         .with::<&CompartmentCurrent>()
         .iter()
-        .filter_map(|(_, cable)| {
+        .filter_map(|(_, (cable, myelin))| {
             let from = *slot_of.get(&cable.from)?;
             let to = *slot_of.get(&cable.to)?;
-            Some((from, to, cable.directional))
+            let rest_length = match myelin {
+                Some(_) => INTERNODE_LENGTH,
+                None => SEGMENT_LENGTH,
+            };
+            Some(((from, to, cable.directional), rest_length))
         })
-        .collect();
+        .unzip();
 
     let mut forces = vec![Vec3::ZERO; positions.len()];
     add_repulsion(&positions, &moving, &mut forces);
     add_cable_bending(&positions, &cables, &mut forces);
-    add_cable_springs(&positions, &cables, &mut forces);
+    add_cable_springs(&positions, &cables, &rest_lengths, &mut forces);
 
     for (entity, dynamics) in world.query_mut::<&mut SpatialDynamics>() {
         if let Some(&slot) = slot_of.get(&entity) {
@@ -105,9 +109,14 @@ fn add_cable_bending(positions: &[Vec3], cables: &[(usize, usize, bool)], forces
     }
 }
 
-fn add_cable_springs(positions: &[Vec3], cables: &[(usize, usize, bool)], forces: &mut [Vec3]) {
-    for &(from, to, _) in cables {
-        let stretch = positions[from].distance_squared(positions[to]) - SEGMENT_LENGTH.powi(2);
+fn add_cable_springs(
+    positions: &[Vec3],
+    cables: &[(usize, usize, bool)],
+    rest_lengths: &[f32],
+    forces: &mut [Vec3],
+) {
+    for (&(from, to, _), rest_length) in cables.iter().zip(rest_lengths) {
+        let stretch = positions[from].distance_squared(positions[to]) - rest_length.powi(2);
         let force =
             SPRING_STRENGTH * stretch * (positions[to] - positions[from]).normalize_or_zero();
         forces[from] += force;
@@ -133,7 +142,7 @@ pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::spawn_cable;
+    use crate::elements::{spawn_cable, spawn_internode};
     use hecs::{Entity, World};
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
@@ -158,6 +167,16 @@ mod tests {
 
     fn axon_ending(world: &mut World, from: Entity, to: Entity) {
         spawn_cable(world, from, to, true);
+    }
+
+    #[test]
+    fn internodes_rest_at_their_own_length() {
+        let mut world = World::new();
+        let soma = neuron(&mut world, 0.0, 0.0);
+        let node = compartment(&mut world, INTERNODE_LENGTH, 0.0);
+        spawn_internode(&mut world, soma, node);
+        apply_spatial_forces(&mut world);
+        assert!(acceleration(&world, node).length() < 1e-3);
     }
 
     fn acceleration(world: &World, entity: Entity) -> Vec3 {

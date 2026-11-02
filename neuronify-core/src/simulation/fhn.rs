@@ -11,6 +11,109 @@ fn spike_excess(compartment: &Compartment) -> f64 {
     (compartment.voltage - BRIDGE_VOLTAGE_THRESHOLD).clamp(0.0, BRIDGE_VOLTAGE_CLAMP)
 }
 
+struct Saltated;
+
+struct Arrival(f64);
+
+fn firing(world: &World, node: Entity) -> bool {
+    world
+        .get::<&Compartment>(node)
+        .is_ok_and(|compartment| compartment.voltage >= COMPARTMENT_FIRE_VOLTAGE)
+}
+
+fn ready(world: &World, node: Entity) -> bool {
+    !world.satisfies::<&Saltated>(node).unwrap_or(true)
+        && world.get::<&Compartment>(node).is_ok_and(|compartment| {
+            compartment.voltage < COMPARTMENT_FIRE_VOLTAGE
+                && compartment.m < NODE_RECOVERY_THRESHOLD
+        })
+}
+
+fn internode_delays(world: &World) -> HashMap<Entity, Vec<(Entity, f64)>> {
+    let mut delays: HashMap<Entity, Vec<(Entity, f64)>> = HashMap::new();
+    for (_, internode) in world.query::<&Connection>().with::<&Myelin>().iter() {
+        let position = |node| world.get::<&Position>(node).map(|p| p.position);
+        if let (Ok(from), Ok(to)) = (position(internode.from), position(internode.to)) {
+            let delay = from.distance(to) as f64 / SALTATORY_SPEED;
+            delays
+                .entry(internode.from)
+                .or_default()
+                .push((internode.to, delay));
+            delays
+                .entry(internode.to)
+                .or_default()
+                .push((internode.from, delay));
+        }
+    }
+    delays
+}
+
+fn saltate(world: &mut World) {
+    let delays = internode_delays(world);
+    let mut fired: Vec<(Entity, f64)> = Vec::new();
+    for (node, arrival) in world.query_mut::<&mut Arrival>() {
+        arrival.0 -= LIF_DT;
+        if arrival.0 <= 0.0 {
+            fired.push((node, arrival.0));
+        }
+    }
+    for &(node, _) in &fired {
+        world
+            .remove_one::<Arrival>(node)
+            .expect("Could not clear arrival");
+    }
+    fired.extend(
+        delays
+            .keys()
+            .filter(|&&node| {
+                firing(world, node) && !world.satisfies::<&Saltated>(node).unwrap_or(true)
+            })
+            .map(|&node| (node, 0.0)),
+    );
+    while let Some(earliest) = (0..fired.len()).min_by(|&a, &b| fired[a].1.total_cmp(&fired[b].1)) {
+        let (node, time) = fired.swap_remove(earliest);
+        if !firing(world, node) {
+            if !ready(world, node) {
+                continue;
+            }
+            world.get::<&mut Compartment>(node).unwrap().voltage = COMPARTMENT_FIRE_VOLTAGE;
+        } else if world.satisfies::<&Saltated>(node).unwrap_or(true) {
+            continue;
+        }
+        world
+            .insert_one(node, Saltated)
+            .expect("Could not mark node");
+        for &(next, delay) in delays.get(&node).into_iter().flatten() {
+            let arrival = time + delay;
+            if !ready(world, next) {
+                continue;
+            }
+            if arrival <= 0.0 {
+                fired.push((next, arrival));
+            } else if !world
+                .get::<&Arrival>(next)
+                .is_ok_and(|pending| pending.0 <= arrival)
+            {
+                world
+                    .insert_one(next, Arrival(arrival))
+                    .expect("Could not schedule arrival");
+            }
+        }
+    }
+    let passed: Vec<Entity> = world
+        .query::<&Compartment>()
+        .with::<&Saltated>()
+        .iter()
+        .filter(|(_, compartment)| compartment.voltage < COMPARTMENT_FIRE_VOLTAGE)
+        .map(|(node, _)| node)
+        .collect();
+    for node in passed {
+        world
+            .remove_one::<Saltated>(node)
+            .expect("Could not unmark node");
+    }
+}
+
 fn current_into_neuron(world: &World, cable: &Connection) -> Option<(Entity, f64)> {
     let (compartment, neuron, sign) = if world.get::<&LeakyDynamics>(cable.to).is_ok() {
         (cable.from, cable.to, neuron_type(world, cable.from).sign())
@@ -56,7 +159,10 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
         .collect();
     let mut outgoing = Vec::new();
 
-    for (_, (connection, current)) in world.query::<(&Connection, &CompartmentCurrent)>().iter() {
+    for (_, (connection, current, myelin)) in world
+        .query::<(&Connection, &CompartmentCurrent, Option<&Myelin>)>()
+        .iter()
+    {
         if let Ok(_compartment_to) = world.get::<&Compartment>(connection.to) {
             if recently_fired.contains(&connection.from) {
                 let new_compartment_to = new_compartments
@@ -81,7 +187,7 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
                                 INHIBITION_STRENGTH * charge / INHIBITION_TIME_CONSTANT * cdt;
                         }
                     }
-                } else {
+                } else if myelin.is_none() {
                     let voltage_diff = compartment_from.voltage - _compartment_to.voltage;
                     let delta_voltage = voltage_diff / current.capacitance;
                     let spread = (compartment_from.injected_current
@@ -127,6 +233,7 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
             .remove_one::<OutgoingSpike>(compartment)
             .expect("Could not unmark compartment");
     }
+    saltate(world);
 
     let compartment_to_neuron: Vec<(Entity, f64)> = world
         .query::<&Connection>()
@@ -520,5 +627,80 @@ mod axon_tests {
             neuron_b_fired,
             "Target neuron should fire after action potential propagates through axon compartment chain"
         );
+    }
+}
+
+#[cfg(test)]
+mod node_tests {
+    use super::*;
+    use crate::elements::spawn_internode;
+    use crate::simulation::step_simulation;
+    use glam::Vec3;
+
+    fn node(world: &mut World, x: f32, z: f32) -> Entity {
+        world.spawn((
+            Compartment::default(),
+            NeuronType::Excitatory,
+            Position {
+                position: Vec3::new(x, 0.0, z),
+            },
+        ))
+    }
+
+    fn spikes_after_firing(world: &mut World, first: Entity) -> HashMap<Entity, Vec<usize>> {
+        world.get::<&mut Compartment>(first).unwrap().voltage = COMPARTMENT_FIRE_VOLTAGE;
+        let mut firing = HashSet::new();
+        let mut spikes: HashMap<Entity, Vec<usize>> = HashMap::new();
+        let mut time = 0.0;
+        for step in 0..1000 {
+            step_simulation(world, &mut time, 1, None);
+            for (node, compartment) in world.query::<&Compartment>().iter() {
+                assert!(compartment.voltage.is_finite());
+                if compartment.voltage < COMPARTMENT_FIRE_VOLTAGE {
+                    firing.remove(&node);
+                } else if firing.insert(node) {
+                    spikes.entry(node).or_default().push(step);
+                }
+            }
+        }
+        spikes
+    }
+
+    #[test]
+    fn spikes_reach_each_node_after_its_distance_over_the_saltatory_speed() {
+        let mut world = World::new();
+        let xs = [-20.0, -7.0, -4.0, 0.0, 3.0, 12.0, 14.0, 27.0, 50.0];
+        let nodes: Vec<Entity> = xs.iter().map(|&x| node(&mut world, x, 0.0)).collect();
+        for pair in nodes.windows(2) {
+            spawn_internode(&mut world, pair[0], pair[1]);
+        }
+        let spikes = spikes_after_firing(&mut world, nodes[3]);
+        for (&x, node) in xs.iter().zip(&nodes) {
+            let expected = x.abs() as f64 / SALTATORY_SPEED / LIF_DT;
+            let step = spikes[node][0] as f64;
+            assert!(
+                (expected..expected + 2.0).contains(&step),
+                "node at {x} fired at step {step}, expected about {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn spikes_fire_every_node_once_however_many_internodes_branch_from_one() {
+        for branches in 2..8 {
+            let mut world = World::new();
+            let hub = node(&mut world, 0.0, 0.0);
+            for branch in 0..branches {
+                let mut previous = hub;
+                for step in 1..5 {
+                    let next = node(&mut world, step as f32 * 5.0, branch as f32);
+                    spawn_internode(&mut world, previous, next);
+                    previous = next;
+                }
+            }
+            let spikes = spikes_after_firing(&mut world, hub);
+            assert_eq!(spikes.len(), 1 + 4 * branches);
+            assert!(spikes.values().all(|steps| steps.len() == 1), "{spikes:?}");
+        }
     }
 }

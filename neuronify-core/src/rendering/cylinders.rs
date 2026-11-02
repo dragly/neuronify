@@ -20,6 +20,15 @@ const FULLY_TAPERED_DISTANCE: f32 = 12.0;
 
 const MIN_GROWN_LENGTH: f32 = 1e-4;
 const AXON_RADIUS: f32 = 0.11;
+pub const SHEATH_RADIUS: f32 = 0.26;
+pub const NODE_GAP: f32 = 0.5;
+
+pub struct Sheath {
+    pub start: Vec3,
+    pub end: Vec3,
+    pub start_color: Vec3,
+    pub end_color: Vec3,
+}
 
 fn radius_from_soma_distance(distance: f32) -> f32 {
     (ROOT_RADIUS * TAPER.powf(distance / 3.0)).max(MIN_RADIUS)
@@ -152,6 +161,19 @@ pub fn collect_cylinders(
             ))
         })
         .collect();
+    cylinders.extend(
+        sheaths(world, palette)
+            .into_iter()
+            .map(|sheath| CylinderData {
+                start: sheath.start,
+                start_radius: SHEATH_RADIUS,
+                end: sheath.end,
+                end_radius: SHEATH_RADIUS,
+                start_color: sheath.start_color,
+                end_color: sheath.end_color,
+                _padding: Default::default(),
+            }),
+    );
     cylinders.reserve(paths.values().map(|path| path.points.len()).sum());
     for path in paths.values() {
         let segments = path.points.len().saturating_sub(1);
@@ -185,6 +207,32 @@ pub fn collect_cylinders(
         }
     }
     cylinders
+}
+
+pub fn sheaths(world: &hecs::World, palette: &Palette) -> Vec<Sheath> {
+    let display = NeuronDisplay::of(world);
+    world
+        .query::<&Connection>()
+        .with::<&Myelin>()
+        .iter()
+        .filter_map(|(_, connection)| {
+            let from = world.entity(connection.from).ok()?;
+            let to = world.entity(connection.to).ok()?;
+            let start = from.get::<&Position>()?.position;
+            let end = to.get::<&Position>()?.position;
+            let along = (end - start).normalize_or_zero();
+            let to_color = compartment_color(to, &display, palette).unwrap_or(palette.neutral);
+            let from_color = compartment_color(from, &display, palette)
+                .or_else(|| soma_end_color(from, to, &display, palette))
+                .unwrap_or(to_color);
+            (start.distance(end) > 2.0 * NODE_GAP).then(|| Sheath {
+                start: start + along * NODE_GAP,
+                end: end - along * NODE_GAP,
+                start_color: palette.sheath(from_color),
+                end_color: palette.sheath(to_color),
+            })
+        })
+        .collect()
 }
 
 pub fn growing_axon(
@@ -229,7 +277,7 @@ pub fn growing_axon(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_cable, spawn_compartment};
+    use crate::elements::{spawn_cable, spawn_compartment, spawn_internode};
     use crate::rendering::colors::Theme;
     use crate::rendering::paths::connection_paths;
     use crate::rendering::spheres::{collect_spheres, SPINES_PER_CABLE};
@@ -426,6 +474,41 @@ mod tests {
         let excitatory = NeuronType::Excitatory;
         assert_eq!(root.start_color, palette.compartment(&excitatory, rest));
         assert_eq!(root.end_color, palette.dendrite(&excitatory, rest));
+    }
+
+    #[test]
+    fn myelinated_cables_are_sheathed_but_bare_at_the_nodes_and_light_up() {
+        let palette = Theme::Light.palette();
+        let mut world = hecs::World::new();
+        let node = |world: &mut hecs::World, z: f32| {
+            spawn_compartment(world, Vec3::new(0.0, 0.0, z), NeuronType::Excitatory)
+        };
+        let (first, second, third) = (
+            node(&mut world, 0.0),
+            node(&mut world, 8.0),
+            node(&mut world, 10.0),
+        );
+        spawn_internode(&mut world, first, second);
+        spawn_cable(&mut world, second, third, false);
+        world.get::<&mut Compartment>(second).unwrap().voltage = 100.0;
+        let radii = compartment_radii(&world);
+        let paths = connection_paths(&world, &radii, &palette);
+        let sheaths: Vec<CylinderData> = collect_cylinders(&world, &radii, &paths, &palette)
+            .into_iter()
+            .filter(|cylinder| cylinder.start_radius == SHEATH_RADIUS)
+            .collect();
+        let [sheath] = sheaths[..] else {
+            panic!("expected one sheath, got {}", sheaths.len());
+        };
+        assert_eq!(sheath.start, Vec3::new(0.0, 0.0, NODE_GAP));
+        assert_eq!(sheath.end, Vec3::new(0.0, 0.0, 8.0 - NODE_GAP));
+        assert!(sheath.start_radius > AXON_RADIUS);
+        assert!(sheath.end_color.max_element() > sheath.start_color.max_element());
+        let caps = collect_spheres(&world, &radii, &paths, &palette)
+            .into_iter()
+            .filter(|sphere| sphere.radius == SHEATH_RADIUS)
+            .count();
+        assert_eq!(caps, 2);
     }
 
     #[test]

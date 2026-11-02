@@ -23,6 +23,7 @@ use crate::constants::DEFAULT_SPEED;
 #[macro_use]
 mod schema;
 mod v1;
+mod v10;
 mod v2;
 mod v3;
 mod v4;
@@ -33,7 +34,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 9;
+pub const VERSION: u32 = 10;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -47,7 +48,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v9::SaveContext, &mut serializer)
+    serialize(world, &mut v10::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -98,6 +99,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v9::deserialize(body)?, time, speed)
         }
+        10 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v10::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -115,6 +121,7 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             6 => v7::upgrade_from_v6(&mut world),
             7 => v8::upgrade_from_v7(&mut world),
             8 => v9::upgrade_from_v8(&mut world),
+            9 => v10::upgrade_from_v9(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -153,7 +160,7 @@ fn load_legacy(bytes: &[u8]) -> Result<SavedWorld, String> {
 mod tests {
     use super::*;
     use crate::components::*;
-    use crate::elements::{spawn_cable, spawn_compartment, Element};
+    use crate::elements::{spawn_cable, spawn_compartment, spawn_internode, Element};
     use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
     use std::any::TypeId;
     use std::collections::BTreeMap;
@@ -317,6 +324,17 @@ mod tests {
     #[test]
     fn loads_version_9() {
         let saved = load(include_bytes!("fixtures/v9.neuronify")).unwrap();
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_9())
+        );
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn loads_version_10() {
+        let saved = load(include_bytes!("fixtures/v10.neuronify")).unwrap();
         assert_eq!(composition(&saved.world), composition(&fixture_world()));
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
@@ -365,9 +383,18 @@ mod tests {
         std::fs::write(path, bytes).unwrap();
     }
 
+    fn fixture_world() -> World {
+        let mut world = fixture_world_of_version_9();
+        let position = |x: f32| glam::Vec3::new(x, 0.0, 40.0);
+        let neuron = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+        let node = spawn_compartment(&mut world, position(8.0), NeuronType::Excitatory);
+        spawn_internode(&mut world, neuron, node);
+        world
+    }
+
     /// Bundled examples, plus the components that none of them have,
     /// spawned the way the editor tools spawn them.
-    fn fixture_world() -> World {
+    fn fixture_world_of_version_9() -> World {
         let examples = [
             include_str!("../../examples/adaptation.nfy"),
             include_str!("../../examples/burst.nfy"),
