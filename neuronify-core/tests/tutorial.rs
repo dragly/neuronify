@@ -6,9 +6,9 @@ use neuronify_core::examples::{find, EXAMPLE_CATEGORIES};
 use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::simulation::{fire_nearby, step_simulation};
 use neuronify_core::{
-    Annotation, LeakyDynamics, LeakyNeuron, Link, NeuronDisplay, NeuronType, NoteSize, Position,
-    Setting, TouchSensor, DEFAULT_SPEED, LIF_DT, NODE_RADIUS, SEGMENT_LENGTH,
-    SIMULATION_STEPS_PER_SECOND,
+    Annotation, Compartment, Connection, CurrentClamp, LeakyDynamics, LeakyNeuron, Link,
+    NeuronDisplay, NeuronType, NoteSize, Position, Setting, TouchSensor, BRIDGE_VOLTAGE_THRESHOLD,
+    DEFAULT_SPEED, LIF_DT, NODE_RADIUS, SEGMENT_LENGTH, SIMULATION_STEPS_PER_SECOND,
 };
 
 const STEPS_PER_SECOND: f64 = DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND;
@@ -116,7 +116,7 @@ fn tutorial() -> Vec<&'static str> {
 #[test]
 fn each_canvas_links_to_the_next_and_the_last_to_the_examples() {
     let files = tutorial();
-    assert_eq!(files.len(), 9);
+    assert_eq!(files.len(), 10);
     for (index, file) in files.iter().enumerate() {
         let canvas = Canvas::open(file);
         let links: Vec<String> = canvas
@@ -461,4 +461,111 @@ fn weak_endings_fire_the_neuron_only_together() {
     canvas.press(middle);
     canvas.wait(3.0);
     assert!(!canvas.spikes_since(receiver, pressed).is_empty());
+}
+
+#[test]
+fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through() {
+    let mut canvas = Canvas::open("tutorial/10_inhibition_on_a_branch.neuronify");
+    let mut neurons = canvas.neurons(NeuronType::Excitatory);
+    neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
+    let receiver = neurons.last().unwrap().0;
+    let hands = canvas.hands();
+    let (top, bottom) = (hands[0], hands[1]);
+    let fires = |canvas: &mut Canvas, hand: Vec3| {
+        let pressed = canvas.now();
+        canvas.press(hand);
+        canvas.wait(3.0);
+        !canvas.spikes_since(receiver, pressed).is_empty()
+    };
+    for pause in [1.0, 1.2, 1.4, 1.6, 1.8] {
+        canvas.wait(pause);
+        assert!(!fires(&mut canvas, top));
+        assert!(fires(&mut canvas, bottom));
+    }
+
+    for (_, clamp) in canvas.world.query::<&mut CurrentClamp>().iter() {
+        clamp.current_output = 0.0;
+    }
+    canvas.wait(3.0);
+    assert!(fires(&mut canvas, top));
+}
+
+#[test]
+fn the_top_spike_runs_down_to_the_red_ending_and_stops_there() {
+    let mut canvas = Canvas::open("tutorial/10_inhibition_on_a_branch.neuronify");
+    let mut neurons = canvas.neurons(NeuronType::Excitatory);
+    neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
+    let receiver = neurons.last().unwrap().0;
+    let tree = compartment_tree(&canvas.world, receiver);
+    let ending = |canvas: &Canvas, neuron_type: NeuronType| {
+        canvas
+            .world
+            .query::<&Connection>()
+            .iter()
+            .filter(|(_, connection)| {
+                connection.directional
+                    && tree.contains(&connection.to)
+                    && *canvas.world.get::<&NeuronType>(connection.from).unwrap() == neuron_type
+            })
+            .map(|(_, connection)| connection.to)
+            .max_by(|a, b| {
+                let up =
+                    |entity: &Entity| canvas.world.get::<&Position>(*entity).unwrap().position.x;
+                up(a).total_cmp(&up(b))
+            })
+            .unwrap()
+    };
+    let (tip, red) = (
+        ending(&canvas, NeuronType::Excitatory),
+        ending(&canvas, NeuronType::Inhibitory),
+    );
+    let parent = |canvas: &Canvas, child: Entity| {
+        canvas
+            .world
+            .query::<&Connection>()
+            .iter()
+            .find(|(_, connection)| !connection.directional && connection.to == child)
+            .map(|(_, connection)| connection.from)
+            .unwrap()
+    };
+    let mut path = vec![tip];
+    while *path.last().unwrap() != receiver {
+        path.push(parent(&canvas, *path.last().unwrap()));
+    }
+    path.pop();
+    let red_at = path
+        .iter()
+        .position(|&compartment| compartment == red)
+        .unwrap();
+    assert!(
+        red_at >= 3,
+        "the red ending is only {red_at} compartments down"
+    );
+
+    canvas.wait(3.0);
+    canvas.press(canvas.hands()[0]);
+    let mut peaks = vec![f64::MIN; path.len()];
+    for _ in 0..(3.0 * STEPS_PER_SECOND) as usize {
+        canvas.wait(1.0 / STEPS_PER_SECOND);
+        for (peak, &compartment) in peaks.iter_mut().zip(&path) {
+            let voltage = canvas
+                .world
+                .get::<&Compartment>(compartment)
+                .unwrap()
+                .voltage;
+            *peak = peak.max(voltage);
+        }
+    }
+    assert!(
+        peaks[..red_at]
+            .iter()
+            .all(|&peak| peak > BRIDGE_VOLTAGE_THRESHOLD),
+        "{peaks:?}"
+    );
+    assert!(
+        peaks[red_at + 1..]
+            .iter()
+            .all(|&peak| peak < BRIDGE_VOLTAGE_THRESHOLD),
+        "{peaks:?}"
+    );
 }

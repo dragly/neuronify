@@ -118,6 +118,11 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                 description: "Weak inputs make a neuron fire only when they arrive together.",
                 contents: saved!("tutorial/9_coincidence.neuronify"),
             },
+            Example {
+                name: "10. Inhibition on a branch",
+                description: "Inhibition on a dendrite silences only the inputs beyond it.",
+                contents: saved!("tutorial/10_inhibition_on_a_branch.neuronify"),
+            },
         ],
     },
     ExampleCategory {
