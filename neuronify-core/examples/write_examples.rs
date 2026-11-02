@@ -43,13 +43,13 @@ pub fn listening_to_a_neuron() -> World {
             x: 0.0,
             y: 0.0,
         },
-        pattern: Pattern::Bar,
+        pattern: Pattern::Grating,
         sensitivity: 3000.0,
         ..Default::default()
     };
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, neuron, "Cortex");
-    synapse(&mut world, eye, neuron, 3e-9);
+    synapse(&mut world, eye, neuron, 1.5e-9);
     spawn_loudspeaker(&mut world, neuron, at(0.0, 5.0));
     spawn_spike_detector(&mut world, neuron, at(-7.0, 9.0));
     note(
@@ -58,7 +58,7 @@ pub fn listening_to_a_neuron() -> World {
         22.0,
         5.0,
         "Hubel and Wiesel found the neurons that see edges by listening to their spikes \
-         as clicks. This neuron fires as the bar passes when the bar lies at the angle \
+         as clicks. This neuron fires as the stripes pass when they lie at the angle \
          its receptive field prefers. Turn the picture angle and listen to the clicks fade.",
     );
     world

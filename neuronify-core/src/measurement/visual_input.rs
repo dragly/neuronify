@@ -110,10 +110,14 @@ impl ReceptiveField {
                 x: x0,
                 y: y0,
             } => {
+                let (width, length, frequency) = (0.1, 0.2, 20.0);
                 let along = (x - x0) * angle.cos() + (y - y0) * angle.sin();
                 let across = -(x - x0) * angle.sin() + (y - y0) * angle.cos();
-                (-along * along / (2.0 * 0.1 * 0.1) - across * across / (2.0 * 0.2 * 0.2)).exp()
-                    * (20.0 * along).cos()
+                let envelope = (-along * along / (2.0 * width * width)
+                    - across * across / (2.0 * length * length))
+                    .exp();
+                let average = (-(frequency * width).powi(2) / 2.0).exp();
+                envelope * ((frequency * along).cos() - average)
             }
             ReceptiveField::CenterSurround {
                 off_center,
@@ -121,7 +125,8 @@ impl ReceptiveField {
                 y: y0,
             } => {
                 let r2 = (x - x0).powi(2) + (y - y0).powi(2);
-                let weight = (-100.0 * r2).exp() - 0.3 * (-20.0 * r2).exp();
+                let (center, surround) = (100.0, 20.0);
+                let weight = (-center * r2).exp() - surround / center * (-surround * r2).exp();
                 if off_center {
                     -weight
                 } else {
@@ -186,10 +191,12 @@ impl VisualInput {
     }
 
     pub fn field_weights(&self) -> Vec<f64> {
-        (0..RESOLUTION)
+        let weights: Vec<f64> = (0..RESOLUTION)
             .flat_map(|row| (0..RESOLUTION).map(move |column| (column, row)))
             .map(|(column, row)| self.field.weight(grid(column), grid(row)))
-            .collect()
+            .collect();
+        let mean = weights.iter().sum::<f64>() / weights.len() as f64;
+        weights.into_iter().map(|weight| weight - mean).collect()
     }
 
     pub fn respond(&self) -> f64 {
@@ -304,6 +311,72 @@ mod tests {
         assert!(at_phase(&on, 0.0) > 0.0);
         assert!(at_phase(&off, 0.0) < 0.0);
         assert!(at_phase(&on, 0.0) > at_phase(&on, 0.5));
+    }
+
+    #[test]
+    fn a_uniform_picture_gives_no_response_whatever_the_field() {
+        let fields = [
+            ReceptiveField::default(),
+            ReceptiveField::Orientation {
+                angle: 0.7,
+                x: 0.2,
+                y: -0.1,
+            },
+            ReceptiveField::CenterSurround {
+                off_center: false,
+                x: 0.0,
+                y: 0.0,
+            },
+            ReceptiveField::CenterSurround {
+                off_center: true,
+                x: 0.25,
+                y: 0.0,
+            },
+            ReceptiveField::Edge { angle: FRAC_PI_2 },
+        ];
+        for field in fields {
+            let dark = input(field, Pattern::Bar, 0.0);
+            assert!(dark.picture().iter().all(|&brightness| brightness == 0.0));
+            assert!(at_phase(&dark, 0.0).abs() < 1e-12, "{field:?}");
+        }
+    }
+
+    #[test]
+    fn nothing_outside_a_field_makes_it_fire() {
+        let on = input(
+            ReceptiveField::CenterSurround {
+                off_center: false,
+                x: 0.25,
+                y: 0.0,
+            },
+            Pattern::Dot,
+            0.0,
+        );
+        let across = input(ReceptiveField::default(), Pattern::Bar, FRAC_PI_2);
+        for step in 0..200 {
+            let phase = step as f64 / 200.0;
+            if phase > 0.3 && phase < 0.7 {
+                assert!(at_phase(&on, phase) <= 0.0, "{phase}");
+            }
+            assert!(at_phase(&across, phase) < 1e-9, "{phase}");
+        }
+    }
+
+    #[test]
+    fn an_off_center_field_answers_the_dot_crossing_its_surround() {
+        let off = input(
+            ReceptiveField::CenterSurround {
+                off_center: true,
+                x: 0.0,
+                y: 0.0,
+            },
+            Pattern::Dot,
+            0.0,
+        );
+        let peak = (0..200)
+            .map(|step| at_phase(&off, step as f64 / 200.0))
+            .fold(f64::MIN, f64::max);
+        assert!(peak > 0.0, "{peak}");
     }
 
     #[test]

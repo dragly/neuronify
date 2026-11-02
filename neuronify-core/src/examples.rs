@@ -259,7 +259,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
             },
             Example {
                 name: "Listening to a Neuron",
-                description: "Hear a neuron click as a bar of light passes \
+                description: "Hear a neuron click as stripes of light pass \
                     at the angle it prefers.",
                 contents: saved!("listening_to_a_neuron.neuronify"),
             },
