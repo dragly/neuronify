@@ -39,11 +39,12 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
         let dw = tau * FHN_EPS * (v + FHN_A - FHN_B * w);
         let new_v = v + dv * cdt;
         let new_w = w + dw * cdt;
-        let shunt = (compartment.inhibition * cdt).min(1.0)
-            * (COMPARTMENT_RESTING_VOLTAGE - compartment.voltage);
+        let shunted = (compartment.inhibition * cdt).min(1.0);
+        let shunt = shunted * (COMPARTMENT_RESTING_VOLTAGE - compartment.voltage);
         compartment.voltage =
             new_v * FHN_SCALE + FHN_OFFSET + compartment.injected_current * cdt + shunt;
         compartment.m = new_w;
+        compartment.injected_current -= shunted * compartment.injected_current;
         compartment.injected_current -= compartment.injected_current * cdt / ENDING_TIME_CONSTANT;
         compartment.inhibition -= compartment.inhibition * cdt / INHIBITION_TIME_CONSTANT;
     }
@@ -87,22 +88,16 @@ pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
                         - _compartment_to.injected_current)
                         * ENDING_SPREAD
                         * cdt;
-                    let inhibition_spread = (compartment_from.inhibition
-                        - _compartment_to.inhibition)
-                        * ENDING_SPREAD
-                        * cdt;
                     let new_compartment_to = new_compartments
                         .get_mut(&connection.to)
                         .expect("Could not get new compartment");
                     new_compartment_to.voltage += delta_voltage * cdt;
                     new_compartment_to.injected_current += spread;
-                    new_compartment_to.inhibition += inhibition_spread;
                     let new_compartment_from = new_compartments
                         .get_mut(&connection.from)
                         .expect("Could not get new compartment");
                     new_compartment_from.voltage -= delta_voltage * cdt;
                     new_compartment_from.injected_current -= spread;
-                    new_compartment_from.inhibition -= inhibition_spread;
                 }
             }
         }
@@ -329,6 +324,18 @@ mod ending_tests {
         };
         assert!(!passing(10));
         assert!(passing(40));
+    }
+
+    #[test]
+    fn a_steadily_firing_inhibitory_ending_stops_spikes_where_it_ends() {
+        let site = DENDRITE_LENGTH / 2;
+        let mut endings: Vec<(NeuronType, usize, usize)> = (0..8)
+            .map(|spike| (INHIBITORY, site, spike * 10 * MILLISECOND))
+            .collect();
+        endings.push((EXCITATORY, 0, 45 * MILLISECOND));
+        let ranges = dendrite_receiving(1.0, &endings);
+        assert!(spiked_along(&ranges[..site]), "{ranges:?}");
+        assert!(stayed_below_threshold(&ranges[site + 1..]), "{ranges:?}");
     }
 
     #[test]
