@@ -116,7 +116,7 @@ fn tutorial() -> Vec<&'static str> {
 #[test]
 fn each_canvas_links_to_the_next_and_the_last_to_the_examples() {
     let files = tutorial();
-    assert_eq!(files.len(), 10);
+    assert_eq!(files.len(), 11);
     for (index, file) in files.iter().enumerate() {
         let canvas = Canvas::open(file);
         let links: Vec<String> = canvas
@@ -389,9 +389,44 @@ fn the_spike_reaches_the_near_neuron_before_the_far_one() {
     assert!(delay > 0.25, "the far neuron fired only {delay} s later");
 }
 
+fn axon_length(world: &World, from: Entity, to: Entity) -> f32 {
+    let position = |entity: Entity| world.get::<&Position>(entity).unwrap().position;
+    let mut length = 0.0;
+    let mut current = to;
+    while current != from {
+        let previous = world
+            .query::<&Connection>()
+            .iter()
+            .find(|(_, connection)| connection.to == current)
+            .map(|(_, connection)| connection.from)
+            .unwrap();
+        length += position(previous).distance(position(current));
+        current = previous;
+    }
+    length
+}
+
+#[test]
+fn the_spike_on_the_myelinated_axon_arrives_first() {
+    let mut canvas = Canvas::open("tutorial/8_myelin.neuronify");
+    let neurons = canvas.neurons(NeuronType::Excitatory);
+    let (sender, plain, myelinated) = (neurons[0].0, neurons[1].0, neurons[2].0);
+    let lengths = [plain, myelinated].map(|target| axon_length(&canvas.world, sender, target));
+    assert!(
+        (lengths[0] - lengths[1]).abs() < 0.05 * lengths[0],
+        "{lengths:?}"
+    );
+    canvas.press(canvas.hands()[0]);
+    canvas.wait(3.0);
+    let sent = canvas.spikes_since(sender, 0.0)[0];
+    let arrivals = [plain, myelinated]
+        .map(|target| (canvas.spikes_since(target, 0.0)[0] - sent) / SIMULATED_PER_REAL_SECOND);
+    assert!(arrivals[0] - arrivals[1] > 0.25, "{arrivals:?}");
+}
+
 #[test]
 fn an_axon_grown_onto_a_branch_fires_the_neuron() {
-    let mut canvas = Canvas::open("tutorial/8_dendrites.neuronify");
+    let mut canvas = Canvas::open("tutorial/9_dendrites.neuronify");
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let (sender, receiver) = (neurons[0].0, neurons[1].0);
@@ -437,7 +472,7 @@ fn an_axon_grown_onto_a_branch_fires_the_neuron() {
 
 #[test]
 fn weak_endings_fire_the_neuron_only_together() {
-    let mut canvas = Canvas::open("tutorial/9_coincidence.neuronify");
+    let mut canvas = Canvas::open("tutorial/10_coincidence.neuronify");
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let receiver = neurons.last().unwrap().0;
@@ -465,7 +500,7 @@ fn weak_endings_fire_the_neuron_only_together() {
 
 #[test]
 fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through() {
-    let mut canvas = Canvas::open("tutorial/10_inhibition_on_a_branch.neuronify");
+    let mut canvas = Canvas::open("tutorial/11_inhibition_on_a_branch.neuronify");
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let receiver = neurons.last().unwrap().0;
@@ -492,7 +527,7 @@ fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through() {
 
 #[test]
 fn the_top_spike_runs_down_to_the_red_ending_and_stops_there() {
-    let mut canvas = Canvas::open("tutorial/10_inhibition_on_a_branch.neuronify");
+    let mut canvas = Canvas::open("tutorial/11_inhibition_on_a_branch.neuronify");
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let receiver = neurons.last().unwrap().0;
