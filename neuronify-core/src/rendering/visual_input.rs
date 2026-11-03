@@ -38,11 +38,14 @@ pub fn collect_visual_input_tiles(world: &hecs::World) -> Vec<CylinderData> {
     for (_, (input, position)) in world.query::<(&VisualInput, &Position)>().iter() {
         let picture = input.picture();
         let weights = input.field_weights();
+        let peak = weights
+            .iter()
+            .fold(0.0, |peak: f64, weight| peak.max(weight.abs()));
         for (index, (&brightness, &weight)) in picture.iter().zip(&weights).enumerate() {
             let gray = Vec3::splat(0.04 + 0.8 * brightness as f32);
             let tint = if weight > 0.0 { rate_color() } else { blue() };
-            let strength = if input.show_field {
-                FIELD_TINT * (weight.abs() as f32).min(1.0)
+            let strength = if input.show_field && peak > 0.0 {
+                FIELD_TINT * (weight.abs() / peak).sqrt() as f32
             } else {
                 0.0
             };
@@ -153,6 +156,41 @@ mod tests {
         assert!(hidden
             .iter()
             .all(|tile| tile.start_color.x == tile.start_color.z));
+    }
+
+    #[test]
+    fn every_receptive_field_is_drawn_as_clearly_as_the_edge() {
+        let tints = |field: ReceptiveField| {
+            let mut world = World::new();
+            world.spawn((
+                Position {
+                    position: Vec3::ZERO,
+                },
+                VisualInput {
+                    field,
+                    pattern: Pattern::Bar,
+                    speed: 0.0,
+                    ..Default::default()
+                },
+            ));
+            let dark = Vec3::splat(0.04);
+            let tiles = collect_visual_input_tiles(&world);
+            let strongest = |tint: Vec3, warm: bool| {
+                tiles
+                    .iter()
+                    .map(|tile| tile.end_color)
+                    .filter(|color| (color.x > color.z) == warm)
+                    .map(|color| (color - dark).length() / (tint - dark).length())
+                    .fold(0.0, f32::max)
+            };
+            (strongest(rate_color(), true), strongest(blue(), false))
+        };
+        let (edge, _) = tints(ReceptiveField::KINDS[2]);
+        for field in ReceptiveField::KINDS {
+            let (center, lobes) = tints(field);
+            assert!((center - edge).abs() < 1e-4, "{field:?}");
+            assert!(lobes > edge / 4.0, "{field:?}");
+        }
     }
 
     #[test]
