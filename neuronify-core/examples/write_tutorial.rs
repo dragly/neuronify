@@ -4,14 +4,14 @@ use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::dendrites::{compartment_tree, spawn_dendrites};
 use neuronify_core::elements::{
-    spawn_cable, spawn_compartment, spawn_synapse, spawn_voltmeter, Element,
+    spawn_cable, spawn_compartment, spawn_internode, spawn_synapse, spawn_voltmeter, Element,
 };
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::serialization;
 use neuronify_core::{
     Annotation, Connection, CurrentClamp, CurrentSynapse, LeakyDynamics, Link, MeterSize,
     NeuronDisplay, NeuronType, NoteSize, Position, Setting, Tool, ToolGroup, DEFAULT_SPEED,
-    SEGMENT_LENGTH,
+    INTERNODE_LENGTH, SEGMENT_LENGTH,
 };
 
 const NANOAMPERE: f64 = 1e-9;
@@ -42,10 +42,11 @@ fn main() {
         ("5_sharpening_edges.neuronify", sharpening_edges()),
         ("6_keeping_a_rhythm.neuronify", keeping_a_rhythm()),
         ("7_axons.neuronify", axons()),
-        ("8_dendrites.neuronify", dendrites()),
-        ("9_coincidence.neuronify", coincidence()),
+        ("8_myelin.neuronify", myelin()),
+        ("9_dendrites.neuronify", dendrites()),
+        ("10_coincidence.neuronify", coincidence()),
         (
-            "10_inhibition_on_a_branch.neuronify",
+            "11_inhibition_on_a_branch.neuronify",
             inhibition_on_a_branch(),
         ),
     ] {
@@ -202,6 +203,23 @@ impl Canvas {
             previous = piece;
         }
         spawn_cable(&mut self.world, previous, to, true)
+    }
+
+    fn myelinated_axon(&mut self, from: Entity, to: Entity) -> Entity {
+        let position =
+            |world: &World, entity: Entity| world.get::<&Position>(entity).unwrap().position;
+        let neuron_type = *self.world.get::<&NeuronType>(from).unwrap();
+        let start = position(&self.world, from);
+        let end = position(&self.world, to);
+        let internodes = ((start.distance(end) - SEGMENT_LENGTH) / INTERNODE_LENGTH).floor();
+        let mut previous = from;
+        for internode in 1..=internodes as usize {
+            let along = (end - start).normalize() * internode as f32 * INTERNODE_LENGTH;
+            let node = spawn_compartment(&mut self.world, start + along, neuron_type);
+            spawn_internode(&mut self.world, previous, node);
+            previous = node;
+        }
+        self.axon(previous, &[], to)
     }
 
     fn weak_axon(&mut self, from: Entity, to: Entity, strength: f64) {
@@ -474,7 +492,29 @@ fn axons() -> World {
         "Press the touch sensor to see how the action potentials travel along each axon. \
          See how the distance affects the timing.",
     );
-    canvas.next("Dendrites", "tutorial/8_dendrites.neuronify");
+    canvas.next("Myelination", "tutorial/8_myelin.neuronify");
+    canvas.world
+}
+
+fn myelin() -> World {
+    let mut canvas = Canvas::new();
+    canvas.text(
+        "Many axons are wrapped in myelin, a fatty sheath with small gaps along it. \
+         Myelination makes spikes jump from gap to gap instead of creeping along the whole cable.",
+    );
+    let up = canvas.row(28.0);
+    let hand = canvas.add(Element::TouchSensor, 8.0, up + 12.5);
+    let sender = canvas.add(Element::ExcitatoryNeuron, 12.0, up + 12.5);
+    let plain = canvas.add(Element::ExcitatoryNeuron, 5.5, up - 13.2);
+    let myelinated = canvas.add(Element::ExcitatoryNeuron, 18.5, up - 13.2);
+    canvas.connect(hand, sender);
+    canvas.axon(sender, &[], plain);
+    canvas.myelinated_axon(sender, myelinated);
+    canvas.text(
+        "Press the touch sensor. The two axons are the same length, \
+         but the spike on the myelinated one reaches its neuron first.",
+    );
+    canvas.next("Dendrites", "tutorial/9_dendrites.neuronify");
     canvas.world
 }
 
@@ -496,7 +536,7 @@ fn dendrites() -> World {
          runs to the cell body and makes it fire.",
         choose_in(Tool::Axon, ToolGroup::Connections)
     ));
-    canvas.next("Coincidence", "tutorial/9_coincidence.neuronify");
+    canvas.next("Coincidence", "tutorial/10_coincidence.neuronify");
     canvas.world
 }
 
@@ -533,7 +573,7 @@ fn coincidence() -> World {
     );
     canvas.next(
         "Inhibition on a branch",
-        "tutorial/10_inhibition_on_a_branch.neuronify",
+        "tutorial/11_inhibition_on_a_branch.neuronify",
     );
     canvas.world
 }
