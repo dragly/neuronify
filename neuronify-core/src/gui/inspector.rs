@@ -502,7 +502,7 @@ fn parameter<N: Numeric>(
     )
 }
 
-fn logarithmic_parameter(
+pub(super) fn logarithmic_parameter(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,

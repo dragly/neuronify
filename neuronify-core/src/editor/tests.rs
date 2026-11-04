@@ -798,6 +798,15 @@ fn notes_lie_under_the_circuit() {
 }
 
 #[test]
+fn stimulating_pushes_with_the_chosen_current() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Stimulate);
+    editor.stimulation.current = 1e-9;
+    editor.edit(&mut world, at(0.0, 0.0), false);
+    assert_eq!(editor.touch().map(|touch| touch.current), Some(1e-9));
+}
+
+#[test]
 fn viewers_touch_sensors_and_pan_everywhere_else() {
     let mut world = World::new();
     Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
@@ -805,7 +814,10 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
 
     assert_eq!(editor.view(&mut world, at(0.5, 0.0)), None);
     assert_eq!(editor.view(&mut world, at(5.0, 5.0)), None);
-    assert_eq!(editor.touch(), Some(at(5.0, 5.0)));
+    assert_eq!(
+        editor.touch().map(|touch| touch.position),
+        Some(at(5.0, 5.0))
+    );
     editor.release(&world);
 
     assert_eq!(editor.view(&mut world, at(10.0, 10.0)), None);

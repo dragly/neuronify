@@ -2,6 +2,7 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
+use crate::constants::STIMULATION_CURRENT;
 use crate::elements::Element;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -53,7 +54,10 @@ impl Tool {
         match self {
             Tool::View => "Watch the circuit, press touch sensors and tap things to inspect them.",
             Tool::Edit => "Select things to change them, and drag them around.",
-            Tool::Stimulate => "Press a neuron to make it fire. Hold to keep it firing.",
+            Tool::Stimulate => {
+                "Press a neuron to make it fire. Hold to keep it firing. \
+                 Click again to set the current."
+            }
             Tool::Erase => "Drag over things and connections to erase them.",
             Tool::Place(Element::ExcitatoryNeuron) => {
                 "Blue. Its spikes push the neurons it connects to toward firing."
@@ -178,4 +182,17 @@ pub struct ConnectionHint {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StimulationTool {
     pub position: Vec3,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Stimulation {
+    pub current: f64,
+}
+
+impl Default for Stimulation {
+    fn default() -> Self {
+        Stimulation {
+            current: STIMULATION_CURRENT,
+        }
+    }
 }
