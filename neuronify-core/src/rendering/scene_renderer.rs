@@ -13,10 +13,13 @@ use crate::rendering::cylinders::{growing_axon, growing_dendrite};
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
 use crate::rendering::ghost::Ghost;
-use crate::rendering::gpu_types::{ConnectionData, CylinderData, HaloData, Sphere, TorusData};
+use crate::rendering::gpu_types::{
+    ConnectionData, CylinderData, HaloData, MeterBackgroundData, Sphere, TorusData,
+};
 use crate::rendering::halos::{collect_halos, create_halos};
 use crate::rendering::labels::LabelRenderer;
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
+use crate::rendering::meter_backgrounds::{collect_meter_backgrounds, create_meter_backgrounds};
 use crate::rendering::notes::NoteRenderer;
 use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::collect_scene;
@@ -41,6 +44,8 @@ const MAX_SHADOW_EXTENT: f32 = 625.0;
 pub struct SceneRenderer {
     theme: Theme,
     floor: MeshPipeline,
+    meter_backgrounds: MeshPipeline,
+    meter_background_buffer: InstanceBuffer<MeterBackgroundData>,
     halos: MeshPipeline,
     halo_buffer: InstanceBuffer<HaloData>,
     spheres: Spheres,
@@ -150,6 +155,15 @@ impl SceneRenderer {
             theme.palette().floor,
         )
         .unwrap();
+        let meter_background_buffer =
+            InstanceBuffer::<MeterBackgroundData>::new(&application.device);
+        let meter_backgrounds = create_meter_backgrounds(
+            &application.rendering_descriptor(),
+            &application.device,
+            &meter_background_buffer,
+            &theme.palette(),
+        )
+        .unwrap();
         let halo_buffer = InstanceBuffer::<HaloData>::new(&application.device);
         let halos = create_halos(
             &application.rendering_descriptor(),
@@ -162,6 +176,8 @@ impl SceneRenderer {
         SceneRenderer {
             theme,
             floor,
+            meter_backgrounds,
+            meter_background_buffer,
             halos,
             halo_buffer,
             spheres,
@@ -192,6 +208,13 @@ impl SceneRenderer {
                 &application.rendering_descriptor(),
                 &application.device,
                 theme.palette().floor,
+            )
+            .unwrap();
+            self.meter_backgrounds = create_meter_backgrounds(
+                &application.rendering_descriptor(),
+                &application.device,
+                &self.meter_background_buffer,
+                &theme.palette(),
             )
             .unwrap();
             set_theme_lighting(application, theme);
@@ -238,6 +261,11 @@ impl SceneRenderer {
             .update(&application.device, &application.queue, &scene.rings);
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
+        self.meter_background_buffer.update(
+            &application.device,
+            &application.queue,
+            &collect_meter_backgrounds(world),
+        );
         let mut halos = collect_halos(world, &palette);
         halos.append(&mut scene.transmitter);
         self.halo_buffer
@@ -249,6 +277,7 @@ impl SceneRenderer {
 
     pub fn render(&mut self, data: &mut RenderData) {
         self.floor.render(data);
+        self.meter_backgrounds.render(data);
         self.halos.render(data);
         self.spheres.render(data);
         self.cylinders.render(data);
