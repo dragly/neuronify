@@ -225,6 +225,23 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
             },
         ],
     },
+    ExampleCategory {
+        name: "Labs",
+        examples: &[
+            Example {
+                name: "Ring attractor",
+                description: "Press a touch sensor and a bump of activity forms on the ring \
+                    and stays after you let go. Press another to move it.",
+                contents: saved!("labs/ring_attractor.neuronify"),
+            },
+            Example {
+                name: "Ring attractor with noise",
+                description: "Random input keeps every cell flickering, \
+                    but a bump you start still holds its place.",
+                contents: saved!("labs/ring_attractor_noise.neuronify"),
+            },
+        ],
+    },
 ];
 
 #[cfg(test)]
