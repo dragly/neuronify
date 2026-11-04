@@ -10,6 +10,7 @@ pub mod gpu_types;
 pub mod halos;
 pub mod labels;
 pub mod lighting;
+pub mod meter_backgrounds;
 pub mod notes;
 pub mod paths;
 pub mod rate_plot;

@@ -147,6 +147,7 @@ pub enum Theme {
 #[derive(Clone, Copy, Debug)]
 pub struct Palette {
     pub floor: Vec3,
+    pub meter_background: Vec3,
     pub excitatory: Vec3,
     pub excitatory_active: Vec3,
     pub inhibitory: Vec3,
@@ -170,6 +171,7 @@ impl Theme {
         match self {
             Theme::Dark => Palette {
                 floor: srgb(56, 58, 80),
+                meter_background: srgb(34, 36, 52),
                 excitatory: blue(),
                 excitatory_active: blue().lerp(base(), VOLTAGE_TINT),
                 inhibitory: red(),
@@ -186,6 +188,7 @@ impl Theme {
             },
             Theme::Light => Palette {
                 floor: srgb(236, 239, 245),
+                meter_background: srgb(252, 253, 255),
                 excitatory: srgb(66, 105, 199),
                 excitatory_active: srgb(66, 105, 199).lerp(base(), VOLTAGE_TINT),
                 inhibitory: srgb(184, 61, 85),
