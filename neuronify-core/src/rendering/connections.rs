@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::f32::consts::FRAC_PI_2;
 
 use glam::{Vec2, Vec3};
@@ -37,11 +37,12 @@ thread_local! {
 }
 
 pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
+    let hidden = hidden_connections(world);
     let meters: Vec<Meter> = world
         .query::<()>()
         .with::<&MeterSize>()
         .iter()
-        .filter_map(|(meter, _)| Meter::of(world, meter))
+        .filter_map(|(meter, _)| Meter::of(world, meter, &hidden))
         .collect();
     let mut wires: Vec<ConnectionData> = meter_wire_paths(&meters, &obstacles(world))
         .iter()
@@ -50,7 +51,10 @@ pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<Connec
         .map(|(start, end)| wire(start, end, palette))
         .collect();
     for (speaker, position) in world.query::<&Position>().with::<&Loudspeaker>().iter() {
-        for (_, neuron) in measured(world, speaker) {
+        for (connection, neuron) in measured(world, speaker) {
+            if hidden.contains(&connection) {
+                continue;
+            }
             if let Ok(start) = world.get::<&Position>(neuron) {
                 wires.push(wire(start.position, position.position, palette));
             }
@@ -84,7 +88,11 @@ struct Meter {
 }
 
 impl Meter {
-    fn of(world: &hecs::World, meter: hecs::Entity) -> Option<Meter> {
+    fn of(
+        world: &hecs::World,
+        meter: hecs::Entity,
+        hidden: &HashSet<hecs::Entity>,
+    ) -> Option<Meter> {
         let frame = Frame::of(world, meter)?;
         let measured = measured(world, meter);
         let rows = if world.satisfies::<&RatePlot>(meter).unwrap_or(false) {
@@ -95,6 +103,7 @@ impl Meter {
         let starts = measured
             .iter()
             .enumerate()
+            .filter(|(_, (connection, _))| !hidden.contains(connection))
             .filter_map(|(index, (_, neuron))| {
                 let position = world.get::<&Position>(*neuron).ok()?.position;
                 Some((index.min(rows - 1), position))
@@ -954,6 +963,9 @@ pub fn connection_being_drawn(points: &[Vec3], palette: &Palette) -> Vec<Connect
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::elements::{spawn_spike_detector, spawn_spike_detector_wire, spawn_voltmeter};
+    use crate::rendering::colors::Theme;
+    use hecs::World;
 
     fn frame() -> Frame {
         Frame::new(
@@ -1260,5 +1272,39 @@ mod tests {
             }
         }
         assert!(joints > 100);
+    }
+
+    #[test]
+    fn spike_detector_wires_follow_the_connection_view_but_voltmeter_wires_stay() {
+        let mut world = World::new();
+        let neurons = [0.0, 3.0].map(|z| {
+            world.spawn((
+                Position {
+                    position: Vec3::new(0.0, 0.0, z),
+                },
+                NodeState::default(),
+            ))
+        });
+        let detector = spawn_spike_detector(&mut world, neurons[0], Vec3::X * 10.0);
+        spawn_spike_detector_wire(&mut world, neurons[1], detector);
+        spawn_voltmeter(&mut world, neurons[1], Vec3::X * 20.0);
+        let starts = neurons.map(|neuron| world.get::<&Position>(neuron).unwrap().position);
+        let mut wires = |view: ConnectionView, selected| {
+            view.set_in(&mut world);
+            Selected::set(&mut world, selected);
+            collect_meter_wires(&world, &Theme::default().palette())
+                .iter()
+                .filter(|segment| {
+                    starts
+                        .iter()
+                        .any(|start| segment.position_a.distance(*start) < MIN_SEGMENT_LENGTH)
+                })
+                .count()
+        };
+        assert_eq!(wires(ConnectionView::All, None), 3);
+        assert_eq!(wires(ConnectionView::LastSelected, Some(neurons[0])), 2);
+        assert_eq!(wires(ConnectionView::LastSelected, Some(detector)), 3);
+        assert_eq!(wires(ConnectionView::LastSelected, None), 1);
+        assert_eq!(wires(ConnectionView::None, Some(detector)), 1);
     }
 }

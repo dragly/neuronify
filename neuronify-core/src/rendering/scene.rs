@@ -1,10 +1,14 @@
-use glam::Vec3;
+use std::collections::{BTreeMap, HashMap};
 
+use glam::Vec3;
+use hecs::Entity;
+
+use crate::components::hidden_connections;
 use crate::rendering::colors::Palette;
 use crate::rendering::current_flow::collect_current_flow;
 use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
 use crate::rendering::gpu_types::{CylinderData, HaloData, Sphere, TorusData};
-use crate::rendering::paths::connection_paths;
+use crate::rendering::paths::{connection_paths, ConnectionPath};
 use crate::rendering::shapes::{collect_rings, collect_shapes};
 use crate::rendering::spheres::collect_spheres;
 use crate::rendering::transmitter::collect_transmitter;
@@ -52,7 +56,7 @@ impl Scene {
 
 pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene {
     let radii = compartment_radii(world);
-    let paths = connection_paths(world, &radii, palette);
+    let paths = shown_paths(world, &radii, palette);
     let mut scene = Scene {
         spheres: collect_spheres(world, &radii, &paths, palette, time),
         cylinders: collect_cylinders(world, &radii, &paths, palette),
@@ -65,4 +69,75 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene
     scene.extend(collect_shapes(world, palette));
     scene.cylinders.extend(collect_visual_input_tiles(world));
     scene
+}
+
+fn shown_paths(
+    world: &hecs::World,
+    radii: &HashMap<Entity, f32>,
+    palette: &Palette,
+) -> BTreeMap<Entity, ConnectionPath> {
+    let hidden = hidden_connections(world);
+    let mut paths = connection_paths(world, radii, palette);
+    paths.retain(|entity, _| !hidden.contains(entity));
+    paths
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::components::*;
+    use crate::elements::{spawn_cable, spawn_compartment};
+    use crate::rendering::colors::Theme;
+    use hecs::World;
+
+    fn neuron(world: &mut World, z: f32) -> Entity {
+        world.spawn((
+            Position {
+                position: Vec3::new(0.0, 0.0, z),
+            },
+            LeakyNeuron::default(),
+            NodeState::default(),
+            NeuronType::Excitatory,
+        ))
+    }
+
+    fn connect(world: &mut World, from: Entity, to: Entity) {
+        world.spawn((Connection {
+            from,
+            to,
+            strength: 1.0,
+            directional: true,
+        },));
+    }
+
+    fn shown(world: &mut World, view: ConnectionView, selected: Option<Entity>) -> usize {
+        view.set_in(world);
+        Selected::set(world, selected);
+        let palette = Theme::default().palette();
+        shown_paths(world, &compartment_radii(world), &palette).len()
+    }
+
+    #[test]
+    fn last_selected_view_shows_only_connections_of_the_last_selected_neuron() {
+        let mut world = World::new();
+        let [a, b, c] = [0.0, 6.0, 12.0].map(|z| neuron(&mut world, z));
+        connect(&mut world, a, b);
+        connect(&mut world, b, c);
+        assert_eq!(shown(&mut world, ConnectionView::All, None), 2);
+        assert_eq!(shown(&mut world, ConnectionView::LastSelected, None), 0);
+        assert_eq!(shown(&mut world, ConnectionView::LastSelected, Some(a)), 1);
+        assert_eq!(shown(&mut world, ConnectionView::LastSelected, Some(b)), 2);
+        assert_eq!(shown(&mut world, ConnectionView::None, Some(b)), 0);
+    }
+
+    #[test]
+    fn hidden_connections_leave_the_axon_of_a_neuron() {
+        let mut world = World::new();
+        let [a, b] = [0.0, 6.0].map(|z| neuron(&mut world, z));
+        connect(&mut world, a, b);
+        let terminal = spawn_compartment(&mut world, Vec3::X * 3.0, NeuronType::Excitatory);
+        spawn_cable(&mut world, a, terminal, true);
+        assert_eq!(shown(&mut world, ConnectionView::All, None), 2);
+        assert_eq!(shown(&mut world, ConnectionView::None, None), 1);
+    }
 }
