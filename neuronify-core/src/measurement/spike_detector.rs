@@ -31,6 +31,13 @@ impl SpikeDetector {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub enum RowOrder {
+    #[default]
+    Height,
+    Connection,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SpikeTrain {
     pub times: VecDeque<f64>,

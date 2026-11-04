@@ -8,7 +8,7 @@ use crate::elements::{
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::is_meter;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
-use crate::measurement::spike_detector::SpikeDetector;
+use crate::measurement::spike_detector::{RowOrder, SpikeDetector};
 use crate::measurement::visual_input::{ReceptiveField, VisualInput};
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
 use crate::{Connection, Deletable, NeuronType, Position};
@@ -146,7 +146,13 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                     .unwrap_or(SpikeDetector::default().time_range),
                 ..Default::default()
             };
-            world.spawn((left_middle, detector, size, Deletable {}))
+            world.spawn((
+                left_middle,
+                detector,
+                RowOrder::default(),
+                size,
+                Deletable {},
+            ))
         }
         "sensors/Retina.qml" => {
             let center = Position {

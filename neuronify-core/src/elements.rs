@@ -4,7 +4,7 @@ use hecs::{Entity, EntityBuilder, World};
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::simulation::model::cable_between;
@@ -277,7 +277,9 @@ impl Meter {
         }
         match self {
             Meter::Voltmeter => world.insert(meter, (Voltmeter {}, VoltmeterRange::default())),
-            Meter::SpikeDetector => world.insert_one(meter, SpikeDetector::default()),
+            Meter::SpikeDetector => {
+                world.insert(meter, (SpikeDetector::default(), RowOrder::default()))
+            }
             Meter::RatePlot => world.insert(meter, (RatePlot::default(), RateSeries::default())),
             Meter::Loudspeaker => world.insert_one(meter, Loudspeaker::default()),
         }

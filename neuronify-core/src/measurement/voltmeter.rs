@@ -5,6 +5,7 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
 
 use crate::components::{Connection, MeterSize, Position};
+use crate::measurement::spike_detector::RowOrder;
 use crate::simulation::Engine;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -76,6 +77,9 @@ impl Default for VoltmeterRange {
 }
 
 pub fn measured(world: &hecs::World, meter: Entity) -> Vec<(Entity, Entity)> {
+    let by_height = world
+        .get::<&RowOrder>(meter)
+        .map_or(true, |order| *order == RowOrder::Height);
     let height = |entity: Entity| {
         world
             .get::<&Position>(entity)
@@ -87,11 +91,15 @@ pub fn measured(world: &hecs::World, meter: Entity) -> Vec<(Entity, Entity)> {
         .filter(|(_, connection)| connection.to == meter)
         .map(|(wire, connection)| (wire, connection.from))
         .collect();
-    wires.sort_by(|(a_wire, a), (b_wire, b)| {
-        height(*b)
-            .total_cmp(&height(*a))
-            .then(a_wire.id().cmp(&b_wire.id()))
-    });
+    if by_height {
+        wires.sort_by(|(a_wire, a), (b_wire, b)| {
+            height(*b)
+                .total_cmp(&height(*a))
+                .then(a_wire.id().cmp(&b_wire.id()))
+        });
+    } else {
+        wires.sort_by_key(|(wire, _)| wire.id());
+    }
     wires
 }
 
@@ -283,6 +291,32 @@ mod tests {
 
         world.get::<&mut Position>(low).unwrap().position.x = 10.0;
         assert_eq!(rows(&world), [low, high, middle]);
+    }
+
+    #[test]
+    fn spike_detector_rows_follow_the_order_of_connection_when_asked() {
+        let mut world = hecs::World::new();
+        let neurons = [-5.0, 5.0, 0.0].map(|up| {
+            crate::elements::Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(up, 0.0, 0.0))
+        });
+        let detector = crate::elements::spawn_spike_detector(
+            &mut world,
+            neurons[0],
+            Vec3::new(0.0, 0.0, 10.0),
+        );
+        for &neuron in &neurons[1..] {
+            crate::elements::spawn_spike_detector_wire(&mut world, neuron, detector);
+        }
+        let rows = |world: &hecs::World| -> Vec<Entity> {
+            measured(world, detector)
+                .into_iter()
+                .map(|(_, neuron)| neuron)
+                .collect()
+        };
+        assert_eq!(rows(&world), [neurons[1], neurons[2], neurons[0]]);
+
+        *world.get::<&mut RowOrder>(detector).unwrap() = RowOrder::Connection;
+        assert_eq!(rows(&world), neurons);
     }
 
     #[test]
