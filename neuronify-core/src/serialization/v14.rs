@@ -1,7 +1,7 @@
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::World;
@@ -56,6 +56,17 @@ schema!(
     Preparation,
     ConnectionView,
     Selected,
+    RowOrder,
 );
 
-pub fn upgrade_from_v13(_world: &mut World) {}
+pub fn upgrade_from_v13(world: &mut World) {
+    let detectors: Vec<hecs::Entity> = world
+        .query::<()>()
+        .with::<&SpikeDetector>()
+        .iter()
+        .map(|(detector, _)| detector)
+        .collect();
+    for detector in detectors {
+        world.insert_one(detector, RowOrder::Height).unwrap();
+    }
+}

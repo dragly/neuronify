@@ -809,6 +809,22 @@ fn a_spike_detector_sets_its_time_range() {
 }
 
 #[test]
+fn a_spike_detector_orders_its_rows_by_height_or_connection() {
+    use crate::measurement::spike_detector::RowOrder;
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    let detector = crate::elements::spawn_spike_detector(&mut world, neuron, Vec3::Z * 3.0);
+    let mut harness = Harness::with(true, world, Some(detector));
+    assert!(harness.shows(Setting::RowOrder.description()));
+    let order = |harness: &Harness| *harness.world.get::<&RowOrder>(detector).unwrap();
+    assert_eq!(order(&harness), RowOrder::Height);
+    harness.click_text("Connection");
+    assert_eq!(order(&harness), RowOrder::Connection);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(order(&harness), RowOrder::Height);
+}
+
+#[test]
 fn a_rate_plot_sets_its_window_smoothing_and_range() {
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);

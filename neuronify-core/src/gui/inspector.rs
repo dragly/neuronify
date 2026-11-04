@@ -16,7 +16,7 @@ use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
-use crate::measurement::spike_detector::SpikeDetector;
+use crate::measurement::spike_detector::{RowOrder, SpikeDetector};
 use crate::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::Theme;
@@ -924,6 +924,18 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             &mut detector.time_range,
             TIME_RANGES,
             seconds_in_milliseconds,
+        );
+    }
+    if let Ok(mut order) = world.get::<&mut RowOrder>(entity) {
+        changed |= choice(
+            ui,
+            chrome,
+            Setting::RowOrder,
+            &mut *order,
+            &[
+                (RowOrder::Height, "Height"),
+                (RowOrder::Connection, "Connection"),
+            ],
         );
     }
     if let Ok(mut plot) = world.get::<&mut RatePlot>(entity) {
