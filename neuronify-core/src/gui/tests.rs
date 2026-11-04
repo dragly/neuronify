@@ -8,7 +8,7 @@ use crate::components::{
     NeuronType, NodeState, RegularSpikeGenerator,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
-use crate::elements::{spawn_cable, spawn_compartment, Element};
+use crate::elements::{spawn_cable, spawn_compartment, Element, Meter};
 use crate::settings::Setting;
 use crate::tools::Tool;
 
@@ -158,6 +158,33 @@ impl Harness {
                 }
                 _ => None,
             })
+    }
+
+    fn inspector_shapes(&self) -> Vec<(Option<String>, Rect)> {
+        let inspector = ["inspector", "inspector_sheet"]
+            .into_iter()
+            .find_map(|id| self.context.memory(|memory| memory.area_rect(Id::new(id))))
+            .expect("the inspector is open");
+        let Some(output) = &self.output else {
+            return Vec::new();
+        };
+        output
+            .shapes
+            .iter()
+            .filter(|clipped| clipped.clip_rect.height() < self.screen.y)
+            .filter_map(|clipped| {
+                let (text, rect) = match &clipped.shape {
+                    Shape::Text(shape) if !shape.galley.text().trim().is_empty() => (
+                        Some(shape.galley.text().to_string()),
+                        Rect::from_min_size(shape.pos, shape.galley.size()),
+                    ),
+                    Shape::Rect(shape) if shape.fill.a() > 0 => (None, shape.rect),
+                    _ => return None,
+                };
+                Some((text, rect.intersect(clipped.clip_rect)))
+            })
+            .filter(|(_, rect)| rect.is_positive() && inspector.contains(rect.center()))
+            .collect()
     }
 
     fn text_position(&self, text: &str) -> Option<Pos2> {
@@ -1344,4 +1371,57 @@ fn a_visual_input_stops_at_zero_speed_and_takes_a_phase_set_by_hand() {
     let input = harness.world.get::<&VisualInput>(input).unwrap();
     assert_eq!(input.speed, 0.0);
     assert_eq!(input.phase, 1.0);
+}
+
+#[test]
+fn no_text_in_the_inspector_is_covered_by_other_text_or_controls() {
+    let spawners: [fn(&mut World) -> Entity; 15] = [
+        |world| Element::ExcitatoryNeuron.spawn(world, Vec3::ZERO),
+        |world| Element::InhibitoryNeuron.spawn(world, Vec3::ZERO),
+        |world| Element::AdaptiveNeuron.spawn(world, Vec3::ZERO),
+        |world| Element::BurstNeuron.spawn(world, Vec3::ZERO),
+        |world| Element::CurrentSource.spawn(world, Vec3::ZERO),
+        |world| Element::AlternatingCurrentSource.spawn(world, Vec3::ZERO),
+        |world| Element::TouchSensor.spawn(world, Vec3::ZERO),
+        |world| Element::RegularSpikeGenerator.spawn(world, Vec3::ZERO),
+        |world| Element::PoissonGenerator.spawn(world, Vec3::ZERO),
+        |world| Element::VisualInput.spawn(world, Vec3::ZERO),
+        |world| Element::Note.spawn(world, Vec3::ZERO),
+        |world| Meter::Voltmeter.spawn(world, Vec3::ZERO),
+        |world| Meter::SpikeDetector.spawn(world, Vec3::ZERO),
+        |world| Meter::RatePlot.spawn(world, Vec3::ZERO),
+        |world| Meter::Loudspeaker.spawn(world, Vec3::ZERO),
+    ];
+    for spawn in spawners {
+        for screen in [SCREEN, PHONE] {
+            let mut world = World::new();
+            let entity = spawn(&mut world);
+            let mut harness = Harness::sized(screen, true, world, Some(entity));
+            for scrolled in [false, true] {
+                if scrolled {
+                    harness.scroll_inspector_to_the_end();
+                }
+                let shapes = harness.inspector_shapes();
+                assert!(shapes.iter().any(|(text, _)| text.is_some()));
+                for (index, (text, rect)) in shapes.iter().enumerate() {
+                    let Some(text) = text else {
+                        continue;
+                    };
+                    for (above, above_rect) in &shapes[index + 1..] {
+                        let overlap = rect.intersect(*above_rect);
+                        if !overlap.is_positive() || overlap.area() < 4.0 {
+                            continue;
+                        }
+                        match above {
+                            Some(above) => panic!("{text:?} runs into {above:?} at {screen:?}"),
+                            None => assert!(
+                                above_rect.contains_rect(*rect),
+                                "{text:?} is partly covered at {screen:?}"
+                            ),
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

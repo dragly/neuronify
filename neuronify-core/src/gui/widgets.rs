@@ -12,6 +12,7 @@ pub const ROW_INSET: f32 = 8.0;
 const ROW_ICON: f32 = 18.0;
 const SWITCH_SIZE: Vec2 = vec2(34.0, 20.0);
 const SWITCH_KNOB: f32 = 7.0;
+const SEGMENT_TEXT: f32 = 12.5;
 
 pub fn separator(ui: &mut Ui, chrome: &Chrome) {
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 9.0), Sense::hover());
@@ -75,17 +76,8 @@ pub fn segmented<T: PartialEq + Copy>(
     options: &[(T, &str)],
 ) -> bool {
     let mut changed = false;
-    let font = FontId::proportional(12.5);
-    let widths: Vec<f32> = options
-        .iter()
-        .map(|(_, label)| {
-            ui.painter()
-                .layout_no_wrap(label.to_string(), font.clone(), Color32::WHITE)
-                .size()
-                .x
-                + 18.0
-        })
-        .collect();
+    let font = FontId::proportional(SEGMENT_TEXT);
+    let widths = segment_widths(ui, options);
     let size = vec2(widths.iter().sum::<f32>() + 4.0, 28.0);
     let (track, _) = ui.allocate_exact_size(size, Sense::hover());
     ui.painter().rect_filled(track, ROW_RADIUS, chrome.raised);
@@ -116,6 +108,24 @@ pub fn segmented<T: PartialEq + Copy>(
         response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, chosen, *label));
     }
     changed
+}
+
+pub fn segmented_width<T>(ui: &Ui, options: &[(T, &str)]) -> f32 {
+    segment_widths(ui, options).iter().sum::<f32>() + 4.0
+}
+
+fn segment_widths<T>(ui: &Ui, options: &[(T, &str)]) -> Vec<f32> {
+    options
+        .iter()
+        .map(|(_, label)| text_width(ui, label, SEGMENT_TEXT) + 18.0)
+        .collect()
+}
+
+pub fn text_width(ui: &Ui, text: &str, size: f32) -> f32 {
+    ui.painter()
+        .layout_no_wrap(text.to_string(), FontId::proportional(size), Color32::WHITE)
+        .size()
+        .x
 }
 
 pub fn paint_flyout_marker(painter: &Painter, tip: egui::Pos2, color: Color32) {

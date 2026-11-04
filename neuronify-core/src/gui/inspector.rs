@@ -26,7 +26,7 @@ use crate::tools::Tool;
 use super::icons::{paint_icon, paint_tool, Icon};
 use super::sheet::{self, Sheet, HANDLE_HEIGHT};
 use super::style::{Chrome, MARGIN};
-use super::widgets::{heading, segmented, ROW_RADIUS};
+use super::widgets::{heading, segmented, segmented_width, text_width, ROW_RADIUS};
 
 pub const INSPECTOR_WIDTH: f32 = 296.0;
 pub const DELETE: &str = "inspector_delete";
@@ -630,20 +630,29 @@ pub(super) fn choice<T: PartialEq + Copy>(
     options: &[(T, &str)],
 ) -> bool {
     let mut changed = false;
-    ui.allocate_ui_with_layout(
-        vec2(ui.available_width(), SWITCH_HEIGHT),
-        Layout::left_to_right(Align::Center),
-        |ui| {
-            ui.label(
-                RichText::new(setting.label())
-                    .size(12.5)
-                    .color(chrome.subtext),
-            );
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                changed = segmented(ui, chrome, value, options);
-            });
-        },
-    );
+    let size = 12.5;
+    let label = RichText::new(setting.label())
+        .size(size)
+        .color(chrome.subtext);
+    let beside = text_width(ui, setting.label(), size)
+        + ui.spacing().item_spacing.x
+        + segmented_width(ui, options)
+        <= ui.available_width();
+    if beside {
+        ui.allocate_ui_with_layout(
+            vec2(ui.available_width(), SWITCH_HEIGHT),
+            Layout::left_to_right(Align::Center),
+            |ui| {
+                ui.label(label);
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    changed = segmented(ui, chrome, value, options);
+                });
+            },
+        );
+    } else {
+        ui.label(label);
+        changed = segmented(ui, chrome, value, options);
+    }
     description(ui, chrome, setting.description());
     ui.add_space(8.0);
     changed
