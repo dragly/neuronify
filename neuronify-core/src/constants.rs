@@ -35,6 +35,7 @@ pub const FHN_VOLTAGE_MAX: f64 = 160.0;
 pub const REPULSION_STRENGTH: f32 = 5.0;
 pub const SPRING_STRENGTH: f32 = 10.0;
 pub const ANGLE_ALIGNMENT_STRENGTH: f32 = 1.0;
+pub const AXON_SMOOTHING_STRENGTH: f32 = 20.0;
 
 pub const COUPLING_CAPACITANCE: f64 = 1.0 / 17.0;
 pub const BRIDGE_CURRENT_SCALE: f64 = 10e-9;

@@ -16,13 +16,15 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
     let mut slot_of = HashMap::new();
     let mut positions = Vec::new();
     let mut moving = Vec::new();
-    for (entity, (position, dynamics)) in world
-        .query::<(&Position, Option<&SpatialDynamics>)>()
+    let mut dendrite = Vec::new();
+    for (entity, (position, dynamics, in_dendrite)) in world
+        .query::<(&Position, Option<&SpatialDynamics>, Option<&Dendrite>)>()
         .iter()
     {
         slot_of.insert(entity, positions.len());
         positions.push(position.position);
         moving.push(dynamics.is_some());
+        dendrite.push(in_dendrite.is_some());
     }
     let (cables, rest_lengths): (Vec<(usize, usize, bool)>, Vec<f32>) = world
         .query::<(&Connection, Option<&Myelin>)>()
@@ -41,7 +43,7 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
 
     let mut forces = vec![Vec3::ZERO; positions.len()];
     add_repulsion(&positions, &moving, &mut forces);
-    add_cable_bending(&positions, &cables, &mut forces);
+    add_cable_bending(&positions, &cables, &dendrite, &mut forces);
     add_cable_springs(&positions, &cables, &rest_lengths, &mut forces);
 
     for (entity, dynamics) in world.query_mut::<&mut SpatialDynamics>() {
@@ -83,29 +85,71 @@ fn add_repulsion(positions: &[Vec3], moving: &[bool], forces: &mut [Vec3]) {
     }
 }
 
-fn add_cable_bending(positions: &[Vec3], cables: &[(usize, usize, bool)], forces: &mut [Vec3]) {
+fn turn(towards: Vec3, onwards: Vec3) -> f32 {
+    Vec3::Y
+        .dot(towards.cross(onwards))
+        .atan2(towards.dot(onwards))
+}
+
+fn add_cable_bending(
+    positions: &[Vec3],
+    cables: &[(usize, usize, bool)],
+    dendrite: &[bool],
+    forces: &mut [Vec3],
+) {
     let mut children = vec![Vec::new(); positions.len()];
     for &(parent, child, _) in cables {
         children[parent].push(child);
     }
-    for &(a, b, directional) in cables {
-        if directional {
+    let joints: Vec<(usize, usize, usize)> = cables
+        .iter()
+        .filter(|&&(_, _, directional)| !directional)
+        .flat_map(|&(a, b, _)| children[b].iter().map(move |&c| (a, b, c)))
+        .collect();
+    let (axon_joints, dendrite_joints): (Vec<_>, Vec<_>) =
+        joints.into_iter().partition(|&(_, b, _)| !dendrite[b]);
+    smooth_axon_bends(positions, &axon_joints, forces);
+    for (a, b, c) in dendrite_joints {
+        let ab = (positions[b] - positions[a]).normalize();
+        let bc = (positions[c] - positions[b]).normalize();
+        let bend = 1.0 - ab.dot(bc);
+        let normal = ab.cross(bc);
+        let force_a = ANGLE_ALIGNMENT_STRENGTH * bend * ab.cross(normal).normalize();
+        let force_c = ANGLE_ALIGNMENT_STRENGTH * bend * bc.cross(normal).normalize();
+        if !(force_a.is_finite() && force_c.is_finite()) {
             continue;
         }
-        for &c in &children[b] {
-            let ab = (positions[b] - positions[a]).normalize();
-            let bc = (positions[c] - positions[b]).normalize();
-            let bend = 1.0 - ab.dot(bc);
-            let normal = ab.cross(bc);
-            let force_a = ANGLE_ALIGNMENT_STRENGTH * bend * ab.cross(normal).normalize();
-            let force_c = ANGLE_ALIGNMENT_STRENGTH * bend * bc.cross(normal).normalize();
-            if !(force_a.is_finite() && force_c.is_finite()) {
-                continue;
-            }
-            forces[a] += force_a;
-            forces[b] -= force_a + force_c;
-            forces[c] += force_c;
+        forces[a] += force_a;
+        forces[b] -= force_a + force_c;
+        forces[c] += force_c;
+    }
+}
+
+fn smooth_axon_bends(positions: &[Vec3], joints: &[(usize, usize, usize)], forces: &mut [Vec3]) {
+    let turns: Vec<f32> = joints
+        .iter()
+        .map(|&(a, b, c)| turn(positions[b] - positions[a], positions[c] - positions[b]))
+        .collect();
+    let mut into = vec![(0.0, 0.0); positions.len()];
+    let mut at = vec![(0.0, 0.0); positions.len()];
+    for (&(_, b, c), &turn) in joints.iter().zip(&turns) {
+        into[c] = (into[c].0 + turn, into[c].1 + 1.0);
+        at[b] = (at[b].0 + turn, at[b].1 + 1.0);
+    }
+    for (&(a, b, c), &turn) in joints.iter().zip(&turns) {
+        let (sum, count) = (into[b].0 + at[c].0, into[b].1 + at[c].1);
+        let neighbours = if count > 0.0 { sum / count } else { 0.0 };
+        let torque = AXON_SMOOTHING_STRENGTH * (turn - neighbours).sin();
+        let towards = positions[b] - positions[a];
+        let onwards = positions[c] - positions[b];
+        let force_a = -torque * Vec3::Y.cross(towards) / towards.length_squared();
+        let force_c = -torque * Vec3::Y.cross(onwards) / onwards.length_squared();
+        if !(force_a.is_finite() && force_c.is_finite()) {
+            continue;
         }
+        forces[a] += force_a;
+        forces[b] -= force_a + force_c;
+        forces[c] += force_c;
     }
 }
 
@@ -248,6 +292,51 @@ mod tests {
         }
 
         assert!(bend(&world) < initial_bend / 2.0, "bend {}", bend(&world));
+    }
+
+    #[test]
+    fn an_axon_drawn_with_square_corners_settles_into_one_smooth_bend() {
+        let mut world = World::new();
+        let soma = neuron(&mut world, 0.0, 0.0);
+        let target = neuron(&mut world, 20.0, 0.0);
+        let corners: [(f32, f32); 4] = [(0.0, 0.0), (0.0, -8.0), (20.0, -8.0), (20.0, 0.0)];
+        let mut path = Vec::new();
+        for pair in corners.windows(2) {
+            let [(x0, z0), (x1, z1)] = [pair[0], pair[1]];
+            let steps = (x1 - x0).hypot(z1 - z0) as usize / 2;
+            path.extend((1..=steps).map(|step| {
+                let along = step as f32 / steps as f32;
+                (x0 + (x1 - x0) * along, z0 + (z1 - z0) * along)
+            }));
+        }
+        path.pop();
+        let mut chain = vec![soma];
+        for (x, z) in path {
+            let node = compartment(&mut world, x, z);
+            cable(&mut world, *chain.last().unwrap(), node);
+            chain.push(node);
+        }
+        axon_ending(&mut world, *chain.last().unwrap(), target);
+        chain.push(target);
+
+        for _ in 0..(30.0 * PHYSICS_STEPS_PER_SECOND) as usize {
+            apply_spatial_forces(&mut world);
+            integrate_motion(&mut world, PHYSICS_DT);
+        }
+
+        let turns: Vec<f32> = chain
+            .windows(3)
+            .map(|joint| {
+                let [a, b, c] = [joint[0], joint[1], joint[2]].map(|e| position(&world, e));
+                turn(b - a, c - b).to_degrees()
+            })
+            .collect();
+        let direction = turns.iter().sum::<f32>().signum();
+        assert!(
+            turns.iter().all(|&turn| turn * direction > -3.0),
+            "{turns:?}"
+        );
+        assert!(turns.iter().all(|&turn| turn.abs() < 45.0), "{turns:?}");
     }
 
     #[test]
