@@ -1,6 +1,10 @@
+use std::collections::HashSet;
+
 use glam::Vec3;
 use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
+
+use crate::measurement::voltmeter::VoltageSeries;
 
 pub trait Setting: hecs::Component + Copy + Default {
     fn of(world: &World) -> Self {
@@ -386,6 +390,71 @@ pub struct Connection {
     pub to: Entity,
     pub strength: f64,
     pub directional: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Selected;
+
+impl Selected {
+    pub fn entity(world: &World) -> Option<Entity> {
+        world
+            .query::<()>()
+            .with::<&Selected>()
+            .iter()
+            .next()
+            .map(|(entity, _)| entity)
+    }
+
+    pub fn set(world: &mut World, entity: Option<Entity>) {
+        let previous: Vec<Entity> = world
+            .query_mut::<()>()
+            .with::<&Selected>()
+            .into_iter()
+            .map(|(entity, _)| entity)
+            .collect();
+        for previous in previous {
+            world.remove_one::<Selected>(previous).unwrap();
+        }
+        if let Some(entity) = entity {
+            world.insert_one(entity, Selected).unwrap();
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub enum ConnectionView {
+    #[default]
+    All,
+    LastSelected,
+    None,
+}
+
+impl Setting for ConnectionView {}
+
+impl ConnectionView {
+    pub fn shows(&self, connection: &Connection, selected: Option<Entity>) -> bool {
+        match self {
+            ConnectionView::All => true,
+            ConnectionView::LastSelected => {
+                selected.is_some_and(|entity| connection.from == entity || connection.to == entity)
+            }
+            ConnectionView::None => false,
+        }
+    }
+}
+
+pub fn hidden_connections(world: &World) -> HashSet<Entity> {
+    let view = ConnectionView::of(world);
+    let selected = Selected::entity(world);
+    world
+        .query::<&Connection>()
+        .without::<hecs::Or<&Cable, &ConductanceSynapse>>()
+        .without::<&VoltageSeries>()
+        .iter()
+        .filter(|(entity, _)| Some(*entity) != selected)
+        .filter(|(_, connection)| !view.shows(connection, selected))
+        .map(|(entity, _)| entity)
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]

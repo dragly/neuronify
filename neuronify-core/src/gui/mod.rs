@@ -16,7 +16,7 @@ use egui::{
 };
 use hecs::World;
 
-use crate::components::{NeuronDisplay, Preparation, Setting, Temperature};
+use crate::components::{ConnectionView, NeuronDisplay, Preparation, Setting, Temperature};
 use crate::editor::Editor;
 use crate::links;
 use crate::rendering::Theme;
@@ -471,6 +471,22 @@ fn menu(
                             &[(Theme::Dark, "Dark"), (Theme::Light, "Light")],
                         );
                     });
+                    let mut connection_view = ConnectionView::of(controls.world);
+                    stacked_row(ui, chrome, "Connections", |ui| {
+                        segmented(
+                            ui,
+                            chrome,
+                            &mut connection_view,
+                            &[
+                                (ConnectionView::All, "All"),
+                                (ConnectionView::LastSelected, "Last selected"),
+                                (ConnectionView::None, "None"),
+                            ],
+                        );
+                    });
+                    if connection_view != ConnectionView::of(controls.world) {
+                        connection_view.set_in(controls.world);
+                    }
                     let mut display = NeuronDisplay::of(controls.world);
                     let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);
                     let firing_rate =
@@ -536,6 +552,25 @@ fn menu(
         .response
         .rect;
     (picked, opened_link, rect)
+}
+
+fn stacked_row(ui: &mut Ui, chrome: &Chrome, label: &str, value: impl FnOnce(&mut Ui)) {
+    ui.allocate_ui_with_layout(
+        vec2(ui.available_width(), MENU_ROW_HEIGHT),
+        Layout::left_to_right(Align::Max),
+        |ui| {
+            ui.add_space(8.0);
+            ui.label(RichText::new(label).size(13.5).color(chrome.text));
+        },
+    );
+    ui.allocate_ui_with_layout(
+        vec2(ui.available_width(), MENU_ROW_HEIGHT),
+        Layout::left_to_right(Align::Center),
+        |ui| {
+            ui.add_space(8.0);
+            value(ui);
+        },
+    );
 }
 
 fn labelled_row(ui: &mut Ui, chrome: &Chrome, label: &str, value: impl FnOnce(&mut Ui)) {

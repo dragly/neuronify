@@ -27,6 +27,7 @@ mod v10;
 mod v11;
 mod v12;
 mod v13;
+mod v14;
 mod v2;
 mod v3;
 mod v4;
@@ -37,7 +38,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 13;
+pub const VERSION: u32 = 14;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -51,7 +52,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v13::SaveContext, &mut serializer)
+    serialize(world, &mut v14::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -122,6 +123,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v13::deserialize(body)?, time, speed)
         }
+        14 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v14::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -143,6 +149,7 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             10 => v11::upgrade_from_v10(&mut world),
             11 => v12::upgrade_from_v11(&mut world),
             12 => v13::upgrade_from_v12(&mut world),
+            13 => v14::upgrade_from_v13(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -361,7 +368,10 @@ mod tests {
     #[test]
     fn loads_version_10() {
         let saved = load(include_bytes!("fixtures/v10.neuronify")).unwrap();
-        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_13())
+        );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
         for (_, input) in saved.world.query::<&VisualInput>().iter() {
@@ -372,7 +382,10 @@ mod tests {
     #[test]
     fn loads_version_11() {
         let saved = load(include_bytes!("fixtures/v11.neuronify")).unwrap();
-        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_13())
+        );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
     }
@@ -380,7 +393,10 @@ mod tests {
     #[test]
     fn loads_version_12() {
         let saved = load(include_bytes!("fixtures/v12.neuronify")).unwrap();
-        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_13())
+        );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
     }
@@ -388,7 +404,23 @@ mod tests {
     #[test]
     fn loads_version_13() {
         let saved = load(include_bytes!("fixtures/v13.neuronify")).unwrap();
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_13())
+        );
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn loads_version_14() {
+        let saved = load(include_bytes!("fixtures/v14.neuronify")).unwrap();
         assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            ConnectionView::of(&saved.world),
+            ConnectionView::LastSelected
+        );
+        assert!(Selected::entity(&saved.world).is_some());
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
     }
@@ -401,6 +433,48 @@ mod tests {
             .unwrap()
             .world;
         assert_eq!(Preparation::of(&loaded), Preparation::Mammal);
+    }
+
+    #[test]
+    fn keeps_connection_view() {
+        let mut world = World::new();
+        for view in [
+            ConnectionView::All,
+            ConnectionView::LastSelected,
+            ConnectionView::None,
+        ] {
+            view.set_in(&mut world);
+            let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+                .unwrap()
+                .world;
+            assert_eq!(count::<ConnectionView>(&loaded), 1);
+            assert_eq!(ConnectionView::of(&loaded), view);
+        }
+    }
+
+    #[test]
+    fn keeps_the_selection() {
+        let mut world = World::new();
+        let [first, second] = [0.0, 3.0].map(|x| {
+            world.spawn((Position {
+                position: glam::Vec3::new(x, 0.0, 0.0),
+            },))
+        });
+        Selected::set(&mut world, Some(first));
+        Selected::set(&mut world, Some(second));
+        let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+            .unwrap()
+            .world;
+        assert_eq!(count::<Selected>(&loaded), 1);
+        assert_eq!(Selected::entity(&loaded), Some(second));
+    }
+
+    #[test]
+    fn shows_all_connections_in_files_without_a_connection_view() {
+        let world = load(include_bytes!("fixtures/v13.neuronify"))
+            .unwrap()
+            .world;
+        assert_eq!(ConnectionView::of(&world), ConnectionView::All);
     }
 
     #[test]
@@ -480,6 +554,14 @@ mod tests {
     }
 
     fn fixture_world() -> World {
+        let mut world = fixture_world_of_version_13();
+        let neuron = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+        ConnectionView::LastSelected.set_in(&mut world);
+        Selected::set(&mut world, Some(neuron));
+        world
+    }
+
+    fn fixture_world_of_version_13() -> World {
         let mut world = fixture_world_of_version_9();
         let position = |x: f32| glam::Vec3::new(x, 0.0, 40.0);
         let neuron = world.query::<&LeakyNeuron>().iter().next().unwrap().0;

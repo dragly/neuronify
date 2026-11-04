@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
-use crate::components::Link;
+use crate::components::{Link, Selected};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
@@ -561,6 +561,11 @@ impl visula::Simulation for Neuronify {
             self.editor.selection = None;
             if self.editing() {
                 self.editor.tool = Tool::View;
+            }
+        }
+        if let Some(selection) = self.editor.selection {
+            if Selected::entity(&self.world) != Some(selection) {
+                Selected::set(&mut self.world, Some(selection));
             }
         }
         if let TouchGesture::Press(position) = self.touches.poll(input::now()) {

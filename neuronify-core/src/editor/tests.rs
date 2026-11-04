@@ -822,6 +822,23 @@ fn erasing_removes_what_is_under_the_pointer() {
 }
 
 #[test]
+fn erasing_leaves_connections_that_are_hidden() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Erase);
+    let a = neuron(&mut world, at(0.0, 0.0));
+    let b = neuron(&mut world, at(0.0, 10.0));
+    spawn_synapse(&mut world, a, b);
+
+    ConnectionView::None.set_in(&mut world);
+    drag(&mut editor, &mut world, &[at(0.0, 5.0)]);
+    assert!(connected(&world, a, b));
+
+    ConnectionView::All.set_in(&mut world);
+    drag(&mut editor, &mut world, &[at(0.0, 5.0)]);
+    assert!(!connected(&world, a, b));
+}
+
+#[test]
 fn erasing_the_selection_takes_its_dendrites_and_connections_but_leaves_its_voltmeter() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
@@ -2015,6 +2032,24 @@ fn tapping_a_connection_in_view_mode_selects_it() {
     assert_eq!(editor.selection, Some(a));
     editor.tap(&world, at(5.0, 9.0));
     assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn only_connections_on_screen_can_be_tapped_and_a_tapped_one_stays() {
+    let mut world = World::new();
+    let (a, _, synapse) = two_connected_neurons(&mut world);
+    let mut editor = editor(Tool::Edit);
+    ConnectionView::LastSelected.set_in(&mut world);
+    editor.tap(&world, at(0.3, 9.0));
+    assert_eq!(editor.selection, None);
+    assert!(editor.empty_at(&world, at(0.3, 9.0)));
+
+    Selected::set(&mut world, Some(a));
+    editor.tap(&world, at(0.3, 9.0));
+    assert_eq!(editor.selection, Some(synapse));
+
+    Selected::set(&mut world, editor.selection);
+    assert!(hidden_connections(&world).is_empty());
 }
 
 #[test]

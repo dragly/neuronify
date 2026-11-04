@@ -1079,12 +1079,14 @@ fn foreign_compartment_near(world: &World, axon: Entity, position: Vec3) -> Opti
 }
 
 fn connection_at(world: &World, position: Vec3) -> Option<Entity> {
+    let hidden = hidden_connections(world);
     connection_paths(
         world,
         &compartment_radii(world),
         &Theme::default().palette(),
     )
     .into_iter()
+    .filter(|(connection, _)| !hidden.contains(connection))
     .filter_map(|(connection, path)| {
         let to_ends = path.points.iter().map(|point| point.distance(position));
         let distance = to_ends.chain(path.distance_to(position)).reduce(f32::min)?;
@@ -1185,6 +1187,7 @@ fn connections_near(world: &World, position: Vec3) -> Vec<Entity> {
         &compartment_radii(world),
         &Theme::default().palette(),
     );
+    let hidden = hidden_connections(world);
     world
         .query::<&Connection>()
         .with::<&Deletable>()
@@ -1196,6 +1199,9 @@ fn connections_near(world: &World, position: Vec3) -> Vec<Entity> {
             ) else {
                 return false;
             };
+            if hidden.contains(entity) {
+                return false;
+            }
             let distance = match paths.get(entity) {
                 Some(path) => path.distance_to(position),
                 None => distance_to_segment(from.position, to.position, position),
