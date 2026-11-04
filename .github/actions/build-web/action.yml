@@ -1,0 +1,27 @@
+name: Build the web app
+description: Builds the web app with trunk into a folder that works from any path
+inputs:
+  dist:
+    description: Folder to build into, relative to the repository
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install trunk
+      shell: bash
+      run: |
+        mkdir -p "$HOME/.local/bin"
+        curl --fail --location --silent --show-error \
+          https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
+          | tar -xz -C "$HOME/.local/bin"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Build
+      shell: bash
+      working-directory: neuronify
+      env:
+        DIST: ${{ github.workspace }}/${{ inputs.dist }}
+      run: trunk build --release --public-url ./ --dist "$DIST"
