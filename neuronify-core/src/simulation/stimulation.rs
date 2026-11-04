@@ -4,6 +4,12 @@ use super::fhn::fhn_tau;
 use crate::components::*;
 use crate::constants::*;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Touch {
+    pub position: Vec3,
+    pub current: f64,
+}
+
 pub fn touch_sensor_near(world: &hecs::World, position: Vec3) -> bool {
     world
         .query::<&Position>()
@@ -48,25 +54,27 @@ pub fn fire_nearby(world: &mut hecs::World, position: Vec3) {
     }
 }
 
-pub fn stimulate_nearby(world: &mut hecs::World, position: Vec3) {
+pub fn stimulate_nearby(world: &mut hecs::World, touch: Touch) {
     let mut touched_neuron = false;
     for (_, (pos, dynamics)) in world
         .query_mut::<(&Position, &mut LeakyDynamics)>()
         .with::<&LeakyNeuron>()
     {
-        if pos.position.distance(position) < ERASE_RADIUS {
-            dynamics.received_currents += STIMULATION_CURRENT;
+        if pos.position.distance(touch.position) < ERASE_RADIUS {
+            dynamics.received_currents += touch.current;
             touched_neuron = true;
         }
     }
     if touched_neuron {
         return;
     }
+    let drive =
+        (STIMULATION_DRIVE * touch.current / STIMULATION_CURRENT).min(MAX_STIMULATION_DRIVE);
     for (_, (pos, compartment, dendrite)) in
         world.query_mut::<(&Position, &mut Compartment, Option<&Dendrite>)>()
     {
-        if pos.position.distance(position) < ERASE_RADIUS {
-            let held = STIMULATION_DRIVE * FHN_SCALE * fhn_tau(dendrite);
+        if pos.position.distance(touch.position) < ERASE_RADIUS {
+            let held = drive * FHN_SCALE * fhn_tau(dendrite);
             compartment.injected_current = compartment.injected_current.max(held);
         }
     }
@@ -79,7 +87,14 @@ mod tests {
     use crate::elements::{spawn_cable, spawn_compartment, Element};
     use crate::simulation::step_simulation;
 
-    fn spikes_in_a_second(world: &mut hecs::World, neuron: hecs::Entity, touch: Vec3) -> usize {
+    fn held(position: Vec3) -> Touch {
+        Touch {
+            position,
+            current: STIMULATION_CURRENT,
+        }
+    }
+
+    fn spikes_in_a_second(world: &mut hecs::World, neuron: hecs::Entity, touch: Touch) -> usize {
         let mut time = 0.0;
         let mut spikes = 0;
         while time < 1.0 {
@@ -116,8 +131,8 @@ mod tests {
     fn a_held_neuron_fires_about_as_often_as_the_examples() {
         let mut world = hecs::World::new();
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-        let touch = world.get::<&Position>(neuron).unwrap().position;
-        let spikes = spikes_in_a_second(&mut world, neuron, touch);
+        let soma = world.get::<&Position>(neuron).unwrap().position;
+        let spikes = spikes_in_a_second(&mut world, neuron, held(soma));
         assert!((30..60).contains(&spikes), "{spikes} spikes in a second");
     }
 
@@ -133,7 +148,7 @@ mod tests {
             .map(|(_, dendrite)| dendrite.position)
             .max_by(|a, b| a.length().total_cmp(&b.length()))
             .unwrap();
-        let spikes = spikes_in_a_second(&mut world, neuron, tip);
+        let spikes = spikes_in_a_second(&mut world, neuron, held(tip));
         assert!((30..70).contains(&spikes), "{spikes} spikes in a second");
     }
 
@@ -149,7 +164,42 @@ mod tests {
             previous = compartment;
         }
         let middle = -5.0 * SEGMENT_LENGTH * Vec3::Z;
-        let spikes = spikes_in_a_second(&mut world, neuron, middle);
+        let spikes = spikes_in_a_second(&mut world, neuron, held(middle));
+        assert!(spikes >= 30, "{spikes} spikes in a second");
+    }
+
+    #[test]
+    fn a_held_neuron_fires_faster_the_stronger_the_current() {
+        let spikes = |current| {
+            let mut world = hecs::World::new();
+            let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+            let touch = Touch {
+                position: Vec3::ZERO,
+                current,
+            };
+            spikes_in_a_second(&mut world, neuron, touch)
+        };
+        assert_eq!(spikes(100e-12), 0);
+        assert!(spikes(STIMULATION_CURRENT) < spikes(1e-9));
+    }
+
+    #[test]
+    fn a_held_dendrite_keeps_firing_however_strong_the_current() {
+        let mut world = hecs::World::new();
+        let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        spawn_dendrites(&mut world, neuron);
+        let mut dendrites: Vec<Vec3> = world
+            .query::<&Position>()
+            .with::<&Dendrite>()
+            .iter()
+            .map(|(_, dendrite)| dendrite.position)
+            .collect();
+        dendrites.sort_by(|a, b| a.length().total_cmp(&b.length()));
+        let touch = Touch {
+            position: dendrites[dendrites.len() / 2],
+            current: 2e-9,
+        };
+        let spikes = spikes_in_a_second(&mut world, neuron, touch);
         assert!(spikes >= 30, "{spikes} spikes in a second");
     }
 
@@ -159,7 +209,7 @@ mod tests {
         Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
         let compartment = spawn_compartment(&mut world, Vec3::X, NeuronType::Excitatory);
 
-        stimulate_nearby(&mut world, Vec3::ZERO);
+        stimulate_nearby(&mut world, held(Vec3::ZERO));
 
         let held = world
             .get::<&Compartment>(compartment)

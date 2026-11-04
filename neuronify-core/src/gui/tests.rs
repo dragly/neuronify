@@ -7,7 +7,7 @@ use crate::components::{
     AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics,
     LeakyNeuron, NeuronType, RegularSpikeGenerator,
 };
-use crate::constants::DEFAULT_SPEED;
+use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
 use crate::elements::{spawn_cable, spawn_compartment, Element};
 use crate::settings::Setting;
 use crate::tools::Tool;
@@ -295,6 +295,28 @@ fn pressing_outside_closes_the_flyout() {
     harness.click(pos2(700.0, 400.0));
     assert!(!harness.shows("Touch sensor"));
     assert_eq!(harness.editor.tool, Tool::Edit);
+}
+
+#[test]
+fn clicking_stimulate_again_sets_the_current() {
+    let mut harness = Harness::new(true);
+    harness.click_text("Stimulate");
+    assert_eq!(harness.editor.tool, Tool::Stimulate);
+    assert!(!harness.shows("300 pA"));
+    harness.click_text("Stimulate");
+    harness.press_the_middle_of_slider("Current", "300 pA");
+    let current = harness.editor.stimulation.current;
+    assert!(
+        current > 10e-12 && current < STIMULATION_CURRENT,
+        "{current} A"
+    );
+    harness.click(pos2(700.0, 400.0));
+    assert!(harness.shows("Current"));
+    harness.click_text("Stimulate");
+    assert!(!harness.shows("Current"));
+    harness.click_text("Stimulate");
+    harness.click_text("Erase");
+    assert!(!harness.shows("Current"));
 }
 
 #[test]
@@ -1094,6 +1116,19 @@ fn the_playback_bar_hides_behind_a_button_on_phones() {
     harness.frame(vec![]);
     harness.click_button(playback::PLAY);
     assert!(!harness.running);
+}
+
+#[test]
+fn tapping_stimulate_again_sets_the_current_on_phones() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Stimulate");
+    assert!(!harness.shows("300 pA"));
+    harness.click_text("Stimulate");
+    assert!(harness.shows("300 pA"));
+    harness.click_text("Playback");
+    assert!(harness.shows("×2") && !harness.shows("300 pA"));
+    harness.click_text("Stimulate");
+    assert!(harness.shows("300 pA") && !harness.shows("×2"));
 }
 
 #[test]

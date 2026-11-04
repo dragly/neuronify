@@ -1,17 +1,21 @@
+use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use egui::text::LayoutJob;
 use egui::{
-    pos2, vec2, Align, Align2, Color32, Context, Event, FontId, Galley, Id, Key, Order, Painter,
-    Rect, Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, WidgetType,
+    pos2, vec2, Align, Align2, Color32, Context, Event, FontId, Frame, Galley, Id, Key, Margin,
+    Order, Painter, Rect, Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo,
+    WidgetType,
 };
 
 use crate::editor::Editor;
 use crate::elements::Element;
 use crate::rendering::Theme;
+use crate::settings::Setting;
 use crate::tools::{Tool, ToolGroup};
 
 use super::icons::{paint_icon, paint_morphology, paint_tool, Icon};
+use super::inspector::logarithmic_parameter;
 use super::sheet::{self, Sheet, HANDLE_HEIGHT};
 use super::style::{Chrome, MARGIN, PANEL_RADIUS};
 use super::widgets::{heading, paint_flyout_marker, separator, ROW_INSET, ROW_RADIUS};
@@ -41,6 +45,7 @@ const OPTION_INSET: f32 = 8.0;
 const CARD_SPACING: f32 = 6.0;
 const CARD_GAP: f32 = 6.0;
 const CARD_PICTURE: Vec2 = vec2(80.0, 40.0);
+const TOUCH_CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=1e-9, 10e-12);
 const INPUT_HINT: &str = "Press and drag to place an input and connect it to a neuron.";
 const MORPHOLOGIES: [(bool, &str, &str); 2] = [
     (
@@ -55,11 +60,13 @@ const MORPHOLOGIES: [(bool, &str, &str); 2] = [
     ),
 ];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum Slot {
     Tool(Tool),
     Group(ToolGroup),
 }
+
+const STIMULATION: Slot = Slot::Tool(Tool::Stimulate);
 
 const SECTIONS: [&[(Slot, Key)]; 2] = [
     &[
@@ -84,7 +91,7 @@ pub struct RailResponse {
 
 #[derive(Default)]
 pub struct Rail {
-    flyout: Option<ToolGroup>,
+    flyout: Option<Slot>,
     adding: bool,
     sheet: Sheet,
     recent: Vec<Tool>,
@@ -119,6 +126,21 @@ impl Rail {
         self.recent.push(tool);
         self.flyout = None;
         self.adding = false;
+    }
+
+    fn press(&mut self, editor: &mut Editor, tool: Tool) {
+        if tool == Tool::Stimulate && editor.tool == tool {
+            self.flyout = (self.flyout != Some(STIMULATION)).then_some(STIMULATION);
+        } else {
+            self.choose(editor, tool);
+        }
+    }
+
+    fn stimulation_open(&mut self, editor: &Editor) -> bool {
+        if editor.tool != Tool::Stimulate && self.flyout == Some(STIMULATION) {
+            self.flyout = None;
+        }
+        self.flyout == Some(STIMULATION)
     }
 
     pub fn shortcuts(&mut self, context: &Context, editor: &mut Editor) {
@@ -183,7 +205,7 @@ impl Rail {
         let height = context.content_rect().height() - 2.0 * MARGIN;
         let mut hide = false;
         let mut toggled = None;
-        let mut groups = Vec::new();
+        let mut anchors = Vec::new();
         let inner = egui::Area::new(Id::new("rail"))
             .anchor(Align2::LEFT_TOP, [MARGIN, MARGIN])
             .show(context, |ui| {
@@ -220,8 +242,9 @@ impl Rail {
                                             key.name(),
                                             tool.description()
                                         ));
+                                        anchors.push((slot, response.rect));
                                         if response.clicked() {
-                                            self.choose(editor, tool);
+                                            self.press(editor, tool);
                                         }
                                     }
                                     Slot::Group(group) => {
@@ -250,9 +273,9 @@ impl Rail {
                                             group.label(),
                                             key.name()
                                         ));
-                                        groups.push((group, response.rect));
+                                        anchors.push((slot, response.rect));
                                         if response.clicked() {
-                                            toggled = Some(group);
+                                            toggled = Some(slot);
                                         }
                                     }
                                 }
@@ -271,25 +294,26 @@ impl Rail {
             self.flyout = None;
         }
         let rail = inner.response.rect;
-        if let Some(group) = toggled {
-            self.flyout = (self.flyout != Some(group)).then_some(group);
+        if let Some(slot) = toggled {
+            self.flyout = (self.flyout != Some(slot)).then_some(slot);
         }
         if inner.inner.clicked() {
             self.flyout = None;
         }
-        if let Some(group) = self.flyout {
-            let anchor = groups
+        self.stimulation_open(editor);
+        if let Some(slot) = self.flyout {
+            let anchor = anchors
                 .iter()
-                .find(|(candidate, _)| *candidate == group)
+                .find(|(candidate, _)| *candidate == slot)
                 .map_or(rail, |(_, rect)| *rect);
-            let flyout = self.flyout(context, theme, group, editor, rail, anchor);
+            let flyout = self.flyout(context, theme, slot, editor, rail, anchor);
             let pressed_elsewhere = context.input(|input| {
                 input.pointer.any_pressed()
                     && input.pointer.interact_pos().is_some_and(|position| {
                         !flyout.contains(position) && !rail.contains(position)
                     })
             });
-            if pressed_elsewhere {
+            if pressed_elsewhere && slot != STIMULATION {
                 self.flyout = None;
             }
         }
@@ -303,7 +327,7 @@ impl Rail {
         &mut self,
         context: &Context,
         theme: Theme,
-        group: ToolGroup,
+        slot: Slot,
         editor: &mut Editor,
         rail: Rect,
         anchor: Rect,
@@ -319,6 +343,13 @@ impl Rail {
                 chrome.panel_frame(FLYOUT_PADDING).show(ui, |ui| {
                     ui.set_width(FLYOUT_WIDTH);
                     ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
+                    let group = match slot {
+                        Slot::Group(group) => group,
+                        Slot::Tool(_) => {
+                            stimulation_settings(ui, chrome, editor);
+                            return;
+                        }
+                    };
                     heading(ui, chrome, group.label(), ROW_INSET);
                     match group {
                         ToolGroup::Neurons => morphology_picker(
@@ -378,7 +409,10 @@ impl Rail {
                                     })
                                     .inner;
                                 if response.clicked() {
-                                    self.choose(editor, tool);
+                                    self.press(editor, tool);
+                                    if self.flyout == Some(STIMULATION) {
+                                        *playback_open = false;
+                                    }
                                 }
                             }
                             let placing = ![Tool::View, Tool::Edit, Tool::Stimulate, Tool::Erase]
@@ -428,10 +462,27 @@ impl Rail {
                                 .inner;
                             if response.clicked() {
                                 *playback_open = !*playback_open;
+                                if *playback_open {
+                                    self.flyout = None;
+                                }
                             }
                         });
                     });
             });
+        if self.stimulation_open(editor) {
+            egui::Area::new(Id::new("stimulation"))
+                .anchor(
+                    Align2::CENTER_BOTTOM,
+                    [0.0, -(2.0 * TOOL_BAR_MARGIN + TOOL_BAR_HEIGHT)],
+                )
+                .show(context, |ui| {
+                    chrome.panel_frame(FLYOUT_PADDING).show(ui, |ui| {
+                        ui.set_width(FLYOUT_WIDTH.min(width - 2.0 * FLYOUT_PADDING as f32));
+                        ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
+                        stimulation_settings(ui, chrome, editor);
+                    });
+                });
+        }
         if self.adding {
             let sheet = self.add_sheet(context, theme, editor);
             let pressed_elsewhere = context.input(|input| {
@@ -559,6 +610,22 @@ fn morphology_picker(
         .find(|(value, _, _)| value == compartments)
         .map_or("", |(_, _, hint)| hint);
     hint(ui, chrome, text, inset);
+}
+
+fn stimulation_settings(ui: &mut Ui, chrome: &Chrome, editor: &mut Editor) {
+    heading(ui, chrome, Tool::Stimulate.name(), ROW_INSET);
+    Frame::new()
+        .inner_margin(Margin::symmetric(ROW_INSET as i8, 0))
+        .show(ui, |ui| {
+            logarithmic_parameter(
+                ui,
+                chrome,
+                Setting::TouchCurrent,
+                &mut editor.stimulation.current,
+                TOUCH_CURRENTS,
+                |amperes| format!("{:.0} pA", amperes * 1e12),
+            );
+        });
 }
 
 fn hint(ui: &mut Ui, chrome: &Chrome, text: &str, inset: f32) {
@@ -768,7 +835,8 @@ fn tool_item(
     label: &str,
     on: bool,
 ) -> Response {
-    item(ui, chrome, label, on, false, |painter, rect, color| {
+    let has_flyout = on && tool == Tool::Stimulate;
+    item(ui, chrome, label, on, has_flyout, |painter, rect, color| {
         paint_tool(painter, tool, rect, theme, color, false)
     })
 }

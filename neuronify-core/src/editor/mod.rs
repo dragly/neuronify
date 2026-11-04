@@ -19,8 +19,10 @@ use crate::measurement::visual_input::{visual_input_frame, VisualInput};
 use crate::measurement::voltmeter::{measured, Corner, Frame, VoltageSeries, Voltmeter};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
-use crate::simulation::{fire_nearby, touch_sensor_near};
-use crate::tools::{ConnectionHint, ConnectionOffer, ConnectionTool, StimulationTool, Tool};
+use crate::simulation::{fire_nearby, touch_sensor_near, Touch};
+use crate::tools::{
+    ConnectionHint, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool, Tool,
+};
 use drag::Drag;
 use history::{History, Recording, Snapshot};
 
@@ -51,6 +53,7 @@ pub struct Pan(pub Vec3);
 pub struct Editor {
     pub tool: Tool,
     pub compartments: bool,
+    pub stimulation: Stimulation,
     pub selection: Option<Entity>,
     connection_tool: Option<ConnectionTool>,
     offer: Option<ConnectionOffer>,
@@ -69,8 +72,11 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn touch(&self) -> Option<Vec3> {
-        self.stimulation_tool.as_ref().map(|touch| touch.position)
+    pub fn touch(&self) -> Option<Touch> {
+        self.stimulation_tool.as_ref().map(|touch| Touch {
+            position: touch.position,
+            current: self.stimulation.current,
+        })
     }
 
     pub fn connection_being_drawn(&self, world: &World) -> Option<(Vec3, Vec3)> {
