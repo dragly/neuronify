@@ -6,7 +6,7 @@ use visula::{
     SphereMaterial, Spheres, Torus, TorusGeometry, TorusMaterial,
 };
 
-use crate::constants::{NODE_RADIUS, TERMINAL_INSET};
+use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSET};
 use crate::rendering::colors::{terminal_color, Theme};
 use crate::rendering::connections::{collect_meter_wires, connection_being_drawn};
 use crate::rendering::cylinders::{growing_axon, growing_dendrite};
@@ -87,7 +87,7 @@ impl SceneRenderer {
             &LineGeometry {
                 start: connection.position_a.clone(),
                 end: connection_endpoint.clone(),
-                width: connection.strength.clone() * 0.3,
+                width: connection.strength.clone() * CONNECTION_WIDTH_PER_STRENGTH,
                 color: connection.start_color.clone(),
             },
             &LineMaterial {

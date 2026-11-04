@@ -2,6 +2,7 @@ use egui::{vec2, Color32, Pos2, Rect, Shape, Stroke};
 use glam::Vec3;
 use hecs::World;
 
+use crate::constants::CONNECTION_WIDTH_PER_STRENGTH;
 use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::{
     collect_meter_wires, collect_rate_plots, collect_scene, collect_spike_detectors,
@@ -9,7 +10,6 @@ use crate::rendering::{
 };
 
 const THUMBNAIL_MIN_CANVAS_EXTENT: f32 = 20.0;
-const CONNECTION_WIDTH_PER_STRENGTH: f32 = 0.3;
 const MIN_LINE_WIDTH: f32 = 1.0;
 const MIN_TRACE_POINT_SPACING: f32 = 1.0;
 
