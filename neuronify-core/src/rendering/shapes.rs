@@ -18,7 +18,7 @@ use crate::rendering::gpu_types::{CylinderData, TorusData};
 use crate::rendering::scene::Scene;
 
 /// How long a soma or generator keeps glowing after it fires, in simulated seconds.
-const FLASH_DURATION: f64 = 0.01;
+const FLASH_DURATION: f64 = 0.004;
 /// Up and right on the screen with the default camera.
 const SCREEN_UP: Vec3 = Vec3::X;
 const SCREEN_RIGHT: Vec3 = Vec3::Z;
@@ -447,6 +447,28 @@ mod tests {
         };
         assert_eq!(color(false), palette.excitatory);
         assert_ne!(color(true), palette.excitatory);
+    }
+
+    #[test]
+    fn a_neuron_firing_at_80_hz_shows_its_own_colour_most_of_the_time() {
+        let mut world = hecs::World::new();
+        let entity = world.spawn((NeuronType::Inhibitory,));
+        let neuron = LeakyNeuron::default();
+        let palette = Theme::Dark.palette();
+        let steps = (0.0125 / LIF_DT).round() as usize;
+        let unlit = (0..steps)
+            .filter(|&step| {
+                let dynamics = LeakyDynamics {
+                    voltage: neuron.resting_potential,
+                    time_since_fire: step as f64 * LIF_DT,
+                    ..Default::default()
+                };
+                let display = NeuronDisplay::default();
+                soma_color(&world, entity, &neuron, &dynamics, &display, &palette)
+                    == palette.inhibitory
+            })
+            .count();
+        assert!(unlit > steps / 2, "{unlit} of {steps}");
     }
 
     #[test]
