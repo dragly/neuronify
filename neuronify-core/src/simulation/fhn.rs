@@ -130,12 +130,16 @@ fn current_into_neuron(world: &World, cable: &Connection) -> Option<(Entity, f64
     })
 }
 
+pub fn fhn_tau(dendrite: Option<&Dendrite>) -> f64 {
+    match dendrite {
+        Some(_) => FHN_TAU / DENDRITE_SLOWDOWN,
+        None => FHN_TAU,
+    }
+}
+
 pub fn fhn_step(world: &mut World, cdt: f64, recently_fired: &HashSet<Entity>) {
     for (_, (compartment, dendrite)) in world.query_mut::<(&mut Compartment, Option<&Dendrite>)>() {
-        let tau = match dendrite {
-            Some(_) => FHN_TAU / DENDRITE_SLOWDOWN,
-            None => FHN_TAU,
-        };
+        let tau = fhn_tau(dendrite);
         let v = (compartment.voltage - FHN_OFFSET) / FHN_SCALE;
         let w = compartment.m;
         let dv = tau * (v - v * v * v / 3.0 - w);
