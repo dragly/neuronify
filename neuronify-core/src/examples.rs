@@ -240,6 +240,18 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                     but a bump you start still holds its place.",
                 contents: saved!("labs/ring_attractor_noise.neuronify"),
             },
+            Example {
+                name: "Hopfield network",
+                description: "Press two neurons of a letter, \
+                    and the grid fills in the rest of the letter from memory.",
+                contents: saved!("labs/hopfield.neuronify"),
+            },
+            Example {
+                name: "Hopfield network, overloaded",
+                description: "The same grid with five letters stored. \
+                    Cues now land on other letters or on blends that were never stored.",
+                contents: saved!("labs/hopfield_overloaded.neuronify"),
+            },
         ],
     },
     ExampleCategory {
