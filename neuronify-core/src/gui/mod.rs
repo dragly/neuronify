@@ -16,7 +16,7 @@ use egui::{
 };
 use hecs::World;
 
-use crate::components::{NeuronDisplay, Setting};
+use crate::components::{NeuronDisplay, Setting, Temperature};
 use crate::editor::Editor;
 use crate::rendering::Theme;
 use crate::tools::Tool;
@@ -27,7 +27,7 @@ use inspector::{Inspector, Placement};
 use playback::BAR_HEIGHT;
 use rail::{Rail, POPOVER_GAP, RAIL_WIDTH, TOOL_BAR_HEIGHT, TOOL_BAR_MARGIN};
 use style::{Chrome, MARGIN, PANEL_RADIUS};
-use widgets::{icon_row, segmented, separator, switch};
+use widgets::{heading, icon_row, segmented, separator, switch};
 
 const FAB_SIZE: f32 = 46.0;
 const FAB_GAP: f32 = 8.0;
@@ -36,6 +36,7 @@ const DISABLED_OPACITY: f32 = 0.45;
 const MENU_WIDTH: f32 = 232.0;
 const MENU_PADDING: i8 = 6;
 const MENU_ROW_HEIGHT: f32 = 34.0;
+const TEMPERATURES: std::ops::RangeInclusive<f64> = 0.0..=35.0;
 const COMPACT_WIDTH: f32 = 640.0;
 const COMPACT_HEIGHT: f32 = 560.0;
 const HINT_GAP: f32 = 20.0;
@@ -448,6 +449,7 @@ fn menu(
                     picked = Some(MenuChoice::Examples);
                 }
                 separator(ui, chrome);
+                heading(ui, chrome, "View", 8.0);
                 labelled_row(ui, chrome, "Theme", |ui| {
                     segmented(
                         ui,
@@ -475,6 +477,31 @@ fn menu(
                             .color(chrome.subtext),
                     );
                 });
+                separator(ui, chrome);
+                heading(ui, chrome, "Simulation", 8.0);
+                let mut temperature = Temperature::of(controls.world);
+                let warmed = egui::Frame::new()
+                    .inner_margin(egui::Margin {
+                        left: 8,
+                        right: 4,
+                        top: 0,
+                        bottom: 0,
+                    })
+                    .show(ui, |ui| {
+                        inspector::parameter(
+                            ui,
+                            chrome,
+                            crate::settings::Setting::Temperature,
+                            &mut temperature.celsius,
+                            TEMPERATURES,
+                            |celsius| format!("{celsius:.1} °C"),
+                        )
+                    })
+                    .inner;
+                if warmed {
+                    temperature.set_in(controls.world);
+                    controls.editor.mark_edited();
+                }
             });
         })
         .response
