@@ -4,8 +4,8 @@ use std::sync::Arc;
 use egui::text::LayoutJob;
 use egui::{
     pos2, vec2, Align, Align2, Color32, Context, Event, FontId, Frame, Galley, Id, Key, Margin,
-    Order, Painter, Rect, Response, ScrollArea, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo,
-    WidgetType,
+    Order, Painter, Rect, Response, ScrollArea, Sense, Shape, Stroke, StrokeKind, Ui, Vec2,
+    WidgetInfo, WidgetType,
 };
 
 use crate::editor::Editor;
@@ -35,6 +35,8 @@ const HIDE_HEIGHT: f32 = 22.0;
 const HIDE_ICON: f32 = 14.0;
 const HIDE_OPACITY: f32 = 0.6;
 const SHOW_SIZE: f32 = 40.0;
+const HEADING_HEIGHT: f32 = 22.0;
+const CHEVRON: f32 = 3.0;
 const ITEM_HEIGHT: f32 = 52.0;
 const ITEM_RADIUS: u8 = 10;
 const ITEM_ICON: f32 = 24.0;
@@ -67,6 +69,7 @@ enum Slot {
 }
 
 const STIMULATION: Slot = Slot::Tool(Tool::Stimulate);
+const ADD_SECTION: usize = 1;
 
 const SECTIONS: [&[(Slot, Key)]; 2] = [
     &[
@@ -96,6 +99,7 @@ pub struct Rail {
     sheet: Sheet,
     recent: Vec<Tool>,
     hidden: bool,
+    folded: bool,
 }
 
 impl Rail {
@@ -223,8 +227,20 @@ impl Rail {
                             false,
                             |painter, rect, color| paint_icon(painter, Icon::Menu, rect, color),
                         );
-                        for section in SECTIONS {
+                        for (index, section) in SECTIONS.into_iter().enumerate() {
                             separator(ui, chrome);
+                            if index == ADD_SECTION {
+                                if !self.folded && add_heading(ui, chrome).clicked() {
+                                    self.folded = true;
+                                    self.flyout = self.flyout.filter(|&slot| slot == STIMULATION);
+                                }
+                                if self.folded {
+                                    if add_button(ui, chrome, theme, editor, false).clicked() {
+                                        self.folded = false;
+                                    }
+                                    continue;
+                                }
+                            }
                             for &(slot, key) in section {
                                 match slot {
                                     Slot::Tool(tool) => {
@@ -415,31 +431,9 @@ impl Rail {
                                     }
                                 }
                             }
-                            let placing = ![Tool::View, Tool::Edit, Tool::Stimulate, Tool::Erase]
-                                .contains(&editor.tool);
                             let response = ui
                                 .allocate_ui(slot, |ui| {
-                                    item(
-                                        ui,
-                                        chrome,
-                                        "Add",
-                                        placing || self.adding,
-                                        false,
-                                        |painter, rect, color| {
-                                            if placing {
-                                                paint_tool(
-                                                    painter,
-                                                    editor.tool,
-                                                    rect,
-                                                    theme,
-                                                    color,
-                                                    editor.compartments,
-                                                );
-                                            } else {
-                                                paint_icon(painter, Icon::Plus, rect, color);
-                                            }
-                                        },
-                                    )
+                                    add_button(ui, chrome, theme, editor, self.adding)
                                 })
                                 .inner;
                             if response.clicked() {
@@ -778,6 +772,64 @@ fn show_button(ui: &mut Ui, chrome: &Chrome, theme: Theme, editor: &Editor) -> R
     );
     response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Show tools"));
     response.on_hover_text(format!("Show tools ({})", editor.tool.name()))
+}
+
+fn add_heading(ui: &mut Ui, chrome: &Chrome) -> Response {
+    let (rect, response) =
+        ui.allocate_exact_size(vec2(ui.available_width(), HEADING_HEIGHT), Sense::click());
+    let painter = ui.painter();
+    let color = if response.hovered() {
+        painter.rect_filled(rect, ROW_RADIUS, chrome.raised);
+        chrome.text
+    } else {
+        chrome.subtext
+    };
+    let text = painter.text(
+        rect.center() - vec2(CHEVRON, 0.0),
+        Align2::CENTER_CENTER,
+        "ADD",
+        FontId::proportional(11.0),
+        color,
+    );
+    let tip = pos2(
+        text.right() + 2.0 * CHEVRON,
+        rect.center().y + CHEVRON / 2.0,
+    );
+    painter.add(Shape::line(
+        vec![
+            tip + vec2(-CHEVRON, -CHEVRON),
+            tip,
+            tip + vec2(CHEVRON, -CHEVRON),
+        ],
+        Stroke::new(1.25_f32, color),
+    ));
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Add"));
+    response
+}
+
+fn add_button(ui: &mut Ui, chrome: &Chrome, theme: Theme, editor: &Editor, open: bool) -> Response {
+    let placing = ![Tool::View, Tool::Edit, Tool::Stimulate, Tool::Erase].contains(&editor.tool);
+    item(
+        ui,
+        chrome,
+        "Add",
+        placing || open,
+        false,
+        |painter, rect, color| {
+            if placing {
+                paint_tool(
+                    painter,
+                    editor.tool,
+                    rect,
+                    theme,
+                    color,
+                    editor.compartments,
+                );
+            } else {
+                paint_icon(painter, Icon::Plus, rect, color);
+            }
+        },
+    )
 }
 
 fn item(

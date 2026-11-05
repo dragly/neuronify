@@ -288,6 +288,19 @@ fn a_group_opens_a_flyout_to_choose_from() {
 }
 
 #[test]
+fn the_add_heading_folds_the_elements_behind_an_add_button() {
+    let mut harness = Harness::new(false);
+    harness.click_text("Neurons");
+    assert!(harness.shows("Point neurons"));
+    harness.click_text("ADD");
+    assert!(!harness.shows("Neurons") && !harness.shows("Point neurons"));
+    harness.press(Modifiers::NONE, Key::N);
+    assert_eq!(harness.editor.tool, Tool::Place(Element::ExcitatoryNeuron));
+    harness.click_text("Add");
+    assert!(harness.shows("Neurons") && harness.shows("ADD"));
+}
+
+#[test]
 fn pressing_outside_closes_the_flyout() {
     let mut harness = Harness::new(true);
     harness.click_text("Inputs");
