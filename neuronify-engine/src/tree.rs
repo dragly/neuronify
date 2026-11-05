@@ -88,7 +88,12 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn build(morphology: &Morphology, d_lambda: f64, voltage: f64) -> Result<Tree, BuildError> {
+    pub fn build(
+        morphology: &Morphology,
+        d_lambda: f64,
+        voltage: f64,
+        celsius: f64,
+    ) -> Result<Tree, BuildError> {
         if morphology.nodes.is_empty() {
             return Err(BuildError::Empty);
         }
@@ -180,7 +185,7 @@ impl Tree {
             let gates = channel.channel().gates;
             let steady: Vec<f64> = gates
                 .iter()
-                .map(|gate| gate.steady_state(voltage))
+                .map(|gate| gate.steady_state(voltage, celsius))
                 .collect();
             let mut arrays = ChannelPoints {
                 channel,
@@ -277,7 +282,7 @@ impl Tree {
         })
     }
 
-    pub fn set_state(&mut self, point: usize, voltage: f64, gates: &[f64]) {
+    pub fn set_state(&mut self, point: usize, voltage: f64, gates: &[f64], celsius: f64) {
         self.voltage[point] = voltage;
         let count: usize = self
             .point_slots(point)
@@ -293,7 +298,7 @@ impl Tree {
                 states.fill_with(|| stored.next().unwrap());
             } else {
                 for (state, gate) in states.iter_mut().zip(arrays.channel.channel().gates) {
-                    *state = gate.steady_state(voltage);
+                    *state = gate.steady_state(voltage, celsius);
                 }
             }
         }
@@ -477,6 +482,9 @@ impl Tree {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::morphology::Density;
+
+    const CELSIUS: f64 = 16.3;
 
     fn passive_cable(length: f64, diameter: f64) -> Morphology {
         let mut morphology = Morphology::default();
@@ -516,7 +524,7 @@ mod tests {
         }
         let side = morphology.node(NodeMembrane::Point);
         morphology.cable(side, tips[0], 150.0, 0.8, Membrane::squid());
-        let mut tree = Tree::build(&morphology, 0.1, -65.0).unwrap();
+        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
         tree.inject(tree.node_point(side), 0.05);
         let tables = Tables::new(0.025, 6.3);
         for _ in 0..40 {
@@ -588,7 +596,7 @@ mod tests {
     #[test]
     fn a_passive_cable_attenuates_like_the_cable_equation() {
         let (length, diameter, current) = (1000.0, 1.0, 0.01);
-        let mut tree = Tree::build(&passive_cable(length, diameter), 0.1, 0.0).unwrap();
+        let mut tree = Tree::build(&passive_cable(length, diameter), 0.1, 0.0, CELSIUS).unwrap();
         tree.inject(tree.node_point(0), current);
         let tables = Tables::new(0.025, 6.3);
         for _ in 0..(300.0 / tables.dt()) as usize {
@@ -617,7 +625,7 @@ mod tests {
         morphology.cable(1, third, 100.0, 1.0, Membrane::squid());
         morphology.cable(third, 0, 100.0, 1.0, Membrane::squid());
         assert!(matches!(
-            Tree::build(&morphology, 0.1, -65.0),
+            Tree::build(&morphology, 0.1, -65.0, CELSIUS),
             Err(BuildError::Loop { .. })
         ));
     }
@@ -637,16 +645,16 @@ mod tests {
             Membrane::passive(20_000.0, -65.0, 150.0),
         );
         let tables = Tables::new(0.025, 16.3);
-        let mut original = Tree::build(&morphology, 0.1, -65.0).unwrap();
+        let mut original = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
         original.inject(original.node_point(start), 0.5);
         for _ in 0..60 {
             original.step(&tables);
         }
         original.inject(original.node_point(start), 0.0);
-        let mut copy = Tree::build(&morphology, 0.1, -40.0).unwrap();
+        let mut copy = Tree::build(&morphology, 0.1, -40.0, CELSIUS).unwrap();
         for point in 0..original.points() {
             let gates: Vec<f64> = original.gates(point).collect();
-            copy.set_state(point, original.voltage(point), &gates);
+            copy.set_state(point, original.voltage(point), &gates, CELSIUS);
         }
         for _ in 0..200 {
             original.step(&tables);
@@ -666,7 +674,7 @@ mod tests {
         let end = morphology.node(NodeMembrane::Point);
         morphology.cable(soma, end, 1000.0, 0.25, Membrane::squid());
         let tables = Tables::new(0.025, 16.3);
-        let mut tree = Tree::build(&morphology, 0.1, -65.0).unwrap();
+        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
         let spiking = Spiking {
             threshold: -55.0,
             reset: -80.0,
@@ -719,7 +727,7 @@ mod tests {
             membrane: Membrane::squid(),
         });
         let tables = Tables::new(0.025, 6.3);
-        let mut tree = Tree::build(&morphology, 0.1, -65.0).unwrap();
+        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
         let mut trace = Vec::new();
         for step in 0..(50.0 / tables.dt()) as usize {
             let t = (step as f64 + 0.5) * tables.dt();
@@ -747,7 +755,7 @@ mod tests {
         let end = morphology.node(NodeMembrane::Point);
         morphology.cable(start, end, 5000.0, 1.0, Membrane::squid());
         let tables = Tables::new(0.025, 6.3);
-        let mut tree = Tree::build(&morphology, 0.1, -65.0).unwrap();
+        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
         let mut arrivals = [None; 2];
         for step in 0..(30.0 / tables.dt()) as usize {
             let t = (step as f64 + 0.5) * tables.dt();
@@ -767,5 +775,83 @@ mod tests {
         };
         let speed = 0.4 * 5000.0 / (b - a) / 1000.0;
         assert!((0.4..0.7).contains(&speed), "speed {speed} m/s");
+    }
+
+    fn cortical(sodium: f64, potassium: f64) -> Membrane {
+        Membrane {
+            capacitance: 1.0,
+            axial_resistivity: 150.0,
+            leak: 1.0 / 20_000.0,
+            leak_reversal: -70.0,
+            channels: vec![
+                Density {
+                    channel: ChannelId::CorticalSodium,
+                    conductance: sodium,
+                    reversal: 60.0,
+                },
+                Density {
+                    channel: ChannelId::CorticalPotassium,
+                    conductance: potassium,
+                    reversal: -90.0,
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn a_membrane_balanced_to_rest_stays_at_rest() {
+        let mut a_type = cortical(0.05, 0.015);
+        a_type.channels.push(Density {
+            channel: ChannelId::ATypePotassium,
+            conductance: 0.03,
+            reversal: -90.0,
+        });
+        for membrane in [Membrane::squid(), cortical(0.1, 0.03), a_type] {
+            let mut morphology = Morphology::default();
+            let start = morphology.node(NodeMembrane::Point);
+            let end = morphology.node(NodeMembrane::Point);
+            morphology.cable(start, end, 500.0, 0.6, membrane.resting_at(-70.0, 37.0));
+            let tables = Tables::new(0.025, 37.0);
+            let mut tree = Tree::build(&morphology, 0.1, -70.0, 37.0).unwrap();
+            for _ in 0..(100.0 / tables.dt()) as usize {
+                tree.step(&tables);
+            }
+            let drift = (0..tree.points()).map(|point| (tree.voltage(point) + 70.0).abs());
+            assert!(drift.fold(0.0, f64::max) < 1e-6);
+        }
+    }
+
+    #[test]
+    fn a_thin_cortical_axon_at_body_temperature_conducts_brief_spikes() {
+        let mut morphology = Morphology::default();
+        let start = morphology.node(NodeMembrane::Point);
+        let end = morphology.node(NodeMembrane::Point);
+        let membrane = cortical(0.1, 0.03).resting_at(-70.0, 37.0);
+        morphology.cable(start, end, 2000.0, 0.6, membrane);
+        let tables = Tables::new(0.025, 37.0);
+        let mut tree = Tree::build(&morphology, 0.3, -70.0, 37.0).unwrap();
+        let mut arrivals = [None; 2];
+        let mut above = 0;
+        for step in 0..(30.0 / tables.dt()) as usize {
+            let t = (step as f64 + 0.5) * tables.dt();
+            tree.inject(
+                tree.node_point(start),
+                if (1.0..1.25).contains(&t) { 0.5 } else { 0.0 },
+            );
+            tree.step(&tables);
+            for (arrival, fraction) in arrivals.iter_mut().zip([0.3, 0.7]) {
+                if arrival.is_none() && tree.cable_voltage(0, fraction) > -20.0 {
+                    *arrival = Some(t);
+                }
+            }
+            above += usize::from(tree.cable_voltage(0, 0.5) > -40.0);
+        }
+        let [Some(a), Some(b)] = arrivals else {
+            panic!("no spike: {arrivals:?}")
+        };
+        let speed = 0.4 * 2000.0 / (b - a) / 1000.0;
+        assert!((0.2..0.4).contains(&speed), "speed {speed} m/s");
+        let width = above as f64 * tables.dt();
+        assert!((0.5..1.2).contains(&width), "{width} ms above -40 mV");
     }
 }

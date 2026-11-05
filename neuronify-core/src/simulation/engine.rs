@@ -552,7 +552,12 @@ impl Engine {
                     link.membrane.clone(),
                 );
             }
-            match Tree::build(&morphology, D_LAMBDA, RESTING_POTENTIAL) {
+            match Tree::build(
+                &morphology,
+                D_LAMBDA,
+                RESTING_POTENTIAL,
+                self.network.celsius(),
+            ) {
                 Ok(tree) => break tree,
                 Err(BuildError::Loop { cable }) => {
                     tree_links.remove(cable);
@@ -648,6 +653,7 @@ impl Engine {
     }
 
     fn restore(&mut self, world: &World, index: usize, first_cable: usize) {
+        let celsius = self.network.celsius();
         let tree = self.network.tree_mut(index);
         for &(entity, place) in self.nodes.iter().rev() {
             if place.tree != index {
@@ -658,12 +664,12 @@ impl Engine {
                 .map_or(RESTING_POTENTIAL, |neuron| neuron.resting_potential);
             match world.get::<&NodeState>(entity) {
                 Ok(state) => {
-                    tree.set_state(place.point, state.voltage, &state.gates);
+                    tree.set_state(place.point, state.voltage, &state.gates, celsius);
                     if let Some(soma) = place.soma {
                         tree.set_since_spike(soma, state.since_spike);
                     }
                 }
-                Err(_) => tree.set_state(place.point, rest, &[]),
+                Err(_) => tree.set_state(place.point, rest, &[], celsius),
             }
         }
         for &(entity, _, cable) in &self.cables[first_cable..] {
@@ -675,7 +681,7 @@ impl Engine {
                     let stride = state.gates.len() / inner.len().max(1);
                     for (k, &point) in inner.iter().enumerate() {
                         let gates = &state.gates[k * stride..(k + 1) * stride];
-                        tree.set_state(point, state.voltage[k], gates);
+                        tree.set_state(point, state.voltage[k], gates, celsius);
                     }
                 }
                 state => {
@@ -690,7 +696,7 @@ impl Engine {
                         let below = (x as usize).min(stored.len() - 2);
                         let f = x - below as f64;
                         let voltage = stored[below] + f * (stored[below + 1] - stored[below]);
-                        tree.set_state(point, voltage, &[]);
+                        tree.set_state(point, voltage, &[], celsius);
                     }
                 }
             }

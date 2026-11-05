@@ -48,21 +48,48 @@ impl Rate {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
+pub enum Kinetics {
+    Rates {
+        alpha: Rate,
+        beta: Rate,
+        steady: Option<Rate>,
+    },
+    Formula(fn(f64, f64) -> (f64, f64)),
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Gate {
     pub power: i32,
-    pub alpha: Rate,
-    pub beta: Rate,
+    pub kinetics: Kinetics,
 }
 
 impl Gate {
-    pub fn steady_state(&self, voltage: f64) -> f64 {
-        let (alpha, beta) = (self.alpha.at(voltage), self.beta.at(voltage));
-        alpha / (alpha + beta)
+    pub fn steady_state(&self, voltage: f64, celsius: f64) -> f64 {
+        match self.kinetics {
+            Kinetics::Rates {
+                steady: Some(steady),
+                ..
+            } => steady.at(voltage),
+            Kinetics::Rates { alpha, beta, .. } => {
+                let (alpha, beta) = (alpha.at(voltage), beta.at(voltage));
+                alpha / (alpha + beta)
+            }
+            Kinetics::Formula(formula) => formula(voltage, celsius).0,
+        }
+    }
+
+    pub fn rate(&self, voltage: f64, celsius: f64, factor: f64) -> f64 {
+        match self.kinetics {
+            Kinetics::Rates { alpha, beta, .. } => {
+                alpha.at(voltage) * factor + beta.at(voltage) * factor
+            }
+            Kinetics::Formula(formula) => 1.0 / formula(voltage, celsius).1,
+        }
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Channel {
     pub gates: Vec<Gate>,
     pub reference_celsius: f64,
@@ -76,6 +103,31 @@ impl Channel {
 }
 
 const SLOW_REFERENCE: f64 = 12.6;
+const CORTICAL_REFERENCE: f64 = 23.0;
+const CORTICAL_Q10: f64 = 2.3;
+const FARADAY: f64 = 96_480.0;
+const GAS_CONSTANT: f64 = 8.315;
+const ZERO_CELSIUS: f64 = 273.16;
+
+fn per_millivolt(celsius: f64) -> f64 {
+    1e-3 * FARADAY / (GAS_CONSTANT * (ZERO_CELSIUS + celsius))
+}
+
+fn a_type_activation(voltage: f64, celsius: f64) -> (f64, f64) {
+    let charge = -1.5 - 1.0 / (1.0 + ((voltage + 40.0) / 5.0).exp());
+    let exponent = charge * (voltage - 11.0) * per_millivolt(celsius);
+    let alpha = exponent.exp();
+    let beta = (0.55 * exponent).exp();
+    let speed = 5.0f64.powf((celsius - 24.0) / 10.0);
+    let time_constant = (beta / (speed * 0.05 * (1.0 + alpha))).max(0.1);
+    (1.0 / (1.0 + alpha), time_constant)
+}
+
+fn a_type_inactivation(voltage: f64, celsius: f64) -> (f64, f64) {
+    let alpha = (3.0 * (voltage + 56.0) * per_millivolt(celsius)).exp();
+    let time_constant = (0.26 * (voltage + 50.0)).max(2.0);
+    (1.0 / (1.0 + alpha), time_constant)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum ChannelId {
@@ -83,14 +135,22 @@ pub enum ChannelId {
     SquidPotassium,
     SlowSodium,
     SlowPotassium,
+    CorticalSodium,
+    CorticalPotassium,
+    ATypePotassium,
+    Hcn,
 }
 
 impl ChannelId {
-    pub const ALL: [ChannelId; 4] = [
+    pub const ALL: [ChannelId; 8] = [
         ChannelId::SquidSodium,
         ChannelId::SquidPotassium,
         ChannelId::SlowSodium,
         ChannelId::SlowPotassium,
+        ChannelId::CorticalSodium,
+        ChannelId::CorticalPotassium,
+        ChannelId::ATypePotassium,
+        ChannelId::Hcn,
     ];
 
     pub fn index(self) -> usize {
@@ -111,28 +171,34 @@ impl ChannelId {
                 gates: vec![
                     Gate {
                         power: 3,
-                        alpha: Rate::ExpLinear {
-                            rate: 1.0,
-                            midpoint: -40.0,
-                            scale: 10.0,
-                        },
-                        beta: Rate::Exp {
-                            rate: 4.0,
-                            midpoint: -65.0,
-                            scale: -18.0,
+                        kinetics: Kinetics::Rates {
+                            alpha: Rate::ExpLinear {
+                                rate: 1.0,
+                                midpoint: -40.0,
+                                scale: 10.0,
+                            },
+                            beta: Rate::Exp {
+                                rate: 4.0,
+                                midpoint: -65.0,
+                                scale: -18.0,
+                            },
+                            steady: None,
                         },
                     },
                     Gate {
                         power: 1,
-                        alpha: Rate::Exp {
-                            rate: 0.07,
-                            midpoint: -65.0,
-                            scale: -20.0,
-                        },
-                        beta: Rate::Sigmoid {
-                            rate: 1.0,
-                            midpoint: -35.0,
-                            scale: 10.0,
+                        kinetics: Kinetics::Rates {
+                            alpha: Rate::Exp {
+                                rate: 0.07,
+                                midpoint: -65.0,
+                                scale: -20.0,
+                            },
+                            beta: Rate::Sigmoid {
+                                rate: 1.0,
+                                midpoint: -35.0,
+                                scale: 10.0,
+                            },
+                            steady: None,
                         },
                     },
                 ],
@@ -142,18 +208,117 @@ impl ChannelId {
             ChannelId::SquidPotassium => Channel {
                 gates: vec![Gate {
                     power: 4,
-                    alpha: Rate::ExpLinear {
-                        rate: 0.1,
-                        midpoint: -55.0,
-                        scale: 10.0,
-                    },
-                    beta: Rate::Exp {
-                        rate: 0.125,
-                        midpoint: -65.0,
-                        scale: -80.0,
+                    kinetics: Kinetics::Rates {
+                        alpha: Rate::ExpLinear {
+                            rate: 0.1,
+                            midpoint: -55.0,
+                            scale: 10.0,
+                        },
+                        beta: Rate::Exp {
+                            rate: 0.125,
+                            midpoint: -65.0,
+                            scale: -80.0,
+                        },
+                        steady: None,
                     },
                 }],
                 reference_celsius: 6.3,
+                q10: 3.0,
+            },
+            ChannelId::CorticalSodium => Channel {
+                gates: vec![
+                    Gate {
+                        power: 3,
+                        kinetics: Kinetics::Rates {
+                            alpha: Rate::ExpLinear {
+                                rate: 1.638,
+                                midpoint: -30.0,
+                                scale: 9.0,
+                            },
+                            beta: Rate::ExpLinear {
+                                rate: 1.116,
+                                midpoint: -30.0,
+                                scale: -9.0,
+                            },
+                            steady: None,
+                        },
+                    },
+                    Gate {
+                        power: 1,
+                        kinetics: Kinetics::Rates {
+                            alpha: Rate::ExpLinear {
+                                rate: 0.12,
+                                midpoint: -45.0,
+                                scale: 5.0,
+                            },
+                            beta: Rate::ExpLinear {
+                                rate: 0.0455,
+                                midpoint: -70.0,
+                                scale: -5.0,
+                            },
+                            steady: Some(Rate::Sigmoid {
+                                rate: 1.0,
+                                midpoint: -60.0,
+                                scale: -6.2,
+                            }),
+                        },
+                    },
+                ],
+                reference_celsius: CORTICAL_REFERENCE,
+                q10: CORTICAL_Q10,
+            },
+            ChannelId::CorticalPotassium => Channel {
+                gates: vec![Gate {
+                    power: 1,
+                    kinetics: Kinetics::Rates {
+                        alpha: Rate::ExpLinear {
+                            rate: 0.18,
+                            midpoint: 25.0,
+                            scale: 9.0,
+                        },
+                        beta: Rate::ExpLinear {
+                            rate: 0.018,
+                            midpoint: 25.0,
+                            scale: -9.0,
+                        },
+                        steady: None,
+                    },
+                }],
+                reference_celsius: CORTICAL_REFERENCE,
+                q10: CORTICAL_Q10,
+            },
+            ChannelId::ATypePotassium => Channel {
+                gates: vec![
+                    Gate {
+                        power: 1,
+                        kinetics: Kinetics::Formula(a_type_activation),
+                    },
+                    Gate {
+                        power: 1,
+                        kinetics: Kinetics::Formula(a_type_inactivation),
+                    },
+                ],
+                reference_celsius: 24.0,
+                q10: 1.0,
+            },
+            ChannelId::Hcn => Channel {
+                gates: vec![Gate {
+                    power: 1,
+                    kinetics: Kinetics::Rates {
+                        alpha: Rate::ExpLinear {
+                            rate: 0.076517,
+                            midpoint: -154.9,
+                            scale: -11.9,
+                        },
+                        beta: Rate::Exp {
+                            rate: 0.193,
+                            midpoint: 0.0,
+                            scale: 33.1,
+                        },
+                        steady: None,
+                    },
+                }],
+                reference_celsius: 34.0,
                 q10: 3.0,
             },
         }
@@ -163,6 +328,13 @@ impl ChannelId {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn rates(gate: &Gate, voltage: f64) -> (f64, f64) {
+        match gate.kinetics {
+            Kinetics::Rates { alpha, beta, .. } => (alpha.at(voltage), beta.at(voltage)),
+            Kinetics::Formula(_) => panic!("a formula gate has no rates"),
+        }
+    }
 
     fn exp_linear(x: f64, y: f64) -> f64 {
         x / ((x / y).exp() - 1.0)
@@ -189,10 +361,86 @@ mod tests {
             ];
             let gates = sodium.gates.iter().chain(&potassium.gates);
             for (gate, (alpha, beta)) in gates.zip(expected) {
-                assert!((gate.alpha.at(v) - alpha).abs() < 1e-12 * alpha.abs().max(1.0));
-                assert!((gate.beta.at(v) - beta).abs() < 1e-12 * beta.abs().max(1.0));
+                let (gate_alpha, gate_beta) = rates(gate, v);
+                assert!((gate_alpha - alpha).abs() < 1e-12 * alpha.abs().max(1.0));
+                assert!((gate_beta - beta).abs() < 1e-12 * beta.abs().max(1.0));
             }
         }
+    }
+
+    fn trap(v: f64, midpoint: f64, rate: f64, scale: f64) -> f64 {
+        rate * (v - midpoint) / (1.0 - (-(v - midpoint) / scale).exp())
+    }
+
+    #[test]
+    fn cortical_rates_match_mainen_and_sejnowski() {
+        let sodium = ChannelId::CorticalSodium.channel();
+        let potassium = ChannelId::CorticalPotassium.channel();
+        for v in [-90.0, -65.0, -52.3, -20.0, 10.0, 35.0] {
+            let shifted = v - 5.0;
+            let expected = [
+                (
+                    trap(shifted, -35.0, 0.182, 9.0),
+                    trap(-shifted, 35.0, 0.124, 9.0),
+                    None,
+                ),
+                (
+                    trap(shifted, -50.0, 0.024, 5.0),
+                    trap(-shifted, 75.0, 0.0091, 5.0),
+                    Some(1.0 / (1.0 + ((shifted + 65.0) / 6.2).exp())),
+                ),
+                (trap(v, 25.0, 0.02, 9.0), trap(-v, -25.0, 0.002, 9.0), None),
+            ];
+            let gates = sodium.gates.iter().chain(&potassium.gates);
+            for (gate, (alpha, beta, steady)) in gates.zip(expected) {
+                let (gate_alpha, gate_beta) = rates(gate, v);
+                assert!((gate_alpha - alpha).abs() < 1e-12 * alpha.abs().max(1.0));
+                assert!((gate_beta - beta).abs() < 1e-12 * beta.abs().max(1.0));
+                let steady = steady.unwrap_or(alpha / (alpha + beta));
+                assert!((gate.steady_state(v, 37.0) - steady).abs() < 1e-12);
+            }
+        }
+    }
+
+    #[test]
+    fn hcn_rates_match_kole_hallermann_and_stuart() {
+        let channel = ChannelId::Hcn.channel();
+        for v in [-120.0f64, -90.0, -70.0, -45.0, 0.0, 30.0] {
+            let alpha = 0.00643 * (v + 154.9) / (((v + 154.9) / 11.9).exp() - 1.0);
+            let beta = 0.193 * (v / 33.1).exp();
+            let (gate_alpha, gate_beta) = rates(&channel.gates[0], v);
+            assert!((gate_alpha - alpha).abs() < 1e-6 * alpha.abs().max(1e-3));
+            assert!((gate_beta - beta).abs() < 1e-12 * beta.abs().max(1.0));
+        }
+    }
+
+    #[test]
+    fn the_a_type_current_opens_fast_and_inactivates_slowly_around_its_midpoints() {
+        let channel = ChannelId::ATypePotassium.channel();
+        let [activation, inactivation] = &channel.gates[..] else {
+            panic!("two gates")
+        };
+        for celsius in [24.0, 37.0] {
+            assert!((activation.steady_state(11.0, celsius) - 0.5).abs() < 1e-12);
+            assert!((inactivation.steady_state(-56.0, celsius) - 0.5).abs() < 1e-12);
+        }
+        let time_constant =
+            |gate: &Gate, voltage: f64, celsius: f64| 1.0 / gate.rate(voltage, celsius, 1.0);
+        assert!((time_constant(inactivation, -70.0, 37.0) - 2.0).abs() < 1e-12);
+        assert!((time_constant(inactivation, 0.0, 37.0) - 13.0).abs() < 1e-9);
+        assert_eq!(
+            time_constant(inactivation, 0.0, 24.0),
+            time_constant(inactivation, 0.0, 37.0)
+        );
+        let (cool, warm) = (
+            time_constant(activation, -30.0, 24.0),
+            time_constant(activation, -30.0, 34.0),
+        );
+        assert!(
+            (4.5..5.0).contains(&(cool / warm)),
+            "{cool} against {warm} ms"
+        );
+        assert!(time_constant(activation, 40.0, 37.0) >= 0.1);
     }
 
     #[test]
