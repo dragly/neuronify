@@ -438,8 +438,7 @@ pub fn growing_ending(
     Some(Scene {
         spheres: path_spheres(&path),
         cylinders: path_cylinders(&path),
-        rings: Vec::new(),
-        transmitter: Vec::new(),
+        ..Default::default()
     })
 }
 
@@ -448,8 +447,7 @@ pub fn bead_ending(world: &hecs::World, bead: &Bead, palette: &Palette) -> Optio
     Some(Scene {
         spheres: path_spheres(&path),
         cylinders: path_cylinders(&path),
-        rings: Vec::new(),
-        transmitter: Vec::new(),
+        ..Default::default()
     })
 }
 
@@ -521,8 +519,7 @@ fn growing(
             ),
             (end, end_radius, Some(tip)),
         )],
-        rings: Vec::new(),
-        transmitter: Vec::new(),
+        ..Default::default()
     })
 }
 

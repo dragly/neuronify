@@ -44,7 +44,6 @@ pub enum Setting {
     FieldUpDown,
     OffCenter,
     Sensitivity,
-    ShowField,
     Channels,
     Temperature,
 }
@@ -96,7 +95,6 @@ impl Setting {
             Setting::FieldUpDown => "Field up or down",
             Setting::OffCenter => "Off center",
             Setting::Sensitivity => "Sensitivity",
-            Setting::ShowField => "Show field",
             Setting::Channels => "Channels",
             Setting::Temperature => "Temperature",
         }
@@ -172,9 +170,6 @@ impl Setting {
             Setting::FieldUpDown => "Where the field sits, from bottom to top.",
             Setting::OffCenter => "Fire for darkness in the center instead of light.",
             Setting::Sensitivity => "How often it fires when the picture matches the field perfectly.",
-            Setting::ShowField => {
-                "Tints the picture orange where light excites it and blue where light holds it back."
-            }
             Setting::Channels => {
                 "Squid uses the Hodgkin-Huxley channels from textbooks. \
                  Mammal uses channels measured in rat neurons at body temperature, \

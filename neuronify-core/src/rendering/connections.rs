@@ -13,6 +13,10 @@ use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::{ArcData, ConnectionData};
 use hecs::Entity;
 
+mod picture_wires;
+
+pub use picture_wires::{picture_wire_corners, picture_wire_points};
+
 const MIN_SEGMENT_LENGTH: f32 = 1e-4;
 const LANE_GAP: f32 = 0.6;
 const CLEARANCE: f32 = 0.3;
@@ -110,6 +114,9 @@ fn collect_wires(
         .flatten()
         .flat_map(|corners| rounded(corners, palette.neutral))
         .collect();
+    for corners in picture_wire_corners(world).values() {
+        wires.extend(rounded(corners, palette.neutral));
+    }
     for (speaker, position) in world
         .query::<(Entity, &Position)>()
         .with::<&Loudspeaker>()

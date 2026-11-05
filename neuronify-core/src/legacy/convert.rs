@@ -11,7 +11,9 @@ use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::is_meter;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector};
-use crate::measurement::visual_input::{ReceptiveField, VisualInput};
+use crate::measurement::visual_input::{
+    beside_the_picture, spawn_picture_wire, ReceptiveField, ReceptiveFieldCell, VisualInput,
+};
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
 use crate::{Connection, Deletable, NeuronType, Position};
 
@@ -69,7 +71,21 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
             text: node.label.trim().to_string(),
         });
     }
-    world.spawn(element.build())
+    let entity = world.spawn(element.build());
+    if node.filename == "sensors/Retina.qml" {
+        let picture = world.spawn((retina_center(node), VisualInput::default(), Deletable {}));
+        spawn_picture_wire(world, picture, entity);
+    }
+    entity
+}
+
+fn retina_center(node: &LegacyNode) -> Position {
+    Position {
+        position: convert_position(
+            node.x + LEGACY_RETINA_SIZE / 2.0,
+            node.y + LEGACY_RETINA_SIZE / 2.0,
+        ),
+    }
 }
 
 fn builder(components: impl DynamicBundle) -> EntityBuilder {
@@ -154,22 +170,18 @@ fn element(node: &LegacyNode) -> EntityBuilder {
             ))
         }
         "sensors/Retina.qml" => {
-            let center = Position {
-                position: convert_position(
-                    node.x + LEGACY_RETINA_SIZE / 2.0,
-                    node.y + LEGACY_RETINA_SIZE / 2.0,
-                ),
-            };
-            let default = VisualInput::default();
-            let input = VisualInput {
+            let field = ReceptiveFieldCell {
                 field: receptive_field(node),
-                sensitivity: node.sensitivity.map_or(default.sensitivity, Hertz),
-                show_field: node.plot_kernel.unwrap_or(default.show_field),
-                ..default
+                sensitivity: node
+                    .sensitivity
+                    .map_or(ReceptiveFieldCell::default().sensitivity, Hertz),
+                ..Default::default()
             };
             builder((
-                center,
-                input,
+                Position {
+                    position: beside_the_picture(retina_center(node).position),
+                },
+                field,
                 GeneratorDynamics::default(),
                 legacy_type(node.inhibitory),
                 Deletable {},

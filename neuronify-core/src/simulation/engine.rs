@@ -13,7 +13,9 @@ use neuronify_engine::{
 use super::model::*;
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::visual_input::{VisualInput, FRAME_INTERVAL};
+use crate::measurement::visual_input::{
+    is_picture_wire, ReceptiveFieldCell, VisualInput, FRAME_INTERVAL,
+};
 use crate::measurement::voltmeter::VoltageSeries;
 
 const D_LAMBDA: f64 = 0.3;
@@ -351,7 +353,7 @@ impl Fingerprint {
             hash.float(generator.rate)
         });
         hash.components(world, |_, _: &TouchSensor| {});
-        hash.components(world, |_, _: &VisualInput| {});
+        hash.components(world, |_, _: &ReceptiveFieldCell| {});
         hash.components(world, |_, _: &VoltageSeries| {});
         hash.total
     }
@@ -1253,26 +1255,46 @@ pub fn visual_inputs(
     time: Milliseconds,
     duration: Milliseconds,
 ) {
-    let rates: Vec<(Entity, Hertz)> = world
-        .query_mut::<(Entity, &mut VisualInput)>()
-        .into_iter()
-        .map(|(entity, input)| {
-            input.phase = (input.phase + input.speed.cycles_in(duration)).rem_euclid(1.0);
-            let stale = input
+    for input in world.query_mut::<&mut VisualInput>() {
+        input.phase = (input.phase + input.speed.cycles_in(duration)).rem_euclid(1.0);
+    }
+    let watched: HashMap<Entity, Entity> = world
+        .query::<&Connection>()
+        .iter()
+        .filter(|connection| is_picture_wire(world, connection))
+        .map(|connection| (connection.to, connection.from))
+        .collect();
+    let stale: Vec<(Entity, Option<Vec<f64>>)> = world
+        .query::<(Entity, &ReceptiveFieldCell)>()
+        .iter()
+        .filter(|(_, field)| {
+            field
                 .seen_at
-                .is_none_or(|seen_at| !(seen_at..seen_at + FRAME_INTERVAL).contains(&time));
-            if stale {
-                input.response = input.respond();
-                input.seen_at = Some(time);
-            }
-            (
-                entity,
-                (input.sensitivity * input.response).max(Hertz::ZERO),
-            )
+                .is_none_or(|seen_at| !(seen_at..seen_at + FRAME_INTERVAL).contains(&time))
+        })
+        .map(|(cell, _)| {
+            let picture = watched.get(&cell).and_then(|&picture| {
+                world
+                    .get::<&VisualInput>(picture)
+                    .ok()
+                    .map(|input| input.picture())
+            });
+            (cell, picture)
         })
         .collect();
-    for (entity, rate) in rates {
-        engine.set_rate(entity, rate);
+    for (cell, picture) in stale {
+        if let Ok(mut field) = world.get::<&mut ReceptiveFieldCell>(cell) {
+            field.response = picture.map_or(0.0, |picture| field.respond(&picture));
+            field.seen_at = Some(time);
+        }
+    }
+    let rates: Vec<(Entity, Hertz)> = world
+        .query::<(Entity, &ReceptiveFieldCell)>()
+        .iter()
+        .map(|(cell, field)| (cell, (field.sensitivity * field.response).max(Hertz::ZERO)))
+        .collect();
+    for (cell, rate) in rates {
+        engine.set_rate(cell, rate);
     }
 }
 

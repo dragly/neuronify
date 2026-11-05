@@ -1,14 +1,13 @@
+use super::v16::VisualInput;
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::tools::ConnectionMode;
 use hecs::{ComponentError, World};
 
 schema!(
-    save,
     Position,
     LeakyNeuron,
     NodeState,

@@ -3,17 +3,18 @@ use std::collections::{BTreeMap, HashMap};
 use glam::Vec3;
 use hecs::Entity;
 
-use crate::components::{hidden_connections, Milliseconds};
+use crate::components::{hidden_connections, Connection, Milliseconds};
+use crate::measurement::visual_input::is_picture_wire;
 use crate::rendering::colors::Palette;
 use crate::rendering::current_flow::collect_current_flow;
 use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
-use crate::rendering::gpu_types::{CylinderData, HaloData, Sphere, TorusData};
+use crate::rendering::gpu_types::{CylinderData, HaloData, Sphere, TileData, TorusData};
 use crate::rendering::paths::{connection_paths, ConnectionPath};
 use crate::rendering::shapes::{collect_rings, collect_shapes};
 use crate::rendering::signals::collect_signals;
 use crate::rendering::spheres::collect_spheres;
 use crate::rendering::transmitter::{collect_transmitter, Landings};
-use crate::rendering::visual_input::collect_visual_input_tiles;
+use crate::rendering::visual_input::{collect_field_tiles, collect_visual_input_tiles};
 
 /// The shapes of the 3D view. The example previews draw the solid ones from above.
 #[derive(Default)]
@@ -22,6 +23,8 @@ pub struct Scene {
     pub cylinders: Vec<CylinderData>,
     pub rings: Vec<TorusData>,
     pub transmitter: Vec<HaloData>,
+    pub discs: Vec<TileData>,
+    pub squircles: Vec<TileData>,
 }
 
 impl Scene {
@@ -52,6 +55,8 @@ impl Scene {
         self.cylinders.extend(other.cylinders);
         self.rings.extend(other.rings);
         self.transmitter.extend(other.transmitter);
+        self.discs.extend(other.discs);
+        self.squircles.extend(other.squircles);
     }
 }
 
@@ -83,6 +88,8 @@ pub fn collect_scene_along(
         cylinders: collect_cylinders(world, radii, paths, palette),
         rings: collect_rings(world, palette),
         transmitter: Vec::new(),
+        discs: collect_visual_input_tiles(world),
+        squircles: collect_field_tiles(world, palette),
     };
     scene.extend(collect_transmitter(
         world, paths, radii, palette, time, landings,
@@ -92,7 +99,6 @@ pub fn collect_scene_along(
         .extend(collect_current_flow(world, paths, time));
     scene.extend(collect_signals(world, paths, palette, time));
     scene.extend(collect_shapes(world, palette));
-    scene.cylinders.extend(collect_visual_input_tiles(world));
     scene
 }
 
@@ -103,7 +109,12 @@ pub fn shown_paths(
 ) -> BTreeMap<Entity, ConnectionPath> {
     let hidden = hidden_connections(world);
     let mut paths = connection_paths(world, radii, palette);
-    paths.retain(|entity, _| !hidden.contains(entity));
+    paths.retain(|entity, _| {
+        !hidden.contains(entity)
+            && !world
+                .get::<&Connection>(*entity)
+                .is_ok_and(|connection| is_picture_wire(world, &connection))
+    });
     paths
 }
 

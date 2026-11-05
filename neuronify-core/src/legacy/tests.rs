@@ -743,20 +743,28 @@ fn loudspeakers_play_the_closest_sound_for_each_neuron_wired_to_them() {
 }
 
 #[test]
-fn retinas_become_visual_inputs_with_their_receptive_fields() {
-    use crate::measurement::visual_input::{ReceptiveField, VisualInput};
+fn retinas_become_pictures_watched_by_their_receptive_fields() {
+    use crate::measurement::visual_input::{
+        watched_picture, ReceptiveField, ReceptiveFieldCell, VisualInput,
+    };
     let sim = parse_legacy_nfy(include_str!("fixtures/visualInput.nfy")).unwrap();
     let mut world = hecs::World::new();
     let entities = spawn_legacy_simulation(&mut world, &sim);
-    let edge = world.get::<&VisualInput>(entities[0]).unwrap().clone();
-    let orientation = world.get::<&VisualInput>(entities[6]).unwrap().clone();
+    let edge = world
+        .get::<&ReceptiveFieldCell>(entities[0])
+        .unwrap()
+        .clone();
+    let orientation = world
+        .get::<&ReceptiveFieldCell>(entities[6])
+        .unwrap()
+        .clone();
     assert_eq!(
         edge.field,
         ReceptiveField::Edge {
             angle: std::f64::consts::PI
         }
     );
-    assert_eq!((edge.sensitivity, edge.show_field), (Hertz(1000.0), true));
+    assert_eq!(edge.sensitivity, Hertz(1000.0));
     assert_eq!(
         orientation.field,
         ReceptiveField::Orientation {
@@ -766,7 +774,10 @@ fn retinas_become_visual_inputs_with_their_receptive_fields() {
         }
     );
     assert_eq!(orientation.sensitivity, Hertz(1600.0));
+    assert_eq!(world.query::<&VisualInput>().iter().count(), 2);
     for input in [entities[0], entities[6]] {
+        let picture = watched_picture(&world, input).unwrap();
+        assert!(world.satisfies::<&VisualInput>(picture));
         let synapses = world
             .query::<(&Connection, &CurrentSynapse)>()
             .iter()
@@ -832,6 +843,9 @@ fn every_bundled_neuronify_1_file_loads_with_nothing_dropped() {
         let connections: Vec<(hecs::Entity, hecs::Entity)> = world
             .query::<&Connection>()
             .iter()
+            .filter(|connection| {
+                !crate::measurement::visual_input::is_picture_wire(&world, connection)
+            })
             .map(|connection| (connection.from, connection.to))
             .collect();
         for edge in &sim.edges {

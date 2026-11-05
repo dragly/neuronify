@@ -5,6 +5,7 @@ runs = ["alone"]
 "excitatory neuron" = 1
 loudspeaker = 1
 note = 1
+"receptive field" = 1
 "spike detector" = 1
 synapse = 1
 "visual input" = 1

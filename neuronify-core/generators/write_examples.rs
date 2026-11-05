@@ -8,7 +8,9 @@ use neuronify_core::elements::{
     spawn_spike_detector_wire, spawn_synapse, spawn_voltmeter, Element,
 };
 use neuronify_core::measurement::firing_rate::RatePlot;
-use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
+use neuronify_core::measurement::visual_input::{
+    spawn_picture_wire, Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput,
+};
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::{
@@ -233,23 +235,30 @@ fn synapse(world: &mut World, from: Entity, to: Entity, maximum_current: Nanoamp
 
 pub fn listening_to_a_neuron() -> World {
     let mut world = World::new();
-    let eye = Element::VisualInput.spawn(&mut world, at(0.0, -9.0));
+    let picture = Element::VisualInput.spawn(&mut world, at(0.0, -9.0));
     *world
-        .get::<&mut VisualInput>(eye)
+        .get::<&mut VisualInput>(picture)
         .expect("visual inputs spawn with a VisualInput") = VisualInput {
+        pattern: Pattern::Grating,
+        phase: 0.75,
+        ..Default::default()
+    };
+    let field = Element::ReceptiveField.spawn(&mut world, at(-7.5, -9.0));
+    *world
+        .get::<&mut ReceptiveFieldCell>(field)
+        .expect("receptive fields spawn with a ReceptiveFieldCell") = ReceptiveFieldCell {
         field: ReceptiveField::Orientation {
             angle: 0.0,
             x: 0.0,
             y: 0.0,
         },
-        pattern: Pattern::Grating,
         sensitivity: Hertz(10000.0),
-        phase: 0.75,
         ..Default::default()
     };
+    spawn_picture_wire(&mut world, picture, field);
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, neuron, "Cortex");
-    synapse(&mut world, eye, neuron, Nanoamperes(1.5));
+    synapse(&mut world, field, neuron, Nanoamperes(1.5));
     spawn_loudspeaker(&mut world, neuron, at(3.0, 4.0));
     spawn_spike_detector(&mut world, neuron, at(-5.0, 3.0));
     note(
@@ -742,39 +751,49 @@ const RECEPTIVE_FIELD_SYNAPSE: Nanoamperes = Nanoamperes(2.0);
 pub fn receptive_fields() -> World {
     let mut sheet = Sheet::new();
     sheet.text(
-        "Both visual inputs watch the same picture, a dot moving in a circle. \
-         Each one's receptive field, drawn over the picture, is a small spot inside a ring: \
-         light on the spot excites it, and light on the ring holds it back.",
+        "Both receptive fields watch the same picture, a dot moving in a circle. \
+         Each field is a small spot inside a ring: \
+         light on the spot excites it, and light on the ring holds it back. \
+         The colors on a field light up where the dot falls on it.",
     );
+    let up = sheet.row(11.0);
+    let picture = sheet.add(Element::VisualInput, 4.5, up);
+    *sheet
+        .world
+        .get::<&mut VisualInput>(picture)
+        .expect("visual inputs spawn with a VisualInput") = VisualInput {
+        pattern: Pattern::Dot,
+        ..Default::default()
+    };
     let mut neurons = Vec::new();
-    let mut middle = 0.0;
-    for spot in [0.25, -0.25] {
-        let up = sheet.row(8.0);
-        middle += up / 2.0;
-        let eye = sheet.add(Element::VisualInput, 5.0, up);
+    for (spot, offset) in [(0.25, 2.8), (-0.25, -2.8)] {
+        let field = sheet.add(Element::ReceptiveField, 12.5, up + offset);
         *sheet
             .world
-            .get::<&mut VisualInput>(eye)
-            .expect("visual inputs spawn with a VisualInput") = VisualInput {
+            .get::<&mut ReceptiveFieldCell>(field)
+            .expect("receptive fields spawn with a ReceptiveFieldCell") = ReceptiveFieldCell {
             field: ReceptiveField::CenterSurround {
                 off_center: false,
                 x: spot,
                 y: 0.0,
             },
-            pattern: Pattern::Dot,
             sensitivity: RECEPTIVE_FIELD_SENSITIVITY,
             ..Default::default()
         };
-        let neuron = sheet.add(Element::ExcitatoryNeuron, 12.5, up);
-        sheet.synapse(eye, neuron, RECEPTIVE_FIELD_SYNAPSE);
+        spawn_picture_wire(&mut sheet.world, picture, field);
+        let neuron = sheet.add(Element::ExcitatoryNeuron, 19.0, up + offset);
+        sheet.synapse(field, neuron, RECEPTIVE_FIELD_SYNAPSE);
         neurons.push(neuron);
     }
-    sheet.spike_detector(&neurons, 15.5, middle, 8.5, 9.0);
+    let detector = sheet.row(6.0);
+    sheet.spike_detector(&neurons, 2.0, detector, 20.0, 6.0);
     sheet.text(
         "Each neuron fires when the dot crosses its own spot, \
          so the two take turns. Cells like these in the retina are the first step of seeing.",
     );
-    sheet.text("Select a visual input to change its picture, its speed or its field.");
+    sheet.text(
+        "Select the picture to change it or its speed, or a receptive field to move its spot.",
+    );
     sheet.world
 }
 

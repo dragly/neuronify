@@ -1128,8 +1128,8 @@ fn a_loudspeaker_picks_its_sound_volume_and_mute() {
 }
 
 #[test]
-fn a_visual_input_picks_its_picture_and_receptive_field() {
-    use crate::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
+fn a_visual_input_picks_its_picture() {
+    use crate::measurement::visual_input::{Pattern, VisualInput};
     let mut world = World::new();
     let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(input));
@@ -1139,93 +1139,95 @@ fn a_visual_input_picks_its_picture_and_receptive_field() {
         Setting::PictureAngle,
         Setting::PictureSpeed,
         Setting::PicturePhase,
-        Setting::ReceptiveField,
-        Setting::FieldAngle,
-        Setting::FieldSideways,
-        Setting::FieldUpDown,
     ] {
         assert!(harness.shows(setting.label()), "{setting:?}");
         assert!(harness.shows(setting.description()), "{setting:?}");
     }
+    assert!(!harness.shows(Setting::ReceptiveField.label()));
     harness.click_text(Pattern::Dot.name());
+    let pattern = |harness: &Harness| harness.world.get::<&VisualInput>(input).unwrap().pattern;
+    assert_eq!(pattern(&harness), Pattern::Dot);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(pattern(&harness), Pattern::Bar);
+}
+
+#[test]
+fn a_receptive_field_picks_its_field_and_sensitivity() {
+    use crate::measurement::visual_input::{ReceptiveField, ReceptiveFieldCell};
+    let mut world = World::new();
+    let cell = Element::ReceptiveField.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(true, world, Some(cell));
+    assert!(harness.shows("Receptive field"));
+    for setting in [
+        Setting::ReceptiveField,
+        Setting::FieldAngle,
+        Setting::FieldSideways,
+        Setting::FieldUpDown,
+        Setting::Sensitivity,
+    ] {
+        assert!(harness.shows(setting.label()), "{setting:?}");
+        assert!(harness.shows(setting.description()), "{setting:?}");
+    }
+    assert!(!harness.shows(Setting::Picture.label()));
     harness.click_text("Center");
-    let state = |harness: &Harness| {
-        let input = harness.world.get::<&VisualInput>(input).unwrap();
-        (input.pattern, input.field)
+    let field = |harness: &Harness| {
+        harness
+            .world
+            .get::<&ReceptiveFieldCell>(cell)
+            .unwrap()
+            .field
     };
     assert_eq!(
-        state(&harness),
-        (
-            Pattern::Dot,
-            ReceptiveField::CenterSurround {
-                off_center: false,
-                x: 0.0,
-                y: 0.0
-            }
-        )
+        field(&harness),
+        ReceptiveField::CenterSurround {
+            off_center: false,
+            x: 0.0,
+            y: 0.0
+        }
     );
     assert!(harness.shows(Setting::OffCenter.label()));
     harness.press(Modifiers::COMMAND, Key::Z);
-    harness.press(Modifiers::COMMAND, Key::Z);
-    assert_eq!(state(&harness), (Pattern::Bar, ReceptiveField::default()));
+    assert_eq!(field(&harness), ReceptiveField::default());
 }
 
 #[test]
 fn two_on_off_rows_in_the_inspector_switch_only_themselves() {
-    use crate::measurement::visual_input::{ReceptiveField, VisualInput};
-    let mut world = World::new();
-    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
-    {
-        let mut visual = world.get::<&mut VisualInput>(input).unwrap();
-        visual.field = ReceptiveField::CenterSurround {
-            off_center: false,
-            x: 0.0,
-            y: 0.0,
+    let context = Context::default();
+    let chrome = Chrome::of(Theme::Dark);
+    let mut rows = (false, false);
+    let frame = |events: Vec<Event>, rows: &mut (bool, bool)| {
+        let input = RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, SCREEN)),
+            events,
+            ..Default::default()
         };
-        visual.show_field = false;
-    }
-    let mut harness = Harness::with(true, world, Some(input));
-    harness.scroll_inspector_to_the_end();
-    let on_beside = |harness: &Harness, setting: Setting| {
-        let label = harness.text_rect(setting.label()).unwrap();
-        harness
-            .output
-            .as_ref()
-            .unwrap()
-            .shapes
-            .iter()
-            .filter_map(|clipped| match &clipped.shape {
-                Shape::Text(shape) if shape.galley.text() == "On" => {
-                    Some(Rect::from_min_size(shape.pos, shape.galley.size()).center())
-                }
-                _ => None,
-            })
-            .min_by(|a, b| {
-                (a.y - label.center().y)
-                    .abs()
-                    .total_cmp(&(b.y - label.center().y).abs())
-            })
-            .unwrap()
+        context.run_ui(input, |ui| {
+            let on_off = [(true, "On"), (false, "Off")];
+            inspector::choice(ui, chrome, Setting::OffCenter, &mut rows.0, &on_off);
+            inspector::choice(ui, chrome, Setting::Mute, &mut rows.1, &on_off);
+        })
     };
-    let state = |harness: &Harness| {
-        let visual = harness.world.get::<&VisualInput>(input).unwrap();
-        let off_center = matches!(
-            visual.field,
-            ReceptiveField::CenterSurround {
-                off_center: true,
-                ..
+    let output = frame(vec![], &mut rows);
+    let first_on = output
+        .shapes
+        .iter()
+        .filter_map(|clipped| match &clipped.shape {
+            Shape::Text(shape) if shape.galley.text() == "On" => {
+                Some(Rect::from_min_size(shape.pos, shape.galley.size()).center())
             }
-        );
-        (off_center, visual.show_field)
+            _ => None,
+        })
+        .min_by(|a, b| a.y.total_cmp(&b.y))
+        .unwrap();
+    let button = |pressed| Event::PointerButton {
+        pos: first_on,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Default::default(),
     };
-
-    let off_center = on_beside(&harness, Setting::OffCenter);
-    harness.click(off_center);
-    assert_eq!(state(&harness), (true, false));
-
-    let show_field = on_beside(&harness, Setting::ShowField);
-    harness.click(show_field);
-    assert_eq!(state(&harness), (true, true));
+    frame(vec![Event::PointerMoved(first_on), button(true)], &mut rows);
+    frame(vec![button(false)], &mut rows);
+    assert_eq!(rows, (true, false));
 }
 
 #[test]
@@ -1784,7 +1786,7 @@ fn a_visual_input_stops_at_zero_speed_and_takes_a_phase_set_by_hand() {
 
 #[test]
 fn no_text_in_the_inspector_is_covered_by_other_text_or_controls() {
-    let spawners: [fn(&mut World) -> Entity; 15] = [
+    let spawners: [fn(&mut World) -> Entity; 16] = [
         |world| Element::ExcitatoryNeuron.spawn(world, Vec3::ZERO),
         |world| Element::InhibitoryNeuron.spawn(world, Vec3::ZERO),
         |world| Element::AdaptiveNeuron.spawn(world, Vec3::ZERO),
@@ -1795,6 +1797,7 @@ fn no_text_in_the_inspector_is_covered_by_other_text_or_controls() {
         |world| Element::RegularSpikeGenerator.spawn(world, Vec3::ZERO),
         |world| Element::PoissonGenerator.spawn(world, Vec3::ZERO),
         |world| Element::VisualInput.spawn(world, Vec3::ZERO),
+        |world| Element::ReceptiveField.spawn(world, Vec3::ZERO),
         |world| Element::Note.spawn(world, Vec3::ZERO),
         |world| Meter::Voltmeter.spawn(world, Vec3::ZERO),
         |world| Meter::SpikeDetector.spawn(world, Vec3::ZERO),

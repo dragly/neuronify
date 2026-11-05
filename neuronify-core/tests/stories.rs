@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::loudspeaker::Loudspeaker;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
-use neuronify_core::measurement::visual_input::VisualInput;
+use neuronify_core::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
 use neuronify_core::measurement::voltmeter::Voltmeter;
 use neuronify_core::serialization::{load, load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
@@ -121,6 +121,8 @@ fn element(world: &World, entity: Entity) -> Option<&'static str> {
         "Poisson generator"
     } else if world.get::<&VisualInput>(entity).is_ok() {
         "visual input"
+    } else if world.get::<&ReceptiveFieldCell>(entity).is_ok() {
+        "receptive field"
     } else if world.get::<&Voltmeter>(entity).is_ok() {
         "voltmeter"
     } else if world.get::<&SpikeDetector>(entity).is_ok() {

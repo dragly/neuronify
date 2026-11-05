@@ -6,7 +6,8 @@ use glam::Vec3;
 
 use crate::elements::Element;
 use crate::rendering::colors::{
-    adaptation_gauge_color, burst_gauge_color, orange, paler, speaker_color, terminal_color, yellow,
+    adaptation_gauge_color, blue, burst_gauge_color, orange, paler, rate_color, speaker_color,
+    terminal_color, yellow,
 };
 use crate::rendering::shapes::{hand_outline, speaker_outline, speaker_waves};
 use crate::rendering::Theme;
@@ -607,6 +608,14 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
             painter.add(Shape::line(lid(1.0), stroke(1.6, CREAM)));
             painter.add(Shape::line(lid(-1.0), stroke(1.6, CREAM)));
             painter.circle_filled(at(16.0, 16.0), 2.8 * scale, CREAM);
+        }
+        Tool::Place(Element::ReceptiveField) => {
+            painter.rect_filled(
+                Rect::from_center_size(at(16.0, 16.0), Vec2::splat(23.0 * scale)),
+                5.0 * scale,
+                linear(blue()),
+            );
+            painter.circle_filled(at(16.0, 16.0), 7.0 * scale, linear(rate_color()));
         }
         Tool::Place(Element::TouchSensor) => {
             painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(orange()));

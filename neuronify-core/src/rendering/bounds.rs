@@ -50,6 +50,9 @@ fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
         points.extend(footprint(cylinder.start, cylinder.start_radius));
         points.extend(footprint(cylinder.end, cylinder.end_radius));
     }
+    for tile in scene.discs.iter().chain(&scene.squircles) {
+        points.extend(footprint(tile.position, tile.half_width));
+    }
     for ring in &scene.rings {
         points.extend(footprint(
             ring.position,

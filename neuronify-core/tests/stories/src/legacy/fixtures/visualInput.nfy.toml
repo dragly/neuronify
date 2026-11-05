@@ -4,6 +4,7 @@ runs = ["alone"]
 [elements]
 "excitatory neuron" = 1
 note = 3
+"receptive field" = 2
 synapse = 2
 "visual input" = 2
 voltmeter = 1

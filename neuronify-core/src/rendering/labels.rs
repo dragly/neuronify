@@ -10,7 +10,9 @@ use crate::components::{Cable, Connection, Label, MeterSize, NoteSize, Position}
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS};
 use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::visual_input::{visual_input_frame, VisualInput};
+use crate::measurement::visual_input::{
+    receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
+};
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::gpu_types::ArcData;
@@ -213,6 +215,10 @@ impl Obstacles {
                 obstacles
                     .areas
                     .push(Area::of(&visual_input_frame(position)));
+            } else if world.satisfies::<&ReceptiveFieldCell>(entity) {
+                obstacles
+                    .areas
+                    .push(Area::of(&receptive_field_frame(position)));
             } else {
                 obstacles.strokes.push(Stroke::dot(
                     position,

@@ -42,6 +42,7 @@ impl Tool {
             Tool::Place(Element::RegularSpikeGenerator) => "Regular spikes",
             Tool::Place(Element::PoissonGenerator) => "Random spikes",
             Tool::Place(Element::VisualInput) => "Visual input",
+            Tool::Place(Element::ReceptiveField) => "Receptive field",
             Tool::Place(Element::Note) => "Note",
             Tool::Voltmeter => "Voltmeter",
             Tool::SpikeDetector => "Spike detector",
@@ -82,7 +83,11 @@ impl Tool {
                 "Injects a current that swings up and down like a wave."
             }
             Tool::Place(Element::VisualInput) => {
-                "Looks at a moving picture and fires when it matches its receptive field."
+                "Shows a moving picture. Connect it to receptive fields to let them see it."
+            }
+            Tool::Place(Element::ReceptiveField) => {
+                "Watches part of a picture and fires when the picture matches it. \
+                 Connect a visual input to it."
             }
             Tool::Loudspeaker => {
                 "Press a neuron to hear a sound each time it fires. \
@@ -191,6 +196,7 @@ impl ToolGroup {
                 Tool::Place(Element::RegularSpikeGenerator),
                 Tool::Place(Element::PoissonGenerator),
                 Tool::Place(Element::VisualInput),
+                Tool::Place(Element::ReceptiveField),
             ],
             ToolGroup::Connections => &[
                 Tool::StaticConnection,

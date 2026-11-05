@@ -3807,6 +3807,39 @@ fn a_tip_is_drawn_from_while_it_is_pulled() {
 }
 
 #[test]
+fn a_receptive_field_tip_is_drawn_from_its_frame_and_hidden_inside_it() {
+    use crate::measurement::visual_input::RECEPTIVE_FIELD_SIZE;
+    let mut world = World::new();
+    let field = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Edit);
+    editor.selection = Some(field);
+    let tip = crate::tips::tip(&world, field).unwrap();
+    editor.edit(&mut world, tip.knob);
+    editor.edit(&mut world, at(0.0, 9.0));
+    let (_, start, end) = editor.cable_being_drawn(&world).unwrap();
+    assert!(start.abs_diff_eq(at(0.0, RECEPTIVE_FIELD_SIZE * 0.5), 1e-4));
+    assert_eq!(end, at(0.0, 9.0));
+    editor.edit(&mut world, at(1.5, 1.0));
+    assert_eq!(editor.cable_being_drawn(&world), None);
+}
+
+#[test]
+fn tapping_a_receptive_field_while_adding_offers_a_connection_from_its_frame() {
+    use crate::measurement::visual_input::RECEPTIVE_FIELD_SIZE;
+    let mut world = World::new();
+    let field = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+    neuron(&mut world, at(0.0, -20.0));
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.edit(&mut world, at(0.5, 0.0));
+    editor.offer_connection(&world, Seconds(10.0));
+    editor.release(&world);
+    let hint = editor.connection_hint(&world, Seconds(11.0)).unwrap();
+    assert_eq!(hint.from, field);
+    assert!(hint.string[0].abs_diff_eq(at(0.0, RECEPTIVE_FIELD_SIZE * 0.5), 1e-4));
+    assert!(hint.string[HINT_SEGMENTS].z > RECEPTIVE_FIELD_SIZE * 0.5 + HINT_LENGTH * 0.9);
+}
+
+#[test]
 fn the_add_and_connect_tools_pull_a_tip_too() {
     for tool in [
         Tool::Place(Element::ExcitatoryNeuron),
@@ -3849,4 +3882,79 @@ fn a_selected_neuron_offers_its_tip_for_another_connection() {
     );
     assert!(connected(&world, from, second));
     assert!(connected(&world, from, first));
+}
+
+#[test]
+fn a_connection_drawn_from_anywhere_on_a_picture_wires_it_to_a_receptive_field() {
+    use crate::measurement::visual_input::watched_picture;
+    let mut world = World::new();
+    let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let cell = Element::ReceptiveField.spawn(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::StaticConnection);
+    drag(
+        &mut editor,
+        &mut world,
+        &[at(3.0, -3.0), at(1.0, 5.0), at(0.5, 10.5)],
+    );
+    assert_eq!(watched_picture(&world, cell), Some(picture));
+    assert_eq!(count::<Connection>(&world), 1);
+
+    editor.undo(&mut world);
+    assert_eq!(watched_picture(&world, cell), None);
+}
+
+#[test]
+fn a_picture_wire_is_erased_where_it_is_drawn() {
+    use crate::measurement::visual_input::watched_picture;
+    let mut world = World::new();
+    let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let cell = Element::ReceptiveField.spawn(&mut world, at(-20.0, 12.0));
+    crate::measurement::visual_input::spawn_picture_wire(&mut world, picture, cell);
+    let paths = connection_paths(
+        &world,
+        &compartment_radii(&world),
+        &Theme::default().palette(),
+    );
+    let (_, path) = paths.iter().next().unwrap();
+    let mut editor = editor(Tool::Erase);
+
+    drag(&mut editor, &mut world, &[at(-10.0, 6.0)]);
+    assert_eq!(watched_picture(&world, cell), Some(picture));
+
+    drag(&mut editor, &mut world, &[path.point_at(0.5)]);
+    assert_eq!(watched_picture(&world, cell), None);
+}
+
+#[test]
+fn a_receptive_field_keeps_the_picture_it_already_watches() {
+    use crate::measurement::visual_input::watched_picture;
+    let mut world = World::new();
+    let first = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let second = Element::VisualInput.spawn(&mut world, at(0.0, 20.0));
+    let cell = Element::ReceptiveField.spawn(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::StaticConnection);
+    drag(&mut editor, &mut world, &[at(0.0, 0.0), at(0.0, 10.0)]);
+    drag(&mut editor, &mut world, &[at(0.0, 20.0), at(0.0, 10.0)]);
+    assert_eq!(watched_picture(&world, cell), Some(first));
+    assert_ne!(watched_picture(&world, cell), Some(second));
+    assert_eq!(count::<Connection>(&world), 1);
+}
+
+#[test]
+fn a_picture_connects_only_to_receptive_fields() {
+    let mut world = World::new();
+    Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::StaticConnection);
+    drag(&mut editor, &mut world, &[at(0.0, 0.0), at(0.0, 10.0)]);
+    assert_eq!(count::<Connection>(&world), 0);
+}
+
+#[test]
+fn a_receptive_field_is_picked_anywhere_on_its_square() {
+    let mut world = World::new();
+    let cell = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Edit);
+    editor.tap(&world, at(1.6, -1.6));
+    assert_eq!(editor.selection, Some(cell));
 }

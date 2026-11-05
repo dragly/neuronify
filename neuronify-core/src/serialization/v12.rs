@@ -4,10 +4,11 @@ use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::simulation::model::cable_between;
 use hecs::{Component, ComponentError, Entity, World};
+
+use super::v16::VisualInput;
 
 schema!(
     Position,

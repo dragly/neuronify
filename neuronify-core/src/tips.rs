@@ -8,6 +8,7 @@ use crate::components::{
 };
 use crate::constants::NODE_RADIUS;
 use crate::measurement::is_meter;
+use crate::measurement::visual_input::framed_size;
 
 pub const TIP_LENGTH: f32 = 2.6 * NODE_RADIUS;
 const GRAB_REACH: f32 = 1.2 * NODE_RADIUS;
@@ -31,13 +32,36 @@ pub fn tip(world: &World, from: Entity) -> Option<Tip> {
         return None;
     }
     let center = world.get::<&Position>(from).ok()?.position;
-    let onward = onward(world, from);
+    let (start, onward) = way_out(world, from, center);
+    let root = match framed_size(world, from) {
+        Some(_) => start,
+        None => start + onward * NODE_RADIUS,
+    };
     Some(Tip {
         from,
         center,
-        root: center + onward * NODE_RADIUS,
-        knob: center + onward * TIP_LENGTH,
+        root,
+        knob: root + onward * (TIP_LENGTH - NODE_RADIUS),
     })
+}
+
+pub fn way_out(world: &World, from: Entity, center: Vec3) -> (Vec3, Vec3) {
+    let onward = onward(world, from);
+    match framed_size(world, from) {
+        Some(size) => {
+            let side = facing_side(onward);
+            (center + side * size * 0.5, side)
+        }
+        None => (center, onward),
+    }
+}
+
+fn facing_side(direction: Vec3) -> Vec3 {
+    if direction.x.abs() > direction.z.abs() {
+        Vec3::X * direction.x.signum()
+    } else {
+        Vec3::Z * direction.z.signum()
+    }
 }
 
 pub fn onward(world: &World, from: Entity) -> Vec3 {
@@ -128,6 +152,30 @@ mod tests {
         let onward = tip(&world, neuron).unwrap();
         assert!(onward.knob.abs_diff_eq(at(0.0, TIP_LENGTH), 1e-4));
         assert!(onward.root.abs_diff_eq(at(0.0, NODE_RADIUS), 1e-4));
+    }
+
+    #[test]
+    fn a_receptive_field_tip_leaves_the_middle_of_the_side_facing_away_from_its_connections() {
+        use crate::measurement::visual_input::RECEPTIVE_FIELD_SIZE;
+        for (neighbour, side) in [(at(0.0, 10.0), -Vec3::Z), (at(6.0, -8.0), Vec3::Z)] {
+            let mut world = World::new();
+            let field = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+            let neuron = Element::ExcitatoryNeuron.spawn(&mut world, neighbour);
+            spawn_connection(&mut world, field, neuron);
+            let tip = tip(&world, field).unwrap();
+            let edge = side * RECEPTIVE_FIELD_SIZE * 0.5;
+            assert!(
+                tip.root.abs_diff_eq(edge, 1e-4),
+                "{neighbour}: {}",
+                tip.root
+            );
+            assert!(
+                tip.knob
+                    .abs_diff_eq(edge + side * (TIP_LENGTH - NODE_RADIUS), 1e-4),
+                "{neighbour}: {}",
+                tip.knob
+            );
+        }
     }
 
     #[test]

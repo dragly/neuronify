@@ -62,6 +62,7 @@ mod v15;
 mod v16;
 mod v17;
 mod v18;
+mod v19;
 mod v2;
 mod v3;
 mod v4;
@@ -72,7 +73,7 @@ mod v8;
 mod v9;
 
 /// The world version that `save` writes.
-pub const WORLD_VERSION: u32 = 18;
+pub const WORLD_VERSION: u32 = 19;
 
 pub const CONTAINER_VERSION: u32 = 19;
 
@@ -106,6 +107,7 @@ const UPGRADES: [Upgrade; WORLD_VERSION as usize - 1] = [
     v16::upgrade_from_v15,
     v17::upgrade_from_v16,
     v18::upgrade_from_v17,
+    v19::upgrade_from_v18,
 ];
 
 pub struct SavedWorld {
@@ -135,7 +137,7 @@ pub fn save(world: &World, time: Milliseconds, speed: f64, meta: &Meta) -> Resul
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v18::SaveContext, &mut serializer)
+    serialize(world, &mut v19::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let columns = serializer
         .output
@@ -330,6 +332,11 @@ fn read_world(version: u32, body: &[u8]) -> Result<SavedWorld, String> {
             let (time, body) = split_f64(body, "simulation time")?;
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v18::deserialize(body)?, time, speed)
+        }
+        19 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v19::deserialize(body)?, time, speed)
         }
         0 => return Err("The simulation in the save file has version 0".to_owned()),
         _ => return Err(TOO_NEW.to_owned()),
@@ -992,7 +999,10 @@ mod tests {
     #[test]
     fn loads_version_18() {
         let saved = load(include_bytes!("fixtures/v18.neuronify")).unwrap();
-        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_18())
+        );
         assert_eq!(ConnectionMode::of(&saved.world), FIXTURE_STROKE);
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
@@ -1032,16 +1042,23 @@ mod tests {
 
     #[test]
     fn version_15_edge_fields_keep_the_side_they_face() {
-        use crate::measurement::visual_input::{ReceptiveField, VisualInput};
+        use crate::measurement::visual_input::{
+            watched_picture, ReceptiveField, ReceptiveFieldCell,
+        };
         let bytes = include_bytes!("fixtures/v15.neuronify");
         let old = v15::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
         let mut checked = 0;
-        for (entity, input) in old.query::<(Entity, &VisualInput)>().iter() {
+        for (entity, input) in old.query::<(Entity, &v16::VisualInput)>().iter() {
             let ReceptiveField::Edge { angle } = input.field else {
                 continue;
             };
-            let upgraded = new.get::<&VisualInput>(entity).unwrap().field;
+            let upgraded = new
+                .query::<(Entity, &ReceptiveFieldCell)>()
+                .iter()
+                .find(|(cell, _)| watched_picture(&new, *cell) == Some(entity))
+                .map(|(_, cell)| cell.field)
+                .unwrap();
             for (x, y) in [(0.3, 0.1), (-0.2, 0.4), (0.1, -0.3), (-0.4, -0.1)] {
                 let faced = if x * angle.sin() + y * angle.cos() < 0.0 {
                     -1.0
@@ -1074,6 +1091,44 @@ mod tests {
             checked += 1;
         }
         assert!(checked > 0);
+    }
+
+    #[test]
+    fn loads_version_19() {
+        let saved = load(include_bytes!("fixtures/v19.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn upgrading_version_18_splits_each_visual_input_into_a_picture_and_a_wired_field() {
+        use crate::measurement::visual_input::{watched_picture, ReceptiveFieldCell};
+        let world = load(include_bytes!("fixtures/v18.neuronify"))
+            .unwrap()
+            .world;
+        assert_eq!(count::<VisualInput>(&world), 2);
+        let pictures_firing = world
+            .query::<&VisualInput>()
+            .with::<&GeneratorDynamics>()
+            .iter()
+            .count();
+        assert_eq!(pictures_firing, 0);
+        let mut sensitivities = Vec::new();
+        for (cell, field) in world.query::<(Entity, &ReceptiveFieldCell)>().iter() {
+            let picture = watched_picture(&world, cell).unwrap();
+            assert!(world.satisfies::<&VisualInput>(picture));
+            let synapses = world
+                .query::<&Connection>()
+                .with::<&CurrentSynapse>()
+                .iter()
+                .filter(|connection| connection.from == cell)
+                .count();
+            assert_eq!(synapses, 1);
+            sensitivities.push(field.sensitivity.0);
+        }
+        sensitivities.sort_by(f64::total_cmp);
+        assert_eq!(sensitivities, [1000.0, 1600.0]);
     }
 
     #[test]
@@ -1289,6 +1344,10 @@ mod tests {
     }
 
     fn fixture_world() -> World {
+        fixture_world_of_version_18()
+    }
+
+    fn fixture_world_of_version_18() -> World {
         let mut world = fixture_world_of_version_17();
         FIXTURE_STROKE.set_in(&mut world);
         world

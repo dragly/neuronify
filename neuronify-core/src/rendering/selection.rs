@@ -6,7 +6,9 @@ use hecs::{Entity, World};
 use crate::components::*;
 use crate::constants::{COMPARTMENT_SPHERE_SCALE, ERASE_RADIUS, NODE_RADIUS};
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::visual_input::{visual_input_frame, VisualInput};
+use crate::measurement::visual_input::{
+    receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
+};
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::colors::Palette;
@@ -85,9 +87,14 @@ pub fn eraser_outline(center: Vec3, palette: &Palette) -> TorusData {
 
 fn rectangle(world: &World, entity: Entity) -> Option<[Vec3; 2]> {
     let framed = Frame::of(world, entity).or_else(|| {
-        world.get::<&VisualInput>(entity).ok()?;
         let center = world.get::<&Position>(entity).ok()?.position;
-        Some(visual_input_frame(center))
+        if world.satisfies::<&VisualInput>(entity) {
+            Some(visual_input_frame(center))
+        } else if world.satisfies::<&ReceptiveFieldCell>(entity) {
+            Some(receptive_field_frame(center))
+        } else {
+            None
+        }
     });
     if let Some(frame) = framed {
         return Some([

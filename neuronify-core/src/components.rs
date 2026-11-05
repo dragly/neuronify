@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub use neuronify_engine::units::*;
 
+use crate::measurement::visual_input::is_picture_wire;
 use crate::measurement::voltmeter::VoltageSeries;
 
 pub trait Setting: hecs::Component + Copy + Default {
@@ -476,6 +477,7 @@ pub fn hidden_connections(world: &World) -> HashSet<Entity> {
         .without::<&VoltageSeries>()
         .iter()
         .filter(|(entity, _)| Some(*entity) != selected)
+        .filter(|(_, connection)| !is_picture_wire(world, connection))
         .filter(|(_, connection)| !view.shows(connection, selected))
         .map(|(entity, _)| entity)
         .collect()

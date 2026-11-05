@@ -2,8 +2,9 @@ use glam::Vec3;
 use hecs::Entity;
 use visula::{
     ArcGeometry, ArcMaterial, Arcs, CylinderGeometry, CylinderMaterial, Cylinders, Expression,
-    InstanceBuffer, LineGeometry, LineMaterial, Lines, MeshPipeline, RenderData, Renderable,
-    ShadowRenderData, SphereGeometry, SphereMaterial, Spheres, Torus, TorusGeometry, TorusMaterial,
+    InstanceBuffer, LineGeometry, LineMaterial, Lines, MeshPipeline, QuadPipeline, RenderData,
+    Renderable, ShadowRenderData, SphereGeometry, SphereMaterial, Spheres, Torus, TorusGeometry,
+    TorusMaterial,
 };
 
 use crate::components::Milliseconds;
@@ -18,7 +19,8 @@ use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
 use crate::rendering::ghost::{Ghost, LandingGhost};
 use crate::rendering::gpu_types::{
-    ArcData, ConnectionData, CylinderData, HaloData, MeterBackgroundData, Sphere, TorusData,
+    ArcData, ConnectionData, CylinderData, HaloData, MeterBackgroundData, Sphere, TileData,
+    TorusData,
 };
 use crate::rendering::halos::{collect_halos, create_halos};
 use crate::rendering::labels::{Drawn, LabelRenderer};
@@ -32,7 +34,9 @@ use crate::rendering::spheres::soma_sphere;
 use crate::rendering::spike_detector::collect_spike_detectors;
 use crate::rendering::tips::{collect_dangling, collect_tip};
 use crate::rendering::transmitter::Landings;
-use crate::rendering::visual_input::collect_visual_input_lines;
+use crate::rendering::visual_input::{
+    collect_visual_input_lines, create_tiles, FIELD_SQUIRCLES, PICTURE_DOTS,
+};
 use crate::rendering::voltmeter::collect_voltmeter_traces;
 
 pub struct EditorMarks<'a> {
@@ -67,6 +71,10 @@ pub struct SceneRenderer {
     sphere_buffer: InstanceBuffer<Sphere>,
     cylinders: Cylinders,
     cylinder_buffer: InstanceBuffer<CylinderData>,
+    discs: QuadPipeline,
+    disc_buffer: InstanceBuffer<TileData>,
+    squircles: QuadPipeline,
+    squircle_buffer: InstanceBuffer<TileData>,
     rings: Torus,
     ring_buffer: InstanceBuffer<TorusData>,
     wires: Arcs,
@@ -166,6 +174,19 @@ impl SceneRenderer {
             },
         )?;
 
+        let disc_buffer = InstanceBuffer::<TileData>::new(&application.device);
+        let discs = create_tiles(
+            &application.rendering_descriptor(),
+            &disc_buffer,
+            PICTURE_DOTS,
+        )?;
+        let squircle_buffer = InstanceBuffer::<TileData>::new(&application.device);
+        let squircles = create_tiles(
+            &application.rendering_descriptor(),
+            &squircle_buffer,
+            FIELD_SQUIRCLES,
+        )?;
+
         let ring_buffer = InstanceBuffer::<TorusData>::new(&application.device);
         let ring = ring_buffer.instance();
         let rings = Torus::new(
@@ -215,6 +236,10 @@ impl SceneRenderer {
             sphere_buffer,
             cylinders,
             cylinder_buffer,
+            discs,
+            disc_buffer,
+            squircles,
+            squircle_buffer,
             rings,
             ring_buffer,
             wires,
@@ -326,12 +351,16 @@ impl SceneRenderer {
         connections.extend(collect_voltmeter_traces(world, &palette));
         connections.extend(collect_spike_detectors(world, &palette));
         connections.extend(collect_rate_plots(world, &palette));
-        connections.extend(collect_visual_input_lines(world));
+        connections.extend(collect_visual_input_lines(world, &palette));
 
         self.sphere_buffer
             .update(&application.device, &application.queue, &scene.spheres);
         self.cylinder_buffer
             .update(&application.device, &application.queue, &scene.cylinders);
+        self.disc_buffer
+            .update(&application.device, &application.queue, &scene.discs);
+        self.squircle_buffer
+            .update(&application.device, &application.queue, &scene.squircles);
         self.ring_buffer
             .update(&application.device, &application.queue, &scene.rings);
         self.wire_buffer
@@ -363,6 +392,8 @@ impl SceneRenderer {
         self.halos.render(data);
         self.spheres.render(data);
         self.cylinders.render(data);
+        self.discs.render(data);
+        self.squircles.render(data);
         self.rings.render(data);
         self.wires.render(data);
         self.connection_lines.render(data);

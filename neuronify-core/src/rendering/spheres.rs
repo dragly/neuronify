@@ -5,7 +5,7 @@ use hecs::Entity;
 
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::visual_input::VisualInput;
+use crate::measurement::visual_input::ReceptiveFieldCell;
 use crate::rendering::colors::*;
 use crate::rendering::cylinders::{sheath_radius, sheaths};
 use crate::rendering::gpu_types::Sphere;
@@ -139,7 +139,7 @@ pub fn collect_spheres(
     spheres.extend(
         world
             .query::<(&Position, &GeneratorDynamics, Option<&NeuronType>)>()
-            .without::<hecs::Or<&TouchSensor, &VisualInput>>()
+            .without::<hecs::Or<&TouchSensor, &ReceptiveFieldCell>>()
             .iter()
             .map(|(position, dynamics, neuron_type)| Sphere {
                 position: position.position,

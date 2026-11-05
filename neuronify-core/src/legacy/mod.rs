@@ -31,7 +31,6 @@ pub struct LegacyNode {
     pub kernel_type: Option<String>,
     pub kernel_properties: Option<Value>,
     pub sensitivity: Option<f64>,
-    pub plot_kernel: Option<bool>,
     pub target: Option<String>,
 }
 
@@ -161,7 +160,6 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
             .map(|s| s.to_string());
         let kernel_properties = props.get("kernelProperties").cloned();
         let sensitivity = get_f64(props, "sensitivity");
-        let plot_kernel = props.get("plotKernel").and_then(|v| v.as_bool());
         let source = props
             .get("source")
             .and_then(|v| v.as_str())
@@ -191,7 +189,6 @@ fn parse_nodes(root: &Value, is_v2: bool) -> Result<Vec<LegacyNode>, String> {
             kernel_type,
             kernel_properties,
             sensitivity,
-            plot_kernel,
             target,
         });
     }

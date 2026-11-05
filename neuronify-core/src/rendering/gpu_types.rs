@@ -12,6 +12,14 @@ pub struct HaloData {
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Debug, Instance, Pod, Zeroable)]
+pub struct TileData {
+    pub position: Vec3,
+    pub half_width: f32,
+    pub color: Vec4,
+}
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, Instance, Pod, Zeroable)]
 pub struct MeterBackgroundData {
     pub position: Vec3,
     pub scale: Vec3,
