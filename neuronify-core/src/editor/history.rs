@@ -7,7 +7,7 @@ use crate::components::*;
 use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector};
-use crate::measurement::visual_input::VisualInput;
+use crate::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::VoltmeterRange;
 
 enum State {
@@ -127,7 +127,7 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 26] = [
+const EDITED: [Edited; 27] = [
     edited::<Position>(),
     edited::<MeterSize>(),
     edited::<NoteSize>(),
@@ -154,6 +154,7 @@ const EDITED: [Edited; 26] = [
     edited::<Membrane>(),
     edited::<Preparation>(),
     edited::<Temperature>(),
+    edited::<ReceptiveFieldCell>(),
 ];
 
 fn copy_edited(entity: EntityRef) -> EntityBuilder {

@@ -9,7 +9,7 @@ use crate::constants::{RESTING_POTENTIAL, VOLTMETER_MEASUREMENTS};
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::{ReceptiveField, VisualInput};
+use crate::measurement::visual_input::{ReceptiveField, ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::{VoltageSeries, VoltmeterRange};
 
 pub const POSITIONS: RangeInclusive<f32> = -1e6..=1e6;
@@ -242,6 +242,9 @@ pub fn bound(world: &mut World) {
     for input in world.query_mut::<&mut VisualInput>() {
         bound_visual_input(input);
     }
+    for cell in world.query_mut::<&mut ReceptiveFieldCell>() {
+        bound_receptive_field(cell);
+    }
     for speaker in world.query_mut::<&mut Loudspeaker>() {
         within(&mut speaker.volume, VOLUMES, Loudspeaker::default().volume);
     }
@@ -313,11 +316,15 @@ fn bound_membrane(membrane: &mut Membrane) {
 
 fn bound_visual_input(input: &mut VisualInput) {
     let default = VisualInput::default();
-    within(&mut input.sensitivity, SENSITIVITIES, default.sensitivity);
     within(&mut input.speed, PICTURE_SPEEDS, default.speed);
     within(&mut input.phase, PICTURE_PHASES, default.phase);
     input.pattern_angle = turned(input.pattern_angle);
-    match &mut input.field {
+}
+
+fn bound_receptive_field(cell: &mut ReceptiveFieldCell) {
+    let default = ReceptiveFieldCell::default();
+    within(&mut cell.sensitivity, SENSITIVITIES, default.sensitivity);
+    match &mut cell.field {
         ReceptiveField::Orientation { angle, x, y } => {
             *angle = turned(*angle);
             within(x, OFFSETS, 0.0);

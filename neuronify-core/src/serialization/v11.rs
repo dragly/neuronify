@@ -1,8 +1,9 @@
+use super::v16::VisualInput;
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::VisualInput;
+use crate::measurement::visual_input::DEFAULT_PICTURE_SPEED;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::{ComponentError, Entity, World};
 use serde::{Deserialize, Serialize};
@@ -145,10 +146,11 @@ pub fn upgrade_from_v10(world: &mut World) -> Result<(), ComponentError> {
             VisualInput {
                 field: old.field,
                 sensitivity: Hertz(old.sensitivity),
-                show_field: old.show_field,
+                _show_field: old.show_field,
                 pattern: old.pattern,
                 pattern_angle: old.pattern_angle,
-                ..Default::default()
+                speed: DEFAULT_PICTURE_SPEED,
+                phase: 0.0,
             },
         )?;
     }

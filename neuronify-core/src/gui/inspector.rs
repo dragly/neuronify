@@ -16,7 +16,7 @@ use crate::elements::{axon_ending, Element};
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector};
-use crate::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
+use crate::measurement::visual_input::{Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::Theme;
 use crate::settings::Setting;
@@ -335,6 +335,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::Place(Element::PoissonGenerator)
     } else if world.get::<&VisualInput>(entity).is_ok() {
         Tool::Place(Element::VisualInput)
+    } else if world.get::<&ReceptiveFieldCell>(entity).is_ok() {
+        Tool::Place(Element::ReceptiveField)
     } else if world.get::<&Voltmeter>(entity).is_ok() {
         Tool::Voltmeter
     } else if world.get::<&SpikeDetector>(entity).is_ok() {
@@ -860,7 +862,7 @@ fn soma_diameter(ui: &mut Ui, chrome: &Chrome, neuron: &mut LeakyNeuron) -> bool
     )
 }
 
-fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput) -> bool {
+fn picture_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput) -> bool {
     let mut changed = false;
     heading(ui, chrome, "Picture", 0.0);
     let patterns = Pattern::ALL.map(|pattern| (pattern, pattern.name()));
@@ -889,6 +891,11 @@ fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput
         PICTURE_PHASES,
         |phase| format!("{:.0}\u{b0}", phase * 360.0),
     );
+    changed
+}
+
+fn field_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut ReceptiveFieldCell) -> bool {
+    let mut changed = false;
     heading(ui, chrome, "Receptive field", 0.0);
     let kinds = ReceptiveField::KINDS.map(|kind| kind.name());
     let mut kind = ReceptiveField::KINDS
@@ -935,13 +942,6 @@ fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput
         &mut input.sensitivity,
         SENSITIVITIES,
         hertz,
-    );
-    changed |= choice(
-        ui,
-        chrome,
-        Setting::ShowField,
-        &mut input.show_field,
-        &[(true, "On"), (false, "Off")],
     );
     changed
 }
@@ -1048,7 +1048,10 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= highest || lowest;
     }
     if let Ok(mut input) = world.get::<&mut VisualInput>(entity) {
-        changed |= visual_input_parameters(ui, chrome, &mut input);
+        changed |= picture_parameters(ui, chrome, &mut input);
+    }
+    if let Ok(mut field) = world.get::<&mut ReceptiveFieldCell>(entity) {
+        changed |= field_parameters(ui, chrome, &mut field);
     }
     if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(entity) {
         heading(ui, chrome, "Parameters", 0.0);

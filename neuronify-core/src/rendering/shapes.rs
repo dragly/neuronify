@@ -12,7 +12,7 @@ use hecs::Entity;
 use crate::components::*;
 use crate::constants::*;
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::visual_input::VisualInput;
+use crate::measurement::visual_input::ReceptiveFieldCell;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{CylinderData, TorusData};
 use crate::rendering::scene::Scene;
@@ -295,7 +295,7 @@ fn collect_loudspeakers(world: &hecs::World, palette: &Palette, shapes: &mut Sce
 pub fn collect_rings(world: &hecs::World, palette: &Palette) -> Vec<TorusData> {
     world
         .query::<(&GeneratorDynamics, &Position, Option<&NeuronType>)>()
-        .without::<hecs::Or<&TouchSensor, &VisualInput>>()
+        .without::<hecs::Or<&TouchSensor, &ReceptiveFieldCell>>()
         .iter()
         .map(|(dynamics, position, neuron_type)| TorusData {
             position: position.position,

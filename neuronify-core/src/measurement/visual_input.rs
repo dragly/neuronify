@@ -1,13 +1,17 @@
 use std::f64::consts::TAU;
 
 use glam::Vec3;
+use hecs::{Entity, World};
 use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
+use crate::components::{Connection, Deletable};
 use crate::measurement::voltmeter::Frame;
 
 pub const RESOLUTION: usize = 20;
 pub const VISUAL_INPUT_SIZE: f32 = 8.0;
+pub const RECEPTIVE_FIELD_SIZE: f32 = 4.0;
+const FIELD_GAP: f32 = 1.5;
 pub const FRAME_INTERVAL: Milliseconds = Milliseconds(1.0);
 pub const DEFAULT_PICTURE_SPEED: Hertz = Hertz(10.0);
 
@@ -148,31 +152,19 @@ pub fn grid(index: usize) -> f64 {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VisualInput {
-    pub field: ReceptiveField,
-    pub sensitivity: Hertz,
-    pub show_field: bool,
     pub pattern: Pattern,
     pub pattern_angle: f64,
     pub speed: Hertz,
     pub phase: f64,
-    #[serde(skip)]
-    pub seen_at: Option<Milliseconds>,
-    #[serde(skip)]
-    pub response: f64,
 }
 
 impl Default for VisualInput {
     fn default() -> Self {
         Self {
-            field: ReceptiveField::default(),
-            sensitivity: Hertz(1000.0),
-            show_field: true,
             pattern: Pattern::default(),
             pattern_angle: 0.0,
             speed: DEFAULT_PICTURE_SPEED,
             phase: 0.0,
-            seen_at: None,
-            response: 0.0,
         }
     }
 }
@@ -187,8 +179,31 @@ impl VisualInput {
             })
             .collect()
     }
+}
 
-    pub fn field_weights(&self) -> Vec<f64> {
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ReceptiveFieldCell {
+    pub field: ReceptiveField,
+    pub sensitivity: Hertz,
+    #[serde(skip)]
+    pub seen_at: Option<Milliseconds>,
+    #[serde(skip)]
+    pub response: f64,
+}
+
+impl Default for ReceptiveFieldCell {
+    fn default() -> Self {
+        Self {
+            field: ReceptiveField::default(),
+            sensitivity: Hertz(1000.0),
+            seen_at: None,
+            response: 0.0,
+        }
+    }
+}
+
+impl ReceptiveFieldCell {
+    pub fn weights(&self) -> Vec<f64> {
         let weights: Vec<f64> = (0..RESOLUTION)
             .flat_map(|row| (0..RESOLUTION).map(move |column| (column, row)))
             .map(|(column, row)| self.field.weight(grid(column), grid(row)))
@@ -197,12 +212,10 @@ impl VisualInput {
         weights.into_iter().map(|weight| weight - mean).collect()
     }
 
-    pub fn respond(&self) -> f64 {
-        let picture = self.picture();
-        let weights = self.field_weights();
+    pub fn respond(&self, picture: &[f64]) -> f64 {
         picture
             .iter()
-            .zip(&weights)
+            .zip(&self.weights())
             .map(|(brightness, weight)| (2.0 * brightness - 1.0) * weight)
             .sum::<f64>()
             / picture.len() as f64
@@ -210,11 +223,64 @@ impl VisualInput {
 }
 
 pub fn visual_input_frame(center: Vec3) -> Frame {
+    square_frame(center, VISUAL_INPUT_SIZE)
+}
+
+pub fn receptive_field_frame(center: Vec3) -> Frame {
+    square_frame(center, RECEPTIVE_FIELD_SIZE)
+}
+
+fn square_frame(center: Vec3, size: f32) -> Frame {
     Frame {
-        bottom_left: center - Vec3::new(VISUAL_INPUT_SIZE, 0.0, VISUAL_INPUT_SIZE) * 0.5,
-        width: VISUAL_INPUT_SIZE,
-        height: VISUAL_INPUT_SIZE,
+        bottom_left: center - Vec3::new(size, 0.0, size) * 0.5,
+        width: size,
+        height: size,
     }
+}
+
+pub fn framed_size(world: &World, entity: Entity) -> Option<f32> {
+    if world.satisfies::<&VisualInput>(entity) {
+        Some(VISUAL_INPUT_SIZE)
+    } else if world.satisfies::<&ReceptiveFieldCell>(entity) {
+        Some(RECEPTIVE_FIELD_SIZE)
+    } else {
+        None
+    }
+}
+
+pub fn edge_toward(center: Vec3, toward: Vec3, size: f32) -> Option<Vec3> {
+    let offset = toward - center;
+    let reach = offset.x.abs().max(offset.z.abs());
+    (reach > size * 0.5).then(|| center + offset * (size * 0.5 / reach))
+}
+
+pub fn beside_the_picture(center: Vec3) -> Vec3 {
+    center + Vec3::Z * (VISUAL_INPUT_SIZE + RECEPTIVE_FIELD_SIZE + 2.0 * FIELD_GAP) * 0.5
+}
+
+pub fn is_picture_wire(world: &World, connection: &Connection) -> bool {
+    world.satisfies::<&VisualInput>(connection.from)
+        && world.satisfies::<&ReceptiveFieldCell>(connection.to)
+}
+
+pub fn watched_picture(world: &World, cell: Entity) -> Option<Entity> {
+    world
+        .query::<&Connection>()
+        .iter()
+        .find(|connection| connection.to == cell && is_picture_wire(world, connection))
+        .map(|connection| connection.from)
+}
+
+pub fn spawn_picture_wire(world: &mut World, picture: Entity, cell: Entity) -> Entity {
+    world.spawn((
+        Connection {
+            from: picture,
+            to: cell,
+            strength: 1.0,
+            directional: false,
+        },
+        Deletable {},
+    ))
 }
 
 #[cfg(test)]
@@ -222,37 +288,58 @@ mod tests {
     use std::f64::consts::FRAC_PI_2;
 
     use super::*;
+    use crate::components::GeneratorDynamics;
+    use neuronify_engine::units::Seconds;
 
-    fn input(field: ReceptiveField, pattern: Pattern, pattern_angle: f64) -> VisualInput {
-        VisualInput {
-            field,
-            pattern,
-            pattern_angle,
-            ..Default::default()
+    #[derive(Clone)]
+    struct Seen {
+        picture: VisualInput,
+        cell: ReceptiveFieldCell,
+    }
+
+    impl Seen {
+        fn picture(&self) -> Vec<f64> {
+            self.picture.picture()
         }
     }
 
-    fn at_phase(input: &VisualInput, phase: f64) -> f64 {
-        VisualInput {
+    fn input(field: ReceptiveField, pattern: Pattern, pattern_angle: f64) -> Seen {
+        Seen {
+            picture: VisualInput {
+                pattern,
+                pattern_angle,
+                ..Default::default()
+            },
+            cell: ReceptiveFieldCell {
+                field,
+                ..Default::default()
+            },
+        }
+    }
+
+    fn at_phase(seen: &Seen, phase: f64) -> f64 {
+        let picture = VisualInput {
             phase,
-            ..input.clone()
-        }
-        .respond()
+            ..seen.picture.clone()
+        };
+        seen.cell.respond(&picture.picture())
     }
 
-    fn mean_response(input: &VisualInput) -> f64 {
+    fn mean_response(seen: &Seen) -> f64 {
         (0..200)
-            .map(|step| at_phase(input, step as f64 / 200.0))
+            .map(|step| at_phase(seen, step as f64 / 200.0))
             .sum::<f64>()
             / 200.0
     }
 
-    fn spikes(input: VisualInput, seconds: f64) -> (usize, f64) {
-        let mut world = hecs::World::new();
-        let entity = world.spawn((input, crate::components::GeneratorDynamics::default()));
-        let duration = neuronify_engine::units::Seconds(seconds).to_milliseconds();
-        let spikes = crate::simulation::run_headless(&mut world, duration).len();
-        let phase = world.get::<&VisualInput>(entity).unwrap().phase;
+    fn spikes(seen: Seen, seconds: f64) -> (usize, f64) {
+        let mut world = World::new();
+        let picture = world.spawn((seen.picture,));
+        let cell = world.spawn((seen.cell, crate::components::GeneratorDynamics::default()));
+        spawn_picture_wire(&mut world, picture, cell);
+        let spikes =
+            crate::simulation::run_headless(&mut world, Seconds(seconds).to_milliseconds()).len();
+        let phase = world.get::<&VisualInput>(picture).unwrap().phase;
         (spikes, phase)
     }
 
@@ -265,7 +352,7 @@ mod tests {
         };
         let matching = input(field, Pattern::Bar, 0.0);
         let across = input(field, Pattern::Bar, FRAC_PI_2);
-        let peak = |input: &VisualInput| {
+        let peak = |input: &Seen| {
             (0..200)
                 .map(|step| at_phase(input, step as f64 / 200.0))
                 .fold(f64::MIN, f64::max)
@@ -392,14 +479,9 @@ mod tests {
     #[test]
     fn the_picture_moves_as_fast_as_its_speed_and_stands_still_at_zero() {
         let phase_after_a_quarter_second = |speed: f64| {
-            spikes(
-                VisualInput {
-                    speed: Hertz(speed),
-                    ..Default::default()
-                },
-                0.25,
-            )
-            .1
+            let mut seen = input(ReceptiveField::default(), Pattern::Bar, 0.0);
+            seen.picture.speed = Hertz(speed);
+            spikes(seen, 0.25).1
         };
         assert!((phase_after_a_quarter_second(0.5) - 0.125).abs() < 1e-6);
         assert!((phase_after_a_quarter_second(2.0) - 0.5).abs() < 1e-6);
@@ -407,17 +489,49 @@ mod tests {
     }
 
     #[test]
+    fn a_field_without_a_picture_never_fires() {
+        let mut world = World::new();
+        world.spawn((ReceptiveFieldCell::default(), GeneratorDynamics::default()));
+        assert!(
+            crate::simulation::run_headless(&mut world, Seconds(1.0).to_milliseconds()).is_empty()
+        );
+    }
+
+    #[test]
+    fn two_fields_wired_to_one_picture_each_answer_their_own_spot() {
+        let mut world = World::new();
+        let picture = world.spawn((VisualInput {
+            pattern: Pattern::Dot,
+            speed: Hertz::ZERO,
+            ..Default::default()
+        },));
+        let spot = |x: f64| ReceptiveFieldCell {
+            field: ReceptiveField::CenterSurround {
+                off_center: false,
+                x,
+                y: 0.0,
+            },
+            ..Default::default()
+        };
+        let under_the_dot = world.spawn((spot(0.25), GeneratorDynamics::default()));
+        let across = world.spawn((spot(-0.25), GeneratorDynamics::default()));
+        for cell in [under_the_dot, across] {
+            spawn_picture_wire(&mut world, picture, cell);
+        }
+        crate::simulation::run_headless(&mut world, Milliseconds(1.0));
+        let response = |cell| world.get::<&ReceptiveFieldCell>(cell).unwrap().response;
+        assert!(response(under_the_dot) > 0.0);
+        assert!(response(across) <= 0.0);
+        assert_eq!(watched_picture(&world, across), Some(picture));
+    }
+
+    #[test]
     fn a_stopped_bar_keeps_the_input_firing_only_where_it_crosses_the_field() {
         let stopped_at = |phase: f64| {
-            spikes(
-                VisualInput {
-                    speed: Hertz(0.0),
-                    phase,
-                    ..input(ReceptiveField::default(), Pattern::Bar, 0.0)
-                },
-                1.0,
-            )
-            .0
+            let mut seen = input(ReceptiveField::default(), Pattern::Bar, 0.0);
+            seen.picture.speed = Hertz::ZERO;
+            seen.picture.phase = phase;
+            spikes(seen, 1.0).0
         };
         let crossing = stopped_at(0.5);
         let beside = stopped_at(0.1);

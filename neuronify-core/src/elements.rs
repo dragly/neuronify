@@ -5,7 +5,7 @@ use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::VisualInput;
+use crate::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::simulation::model::cable_between;
 
@@ -21,6 +21,7 @@ pub enum Element {
     RegularSpikeGenerator,
     PoissonGenerator,
     VisualInput,
+    ReceptiveField,
     Note,
 }
 
@@ -44,6 +45,7 @@ impl Element {
                 | Element::RegularSpikeGenerator
                 | Element::PoissonGenerator
                 | Element::VisualInput
+                | Element::ReceptiveField
         )
     }
 
@@ -97,9 +99,10 @@ impl Element {
                 NeuronType::Excitatory,
                 Deletable {},
             )),
-            Element::VisualInput => world.spawn((
+            Element::VisualInput => world.spawn((position, VisualInput::default(), Deletable {})),
+            Element::ReceptiveField => world.spawn((
                 position,
-                VisualInput::default(),
+                ReceptiveFieldCell::default(),
                 GeneratorDynamics::default(),
                 NeuronType::Excitatory,
                 Deletable {},

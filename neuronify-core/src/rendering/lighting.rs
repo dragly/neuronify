@@ -8,7 +8,7 @@ use visula::Expression;
 use crate::rendering::colors::Theme;
 
 /// Share of each colour that comes from lighting. The rest is the flat colour.
-const SHADING: f32 = 0.5;
+pub const SHADING: f32 = 0.5;
 pub const BLOOM_THRESHOLD: f32 = 1.1;
 
 /// The colour, partly lit, without a specular highlight that would read as a voltage.

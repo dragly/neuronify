@@ -12,12 +12,15 @@ use crate::elements::{
     Element, Meter,
 };
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::visual_input::{visual_input_frame, VisualInput};
+use crate::measurement::visual_input::{
+    edge_toward, framed_size, receptive_field_frame, spawn_picture_wire, visual_input_frame,
+    watched_picture, ReceptiveFieldCell, VisualInput,
+};
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};
-use crate::tips::{onward, tip_at};
+use crate::tips::{tip_at, way_out};
 use crate::tools::{
     ConnectionHint, ConnectionMode, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool,
     Tool,
@@ -137,8 +140,14 @@ impl Editor {
     pub fn cable_being_drawn(&self, world: &World) -> Option<(Entity, Vec3, Vec3)> {
         let (start, end) = self.connection_being_drawn(world)?;
         let from = self.connection_tool.as_ref()?.from;
-        let wire = self.tool.meter().is_some() || Meter::of(world, from).is_some();
-        (!wire).then_some((from, start, end))
+        if self.tool.meter().is_some() || Meter::of(world, from).is_some() {
+            return None;
+        }
+        let start = match framed_size(world, from) {
+            Some(size) => edge_toward(start, end, size)?,
+            None => start,
+        };
+        Some((from, start, end))
     }
 
     pub fn axon_being_grown(&self, world: &World) -> Option<(Entity, Vec3, Vec3)> {
@@ -320,11 +329,11 @@ impl Editor {
         if !matches!(self.tool, Tool::Place(_)) && self.tool.meter().is_none() {
             return None;
         }
-        let (from, start) = self.offered_source(world)?;
+        let (from, center) = self.offered_source(world)?;
+        let (start, onward) = way_out(world, from, center);
         let shown = (age.min(HINT_DURATION - age) / HINT_FADE).clamp(0.0, 1.0) as f32;
         let grown = 1.0 - (1.0 - shown).powi(3);
         let wiggle = age.0 as f32 * TAU * HINT_WIGGLES_PER_SECOND;
-        let onward = onward(world, from);
         let across = Vec3::Y.cross(onward);
         let string = (0..=HINT_SEGMENTS)
             .map(|index| {
@@ -350,7 +359,8 @@ impl Editor {
 
     fn pull_offer(&self, world: &World, position: Vec3) -> Option<ConnectionTool> {
         let (from, start) = self.offered_source(world)?;
-        (position.distance(start) < HINT_LENGTH + HINT_SWAY).then_some(ConnectionTool {
+        let (leaving, _) = way_out(world, from, start);
+        (position.distance(leaving) < HINT_LENGTH + HINT_SWAY).then_some(ConnectionTool {
             start,
             end: position,
             from,
@@ -968,6 +978,13 @@ impl Editor {
             self.connection_tool = start_connection(sources(world), position)
                 .or_else(|| self.tip_at(world, position))
                 .or_else(|| {
+                    picture_at(world, position).map(|picture| ConnectionTool {
+                        start: position,
+                        end: position,
+                        from: picture,
+                    })
+                })
+                .or_else(|| {
                     meter_at(world, position).map(|(meter, start)| ConnectionTool {
                         start,
                         end: position,
@@ -984,6 +1001,14 @@ impl Editor {
             .is_some_and(|connection| Meter::of(world, connection.from).is_some());
         if from_meter {
             self.extend_wire(world, position);
+            return;
+        }
+        let from_picture = self
+            .connection_tool
+            .as_ref()
+            .is_some_and(|connection| world.satisfies::<&VisualInput>(connection.from));
+        if from_picture {
+            self.show_picture_to_field_at(world, position);
             return;
         }
         let Some(connection) = &mut self.connection_tool else {
@@ -1051,6 +1076,18 @@ impl Editor {
             self.soma_ahead = None;
         }
         !reached
+    }
+
+    fn show_picture_to_field_at(&mut self, world: &mut World, position: Vec3) {
+        let Some(connection) = &mut self.connection_tool else {
+            return;
+        };
+        connection.end = position;
+        if let Some(cell) = receptive_field_at(world, position) {
+            if watched_picture(world, cell).is_none() {
+                spawn_picture_wire(world, connection.from, cell);
+            }
+        }
     }
 
     fn grow_axon(&mut self, world: &mut World, recording: &mut Recording, position: Vec3) {
@@ -1353,7 +1390,37 @@ fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
         .iter()
         .map(|(input, center)| (input, center.position, visual_input_frame(center.position)))
         .collect::<Vec<_>>();
-    [meters, visual_inputs].concat()
+    let fields = world
+        .query::<(Entity, &Position)>()
+        .with::<&ReceptiveFieldCell>()
+        .iter()
+        .map(|(cell, center)| {
+            (
+                cell,
+                center.position,
+                receptive_field_frame(center.position),
+            )
+        })
+        .collect::<Vec<_>>();
+    [meters, visual_inputs, fields].concat()
+}
+
+fn picture_at(world: &World, position: Vec3) -> Option<Entity> {
+    world
+        .query::<(Entity, &Position)>()
+        .with::<&VisualInput>()
+        .iter()
+        .find(|(_, center)| visual_input_frame(center.position).contains(position))
+        .map(|(picture, _)| picture)
+}
+
+fn receptive_field_at(world: &World, position: Vec3) -> Option<Entity> {
+    world
+        .query::<(Entity, &Position)>()
+        .with::<&ReceptiveFieldCell>()
+        .iter()
+        .find(|(_, center)| receptive_field_frame(center.position).contains(position))
+        .map(|(cell, _)| cell)
 }
 
 fn positions_with<T: Component>(world: &World) -> Vec<(Entity, Vec3)> {

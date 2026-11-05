@@ -13,6 +13,7 @@ use crate::rendering::{
 const THUMBNAIL_MIN_CANVAS_EXTENT: f32 = 20.0;
 const MIN_LINE_WIDTH: f32 = 1.0;
 const MIN_TRACE_POINT_SPACING: f32 = 1.0;
+const TILE_ROUNDING: f32 = 0.25;
 
 pub fn egui_color_from_linear(color: Vec3) -> Color32 {
     egui::Rgba::from_rgb(color.x, color.y, color.z).into()
@@ -39,6 +40,21 @@ pub fn top_down_shapes(
         .iter()
         .map(|cylinder| cylinder_from_above(cylinder, scale, to_screen))
         .collect();
+    for disc in &scene.discs {
+        shapes.push(Shape::circle_filled(
+            to_screen(disc.position),
+            disc.half_width * scale,
+            egui_color_from_linear(disc.color.truncate()),
+        ));
+    }
+    for tile in &scene.squircles {
+        let width = 2.0 * tile.half_width * scale;
+        shapes.push(Shape::rect_filled(
+            Rect::from_center_size(to_screen(tile.position), vec2(width, width)),
+            TILE_ROUNDING * width,
+            egui_color_from_linear(tile.color.truncate()),
+        ));
+    }
     for ring in &scene.rings {
         shapes.push(Shape::circle_stroke(
             to_screen(ring.position),
@@ -65,7 +81,7 @@ pub fn top_down_shapes(
             .into_iter()
             .chain(collect_spike_detectors(world, palette))
             .chain(collect_rate_plots(world, palette))
-            .chain(collect_visual_input_lines(world))
+            .chain(collect_visual_input_lines(world, palette))
             .collect(),
         scale,
         to_screen,

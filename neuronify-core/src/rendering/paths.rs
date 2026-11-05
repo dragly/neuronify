@@ -6,7 +6,9 @@ use hecs::{Entity, EntityRef};
 use crate::components::*;
 use crate::constants::*;
 use crate::measurement::is_meter;
+use crate::measurement::visual_input::{edge_toward, framed_size};
 use crate::rendering::colors::*;
+use crate::rendering::connections::picture_wire_points;
 use crate::rendering::shapes::{shown_voltage, voltage_fraction};
 use crate::tips::Tip;
 
@@ -115,6 +117,12 @@ fn connection_colors(
     }
 }
 
+fn framed_edge(world: &hecs::World, entity: Entity, center: Vec3, toward: Vec3) -> Vec3 {
+    framed_size(world, entity)
+        .and_then(|size| edge_toward(center, toward, size))
+        .unwrap_or(center)
+}
+
 fn quadratic_bezier(p0: Vec3, p1: Vec3, p2: Vec3, t: f32) -> Vec3 {
     let u = 1.0 - t;
     u * u * p0 + 2.0 * u * t * p1 + t * t * p2
@@ -154,6 +162,7 @@ pub fn connection_paths(
     palette: &Palette,
 ) -> BTreeMap<Entity, ConnectionPath> {
     let display = NeuronDisplay::of(world);
+    let mut wires = picture_wire_points(world);
     let pairs: HashSet<(Entity, Entity)> = world
         .query::<&Connection>()
         .iter()
@@ -165,6 +174,9 @@ pub fn connection_paths(
         .filter(|(_, (connection, _))| !is_meter(world, connection.to))
         .filter(|(_, (connection, cable))| connection.directional || cable.is_none())
         .filter_map(|(entity, (connection, _))| {
+            if let Some(points) = wires.remove(&entity) {
+                return Some((entity, wire_path(points, palette)));
+            }
             // Reciprocal pairs bend to opposite sides so both stay visible.
             // An axon terminal continues its chain of compartments straight.
             let bend = if pairs.contains(&(connection.to, connection.from)) {
@@ -182,6 +194,23 @@ pub fn connection_paths(
             ))
         })
         .collect()
+}
+
+fn wire_path(points: Vec<Vec3>, palette: &Palette) -> ConnectionPath {
+    let terminal_direction = match &points[..] {
+        [.., before, last] => (*last - *before).normalize_or_zero(),
+        _ => Vec3::ZERO,
+    };
+    ConnectionPath {
+        points,
+        radius: CONNECTION_RADIUS,
+        start_color: palette.neutral,
+        end_color: palette.neutral,
+        directional: false,
+        inhibitory: false,
+        terminal_radius: SOMA_TERMINAL_RADIUS,
+        terminal_direction,
+    }
 }
 
 pub fn ending_path(
@@ -299,6 +328,8 @@ fn path_ending_at(
         Some(end) => end,
         None => to.get::<&Position>()?.position,
     };
+    let start = framed_edge(world, connection.from, start, end);
+    let end = framed_edge(world, connection.to, end, start);
     let from_compartment = from.has::<Compartment>();
     let target_radius = radii.get(&connection.to).copied();
     let terminal_radius = full_terminal_radius(radii, connection.to);
