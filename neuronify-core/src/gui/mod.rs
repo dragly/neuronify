@@ -19,7 +19,7 @@ use crate::components::{NeuronDisplay, Setting};
 use crate::editor::Editor;
 use crate::rendering::Theme;
 use crate::tools::Tool;
-pub use hitboxes::paint_hitboxes;
+pub use hitboxes::{paint_hitboxes, reach_slider};
 use icons::Icon;
 use inspector::{Inspector, Placement};
 use playback::BAR_HEIGHT;

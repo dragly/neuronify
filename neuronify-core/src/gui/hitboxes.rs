@@ -1,10 +1,15 @@
-use egui::{pos2, Color32, Context, LayerId, Mesh, Pos2, Shape, Stroke, Vec2};
+use egui::{
+    pos2, Align2, Area, Color32, Context, Frame, Id, LayerId, Mesh, Pos2, Shape, Slider, Stroke,
+    Vec2,
+};
 use hecs::Entity;
 
 const CELL: f32 = 4.0;
 const BISECTIONS: usize = 4;
 const FILL_OPACITY: f32 = 0.3;
 const EDGE_WIDTH: f32 = 1.5;
+const MAX_REACH: f64 = 66.0;
+const SLIDER_OFFSET: f32 = 76.0;
 const COLORS: [Color32; 6] = [
     Color32::from_rgb(30, 102, 245),
     Color32::from_rgb(64, 160, 43),
@@ -158,4 +163,18 @@ pub fn paint_hitboxes(context: &Context, owner: impl Fn(Pos2) -> Option<Entity>)
     let painter = context.layer_painter(LayerId::background());
     painter.add(mesh);
     painter.extend(edges);
+}
+
+pub fn reach_slider(context: &Context, reach: &mut f64) {
+    Area::new(Id::new("hitbox reach"))
+        .anchor(Align2::CENTER_TOP, [0.0, SLIDER_OFFSET])
+        .show(context, |ui| {
+            Frame::popup(ui.style()).show(ui, |ui| {
+                ui.add(
+                    Slider::new(reach, 0.0..=MAX_REACH)
+                        .suffix(" pt")
+                        .text("Reach"),
+                );
+            });
+        });
 }

@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+
 use crate::audio::{schedule, Speakers};
 use crate::camera;
 use crate::components::Link;
@@ -21,6 +24,7 @@ use crate::tools::{ConnectionHint, Tool};
 
 #[cfg(target_arch = "wasm32")]
 const SAVED_NAME: &str = "circuit.neuronify";
+const HITBOX_TILE: f32 = 32.0;
 
 pub struct Neuronify {
     tapped_background: bool,
@@ -49,6 +53,19 @@ pub struct Neuronify {
     library: Library,
     autosave: Autosave,
     hitboxes: bool,
+    touch_reach: f64,
+}
+
+fn ground_under(
+    application: &visula::Application,
+    context: &egui::Context,
+) -> impl Fn(egui::Pos2) -> Vec3 {
+    let ground = camera::positions_at_height(application, 0.0);
+    let pixels_per_point = context.pixels_per_point();
+    move |point| {
+        let pixel = |coordinate: f32| f64::from(coordinate * pixels_per_point);
+        ground(PhysicalPosition::new(pixel(point.x), pixel(point.y)))
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -194,6 +211,7 @@ impl Neuronify {
             library: Library::open(),
             autosave,
             hitboxes: debug_view().as_deref() == Some("hitboxes"),
+            touch_reach: input::TOUCH_REACH,
         }
     }
 
@@ -292,13 +310,31 @@ impl Neuronify {
 
     fn paint_hitboxes(&self, application: &visula::Application, context: &egui::Context) {
         let targets = Targets::new(&self.world);
-        let ground = camera::positions_at_height(application, 0.0);
-        let pixels_per_point = context.pixels_per_point();
+        let to_ground = ground_under(application, context);
+        let tiles = RefCell::new(HashMap::new());
         gui::paint_hitboxes(context, |point| {
-            let pixel = |coordinate: f32| f64::from(coordinate * pixels_per_point);
-            let position = ground(PhysicalPosition::new(pixel(point.x), pixel(point.y)));
+            let tile = (point.to_vec2() / HITBOX_TILE).floor();
+            let mut tiles = tiles.borrow_mut();
+            let nearby = tiles
+                .entry([tile.x, tile.y].map(|index| index as i32))
+                .or_insert_with(|| {
+                    let corner = |x: f32, y: f32| {
+                        to_ground(((tile + egui::vec2(x, y)) * HITBOX_TILE).to_pos2())
+                    };
+                    let center = corner(0.5, 0.5);
+                    let radius = [
+                        corner(0.0, 0.0),
+                        corner(1.0, 0.0),
+                        corner(0.0, 1.0),
+                        corner(1.0, 1.0),
+                    ]
+                    .into_iter()
+                    .map(|point| point.distance(center))
+                    .fold(0.0, f32::max);
+                    targets.around(center, radius)
+                });
             self.editor
-                .hold_target(&targets, position)
+                .hold_target(nearby, to_ground(point))
                 .map(|(entity, _)| entity)
         });
     }
@@ -466,6 +502,8 @@ impl visula::Simulation for Neuronify {
         }
         #[cfg(target_arch = "wasm32")]
         crate::web::hide_loading_screen_when_ready();
+        let reach = self.touch_reach * application.window.scale_factor();
+        self.editor.touch_reach = camera::ground_length(application, reach);
         self.library.poll();
         self.note_edits();
         if self.autosave.is_due(input::now()) {
@@ -623,6 +661,7 @@ impl visula::Simulation for Neuronify {
             gui::connection_hint(context, self.theme, tip, hint.shown);
         }
         if self.hitboxes {
+            gui::reach_slider(context, &mut self.touch_reach);
             self.paint_hitboxes(application, context);
         }
     }
