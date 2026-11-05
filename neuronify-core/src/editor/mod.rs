@@ -202,6 +202,10 @@ impl Editor {
         std::mem::take(&mut self.edited)
     }
 
+    pub fn mark_edited(&mut self) {
+        self.edited = true;
+    }
+
     pub fn release(&mut self, world: &World) {
         self.stimulation_tool = None;
         self.connection_tool = None;

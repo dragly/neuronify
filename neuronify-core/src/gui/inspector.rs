@@ -492,7 +492,7 @@ fn millivolts(millivolts: f64) -> String {
     format!("{millivolts:.1} mV").replace('-', "\u{2212}")
 }
 
-fn parameter<N: Numeric>(
+pub(super) fn parameter<N: Numeric>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,

@@ -42,6 +42,7 @@ pub enum Setting {
     OffCenter,
     Sensitivity,
     ShowField,
+    Temperature,
 }
 
 impl Setting {
@@ -89,6 +90,7 @@ impl Setting {
             Setting::OffCenter => "Off center",
             Setting::Sensitivity => "Sensitivity",
             Setting::ShowField => "Show field",
+            Setting::Temperature => "Temperature",
         }
     }
 
@@ -154,6 +156,10 @@ impl Setting {
             Setting::Sensitivity => "How often it fires when the picture matches the field perfectly.",
             Setting::ShowField => {
                 "Tints the picture orange where light excites it and blue where light holds it back."
+            }
+            Setting::Temperature => {
+                "Warmer channels open and close faster. \
+                 Spikes get briefer and travel faster, until axons fail above about 30 °C."
             }
         }
     }
