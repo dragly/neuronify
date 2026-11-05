@@ -1,0 +1,28 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"excitatory neuron" = 10
+"inhibitory neuron" = 5
+note = 3
+"receptive field" = 5
+"spike detector" = 1
+synapse = 22
+"visual input" = 1
+
+[spikes]
+"1 A" = [8]
+"2 B" = [4]
+"3 C" = [0]
+"4 D" = [0]
+"5 E" = [0]
+6 = [7]
+7 = [3]
+8 = [0]
+9 = [0]
+10 = [0]
+"11 A-B" = [2]
+"12 B-C" = [1]
+"13 C-D" = [0]
+"14 D-E" = [0]
+"15 Output" = [1]

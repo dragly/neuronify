@@ -219,9 +219,10 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
             },
             Example {
                 name: "Direction selectivity",
-                description: "The output fires when you press the sensors from right to left, \
-                    but not from left to right.",
-                contents: saved!("direction_selectivity.neuronify"),
+                description: "A bar of light sweeps past a row of spots. \
+                    The output fires only when it moves one way, \
+                    because the next spot along vetoes the signal the other way.",
+                contents: saved!("labs/direction_selectivity.neuronify"),
             },
         ],
     },

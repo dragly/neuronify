@@ -5,6 +5,9 @@ use hecs::{Entity, World};
 use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::elements::{spawn_spike_detector, spawn_spike_detector_wire, Element};
 use neuronify_core::measurement::spike_detector::{RowOrder, SpikeDetector};
+use neuronify_core::measurement::visual_input::{
+    spawn_picture_wire, Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput,
+};
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
     Annotation, Connection, ConnectionView, CurrentClamp, CurrentSynapse, Deletable, Hertz, Label,
@@ -23,8 +26,9 @@ const SPIKE_DETECTOR_SIZE: MeterSize = MeterSize {
 };
 const SPIKE_DETECTOR_TIME_RANGE: Milliseconds = Milliseconds(2000.0);
 const COMPASS_SPEED: f64 = 8.0;
+const DIRECTION_SELECTIVITY_SPEED: f64 = 8.0;
 
-pub fn labs() -> [(&'static str, World, f64); 5] {
+pub fn labs() -> [(&'static str, World, f64); 6] {
     [
         (
             "ring_attractor.neuronify",
@@ -42,6 +46,11 @@ pub fn labs() -> [(&'static str, World, f64); 5] {
             "hopfield_overloaded.neuronify",
             hopfield(&OVERLOADED),
             DEFAULT_SPEED,
+        ),
+        (
+            "direction_selectivity.neuronify",
+            direction_selectivity(),
+            DIRECTION_SELECTIVITY_SPEED,
         ),
     ]
 }
@@ -685,4 +694,147 @@ fn listed(letters: &[char]) -> String {
         Some((last, rest)) => format!("{} and {last}", rest.join(", ")),
         None => String::new(),
     }
+}
+
+pub const RECEPTORS: [&str; 5] = ["A", "B", "C", "D", "E"];
+pub const PAIRS: [&str; 4] = ["A-B", "B-C", "C-D", "D-E"];
+pub const OUTPUT: &str = "Output";
+pub const PICTURE_SPEED: Hertz = Hertz(3.0);
+
+const PICTURE_SIZE: f32 = 8.0;
+const FIELD_SIZE: f32 = 4.0;
+const FIELD_STEP: f32 = 5.0;
+const RECEPTOR_DROP: f32 = 6.5;
+const LAYER_DROP: f32 = 6.0;
+const PARTNER_SHIFT: f32 = 1.0;
+const RECEPTIVE_FIELD_SPACING: f64 = 0.15;
+const RECEPTIVE_FIELD_SENSITIVITY: Hertz = Hertz(50_000.0);
+const VETO_EXCITATION: Nanoamperes = Nanoamperes(1.5);
+const VETO_INHIBITION: Nanoamperes = Nanoamperes(2.0);
+const VETO_INHIBITION_TIME_CONSTANT: Milliseconds = Milliseconds(30.0);
+const OUTPUT_EXCITATION: Nanoamperes = Nanoamperes(1.5);
+const DETECTOR_WIDTH: f32 = 16.0;
+const DETECTOR_HEIGHT: f32 = 12.0;
+const DETECTOR_TIME_RANGE: Milliseconds = Milliseconds(1000.0);
+
+fn direction_selectivity() -> World {
+    let fast = Milliseconds(2.0);
+    let mut sheet = Sheet::new();
+    sheet.text(
+        "A bar of light sweeps left to right across the picture. \
+         Five receptive fields, A to E, each drive the receptor neuron below them.",
+    );
+    let picture_row = sheet.row(PICTURE_SIZE) - PICTURE_SIZE / 2.0;
+    let picture = sheet.add(Element::VisualInput, SHEET_WIDTH / 2.0, picture_row);
+    *sheet
+        .world
+        .get::<&mut VisualInput>(picture)
+        .expect("visual inputs spawn with a VisualInput") = VisualInput {
+        pattern: Pattern::Bar,
+        speed: PICTURE_SPEED,
+        ..Default::default()
+    };
+    let field_row = sheet.row(FIELD_SIZE) - FIELD_SIZE / 2.0;
+    let receptor_row = field_row - RECEPTOR_DROP;
+    let partner_row = receptor_row - LAYER_DROP;
+    let pair_row = partner_row - LAYER_DROP;
+    let output_row = pair_row - LAYER_DROP;
+    sheet.row(field_row - output_row - SHEET_GAP);
+    let middle = (RECEPTORS.len() - 1) as f32 / 2.0;
+    let column = |index: usize| SHEET_WIDTH / 2.0 + (index as f32 - middle) * FIELD_STEP;
+    let mut receptors = Vec::new();
+    let mut partners = Vec::new();
+    for (index, name) in RECEPTORS.into_iter().enumerate() {
+        let field = sheet.add(Element::ReceptiveField, column(index), field_row);
+        *sheet
+            .world
+            .get::<&mut ReceptiveFieldCell>(field)
+            .expect("receptive fields spawn with a ReceptiveFieldCell") = ReceptiveFieldCell {
+            field: ReceptiveField::CenterSurround {
+                off_center: false,
+                x: (index as f64 - middle as f64) * RECEPTIVE_FIELD_SPACING,
+                y: 0.0,
+            },
+            sensitivity: RECEPTIVE_FIELD_SENSITIVITY,
+            ..Default::default()
+        };
+        spawn_picture_wire(&mut sheet.world, picture, field);
+        let receptor = sheet.neuron(NeuronType::Excitatory, column(index), receptor_row, name);
+        let partner = sheet.neuron(
+            NeuronType::Inhibitory,
+            column(index) - PARTNER_SHIFT,
+            partner_row,
+            "",
+        );
+        sheet.synapse(field, receptor, RELAY, fast, Milliseconds::ZERO);
+        sheet.synapse(receptor, partner, RELAY, fast, Milliseconds(1.0));
+        receptors.push(receptor);
+        partners.push(partner);
+    }
+    let output = sheet.neuron(
+        NeuronType::Excitatory,
+        SHEET_WIDTH / 2.0,
+        output_row,
+        OUTPUT,
+    );
+    let mut rightward = Vec::new();
+    for (index, pair) in PAIRS.into_iter().enumerate() {
+        let between = column(index) + FIELD_STEP / 2.0;
+        let right = sheet.neuron(NeuronType::Excitatory, between, pair_row, pair);
+        sheet.synapse(
+            receptors[index],
+            right,
+            VETO_EXCITATION,
+            fast,
+            Milliseconds(1.0),
+        );
+        sheet.synapse(
+            partners[index + 1],
+            right,
+            VETO_INHIBITION,
+            VETO_INHIBITION_TIME_CONSTANT,
+            Milliseconds(1.0),
+        );
+        sheet.synapse(right, output, OUTPUT_EXCITATION, fast, Milliseconds(1.0));
+        rightward.push(right);
+    }
+    let detector_row = sheet.row(DETECTOR_HEIGHT) - DETECTOR_HEIGHT / 2.0;
+    let detector = spawn_spike_detector(
+        &mut sheet.world,
+        receptors[0],
+        Sheet::at((SHEET_WIDTH - DETECTOR_WIDTH) / 2.0, detector_row),
+    );
+    for &cell in receptors[1..].iter().chain(&rightward).chain([&output]) {
+        spawn_spike_detector_wire(&mut sheet.world, cell, detector);
+    }
+    *sheet
+        .world
+        .get::<&mut MeterSize>(detector)
+        .expect("meters spawn with a MeterSize") = MeterSize {
+        width: DETECTOR_WIDTH,
+        height: DETECTOR_HEIGHT,
+    };
+    *sheet
+        .world
+        .get::<&mut RowOrder>(detector)
+        .expect("spike detectors spawn with a RowOrder") = RowOrder::Connection;
+    sheet
+        .world
+        .get::<&mut SpikeDetector>(detector)
+        .expect("spike detectors spawn with a SpikeDetector")
+        .time_range = DETECTOR_TIME_RANGE;
+    sheet.text(
+        "A-B to D-E are each excited by their first receptor \
+         and inhibited by the partner of their second. \
+         Moving right, the bar excites them before the inhibition arrives, and the output fires. \
+         Tap the arrow on the picture: now the inhibition comes first and vetoes them. \
+         At 1 Hz the inhibition fades before the excitation comes.",
+    );
+    sheet.text(
+        "Barlow and Levick found this veto in the rabbit retina in 1965, \
+         repeated across small subunits of one cell. \
+         There the subunits are dendrite branches, inhibited by starburst amacrine cells. \
+         Here each one is a neuron, and Output stands for the whole cell.",
+    );
+    sheet.world
 }
