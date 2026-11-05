@@ -1,18 +1,21 @@
 use std::collections::HashMap;
 
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::constants::SELECTION_RANGE;
-use crate::measurement::voltmeter::Frame;
+use crate::measurement::voltmeter::{Corner, Frame};
+use crate::rendering::bounds::note_corners;
 use crate::rendering::cylinders::SHEATH_RADIUS;
 use crate::rendering::{compartment_radii, element_radius};
 
 use super::{meter_frames, nearest_within};
 
+const OUTLINE_BISECTIONS: usize = 16;
+
 #[derive(Clone, Copy)]
-struct Piece {
+pub struct Piece {
     entity: Entity,
     position: Vec3,
     start: Vec3,
@@ -25,6 +28,72 @@ impl Piece {
         let along = self.end - self.start;
         let t = (point - self.start).dot(along) / along.length_squared().max(f32::MIN_POSITIVE);
         point.distance(self.start + t.clamp(0.0, 1.0) * along) - self.radius
+    }
+}
+
+pub enum Shape {
+    Pieces(Vec<Piece>),
+    Rectangle([Vec3; 2]),
+}
+
+impl Shape {
+    pub fn center(&self) -> Vec3 {
+        match self {
+            Shape::Pieces(pieces) => pieces[0].position,
+            Shape::Rectangle([min, max]) => min.lerp(*max, 0.5),
+        }
+    }
+
+    pub fn thickness(&self) -> f32 {
+        match self {
+            Shape::Pieces(pieces) => pieces.iter().map(|piece| piece.radius).fold(0.0, f32::max),
+            Shape::Rectangle(_) => f32::INFINITY,
+        }
+    }
+
+    pub fn outline(&self, gap: f32, directions: impl IntoIterator<Item = Vec3>) -> Vec<Vec3> {
+        let center = self.center();
+        let reach = self.extent() + gap;
+        directions
+            .into_iter()
+            .map(|direction| {
+                let (mut inside, mut outside) = (0.0, reach);
+                for _ in 0..OUTLINE_BISECTIONS {
+                    let middle = 0.5 * (inside + outside);
+                    if self.gap(center + middle * direction) < gap {
+                        inside = middle;
+                    } else {
+                        outside = middle;
+                    }
+                }
+                center + 0.5 * (inside + outside) * direction
+            })
+            .collect()
+    }
+
+    fn gap(&self, point: Vec3) -> f32 {
+        match self {
+            Shape::Pieces(pieces) => pieces
+                .iter()
+                .map(|piece| piece.gap(point))
+                .fold(f32::INFINITY, f32::min),
+            Shape::Rectangle([min, max]) => {
+                let offset = point - min.lerp(*max, 0.5);
+                let half = 0.5 * (*max - *min);
+                let beyond = Vec2::new(offset.x.abs() - half.x, offset.z.abs() - half.z);
+                beyond.max(Vec2::ZERO).length() + beyond.max_element().min(0.0)
+            }
+        }
+    }
+
+    fn extent(&self) -> f32 {
+        match self {
+            Shape::Pieces(pieces) => pieces
+                .iter()
+                .map(|piece| piece.end.distance(piece.start) + piece.radius)
+                .fold(0.0, f32::max),
+            Shape::Rectangle([min, max]) => 0.5 * min.distance(*max),
+        }
     }
 }
 
@@ -86,6 +155,35 @@ impl Targets {
                 .collect(),
             notes: self.notes.clone(),
         }
+    }
+
+    pub fn shape(&self, entity: Entity) -> Option<Shape> {
+        let framed = self
+            .frames
+            .iter()
+            .find(|&&(framed, _, _)| framed == entity)
+            .map(|(_, _, frame)| {
+                [
+                    frame.corner(Corner::BottomLeft),
+                    frame.corner(Corner::TopRight),
+                ]
+            });
+        let noted = || {
+            self.notes
+                .iter()
+                .find(|&&(note, _, _)| note == entity)
+                .map(|(_, center, size)| note_corners(*center, size))
+        };
+        if let Some(corners) = framed.or_else(noted) {
+            return Some(Shape::Rectangle(corners));
+        }
+        let pieces: Vec<Piece> = self
+            .pieces
+            .iter()
+            .filter(|piece| piece.entity == entity)
+            .copied()
+            .collect();
+        (!pieces.is_empty()).then_some(Shape::Pieces(pieces))
     }
 
     pub fn at(&self, position: Vec3) -> Option<(Entity, Vec3)> {
