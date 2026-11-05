@@ -2436,6 +2436,7 @@ dependencies = [
  "hecs",
  "js-sys",
  "log",
+ "miniz_oxide 0.8.0",
  "neuronify-engine",
  "png 0.18.1",
  "postcard",

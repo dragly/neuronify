@@ -1,13 +1,16 @@
-use egui::{Key, RichText, ScrollArea, Ui};
+use egui::{CursorIcon, Key, Response, RichText, ScrollArea, Sense, Ui, WidgetInfo, WidgetType};
 
 use super::{back, text_button, Colors, PAGE_MARGIN};
 use crate::links;
 use crate::rendering::Theme;
+use crate::third_party::{self, ThirdParty};
 
 const MAX_WIDTH: f32 = 720.0;
 const TITLE_SIZE: f32 = 34.0;
 const HEADING_SIZE: f32 = 20.0;
 const BODY_SIZE: f32 = 15.0;
+const DETAIL_SIZE: f32 = 13.5;
+const PACKAGE_GAP: f32 = 4.0;
 const LICENSE_TEXT_SIZE: f32 = 11.5;
 const LICENSE_TEXT_PADDING: i8 = 12;
 const LICENSE_TEXT_RADIUS: u8 = 8;
@@ -31,6 +34,11 @@ const ORIGINAL_PAPER: &str = "Original paper";
 const PAPER_TEXT: &str = "Neuronify was first described in an article in eNeuro in 2017. \
     If you use Neuronify in teaching or research, please cite it.";
 const PAPER_LINK: &str = "Neuronify: An Educational Simulator for Neural Circuits";
+const THIRD_PARTY: &str = "Third-party software";
+const THIRD_PARTY_INTRO: &str = "Neuronify is built with open source packages and fonts \
+    made by others. Each comes with its own license.";
+const SHOW_THIRD_PARTY: &str = "Show the licenses";
+const HIDE_THIRD_PARTY: &str = "Hide the licenses";
 
 pub enum AboutChoice {
     Back,
@@ -39,6 +47,8 @@ pub enum AboutChoice {
 pub struct AboutScreen {
     version: &'static str,
     license_shown: bool,
+    third_party: Option<ThirdParty>,
+    opened: Option<usize>,
 }
 
 impl AboutScreen {
@@ -46,6 +56,8 @@ impl AboutScreen {
         AboutScreen {
             version,
             license_shown: false,
+            third_party: None,
+            opened: None,
         }
     }
 
@@ -115,6 +127,35 @@ impl AboutScreen {
         heading(ui, colors, ORIGINAL_PAPER);
         paragraph(ui, colors, PAPER_TEXT);
         link(ui, colors, PAPER_LINK, PAPER);
+
+        heading(ui, colors, THIRD_PARTY);
+        paragraph(ui, colors, THIRD_PARTY_INTRO);
+        let label = if self.third_party.is_some() {
+            HIDE_THIRD_PARTY
+        } else {
+            SHOW_THIRD_PARTY
+        };
+        if text_button(ui, colors, label).clicked() {
+            self.third_party = match self.third_party {
+                Some(_) => None,
+                None => Some(third_party::load()),
+            };
+            self.opened = None;
+        }
+        if let Some(third_party) = &self.third_party {
+            ui.add_space(PARAGRAPH_GAP);
+            for (index, package) in third_party.packages.iter().enumerate() {
+                let opened = self.opened == Some(index);
+                if package_row(ui, colors, &package.title(), &package.license).clicked() {
+                    self.opened = (!opened).then_some(index);
+                }
+                if opened {
+                    for &text in &package.texts {
+                        license_text(ui, colors, &third_party.texts[text]);
+                    }
+                }
+            }
+        }
         ui.add_space(40.0);
         back
     }
@@ -134,6 +175,25 @@ fn paragraph(ui: &mut Ui, colors: &Colors, text: &str) {
 fn link(ui: &mut Ui, colors: &Colors, text: &str, url: &str) {
     let text = RichText::new(text).size(BODY_SIZE).color(colors.accent);
     links::open_on_click(&ui.add(egui::Link::new(text)), url);
+}
+
+fn package_row(ui: &mut Ui, colors: &Colors, title: &str, license: &str) -> Response {
+    let rect = ui
+        .vertical(|ui| {
+            ui.add_space(PACKAGE_GAP);
+            ui.label(RichText::new(title).size(BODY_SIZE).color(colors.text));
+            ui.label(
+                RichText::new(license)
+                    .size(DETAIL_SIZE)
+                    .color(colors.subtext),
+            );
+            ui.add_space(PACKAGE_GAP);
+        })
+        .response
+        .rect;
+    let response = ui.interact(rect, ui.id().with(title), Sense::click());
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, title));
+    response.on_hover_cursor(CursorIcon::PointingHand)
 }
 
 fn license_text(ui: &mut Ui, colors: &Colors, text: &str) {
@@ -269,6 +329,31 @@ mod tests {
         assert!(page.shows(GPL));
         page.click_text(HIDE_LICENSE);
         assert!(!page.shows(GPL));
+    }
+
+    #[test]
+    fn the_third_party_licenses_open_one_package_at_a_time() {
+        let third_party = third_party::load();
+        let first = &third_party.packages[0];
+        let second = &third_party.packages[1];
+        let mut page = Page::open();
+        assert!(!page.shows(&first.title()));
+        page.click_text(SHOW_THIRD_PARTY);
+        page.frame(vec![]);
+        assert!(page.shows(&first.title()));
+        assert!(page.shows(&first.license));
+
+        page.click_text(&first.title());
+        page.frame(vec![]);
+        assert!(page.shows(&third_party.texts[first.texts[0]]));
+        page.click_text(&second.title());
+        page.frame(vec![]);
+        assert!(!page.shows(&third_party.texts[first.texts[0]]));
+        assert!(page.shows(&third_party.texts[second.texts[0]]));
+
+        page.click_text(HIDE_THIRD_PARTY);
+        page.frame(vec![]);
+        assert!(!page.shows(&first.title()));
     }
 
     #[test]
