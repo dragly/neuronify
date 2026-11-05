@@ -5,9 +5,11 @@ use hecs::{Entity, World};
 use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::elements::{spawn_spike_detector, spawn_spike_detector_wire, Element};
 use neuronify_core::measurement::spike_detector::{RowOrder, SpikeDetector};
+use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
-    Connection, ConnectionView, CurrentClamp, CurrentSynapse, Deletable, Hertz, Label, MeterSize,
-    Milliseconds, Nanoamperes, NeuronDisplay, NeuronType, PoissonGenerator, Selected, Setting,
+    Annotation, Connection, ConnectionView, CurrentClamp, CurrentSynapse, Deletable, Hertz, Label,
+    MeterSize, Milliseconds, Nanoamperes, NeuronDisplay, NeuronType, NoteSize, PoissonGenerator,
+    Selected, Setting,
 };
 
 const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(2.0);
@@ -22,7 +24,7 @@ const SPIKE_DETECTOR_SIZE: MeterSize = MeterSize {
 const SPIKE_DETECTOR_TIME_RANGE: Milliseconds = Milliseconds(2000.0);
 const COMPASS_SPEED: f64 = 8.0;
 
-pub fn labs() -> [(&'static str, World, f64); 3] {
+pub fn labs() -> [(&'static str, World, f64); 5] {
     [
         (
             "ring_attractor.neuronify",
@@ -35,6 +37,12 @@ pub fn labs() -> [(&'static str, World, f64); 3] {
             DEFAULT_SPEED,
         ),
         ("compass.neuronify", compass(), COMPASS_SPEED),
+        ("hopfield.neuronify", hopfield(&STORED), DEFAULT_SPEED),
+        (
+            "hopfield_overloaded.neuronify",
+            hopfield(&OVERLOADED),
+            DEFAULT_SPEED,
+        ),
     ]
 }
 
@@ -420,4 +428,261 @@ fn compass() -> World {
     ring_detector(&mut world, &ring, TOUCH_SENSOR_RADIUS);
     open_on_the_top_cell(&mut world, &ring);
     world
+}
+
+const SHEET_WIDTH: f32 = 24.0;
+const SHEET_GAP: f32 = 1.2;
+
+struct Sheet {
+    world: World,
+    top: f32,
+}
+
+impl Sheet {
+    fn new() -> Sheet {
+        Sheet {
+            world: World::new(),
+            top: 0.0,
+        }
+    }
+
+    fn at(right: f32, up: f32) -> Vec3 {
+        Vec3::new(up, 0.0, right)
+    }
+
+    fn text(&mut self, text: &str) {
+        let wrapped = visula::text::tessellate_text_wrapped(
+            NOTE_FONT_DATA,
+            text,
+            NOTE_TEXT_HEIGHT,
+            SHEET_WIDTH - 2.0 * NOTE_MARGIN,
+        )
+        .expect("the note font should lay out text");
+        let height = wrapped.height + 2.0 * NOTE_MARGIN;
+        let note = Element::Note.spawn(
+            &mut self.world,
+            Sheet::at(SHEET_WIDTH / 2.0, self.top - height / 2.0),
+        );
+        self.world
+            .get::<&mut Annotation>(note)
+            .expect("notes spawn with an Annotation")
+            .text = text.to_string();
+        *self
+            .world
+            .get::<&mut NoteSize>(note)
+            .expect("notes spawn with a NoteSize") = NoteSize {
+            width: SHEET_WIDTH,
+            height,
+        };
+        self.top -= height + SHEET_GAP;
+    }
+
+    fn row(&mut self, height: f32) -> f32 {
+        let top = self.top;
+        self.top -= height + SHEET_GAP;
+        top
+    }
+
+    fn add(&mut self, element: Element, right: f32, up: f32) -> Entity {
+        element.spawn(&mut self.world, Sheet::at(right, up))
+    }
+
+    fn neuron(&mut self, neuron_type: NeuronType, right: f32, up: f32, label: &str) -> Entity {
+        let neuron = neuron(&mut self.world, Sheet::at(right, up), neuron_type);
+        self.world
+            .get::<&mut Label>(neuron)
+            .expect("neurons spawn with a Label")
+            .text = label.to_string();
+        neuron
+    }
+
+    fn synapse(
+        &mut self,
+        from: Entity,
+        to: Entity,
+        current: Nanoamperes,
+        tau: Milliseconds,
+        delay: Milliseconds,
+    ) {
+        self.world.spawn((
+            Connection {
+                from,
+                to,
+                strength: (current * tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * Milliseconds(2.0)))
+                    .clamp(0.3, 1.5),
+                directional: true,
+            },
+            CurrentSynapse {
+                maximum_current: current,
+                tau,
+                delay,
+                ..Default::default()
+            },
+            Deletable {},
+        ));
+    }
+}
+
+const RELAY: Nanoamperes = Nanoamperes(3.0);
+
+pub const GRID: usize = 5;
+pub const STORED: [char; 3] = ['T', 'L', 'X'];
+pub const OVERLOADED: [char; 5] = ['T', 'L', 'X', 'I', 'V'];
+pub const RESET: &str = "Reset";
+
+const GRID_SPACING: f32 = 5.4;
+const PARTNER_SPACING: f32 = 4.0;
+const HEBBIAN_GAIN: Nanoamperes = Nanoamperes(1.3);
+const HOPFIELD_CUE_CURRENT: Nanoamperes = Nanoamperes(2.0);
+const HOPFIELD_CUE_TIME_CONSTANT: Milliseconds = Milliseconds(50.0);
+const RESET_CURRENT: Nanoamperes = Nanoamperes(6.0);
+const RESET_TIME_CONSTANT: Milliseconds = Milliseconds(100.0);
+
+pub fn lit(letter: char, row: usize, column: usize) -> bool {
+    let last = GRID - 1;
+    match letter {
+        'T' => row == 0 || column == 2,
+        'L' => column == 0 || row == last,
+        'X' => row == column || row + column == last,
+        'I' => ((row == 0 || row == last) && (1..last).contains(&column)) || column == 2,
+        'V' => matches!(
+            (row, column),
+            (0, 0) | (1, 0) | (2, 1) | (3, 1) | (4, 2) | (3, 3) | (2, 3) | (1, 4) | (0, 4)
+        ),
+        _ => false,
+    }
+}
+
+fn hopfield(letters: &[char]) -> World {
+    let delay = CurrentSynapse::default().delay;
+    let fast = Milliseconds(2.0);
+    let mut sheet = Sheet::new();
+    sheet.text(&format!(
+        "The connections store the letters {}. \
+         Neurons lit or dark together in most of them excite each other, \
+         and the rest hold each other back through the partners below the grid.",
+        listed(letters)
+    ));
+    let top = sheet.row(GRID as f32 * GRID_SPACING - 1.0) - 1.0;
+    let place = |row: usize, column: usize| {
+        (
+            1.0 + column as f32 * GRID_SPACING,
+            top - row as f32 * GRID_SPACING,
+        )
+    };
+    let mut cells = Vec::new();
+    let mut partners = Vec::new();
+    let mut pads = Vec::new();
+    for row in 0..GRID {
+        for column in 0..GRID {
+            let (right, up) = place(row, column);
+            cells.push(sheet.neuron(NeuronType::Excitatory, right, up, ""));
+            pads.push(sheet.add(Element::TouchSensor, right - 2.1, up - 2.1));
+        }
+    }
+    let partner_top = sheet.row(GRID as f32 * PARTNER_SPACING + 1.0) - 1.0;
+    for row in 0..GRID {
+        for column in 0..GRID {
+            let right = SHEET_WIDTH / 2.0 + (column as f32 - 2.0) * PARTNER_SPACING;
+            let up = partner_top - row as f32 * PARTNER_SPACING;
+            partners.push(sheet.neuron(NeuronType::Inhibitory, right, up, ""));
+        }
+    }
+    let patterns: Vec<Vec<f64>> = letters
+        .iter()
+        .map(|&letter| {
+            (0..GRID * GRID)
+                .map(|cell| f64::from(u8::from(lit(letter, cell / GRID, cell % GRID))))
+                .collect()
+        })
+        .collect();
+    let activity = patterns.iter().flatten().sum::<f64>() / (patterns.len() * GRID * GRID) as f64;
+    for cell in 0..GRID * GRID {
+        sheet.synapse(cells[cell], partners[cell], RELAY, fast, Milliseconds(1.0));
+        sheet.synapse(
+            pads[cell],
+            cells[cell],
+            HOPFIELD_CUE_CURRENT,
+            HOPFIELD_CUE_TIME_CONSTANT,
+            Milliseconds::ZERO,
+        );
+    }
+    for from in 0..GRID * GRID {
+        for to in 0..GRID * GRID {
+            if from == to {
+                continue;
+            }
+            let weight = patterns
+                .iter()
+                .map(|pattern| (pattern[from] - activity) * (pattern[to] - activity))
+                .sum::<f64>()
+                * HEBBIAN_GAIN;
+            if weight > Nanoamperes::ZERO {
+                sheet.synapse(cells[from], cells[to], weight, fast, delay);
+            } else if weight < Nanoamperes::ZERO {
+                sheet.synapse(
+                    partners[from],
+                    cells[to],
+                    -weight,
+                    fast,
+                    delay - Milliseconds(1.0),
+                );
+            }
+        }
+    }
+    let reset_row = sheet.row(4.0) - 2.0;
+    let reset_pad = sheet.add(Element::TouchSensor, SHEET_WIDTH / 2.0 - 3.0, reset_row);
+    let reset = sheet.neuron(
+        NeuronType::Inhibitory,
+        SHEET_WIDTH / 2.0 + 1.0,
+        reset_row,
+        RESET,
+    );
+    sheet.synapse(reset_pad, reset, RELAY, fast, Milliseconds::ZERO);
+    for &cell in &cells {
+        sheet.synapse(
+            reset,
+            cell,
+            RESET_CURRENT,
+            RESET_TIME_CONSTANT,
+            Milliseconds(1.0),
+        );
+    }
+    sheet.text(
+        "Press the sensors of two neurons in one letter, \
+         and the rest of the letter lights up and stays lit. \
+         Reset silences the grid.",
+    );
+    sheet.text(
+        "Try one sensor alone, two from different letters, or the corners L and X share. \
+         Select a neuron to ring the ones it connects to: \
+         a left arrow means it sends to them, a right arrow that they send to it.",
+    );
+    sheet.text(if letters.len() > STORED.len() {
+        "With five letters stored, the cues for T and L land on other letters \
+         or on blends never stored. A grid of 25 neurons holds only about three patterns."
+    } else {
+        "Hopfield showed in 1982 that such connections make each stored pattern a resting place, \
+         and the hippocampus may recall memories this way. \
+         Here the connections are written in, not learned, \
+         and the neurons fire far faster than real ones."
+    });
+    ConnectionView::Rings.set_in(&mut sheet.world);
+    NeuronDisplay {
+        voltage: true,
+        firing_rate: true,
+        ..Default::default()
+    }
+    .set_in(&mut sheet.world);
+    Selected::set(&mut sheet.world, Some(cells[GRID * GRID - 3]));
+    sheet.world
+}
+
+fn listed(letters: &[char]) -> String {
+    let names: Vec<String> = letters.iter().map(char::to_string).collect();
+    match names.split_last() {
+        Some((last, [])) => last.clone(),
+        Some((last, rest)) => format!("{} and {last}", rest.join(", ")),
+        None => String::new(),
+    }
 }

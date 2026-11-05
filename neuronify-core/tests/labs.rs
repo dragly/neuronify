@@ -11,11 +11,12 @@ use neuronify_core::constants::DT;
 use neuronify_core::editor::Editor;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::voltmeter::measured;
+use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::serialization::{load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
-    neuron_type, Connection, ConnectionView, CurrentClamp, Hertz, Label, Milliseconds, Nanoamperes,
-    NeuronType, Position, Selected, Setting, TouchSensor,
+    neuron_type, Connection, ConnectionView, CurrentClamp, Hertz, Label, LeakyNeuron, Milliseconds,
+    Nanoamperes, NeuronType, NoteSize, Position, Selected, Setting, TouchSensor, NODE_RADIUS,
 };
 
 const STEPS_PER_CALL: u32 = 40;
@@ -44,6 +45,14 @@ impl Lab {
             time: Milliseconds::ZERO,
             spikes: Vec::new(),
         }
+    }
+
+    fn neurons(&self) -> Vec<Entity> {
+        self.world
+            .query::<(Entity, &LeakyNeuron)>()
+            .iter()
+            .map(|(entity, _)| entity)
+            .collect()
     }
 
     fn run_until(&mut self, until: Milliseconds) {
@@ -538,4 +547,234 @@ fn compass_turn_currents_light_nothing_without_a_bump() {
         .filter(|&&(cell, _)| neuron_type(&compass.lab.world, cell) == NeuronType::Excitatory)
         .count();
     assert_eq!(excitatory, 0);
+}
+
+const PHONE_WIDTH: f32 = 27.0;
+const SHEETS: [&str; 2] = ["hopfield.neuronify", "hopfield_overloaded.neuronify"];
+
+#[test]
+fn every_lab_written_as_a_sheet_fits_an_upright_phone() {
+    for file in SHEETS {
+        let world = Lab::load(file).world;
+        let bounds = canvas_bounds(&world).unwrap();
+        let width = bounds.max.z - bounds.min.z;
+        assert!(width <= PHONE_WIDTH, "{file} is {width} wide");
+    }
+}
+
+#[test]
+fn no_note_covers_a_lab_circuit() {
+    for file in SHEETS {
+        let world = Lab::load(file).world;
+        let notes: Vec<(Vec3, NoteSize)> = world
+            .query::<(&Position, &NoteSize)>()
+            .iter()
+            .map(|(position, size)| (position.position, size.clone()))
+            .collect();
+        for (entity, position) in world
+            .query::<(Entity, &Position)>()
+            .without::<&NoteSize>()
+            .iter()
+        {
+            for (center, size) in &notes {
+                let offset = position.position - *center;
+                let inside = offset.x.abs() < size.height / 2.0 + NODE_RADIUS
+                    && offset.z.abs() < size.width / 2.0 + NODE_RADIUS;
+                assert!(!inside, "{file}: {entity:?} is under a note");
+            }
+        }
+    }
+}
+
+fn labelled(world: &World, label: &str) -> Entity {
+    world
+        .query::<(Entity, &Label)>()
+        .iter()
+        .find(|(_, neuron)| neuron.text == label)
+        .unwrap_or_else(|| panic!("no neuron labelled {label}"))
+        .0
+}
+
+const HOPFIELD: &str = "hopfield.neuronify";
+const HOPFIELD_OVERLOADED: &str = "hopfield_overloaded.neuronify";
+const CELLS: usize = write_labs::GRID * write_labs::GRID;
+const FIRST_PRESS: Milliseconds = Milliseconds(50.0);
+const BETWEEN_PRESSES: Milliseconds = Milliseconds(4.0);
+const HELD_FROM: Milliseconds = Milliseconds(500.0);
+const HELD_UNTIL: Milliseconds = Milliseconds(800.0);
+const RESET_AT: Milliseconds = Milliseconds(800.0);
+const QUIET_FROM: Milliseconds = Milliseconds(1000.0);
+const QUIET_UNTIL: Milliseconds = Milliseconds(1200.0);
+
+struct Recall {
+    held: Vec<usize>,
+    rate: Hertz,
+    spikes_after_reset: usize,
+}
+
+fn row_major(a: Vec3, b: Vec3) -> std::cmp::Ordering {
+    b.x.total_cmp(&a.x).then(a.z.total_cmp(&b.z))
+}
+
+fn recall(file: &str, pressed: &[usize]) -> Recall {
+    let mut lab = Lab::load(file);
+    let mut cells: Vec<Entity> = lab
+        .neurons()
+        .into_iter()
+        .filter(|&cell| neuron_type(&lab.world, cell) == NeuronType::Excitatory)
+        .collect();
+    cells.sort_by(|&a, &b| row_major(lab.position(a), lab.position(b)));
+    let mut pads: Vec<Vec3> = lab
+        .world
+        .query::<&Position>()
+        .with::<&TouchSensor>()
+        .iter()
+        .map(|position| position.position)
+        .collect();
+    pads.sort_by(|&a, &b| row_major(a, b));
+    let reset = *pads.last().unwrap();
+    for (press, &cell) in pressed.iter().enumerate() {
+        let at = FIRST_PRESS + BETWEEN_PRESSES * press as f64;
+        lab.run_until(at);
+        lab.press_until(pads[cell], at + TAP_DURATION);
+    }
+    lab.run_until(RESET_AT);
+    lab.press_until(reset, RESET_AT + TAP_DURATION);
+    lab.run_until(QUIET_UNTIL);
+    let counts = lab.spike_counts(&cells, HELD_FROM, HELD_UNTIL);
+    let window = HELD_UNTIL - HELD_FROM;
+    let held: Vec<usize> = (0..CELLS)
+        .filter(|&cell| counts[cell] as f64 >= Hertz(10.0).cycles_in(window))
+        .collect();
+    let spikes_per_cell =
+        held.iter().map(|&cell| counts[cell] as f64).sum::<f64>() / held.len().max(1) as f64;
+    let rate = (spikes_per_cell / window).to_hertz();
+    let spikes_after_reset = lab
+        .spike_counts(&cells, QUIET_FROM, QUIET_UNTIL)
+        .iter()
+        .sum();
+    Recall {
+        held,
+        rate,
+        spikes_after_reset,
+    }
+}
+
+fn letter_cells(letter: char) -> Vec<usize> {
+    (0..CELLS)
+        .filter(|&cell| write_labs::lit(letter, cell / write_labs::GRID, cell % write_labs::GRID))
+        .collect()
+}
+
+fn two_cells_only_in(letter: char) -> [usize; 2] {
+    let only: Vec<usize> = letter_cells(letter)
+        .into_iter()
+        .filter(|cell| {
+            write_labs::STORED
+                .iter()
+                .filter(|&&other| other != letter)
+                .all(|&other| !letter_cells(other).contains(cell))
+        })
+        .collect();
+    [only[only.len() - 2], only[only.len() - 1]]
+}
+
+#[test]
+fn hopfield_one_pressed_neuron_brings_back_nothing() {
+    let recalled = recall(HOPFIELD, &[letter_cells('T')[8]]);
+    assert!(recalled.held.is_empty(), "{:?}", recalled.held);
+}
+
+#[test]
+fn hopfield_two_pressed_neurons_bring_back_their_whole_letter_until_reset() {
+    for letter in write_labs::STORED {
+        let recalled = recall(HOPFIELD, &two_cells_only_in(letter));
+        assert_eq!(recalled.held, letter_cells(letter), "{letter}");
+        assert!(
+            (Hertz(80.0)..=Hertz(200.0)).contains(&recalled.rate),
+            "{letter}: {}",
+            recalled.rate
+        );
+        assert_eq!(recalled.spikes_after_reset, 0, "{letter}");
+    }
+}
+
+#[test]
+fn hopfield_a_wrong_extra_neuron_does_not_stop_the_letter_coming_back() {
+    let wrong = (0..CELLS)
+        .find(|&cell| {
+            write_labs::STORED
+                .iter()
+                .all(|&letter| !letter_cells(letter).contains(&cell))
+        })
+        .unwrap();
+    let [first, second] = two_cells_only_in('T');
+    let recalled = recall(HOPFIELD, &[first, second, wrong]);
+    assert_eq!(recalled.held, letter_cells('T'));
+}
+
+#[test]
+fn hopfield_corners_shared_by_two_letters_bring_back_one_of_them() {
+    let shared: Vec<usize> = letter_cells('L')
+        .into_iter()
+        .filter(|cell| letter_cells('X').contains(cell) && !letter_cells('T').contains(cell))
+        .collect();
+    let recalled = recall(HOPFIELD, &shared);
+    assert!(
+        recalled.held == letter_cells('L') || recalled.held == letter_cells('X'),
+        "{:?}",
+        recalled.held
+    );
+}
+
+#[test]
+fn hopfield_overloaded_cues_land_on_other_patterns() {
+    for letter in ['T', 'L'] {
+        let recalled = recall(HOPFIELD_OVERLOADED, &two_cells_only_in(letter));
+        assert!(!recalled.held.is_empty(), "{letter}");
+        assert_ne!(recalled.held, letter_cells(letter), "{letter}");
+    }
+}
+
+#[test]
+fn hopfield_neurons_keep_dales_law_with_one_inhibitory_partner_each() {
+    let lab = Lab::load(HOPFIELD);
+    let world = &lab.world;
+    for synapse in world.query::<&neuronify_core::CurrentSynapse>().iter() {
+        assert!(synapse.maximum_current > neuronify_core::Nanoamperes::ZERO);
+    }
+    let excitatory: Vec<Entity> = lab
+        .neurons()
+        .into_iter()
+        .filter(|&cell| neuron_type(world, cell) == NeuronType::Excitatory)
+        .collect();
+    assert_eq!(excitatory.len(), CELLS);
+    for cell in excitatory {
+        let partners = world
+            .query::<&Connection>()
+            .iter()
+            .filter(|connection| {
+                connection.from == cell
+                    && neuron_type(world, connection.to) == NeuronType::Inhibitory
+            })
+            .count();
+        assert_eq!(partners, 1);
+    }
+}
+
+#[test]
+fn hopfield_labs_open_with_rings_around_the_neurons_one_neuron_is_connected_to() {
+    for file in [HOPFIELD, HOPFIELD_OVERLOADED] {
+        let world = Lab::load(file).world;
+        assert_eq!(ConnectionView::of(&world), ConnectionView::Rings);
+        let selected = Selected::entity(&world).unwrap();
+        assert_eq!(neuron_type(&world, selected), NeuronType::Excitatory);
+    }
+}
+
+#[test]
+fn hopfield_reset_is_labelled() {
+    let world = Lab::load(HOPFIELD).world;
+    let reset = labelled(&world, write_labs::RESET);
+    assert_eq!(neuron_type(&world, reset), NeuronType::Inhibitory);
 }
