@@ -35,6 +35,7 @@ pub struct Neuronify {
     gui: Gui,
     theme: Theme,
     world: hecs::World,
+    engine: simulation::Engine,
     time: f64,
     running: bool,
     speed: f64,
@@ -195,6 +196,7 @@ impl Neuronify {
             theme,
             frame_scene_requested: opened.is_some(),
             world: opened.map(|(_, world)| world).unwrap_or_default(),
+            engine: simulation::Engine::default(),
             time: 0.0,
             running: true,
             speed: DEFAULT_SPEED,
@@ -404,31 +406,36 @@ impl Neuronify {
         }
     }
 
+    fn saved(&mut self) -> Result<Vec<u8>, String> {
+        self.engine.store(&mut self.world);
+        crate::serialization::save(&self.world, self.time, self.speed)
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
-    fn save(&self) {
+    fn save(&mut self) {
         let Some(path) = rfd::FileDialog::new().save_file() else {
             return;
         };
-        let bytes = crate::serialization::save(&self.world, self.time, self.speed).unwrap();
+        let bytes = self.saved().unwrap();
         std::fs::write(path.with_extension("neuronify"), bytes).unwrap();
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn save(&self) {
-        let bytes = crate::serialization::save(&self.world, self.time, self.speed).unwrap();
+    fn save(&mut self) {
+        let bytes = self.saved().unwrap();
         if let Err(error) = crate::web::download(&bytes, SAVED_NAME) {
             log::error!("Could not save: {error:?}");
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn share(&self) {
+    fn share(&mut self) {
         self.save();
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn share(&self) {
-        let bytes = crate::serialization::save(&self.world, self.time, self.speed).unwrap();
+    fn share(&mut self) {
+        let bytes = self.saved().unwrap();
         if let Err(error) = crate::web::share(&bytes, SAVED_NAME) {
             log::error!("Could not share: {error:?}");
         }
@@ -443,8 +450,8 @@ impl Neuronify {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn back_up_edits(&self) {
-        match crate::serialization::save(&self.world, self.time, self.speed) {
+    fn back_up_edits(&mut self) {
+        match self.saved() {
             Ok(bytes) => self.autosave.back_up(&self.library, bytes),
             Err(error) => log::error!("{error}"),
         }
@@ -455,7 +462,7 @@ impl Neuronify {
         if !self.autosave.has_unsaved_edits() {
             return;
         }
-        match crate::serialization::save(&self.world, self.time, self.speed) {
+        match self.saved() {
             Ok(bytes) => self.autosave.save(&mut self.library, bytes),
             Err(error) => log::error!("{error}"),
         }
@@ -470,6 +477,7 @@ impl Neuronify {
         self.save_edits();
         self.autosave = autosave;
         self.world = world;
+        self.engine = simulation::Engine::starting_at(time);
         self.time = time;
         self.speed = speed;
         self.running = true;
@@ -579,10 +587,14 @@ impl visula::Simulation for Neuronify {
             Some((target, held_for))
         });
         self.hold_ring = HoldRing::next(self.hold_ring, pending, grabbed, now);
+        for position in self.editor.take_presses() {
+            simulation::fire_nearby(&mut self.world, &mut self.engine, position);
+        }
         if self.running {
             let start = self.time;
             simulation::step_simulation(
                 &mut self.world,
+                &mut self.engine,
                 &mut self.time,
                 simulation_steps,
                 self.editor.touch(),

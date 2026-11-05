@@ -1,45 +1,42 @@
-pub mod fhn;
+pub mod engine;
 pub mod firing_rate;
-pub mod lif;
+pub mod model;
 pub mod spatial;
 pub mod stimulation;
 
-pub use fhn::fhn_step;
+pub use engine::{run_headless, Engine, Spike};
 pub use firing_rate::update_firing_rates;
-pub use lif::{lif_step, run_headless, SpikeRecord};
 pub use spatial::{apply_spatial_forces, integrate_motion};
-pub use stimulation::{fire_nearby, stimulate_nearby, touch_sensor_near, Touch};
+pub use stimulation::{fire_nearby, touch_sensor_near, touched, Touch};
 
-use std::collections::HashSet;
+use hecs::World;
 
-use hecs::{Entity, World};
-
-use crate::components::LeakyDynamics;
 use crate::constants::*;
 use crate::measurement::firing_rate::record_rates;
 use crate::measurement::loudspeaker::listen;
 use crate::measurement::spike_detector::record_spikes;
+use crate::measurement::voltmeter::record_voltages;
 
-pub fn step_simulation(world: &mut World, time: &mut f64, steps: u32, touch: Option<Touch>) {
-    for _ in 0..steps {
-        if let Some(touch) = touch {
-            stimulate_nearby(world, touch);
-        }
-        lif_step(world, LIF_DT, *time);
-        update_firing_rates(world, LIF_DT);
-        record_spikes(world, *time);
-        record_rates(world, *time);
-        listen(world, *time, LIF_DT);
-        *time += LIF_DT;
-
-        let recently_fired: HashSet<Entity> = world
-            .query::<&LeakyDynamics>()
-            .iter()
-            .filter(|(_, d)| d.time_since_fire < FHN_FIRE_DURATION)
-            .map(|(e, _)| e)
-            .collect();
-        fhn_step(world, FHN_CDT, &recently_fired);
-    }
+pub fn step_simulation(
+    world: &mut World,
+    engine: &mut Engine,
+    time: &mut f64,
+    steps: u32,
+    touch: Option<Touch>,
+) {
+    engine.sync(world);
+    engine.touch(world, touched(world, touch));
+    let duration = steps as f64 * DT * 1e-3;
+    engine::visual_inputs(world, engine, *time, duration);
+    engine.run(steps);
+    *time = engine.time() * 1e-3;
+    engine.reflect(world);
+    let spikes = engine.spikes();
+    update_firing_rates(world, spikes, duration, *time);
+    record_spikes(world, spikes, *time);
+    record_rates(world, *time);
+    listen(world, spikes, *time, duration);
+    record_voltages(world, engine);
 }
 
 pub fn step_physics(world: &mut World, steps: u32) {

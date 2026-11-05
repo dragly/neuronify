@@ -7,13 +7,13 @@ use crate::frame_clock::StepClock;
 use crate::landing::raster::{tessellate_untextured_in_pixels, UnfinishedDrawing};
 use crate::landing::top_down::top_down_shapes;
 use crate::rendering::{circuit_bounds, Bounds, Palette, Theme};
-use crate::simulation;
+use crate::simulation::{self, Engine};
 
 pub const THUMBNAIL_PADDING: f32 = 10.0;
-const WARM_UP_STEPS_PER_FRAME: u32 = 64;
+const WARM_UP_STEPS_PER_FRAME: u32 = 256;
 pub const PREVIEW_FADE_IN_SECONDS: f64 = 0.25;
 const MAX_LIVE_PREVIEW_ENTITIES: u32 = 1000;
-const STEPS_UNTIL_VOLTMETERS_ARE_DRAWN: u32 = 2;
+const STEPS_UNTIL_VOLTMETERS_ARE_DRAWN: u32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PreviewMode {
@@ -31,6 +31,7 @@ fn preview_mode(world: &World) -> PreviewMode {
 
 pub struct Preview {
     pub world: World,
+    pub engine: Engine,
     pub time: f64,
     simulation_clock: StepClock,
     bounds: Option<Bounds>,
@@ -43,9 +44,11 @@ pub struct Preview {
 impl Preview {
     pub fn new(mut world: World, mut time: f64) -> Preview {
         let mode = preview_mode(&world);
+        let mut engine = Engine::starting_at(time);
         if mode == PreviewMode::Still {
             simulation::step_simulation(
                 &mut world,
+                &mut engine,
                 &mut time,
                 STEPS_UNTIL_VOLTMETERS_ARE_DRAWN,
                 None,
@@ -55,6 +58,7 @@ impl Preview {
             bounds: circuit_bounds(&world),
             mode,
             world,
+            engine,
             time,
             simulation_clock: StepClock::default(),
             on_screen: false,
@@ -77,7 +81,13 @@ impl Preview {
         } else {
             WARM_UP_STEPS_PER_FRAME
         };
-        simulation::step_simulation(&mut self.world, &mut self.time, simulation_steps, None);
+        simulation::step_simulation(
+            &mut self.world,
+            &mut self.engine,
+            &mut self.time,
+            simulation_steps,
+            None,
+        );
         simulation::step_physics(&mut self.world, physics_steps);
     }
 

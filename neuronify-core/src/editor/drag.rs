@@ -94,7 +94,10 @@ impl Cables {
             connections_at: HashMap::new(),
         };
         for (entity, (connection, cable)) in world
-            .query::<(&Connection, Option<&CompartmentCurrent>)>()
+            .query::<(
+                &Connection,
+                Option<hecs::Or<&crate::components::Cable, &ConductanceSynapse>>,
+            )>()
             .iter()
         {
             for end in [connection.from, connection.to] {

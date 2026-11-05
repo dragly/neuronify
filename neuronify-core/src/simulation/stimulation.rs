@@ -1,6 +1,7 @@
 use glam::Vec3;
+use hecs::{Entity, World};
 
-use super::fhn::fhn_tau;
+use super::Engine;
 use crate::components::*;
 use crate::constants::*;
 
@@ -10,7 +11,7 @@ pub struct Touch {
     pub current: f64,
 }
 
-pub fn touch_sensor_near(world: &hecs::World, position: Vec3) -> bool {
+pub fn touch_sensor_near(world: &World, position: Vec3) -> bool {
     world
         .query::<&Position>()
         .with::<&TouchSensor>()
@@ -18,66 +19,43 @@ pub fn touch_sensor_near(world: &hecs::World, position: Vec3) -> bool {
         .any(|(_, sensor)| sensor.position.distance(position) < ERASE_RADIUS)
 }
 
-pub fn fire_nearby(world: &mut hecs::World, position: Vec3) {
-    let touch_entities: Vec<hecs::Entity> = world
-        .query::<(&Position, &TouchSensor)>()
+fn near<Q: hecs::Query>(world: &World, position: Vec3) -> Vec<Entity> {
+    world
+        .query::<&Position>()
+        .with::<Q>()
         .iter()
-        .filter(|(_, (pos, _))| pos.position.distance(position) < ERASE_RADIUS)
-        .map(|(e, _)| e)
-        .collect();
-    for entity in touch_entities {
-        if let Ok(mut dynamics) = world.get::<&mut GeneratorDynamics>(entity) {
-            dynamics.fired = true;
-            dynamics.time_since_fire = 0.0;
-        }
-    }
+        .filter(|(_, at)| at.position.distance(position) < ERASE_RADIUS)
+        .map(|(entity, _)| entity)
+        .collect()
+}
 
-    let neuron_entities: Vec<hecs::Entity> = world
-        .query::<(&Position, &LeakyNeuron)>()
-        .iter()
-        .filter(|(_, (pos, _))| pos.position.distance(position) < ERASE_RADIUS)
-        .map(|(e, _)| e)
-        .collect();
-    for entity in neuron_entities {
-        if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(entity) {
-            let neuron = world.get::<&LeakyNeuron>(entity).unwrap();
-            dynamics.voltage = neuron.threshold + 0.01;
-        }
-    }
-
-    for (_, (compartment_position, compartment)) in
-        world.query_mut::<(&Position, &mut Compartment)>()
-    {
-        if compartment_position.position.distance(position) < ERASE_RADIUS {
-            compartment.voltage = COMPARTMENT_FIRE_VOLTAGE;
-        }
+pub fn fire_nearby(world: &mut World, engine: &mut Engine, position: Vec3) {
+    engine.sync(world);
+    let touched = [
+        near::<&TouchSensor>(world, position),
+        near::<&LeakyNeuron>(world, position),
+        near::<&Compartment>(world, position),
+    ];
+    for entity in touched.into_iter().flatten() {
+        engine.fire(world, entity);
     }
 }
 
-pub fn stimulate_nearby(world: &mut hecs::World, touch: Touch) {
-    let mut touched_neuron = false;
-    for (_, (pos, dynamics)) in world
-        .query_mut::<(&Position, &mut LeakyDynamics)>()
-        .with::<&LeakyNeuron>()
-    {
-        if pos.position.distance(touch.position) < ERASE_RADIUS {
-            dynamics.received_currents += touch.current;
-            touched_neuron = true;
-        }
+pub fn touched(world: &World, touch: Option<Touch>) -> Vec<(Entity, f64)> {
+    let Some(touch) = touch else {
+        return Vec::new();
+    };
+    let neurons = near::<&LeakyNeuron>(world, touch.position);
+    if !neurons.is_empty() {
+        return neurons
+            .into_iter()
+            .map(|neuron| (neuron, touch.current))
+            .collect();
     }
-    if touched_neuron {
-        return;
-    }
-    let drive =
-        (STIMULATION_DRIVE * touch.current / STIMULATION_CURRENT).min(MAX_STIMULATION_DRIVE);
-    for (_, (pos, compartment, dendrite)) in
-        world.query_mut::<(&Position, &mut Compartment, Option<&Dendrite>)>()
-    {
-        if pos.position.distance(touch.position) < ERASE_RADIUS {
-            let held = drive * FHN_SCALE * fhn_tau(dendrite);
-            compartment.injected_current = compartment.injected_current.max(held);
-        }
-    }
+    near::<&Compartment>(world, touch.position)
+        .into_iter()
+        .map(|compartment| (compartment, touch.current))
+        .collect()
 }
 
 #[cfg(test)]
@@ -85,7 +63,7 @@ mod tests {
     use super::*;
     use crate::dendrites::spawn_dendrites;
     use crate::elements::{spawn_cable, spawn_compartment, Element};
-    use crate::simulation::step_simulation;
+    use crate::simulation::{step_simulation, Engine};
 
     fn held(position: Vec3) -> Touch {
         Touch {
@@ -95,13 +73,15 @@ mod tests {
     }
 
     fn spikes_in_a_second(world: &mut hecs::World, neuron: hecs::Entity, touch: Touch) -> usize {
-        let mut time = 0.0;
+        let (mut engine, mut time) = (Engine::default(), 0.0);
         let mut spikes = 0;
         while time < 1.0 {
-            step_simulation(world, &mut time, 1, Some(touch));
-            if world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0 {
-                spikes += 1;
-            }
+            step_simulation(world, &mut engine, &mut time, 40, Some(touch));
+            spikes += engine
+                .spikes()
+                .iter()
+                .filter(|spike| spike.entity == neuron)
+                .count();
         }
         spikes
     }
@@ -152,20 +132,49 @@ mod tests {
         assert!((30..70).contains(&spikes), "{spikes} spikes in a second");
     }
 
-    #[test]
-    fn a_held_axon_keeps_firing_its_neuron() {
-        let mut world = hecs::World::new();
-        let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    fn neuron_with_axon(world: &mut hecs::World) -> hecs::Entity {
+        let neuron = Element::ExcitatoryNeuron.spawn(world, Vec3::ZERO);
         let mut previous = neuron;
         for step in 1..=10 {
             let position = -(step as f32) * SEGMENT_LENGTH * Vec3::Z;
-            let compartment = spawn_compartment(&mut world, position, NeuronType::Excitatory);
-            spawn_cable(&mut world, previous, compartment, false);
+            let compartment = spawn_compartment(world, position, NeuronType::Excitatory);
+            spawn_cable(world, previous, compartment, false);
             previous = compartment;
         }
-        let middle = -5.0 * SEGMENT_LENGTH * Vec3::Z;
-        let spikes = spikes_in_a_second(&mut world, neuron, held(middle));
-        assert!(spikes >= 30, "{spikes} spikes in a second");
+        neuron
+    }
+
+    #[test]
+    fn a_held_axon_fires_its_neuron_faster_than_a_held_neuron() {
+        let mut world = hecs::World::new();
+        let neuron = neuron_with_axon(&mut world);
+        let axon = spikes_in_a_second(&mut world, neuron, held(-5.0 * SEGMENT_LENGTH * Vec3::Z));
+        let mut world = hecs::World::new();
+        let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        let soma = spikes_in_a_second(&mut world, neuron, held(Vec3::ZERO));
+        assert!(axon > 2 * soma, "axon {axon}, soma {soma}");
+    }
+
+    #[test]
+    fn moving_a_held_finger_along_an_axon_adds_no_spikes() {
+        let spikes = |moving: bool| {
+            let mut world = hecs::World::new();
+            let neuron = neuron_with_axon(&mut world);
+            let (mut engine, mut time) = (Engine::default(), 0.0);
+            let mut spikes = 0;
+            for frame in 0..500 {
+                let node = if moving { 3 + (frame / 3) % 4 } else { 4 };
+                let position = -(node as f32) * SEGMENT_LENGTH * Vec3::Z;
+                step_simulation(&mut world, &mut engine, &mut time, 8, Some(held(position)));
+                spikes += engine
+                    .spikes()
+                    .iter()
+                    .filter(|spike| spike.entity == neuron)
+                    .count();
+            }
+            spikes
+        };
+        assert_eq!(spikes(true), spikes(false));
     }
 
     #[test]
@@ -179,8 +188,8 @@ mod tests {
             };
             spikes_in_a_second(&mut world, neuron, touch)
         };
-        assert_eq!(spikes(100e-12), 0);
-        assert!(spikes(STIMULATION_CURRENT) < spikes(1e-9));
+        assert_eq!(spikes(0.1), 0);
+        assert!(spikes(STIMULATION_CURRENT) < spikes(1.0));
     }
 
     #[test]
@@ -197,7 +206,7 @@ mod tests {
         dendrites.sort_by(|a, b| a.length().total_cmp(&b.length()));
         let touch = Touch {
             position: dendrites[dendrites.len() / 2],
-            current: 2e-9,
+            current: 2.0,
         };
         let spikes = spikes_in_a_second(&mut world, neuron, touch);
         assert!(spikes >= 30, "{spikes} spikes in a second");
@@ -209,28 +218,34 @@ mod tests {
         Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
         let compartment = spawn_compartment(&mut world, Vec3::X, NeuronType::Excitatory);
 
-        stimulate_nearby(&mut world, held(Vec3::ZERO));
+        let touched = touched(&world, Some(held(Vec3::ZERO)));
 
-        let held = world
-            .get::<&Compartment>(compartment)
-            .unwrap()
-            .injected_current;
-        assert_eq!(held, 0.0);
+        assert!(touched.iter().all(|&(entity, _)| entity != compartment));
+        assert_eq!(touched.len(), 1);
     }
 
     #[test]
     fn touching_a_compartment_starts_a_spike() {
         let mut world = hecs::World::new();
-        let compartment_at = |world: &mut hecs::World, position: Vec3| {
-            world.spawn((Position { position }, Compartment::default()))
+        let chain_at = |world: &mut hecs::World, position: Vec3| {
+            let start = spawn_compartment(world, position, NeuronType::Excitatory);
+            let end = spawn_compartment(world, position + 2.0 * Vec3::Z, NeuronType::Excitatory);
+            spawn_cable(world, start, end, false);
+            start
         };
-        let touched = compartment_at(&mut world, Vec3::ZERO);
-        let far = compartment_at(&mut world, 10.0 * Vec3::X);
+        let touched = chain_at(&mut world, Vec3::ZERO);
+        let far = chain_at(&mut world, 10.0 * Vec3::X);
 
-        fire_nearby(&mut world, 0.5 * Vec3::Z);
+        let (mut engine, mut time) = (Engine::default(), 0.0);
+        fire_nearby(&mut world, &mut engine, 0.5 * Vec3::Z);
+        step_simulation(&mut world, &mut engine, &mut time, 8, None);
 
-        let voltage = |entity| world.get::<&Compartment>(entity).unwrap().voltage;
-        assert_eq!(voltage(touched), COMPARTMENT_FIRE_VOLTAGE);
-        assert_eq!(voltage(far), Compartment::default().voltage);
+        let voltage = |entity| world.get::<&NodeState>(entity).unwrap().voltage;
+        assert!(voltage(touched) > 0.0, "{}", voltage(touched));
+        assert!(
+            (voltage(far) - RESTING_POTENTIAL).abs() < 1.0,
+            "{}",
+            voltage(far)
+        );
     }
 }

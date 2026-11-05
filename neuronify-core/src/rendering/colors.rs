@@ -2,6 +2,11 @@ use glam::Vec3;
 
 use crate::components::NeuronType;
 
+pub fn shown_fraction(voltage: f64) -> f32 {
+    ((voltage - LOWEST_SHOWN_VOLTAGE) / (HIGHEST_SHOWN_VOLTAGE - LOWEST_SHOWN_VOLTAGE))
+        .clamp(0.0, 1.0) as f32
+}
+
 pub fn srgb_component(value: u8) -> f32 {
     (value as f32 / 255.0 + 0.055_f32).powf(2.44) / 1.055
 }
@@ -114,12 +119,14 @@ pub fn firing_rate_color(level: f32) -> Vec3 {
 /// How far a neuron at threshold has gone from the colour of its type towards white.
 pub const VOLTAGE_TINT: f32 = 0.55;
 
-const GLARE_START: f64 = 90.0;
+const GLARE_START: f64 = -20.0;
 const DENDRITE_DESATURATION: f32 = 0.2;
 const SHEATH_TINT: f32 = 0.5;
 const LUMINANCE: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
-const GLARE_FULL: f64 = 130.0;
+const GLARE_FULL: f64 = 20.0;
 const GLARE_PEAK: f32 = 2.0;
+const LOWEST_SHOWN_VOLTAGE: f64 = -86.0;
+const HIGHEST_SHOWN_VOLTAGE: f64 = 20.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Theme {
@@ -234,8 +241,7 @@ impl Palette {
     }
 
     pub fn compartment(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
-        let value = ((voltage + 50.0) / 200.0).clamp(0.0, 1.0) as f32;
-        let color = self.neurocolor(neuron_type, value);
+        let color = self.neurocolor(neuron_type, shown_fraction(voltage));
         let glare = ((voltage - GLARE_START) / (GLARE_FULL - GLARE_START)).clamp(0.0, 1.0) as f32;
         color.lerp(color / color.max_element() * GLARE_PEAK, glare)
     }
@@ -250,7 +256,7 @@ mod tests {
     fn dendrites_are_paler_but_not_brighter() {
         for theme in [Theme::Dark, Theme::Light] {
             for neuron_type in [NeuronType::Excitatory, NeuronType::Inhibitory] {
-                for voltage in [-10.0, 60.0, GLARE_FULL] {
+                for voltage in [-65.0, 0.0, GLARE_FULL] {
                     let palette = theme.palette();
                     let axon = palette.compartment(&neuron_type, voltage);
                     let dendrite = palette.dendrite(&neuron_type, voltage);
@@ -265,7 +271,7 @@ mod tests {
     #[test]
     fn sheaths_turn_towards_myelin_but_not_brighter() {
         for theme in [Theme::Dark, Theme::Light] {
-            for voltage in [-10.0, 60.0, GLARE_FULL] {
+            for voltage in [-65.0, 0.0, GLARE_FULL] {
                 let palette = theme.palette();
                 let axon = palette.compartment(&NeuronType::Excitatory, voltage);
                 let sheath = palette.sheath(axon);
@@ -287,7 +293,7 @@ mod tests {
                         .compartment(&neuron_type, voltage)
                         .max_element()
                 };
-                assert!(brightest(-10.0) < BLOOM_THRESHOLD);
+                assert!(brightest(crate::constants::RESTING_POTENTIAL) < BLOOM_THRESHOLD);
                 assert!(brightest(GLARE_START) < BLOOM_THRESHOLD);
                 assert!(brightest(GLARE_FULL) > BLOOM_THRESHOLD);
             }

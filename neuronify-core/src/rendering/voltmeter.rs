@@ -53,7 +53,7 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
         }
         let range = range.cloned().unwrap_or_default();
         let measured = measured(world, voltmeter);
-        for (index, (wire, target)) in measured.iter().enumerate() {
+        for (index, (wire, _)) in measured.iter().enumerate() {
             let row = frame.row(index, measured.len());
             if index > 0 {
                 result.push(line(
@@ -65,11 +65,7 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
             let Ok(series) = world.get::<&VoltageSeries>(*wire) else {
                 continue;
             };
-            let (low, high) = if world.get::<&Compartment>(*target).is_ok() {
-                (FHN_VOLTAGE_MIN, FHN_VOLTAGE_MAX)
-            } else {
-                (range.minimum, range.maximum)
-            };
+            let (low, high) = (range.minimum, range.maximum);
             result.extend(trace(&row, &series, low, high));
         }
     }
@@ -109,6 +105,8 @@ fn trace(row: &Frame, series: &VoltageSeries, low: f64, high: f64) -> Vec<Connec
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SAMPLE: f64 = 1e-4;
     use crate::elements::{spawn_voltmeter, spawn_voltmeter_wire};
     use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement};
     use glam::Vec3;
@@ -191,8 +189,8 @@ mod tests {
     #[test]
     fn a_trace_matches_one_drawn_from_a_full_copy() {
         let more_samples_than_capacity =
-            || (0..5000).map(|i| (i as f64 * LIF_DT, -70.0 + (i as f64 * 0.01).sin()));
-        let spikes: Vec<f64> = (0..5000).step_by(37).map(|i| i as f64 * LIF_DT).collect();
+            || (0..5000).map(|i| (i as f64 * SAMPLE, -70.0 + (i as f64 * 0.01).sin()));
+        let spikes: Vec<f64> = (0..5000).step_by(37).map(|i| i as f64 * SAMPLE).collect();
         let full = series(more_samples_than_capacity(), spikes);
         let drawn = trace(&row(), &full, -100.0, 50.0);
         assert!(drawn.len() > 1000);
@@ -204,9 +202,9 @@ mod tests {
 
     #[test]
     fn a_trace_ignores_history_newer_than_the_latest_measurement() {
-        let saved_until_5_s = (0..2000).map(|i| (5.0 - (2000 - i) as f64 * LIF_DT, -60.0));
+        let saved_until_5_s = (0..2000).map(|i| (5.0 - (2000 - i) as f64 * SAMPLE, -60.0));
         let recorded_after_loading_at_0 =
-            || (0..500).map(|i| (i as f64 * LIF_DT, -65.0 + i as f64 * 0.01));
+            || (0..500).map(|i| (i as f64 * SAMPLE, -65.0 + i as f64 * 0.01));
         let new_spikes = vec![0.01, 0.02];
         let loaded = series(
             saved_until_5_s.chain(recorded_after_loading_at_0()),
@@ -232,7 +230,7 @@ mod tests {
                 Position {
                     position: Vec3::new(-10.0, 0.0, z),
                 },
-                LeakyDynamics::default(),
+                NodeState::default(),
             ))
         });
         let voltmeter = spawn_voltmeter(&mut world, neurons[0], Vec3::ZERO);
@@ -242,7 +240,7 @@ mod tests {
         let frame = Frame::of(&world, voltmeter).unwrap();
         for (index, (wire, neuron)) in measured(&world, voltmeter).into_iter().enumerate() {
             assert_eq!(neuron, neurons[index]);
-            let rising = (0..10).map(|i| (i as f64 * LIF_DT, -100.0 + i as f64 * 150.0 / 9.0));
+            let rising = (0..10).map(|i| (i as f64 * SAMPLE, -100.0 + i as f64 * 150.0 / 9.0));
             *world.get::<&mut VoltageSeries>(wire).unwrap() = series(rising, vec![]);
         }
         let traces = collect_voltmeter_traces(&world);
@@ -278,7 +276,7 @@ mod tests {
         };
         let (wire, _) = measured(&world, voltmeter)[0];
         *world.get::<&mut VoltageSeries>(wire).unwrap() = series(
-            [(0.0, -80.0), (LIF_DT, -60.0), (2.0 * LIF_DT, 0.0)].into_iter(),
+            [(0.0, -80.0), (SAMPLE, -60.0), (2.0 * SAMPLE, 0.0)].into_iter(),
             vec![],
         );
         let frame = Frame::of(&world, voltmeter).unwrap();

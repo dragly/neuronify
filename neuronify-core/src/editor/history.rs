@@ -36,18 +36,6 @@ trait Settings<C: Component>: Component {
     fn swap(&mut self, component: &mut C);
 }
 
-struct RefractoryPeriod(f64);
-
-impl Settings<LeakyDynamics> for RefractoryPeriod {
-    fn of(dynamics: &LeakyDynamics) -> Self {
-        RefractoryPeriod(dynamics.refractory_period)
-    }
-
-    fn swap(&mut self, dynamics: &mut LeakyDynamics) {
-        std::mem::swap(&mut self.0, &mut dynamics.refractory_period);
-    }
-}
-
 struct Adaptation {
     adaptation: f64,
     time_constant: f64,
@@ -138,7 +126,7 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 21] = [
+const EDITED: [Edited; 20] = [
     edited::<Position>(),
     edited::<MeterSize>(),
     edited::<NoteSize>(),
@@ -150,7 +138,6 @@ const EDITED: [Edited; 21] = [
     edited::<Annotation>(),
     edited::<NeuronType>(),
     edited::<LeakCurrent>(),
-    edited_settings::<LeakyDynamics, RefractoryPeriod>(),
     edited_settings::<AdaptationCurrent, Adaptation>(),
     edited_settings::<CurrentSynapse, Synapse>(),
     edited::<VoltmeterRange>(),

@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn the_curve_spans_the_last_second_from_the_lowest_to_the_highest_rate() {
         let mut world = World::new();
-        let neuron = world.spawn((LeakyDynamics::default(),));
+        let neuron = world.spawn((NodeState::default(),));
         let plot = spawn_rate_plot(&mut world, neuron, Vec3::ZERO);
         world.get::<&mut RateSeries>(plot).unwrap().samples =
             [(4.0, 0.0), (4.5, 50.0), (5.0, 100.0)]

@@ -54,7 +54,7 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene
     let radii = compartment_radii(world);
     let paths = connection_paths(world, &radii, palette);
     let mut scene = Scene {
-        spheres: collect_spheres(world, &radii, &paths, palette),
+        spheres: collect_spheres(world, &radii, &paths, palette, time),
         cylinders: collect_cylinders(world, &radii, &paths, palette),
         rings: collect_rings(world, palette),
         transmitter: collect_transmitter(world, &paths, palette),

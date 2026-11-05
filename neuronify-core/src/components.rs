@@ -54,57 +54,65 @@ pub struct LeakyNeuron {
     pub voltage_clamped: bool,
     pub minimum_voltage: f64,
     pub maximum_voltage: f64,
+    pub refractory_period: f64,
 }
 
 impl Default for LeakyNeuron {
     fn default() -> Self {
         Self {
-            capacitance: 2e-10,
-            resting_potential: -0.07,
-            threshold: -0.055,
-            initial_potential: -0.08,
+            capacitance: 0.2,
+            resting_potential: -70.0,
+            threshold: -55.0,
+            initial_potential: -80.0,
             voltage_clamped: true,
-            minimum_voltage: -0.09,
-            maximum_voltage: 0.06,
+            minimum_voltage: -90.0,
+            maximum_voltage: 60.0,
+            refractory_period: 2.0,
         }
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct LeakyDynamics {
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct NodeState {
     pub voltage: f64,
-    pub received_currents: f64,
-    pub fired: bool,
-    pub refractory_period: f64,
-    pub time_since_fire: f64,
-    pub enabled: bool,
+    pub gates: Vec<f64>,
+    pub since_spike: f64,
 }
 
-impl Default for LeakyDynamics {
-    fn default() -> Self {
-        Self {
-            voltage: -0.07,
-            received_currents: 0.0,
-            fired: false,
-            refractory_period: 0.002,
-            time_since_fire: f64::INFINITY,
-            enabled: true,
+impl NodeState {
+    pub fn at(voltage: f64) -> NodeState {
+        NodeState {
+            voltage,
+            gates: Vec::new(),
+            since_spike: f64::INFINITY,
         }
     }
+
+    pub fn fired_within(&self, duration: f64) -> bool {
+        self.since_spike < duration
+    }
+}
+
+impl Default for NodeState {
+    fn default() -> Self {
+        NodeState::at(crate::constants::RESTING_POTENTIAL)
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+pub struct CableState {
+    pub voltage: Vec<f64>,
+    pub gates: Vec<f64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LeakCurrent {
     pub resistance: f64,
-    pub current: f64,
 }
 
 impl Default for LeakCurrent {
     fn default() -> Self {
-        Self {
-            resistance: 1e8,
-            current: 0.0,
-        }
+        Self { resistance: 100.0 }
     }
 }
 
@@ -113,16 +121,14 @@ pub struct AdaptationCurrent {
     pub adaptation: f64,
     pub conductance: f64,
     pub time_constant: f64,
-    pub current: f64,
 }
 
 impl Default for AdaptationCurrent {
     fn default() -> Self {
         Self {
-            adaptation: 1e-8,
+            adaptation: 0.01,
             conductance: 0.0,
-            time_constant: 0.5,
-            current: 0.0,
+            time_constant: 500.0,
         }
     }
 }
@@ -133,7 +139,7 @@ impl Default for AdaptationCurrent {
 pub struct BurstCurrent {
     /// The current at the start of a burst
     pub peak: f64,
-    /// How fast the current drains, in amperes per second
+    /// How fast the current drains, in nanoamperes per millisecond
     pub drain: f64,
     pub boost: f64,
 }
@@ -141,8 +147,8 @@ pub struct BurstCurrent {
 impl Default for BurstCurrent {
     fn default() -> Self {
         Self {
-            peak: 1.2e-9,
-            drain: 6e-9,
+            peak: 1.2,
+            drain: 0.006,
             boost: 0.0,
         }
     }
@@ -156,7 +162,7 @@ pub struct CurrentClamp {
 impl Default for CurrentClamp {
     fn default() -> Self {
         Self {
-            current_output: 2e-9,
+            current_output: 2.0,
         }
     }
 }
@@ -170,7 +176,7 @@ pub struct AlternatingCurrent {
 impl Default for AlternatingCurrent {
     fn default() -> Self {
         Self {
-            amplitude: 300e-12,
+            amplitude: 0.3,
             frequency: 50.0,
         }
     }
@@ -199,37 +205,35 @@ pub struct CurrentSynapse {
     pub exponential: f64,
     pub linear: f64,
     pub triggers: Vec<f64>,
-    pub time: f64,
-    pub current_output: f64,
 }
 
 impl Default for CurrentSynapse {
     fn default() -> Self {
         Self {
-            tau: 0.002,
-            maximum_current: 6e-9,
-            delay: 0.005,
+            tau: 2.0,
+            maximum_current: 6.0,
+            delay: 5.0,
             alpha_function: false,
             exponential: 0.0,
             linear: 0.0,
             triggers: Vec::new(),
-            time: 0.0,
-            current_output: 0.0,
         }
     }
 }
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct ImmediateFireSynapse;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct ImmediateFireSynapse {
-    pub current_output: f64,
+pub struct ConductanceSynapse {
+    pub conductance: f64,
+    pub delay: f64,
 }
 
-impl Default for ImmediateFireSynapse {
-    fn default() -> Self {
-        Self {
-            current_output: 0.0,
-        }
-    }
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+pub struct SynapseState {
+    pub open: f64,
+    pub pending: Vec<f64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -282,14 +286,12 @@ impl Default for NoteSize {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GeneratorDynamics {
-    pub fired: bool,
     pub time_since_fire: f64,
 }
 
 impl Default for GeneratorDynamics {
     fn default() -> Self {
         Self {
-            fired: false,
             time_since_fire: f64::INFINITY,
         }
     }
@@ -340,10 +342,13 @@ pub fn neuron_type(world: &hecs::World, entity: Entity) -> NeuronType {
         .unwrap_or_default()
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CompartmentCurrent {
-    pub capacitance: f64,
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct Cable {
+    pub length: f64,
+    pub diameter: f64,
 }
+
+pub use neuronify_engine::Membrane;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Selectable {
@@ -381,30 +386,35 @@ pub struct Connection {
     pub directional: bool,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct Compartment {
-    pub voltage: f64,
-    pub m: f64,
-    pub h: f64,
-    pub n: f64,
-    pub inhibition: f64,
-    pub capacitance: f64,
-    pub injected_current: f64,
-    #[serde(default)]
-    pub fire_impulse: f64,
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct Compartment;
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Temperature {
+    pub celsius: f64,
 }
 
-impl Default for Compartment {
+impl Default for Temperature {
     fn default() -> Self {
-        Self {
-            voltage: crate::constants::COMPARTMENT_RESTING_VOLTAGE,
-            m: -0.625,
-            h: 0.0,
-            n: 0.0,
-            inhibition: 0.0,
-            capacitance: 1.0,
-            injected_current: 0.0,
-            fire_impulse: 0.0,
+        Temperature {
+            celsius: crate::constants::DEFAULT_TEMPERATURE,
         }
     }
 }
+
+impl Setting for Temperature {}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Randomness {
+    pub state: u64,
+}
+
+impl Default for Randomness {
+    fn default() -> Self {
+        Randomness {
+            state: 0x5eed_0fce_1100,
+        }
+    }
+}
+
+impl Setting for Randomness {}

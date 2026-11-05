@@ -79,12 +79,12 @@ fn connection_colors(
     palette: &Palette,
 ) -> (Vec3, Vec3) {
     let value = |target: EntityRef| -> f32 {
-        if let Some(compartment) = target.get::<&Compartment>() {
-            ((shown_voltage(&compartment, display) + 50.0) / 200.0) as f32
-        } else if let Some(dynamics) = target.get::<&LeakyDynamics>() {
+        if let (true, Some(state)) = (target.has::<Compartment>(), target.get::<&NodeState>()) {
+            shown_fraction(shown_voltage(&state, display))
+        } else if let Some(state) = target.get::<&NodeState>() {
             let neuron = target.get::<&LeakyNeuron>();
             if let Some(neuron) = neuron {
-                voltage_fraction(&neuron, &dynamics, display)
+                voltage_fraction(&neuron, &state, display)
             } else {
                 0.5
             }
@@ -158,7 +158,7 @@ pub fn connection_paths(
         .map(|(_, c)| (c.from, c.to))
         .collect();
     world
-        .query::<(&Connection, Option<&CompartmentCurrent>)>()
+        .query::<(&Connection, Option<&Cable>)>()
         .iter()
         .filter(|(_, (connection, _))| !is_meter(world, connection.to))
         .filter(|(_, (connection, cable))| connection.directional || cable.is_none())
@@ -281,7 +281,7 @@ mod tests {
                 Position {
                     position: Vec3::new(x, 0.0, 0.0),
                 },
-                Compartment::default(),
+                Compartment,
                 NeuronType::Excitatory,
             ))
         };
@@ -311,7 +311,7 @@ mod tests {
                     Position {
                         position: Vec3::new(x, 0.0, 0.0),
                     },
-                    Compartment::default(),
+                    Compartment,
                     NeuronType::Excitatory,
                 ))
             };

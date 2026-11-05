@@ -4,44 +4,54 @@ use neuronify_core::dendrites::compartment_tree;
 use neuronify_core::elements::{spawn_cable, spawn_compartment, spawn_synapse};
 use neuronify_core::examples::{find, EXAMPLE_CATEGORIES};
 use neuronify_core::rendering::canvas_bounds;
-use neuronify_core::simulation::{fire_nearby, step_simulation};
+use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
-    Annotation, Compartment, Connection, CurrentClamp, LeakyDynamics, LeakyNeuron, Link,
-    NeuronDisplay, NeuronType, NoteSize, Position, Setting, TouchSensor, BRIDGE_VOLTAGE_THRESHOLD,
-    DEFAULT_SPEED, LIF_DT, NODE_RADIUS, SEGMENT_LENGTH, SIMULATION_STEPS_PER_SECOND,
+    Annotation, Connection, CurrentClamp, LeakyNeuron, Link, NeuronDisplay, NeuronType, NodeState,
+    NoteSize, Position, Setting, TouchSensor, DEFAULT_SPEED, DT, NODE_RADIUS, SEGMENT_LENGTH,
+    SIMULATION_STEPS_PER_SECOND, TERMINAL_THRESHOLD,
 };
 
 const STEPS_PER_SECOND: f64 = DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND;
-const SIMULATED_PER_REAL_SECOND: f64 = STEPS_PER_SECOND * LIF_DT;
+const SIMULATED_PER_REAL_SECOND: f64 = STEPS_PER_SECOND * DT * 1e-3;
 const PHONE_WIDTH: f32 = 27.0;
 
 struct Canvas {
     world: World,
+    engine: Engine,
     time: f64,
     spikes: Vec<(Entity, f64)>,
 }
+
+const STEPS_PER_FRAME: u32 = 8;
 
 impl Canvas {
     fn open(file: &str) -> Canvas {
         Canvas {
             world: find(file).unwrap().spawn().unwrap(),
+            engine: Engine::default(),
             time: 0.0,
             spikes: Vec::new(),
         }
     }
 
     fn wait(&mut self, seconds: f64) {
-        for _ in 0..(seconds * STEPS_PER_SECOND).round() as usize {
-            step_simulation(&mut self.world, &mut self.time, 1, None);
-            let fired = self
-                .world
-                .query::<&LeakyDynamics>()
-                .iter()
-                .filter(|(_, dynamics)| dynamics.time_since_fire == 0.0)
-                .map(|(entity, _)| entity)
-                .collect::<Vec<_>>();
-            self.spikes
-                .extend(fired.into_iter().map(|entity| (entity, self.time)));
+        let mut remaining = (seconds * STEPS_PER_SECOND).round() as u32;
+        while remaining > 0 {
+            let steps = remaining.min(STEPS_PER_FRAME);
+            remaining -= steps;
+            step_simulation(
+                &mut self.world,
+                &mut self.engine,
+                &mut self.time,
+                steps,
+                None,
+            );
+            self.spikes.extend(
+                self.engine
+                    .spikes()
+                    .iter()
+                    .map(|spike| (spike.entity, spike.time * 1e-3)),
+            );
         }
     }
 
@@ -52,13 +62,13 @@ impl Canvas {
     fn wait_for_spike(&mut self, neuron: Entity) -> f64 {
         let since = self.now();
         while self.spikes_since(neuron, since).is_empty() {
-            self.wait(1.0 / STEPS_PER_SECOND);
+            self.wait(STEPS_PER_FRAME as f64 / STEPS_PER_SECOND);
         }
         self.spikes_since(neuron, since)[0]
     }
 
     fn press(&mut self, hand: Vec3) {
-        fire_nearby(&mut self.world, hand);
+        fire_nearby(&mut self.world, &mut self.engine, hand);
     }
 
     fn spikes_since(&self, neuron: Entity, since: f64) -> Vec<f64> {
@@ -70,7 +80,7 @@ impl Canvas {
     }
 
     fn voltage(&self, neuron: Entity) -> f64 {
-        self.world.get::<&LeakyDynamics>(neuron).unwrap().voltage
+        self.world.get::<&NodeState>(neuron).unwrap().voltage
     }
 
     fn neurons(&self, neuron_type: NeuronType) -> Vec<(Entity, Vec3)> {
@@ -583,24 +593,20 @@ fn the_top_spike_runs_down_to_the_red_ending_and_stops_there() {
     for _ in 0..(3.0 * STEPS_PER_SECOND) as usize {
         canvas.wait(1.0 / STEPS_PER_SECOND);
         for (peak, &compartment) in peaks.iter_mut().zip(&path) {
-            let voltage = canvas
-                .world
-                .get::<&Compartment>(compartment)
-                .unwrap()
-                .voltage;
+            let voltage = canvas.world.get::<&NodeState>(compartment).unwrap().voltage;
             *peak = peak.max(voltage);
         }
     }
     assert!(
         peaks[..red_at]
             .iter()
-            .all(|&peak| peak > BRIDGE_VOLTAGE_THRESHOLD),
+            .all(|&peak| peak > TERMINAL_THRESHOLD),
         "{peaks:?}"
     );
     assert!(
         peaks[red_at + 1..]
             .iter()
-            .all(|&peak| peak < BRIDGE_VOLTAGE_THRESHOLD),
+            .all(|&peak| peak < TERMINAL_THRESHOLD),
         "{peaks:?}"
     );
 }

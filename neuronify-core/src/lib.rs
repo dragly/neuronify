@@ -27,7 +27,7 @@ mod window;
 pub use app::Neuronify;
 pub use components::*;
 pub use constants::*;
-pub use simulation::{fhn_step, lif_step, run_headless, SpikeRecord};
+pub use simulation::{run_headless, Engine, Spike};
 pub use tools::*;
 
 pub fn run() {

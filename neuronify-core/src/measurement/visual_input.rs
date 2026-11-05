@@ -1,11 +1,8 @@
 use std::f64::consts::{FRAC_PI_2, TAU};
 
 use glam::Vec3;
-use hecs::World;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-use crate::components::*;
 use crate::measurement::voltmeter::Frame;
 
 pub const RESOLUTION: usize = 20;
@@ -219,25 +216,6 @@ pub fn visual_input_frame(center: Vec3) -> Frame {
     }
 }
 
-pub fn see(world: &mut World, dt: f64, time: f64) {
-    let mut rng = rand::thread_rng();
-    for (_, (input, dynamics)) in world.query_mut::<(&mut VisualInput, &mut GeneratorDynamics)>() {
-        dynamics.time_since_fire += dt;
-        input.phase = (input.phase + input.speed * dt).rem_euclid(1.0);
-        let stale = input
-            .seen_at
-            .is_none_or(|seen_at| !(seen_at..seen_at + FRAME_INTERVAL).contains(&time));
-        if stale {
-            input.response = input.respond();
-            input.seen_at = Some(time);
-        }
-        if rng.gen::<f64>() < input.sensitivity * input.response * dt {
-            dynamics.fired = true;
-            dynamics.time_since_fire = 0.0;
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,17 +245,9 @@ mod tests {
     }
 
     fn spikes(input: VisualInput, seconds: f64) -> (usize, f64) {
-        let mut world = World::new();
-        let entity = world.spawn((input, GeneratorDynamics::default()));
-        let mut spikes = 0;
-        let steps = (seconds / 1e-4) as usize;
-        for step in 0..steps {
-            see(&mut world, 1e-4, step as f64 * 1e-4);
-            for (_, dynamics) in world.query_mut::<&mut GeneratorDynamics>() {
-                spikes += usize::from(dynamics.fired);
-                dynamics.fired = false;
-            }
-        }
+        let mut world = hecs::World::new();
+        let entity = world.spawn((input, crate::components::GeneratorDynamics::default()));
+        let spikes = crate::simulation::run_headless(&mut world, seconds * 1e3).len();
         let phase = world.get::<&VisualInput>(entity).unwrap().phase;
         (spikes, phase)
     }

@@ -3,13 +3,12 @@ use std::collections::BTreeMap;
 use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::constants::BRIDGE_VOLTAGE_THRESHOLD;
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::HaloData;
 use crate::rendering::paths::ConnectionPath;
+use crate::simulation::model::ending_site_scale;
 
 const REACH_PER_TERMINAL_RADIUS: f32 = 5.0;
-const FULL_RELEASE_EXCESS: f64 = 100.0;
 const FAINTEST_RELEASE: f32 = 0.01;
 
 fn synapse_release(synapse: &CurrentSynapse) -> f64 {
@@ -24,19 +23,16 @@ fn release(world: &World, entity: Entity, connection: &Connection) -> f32 {
     if let Ok(synapse) = world.get::<&CurrentSynapse>(entity) {
         return synapse_release(&synapse).clamp(0.0, 1.0) as f32;
     }
-    if !world
-        .satisfies::<&CompartmentCurrent>(entity)
-        .unwrap_or(false)
-    {
-        return 0.0;
+    match (
+        world.get::<&ConductanceSynapse>(entity),
+        world.get::<&SynapseState>(entity),
+    ) {
+        (Ok(ending), Ok(state)) if ending.conductance > 0.0 => {
+            let full = ending.conductance * ending_site_scale(world, connection);
+            (state.open / full).clamp(0.0, 1.0) as f32
+        }
+        _ => 0.0,
     }
-    world
-        .get::<&Compartment>(connection.from)
-        .map(|terminal| {
-            let excess = (terminal.voltage - BRIDGE_VOLTAGE_THRESHOLD) / FULL_RELEASE_EXCESS;
-            (excess.clamp(0.0, 1.0) * connection.strength.clamp(0.0, 1.0)) as f32
-        })
-        .unwrap_or(0.0)
 }
 
 pub fn collect_transmitter(
@@ -73,7 +69,7 @@ mod tests {
     use crate::rendering::cylinders::compartment_radii;
     use crate::rendering::paths::connection_paths;
     use crate::rendering::Theme;
-    use crate::simulation::step_simulation;
+    use crate::simulation::{step_simulation, Engine};
     use glam::Vec3;
 
     fn transmitter(world: &World) -> Vec<HaloData> {
@@ -82,15 +78,29 @@ mod tests {
         collect_transmitter(world, &connection_paths(world, &radii, &palette), &palette)
     }
 
-    fn fire(world: &mut World, neuron: Entity) {
-        world.get::<&mut LeakyDynamics>(neuron).unwrap().voltage = 0.0;
+    struct Firing {
+        engine: Engine,
+        time: f64,
     }
 
-    fn strongest_release(world: &mut World, steps: usize) -> Option<HaloData> {
-        let mut time = 0.0;
+    fn fire(world: &mut World, neuron: Entity) -> Firing {
+        let mut engine = Engine::default();
+        engine.sync(world);
+        engine.fire(world, neuron);
+        Firing { engine, time: 0.0 }
+    }
+
+    fn quiet() -> Firing {
+        Firing {
+            engine: Engine::default(),
+            time: 0.0,
+        }
+    }
+
+    fn strongest_release(world: &mut World, firing: &mut Firing, steps: usize) -> Option<HaloData> {
         let mut strongest: Option<HaloData> = None;
-        for _ in 0..steps {
-            step_simulation(world, &mut time, 1, None);
+        for _ in 0..steps * 4 {
+            step_simulation(world, &mut firing.engine, &mut firing.time, 1, None);
             for cloud in transmitter(world) {
                 if strongest.is_none_or(|strongest| cloud.color.w > strongest.color.w) {
                     strongest = Some(cloud);
@@ -111,14 +121,14 @@ mod tests {
     #[test]
     fn a_quiet_synapse_releases_nothing() {
         let (mut world, _, _) = synapse_from(Element::ExcitatoryNeuron);
-        assert!(strongest_release(&mut world, 200).is_none());
+        assert!(strongest_release(&mut world, &mut quiet(), 200).is_none());
     }
 
     #[test]
     fn transmitter_is_released_between_the_terminal_and_its_target() {
         let (mut world, source, _) = synapse_from(Element::ExcitatoryNeuron);
-        fire(&mut world, source);
-        let cloud = strongest_release(&mut world, 200).unwrap();
+        let mut firing = fire(&mut world, source);
+        let cloud = strongest_release(&mut world, &mut firing, 200).unwrap();
         let from_target = cloud.position.distance(Vec3::new(10.0, 0.0, 0.0));
         assert!((0.5 * NODE_RADIUS..2.0 * NODE_RADIUS).contains(&from_target));
         assert!(cloud.radius > 2.0 * NODE_RADIUS);
@@ -130,24 +140,24 @@ mod tests {
     #[test]
     fn inhibitory_transmitter_has_the_inhibitory_color() {
         let (mut world, source, _) = synapse_from(Element::InhibitoryNeuron);
-        fire(&mut world, source);
-        let cloud = strongest_release(&mut world, 200).unwrap();
+        let mut firing = fire(&mut world, source);
+        let cloud = strongest_release(&mut world, &mut firing, 200).unwrap();
         assert_eq!(cloud.color.truncate(), Theme::Dark.palette().inhibitory);
     }
 
     #[test]
     fn released_transmitter_fades_as_the_synapse_closes() {
         let (mut world, source, _) = synapse_from(Element::InhibitoryNeuron);
-        fire(&mut world, source);
-        let mut time = 0.0;
+        let mut firing = fire(&mut world, source);
         let mut opacities = Vec::new();
-        for _ in 0..400 {
-            step_simulation(&mut world, &mut time, 1, None);
+        for _ in 0..1600 {
+            step_simulation(&mut world, &mut firing.engine, &mut firing.time, 1, None);
             opacities.extend(transmitter(&world).iter().map(|cloud| cloud.color.w));
         }
+        let full = Theme::Dark.palette().transmitter;
         let peak = opacities
             .iter()
-            .position(|&opacity| opacity == Theme::Dark.palette().transmitter)
+            .position(|&opacity| opacity == full)
             .unwrap();
         assert!(opacities[peak..].windows(2).all(|pair| pair[1] < pair[0]));
         assert!(transmitter(&world).is_empty());
@@ -159,8 +169,8 @@ mod tests {
         for (_, synapse) in world.query_mut::<&mut CurrentSynapse>() {
             synapse.alpha_function = true;
         }
-        fire(&mut world, source);
-        let cloud = strongest_release(&mut world, 200).unwrap();
+        let mut firing = fire(&mut world, source);
+        let cloud = strongest_release(&mut world, &mut firing, 200).unwrap();
         let full = Theme::Dark.palette().transmitter;
         assert!(cloud.color.w > 0.95 * full && cloud.color.w <= full);
     }
@@ -185,8 +195,8 @@ mod tests {
     fn a_weaker_axon_ending_releases_fainter_transmitter() {
         let strongest = |strength: f64| {
             let (mut world, source) = inhibitory_axon_ending(strength);
-            fire(&mut world, source);
-            strongest_release(&mut world, 2000).map(|cloud| cloud.color.w)
+            let mut firing = fire(&mut world, source);
+            strongest_release(&mut world, &mut firing, 2000).map(|cloud| cloud.color.w)
         };
         let full = strongest(1.0).unwrap();
         assert_eq!(strongest(2.0), Some(full));
@@ -197,10 +207,10 @@ mod tests {
     #[test]
     fn an_axon_terminal_releases_transmitter_when_its_spike_arrives() {
         let (mut world, source) = inhibitory_axon_ending(1.0);
-        assert!(strongest_release(&mut world, 200).is_none());
+        assert!(strongest_release(&mut world, &mut quiet(), 200).is_none());
 
-        fire(&mut world, source);
-        let cloud = strongest_release(&mut world, 2000).unwrap();
+        let mut firing = fire(&mut world, source);
+        let cloud = strongest_release(&mut world, &mut firing, 2000).unwrap();
         let palette = Theme::Dark.palette();
         assert!(cloud.color.w > 0.8 * palette.transmitter);
         assert_eq!(cloud.color.truncate(), palette.inhibitory);

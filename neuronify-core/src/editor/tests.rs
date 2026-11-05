@@ -2,7 +2,7 @@ use super::*;
 use crate::elements::{spawn_synapse, spawn_voltmeter};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use crate::simulation::step_simulation;
+use crate::simulation::{fire_nearby, step_simulation, Engine};
 use std::collections::HashMap;
 
 fn at(x: f32, z: f32) -> Vec3 {
@@ -36,7 +36,7 @@ fn neuron(world: &mut World, position: Vec3) -> Entity {
 fn axon_endings(world: &World) -> Vec<Connection> {
     world
         .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
+        .with::<&ConductanceSynapse>()
         .iter()
         .filter(|(_, connection)| connection.directional)
         .map(|(_, connection)| connection.clone())
@@ -259,7 +259,7 @@ fn axons_grow_compartments_until_they_reach_a_neuron() {
     assert!(world.get::<&Compartment>(first).is_ok());
     let ending = world
         .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
+        .with::<&ConductanceSynapse>()
         .iter()
         .find(|(_, connection)| connection.to == target)
         .map(|(_, connection)| connection.clone())
@@ -425,15 +425,16 @@ fn with_compartments_dragging_from_near_a_dendrite_grows_an_axon_from_it() {
     drag(&mut editor, &mut world, &path);
 
     assert_eq!(count::<LeakyNeuron>(&world), 1);
-    let grown_from_dendrite = world
-        .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
-        .iter()
-        .any(|(_, cable)| {
-            world.get::<&Dendrite>(cable.from).is_ok()
-                && world.get::<&Dendrite>(cable.to).is_err()
-                && world.get::<&Compartment>(cable.to).is_ok()
-        });
+    let grown_from_dendrite =
+        world
+            .query::<&Connection>()
+            .with::<&Cable>()
+            .iter()
+            .any(|(_, cable)| {
+                world.get::<&Dendrite>(cable.from).is_ok()
+                    && world.get::<&Dendrite>(cable.to).is_err()
+                    && world.get::<&Compartment>(cable.to).is_ok()
+            });
     assert!(grown_from_dendrite);
 }
 
@@ -943,9 +944,9 @@ fn notes_lie_under_the_circuit() {
 fn stimulating_pushes_with_the_chosen_current() {
     let mut world = World::new();
     let mut editor = editor(Tool::Stimulate);
-    editor.stimulation.current = 1e-9;
+    editor.stimulation.current = 1.0;
     editor.edit(&mut world, at(0.0, 0.0), false);
-    assert_eq!(editor.touch().map(|touch| touch.current), Some(1e-9));
+    assert_eq!(editor.touch().map(|touch| touch.current), Some(1.0));
 }
 
 #[test]
@@ -977,9 +978,10 @@ fn touch_sensors_fire_once_per_press() {
     let mut editor = editor(Tool::Stimulate);
     let fired = |world: &mut World, editor: &mut Editor| {
         editor.edit(world, at(0.5, 0.0), false);
-        let fired = world.get::<&GeneratorDynamics>(sensor).unwrap().fired;
-        step_simulation(world, &mut 0.0, 1, editor.touch());
-        fired
+        let presses = editor.take_presses();
+        presses.iter().any(|&press| {
+            touch_sensor_near(world, press) && press.distance(position(world, sensor)) < 1.0
+        })
     };
 
     assert!(fired(&mut world, &mut editor));
@@ -1106,7 +1108,7 @@ fn position(world: &World, entity: Entity) -> Vec3 {
 fn cables_out_of(world: &World, from: Entity) -> Vec<Entity> {
     world
         .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
+        .with::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .iter()
         .filter(|(_, cable)| cable.from == from)
         .map(|(_, cable)| cable.to)
@@ -1222,12 +1224,13 @@ fn steps_until_a_spike_crosses(tool: Tool, length: usize) -> usize {
         .map(|step| at(0.0, step as f32 * 0.5))
         .collect();
     drag(&mut editor(tool), &mut world, &path);
-    world.get::<&mut LeakyDynamics>(source).unwrap().voltage = 0.0;
-    let mut time = 0.0;
-    (0..2000)
+    let (mut engine, mut time) = (Engine::default(), 0.0);
+    engine.sync(&mut world);
+    engine.fire(&world, source);
+    (0..8000)
         .position(|_| {
-            step_simulation(&mut world, &mut time, 1, None);
-            world.get::<&LeakyDynamics>(target).unwrap().time_since_fire == 0.0
+            step_simulation(&mut world, &mut engine, &mut time, 1, None);
+            engine.fired(target)
         })
         .unwrap()
 }
@@ -2146,13 +2149,16 @@ fn a_touch_sensor_makes_its_neuron_fire_right_away() {
     editor.tool = Tool::Stimulate;
     editor.edit(&mut world, at(0.0, 0.5), false);
     editor.release(&world);
-    let mut time = 0.0;
-    let fired_within = (0..10).find(|_| {
-        step_simulation(&mut world, &mut time, 1, None);
-        world.get::<&LeakyDynamics>(target).unwrap().time_since_fire == 0.0
+    let (mut engine, mut time) = (Engine::default(), 0.0);
+    for press in editor.take_presses() {
+        fire_nearby(&mut world, &mut engine, press);
+    }
+    let fired_within = (0..40).find(|_| {
+        step_simulation(&mut world, &mut engine, &mut time, 1, None);
+        engine.fired(target)
     });
     assert!(
-        fired_within.is_some_and(|steps| steps < 3),
+        fired_within.is_some_and(|steps| steps < 12),
         "{fired_within:?}"
     );
 }

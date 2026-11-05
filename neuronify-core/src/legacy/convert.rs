@@ -13,6 +13,10 @@ use crate::measurement::visual_input::{ReceptiveField, VisualInput};
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
 use crate::{Connection, Deletable, NeuronType, Position};
 
+const MILLI: f64 = 1e3;
+const MICRO: f64 = 1e6;
+const NANO: f64 = 1e9;
+
 use super::{LegacyEdge, LegacyNode, LegacySimulation};
 
 const PIXELS_PER_UNIT: f32 = 50.0 / 2.0;
@@ -89,7 +93,10 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             entity
         }
         "generators/CurrentClamp.qml" => {
-            let current = node.engine.current_output.unwrap_or(2e-9);
+            let current = node
+                .engine
+                .current_output
+                .map_or(2.0, |current| current * NANO);
             world.spawn((
                 pos,
                 CurrentClamp {
@@ -101,7 +108,10 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
         "generators/ACClamp.qml" => {
             let default = AlternatingCurrent::default();
             let alternating = AlternatingCurrent {
-                amplitude: node.engine.amplitude.unwrap_or(default.amplitude),
+                amplitude: node
+                    .engine
+                    .amplitude
+                    .map_or(default.amplitude, |amplitude| amplitude * NANO),
                 frequency: node.engine.frequency.unwrap_or(default.frequency),
             };
             let clamp = CurrentClamp {
@@ -309,33 +319,26 @@ fn spawn_leaky_neuron(
     let e = &node.engine;
 
     let neuron = LeakyNeuron {
-        capacitance: e.capacitance.unwrap_or(2e-10),
-        resting_potential: e.resting_potential.unwrap_or(-0.07),
-        threshold: e.threshold.unwrap_or(-0.055),
-        initial_potential: e.initial_potential.unwrap_or(-0.08),
+        capacitance: e.capacitance.unwrap_or(2e-10) * NANO,
+        resting_potential: e.resting_potential.unwrap_or(-0.07) * MILLI,
+        threshold: e.threshold.unwrap_or(-0.055) * MILLI,
+        initial_potential: e.initial_potential.unwrap_or(-0.08) * MILLI,
         voltage_clamped: e.voltage_clamped.unwrap_or(true),
-        minimum_voltage: e.minimum_voltage.unwrap_or(-0.09),
-        maximum_voltage: e.maximum_voltage.unwrap_or(0.06),
+        minimum_voltage: e.minimum_voltage.unwrap_or(-0.09) * MILLI,
+        maximum_voltage: e.maximum_voltage.unwrap_or(0.06) * MILLI,
+        refractory_period: e.refractory_period.unwrap_or(0.002) * MILLI,
     };
 
-    let dynamics = LeakyDynamics {
-        voltage: e.voltage.unwrap_or(neuron.resting_potential),
-        received_currents: 0.0,
-        fired: false,
-        refractory_period: e.refractory_period.unwrap_or(0.002),
-        time_since_fire: f64::INFINITY,
-        enabled: true,
-    };
+    let state = NodeState::at(e.voltage.map_or(neuron.resting_potential, |v| v * MILLI));
 
     let leak = LeakCurrent {
-        resistance: e.resistance.unwrap_or(1e8),
-        current: 0.0,
+        resistance: e.resistance.unwrap_or(1e8) / MICRO,
     };
 
     world.spawn((
         pos,
         neuron,
-        dynamics,
+        state,
         leak,
         legacy_type(inhibitory),
         Deletable {},
@@ -352,10 +355,9 @@ fn spawn_adaptation_neuron(
 
     let e = &node.engine;
     let adapt = AdaptationCurrent {
-        adaptation: e.adaptation.unwrap_or(1e-8),
-        conductance: e.conductance.unwrap_or(0.0),
-        time_constant: e.time_constant.unwrap_or(0.5),
-        current: 0.0,
+        adaptation: e.adaptation.unwrap_or(1e-8) * MICRO,
+        conductance: e.conductance.unwrap_or(0.0) * MICRO,
+        time_constant: e.time_constant.unwrap_or(0.5) * MILLI,
     };
 
     world.insert_one(entity, adapt).unwrap();
@@ -384,20 +386,18 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
         "edges/CurrentSynapse.qml" => {
             let e = &edge.engine;
             let synapse = CurrentSynapse {
-                tau: e.tau.unwrap_or(0.002),
-                maximum_current: e.maximum_current.unwrap_or(3e-9),
-                delay: e.delay.unwrap_or(0.005),
+                tau: e.tau.unwrap_or(0.002) * MILLI,
+                maximum_current: e.maximum_current.unwrap_or(3e-9) * NANO,
+                delay: e.delay.unwrap_or(0.005) * MILLI,
                 alpha_function: e.alpha_function.unwrap_or(false),
                 exponential: e.exponential.unwrap_or(0.0),
                 linear: e.linear.unwrap_or(0.0),
                 triggers: Vec::new(),
-                time: 0.0,
-                current_output: 0.0,
             };
             world.spawn((connection, synapse, Deletable {}));
         }
         "edges/ImmediateFireSynapse.qml" => {
-            world.spawn((connection, ImmediateFireSynapse::default(), Deletable {}));
+            world.spawn((connection, ImmediateFireSynapse, Deletable {}));
         }
         "edges/MeterEdge.qml" | "Edge.qml" if meter_and_neuron.is_some() => {
             if let Some((meter, neuron)) = meter_and_neuron {
@@ -408,7 +408,7 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             world.spawn((connection,));
         }
         "Edge.qml" => {
-            if world.get::<&LeakyDynamics>(to).is_err() {
+            if world.get::<&LeakyNeuron>(to).is_err() {
                 return;
             }
             if world.get::<&CurrentClamp>(from).is_ok() {
@@ -417,15 +417,13 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             }
             let e = &edge.engine;
             let synapse = CurrentSynapse {
-                tau: e.tau.unwrap_or(0.002),
-                maximum_current: e.maximum_current.unwrap_or(3e-9),
-                delay: e.delay.unwrap_or(0.005),
+                tau: e.tau.unwrap_or(0.002) * MILLI,
+                maximum_current: e.maximum_current.unwrap_or(3e-9) * NANO,
+                delay: e.delay.unwrap_or(0.005) * MILLI,
                 alpha_function: e.alpha_function.unwrap_or(false),
                 exponential: e.exponential.unwrap_or(0.0),
                 linear: e.linear.unwrap_or(0.0),
                 triggers: Vec::new(),
-                time: 0.0,
-                current_output: 0.0,
             };
             world.spawn((connection, synapse, Deletable {}));
         }

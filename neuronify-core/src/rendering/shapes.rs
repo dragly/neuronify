@@ -16,6 +16,7 @@ use crate::measurement::visual_input::VisualInput;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{CylinderData, TorusData};
 use crate::rendering::scene::Scene;
+use neuronify_engine::SPIKE_DURATION;
 
 /// How long a soma or generator keeps glowing after it fires, in simulated seconds.
 const FLASH_DURATION: f64 = 0.004;
@@ -68,27 +69,23 @@ const WAVE_STEPS: usize = 16;
 const FLASH_BRIGHTNESS: f32 = 3.0;
 
 fn flash(time_since_fire: f64) -> f32 {
-    let remaining = (1.0 - time_since_fire / FLASH_DURATION).max(0.0) as f32;
+    let remaining = (1.0 - time_since_fire * 1e-3 / FLASH_DURATION).max(0.0) as f32;
     remaining * remaining
 }
 
-pub fn voltage_fraction(
-    neuron: &LeakyNeuron,
-    dynamics: &LeakyDynamics,
-    display: &NeuronDisplay,
-) -> f32 {
+pub fn voltage_fraction(neuron: &LeakyNeuron, state: &NodeState, display: &NeuronDisplay) -> f32 {
     if !display.voltage {
         return 0.0;
     }
-    ((dynamics.voltage - neuron.resting_potential) / (neuron.threshold - neuron.resting_potential))
+    ((state.voltage - neuron.resting_potential) / (neuron.threshold - neuron.resting_potential))
         .clamp(0.0, 1.0) as f32
 }
 
-pub fn shown_voltage(compartment: &Compartment, display: &NeuronDisplay) -> f64 {
+pub fn shown_voltage(state: &NodeState, display: &NeuronDisplay) -> f64 {
     if display.voltage {
-        compartment.voltage
+        state.voltage
     } else {
-        Compartment::default().voltage
+        RESTING_POTENTIAL
     }
 }
 
@@ -97,22 +94,20 @@ pub fn soma_color(
     world: &hecs::World,
     entity: Entity,
     neuron: &LeakyNeuron,
-    dynamics: &LeakyDynamics,
+    state: &NodeState,
     display: &NeuronDisplay,
     palette: &Palette,
 ) -> Vec3 {
     let neuron_type = neuron_type(world, entity);
     let rest = neuron.resting_potential;
-    let color = if display.voltage && dynamics.voltage < rest {
-        let depth = ((rest - dynamics.voltage) / (rest - neuron.minimum_voltage)).clamp(0.0, 1.0);
+    let spiking = state.since_spike < SPIKE_DURATION;
+    let color = if display.voltage && state.voltage < rest && !spiking {
+        let depth = ((rest - state.voltage) / (rest - neuron.minimum_voltage)).clamp(0.0, 1.0);
         palette.soma_below_rest(&neuron_type, depth as f32)
     } else {
-        palette.soma(&neuron_type, voltage_fraction(neuron, dynamics, display))
+        palette.soma(&neuron_type, voltage_fraction(neuron, state, display))
     };
-    color.lerp(
-        palette.flash * FLASH_BRIGHTNESS,
-        flash(dynamics.time_since_fire),
-    )
+    color.lerp(palette.flash * FLASH_BRIGHTNESS, flash(state.since_spike))
 }
 
 pub fn generator_color(
@@ -316,7 +311,7 @@ pub fn collect_rings(world: &hecs::World, palette: &Palette) -> Vec<TorusData> {
 mod tests {
     use super::*;
     use crate::elements::Element;
-    use crate::simulation::{fire_nearby, lif_step};
+    use crate::simulation::{fire_nearby, step_simulation, Engine};
 
     #[test]
     fn a_soma_below_rest_turns_towards_its_own_colder_colour() {
@@ -329,15 +324,12 @@ mod tests {
             let entity = element.spawn(&mut world, Vec3::ZERO);
             let neuron = world.get::<&LeakyNeuron>(entity).unwrap().clone();
             let color_at = |voltage: f64| {
-                let dynamics = LeakyDynamics {
-                    voltage,
-                    ..Default::default()
-                };
+                let state = NodeState::at(voltage);
                 soma_color(
                     &world,
                     entity,
                     &neuron,
-                    &dynamics,
+                    &state,
                     &NeuronDisplay::default(),
                     &palette,
                 )
@@ -419,12 +411,12 @@ mod tests {
         let pad_color =
             |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
         let resting = pad_color(&world);
-        fire_nearby(&mut world, Vec3::ZERO);
+        let (mut engine, mut time) = (Engine::default(), 0.0);
+        fire_nearby(&mut world, &mut engine, Vec3::ZERO);
+        step_simulation(&mut world, &mut engine, &mut time, 1, None);
         assert_ne!(pad_color(&world), resting);
-        let steps = (FLASH_DURATION / LIF_DT).ceil() as usize;
-        for step in 0..=steps {
-            lif_step(&mut world, LIF_DT, step as f64 * LIF_DT);
-        }
+        let steps = (FLASH_DURATION * 1e3 / DT).ceil() as u32;
+        step_simulation(&mut world, &mut engine, &mut time, steps, None);
         assert_eq!(pad_color(&world), resting);
     }
 
@@ -433,17 +425,14 @@ mod tests {
         let mut world = hecs::World::new();
         let entity = world.spawn((NeuronType::Excitatory,));
         let neuron = LeakyNeuron::default();
-        let dynamics = LeakyDynamics {
-            voltage: neuron.threshold,
-            ..Default::default()
-        };
+        let state = NodeState::at(neuron.threshold);
         let palette = Theme::Dark.palette();
         let color = |voltage: bool| {
             let display = NeuronDisplay {
                 voltage,
                 firing_rate: false,
             };
-            soma_color(&world, entity, &neuron, &dynamics, &display, &palette)
+            soma_color(&world, entity, &neuron, &state, &display, &palette)
         };
         assert_eq!(color(false), palette.excitatory);
         assert_ne!(color(true), palette.excitatory);
@@ -455,16 +444,15 @@ mod tests {
         let entity = world.spawn((NeuronType::Inhibitory,));
         let neuron = LeakyNeuron::default();
         let palette = Theme::Dark.palette();
-        let steps = (0.0125 / LIF_DT).round() as usize;
+        let steps = (12.5 / DT).round() as usize;
         let unlit = (0..steps)
             .filter(|&step| {
-                let dynamics = LeakyDynamics {
-                    voltage: neuron.resting_potential,
-                    time_since_fire: step as f64 * LIF_DT,
-                    ..Default::default()
+                let state = NodeState {
+                    since_spike: step as f64 * DT,
+                    ..NodeState::at(neuron.resting_potential)
                 };
                 let display = NeuronDisplay::default();
-                soma_color(&world, entity, &neuron, &dynamics, &display, &palette)
+                soma_color(&world, entity, &neuron, &state, &display, &palette)
                     == palette.inhibitory
             })
             .count();

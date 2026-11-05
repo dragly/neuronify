@@ -1,7 +1,29 @@
 use super::convert::spawn_legacy_simulation;
 use super::*;
 use crate::components::*;
-use crate::simulation::{lif_step, run_headless, SpikeRecord};
+use crate::simulation::{step_simulation, Engine};
+
+struct SpikeRecord {
+    entity_index: usize,
+    time: f64,
+}
+
+fn run_headless(world: &mut hecs::World, steps: usize, dt: f64) -> Vec<SpikeRecord> {
+    let neurons: Vec<hecs::Entity> = world
+        .query::<&LeakyNeuron>()
+        .iter()
+        .map(|(entity, _)| entity)
+        .collect();
+    crate::simulation::run_headless(world, steps as f64 * dt * 1e3)
+        .into_iter()
+        .filter_map(|spike| {
+            Some(SpikeRecord {
+                entity_index: neurons.iter().position(|&entity| entity == spike.entity)?,
+                time: spike.time * 1e-3,
+            })
+        })
+        .collect()
+}
 
 const EMPTY_NFY: &str = r#"{"nodes": [], "edges": []}"#;
 
@@ -129,7 +151,7 @@ fn test_adaptation_decreasing_rate() {
         .insert_one(
             leaky_entity,
             CurrentClamp {
-                current_output: 5e-9,
+                current_output: 5.0,
             },
         )
         .unwrap();
@@ -137,28 +159,13 @@ fn test_adaptation_decreasing_rate() {
     let dt = 0.0001;
     let total_steps = 20_000;
 
-    let mut all_spikes = Vec::new();
-    let mut time = 0.0;
     let neuron_entities: Vec<hecs::Entity> = world
         .query::<&LeakyNeuron>()
         .iter()
         .map(|(e, _)| e)
         .collect();
-
-    for _ in 0..total_steps {
-        lif_step(&mut world, dt, time);
-        for (idx, entity) in neuron_entities.iter().enumerate() {
-            if let Ok(dynamics) = world.get::<&LeakyDynamics>(*entity) {
-                if dynamics.time_since_fire == 0.0 {
-                    all_spikes.push(SpikeRecord {
-                        entity_index: idx,
-                        time,
-                    });
-                }
-            }
-        }
-        time += dt;
-    }
+    let all_spikes = run_headless(&mut world, total_steps, dt);
+    let time = total_steps as f64 * dt;
 
     let adapt_entity = entities[adapt_neuron_idx];
     let adapt_neuron_query_idx = neuron_entities
@@ -229,9 +236,7 @@ fn test_inhibitory_simulation() {
     assert_eq!(neuron_type(&world, b_entity), NeuronType::Inhibitory);
 
     let dt = 0.0001;
-    for i in 0..100 {
-        lif_step(&mut world, dt, i as f64 * dt);
-    }
+    run_headless(&mut world, 100, dt);
 }
 
 #[test]
@@ -256,7 +261,7 @@ fn test_current_clamp_drives_neuron() {
 
     let neuron = world.spawn((
         LeakyNeuron::default(),
-        LeakyDynamics::default(),
+        NodeState::at(-70.0),
         LeakCurrent::default(),
         NeuronType::Excitatory,
         Position {
@@ -266,7 +271,7 @@ fn test_current_clamp_drives_neuron() {
 
     let clamp = world.spawn((
         CurrentClamp {
-            current_output: 5e-9,
+            current_output: 5.0,
         },
         Position {
             position: Vec3::new(0.0, 0.0, -1.0),
@@ -280,7 +285,7 @@ fn test_current_clamp_drives_neuron() {
             strength: 1.0,
             directional: true,
         },
-        ImmediateFireSynapse::default(),
+        ImmediateFireSynapse,
     ));
 
     let dt = 0.0001;
@@ -303,7 +308,7 @@ fn test_inhibitory_suppresses_firing() {
 
     let target = world.spawn((
         LeakyNeuron::default(),
-        LeakyDynamics::default(),
+        NodeState::at(-70.0),
         LeakCurrent::default(),
         NeuronType::Excitatory,
         Position {
@@ -313,7 +318,7 @@ fn test_inhibitory_suppresses_firing() {
 
     let clamp = world.spawn((
         CurrentClamp {
-            current_output: 5e-9,
+            current_output: 5.0,
         },
         Position {
             position: Vec3::new(0.0, 0.0, -2.0),
@@ -327,12 +332,12 @@ fn test_inhibitory_suppresses_firing() {
             strength: 1.0,
             directional: true,
         },
-        ImmediateFireSynapse::default(),
+        ImmediateFireSynapse,
     ));
 
     let inhibitor = world.spawn((
         LeakyNeuron::default(),
-        LeakyDynamics::default(),
+        NodeState::at(-70.0),
         LeakCurrent::default(),
         NeuronType::Inhibitory,
         Position {
@@ -342,7 +347,7 @@ fn test_inhibitory_suppresses_firing() {
 
     let inhib_clamp = world.spawn((
         CurrentClamp {
-            current_output: 10e-9,
+            current_output: 10.0,
         },
         Position {
             position: Vec3::new(0.0, 0.0, 2.0),
@@ -356,7 +361,7 @@ fn test_inhibitory_suppresses_firing() {
             strength: 1.0,
             directional: true,
         },
-        ImmediateFireSynapse::default(),
+        ImmediateFireSynapse,
     ));
 
     world.spawn((
@@ -367,7 +372,7 @@ fn test_inhibitory_suppresses_firing() {
             directional: true,
         },
         CurrentSynapse {
-            maximum_current: 20e-9,
+            maximum_current: 20.0,
             ..CurrentSynapse::default()
         },
     ));
@@ -378,7 +383,7 @@ fn test_inhibitory_suppresses_firing() {
     let mut world_no_inhib = hecs::World::new();
     let neuron_alone = world_no_inhib.spawn((
         LeakyNeuron::default(),
-        LeakyDynamics::default(),
+        NodeState::at(-70.0),
         LeakCurrent::default(),
         NeuronType::Excitatory,
         Position {
@@ -387,7 +392,7 @@ fn test_inhibitory_suppresses_firing() {
     ));
     let clamp_alone = world_no_inhib.spawn((
         CurrentClamp {
-            current_output: 5e-9,
+            current_output: 5.0,
         },
         Position {
             position: Vec3::new(0.0, 0.0, -2.0),
@@ -400,7 +405,7 @@ fn test_inhibitory_suppresses_firing() {
             strength: 1.0,
             directional: true,
         },
-        ImmediateFireSynapse::default(),
+        ImmediateFireSynapse,
     ));
     let spikes_no_inhib = run_headless(&mut world_no_inhib, 10_000, dt);
 
@@ -523,14 +528,15 @@ fn spikes_from_an_inhibitory_generator_push_the_voltage_down() {
             .unwrap()
             .resting_potential;
         let mut furthest: f64 = 0.0;
-        for step in 0..150 {
-            lif_step(&mut world, 0.0001, step as f64 * 0.0001);
-            let change = world.get::<&LeakyDynamics>(entities[1]).unwrap().voltage - resting;
+        let (mut engine, mut time) = (Engine::default(), 0.0);
+        for _ in 0..600 {
+            step_simulation(&mut world, &mut engine, &mut time, 1, None);
+            let change = world.get::<&NodeState>(entities[1]).unwrap().voltage - resting;
             if change.abs() > furthest.abs() {
                 furthest = change;
             }
         }
-        assert!(furthest.abs() > 0.001);
+        assert!(furthest.abs() > 1.0);
         assert_eq!(furthest < 0.0, inhibitory);
     }
 }
@@ -549,7 +555,7 @@ fn loads_inhibitory_adaptive_neurons() {
             .get::<&AdaptationCurrent>(entities[0])
             .unwrap()
             .adaptation,
-        2e-8
+        0.02
     );
 }
 
@@ -651,7 +657,7 @@ fn loads_alternating_current_sources() {
     let [(source, amplitude, frequency)] = sources[..] else {
         panic!("expected one alternating current source, got {sources:?}");
     };
-    assert_eq!((amplitude, frequency), (1e-9, 34.0));
+    assert_eq!((amplitude, frequency), (1.0, 34.0));
     let targets = world
         .query::<&Connection>()
         .without::<&CurrentSynapse>()

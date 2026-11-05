@@ -4,6 +4,7 @@ use glam::Vec3;
 use hecs::{Entity, EntityRef};
 
 use crate::components::*;
+use crate::constants::RESTING_POTENTIAL;
 use crate::rendering::colors::{terminal_color, Palette};
 use crate::rendering::gpu_types::{CylinderData, Sphere};
 use crate::rendering::paths::ConnectionPath;
@@ -30,7 +31,7 @@ pub struct Sheath {
     pub end_color: Vec3,
 }
 
-fn radius_from_soma_distance(distance: f32) -> f32 {
+pub fn radius_from_soma_distance(distance: f32) -> f32 {
     (ROOT_RADIUS * TAPER.powf(distance / 3.0)).max(MIN_RADIUS)
 }
 
@@ -40,7 +41,8 @@ fn compartment_color(
     palette: &Palette,
 ) -> Option<Vec3> {
     let neuron_type = &*entity.get::<&NeuronType>()?;
-    let voltage = shown_voltage(&*entity.get::<&Compartment>()?, display);
+    entity.get::<&Compartment>()?;
+    let voltage = shown_voltage(&*entity.get::<&NodeState>()?, display);
     Some(match entity.has::<Dendrite>() {
         true => palette.dendrite(neuron_type, voltage),
         false => palette.compartment(neuron_type, voltage),
@@ -56,7 +58,7 @@ fn soma_end_color(
     soma.get::<&LeakyNeuron>()?;
     Some(palette.compartment(
         &*compartment.get::<&NeuronType>()?,
-        shown_voltage(&*compartment.get::<&Compartment>()?, display),
+        shown_voltage(&*compartment.get::<&NodeState>()?, display),
     ))
 }
 
@@ -137,7 +139,7 @@ pub fn collect_cylinders(
     let display = NeuronDisplay::of(world);
     let mut cylinders: Vec<CylinderData> = world
         .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
+        .with::<&Cable>()
         .iter()
         .filter(|(_, connection)| !connection.directional)
         .filter_map(|(_, connection)| {
@@ -247,7 +249,7 @@ pub fn growing_axon(
     }
     let source = world.entity(from).ok()?;
     let neuron_type = *source.get::<&NeuronType>()?;
-    let tip = palette.compartment(&neuron_type, Compartment::default().voltage);
+    let tip = palette.compartment(&neuron_type, RESTING_POTENTIAL);
     let end_radius = AXON_RADIUS;
     Some(Scene {
         spheres: vec![Sphere {
@@ -325,14 +327,14 @@ mod tests {
                 (preview.end, preview.end_color, preview.end_radius),
                 (laid.end, laid.end_color, laid.end_radius)
             );
-            let spheres = collect_spheres(&world, &radii, &paths, &palette);
+            let spheres = collect_spheres(&world, &radii, &paths, &palette, 0.0);
             let joint = spheres
                 .iter()
                 .find(|sphere| sphere.position == tip)
                 .unwrap();
             let bead = growing.spheres[0];
             assert_eq!((bead.radius, bead.color), (joint.radius, joint.color));
-            world.get::<&mut Compartment>(compartment).unwrap().voltage = 30.0 * step as f64;
+            world.get::<&mut NodeState>(compartment).unwrap().voltage = -65.0 + 25.0 * step as f64;
             from = compartment;
             start = tip;
         }
@@ -451,7 +453,7 @@ mod tests {
             neuron_with_a_dendrite_and_an_axon(&mut world, neuron_type);
             let radii = compartment_radii(&world);
             let paths = connection_paths(&world, &radii, &palette);
-            collect_spheres(&world, &radii, &paths, &palette).len()
+            collect_spheres(&world, &radii, &paths, &palette, 0.0).len()
         };
         assert_eq!(
             spheres(NeuronType::Excitatory),
@@ -470,7 +472,7 @@ mod tests {
             .into_iter()
             .find(|cylinder| cylinder.start == Vec3::ZERO && cylinder.end == first)
             .unwrap();
-        let rest = Compartment::default().voltage;
+        let rest = RESTING_POTENTIAL;
         let excitatory = NeuronType::Excitatory;
         assert_eq!(root.start_color, palette.compartment(&excitatory, rest));
         assert_eq!(root.end_color, palette.dendrite(&excitatory, rest));
@@ -490,7 +492,7 @@ mod tests {
         );
         spawn_internode(&mut world, first, second);
         spawn_cable(&mut world, second, third, false);
-        world.get::<&mut Compartment>(second).unwrap().voltage = 100.0;
+        world.get::<&mut NodeState>(second).unwrap().voltage = 30.0;
         let radii = compartment_radii(&world);
         let paths = connection_paths(&world, &radii, &palette);
         let sheaths: Vec<CylinderData> = collect_cylinders(&world, &radii, &paths, &palette)
@@ -504,7 +506,7 @@ mod tests {
         assert_eq!(sheath.end, Vec3::new(0.0, 0.0, 8.0 - NODE_GAP));
         assert!(sheath.start_radius > AXON_RADIUS);
         assert!(sheath.end_color.max_element() > sheath.start_color.max_element());
-        let caps = collect_spheres(&world, &radii, &paths, &palette)
+        let caps = collect_spheres(&world, &radii, &paths, &palette, 0.0)
             .into_iter()
             .filter(|sphere| sphere.radius == SHEATH_RADIUS)
             .count();
@@ -523,7 +525,7 @@ mod tests {
         }
         for _ in 0..500 {
             let position = random_position();
-            world.spawn((Position { position }, Compartment::default(), Dendrite));
+            world.spawn((Position { position }, Compartment, Dendrite));
         }
 
         let radii = compartment_radii(&world);

@@ -79,8 +79,8 @@ mod tests {
     #[test]
     fn draws_a_tick_in_the_row_of_each_wired_neuron() {
         let mut world = World::new();
-        let excitatory = world.spawn((LeakyDynamics::default(), NeuronType::Excitatory));
-        let inhibitory = world.spawn((LeakyDynamics::default(), NeuronType::Inhibitory));
+        let excitatory = world.spawn((NodeState::default(), NeuronType::Excitatory));
+        let inhibitory = world.spawn((NodeState::default(), NeuronType::Inhibitory));
         let detector = spawn_spike_detector(&mut world, excitatory, Vec3::ZERO);
         spawn_spike_detector_wire(&mut world, inhibitory, detector);
         *world.get::<&mut SpikeDetector>(detector).unwrap() = SpikeDetector {

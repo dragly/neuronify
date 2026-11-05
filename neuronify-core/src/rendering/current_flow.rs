@@ -13,7 +13,7 @@ const PARTICLE_SPACING: f32 = 0.7 * NODE_RADIUS;
 const PARTICLE_RADIUS_PER_PATH_RADIUS: f32 = 1.6;
 const PARTICLE_WHITENESS: f32 = 0.55;
 const DISTANCE_PER_SIMULATED_SECOND_AND_NANOAMPERE: f64 = 240.0;
-const FASTEST_SHOWN_CURRENT: f64 = 2e-9;
+const FASTEST_SHOWN_CURRENT: f64 = 2.0;
 
 pub fn collect_current_flow(
     world: &hecs::World,
@@ -49,7 +49,7 @@ fn flow_along(path: &ConnectionPath, current: f64, charge: f64) -> Vec<Sphere> {
     if current == 0.0 || length <= 0.0 {
         return Vec::new();
     }
-    let travelled = DISTANCE_PER_SIMULATED_SECOND_AND_NANOAMPERE * charge * 1e9;
+    let travelled = DISTANCE_PER_SIMULATED_SECOND_AND_NANOAMPERE * charge;
     let offset = travelled.rem_euclid(PARTICLE_SPACING as f64) as f32;
     let color = current_color(current).lerp(Vec3::ONE, PARTICLE_WHITENESS);
     let radius = path.radius * PARTICLE_RADIUS_PER_PATH_RADIUS;
@@ -68,12 +68,12 @@ fn flow_along(path: &ConnectionPath, current: f64, charge: f64) -> Vec<Sphere> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::LIF_DT;
     use crate::elements::{spawn_synapse, Element};
     use crate::rendering::paths::connection_paths;
     use crate::rendering::Theme;
-    use crate::simulation::step_simulation;
     use std::collections::HashMap;
+
+    const STEP: f64 = 1e-4;
 
     fn source_and_paths(current: f64) -> (hecs::World, BTreeMap<Entity, ConnectionPath>) {
         let mut world = hecs::World::new();
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn particles_line_the_connection_of_a_current_source() {
-        let (world, paths) = source_and_paths(0.5e-9);
+        let (world, paths) = source_and_paths(0.5);
         let length = paths.values().next().unwrap().length();
         let particles = collect_current_flow(&world, &paths, 0.0);
         assert_eq!(particles.len(), (length / PARTICLE_SPACING).ceil() as usize);
@@ -110,11 +110,11 @@ mod tests {
             let start = first_particle(current, 0.0);
             start.distance(first_particle(current, 1e-4))
         };
-        let weak = moved(0.3e-9);
-        let strong = moved(0.6e-9);
+        let weak = moved(0.3);
+        let strong = moved(0.6);
         assert!(weak > 0.0);
         assert!((strong / weak - 2.0).abs() < 0.05, "{weak} {strong}");
-        assert!((moved(5e-9) - moved(FASTEST_SHOWN_CURRENT)).abs() < 1e-4);
+        assert!((moved(5.0) - moved(FASTEST_SHOWN_CURRENT)).abs() < 1e-4);
     }
 
     #[test]
@@ -128,9 +128,9 @@ mod tests {
         let mut previous = 0.0;
         let mut went_back = false;
         while time < 2.0 / alternating.frequency {
-            step_simulation(&mut world, &mut time, 1, None);
-            let current = world.get::<&CurrentClamp>(source).unwrap().current_output;
-            delivered += current * LIF_DT;
+            let current = alternating.at(time);
+            time += STEP;
+            delivered += current * STEP;
             let shown = shown_charge(&world, source, current, time);
             assert!(
                 (shown - delivered).abs() < 0.02 * scale,
