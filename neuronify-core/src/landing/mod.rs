@@ -1,3 +1,4 @@
+pub mod about;
 mod dialogs;
 mod preview;
 mod raster;
@@ -93,6 +94,7 @@ pub enum LandingChoice {
         time: f64,
     },
     BackToSimulation,
+    About,
 }
 
 #[derive(Clone, Copy)]
@@ -127,6 +129,7 @@ enum Picked {
     Section(Section),
     Overview,
     BackToSimulation,
+    About,
 }
 
 enum CardAction {
@@ -297,6 +300,7 @@ impl LandingScreen {
                 })
             }
             Picked::BackToSimulation => Some(LandingChoice::BackToSimulation),
+            Picked::About => Some(LandingChoice::About),
         }
     }
 
@@ -364,6 +368,10 @@ impl LandingScreen {
             if let Some(section_picked) = self.section(ui, width, section) {
                 picked = Some(section_picked);
             }
+        }
+        ui.add_space(48.0);
+        if text_button(ui, colors, "About Neuronify").clicked() {
+            picked = Some(Picked::About);
         }
         ui.add_space(40.0);
         picked
@@ -654,6 +662,16 @@ fn see_all(ui: &mut Ui, colors: &Colors, header: Rect, section: Section) -> Resp
     response.on_hover_cursor(CursorIcon::PointingHand)
 }
 
+fn text_button(ui: &mut Ui, colors: &Colors, label: &str) -> Response {
+    let response = ui.add(
+        egui::Label::new(RichText::new(label).size(15.0).color(colors.accent))
+            .selectable(false)
+            .sense(Sense::click()),
+    );
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, label));
+    response.on_hover_cursor(CursorIcon::PointingHand)
+}
+
 fn back(ui: &mut Ui, colors: &Colors) -> Response {
     let label = "Back";
     let text =
@@ -887,6 +905,43 @@ mod tests {
             .min_by(|a, b| (a.y - heading.y).abs().total_cmp(&(b.y - heading.y).abs()))
             .unwrap_or_else(|| panic!("no See all next to {section}"))
             + vec2(4.0, 4.0)
+    }
+
+    #[test]
+    fn the_about_link_comes_after_the_last_section() {
+        let context = egui::Context::default();
+        let mut landing = LandingScreen::new(false);
+        let screen_with_room_for_the_whole_landing = vec2(1280.0, 8000.0);
+        let (output, _) = run_sized(
+            &context,
+            &mut landing,
+            vec![],
+            screen_with_room_for_the_whole_landing,
+        );
+        let last_section = EXAMPLE_CATEGORIES.last().unwrap().name;
+        let about = text_position(&output, "About Neuronify").unwrap();
+        assert!(about.y > text_position(&output, last_section).unwrap().y);
+
+        let click = |pressed| Event::PointerButton {
+            pos: about + vec2(4.0, 4.0),
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Default::default(),
+        };
+        let events = vec![Event::PointerMoved(about + vec2(4.0, 4.0)), click(true)];
+        run_sized(
+            &context,
+            &mut landing,
+            events,
+            screen_with_room_for_the_whole_landing,
+        );
+        let (_, choice) = run_sized(
+            &context,
+            &mut landing,
+            vec![click(false)],
+            screen_with_room_for_the_whole_landing,
+        );
+        assert!(matches!(choice, Some(LandingChoice::About)));
     }
 
     #[test]

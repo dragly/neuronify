@@ -388,6 +388,15 @@ fn the_menu_opens_the_examples() {
 }
 
 #[test]
+fn the_menu_opens_about() {
+    let mut harness = Harness::new(false);
+    harness.click_text("Menu");
+    harness.click_text("About Neuronify");
+    assert_eq!(harness.choice, Some(MenuChoice::About));
+    assert!(!harness.shows("About Neuronify"));
+}
+
+#[test]
 fn the_menu_asks_to_open_and_save() {
     for (row, asked) in [("Open…", MenuChoice::Open), ("Save…", MenuChoice::Save)] {
         let mut harness = Harness::new(false);

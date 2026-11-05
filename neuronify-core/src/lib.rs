@@ -13,6 +13,7 @@ pub mod input;
 pub mod landing;
 pub mod legacy;
 pub mod library;
+pub mod links;
 pub mod measurement;
 pub mod rendering;
 pub mod serialization;
@@ -30,7 +31,7 @@ pub use constants::*;
 pub use simulation::{run_headless, Engine, Spike};
 pub use tools::*;
 
-pub fn run() {
+pub fn run(version: &'static str) {
     // On the web, a page can name a file with `?file=<url>`.
     // Neuronify then shows it the way it would look embedded on a web page,
     // with the editor hidden until the reader presses Edit.
@@ -39,7 +40,7 @@ pub fn run() {
     #[cfg(not(target_arch = "wasm32"))]
     let embedded = false;
     visula::run(move |application| {
-        let mut neuronify = Neuronify::new(application);
+        let mut neuronify = Neuronify::new(application, version);
         if embedded {
             neuronify.landing = None;
         }

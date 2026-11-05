@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    neuronify_core::run();
+    neuronify_core::run(env!("CARGO_PKG_VERSION"));
 }

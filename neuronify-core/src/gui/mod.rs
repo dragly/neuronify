@@ -52,6 +52,7 @@ pub enum MenuChoice {
     Save,
     Share,
     Examples,
+    About,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -445,6 +446,9 @@ fn menu(
                 }
                 if icon_row(ui, chrome, Icon::Grid, "Examples").clicked() {
                     picked = Some(MenuChoice::Examples);
+                }
+                if icon_row(ui, chrome, Icon::Info, "About Neuronify").clicked() {
+                    picked = Some(MenuChoice::About);
                 }
                 separator(ui, chrome);
                 heading(ui, chrome, "View", 8.0);
