@@ -530,6 +530,23 @@ fn the_menu_switches_firing_rates_on_and_voltages_off() {
 }
 
 #[test]
+fn the_menu_picks_rings_and_which_way_they_point() {
+    use crate::components::{ConnectionDirection, ConnectionView, Setting};
+    let mut harness = Harness::new(true);
+    harness.click_text("Menu");
+    assert!(!harness.shows("Outputs"));
+    let left = harness.text_rect("Connections").unwrap().left() - 8.0;
+    assert!(harness.text_rect("None").unwrap().right() < left + MENU_WIDTH);
+    harness.click_text("Rings");
+    harness.click_text("Outputs");
+    assert_eq!(ConnectionView::of(&harness.world), ConnectionView::Rings);
+    assert_eq!(
+        ConnectionDirection::of(&harness.world),
+        ConnectionDirection::Outputs
+    );
+}
+
+#[test]
 fn the_menu_switches_the_theme() {
     let mut harness = Harness::new(true);
     harness.click_text("Menu");
@@ -1639,6 +1656,23 @@ fn settings_saved_with_a_simulation_are_reported_but_are_not_edits() {
     harness.click(pos2(MARGIN + 20.0, MARGIN + 20.0));
     harness.click_text("None");
 
+    assert!(harness.editor.take_settings_changed());
+    assert!(!harness.editor.take_edited());
+}
+
+#[test]
+fn a_chosen_direction_is_reported_as_a_setting() {
+    use crate::components::Setting as _;
+    let mut harness = Harness::sized(SCREEN, false, World::new(), None);
+    harness.click(pos2(MARGIN + 20.0, MARGIN + 20.0));
+    harness.click_text("Rings");
+    harness.editor.take_settings_changed();
+    harness.click_text("Outputs");
+
+    assert_eq!(
+        ConnectionDirection::of(&harness.world),
+        ConnectionDirection::Outputs
+    );
     assert!(harness.editor.take_settings_changed());
     assert!(!harness.editor.take_edited());
 }

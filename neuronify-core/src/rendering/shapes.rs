@@ -121,7 +121,7 @@ pub fn generator_color(
     )
 }
 
-fn glyph_color() -> Vec3 {
+pub fn glyph_color() -> Vec3 {
     srgb(255, 244, 214)
 }
 

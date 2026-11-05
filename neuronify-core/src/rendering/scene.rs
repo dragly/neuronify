@@ -6,6 +6,7 @@ use hecs::Entity;
 use crate::components::{hidden_connections, Connection, Milliseconds};
 use crate::measurement::visual_input::is_picture_wire;
 use crate::rendering::colors::Palette;
+use crate::rendering::connection_rings::collect_connection_rings;
 use crate::rendering::current_flow::collect_current_flow;
 use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
 use crate::rendering::gpu_types::{CylinderData, HaloData, Sphere, TileData, TorusData};
@@ -99,6 +100,7 @@ pub fn collect_scene_along(
         .extend(collect_current_flow(world, paths, time));
     scene.extend(collect_signals(world, paths, palette, time));
     scene.extend(collect_shapes(world, palette));
+    scene.extend(collect_connection_rings(world, palette));
     scene
 }
 

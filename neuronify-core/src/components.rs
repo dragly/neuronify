@@ -452,34 +452,104 @@ pub enum ConnectionView {
     All,
     LastSelected,
     None,
+    Rings,
 }
 
 impl Setting for ConnectionView {}
 
 impl ConnectionView {
-    pub fn shows(&self, connection: &Connection, selected: Option<Entity>) -> bool {
+    pub fn shows(
+        &self,
+        connection: &Connection,
+        selected: Option<Entity>,
+        direction: ConnectionDirection,
+    ) -> bool {
         match self {
             ConnectionView::All => true,
-            ConnectionView::LastSelected => {
-                selected.is_some_and(|entity| connection.from == entity || connection.to == entity)
+            ConnectionView::LastSelected | ConnectionView::Rings => {
+                selected.is_some_and(|entity| direction.includes(connection, entity))
             }
             ConnectionView::None => false,
         }
     }
 }
 
-pub fn hidden_connections(world: &World) -> HashSet<Entity> {
-    let view = ConnectionView::of(world);
-    let selected = Selected::entity(world);
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub enum ConnectionDirection {
+    #[default]
+    Both,
+    Inputs,
+    Outputs,
+}
+
+impl Setting for ConnectionDirection {}
+
+impl ConnectionDirection {
+    pub fn includes(&self, connection: &Connection, selected: Entity) -> bool {
+        match self {
+            ConnectionDirection::Both => connection.from == selected || connection.to == selected,
+            ConnectionDirection::Inputs => connection.to == selected,
+            ConnectionDirection::Outputs => connection.from == selected,
+        }
+    }
+}
+
+fn viewed_connections(world: &World) -> Vec<(Entity, Connection)> {
     world
         .query::<(Entity, &Connection)>()
         .without::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .without::<&VoltageSeries>()
         .iter()
-        .filter(|(entity, _)| Some(*entity) != selected)
         .filter(|(_, connection)| !is_picture_wire(world, connection))
-        .filter(|(_, connection)| !view.shows(connection, selected))
+        .map(|(entity, connection)| (entity, connection.clone()))
+        .collect()
+}
+
+fn ringed_neighbour(world: &World, connection: &Connection, selected: Entity) -> Option<Entity> {
+    let neighbour = if connection.from == selected {
+        connection.to
+    } else {
+        connection.from
+    };
+    (neighbour != selected && is_neuron(world, neighbour)).then_some(neighbour)
+}
+
+pub fn is_neuron(world: &World, entity: Entity) -> bool {
+    world.satisfies::<hecs::Or<&LeakyNeuron, &Compartment>>(entity)
+}
+
+pub fn hidden_connections(world: &World) -> HashSet<Entity> {
+    let view = ConnectionView::of(world);
+    let direction = ConnectionDirection::of(world);
+    let selected = Selected::entity(world);
+    viewed_connections(world)
+        .into_iter()
+        .filter(|(entity, _)| Some(*entity) != selected)
+        .filter(|(_, connection)| {
+            !view.shows(connection, selected, direction)
+                || (view == ConnectionView::Rings
+                    && selected
+                        .and_then(|selected| ringed_neighbour(world, connection, selected))
+                        .is_some())
+        })
         .map(|(entity, _)| entity)
+        .collect()
+}
+
+pub fn ringed_connections(world: &World) -> Vec<(Connection, Entity)> {
+    let Some(selected) = Selected::entity(world) else {
+        return Vec::new();
+    };
+    if ConnectionView::of(world) != ConnectionView::Rings {
+        return Vec::new();
+    }
+    let direction = ConnectionDirection::of(world);
+    viewed_connections(world)
+        .into_iter()
+        .filter(|(_, connection)| direction.includes(connection, selected))
+        .filter_map(|(_, connection)| {
+            ringed_neighbour(world, &connection, selected).map(|neighbour| (connection, neighbour))
+        })
         .collect()
 }
 
