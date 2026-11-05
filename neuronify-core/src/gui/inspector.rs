@@ -297,6 +297,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
             )
         })
         .unwrap_or(Tool::Place(Element::ExcitatoryNeuron))
+    } else if world.get::<&Dendrite>(entity).is_ok() {
+        return Some((Tool::Dendrite, "Dendrite"));
     } else if world.get::<&Compartment>(entity).is_ok() {
         let name = match axon_ending(world, entity) {
             Some(_) => "Axon terminal",

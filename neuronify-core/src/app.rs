@@ -637,6 +637,7 @@ impl visula::Simulation for Neuronify {
             EditorMarks {
                 drawn_connection: &drawn_connection,
                 axon: self.editor.axon_being_grown(&self.world),
+                dendrite: self.editor.dendrite_being_grown(),
                 ghost: self.ghost,
                 selection: self.editor.selection,
                 eraser: self.eraser(application),

@@ -175,6 +175,15 @@ fn soma_distance(world: &World, at: glam::Vec3) -> f32 {
         .fold(f32::MAX, f32::min)
 }
 
+pub fn dendrite_diameter(world: &World, ends: [Option<glam::Vec3>; 2]) -> f64 {
+    let [start, end] = ends.map(|end| {
+        end.map_or(ROOT_DRAWN_RADIUS, |at| {
+            dendrite_drawn_radius(soma_distance(world, at))
+        })
+    });
+    diameter_of_drawn_radius((start + end) / 2.0)
+}
+
 pub fn cable_between(
     world: &World,
     from: Entity,
@@ -190,15 +199,9 @@ pub fn cable_between(
     }
     let length = SEGMENT_LENGTH as f64 * MICROMETRES_PER_UNIT;
     if dendritic(world, from) || dendritic(world, to) {
-        let radius = |end: Entity| {
-            position(world, end).map_or(ROOT_DRAWN_RADIUS, |at| {
-                dendrite_drawn_radius(soma_distance(world, at))
-            })
-        };
-        let drawn = (radius(from) + radius(to)) / 2.0;
         let cable = Cable {
             length,
-            diameter: diameter_of_drawn_radius(drawn),
+            diameter: dendrite_diameter(world, [from, to].map(|end| position(world, end))),
         };
         return (cable, dendrite_membrane());
     }

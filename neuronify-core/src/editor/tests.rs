@@ -228,6 +228,146 @@ fn axons_do_not_end_on_their_own_dendrites() {
     assert!(axon_endings(&world).is_empty());
 }
 
+fn grown_dendrites(world: &World, before: &[Entity]) -> Vec<(Entity, Vec3)> {
+    positions_with::<Dendrite>(world)
+        .into_iter()
+        .filter(|(dendrite, _)| !before.contains(dendrite))
+        .collect()
+}
+
+#[test]
+fn dendrites_grow_out_from_a_neuron_one_segment_at_a_time() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    let path: Vec<Vec3> = (1..=20).map(|step| at(0.0, step as f32 * 0.5)).collect();
+    drag(&mut editor(Tool::Dendrite), &mut world, &path);
+
+    assert_eq!(count::<Dendrite>(&world), 5);
+    assert_eq!(count::<Compartment>(&world), 5);
+    assert!(axon_endings(&world).is_empty());
+    let cables: Vec<Connection> = world
+        .query::<&Connection>()
+        .iter()
+        .map(|(_, cable)| cable.clone())
+        .collect();
+    assert_eq!(cables.len(), 5);
+    let z = |entity: Entity| world.get::<&Position>(entity).unwrap().position.z;
+    for cable in cables {
+        assert!(!cable.directional);
+        assert!(world.get::<&Dendrite>(cable.to).is_ok());
+        assert!(z(cable.from) < z(cable.to), "wired from the soma outwards");
+    }
+    assert_eq!(compartment_tree(&world, soma).len(), 5);
+}
+
+#[test]
+fn dendrites_branch_off_the_dendrite_they_start_on() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    spawn_dendrites(&mut world, soma);
+    let tree = compartment_tree(&world, soma);
+    let (tip, tip_position) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .max_by(|(_, a), (_, b)| a.x.total_cmp(&b.x))
+        .unwrap();
+    let path = straight(tip_position, tip_position + at(0.0, 9.0));
+    drag(&mut editor(Tool::Dendrite), &mut world, &path);
+
+    let grown = grown_dendrites(&world, &tree);
+    assert_eq!(grown.len(), 4);
+    let (first, _) = grown
+        .iter()
+        .min_by(|(_, a), (_, b)| {
+            a.distance(tip_position)
+                .total_cmp(&b.distance(tip_position))
+        })
+        .unwrap();
+    assert!(connected(&world, tip, *first));
+    assert_eq!(compartment_tree(&world, soma).len(), tree.len() + 4);
+}
+
+#[test]
+fn dendrites_end_where_they_are_let_go_even_on_another_neuron() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    let other = neuron(&mut world, at(0.0, 12.0));
+    spawn_dendrites(&mut world, other);
+    let others = compartment_tree(&world, other);
+    let path = straight(at(0.0, 0.5), at(0.0, 12.0));
+    drag(&mut editor(Tool::Dendrite), &mut world, &path);
+
+    assert!(axon_endings(&world).is_empty());
+    assert_eq!(compartment_tree(&world, other).len(), others.len());
+    assert_eq!(compartment_tree(&world, soma).len(), 5);
+}
+
+#[test]
+fn a_fast_dendrite_stroke_lays_evenly_spaced_compartments() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    drag(
+        &mut editor(Tool::Dendrite),
+        &mut world,
+        &[at(0.0, 0.5), at(0.0, 12.0)],
+    );
+
+    let mut distances: Vec<f32> = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .map(|(_, position)| position.z)
+        .collect();
+    distances.sort_by(f32::total_cmp);
+    let expected: Vec<f32> = (1..=6).map(|step| step as f32 * SEGMENT_LENGTH).collect();
+    assert_eq!(distances, expected);
+}
+
+#[test]
+fn a_growing_dendrite_reaches_from_its_tip_to_the_pointer() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Dendrite);
+    editor.edit(&mut world, at(0.0, 0.5), false);
+    editor.edit(&mut world, at(0.0, 1.5), false);
+    assert_eq!(
+        editor.dendrite_being_grown(),
+        Some((soma, at(0.0, 0.0), at(0.0, 1.5)))
+    );
+    editor.edit(&mut world, at(0.0, 2.5), false);
+    editor.edit(&mut world, at(0.0, 3.5), false);
+    let (from, start, end) = editor.dendrite_being_grown().unwrap();
+    assert!(world.get::<&Dendrite>(from).is_ok());
+    assert_eq!((start, end), (at(0.0, 2.5), at(0.0, 3.5)));
+    assert_eq!(editor.axon_being_grown(&world), None);
+    assert_eq!(editor.connection_being_drawn(&world), None);
+}
+
+#[test]
+fn an_axon_ending_on_a_drawn_dendrite_makes_its_neuron_fire() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 30.0));
+    let path = straight(at(0.0, 30.0), at(0.0, 20.0));
+    drag(&mut editor(Tool::Dendrite), &mut world, &path);
+    let (_, tip) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .min_by(|(_, a), (_, b)| a.z.total_cmp(&b.z))
+        .unwrap();
+    drag(
+        &mut editor(Tool::Axon),
+        &mut world,
+        &straight(Vec3::ZERO, tip),
+    );
+    assert!(compartment_tree(&world, target).contains(&single_ending(&world).to));
+
+    let (mut engine, mut time) = (Engine::default(), 0.0);
+    engine.sync(&mut world);
+    engine.fire(&world, source);
+    let fired = (0..8000).position(|_| {
+        step_simulation(&mut world, &mut engine, &mut time, 1, None);
+        engine.fired(target)
+    });
+    assert!(fired.is_some());
+}
+
 #[test]
 fn connections_start_only_near_a_source() {
     let mut world = World::new();
@@ -1619,11 +1759,12 @@ fn undo_and_redo_step_through_every_kind_of_edit() {
     editor.compartments = true;
     let excitatory = Tool::Place(Element::ExcitatoryNeuron);
     let mut layouts = vec![layout(&world)];
-    let edits: [(Tool, &[Vec3]); 7] = [
+    let edits: [(Tool, &[Vec3]); 8] = [
         (excitatory, &[at(0.0, 0.0)]),
         (excitatory, &[at(0.0, 20.0)]),
         (Tool::StaticConnection, &[at(0.0, 0.5), at(0.0, 19.5)]),
         (Tool::Axon, &[at(0.0, 20.5), at(20.0, 20.0)]),
+        (Tool::Dendrite, &[at(0.0, -0.5), at(-2.0, -9.0)]),
         (Tool::Edit, &[at(0.0, 0.5), at(-5.0, 3.5)]),
         (Tool::Voltmeter, &[at(-4.5, 3.0)]),
         (Tool::Erase, &[at(0.0, 20.0)]),

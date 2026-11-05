@@ -26,7 +26,7 @@ pub mod voltmeter;
 pub use bounds::{canvas_bounds, circuit_bounds, Bounds};
 pub use colors::{srgb, srgb_component, Palette, Theme};
 pub use connections::{collect_meter_wires, connection_being_drawn};
-pub use cylinders::{collect_cylinders, compartment_radii, growing_axon};
+pub use cylinders::{collect_cylinders, compartment_radii, growing_axon, growing_dendrite};
 pub use floor::create_floor;
 pub use gauges::GaugeRenderer;
 pub use ghost::Ghost;

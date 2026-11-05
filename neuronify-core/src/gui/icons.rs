@@ -6,7 +6,7 @@ use glam::Vec3;
 
 use crate::elements::Element;
 use crate::rendering::colors::{
-    adaptation_gauge_color, burst_gauge_color, orange, speaker_color, terminal_color, yellow,
+    adaptation_gauge_color, burst_gauge_color, orange, paler, speaker_color, terminal_color, yellow,
 };
 use crate::rendering::shapes::{hand_outline, speaker_outline, speaker_waves};
 use crate::rendering::Theme;
@@ -680,6 +680,25 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
             }
             for node in nodes {
                 painter.circle_filled(node, 1.9 * scale, excitatory);
+            }
+        }
+        Tool::Dendrite => {
+            let dendrite = linear(paler(palette.excitatory));
+            let [root, fork, upper, lower] =
+                [(5.0, 26.0), (15.0, 15.5), (25.5, 6.5), (27.0, 18.0)].map(|(x, y)| at(x, y));
+            painter.line_segment([root, fork], stroke(4.0, dendrite));
+            for tip in [upper, lower] {
+                painter.line_segment([fork, tip], stroke(2.6, dendrite));
+            }
+            for (x, y) in [
+                (9.7, 24.5),
+                (9.8, 17.5),
+                (20.4, 13.3),
+                (21.7, 7.4),
+                (20.0, 18.4),
+                (25.0, 15.7),
+            ] {
+                painter.circle_filled(at(x, y), 1.5 * scale, dendrite);
             }
         }
         Tool::Place(Element::Note) => {
