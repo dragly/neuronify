@@ -392,8 +392,8 @@ const SIDEWAYS_PULL: f64 = 1.0 * NANOAMPERE;
 fn sharpening_edges() -> World {
     let mut canvas = Canvas::new();
     NeuronDisplay {
-        voltage: true,
         firing_rate: true,
+        ..Default::default()
     }
     .set_in(&mut canvas.world);
     canvas.text(

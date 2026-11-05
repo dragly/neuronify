@@ -508,8 +508,8 @@ const SIDEWAYS_PULL: f64 = 1.5 * NANOAMPERE;
 pub fn lateral_inhibition() -> World {
     let mut sheet = Sheet::new();
     NeuronDisplay {
-        voltage: true,
         firing_rate: true,
+        ..Default::default()
     }
     .set_in(&mut sheet.world);
     sheet.text(

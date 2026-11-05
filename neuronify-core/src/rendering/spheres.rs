@@ -7,13 +7,14 @@ use crate::components::*;
 use crate::constants::*;
 use crate::measurement::visual_input::VisualInput;
 use crate::rendering::colors::*;
-use crate::rendering::cylinders::{sheaths, SHEATH_RADIUS};
+use crate::rendering::cylinders::{sheath_radius, sheaths};
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::shapes::{generator_color, shown_voltage, soma_color};
+use crate::simulation::model::{drawn_radius, soma_diameter};
 
 pub const SPINES_PER_CABLE: usize = 4;
-const SPINE_RADIUS: f32 = 0.12;
+const SPINE_HEAD_DIAMETER: f64 = 0.5;
 
 fn spines(
     world: &hecs::World,
@@ -56,6 +57,7 @@ fn spines(
             continue;
         };
         let side = Vec3::Y.cross(end - start).normalize_or_zero();
+        let head = drawn_radius(SPINE_HEAD_DIAMETER, display);
         for spine in 0..SPINES_PER_CABLE {
             let fraction = (spine as f32 + 0.5) / SPINES_PER_CABLE as f32;
             let flip = if (cable.id() as usize + spine).is_multiple_of(2) {
@@ -68,7 +70,7 @@ fn spines(
             spines.push(Sphere {
                 position: start.lerp(end, fraction) + side * flip * thickness,
                 color: palette.dendrite(&neuron_type, voltage),
-                radius: SPINE_RADIUS,
+                radius: head,
                 _padding: Default::default(),
             });
         }
@@ -95,7 +97,10 @@ pub fn collect_spheres(
             .map(|(entity, (neuron, state, position))| Sphere {
                 position: position.position,
                 color: soma_color(world, entity, neuron, state, &display, palette),
-                radius: NODE_RADIUS,
+                radius: match display.true_proportions {
+                    true => drawn_radius(soma_diameter(world, entity), &display),
+                    false => NODE_RADIUS,
+                },
                 _padding: Default::default(),
             }),
     );
@@ -140,6 +145,7 @@ pub fn collect_spheres(
     );
 
     spheres.extend(spines(world, radii, &display, palette));
+    let sheath_radius = sheath_radius(&display);
     spheres.extend(sheaths(world, palette).into_iter().flat_map(|sheath| {
         [
             (sheath.start, sheath.start_color),
@@ -148,7 +154,7 @@ pub fn collect_spheres(
         .map(|(position, color)| Sphere {
             position,
             color,
-            radius: SHEATH_RADIUS,
+            radius: sheath_radius,
             _padding: Default::default(),
         })
     }));

@@ -120,8 +120,8 @@ mod tests {
             ));
         }
         NeuronDisplay {
-            voltage: true,
             firing_rate: shown,
+            ..Default::default()
         }
         .set_in(&mut world);
         world

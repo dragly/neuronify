@@ -430,7 +430,7 @@ mod tests {
         let color = |voltage: bool| {
             let display = NeuronDisplay {
                 voltage,
-                firing_rate: false,
+                ..Default::default()
             };
             soma_color(&world, entity, &neuron, &state, &display, &palette)
         };

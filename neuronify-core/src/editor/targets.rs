@@ -7,7 +7,7 @@ use crate::components::*;
 use crate::constants::SELECTION_RANGE;
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::bounds::note_corners;
-use crate::rendering::cylinders::SHEATH_RADIUS;
+use crate::rendering::cylinders::sheath_radius;
 use crate::rendering::{compartment_radii, element_radius};
 
 use super::{meter_frames, nearest_within};
@@ -228,6 +228,7 @@ impl Targets {
 
 fn cable_halves(world: &World, radii: &HashMap<Entity, f32>) -> Vec<Piece> {
     let mut halves = Vec::new();
+    let sheath = sheath_radius(&NeuronDisplay::of(world));
     let cables = world
         .query::<(&Connection, Option<&Myelin>)>()
         .with::<&Cable>()
@@ -250,11 +251,7 @@ fn cable_halves(world: &World, radii: &HashMap<Entity, f32>) -> Vec<Piece> {
                 position,
                 start: position,
                 end: middle,
-                radius: if sheathed {
-                    radius.max(SHEATH_RADIUS)
-                } else {
-                    radius
-                },
+                radius: if sheathed { radius.max(sheath) } else { radius },
             });
         }
     }

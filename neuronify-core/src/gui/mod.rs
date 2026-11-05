@@ -459,7 +459,13 @@ fn menu(
                 let mut display = NeuronDisplay::of(controls.world);
                 let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);
                 let firing_rate = switch(ui, chrome, "Show firing rate", &mut display.firing_rate);
-                if voltage.changed() || firing_rate.changed() {
+                let proportions = switch(
+                    ui,
+                    chrome,
+                    "True proportions",
+                    &mut display.true_proportions,
+                );
+                if voltage.changed() || firing_rate.changed() || proportions.changed() {
                     display.set_in(controls.world);
                 }
                 labelled_row(ui, chrome, "Frame rate", |ui| {

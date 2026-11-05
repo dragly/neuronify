@@ -27,6 +27,7 @@ pub trait Setting: hecs::Component + Copy + Default {
 pub struct NeuronDisplay {
     pub voltage: bool,
     pub firing_rate: bool,
+    pub true_proportions: bool,
 }
 
 impl Default for NeuronDisplay {
@@ -34,6 +35,7 @@ impl Default for NeuronDisplay {
         Self {
             voltage: true,
             firing_rate: false,
+            true_proportions: false,
         }
     }
 }

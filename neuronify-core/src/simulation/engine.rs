@@ -882,6 +882,32 @@ impl Engine {
                 }
             }
         }
+        let mut missing = Vec::new();
+        for &(entity, index, cable) in &self.cables {
+            let tree = self.network.tree(index);
+            let points = tree.cable_points(cable);
+            let inner = &points[1..points.len() - 1];
+            if inner.is_empty() {
+                continue;
+            }
+            let voltages = inner.iter().map(|&point| tree.voltage(point));
+            match world.get::<&mut CableState>(entity) {
+                Ok(mut state) => {
+                    state.voltage.clear();
+                    state.voltage.extend(voltages);
+                }
+                Err(_) => missing.push((
+                    entity,
+                    CableState {
+                        voltage: voltages.collect(),
+                        gates: inner.iter().flat_map(|&point| tree.gates(point)).collect(),
+                    },
+                )),
+            }
+        }
+        for (entity, state) in missing {
+            let _ = world.insert_one(entity, state);
+        }
         for &(entity, generator) in &self.generators {
             if let Ok(mut dynamics) = world.get::<&mut GeneratorDynamics>(entity) {
                 dynamics.time_since_fire = self.network.generators[generator].since;

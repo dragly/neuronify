@@ -81,6 +81,11 @@ fn scale<T: Component>(world: &mut World, convert: impl Fn(&mut T)) {
 }
 
 pub fn upgrade_from_v11(world: &mut World) {
+    replace(world, |old: v11::NeuronDisplay| NeuronDisplay {
+        voltage: old.voltage,
+        firing_rate: old.firing_rate,
+        true_proportions: false,
+    });
     let neurons: Vec<Entity> = world
         .query::<()>()
         .with::<&v11::LeakyNeuron>()
