@@ -19,6 +19,7 @@ pub mod rendering;
 pub mod serialization;
 pub mod settings;
 pub mod simulation;
+pub mod third_party;
 pub mod tools;
 #[cfg(target_arch = "wasm32")]
 mod web;
