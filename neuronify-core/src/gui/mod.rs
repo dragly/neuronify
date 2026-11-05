@@ -85,9 +85,10 @@ impl Gui {
     }
 
     pub fn show(&mut self, context: &Context, controls: Controls) -> Option<MenuChoice> {
-        if controls.editor.tool.edits() {
-            history_shortcuts(context, controls.editor, controls.world);
+        if controls.editor.selection.is_some() && !controls.editor.tool.edits() {
+            controls.editor.tool = Tool::Edit;
         }
+        history_shortcuts(context, controls.editor, controls.world);
         self.rail.shortcuts(context, controls.editor);
         if is_compact(context.content_rect()) {
             self.compact(context, controls)
@@ -159,9 +160,6 @@ impl Gui {
     }
 
     fn compact(&mut self, context: &Context, mut controls: Controls) -> Option<MenuChoice> {
-        if controls.editor.selection.is_some() && !controls.editor.tool.edits() {
-            controls.editor.tool = Tool::Edit;
-        }
         let theme = *controls.theme;
         let chrome = Chrome::of(theme);
         let editing = controls.editor.tool.edits();
