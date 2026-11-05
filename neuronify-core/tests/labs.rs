@@ -10,8 +10,12 @@ use hecs::{Entity, World};
 use neuronify_core::constants::DT;
 use neuronify_core::editor::Editor;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
+use neuronify_core::measurement::visual_input::{
+    direction_badge, watched_picture, ReceptiveFieldCell, VisualInput,
+};
 use neuronify_core::measurement::voltmeter::measured;
-use neuronify_core::rendering::canvas_bounds;
+use neuronify_core::rendering::halos::collect_halos;
+use neuronify_core::rendering::{canvas_bounds, Theme};
 use neuronify_core::serialization::{load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
@@ -550,7 +554,11 @@ fn compass_turn_currents_light_nothing_without_a_bump() {
 }
 
 const PHONE_WIDTH: f32 = 27.0;
-const SHEETS: [&str; 2] = ["hopfield.neuronify", "hopfield_overloaded.neuronify"];
+const SHEETS: [&str; 3] = [
+    "hopfield.neuronify",
+    "hopfield_overloaded.neuronify",
+    "direction_selectivity.neuronify",
+];
 
 #[test]
 fn every_lab_written_as_a_sheet_fits_an_upright_phone() {
@@ -777,4 +785,260 @@ fn hopfield_reset_is_labelled() {
     let world = Lab::load(HOPFIELD).world;
     let reset = labelled(&world, write_labs::RESET);
     assert_eq!(neuron_type(&world, reset), NeuronType::Inhibitory);
+}
+
+const DIRECTION_SELECTIVITY: &str = "direction_selectivity.neuronify";
+
+struct DirectionLab {
+    world: World,
+    receptors: Vec<Entity>,
+    rightward: Vec<Entity>,
+    output: Entity,
+}
+
+fn direction_lab() -> DirectionLab {
+    let world = Lab::load(DIRECTION_SELECTIVITY).world;
+    DirectionLab {
+        receptors: write_labs::RECEPTORS
+            .iter()
+            .map(|&label| labelled(&world, label))
+            .collect(),
+        rightward: write_labs::PAIRS
+            .iter()
+            .map(|&label| labelled(&world, label))
+            .collect(),
+        output: labelled(&world, write_labs::OUTPUT),
+        world,
+    }
+}
+
+fn visual_inputs(world: &World) -> Vec<Entity> {
+    world
+        .query::<(Entity, &VisualInput)>()
+        .iter()
+        .map(|(entity, _)| entity)
+        .collect()
+}
+
+fn at_speed(mut world: World, speed: Hertz) -> World {
+    for input in world.query_mut::<&mut VisualInput>() {
+        input.speed = Hertz(speed.0.copysign(input.speed.0));
+    }
+    world
+}
+
+fn reversed(mut world: World) -> World {
+    let picture = world
+        .query::<&Position>()
+        .with::<&VisualInput>()
+        .iter()
+        .map(|picture| picture.position)
+        .next()
+        .expect("the lab has a picture");
+    let mut editor = Editor::default();
+    assert!(editor.reverse_picture_at(&mut world, direction_badge(picture)));
+    world
+}
+
+struct Sweep {
+    lab: Lab,
+    passes: usize,
+}
+
+impl Sweep {
+    fn run(world: World, passes: usize) -> Sweep {
+        let picture = visual_inputs(&world)[0];
+        let speed = world.get::<&VisualInput>(picture).unwrap().speed.abs();
+        let mut lab = Lab {
+            world,
+            engine: Engine::default(),
+            editor: Editor::default(),
+            time: Milliseconds::ZERO,
+            spikes: Vec::new(),
+        };
+        lab.run_until((passes as f64 / speed).to_milliseconds());
+        Sweep { lab, passes }
+    }
+
+    fn per_pass(&self, cells: &[Entity]) -> Vec<f64> {
+        self.lab
+            .spike_counts(cells, Milliseconds::ZERO, self.lab.time)
+            .into_iter()
+            .map(|count| count as f64 / self.passes as f64)
+            .collect()
+    }
+
+    fn first_spikes(&self, cells: &[Entity]) -> Vec<Milliseconds> {
+        cells
+            .iter()
+            .map(|&cell| {
+                self.lab
+                    .spike_times(cell)
+                    .first()
+                    .copied()
+                    .unwrap_or(Milliseconds(f64::NAN))
+            })
+            .collect()
+    }
+}
+
+#[test]
+fn direction_selectivity_opens_at_the_fastest_playback_with_five_fields_on_one_picture() {
+    let path = format!(
+        "{}/examples/labs/{DIRECTION_SELECTIVITY}",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let saved = load_from_bytes(&std::fs::read(path).unwrap()).unwrap();
+    assert_eq!(saved.speed, 8.0);
+    let pictures = visual_inputs(&saved.world);
+    assert_eq!(pictures.len(), 1);
+    let fields: Vec<Entity> = saved
+        .world
+        .query::<(Entity, &ReceptiveFieldCell)>()
+        .iter()
+        .map(|(cell, _)| cell)
+        .collect();
+    assert_eq!(fields.len(), 5);
+    for field in fields {
+        assert_eq!(watched_picture(&saved.world, field), Some(pictures[0]));
+    }
+    let picture = saved.world.get::<&VisualInput>(pictures[0]).unwrap();
+    assert_eq!(picture.speed, write_labs::PICTURE_SPEED);
+}
+
+#[test]
+fn direction_selectivity_has_one_right_neuron_between_each_two_receptors_all_sending_to_the_output()
+{
+    let lab = direction_lab();
+    let position = |cell: Entity| lab.world.get::<&Position>(cell).unwrap().position;
+    assert_eq!(lab.rightward.len(), lab.receptors.len() - 1);
+    for (index, &cell) in lab.rightward.iter().enumerate() {
+        let between =
+            (position(lab.receptors[index]).z + position(lab.receptors[index + 1]).z) / 2.0;
+        assert!((position(cell).z - between).abs() < 1e-3);
+        assert!(position(lab.output).x < position(cell).x);
+        let to_output = lab
+            .world
+            .query::<&Connection>()
+            .with::<&neuronify_core::CurrentSynapse>()
+            .iter()
+            .filter(|connection| connection.from == cell && connection.to == lab.output)
+            .count();
+        assert_eq!(to_output, 1);
+    }
+    let others: Vec<Entity> = lab
+        .world
+        .query::<(Entity, &LeakyNeuron)>()
+        .iter()
+        .map(|(cell, _)| cell)
+        .filter(|&cell| neuron_type(&lab.world, cell) == NeuronType::Excitatory)
+        .filter(|cell| !lab.receptors.contains(cell) && !lab.rightward.contains(cell))
+        .collect();
+    assert_eq!(others, [lab.output]);
+}
+
+#[test]
+fn direction_selectivity_opens_showing_all_connections_with_nothing_selected() {
+    let lab = direction_lab();
+    assert_eq!(ConnectionView::of(&lab.world), ConnectionView::All);
+    assert_eq!(Selected::entity(&lab.world), None);
+}
+
+#[test]
+fn direction_selectivity_draws_no_firing_rate_halos() {
+    let sweep = Sweep::run(direction_lab().world, 1);
+    assert!(collect_halos(&sweep.lab.world, &Theme::Dark.palette()).is_empty());
+}
+
+#[test]
+fn direction_selectivity_spike_detector_lists_the_receptors_then_the_right_neurons_then_the_output()
+{
+    let lab = direction_lab();
+    let detector = lab
+        .world
+        .query::<(Entity, &SpikeDetector)>()
+        .iter()
+        .map(|(entity, _)| entity)
+        .next()
+        .unwrap();
+    let rows: Vec<Entity> = measured(&lab.world, detector)
+        .into_iter()
+        .map(|(_, neuron)| neuron)
+        .collect();
+    let expected: Vec<Entity> = [&lab.receptors, &lab.rightward, &vec![lab.output]]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
+    assert_eq!(rows, expected);
+}
+
+#[test]
+fn the_right_neurons_fire_one_after_another_as_the_bar_moves_right_and_drive_the_output() {
+    let lab = direction_lab();
+    let sweep = Sweep::run(lab.world, 4);
+    let right = sweep.per_pass(&lab.rightward);
+    let output = sweep.per_pass(&[lab.output])[0];
+    assert!(
+        right.iter().all(|&spikes| spikes >= 1.0),
+        "{right:?} {output}"
+    );
+    assert!(output >= 3.0, "{right:?} {output}");
+    let first = sweep.first_spikes(&lab.rightward);
+    assert!(first.windows(2).all(|pair| pair[0] < pair[1]), "{first:?}");
+}
+
+#[test]
+fn a_bar_moving_left_leaves_the_right_neurons_and_the_output_silent() {
+    let lab = direction_lab();
+    let sweep = Sweep::run(reversed(lab.world), 4);
+    let right = sweep.per_pass(&lab.rightward);
+    let output = sweep.per_pass(&[lab.output])[0];
+    assert!(right.iter().sum::<f64>() < 0.5, "{right:?} {output}");
+    assert_eq!(output, 0.0, "{right:?}");
+}
+
+#[test]
+fn a_slow_bar_moving_left_fires_the_output_too_once_the_inhibition_wears_off() {
+    let lab = direction_lab();
+    let sweep = Sweep::run(at_speed(reversed(lab.world), Hertz(1.0)), 3);
+    let right: f64 = sweep.per_pass(&lab.rightward).iter().sum();
+    let output = sweep.per_pass(&[lab.output])[0];
+    assert!(right >= 4.0, "{right} {output}");
+    assert!(output >= 1.0, "{right} {output}");
+}
+
+#[test]
+fn without_the_inhibitory_partner_of_c_the_right_neuron_between_b_and_c_fires_for_a_leftward_bar() {
+    let mut lab = direction_lab();
+    let c = lab.receptors[2];
+    let world = &mut lab.world;
+    let partner = world
+        .query::<&Connection>()
+        .iter()
+        .map(|connection| connection.to)
+        .find(|&to| {
+            world
+                .query::<&Connection>()
+                .iter()
+                .any(|connection| connection.from == c && connection.to == to)
+                && neuron_type(world, to) == NeuronType::Inhibitory
+        })
+        .unwrap();
+    let touching: Vec<Entity> = world
+        .query::<(Entity, &Connection)>()
+        .iter()
+        .filter(|(_, connection)| connection.from == partner || connection.to == partner)
+        .map(|(connection, _)| connection)
+        .collect();
+    for connection in touching {
+        world.despawn(connection).unwrap();
+    }
+    world.despawn(partner).unwrap();
+    let sweep = Sweep::run(reversed(lab.world), 4);
+    let right = sweep.per_pass(&lab.rightward);
+    assert!(right[1] >= 1.0, "{right:?}");
+    for others in [right[0], right[2], right[3]] {
+        assert!(10.0 * others <= right[1], "{right:?}");
+    }
 }

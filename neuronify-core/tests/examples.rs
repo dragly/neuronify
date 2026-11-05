@@ -473,43 +473,6 @@ fn lateral_inhibition_sharpens_the_middle_of_the_touch() {
     assert_eq!(outputs[1], outputs[3]);
 }
 
-fn output_spikes_after_a_sweep(right_to_left: bool, interval: Milliseconds) -> usize {
-    let mut experiment = Experiment::new(write_examples::direction_selectivity());
-    let mut sensors = experiment.sensors_from_left();
-    if right_to_left {
-        sensors.reverse();
-    }
-    let presses: usize = sensors
-        .into_iter()
-        .map(|sensor| experiment.presses(sensor, 1, interval, "Output"))
-        .sum();
-    presses + experiment.spikes_during(Milliseconds(100.0), "Output")
-}
-
-#[test]
-fn the_output_fires_for_a_sweep_from_right_to_left_but_not_from_left_to_right() {
-    for interval in [1.0, 3.0, 8.0, 15.0].map(Milliseconds) {
-        assert!(
-            output_spikes_after_a_sweep(true, interval) >= 1,
-            "{interval}"
-        );
-        assert_eq!(
-            output_spikes_after_a_sweep(false, interval),
-            0,
-            "{interval}"
-        );
-    }
-}
-
-#[test]
-fn a_single_press_does_not_fire_the_direction_detector() {
-    let mut experiment = Experiment::new(write_examples::direction_selectivity());
-    for sensor in experiment.sensors_from_left() {
-        experiment.press(sensor);
-        assert_eq!(experiment.spikes_during(Milliseconds(100.0), "Output"), 0);
-    }
-}
-
 #[test]
 fn each_neuron_fires_when_the_dot_crosses_its_own_field_and_never_on_the_far_side() {
     let mut experiment = Experiment::new(write_examples::receptive_fields());
