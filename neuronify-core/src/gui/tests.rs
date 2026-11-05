@@ -421,6 +421,15 @@ fn the_inspector_shows_the_selection() {
 }
 
 #[test]
+fn a_selection_starts_editing_on_desktops_and_phones() {
+    for screen in [SCREEN, PHONE] {
+        let (world, neuron) = one_neuron();
+        let harness = Harness::sized(screen, false, world, Some(neuron));
+        assert_eq!(harness.editor.tool, Tool::Edit);
+    }
+}
+
+#[test]
 fn the_inspector_explains_each_setting() {
     let (world, neuron) = one_neuron();
     let harness = Harness::with(true, world, Some(neuron));
@@ -859,6 +868,17 @@ fn ctrl_z_undoes_and_ctrl_shift_z_or_ctrl_y_redoes() {
     harness.press(Modifiers::COMMAND, Key::Z);
     harness.press(Modifiers::COMMAND, Key::Y);
     assert!(!harness.world.contains(neuron));
+}
+
+#[test]
+fn ctrl_z_undoes_while_viewing_too() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+    harness.editor.erase_selection(&mut harness.world);
+    harness.editor.tool = Tool::View;
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert!(harness.world.contains(neuron));
+    assert_eq!(harness.editor.tool, Tool::View);
 }
 
 #[test]

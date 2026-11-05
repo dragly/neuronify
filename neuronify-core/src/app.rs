@@ -156,10 +156,6 @@ fn is_press(event: &Event<CustomEvent>) -> bool {
     )
 }
 
-fn is_compact(application: &visula::Application) -> bool {
-    gui::is_compact(application.egui_renderer.state.egui_ctx().content_rect())
-}
-
 fn gui_takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
     let context = application.egui_renderer.state.egui_ctx();
     let point = egui::pos2(position.x as f32, position.y as f32) / context.pixels_per_point();
@@ -558,7 +554,7 @@ impl visula::Simulation for Neuronify {
         if self.tapped_background && !self.touches.may_double_tap(input::now()) {
             self.tapped_background = false;
             self.editor.selection = None;
-            if self.editing() && is_compact(application) {
+            if self.editing() {
                 self.editor.tool = Tool::View;
             }
         }
@@ -566,11 +562,7 @@ impl visula::Simulation for Neuronify {
             self.move_pointer(application, position);
             self.press_pointer(application, true);
         }
-        let holds = if self.editing() {
-            matches!(self.editor.tool, Tool::Place(_))
-        } else {
-            is_compact(application)
-        };
+        let holds = !self.editing() || matches!(self.editor.tool, Tool::Place(_));
         let now = input::now();
         let mut grabbed = false;
         if holds {
