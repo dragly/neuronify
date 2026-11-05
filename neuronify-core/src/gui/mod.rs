@@ -1,3 +1,4 @@
+mod hitboxes;
 pub(crate) mod icons;
 mod inspector;
 mod playback;
@@ -18,6 +19,7 @@ use crate::components::{NeuronDisplay, Setting};
 use crate::editor::Editor;
 use crate::rendering::Theme;
 use crate::tools::Tool;
+pub use hitboxes::paint_hitboxes;
 use icons::Icon;
 use inspector::{Inspector, Placement};
 use playback::BAR_HEIGHT;

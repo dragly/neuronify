@@ -2,7 +2,7 @@ use crate::audio::{schedule, Speakers};
 use crate::camera;
 use crate::components::Link;
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
-use crate::editor::{Editor, Pan};
+use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
@@ -48,6 +48,17 @@ pub struct Neuronify {
     speakers: Speakers,
     library: Library,
     autosave: Autosave,
+    hitboxes: bool,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn debug_view() -> Option<String> {
+    crate::web::debug_view()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn debug_view() -> Option<String> {
+    std::env::var("NEURONIFY_DEBUG").ok()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -182,6 +193,7 @@ impl Neuronify {
             speakers: Speakers::default(),
             library: Library::open(),
             autosave,
+            hitboxes: debug_view().as_deref() == Some("hitboxes"),
         }
     }
 
@@ -276,6 +288,19 @@ impl Neuronify {
         self.ghost
             .get_or_insert_with(|| Ghost::new(element, anchor))
             .follow(element, anchor, self.touch_input, seconds as f32);
+    }
+
+    fn paint_hitboxes(&self, application: &visula::Application, context: &egui::Context) {
+        let targets = Targets::new(&self.world);
+        let ground = camera::positions_at_height(application, 0.0);
+        let pixels_per_point = context.pixels_per_point();
+        gui::paint_hitboxes(context, |point| {
+            let pixel = |coordinate: f32| f64::from(coordinate * pixels_per_point);
+            let position = ground(PhysicalPosition::new(pixel(point.x), pixel(point.y)));
+            self.editor
+                .hold_target(&targets, position)
+                .map(|(entity, _)| entity)
+        });
     }
 
     fn connection_hint(&mut self) -> Option<ConnectionHint> {
@@ -596,6 +621,9 @@ impl visula::Simulation for Neuronify {
                 tip.y as f32 / pixels_per_point,
             );
             gui::connection_hint(context, self.theme, tip, hint.shown);
+        }
+        if self.hitboxes {
+            self.paint_hitboxes(application, context);
         }
     }
 

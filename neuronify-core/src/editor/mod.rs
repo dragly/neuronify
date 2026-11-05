@@ -24,8 +24,11 @@ use history::{History, Recording, Snapshot};
 
 mod drag;
 mod history;
+mod targets;
 #[cfg(test)]
 mod tests;
+
+pub use targets::Targets;
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const COMPARTMENT_REACH: f32 = NODE_RADIUS;
@@ -376,7 +379,8 @@ impl Editor {
         if self.stimulation_tool.is_some() {
             return;
         }
-        let tapped = entity_at(world, &meter_frames(world), position)
+        let tapped = Targets::new(world)
+            .at(position)
             .map(|(entity, _)| entity)
             .or_else(|| connection_at(world, position));
         match tapped {
@@ -386,8 +390,7 @@ impl Editor {
     }
 
     pub fn empty_at(&self, world: &World, position: Vec3) -> bool {
-        entity_at(world, &meter_frames(world), position).is_none()
-            && connection_at(world, position).is_none()
+        Targets::new(world).at(position).is_none() && connection_at(world, position).is_none()
     }
 
     fn select_entity(&mut self, entity: Entity) {
@@ -406,7 +409,7 @@ impl Editor {
             Some((pressed, pressed_position))
         });
         let Some((entity, entity_position)) =
-            pressed.or_else(|| entity_at(world, &meter_frames(world), position))
+            pressed.or_else(|| self.hold_target(&Targets::new(world), position))
         else {
             return false;
         };
@@ -420,6 +423,10 @@ impl Editor {
         }
         self.grab(world, entity, entity_position, position);
         true
+    }
+
+    pub fn hold_target(&self, targets: &Targets, position: Vec3) -> Option<(Entity, Vec3)> {
+        targets.at(position)
     }
 
     pub fn move_held(&mut self) {
@@ -479,7 +486,8 @@ impl Editor {
             start_connection(candidates, position).or_else(|| self.pull_offer(world, position));
         self.offer = None;
         let compartments = positions_with::<Compartment>(world);
-        let under = entity_at(world, &meter_frames(world), position)
+        let under = Targets::new(world)
+            .at(position)
             .or_else(|| nearest_within(compartments, position, CONNECTION_REACH))
             .map(|(entity, _)| entity);
         self.pressed = connection
@@ -687,7 +695,7 @@ impl Editor {
         if self.resizing.is_some() {
             return;
         }
-        match entity_at(world, &frames, position) {
+        match Targets::new(world).at(position) {
             Some((entity, entity_position)) => {
                 self.selection = Some(entity);
                 self.grab(world, entity, entity_position, position);
@@ -733,19 +741,6 @@ fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
     [meters, visual_inputs].concat()
 }
 
-fn entity_at(
-    world: &World,
-    frames: &[(Entity, Vec3, Frame)],
-    position: Vec3,
-) -> Option<(Entity, Vec3)> {
-    frames
-        .iter()
-        .find(|(_, _, frame)| frame.contains(position))
-        .map(|&(voltmeter, voltmeter_position, _)| (voltmeter, voltmeter_position))
-        .or_else(|| element_near(world, position))
-        .or_else(|| note_under(world, position))
-}
-
 fn positions_with<T: Component>(world: &World) -> Vec<(Entity, Vec3)> {
     world
         .query::<&Position>()
@@ -756,7 +751,7 @@ fn positions_with<T: Component>(world: &World) -> Vec<(Entity, Vec3)> {
 }
 
 fn nearest_within(
-    candidates: Vec<(Entity, Vec3)>,
+    candidates: impl IntoIterator<Item = (Entity, Vec3)>,
     position: Vec3,
     reach: f32,
 ) -> Option<(Entity, Vec3)> {
@@ -856,8 +851,7 @@ fn measurable_near(world: &World, meter: Meter, position: Vec3) -> Option<(Entit
     ]
     .concat()
     .into_iter()
-    .filter(|&(target, _)| meter.measures(world, target))
-    .collect();
+    .filter(|&(target, _)| meter.measures(world, target));
     nearest_within(candidates, position, CONNECTION_REACH)
 }
 
@@ -914,7 +908,7 @@ fn measure_where_released(world: &mut World, meter: Meter, wire: &ConnectionTool
             _ => Vec3::X,
         };
         meter.spawn(world, wire.start + offset)
-    } else if entity_at(world, &meter_frames(world), wire.end).is_none() {
+    } else if Targets::new(world).at(wire.end).is_none() {
         spawn_meter_centered(world, meter, wire.end)
     } else {
         return;
@@ -983,8 +977,7 @@ fn foreign_compartment_near(world: &World, axon: Entity, position: Vec3) -> Opti
     let own = cable_network(world, axon);
     let foreign = positions_with::<Compartment>(world)
         .into_iter()
-        .filter(|(compartment, _)| !own.contains(compartment))
-        .collect();
+        .filter(|(compartment, _)| !own.contains(compartment));
     nearest_within(foreign, position, COMPARTMENT_REACH).map(|(compartment, _)| compartment)
 }
 
@@ -1002,29 +995,6 @@ fn connection_at(world: &World, position: Vec3) -> Option<Entity> {
     })
     .min_by(|(_, a), (_, b)| a.total_cmp(b))
     .map(|(connection, _)| connection)
-}
-
-fn element_near(world: &World, position: Vec3) -> Option<(Entity, Vec3)> {
-    let elements = world
-        .query::<&Position>()
-        .without::<&Annotation>()
-        .iter()
-        .map(|(entity, element)| (entity, element.position))
-        .collect();
-    nearest_within(elements, position, SELECTION_RANGE)
-}
-
-fn note_under(world: &World, position: Vec3) -> Option<(Entity, Vec3)> {
-    world
-        .query::<(&Position, &NoteSize)>()
-        .with::<&Annotation>()
-        .iter()
-        .filter(|(_, (note, size))| {
-            let offset = position - note.position;
-            offset.x.abs() <= size.height * 0.5 && offset.z.abs() <= size.width * 0.5
-        })
-        .max_by_key(|(entity, _)| entity.id())
-        .map(|(entity, (note, _))| (entity, note.position))
 }
 
 fn resizable(world: &World, entity: Entity) -> Option<Frame> {
