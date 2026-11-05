@@ -34,19 +34,28 @@ pub fn position_at_height(
     position: PhysicalPosition<f64>,
     height: f32,
 ) -> Vec3 {
-    let ndc_x = 2.0 * position.x as f32 / application.config.width as f32 - 1.0;
-    let ndc_y = 1.0 - 2.0 * position.y as f32 / application.config.height as f32;
-    let ray_clip = Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
-    let aspect_ratio = application.config.width as f32 / application.config.height as f32;
+    positions_at_height(application, height)(position)
+}
+
+pub fn positions_at_height(
+    application: &visula::Application,
+    height: f32,
+) -> impl Fn(PhysicalPosition<f64>) -> Vec3 {
+    let width = application.config.width as f32;
+    let screen_height = application.config.height as f32;
     let camera = &application.camera_controller;
-    let ray_eye = camera.projection_matrix(aspect_ratio).inverse() * ray_clip;
-    let ray_eye = Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
-    let ray_world = (camera.view_matrix().inverse() * ray_eye)
-        .truncate()
-        .normalize();
+    let eye_from_clip = camera.projection_matrix(width / screen_height).inverse();
+    let world_from_eye = camera.view_matrix().inverse();
     let ray_origin = camera.position();
-    let t = (height - ray_origin.y) / ray_world.y;
-    ray_origin + t * ray_world
+    move |position| {
+        let ndc_x = 2.0 * position.x as f32 / width - 1.0;
+        let ndc_y = 1.0 - 2.0 * position.y as f32 / screen_height;
+        let ray_eye = eye_from_clip * Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
+        let ray_eye = Vec4::new(ray_eye.x, ray_eye.y, -1.0, 0.0);
+        let ray_world = (world_from_eye * ray_eye).truncate().normalize();
+        let t = (height - ray_origin.y) / ray_world.y;
+        ray_origin + t * ray_world
+    }
 }
 
 pub fn screen_position(application: &visula::Application, position: Vec3) -> PhysicalPosition<f64> {

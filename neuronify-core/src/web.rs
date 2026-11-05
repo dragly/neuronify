@@ -204,10 +204,18 @@ fn name_in(url: &str) -> String {
 }
 
 fn requested_file() -> Option<String> {
+    search_parameter("file")
+}
+
+pub fn debug_view() -> Option<String> {
+    search_parameter("debug")
+}
+
+fn search_parameter(name: &str) -> Option<String> {
     let search = web_sys::window()?.location().search().ok()?;
     web_sys::UrlSearchParams::new_with_str(&search)
         .ok()?
-        .get("file")
+        .get(name)
 }
 
 async fn fetch_bytes(url: &str) -> Result<Vec<u8>, JsValue> {
