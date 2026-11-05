@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
@@ -7,7 +8,7 @@ use crate::components::Link;
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
-use crate::gui::{self, Gui, MenuChoice, Saving};
+use crate::gui::{self, Gui, HoldRing, MenuChoice, Saving};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
@@ -25,6 +26,7 @@ use crate::tools::{ConnectionHint, Tool};
 #[cfg(target_arch = "wasm32")]
 const SAVED_NAME: &str = "circuit.neuronify";
 const HITBOX_TILE: f32 = 32.0;
+const RING_POINTS: usize = 96;
 
 pub struct Neuronify {
     tapped_background: bool,
@@ -54,6 +56,7 @@ pub struct Neuronify {
     autosave: Autosave,
     hitboxes: bool,
     touch_reach: f64,
+    hold_ring: Option<HoldRing>,
 }
 
 fn ground_under(
@@ -212,6 +215,7 @@ impl Neuronify {
             autosave,
             hitboxes: debug_view().as_deref() == Some("hitboxes"),
             touch_reach: input::TOUCH_REACH,
+            hold_ring: None,
         }
     }
 
@@ -337,6 +341,39 @@ impl Neuronify {
                 .hold_target(nearby, to_ground(point))
                 .map(|(entity, _)| entity)
         });
+    }
+
+    fn paint_hold_ring(&self, application: &visula::Application, context: &egui::Context) {
+        let Some(ring) = self.hold_ring else {
+            return;
+        };
+        let Some(look) = ring.look(input::now()) else {
+            return;
+        };
+        let Some(shape) = Targets::new(&self.world).shape(ring.target()) else {
+            return;
+        };
+        let pixels_per_point = context.pixels_per_point();
+        let per_point = camera::ground_length(application, f64::from(pixels_per_point));
+        let gap = per_point * look.gap(shape.thickness() / per_point);
+        let to_ground = ground_under(application, context);
+        let to_screen = |position: Vec3| {
+            let pixel = camera::screen_position(application, position);
+            egui::pos2(pixel.x as f32, pixel.y as f32) / pixels_per_point
+        };
+        let center = to_screen(shape.center());
+        let directions: Vec<Vec3> = (0..RING_POINTS)
+            .map(|index| {
+                let angle = TAU * index as f32 / RING_POINTS as f32;
+                let beside = center + egui::vec2(angle.sin(), -angle.cos());
+                (to_ground(beside) - to_ground(center)).normalize_or_zero()
+            })
+            .collect();
+        let [inner, outer] = [0.0, gap].map(|gap| {
+            let outline = shape.outline(gap, directions.iter().copied());
+            outline.into_iter().map(to_screen).collect::<Vec<_>>()
+        });
+        gui::paint_hold_ring(context, self.theme, &inner, &outer, &look);
     }
 
     fn connection_hint(&mut self) -> Option<ConnectionHint> {
@@ -526,13 +563,22 @@ impl visula::Simulation for Neuronify {
         } else {
             is_compact(application)
         };
+        let now = input::now();
+        let mut grabbed = false;
         if holds {
-            if let Some(position) = self.mouse.take_hold(input::now()) {
+            if let Some(position) = self.mouse.take_hold(now) {
                 let position = camera::ground_position(application, position);
                 let select = !self.editing();
-                self.editor.hold(&self.world, position, select);
+                grabbed = self.editor.hold(&self.world, position, select);
             }
         }
+        let pending = self.mouse.pending_hold(now).filter(|_| holds);
+        let pending = pending.and_then(|(start, held_for)| {
+            let position = camera::ground_position(application, start);
+            let (target, _) = self.editor.hold_candidate(&self.world, position)?;
+            Some((target, held_for))
+        });
+        self.hold_ring = HoldRing::next(self.hold_ring, pending, grabbed, now);
         if self.running {
             let start = self.time;
             simulation::step_simulation(
@@ -664,6 +710,7 @@ impl visula::Simulation for Neuronify {
             gui::reach_slider(context, &mut self.touch_reach);
             self.paint_hitboxes(application, context);
         }
+        self.paint_hold_ring(application, context);
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {

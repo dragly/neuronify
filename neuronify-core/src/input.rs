@@ -5,7 +5,7 @@ const TAP_SLOP: f64 = 8.0;
 const DOUBLE_TAP_SLOP: f64 = 40.0;
 const DOUBLE_TAP_DELAY: f64 = 0.3;
 const SECOND_FINGER_DELAY: f64 = 0.12;
-const HOLD: f64 = 0.33;
+pub const HOLD: f64 = 0.33;
 pub const TOUCH_REACH: f64 = 14.0;
 
 pub fn now() -> f64 {
@@ -41,6 +41,13 @@ impl Mouse {
                 self.held = true;
                 self.position
             }
+            _ => None,
+        }
+    }
+
+    pub fn pending_hold(&self, now: f64) -> Option<(PhysicalPosition<f64>, f64)> {
+        match self.tap_start {
+            Some((start, since)) if self.left_down && !self.held => Some((start, now - since)),
             _ => None,
         }
     }
@@ -688,6 +695,25 @@ mod tests {
         mouse.move_to(at(30.0, 10.0), 1.0);
         assert!(mouse.moved_while_pressed());
         assert!(!mouse.press(false, 1.0));
+    }
+
+    #[test]
+    fn a_hold_is_pending_from_the_press_until_it_is_taken() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.move_to(at(12.0, 10.0), 1.0);
+        assert_eq!(mouse.pending_hold(0.2), Some((at(10.0, 10.0), 0.2)));
+        assert!(mouse.take_hold(0.4).is_some());
+        assert_eq!(mouse.pending_hold(0.5), None);
+    }
+
+    #[test]
+    fn moving_away_or_letting_go_ends_a_pending_hold() {
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.move_to(at(30.0, 10.0), 1.0);
+        assert_eq!(mouse.pending_hold(0.2), None);
+        let mut mouse = pressed_at(10.0, 10.0);
+        mouse.press(false, 0.1);
+        assert_eq!(mouse.pending_hold(0.2), None);
     }
 
     #[test]

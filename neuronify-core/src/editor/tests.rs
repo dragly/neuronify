@@ -1924,6 +1924,59 @@ fn the_targets_around_a_point_pick_as_all_targets_do_nearby() {
     }
 }
 
+fn reach_along(shape: &Shape, gap: f32, direction: Vec3) -> f32 {
+    shape.outline(gap, [direction])[0].distance(shape.center())
+}
+
+#[test]
+fn the_outline_of_a_lone_neuron_is_a_circle_beyond_its_edge() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(1.0, 2.0));
+    let shape = Targets::new(&world).shape(target).unwrap();
+    for direction in [Vec3::X, Vec3::Z, Vec3::new(-0.6, 0.0, 0.8)] {
+        let reach = reach_along(&shape, 0.5, direction);
+        assert!((reach - shape.thickness() - 0.5).abs() < 1e-3, "{reach}");
+    }
+}
+
+#[test]
+fn the_outline_of_a_compartment_follows_its_cables_halfway() {
+    let mut world = World::new();
+    let chain: Vec<Entity> = (0..3)
+        .map(|i| spawn_compartment(&mut world, at(4.0 * i as f32, 0.0), NeuronType::Excitatory))
+        .collect();
+    for pair in chain.windows(2) {
+        spawn_cable(&mut world, pair[0], pair[1], false);
+    }
+    let shape = Targets::new(&world).shape(chain[1]).unwrap();
+    let across = shape.thickness() + 0.5;
+    assert!((reach_along(&shape, 0.5, Vec3::X) - 2.0 - across).abs() < 1e-3);
+    assert!((reach_along(&shape, 0.5, -Vec3::X) - 2.0 - across).abs() < 1e-3);
+    assert!((reach_along(&shape, 0.5, Vec3::Z) - across).abs() < 1e-3);
+}
+
+#[test]
+fn the_outline_of_a_note_is_its_rectangle_with_rounded_corners() {
+    let mut world = World::new();
+    let note = Element::Note.spawn(&mut world, at(0.0, 0.0));
+    let size = world.get::<&NoteSize>(note).unwrap().clone();
+    let shape = Targets::new(&world).shape(note).unwrap();
+    assert!((reach_along(&shape, 0.5, Vec3::X) - 0.5 * size.height - 0.5).abs() < 1e-3);
+    assert!((reach_along(&shape, 0.5, Vec3::Z) - 0.5 * size.width - 0.5).abs() < 1e-3);
+    let corner = Vec3::new(size.height, 0.0, size.width).normalize();
+    let to_corner = 0.5 * Vec3::new(size.height, 0.0, size.width).length();
+    assert!(reach_along(&shape, 0.5, corner) < to_corner + 0.5);
+}
+
+#[test]
+fn a_stimulated_touch_sensor_offers_nothing_to_hold() {
+    let mut world = World::new();
+    Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = reaching(Tool::View, 1.0);
+    editor.view(&mut world, at(0.0, 0.0));
+    assert_eq!(editor.hold_candidate(&world, at(0.0, 0.0)), None);
+}
+
 #[test]
 fn a_tap_on_a_cable_still_selects_the_connection_and_beside_it_the_neuron() {
     let mut world = World::new();

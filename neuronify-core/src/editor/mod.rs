@@ -28,7 +28,7 @@ mod targets;
 #[cfg(test)]
 mod tests;
 
-pub use targets::Targets;
+pub use targets::{Shape, Targets};
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const COMPARTMENT_REACH: f32 = NODE_RADIUS;
@@ -407,17 +407,19 @@ impl Editor {
         }
     }
 
-    pub fn hold(&mut self, world: &World, position: Vec3, select: bool) -> bool {
+    pub fn hold_candidate(&self, world: &World, position: Vec3) -> Option<(Entity, Vec3)> {
         if self.stimulation_tool.is_some() {
-            return false;
+            return None;
         }
         let pressed = self.pressed.and_then(|pressed| {
             let pressed_position = world.get::<&Position>(pressed).ok()?.position;
             Some((pressed, pressed_position))
         });
-        let Some((entity, entity_position)) =
-            pressed.or_else(|| self.hold_target(&Targets::new(world), position))
-        else {
+        pressed.or_else(|| self.hold_target(&Targets::new(world), position))
+    }
+
+    pub fn hold(&mut self, world: &World, position: Vec3, select: bool) -> bool {
+        let Some((entity, entity_position)) = self.hold_candidate(world, position) else {
             return false;
         };
         self.move_origin = None;
