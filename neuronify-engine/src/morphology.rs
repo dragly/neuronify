@@ -40,6 +40,25 @@ impl Membrane {
         }
     }
 
+    pub fn resting_at(mut self, voltage: f64, celsius: f64) -> Self {
+        let current: f64 = self
+            .channels
+            .iter()
+            .map(|density| {
+                let open: f64 = density
+                    .channel
+                    .channel()
+                    .gates
+                    .iter()
+                    .map(|gate| gate.steady_state(voltage, celsius).powi(gate.power))
+                    .product();
+                density.conductance * open * (voltage - density.reversal)
+            })
+            .sum();
+        self.leak_reversal = voltage + current / self.leak;
+        self
+    }
+
     pub fn passive(resistance: f64, reversal: f64, axial_resistivity: f64) -> Self {
         Membrane {
             capacitance: 1.0,

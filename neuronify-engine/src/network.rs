@@ -567,7 +567,7 @@ mod tests {
             conductance: 0.01,
             reversal: -70.0,
         });
-        let mut tree = Tree::build(&morphology, 0.1, -70.0).unwrap();
+        let mut tree = Tree::build(&morphology, 0.1, -70.0, 16.3).unwrap();
         let source = network.source();
         tree.add_soma(
             0,
@@ -706,7 +706,7 @@ mod tests {
         let gates: Vec<f64> = tree.gates(site.point).collect();
         let (voltage, since) = (tree.voltage(site.point), tree.since_spike(0));
         copy.tree_mut(site.tree)
-            .set_state(site.point, voltage, &gates);
+            .set_state(site.point, voltage, &gates, 16.3);
         copy.tree_mut(site.tree).set_since_spike(0, since);
         let (a, b) = (run(&mut original, 300.0), run(&mut copy, 300.0));
         assert!(a.len() > 10);

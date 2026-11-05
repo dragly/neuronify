@@ -74,10 +74,8 @@ impl Tables {
                 for i in 0..points {
                     let voltage = MIN_VOLTAGE + i as f64 * STEP;
                     for gate in &channel.gates {
-                        let alpha = gate.alpha.at(voltage) * factor;
-                        let beta = gate.beta.at(voltage) * factor;
-                        values.push(alpha / (alpha + beta));
-                        values.push((-dt * (alpha + beta)).exp());
+                        values.push(gate.steady_state(voltage, celsius));
+                        values.push((-dt * gate.rate(voltage, celsius, factor)).exp());
                     }
                 }
                 ChannelTable {
