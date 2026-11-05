@@ -102,6 +102,11 @@ impl Editor {
         grows.then_some((connection.from, connection.start, connection.end))
     }
 
+    pub fn dendrite_being_grown(&self) -> Option<(Entity, Vec3, Vec3)> {
+        let connection = self.connection_tool.as_ref()?;
+        (self.tool == Tool::Dendrite).then_some((connection.from, connection.start, connection.end))
+    }
+
     pub fn painting(&self) -> Option<Element> {
         let Tool::Place(element) = self.tool else {
             return None;
@@ -176,7 +181,11 @@ impl Editor {
     }
 
     pub fn lift(&mut self, world: &mut World) {
-        if let Some(axon) = &self.connection_tool {
+        let axon = self
+            .connection_tool
+            .as_ref()
+            .filter(|_| self.tool != Tool::Dendrite);
+        if let Some(axon) = axon {
             let measuring = self.tool.meter().is_some() || Meter::of(world, axon.from).is_some();
             if !measuring {
                 let target = foreign_compartment_near(world, axon.from, axon.end);
@@ -342,6 +351,7 @@ impl Editor {
             }
             Tool::StaticConnection => self.connect(world, position, shift_down),
             Tool::Axon | Tool::MyelinatedAxon => self.grow_axon(world, position, shift_down),
+            Tool::Dendrite => self.grow_dendrite(world, position),
             Tool::Erase => erase(world, recording, position),
             Tool::Stimulate => self.stimulate(world, position),
         }
@@ -676,6 +686,28 @@ impl Editor {
         });
     }
 
+    fn grow_dendrite(&mut self, world: &mut World, position: Vec3) {
+        let Some(connection) = &mut self.connection_tool else {
+            self.connection_tool = start_connection(dendrite_sources(world), position);
+            self.previous_creation = self.connection_tool.as_ref().map(|dendrite| dendrite.from);
+            return;
+        };
+        connection.end = position;
+        let from = connection.from;
+        if self.too_near_previous(world, position, SEGMENT_LENGTH) {
+            return;
+        }
+        let Some(tip) = lay_dendrite(world, from, position) else {
+            return;
+        };
+        self.previous_creation = Some(tip);
+        self.connection_tool = Some(ConnectionTool {
+            start: position,
+            end: position,
+            from: tip,
+        });
+    }
+
     fn select(
         &mut self,
         world: &mut World,
@@ -800,6 +832,29 @@ fn axon_sources(world: &World) -> Vec<(Entity, Vec3)> {
         sources(world),
     ]
     .concat()
+}
+
+fn dendrite_sources(world: &World) -> Vec<(Entity, Vec3)> {
+    [
+        positions_with::<LeakyNeuron>(world),
+        positions_with::<Dendrite>(world),
+    ]
+    .concat()
+}
+
+fn lay_dendrite(world: &mut World, from: Entity, end: Vec3) -> Option<Entity> {
+    let start = world.get::<&Position>(from).ok()?.position;
+    let neuron_type = *world.get::<&NeuronType>(from).ok()?;
+    let segments = ((start.distance(end) / SEGMENT_LENGTH).round() as usize).max(1);
+    let mut previous = from;
+    for step in 1..=segments {
+        let position = start.lerp(end, step as f32 / segments as f32);
+        let compartment = spawn_compartment(world, position, neuron_type);
+        world.insert_one(compartment, Dendrite).unwrap();
+        spawn_cable(world, previous, compartment, false);
+        previous = compartment;
+    }
+    Some(previous)
 }
 
 fn lay_axon(

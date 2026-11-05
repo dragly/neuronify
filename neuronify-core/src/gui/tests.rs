@@ -4,8 +4,8 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Label, LeakyNeuron, NeuronType,
-    NodeState, RegularSpikeGenerator,
+    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Dendrite, Label, LeakyNeuron,
+    NeuronType, NodeState, RegularSpikeGenerator,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
 use crate::elements::{spawn_cable, spawn_compartment, Element};
@@ -952,6 +952,16 @@ fn dragging_a_slider_is_one_step_to_undo() {
     harness.click(corner_button(2));
     assert_eq!(threshold(&harness), original);
     assert!(!harness.editor.can_undo());
+}
+
+#[test]
+fn a_selected_dendrite_is_named_a_dendrite() {
+    let mut world = World::new();
+    let dendrite = spawn_compartment(&mut world, Vec3::ZERO, NeuronType::Excitatory);
+    world.insert_one(dendrite, Dendrite).unwrap();
+    let harness = Harness::with(true, world, Some(dendrite));
+    assert!(harness.shows("Dendrite"));
+    assert!(!harness.shows("Compartment"));
 }
 
 #[test]

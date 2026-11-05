@@ -75,6 +75,10 @@ pub fn frame_color() -> Vec3 {
     srgb(80, 80, 100)
 }
 
+pub fn paler(color: Vec3) -> Vec3 {
+    color.lerp(Vec3::splat(color.dot(LUMINANCE)), DENDRITE_DESATURATION)
+}
+
 pub fn terminal_color() -> Vec3 {
     Vec3::new(136.0 / 255.0, 57.0 / 255.0, 239.0 / 255.0)
 }
@@ -230,9 +234,7 @@ impl Palette {
     }
 
     pub fn dendrite(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
-        let color = self.compartment(neuron_type, voltage);
-        let luminance = color.dot(LUMINANCE);
-        color.lerp(Vec3::splat(luminance), DENDRITE_DESATURATION)
+        paler(self.compartment(neuron_type, voltage))
     }
 
     pub fn sheath(&self, axon: Vec3) -> Vec3 {

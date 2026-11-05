@@ -11,7 +11,8 @@ use crate::rendering::paths::ConnectionPath;
 use crate::rendering::scene::Scene;
 use crate::rendering::shapes::shown_voltage;
 use crate::simulation::model::{
-    drawn_radius, soma_end_radius, AXON_DIAMETER, INTERNODE_DIAMETER, MYELIN_G_RATIO,
+    dendrite_diameter, drawn_radius, soma_end_radius, AXON_DIAMETER, INTERNODE_DIAMETER,
+    MYELIN_G_RATIO,
 };
 
 const MIN_GROWN_LENGTH: f32 = 1e-4;
@@ -282,14 +283,59 @@ pub fn growing_axon(
     end: Vec3,
     palette: &Palette,
 ) -> Option<Scene> {
+    growing(world, from, (start, end), false, palette)
+}
+
+pub fn growing_dendrite(
+    world: &hecs::World,
+    from: Entity,
+    start: Vec3,
+    end: Vec3,
+    palette: &Palette,
+) -> Option<Scene> {
+    growing(world, from, (start, end), true, palette)
+}
+
+fn growing(
+    world: &hecs::World,
+    from: Entity,
+    (start, end): (Vec3, Vec3),
+    dendrite: bool,
+    palette: &Palette,
+) -> Option<Scene> {
     if start.distance(end) < MIN_GROWN_LENGTH {
         return None;
     }
     let source = world.entity(from).ok()?;
     let neuron_type = *source.get::<&NeuronType>()?;
-    let tip = palette.compartment(&neuron_type, RESTING_POTENTIAL);
     let display = NeuronDisplay::of(world);
-    let end_radius = axon_radius(&display);
+    let (tip, start_radius, end_radius) = match dendrite {
+        true => {
+            let diameter = dendrite_diameter(world, [Some(start), Some(end)]);
+            let end_radius = drawn_radius(diameter, &display);
+            let start_radius = match source.has::<Compartment>() {
+                true => joint_radius(world, from, end_radius, &display),
+                false => soma_end_radius(diameter, &display),
+            };
+            (
+                palette.dendrite(&neuron_type, RESTING_POTENTIAL),
+                start_radius,
+                end_radius,
+            )
+        }
+        false => {
+            let end_radius = axon_radius(&display);
+            let start_radius = match source.has::<Compartment>() {
+                true => end_radius,
+                false => soma_end_radius(AXON_DIAMETER, &display),
+            };
+            (
+                palette.compartment(&neuron_type, RESTING_POTENTIAL),
+                start_radius,
+                end_radius,
+            )
+        }
+    };
     Some(Scene {
         spheres: vec![Sphere {
             position: end,
@@ -301,17 +347,27 @@ pub fn growing_axon(
             palette,
             (
                 start,
-                match source.has::<Compartment>() {
-                    true => end_radius,
-                    false => soma_end_radius(AXON_DIAMETER, &display),
-                },
-                compartment_color(source, &display, palette),
+                start_radius,
+                compartment_color(source, &display, palette)
+                    .or(Some(palette.compartment(&neuron_type, RESTING_POTENTIAL))),
             ),
             (end, end_radius, Some(tip)),
         )],
         rings: Vec::new(),
         transmitter: Vec::new(),
     })
+}
+
+fn joint_radius(world: &hecs::World, joint: Entity, grown: f32, display: &NeuronDisplay) -> f32 {
+    let radii: Vec<f32> = world
+        .query::<(&Connection, &Cable)>()
+        .iter()
+        .filter(|(_, (connection, _))| !connection.directional)
+        .filter(|(_, (connection, _))| connection.from == joint || connection.to == joint)
+        .map(|(_, (_, cable))| drawn_radius(cable.diameter, display))
+        .chain([grown])
+        .collect();
+    radii.iter().sum::<f32>() / radii.len() as f32
 }
 
 #[cfg(test)]
@@ -325,6 +381,18 @@ mod tests {
 
     #[test]
     fn a_growing_axon_looks_like_the_cable_it_lays() {
+        grows_like_it_lays(growing_axon, false);
+    }
+
+    #[test]
+    fn a_growing_dendrite_looks_like_the_dendrite_it_lays() {
+        grows_like_it_lays(growing_dendrite, true);
+    }
+
+    fn grows_like_it_lays(
+        grow: fn(&hecs::World, Entity, Vec3, Vec3, &Palette) -> Option<Scene>,
+        dendrite: bool,
+    ) {
         let palette = Theme::Light.palette();
         let mut world = hecs::World::new();
         world.spawn((
@@ -343,8 +411,11 @@ mod tests {
         let mut start = soma;
         for step in 1..=4 {
             let tip = Vec3::new(0.5, 0.0, 2.5) * step as f32;
-            let growing = growing_axon(&world, from, start, tip, &palette).unwrap();
+            let growing = grow(&world, from, start, tip, &palette).unwrap();
             let compartment = spawn_compartment(&mut world, tip, NeuronType::Inhibitory);
+            if dendrite {
+                world.insert_one(compartment, Dendrite).unwrap();
+            }
             spawn_cable(&mut world, from, compartment, false);
             let radii = compartment_radii(&world);
             let paths = connection_paths(&world, &radii, &palette);

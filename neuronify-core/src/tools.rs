@@ -18,6 +18,7 @@ pub enum Tool {
     StaticConnection,
     Axon,
     MyelinatedAxon,
+    Dendrite,
     Erase,
     Stimulate,
 }
@@ -47,6 +48,7 @@ impl Tool {
             Tool::StaticConnection => "Connection",
             Tool::Axon => "Axon",
             Tool::MyelinatedAxon => "Myelinated axon",
+            Tool::Dendrite => "Dendrite",
         }
     }
 
@@ -106,6 +108,9 @@ impl Tool {
             Tool::MyelinatedAxon => {
                 "Like an axon, but wrapped in myelin. Spikes jump from gap to gap and travel faster."
             }
+            Tool::Dendrite => {
+                "Drag from a neuron or one of its dendrites to grow a branch that axons can end on."
+            }
         }
     }
 
@@ -158,7 +163,12 @@ impl ToolGroup {
                 Tool::Place(Element::PoissonGenerator),
                 Tool::Place(Element::VisualInput),
             ],
-            ToolGroup::Connections => &[Tool::StaticConnection, Tool::Axon, Tool::MyelinatedAxon],
+            ToolGroup::Connections => &[
+                Tool::StaticConnection,
+                Tool::Axon,
+                Tool::MyelinatedAxon,
+                Tool::Dendrite,
+            ],
             ToolGroup::Meters => &[
                 Tool::Voltmeter,
                 Tool::SpikeDetector,
