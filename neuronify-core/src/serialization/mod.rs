@@ -1097,6 +1097,11 @@ mod tests {
     fn loads_version_19() {
         let saved = load(include_bytes!("fixtures/v19.neuronify")).unwrap();
         assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(ConnectionView::of(&saved.world), ConnectionView::Rings);
+        assert_eq!(
+            ConnectionDirection::of(&saved.world),
+            ConnectionDirection::Outputs
+        );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
     }
@@ -1149,6 +1154,7 @@ mod tests {
             ConnectionView::All,
             ConnectionView::LastSelected,
             ConnectionView::None,
+            ConnectionView::Rings,
         ] {
             view.set_in(&mut world);
             let loaded =
@@ -1184,6 +1190,24 @@ mod tests {
             .unwrap()
             .world;
         assert_eq!(ConnectionMode::of(&world), ConnectionMode::Chain);
+    }
+
+    #[test]
+    fn keeps_connection_direction() {
+        let mut world = World::new();
+        for direction in [
+            ConnectionDirection::Both,
+            ConnectionDirection::Inputs,
+            ConnectionDirection::Outputs,
+        ] {
+            direction.set_in(&mut world);
+            let loaded =
+                load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap())
+                    .unwrap()
+                    .world;
+            assert_eq!(count::<ConnectionDirection>(&loaded), 1);
+            assert_eq!(ConnectionDirection::of(&loaded), direction);
+        }
     }
 
     #[test]
@@ -1344,7 +1368,10 @@ mod tests {
     }
 
     fn fixture_world() -> World {
-        fixture_world_of_version_18()
+        let mut world = fixture_world_of_version_18();
+        ConnectionView::Rings.set_in(&mut world);
+        ConnectionDirection::Outputs.set_in(&mut world);
+        world
     }
 
     fn fixture_world_of_version_18() -> World {

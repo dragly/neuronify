@@ -22,8 +22,8 @@ use egui::{
 use hecs::{Entity, World};
 
 use crate::components::{
-    Celsius, ConnectionView, Hertz, Milliseconds, NeuronDisplay, Preparation, Seconds, Setting,
-    Temperature,
+    Celsius, ConnectionDirection, ConnectionView, Hertz, Milliseconds, NeuronDisplay, Preparation,
+    Seconds, Setting, Temperature,
 };
 use crate::editor::Editor;
 use crate::links;
@@ -616,6 +616,7 @@ fn menu(
                             &[
                                 (ConnectionView::All, "All"),
                                 (ConnectionView::LastSelected, "Last selected"),
+                                (ConnectionView::Rings, "Rings"),
                                 (ConnectionView::None, "None"),
                             ],
                         );
@@ -623,6 +624,29 @@ fn menu(
                     if connection_view != ConnectionView::of(controls.world) {
                         connection_view.set_in(controls.world);
                         controls.editor.mark_settings_changed();
+                    }
+                    if matches!(
+                        connection_view,
+                        ConnectionView::LastSelected | ConnectionView::Rings
+                    ) {
+                        let mut direction = ConnectionDirection::of(controls.world);
+                        stacked_row(ui, chrome, "Direction", |ui| {
+                            segmented(
+                                ui,
+                                chrome,
+                                "direction",
+                                &mut direction,
+                                &[
+                                    (ConnectionDirection::Both, "Both"),
+                                    (ConnectionDirection::Inputs, "Inputs"),
+                                    (ConnectionDirection::Outputs, "Outputs"),
+                                ],
+                            );
+                        });
+                        if direction != ConnectionDirection::of(controls.world) {
+                            direction.set_in(controls.world);
+                            controls.editor.mark_settings_changed();
+                        }
                     }
                     let mut display = NeuronDisplay::of(controls.world);
                     let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);

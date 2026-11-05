@@ -15,6 +15,7 @@ use crate::measurement::visual_input::{
 };
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::{srgb, Theme};
+use crate::rendering::connection_rings::ring_edges;
 use crate::rendering::gpu_types::ArcData;
 use crate::rendering::notes::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
 use crate::rendering::paths::ConnectionPath;
@@ -50,6 +51,15 @@ enum Side {
 const SIDES: [Side; 4] = [Side::Above, Side::Below, Side::Right, Side::Left];
 
 impl Side {
+    fn outward(self) -> Vec2 {
+        match self {
+            Side::Above => Vec2::Y,
+            Side::Below => -Vec2::Y,
+            Side::Right => Vec2::X,
+            Side::Left => -Vec2::X,
+        }
+    }
+
     fn area(self, center: Vec2, size: Vec2) -> Area {
         let gap = NODE_RADIUS + LABEL_GAP;
         let corner = match self {
@@ -73,6 +83,10 @@ pub struct Drawn<'a> {
 
 fn on_screen(point: Vec3) -> Vec2 {
     Vec2::new(point.z, point.x)
+}
+
+fn on_floor(offset: Vec2) -> Vec3 {
+    Vec3::new(offset.y, 0.0, offset.x)
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -271,19 +285,21 @@ impl Measure {
 
 struct Candidate {
     center: Vec2,
+    lift: f32,
     measure: Measure,
     reach: Area,
     near: Obstacles,
 }
 
 impl Candidate {
-    fn new(center: Vec2, measure: Measure, obstacles: &Obstacles) -> Candidate {
+    fn new(center: Vec2, lift: f32, measure: Measure, obstacles: &Obstacles) -> Candidate {
         let reach = Area::around(
             center,
-            Vec2::splat(NODE_RADIUS + LABEL_GAP + measure.line.max_element() + CLEARANCE),
+            Vec2::splat(NODE_RADIUS + lift + LABEL_GAP + measure.line.max_element() + CLEARANCE),
         );
         Candidate {
             center,
+            lift,
             measure,
             reach,
             near: obstacles.near(&reach),
@@ -291,7 +307,8 @@ impl Candidate {
     }
 
     fn ink(&self, side: Side) -> Area {
-        self.measure.ink_on(side, self.center)
+        self.measure
+            .ink_on(side, self.center + side.outward() * self.lift)
     }
 
     fn cost(&self, side: Side, placed: &[Area], spare: &[Area]) -> usize {
@@ -466,11 +483,15 @@ fn placed_labels(
     drawn: &Drawn,
     mut measure: impl FnMut(&str) -> Measure,
 ) -> Vec<(String, Placement, Vec3)> {
-    let labelled: Vec<(String, Vec3)> = world
-        .query::<(&Label, &Position)>()
+    let edges = ring_edges(world);
+    let labelled: Vec<(String, Vec3, f32)> = world
+        .query::<(Entity, &Label, &Position)>()
         .iter()
-        .filter(|(label, _)| !label.text.is_empty())
-        .map(|(label, position)| (label.text.clone(), position.position))
+        .filter(|(_, label, _)| !label.text.is_empty())
+        .map(|(entity, label, position)| {
+            let lift = edges.get(&entity).map_or(0.0, |edge| edge - NODE_RADIUS);
+            (label.text.clone(), position.position, lift)
+        })
         .collect();
     let obstacles = if labelled.is_empty() {
         Obstacles::default()
@@ -479,12 +500,17 @@ fn placed_labels(
     };
     let candidates: Vec<Candidate> = labelled
         .iter()
-        .map(|(text, position)| Candidate::new(on_screen(*position), measure(text), &obstacles))
+        .map(|(text, position, lift)| {
+            Candidate::new(on_screen(*position), *lift, measure(text), &obstacles)
+        })
         .collect();
     let mut placed: Vec<(String, Placement, Vec3)> = labelled
         .into_iter()
         .zip(free_sides(&candidates))
-        .map(|((text, position), side)| (text, Placement::Beside(side), position))
+        .map(|((text, position, lift), side)| {
+            let anchor = position + on_floor(side.outward() * lift);
+            (text, Placement::Beside(side), anchor)
+        })
         .collect();
     for (_, (plot, position, size)) in world
         .query::<(Entity, (&RatePlot, &Position, &MeterSize))>()
@@ -573,9 +599,11 @@ fn lay_out(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::{ConnectionView, Selected, Setting};
     use crate::elements::{spawn_synapse, spawn_voltmeter, spawn_voltmeter_wire, Element, Meter};
     use crate::rendering::colors::Theme;
-    use crate::rendering::{collect_meter_wires, compartment_radii, connection_paths};
+    use crate::rendering::scene::shown_paths;
+    use crate::rendering::{collect_meter_wires, compartment_radii};
     use hecs::World;
 
     fn label(world: &mut World, entity: hecs::Entity, text: &str) {
@@ -591,7 +619,7 @@ mod tests {
     fn placed(world: &World) -> Vec<(String, Placement, Vec3)> {
         let palette = Theme::default().palette();
         let radii = compartment_radii(world);
-        let paths = connection_paths(world, &radii, &palette);
+        let paths = shown_paths(world, &radii, &palette);
         let wires = collect_meter_wires(world, &palette);
         let drawn = Drawn {
             radii: &radii,
@@ -730,6 +758,25 @@ mod tests {
         let neuron = labelled(&mut world, Vec3::ZERO, "Neuron");
         Element::Note.spawn(&mut world, Vec3::X * 4.0);
         assert_eq!(side_of(&world, neuron), Side::Below);
+    }
+
+    #[test]
+    fn a_label_moves_out_past_the_rings_around_its_neuron() {
+        let mut world = World::new();
+        let a = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        let b = labelled(&mut world, Vec3::Z * 6.0, "B");
+        spawn_synapse(&mut world, a, b);
+        let anchor = |world: &World| placed(world)[0].2;
+        assert_eq!(anchor(&world), Vec3::Z * 6.0);
+
+        ConnectionView::Rings.set_in(&mut world);
+        Selected::set(&mut world, Some(a));
+        let edge = ring_edges(&world)[&b];
+        assert!(edge > NODE_RADIUS);
+        assert_eq!(
+            anchor(&world),
+            Vec3::Z * 6.0 + Vec3::X * (edge - NODE_RADIUS)
+        );
     }
 
     #[test]

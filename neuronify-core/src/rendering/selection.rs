@@ -12,6 +12,7 @@ use crate::measurement::visual_input::{
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::colors::Palette;
+use crate::rendering::connection_rings::ringed_selection;
 use crate::rendering::cylinders::compartment_radii;
 use crate::rendering::gauges::gauge_reach;
 use crate::rendering::gpu_types::{Sphere, TorusData};
@@ -26,6 +27,9 @@ const SYNAPSE_END_RADIUS: f32 = 0.6 * NODE_RADIUS;
 
 pub fn collect_selection(world: &World, selection: Entity, palette: &Palette) -> Scene {
     let mut scene = Scene::default();
+    if ringed_selection(world) == Some(selection) {
+        return scene;
+    }
     if let Some([min, max]) = rectangle(world, selection) {
         let min = min - Vec3::new(GAP, 0.0, GAP);
         let max = max + Vec3::new(GAP, 0.0, GAP);

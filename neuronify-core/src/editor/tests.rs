@@ -3218,6 +3218,17 @@ fn only_connections_on_screen_can_be_tapped_and_a_tapped_one_stays() {
 }
 
 #[test]
+fn rings_leave_nothing_to_tap_between_a_neuron_and_its_neighbours() {
+    let mut world = World::new();
+    let (a, _, _) = two_connected_neurons(&mut world);
+    ConnectionView::Rings.set_in(&mut world);
+    Selected::set(&mut world, Some(a));
+    let mut editor = editor(Tool::Edit);
+    editor.tap(&world, at(0.3, 9.0));
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
 fn a_tap_on_a_connection_while_editing_selects_it_and_a_drag_pans() {
     let mut world = World::new();
     let (_, _, synapse) = two_connected_neurons(&mut world);

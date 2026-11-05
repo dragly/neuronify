@@ -64,6 +64,7 @@ schema!(
     CompartmentSoma,
     ConnectionMode,
     ReceptiveFieldCell,
+    ConnectionDirection,
 );
 
 pub fn upgrade_from_v18(world: &mut World) -> Result<(), ComponentError> {

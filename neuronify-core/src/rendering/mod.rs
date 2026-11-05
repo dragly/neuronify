@@ -1,5 +1,6 @@
 pub mod bounds;
 pub mod colors;
+pub mod connection_rings;
 pub mod connections;
 pub mod current_flow;
 pub mod cylinders;
