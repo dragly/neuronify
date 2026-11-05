@@ -55,6 +55,7 @@ pub enum Icon {
     Eye,
     Stimulate,
     Erase,
+    Info,
 }
 
 pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
@@ -109,6 +110,11 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
                 ],
                 stroke,
             ));
+        }
+        Icon::Info => {
+            painter.circle_stroke(at(vec2(12.0, 12.0)), 8.5 * scale, stroke);
+            painter.circle_filled(at(vec2(12.0, 8.0)), 1.2 * scale, color);
+            painter.line_segment([at(vec2(12.0, 11.0)), at(vec2(12.0, 16.5))], stroke);
         }
         Icon::Menu => {
             for y in [7.0, 12.0, 17.0] {

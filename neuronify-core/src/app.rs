@@ -9,6 +9,7 @@ use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{self, Gui, HoldRing, MenuChoice, Saving};
+use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
@@ -31,6 +32,8 @@ const RING_POINTS: usize = 96;
 pub struct Neuronify {
     tapped_background: bool,
     pub landing: Option<LandingScreen>,
+    about: Option<AboutScreen>,
+    version: &'static str,
     editor: Editor,
     gui: Gui,
     theme: Theme,
@@ -171,7 +174,7 @@ fn gui_takes_press(application: &visula::Application, position: PhysicalPosition
 }
 
 impl Neuronify {
-    pub fn new(application: &mut visula::Application) -> Neuronify {
+    pub fn new(application: &mut visula::Application, version: &'static str) -> Neuronify {
         #[cfg(not(target_arch = "wasm32"))]
         crate::window::name(&application.window);
         camera::set_up(application);
@@ -187,6 +190,8 @@ impl Neuronify {
         Neuronify {
             tapped_background: false,
             landing: opened.is_none().then(|| LandingScreen::new(false)),
+            about: None,
+            version,
             editor: Editor::default(),
             gui: Gui::default(),
             theme,
@@ -659,6 +664,12 @@ impl visula::Simulation for Neuronify {
             Theme::Light => egui::Theme::Light,
         });
         self.sync_pointer_with_gui(context);
+        if let Some(about) = &mut self.about {
+            if let Some(AboutChoice::Back) = about.show(context, self.theme) {
+                self.about = None;
+            }
+            return;
+        }
         if let Some(landing) = &mut self.landing {
             match landing.show(context, self.theme, &mut self.library) {
                 Some(LandingChoice::Example { name, world, time }) => {
@@ -678,6 +689,7 @@ impl visula::Simulation for Neuronify {
                     self.open_world(hecs::World::new(), 0.0, DEFAULT_SPEED, autosave)
                 }
                 Some(LandingChoice::BackToSimulation) => self.landing = None,
+                Some(LandingChoice::About) => self.about = Some(AboutScreen::new(self.version)),
                 None => {}
             }
             return;
@@ -697,6 +709,7 @@ impl visula::Simulation for Neuronify {
         };
         match self.gui.show(context, controls) {
             Some(MenuChoice::Examples) => self.show_landing(),
+            Some(MenuChoice::About) => self.about = Some(AboutScreen::new(self.version)),
             Some(MenuChoice::Save) => self.save(),
             Some(MenuChoice::Share) => self.share(),
             Some(MenuChoice::Open) => self.open(),
@@ -732,7 +745,7 @@ impl visula::Simulation for Neuronify {
         ) {
             self.save_edits();
         }
-        if self.landing.is_some() && is_press_scroll_or_touch(event) {
+        if (self.landing.is_some() || self.about.is_some()) && is_press_scroll_or_touch(event) {
             return;
         }
         if let Event::WindowEvent { window_id, .. } = event {

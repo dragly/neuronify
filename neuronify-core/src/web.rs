@@ -11,12 +11,18 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    Document, DomException, File, FilePropertyBag, HtmlAnchorElement, HtmlInputElement, Response,
-    ShareData, Url,
+    AddEventListenerOptions, Document, DomException, File, FilePropertyBag, HtmlAnchorElement,
+    HtmlInputElement, Response, ShareData, Url,
 };
 
 const REVOKE_DELAY_MS: i32 = 10_000;
 const SHARED_TYPE: &str = "application/octet-stream";
+
+struct PressedLink {
+    url: String,
+    context: egui::Context,
+    pass: u64,
+}
 
 pub struct LoadedFile {
     pub name: String,
@@ -28,6 +34,9 @@ thread_local! {
     static LOADED: RefCell<Option<Result<LoadedFile, String>>> = const { RefCell::new(None) };
     static FETCHING: Cell<bool> = const { Cell::new(false) };
     static LOADING_SCREEN_SHOWN: Cell<bool> = const { Cell::new(true) };
+    static PRESSED_LINK: RefCell<Option<PressedLink>> = const { RefCell::new(None) };
+    static OPENED_ON_POINTER_UP: RefCell<Option<String>> = const { RefCell::new(None) };
+    static LISTENING_FOR_LINK_RELEASE: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Starts fetching the file named by the `file` query parameter.
@@ -114,9 +123,7 @@ pub fn download(bytes: &[u8], name: &str) -> Result<(), JsValue> {
     let link: HtmlAnchorElement = document.create_element("a")?.dyn_into()?;
     link.set_href(&url);
     link.set_download(name);
-    document.body().ok_or("no body")?.append_child(&link)?;
-    link.click();
-    link.remove();
+    click(&document, &link)?;
     let revoke = Closure::once_into_js(move || Url::revoke_object_url(&url));
     web_sys::window()
         .ok_or("no global window")?
@@ -160,6 +167,74 @@ pub fn share(bytes: &[u8], name: &str) -> Result<(), JsValue> {
             }
         }
     });
+    Ok(())
+}
+
+pub fn open_on_pointer_up(response: &egui::Response, url: &str) {
+    if response.is_pointer_button_down_on() && response.contains_pointer() {
+        PRESSED_LINK.with(|pressed| {
+            *pressed.borrow_mut() = Some(PressedLink {
+                url: url.to_owned(),
+                context: response.ctx.clone(),
+                pass: response.ctx.cumulative_pass_nr(),
+            })
+        });
+        listen_for_link_release();
+    }
+    if response.clicked() {
+        let opened = OPENED_ON_POINTER_UP.with(|opened| opened.borrow_mut().take());
+        if opened.as_deref() != Some(url) {
+            open_in_new_tab(url);
+        }
+    }
+}
+
+fn listen_for_link_release() {
+    if LISTENING_FOR_LINK_RELEASE.with(|listening| listening.replace(true)) {
+        return;
+    }
+    let on_pointer_up = Closure::once_into_js(|| {
+        LISTENING_FOR_LINK_RELEASE.with(|listening| listening.set(false));
+        let pressed = PRESSED_LINK.with(|pressed| pressed.borrow_mut().take());
+        let released = pressed.filter(|link| link.context.cumulative_pass_nr() == link.pass + 1);
+        if let Some(link) = &released {
+            open_in_new_tab(&link.url);
+        }
+        OPENED_ON_POINTER_UP.with(|opened| *opened.borrow_mut() = released.map(|link| link.url));
+    });
+    let once = AddEventListenerOptions::new();
+    once.set_once(true);
+    let listening = web_sys::window().map(|window| {
+        window.add_event_listener_with_callback_and_add_event_listener_options(
+            "pointerup",
+            on_pointer_up.unchecked_ref(),
+            &once,
+        )
+    });
+    if let Some(Err(error)) = listening {
+        LISTENING_FOR_LINK_RELEASE.with(|listening| listening.set(false));
+        log::error!("Could not listen for the link's release: {error:?}");
+    }
+}
+
+fn open_in_new_tab(url: &str) {
+    if let Err(error) = click_link_to_new_tab(url) {
+        log::error!("Could not open {url}: {error:?}");
+    }
+}
+
+fn click_link_to_new_tab(url: &str) -> Result<(), JsValue> {
+    let document = document()?;
+    let link: HtmlAnchorElement = document.create_element("a")?.dyn_into()?;
+    link.set_href(url);
+    link.set_target("_blank");
+    click(&document, &link)
+}
+
+fn click(document: &Document, link: &HtmlAnchorElement) -> Result<(), JsValue> {
+    document.body().ok_or("no body")?.append_child(link)?;
+    link.click();
+    link.remove();
     Ok(())
 }
 
