@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use glam::{Quat, Vec3};
 use hecs::{Entity, World};
 
@@ -57,7 +59,7 @@ pub fn collect_selection(world: &World, selection: Entity, palette: &Palette) ->
     } else if let Ok(position) = world.get::<&Position>(selection) {
         scene.rings.push(TorusData {
             position: position.position,
-            major_radius: reach(world, selection) + GAP,
+            major_radius: element_radius(world, selection, &compartment_radii(world)) + GAP,
             rotation: Quat::IDENTITY,
             color: palette.selection,
             minor_radius: THICKNESS,
@@ -98,7 +100,11 @@ fn rectangle(world: &World, entity: Entity) -> Option<[Vec3; 2]> {
     Some(note_corners(position.position, &size))
 }
 
-fn reach(world: &World, entity: Entity) -> f32 {
+pub fn element_radius(
+    world: &World,
+    entity: Entity,
+    compartment_radii: &HashMap<Entity, f32>,
+) -> f32 {
     if world
         .satisfies::<hecs::Or<&TouchSensor, hecs::Or<&CurrentClamp, &Loudspeaker>>>(entity)
         .unwrap_or(false)
@@ -107,7 +113,7 @@ fn reach(world: &World, entity: Entity) -> f32 {
     } else if world.get::<&GeneratorDynamics>(entity).is_ok() {
         GENERATOR_RING_RADIUS + GENERATOR_RING_THICKNESS
     } else if world.get::<&Compartment>(entity).is_ok() {
-        compartment_radii(world)
+        compartment_radii
             .get(&entity)
             .copied()
             .unwrap_or(COMPARTMENT_SPHERE_SCALE * NODE_RADIUS)

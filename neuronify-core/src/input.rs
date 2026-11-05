@@ -6,6 +6,7 @@ const DOUBLE_TAP_SLOP: f64 = 40.0;
 const DOUBLE_TAP_DELAY: f64 = 0.3;
 const SECOND_FINGER_DELAY: f64 = 0.12;
 const HOLD: f64 = 0.33;
+pub const TOUCH_REACH: f64 = 14.0;
 
 pub fn now() -> f64 {
     chrono::Utc::now().timestamp_micros() as f64 * 1e-6

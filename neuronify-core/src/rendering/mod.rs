@@ -36,7 +36,7 @@ pub use paths::{connection_paths, distance_to_segment, ConnectionPath};
 pub use rate_plot::collect_rate_plots;
 pub use scene::{collect_scene, Scene};
 pub use scene_renderer::{EditorMarks, SceneRenderer};
-pub use selection::collect_selection;
+pub use selection::{collect_selection, element_radius};
 pub use spheres::collect_spheres;
 pub use spike_detector::collect_spike_detectors;
 pub use voltmeter::collect_voltmeter_traces;

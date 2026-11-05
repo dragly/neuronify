@@ -29,6 +29,15 @@ pub fn ground_position(application: &visula::Application, position: PhysicalPosi
     position_at_height(application, position, 0.0)
 }
 
+pub fn ground_length(application: &visula::Application, pixels: f64) -> f32 {
+    let center = PhysicalPosition::new(
+        f64::from(application.config.width) / 2.0,
+        f64::from(application.config.height) / 2.0,
+    );
+    let beside = PhysicalPosition::new(center.x + pixels, center.y);
+    ground_position(application, center).distance(ground_position(application, beside))
+}
+
 pub fn position_at_height(
     application: &visula::Application,
     position: PhysicalPosition<f64>,

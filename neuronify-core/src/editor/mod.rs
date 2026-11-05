@@ -53,6 +53,7 @@ pub struct Editor {
     pub compartments: bool,
     pub stimulation: Stimulation,
     pub selection: Option<Entity>,
+    pub touch_reach: f32,
     connection_tool: Option<ConnectionTool>,
     offer: Option<ConnectionOffer>,
     stimulation_tool: Option<StimulationTool>,
@@ -379,10 +380,15 @@ impl Editor {
         if self.stimulation_tool.is_some() {
             return;
         }
-        let tapped = Targets::new(world)
+        let targets = Targets::new(world);
+        let tapped = targets
             .at(position)
             .map(|(entity, _)| entity)
-            .or_else(|| connection_at(world, position));
+            .or_else(|| connection_at(world, position))
+            .or_else(|| {
+                self.hold_target(&targets, position)
+                    .map(|(entity, _)| entity)
+            });
         match tapped {
             Some(entity) => self.select_entity(entity),
             None => self.selection = None,
@@ -390,7 +396,8 @@ impl Editor {
     }
 
     pub fn empty_at(&self, world: &World, position: Vec3) -> bool {
-        Targets::new(world).at(position).is_none() && connection_at(world, position).is_none()
+        self.hold_target(&Targets::new(world), position).is_none()
+            && connection_at(world, position).is_none()
     }
 
     fn select_entity(&mut self, entity: Entity) {
@@ -426,7 +433,7 @@ impl Editor {
     }
 
     pub fn hold_target(&self, targets: &Targets, position: Vec3) -> Option<(Entity, Vec3)> {
-        targets.at(position)
+        targets.near(position, self.touch_reach)
     }
 
     pub fn move_held(&mut self) {
@@ -695,13 +702,19 @@ impl Editor {
         if self.resizing.is_some() {
             return;
         }
-        match Targets::new(world).at(position) {
+        let targets = Targets::new(world);
+        let connection = connection_at(world, position);
+        let picked = match targets.at(position) {
+            None if connection.is_none() => self.hold_target(&targets, position),
+            picked => picked,
+        };
+        match picked {
             Some((entity, entity_position)) => {
                 self.selection = Some(entity);
                 self.grab(world, entity, entity_position, position);
             }
             None => {
-                self.pressed_connection = connection_at(world, position);
+                self.pressed_connection = connection;
                 self.move_origin = Some(position);
             }
         }

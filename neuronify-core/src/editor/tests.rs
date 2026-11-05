@@ -1823,6 +1823,135 @@ fn a_tap_on_a_connection_while_editing_selects_it_and_a_drag_pans() {
     assert_eq!(editor.selection, None);
 }
 
+fn reaching(tool: Tool, touch_reach: f32) -> Editor {
+    Editor {
+        touch_reach,
+        ..editor(tool)
+    }
+}
+
+#[test]
+fn a_hold_reaches_a_lone_neuron_from_a_finger_width_away() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = reaching(Tool::View, 3.0);
+
+    editor.view(&mut world, at(5.0, 0.0));
+    assert!(!editor.hold(&world, at(5.0, 0.0), true));
+    editor.release(&world);
+
+    editor.view(&mut world, at(3.5, 0.0));
+    assert!(editor.hold(&world, at(3.5, 0.0), true));
+    editor.lift(&mut world);
+    assert_eq!(editor.selection, Some(target));
+}
+
+#[test]
+fn a_hold_reaches_from_the_edge_of_what_is_drawn() {
+    let mut world = World::new();
+    let pad = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let editor = reaching(Tool::View, 0.5);
+    let targets = Targets::new(&world);
+    let held = |position| {
+        editor
+            .hold_target(&targets, position)
+            .map(|(entity, _)| entity)
+    };
+    assert_eq!(held(at(1.65, 0.0)), Some(pad));
+    assert_eq!(held(at(1.85, 0.0)), None);
+}
+
+#[test]
+fn neighbouring_compartments_split_the_reach_between_them() {
+    let mut world = World::new();
+    let chain: Vec<Entity> = (0..3)
+        .map(|i| spawn_compartment(&mut world, at(2.0 * i as f32, 0.0), NeuronType::Excitatory))
+        .collect();
+    let editor = reaching(Tool::View, 3.0);
+    let targets = Targets::new(&world);
+    let held = |position| {
+        editor
+            .hold_target(&targets, position)
+            .map(|(entity, _)| entity)
+    };
+    assert_eq!(held(at(1.2, 0.0)), Some(chain[1]));
+    assert_eq!(held(at(0.8, 0.0)), Some(chain[0]));
+    assert_eq!(held(at(4.0, 2.9)), Some(chain[2]));
+    assert_eq!(held(at(4.0, 3.5)), None);
+}
+
+#[test]
+fn a_hold_anywhere_along_a_dendrite_picks_the_nearest_compartment() {
+    let mut world = World::new();
+    let chain: Vec<Entity> = (0..3)
+        .map(|i| spawn_compartment(&mut world, at(4.0 * i as f32, 0.0), NeuronType::Excitatory))
+        .collect();
+    for pair in chain.windows(2) {
+        spawn_cable(&mut world, pair[0], pair[1], false);
+    }
+    let editor = reaching(Tool::View, 0.1);
+    let targets = Targets::new(&world);
+    let held = |position| {
+        editor
+            .hold_target(&targets, position)
+            .map(|(entity, _)| entity)
+    };
+    assert_eq!(held(at(1.9, 0.2)), Some(chain[0]));
+    assert_eq!(held(at(2.1, 0.2)), Some(chain[1]));
+    assert_eq!(held(at(6.0, -0.2)), Some(chain[1]));
+    assert_eq!(held(at(2.0, 1.0)), None);
+    assert_eq!(held(at(10.0, 0.0)), None);
+}
+
+#[test]
+fn the_targets_around_a_point_pick_as_all_targets_do_nearby() {
+    let mut world = World::new();
+    let chain: Vec<Entity> = (0..5)
+        .map(|i| spawn_compartment(&mut world, at(2.0 * i as f32, 0.0), NeuronType::Excitatory))
+        .collect();
+    for pair in chain.windows(2) {
+        spawn_cable(&mut world, pair[0], pair[1], false);
+    }
+    neuron(&mut world, at(3.0, 3.0));
+    let targets = Targets::new(&world);
+    let center = at(4.0, 1.0);
+    let around = targets.around(center, 2.0);
+    for x in -10..=10 {
+        for z in -10..=10 {
+            let point = center + 0.14 * Vec3::new(x as f32, 0.0, z as f32);
+            assert_eq!(around.near(point, 0.5), targets.near(point, 0.5), "{point}");
+        }
+    }
+}
+
+#[test]
+fn a_tap_on_a_cable_still_selects_the_connection_and_beside_it_the_neuron() {
+    let mut world = World::new();
+    let (a, _, synapse) = two_connected_neurons(&mut world);
+    let mut editor = reaching(Tool::View, 3.5);
+    editor.tap(&world, at(0.3, 3.0));
+    assert_eq!(editor.selection, Some(synapse));
+    editor.tap(&world, at(2.5, 0.0));
+    assert_eq!(editor.selection, Some(a));
+    assert!(editor.empty_at(&world, at(5.0, 0.0)));
+
+    let mut editor = reaching(Tool::Edit, 3.5);
+    let pan = [at(0.3, 3.0), at(0.3, 6.0)].map(|position| editor.edit(&mut world, position, false));
+    assert_eq!(pan[1], Some(Pan(at(0.0, 3.0))));
+    editor.release(&world);
+    editor.edit(&mut world, at(2.5, 0.0), false);
+    assert_eq!(editor.selection, Some(a));
+}
+
+#[test]
+fn adding_beside_a_neuron_still_adds_instead_of_reaching_it() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut editor = reaching(Tool::Place(Element::ExcitatoryNeuron), 10.0);
+    drag(&mut editor, &mut world, &[at(7.0, 0.0)]);
+    assert_eq!(count::<LeakyNeuron>(&world), 2);
+}
+
 #[test]
 fn current_sources_connect_without_a_synapse() {
     let mut world = World::new();
