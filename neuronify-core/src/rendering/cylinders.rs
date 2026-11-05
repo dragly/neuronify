@@ -10,18 +10,12 @@ use crate::rendering::gpu_types::{CylinderData, Sphere};
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::scene::Scene;
 use crate::rendering::shapes::shown_voltage;
-
-/// Radius where a process leaves the soma.
-const ROOT_RADIUS: f32 = 0.30;
-/// Factor the radius shrinks by for every three units away from the nearest soma.
-const TAPER: f32 = 0.85;
-/// Floor so that long processes never disappear.
-const MIN_RADIUS: f32 = 0.16;
-const FULLY_TAPERED_DISTANCE: f32 = 12.0;
+use crate::simulation::model::{
+    drawn_radius, soma_end_radius, AXON_DIAMETER, INTERNODE_DIAMETER, MYELIN_G_RATIO,
+};
 
 const MIN_GROWN_LENGTH: f32 = 1e-4;
-const AXON_RADIUS: f32 = 0.11;
-pub const SHEATH_RADIUS: f32 = 0.26;
+const SHEATH_RADIUS: f32 = 0.26;
 pub const NODE_GAP: f32 = 0.5;
 
 pub struct Sheath {
@@ -31,8 +25,15 @@ pub struct Sheath {
     pub end_color: Vec3,
 }
 
-pub fn radius_from_soma_distance(distance: f32) -> f32 {
-    (ROOT_RADIUS * TAPER.powf(distance / 3.0)).max(MIN_RADIUS)
+pub fn axon_radius(display: &NeuronDisplay) -> f32 {
+    drawn_radius(AXON_DIAMETER, display)
+}
+
+pub fn sheath_radius(display: &NeuronDisplay) -> f32 {
+    match display.true_proportions {
+        true => drawn_radius(INTERNODE_DIAMETER / MYELIN_G_RATIO, display),
+        false => SHEATH_RADIUS,
+    }
 }
 
 fn compartment_color(
@@ -49,6 +50,26 @@ fn compartment_color(
     })
 }
 
+fn inside_color(
+    from: EntityRef,
+    to: EntityRef,
+    voltage: f64,
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> Option<Vec3> {
+    let neuron_type = *from
+        .get::<&NeuronType>()
+        .or_else(|| to.get::<&NeuronType>())?;
+    let voltage = match display.voltage {
+        true => voltage,
+        false => RESTING_POTENTIAL,
+    };
+    Some(match from.has::<Dendrite>() || to.has::<Dendrite>() {
+        true => palette.dendrite(&neuron_type, voltage),
+        false => palette.compartment(&neuron_type, voltage),
+    })
+}
+
 fn soma_end_color(
     soma: EntityRef,
     compartment: EntityRef,
@@ -60,16 +81,6 @@ fn soma_end_color(
         &*compartment.get::<&NeuronType>()?,
         shown_voltage(&*compartment.get::<&NodeState>()?, display),
     ))
-}
-
-fn radius_at(world: &hecs::World, position: Vec3) -> f32 {
-    let distance = world
-        .query::<&Position>()
-        .with::<&LeakyNeuron>()
-        .iter()
-        .map(|(_, soma)| soma.position.distance(position))
-        .fold(f32::MAX, f32::min);
-    radius_from_soma_distance(distance)
 }
 
 fn cable(
@@ -88,41 +99,34 @@ fn cable(
     }
 }
 
-/// Radius of every compartment, thick next to a soma and tapering away from it.
+/// Radius of every compartment, the mean of the cables that meet there.
 ///
 /// Spheres and cylinders both use these, so that a chain of compartments
 /// bends smoothly at each joint.
 pub fn compartment_radii(world: &hecs::World) -> HashMap<Entity, f32> {
-    let cell_of = |position: Vec3| {
-        let coordinate = |x: f32| (x / FULLY_TAPERED_DISTANCE).floor() as i32;
-        (coordinate(position.x), coordinate(position.z))
-    };
-    let mut somas: HashMap<(i32, i32), Vec<Vec3>> = HashMap::new();
-    for (_, position) in world.query::<&Position>().with::<&LeakyNeuron>().iter() {
-        somas
-            .entry(cell_of(position.position))
-            .or_default()
-            .push(position.position);
-    }
-    world
-        .query::<(&Position, Option<&Dendrite>)>()
+    let display = NeuronDisplay::of(world);
+    let mut sums: HashMap<Entity, (f32, u32)> = world
+        .query::<()>()
         .with::<&Compartment>()
         .iter()
-        .map(|(entity, (position, dendrite))| {
-            if dendrite.is_none() {
-                return (entity, AXON_RADIUS);
+        .map(|(entity, _)| (entity, (0.0, 0)))
+        .collect();
+    for (_, (connection, cable)) in world.query::<(&Connection, &Cable)>().iter() {
+        if connection.directional {
+            continue;
+        }
+        let radius = drawn_radius(cable.diameter, &display);
+        for end in [connection.from, connection.to] {
+            if let Some((sum, count)) = sums.get_mut(&end) {
+                *sum += radius;
+                *count += 1;
             }
-            let (x, z) = cell_of(position.position);
-            let mut distance = f32::MAX;
-            for dx in -1..=1 {
-                for dz in -1..=1 {
-                    let cell = (x.saturating_add(dx), z.saturating_add(dz));
-                    for soma in somas.get(&cell).into_iter().flatten() {
-                        distance = distance.min(soma.distance(position.position));
-                    }
-                }
-            }
-            (entity, radius_from_soma_distance(distance))
+        }
+    }
+    sums.into_iter()
+        .map(|(entity, (sum, count))| match count {
+            0 => (entity, axon_radius(&display)),
+            _ => (entity, sum / count as f32),
         })
         .collect()
 }
@@ -135,42 +139,76 @@ pub fn collect_cylinders(
     paths: &BTreeMap<Entity, ConnectionPath>,
     palette: &Palette,
 ) -> Vec<CylinderData> {
-    let radius = |entity: Entity| radii.get(&entity).copied().unwrap_or(ROOT_RADIUS);
     let display = NeuronDisplay::of(world);
-    let mut cylinders: Vec<CylinderData> = world
-        .query::<&Connection>()
-        .with::<&Cable>()
+    let mut cylinders = Vec::new();
+    for (_, (connection, segment, state)) in world
+        .query::<(&Connection, &Cable, Option<&CableState>)>()
         .iter()
-        .filter(|(_, connection)| !connection.directional)
-        .filter_map(|(_, connection)| {
-            let from = world.entity(connection.from).ok()?;
-            let to = world.entity(connection.to).ok()?;
-            let start = from.get::<&Position>()?.position;
-            let end = to.get::<&Position>()?.position;
-            Some(cable(
-                palette,
-                (
-                    start,
-                    radius(connection.from),
-                    compartment_color(from, &display, palette)
-                        .or_else(|| soma_end_color(from, to, &display, palette)),
-                ),
-                (
-                    end,
-                    radius(connection.to),
-                    compartment_color(to, &display, palette),
-                ),
-            ))
-        })
-        .collect();
+        .filter(|(_, (connection, ..))| !connection.directional)
+    {
+        let root = soma_end_radius(segment.diameter, &display);
+        let radius = |entity: Entity| radii.get(&entity).copied().unwrap_or(root);
+        let (Ok(from), Ok(to)) = (world.entity(connection.from), world.entity(connection.to))
+        else {
+            continue;
+        };
+        let (Some(start), Some(end)) = (from.get::<&Position>(), to.get::<&Position>()) else {
+            continue;
+        };
+        let laid = cable(
+            palette,
+            (
+                start.position,
+                radius(connection.from),
+                compartment_color(from, &display, palette)
+                    .or_else(|| soma_end_color(from, to, &display, palette)),
+            ),
+            (
+                end.position,
+                radius(connection.to),
+                compartment_color(to, &display, palette),
+            ),
+        );
+        let inner = state.map_or(&[][..], |state| &state.voltage[..]);
+        if inner.is_empty() {
+            cylinders.push(laid);
+            continue;
+        }
+        let pieces = inner.len() + 1;
+        let joint = |k: usize| {
+            let along = k as f32 / pieces as f32;
+            let color = match k {
+                0 => laid.start_color,
+                k if k == pieces => laid.end_color,
+                k => inside_color(from, to, inner[k - 1], &display, palette)
+                    .unwrap_or(laid.start_color.lerp(laid.end_color, along)),
+            };
+            let radius = laid.start_radius + (laid.end_radius - laid.start_radius) * along;
+            (laid.start.lerp(laid.end, along), radius, color)
+        };
+        for k in 0..pieces {
+            let ((start, start_radius, start_color), (end, end_radius, end_color)) =
+                (joint(k), joint(k + 1));
+            cylinders.push(CylinderData {
+                start,
+                start_radius,
+                end,
+                end_radius,
+                start_color,
+                end_color,
+                _padding: Default::default(),
+            });
+        }
+    }
+    let sheath_radius = sheath_radius(&display);
     cylinders.extend(
         sheaths(world, palette)
             .into_iter()
             .map(|sheath| CylinderData {
                 start: sheath.start,
-                start_radius: SHEATH_RADIUS,
+                start_radius: sheath_radius,
                 end: sheath.end,
-                end_radius: SHEATH_RADIUS,
+                end_radius: sheath_radius,
                 start_color: sheath.start_color,
                 end_color: sheath.end_color,
                 _padding: Default::default(),
@@ -250,7 +288,8 @@ pub fn growing_axon(
     let source = world.entity(from).ok()?;
     let neuron_type = *source.get::<&NeuronType>()?;
     let tip = palette.compartment(&neuron_type, RESTING_POTENTIAL);
-    let end_radius = AXON_RADIUS;
+    let display = NeuronDisplay::of(world);
+    let end_radius = axon_radius(&display);
     Some(Scene {
         spheres: vec![Sphere {
             position: end,
@@ -262,12 +301,11 @@ pub fn growing_axon(
             palette,
             (
                 start,
-                if source.has::<Compartment>() {
-                    AXON_RADIUS
-                } else {
-                    radius_at(world, start)
+                match source.has::<Compartment>() {
+                    true => end_radius,
+                    false => soma_end_radius(AXON_DIAMETER, &display),
                 },
-                compartment_color(source, &NeuronDisplay::of(world), palette),
+                compartment_color(source, &display, palette),
             ),
             (end, end_radius, Some(tip)),
         )],
@@ -279,12 +317,11 @@ pub fn growing_axon(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::MICROMETRES_PER_UNIT;
     use crate::elements::{spawn_cable, spawn_compartment, spawn_internode};
     use crate::rendering::colors::Theme;
     use crate::rendering::paths::connection_paths;
     use crate::rendering::spheres::{collect_spheres, SPINES_PER_CABLE};
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
 
     #[test]
     fn a_growing_axon_looks_like_the_cable_it_lays() {
@@ -386,14 +423,6 @@ mod tests {
         assert!(growing_axon(&world, source, Vec3::ZERO, Vec3::ZERO, &palette).is_none());
     }
 
-    #[test]
-    fn compartments_beyond_the_taper_are_thinnest() {
-        assert_eq!(
-            radius_from_soma_distance(FULLY_TAPERED_DISTANCE),
-            MIN_RADIUS
-        );
-    }
-
     fn neuron_with_a_dendrite_and_an_axon(
         world: &mut hecs::World,
         neuron_type: NeuronType,
@@ -438,11 +467,41 @@ mod tests {
         let (_, dendrite, axon) =
             neuron_with_a_dendrite_and_an_axon(&mut world, NeuronType::Excitatory);
         let radii = compartment_radii(&world);
+        let axon_radius = axon_radius(&NeuronDisplay::default());
         assert!(axon
             .iter()
-            .all(|compartment| radii[compartment] == AXON_RADIUS));
+            .all(|compartment| radii[compartment] == axon_radius));
         assert!(radii[&dendrite[0]] > radii[&dendrite[3]]);
-        assert!(radii[&dendrite[3]] > AXON_RADIUS);
+        assert!(radii[&dendrite[3]] > axon_radius);
+    }
+
+    #[test]
+    fn true_proportions_draw_cables_at_their_real_width() {
+        let mut world = hecs::World::new();
+        let (soma, dendrite, axon) =
+            neuron_with_a_dendrite_and_an_axon(&mut world, NeuronType::Excitatory);
+        let shown = compartment_radii(&world);
+        NeuronDisplay {
+            true_proportions: true,
+            ..Default::default()
+        }
+        .set_in(&mut world);
+        let real = compartment_radii(&world);
+        world
+            .insert_one(soma, NodeState::at(RESTING_POTENTIAL))
+            .unwrap();
+        let diameter = |entity| real[&entity] * 2.0 * MICROMETRES_PER_UNIT as f32;
+        assert!((diameter(axon[1]) - AXON_DIAMETER as f32).abs() < 1e-6);
+        assert!(diameter(dendrite[0]) > 2.0 && diameter(dendrite[0]) < 3.5);
+        assert!(real[&dendrite[0]] < shown[&dendrite[0]] / 5.0);
+        let palette = Theme::Light.palette();
+        let paths = connection_paths(&world, &real, &palette);
+        let somas: Vec<f32> = collect_spheres(&world, &real, &paths, &palette, 0.0)
+            .into_iter()
+            .filter(|sphere| sphere.position == Vec3::ZERO)
+            .map(|sphere| sphere.radius)
+            .collect();
+        assert_eq!(somas, [0.2]);
     }
 
     #[test]
@@ -495,49 +554,83 @@ mod tests {
         world.get::<&mut NodeState>(second).unwrap().voltage = 30.0;
         let radii = compartment_radii(&world);
         let paths = connection_paths(&world, &radii, &palette);
+        let display = NeuronDisplay::default();
         let sheaths: Vec<CylinderData> = collect_cylinders(&world, &radii, &paths, &palette)
             .into_iter()
-            .filter(|cylinder| cylinder.start_radius == SHEATH_RADIUS)
+            .filter(|cylinder| cylinder.start_radius == sheath_radius(&display))
             .collect();
         let [sheath] = sheaths[..] else {
             panic!("expected one sheath, got {}", sheaths.len());
         };
         assert_eq!(sheath.start, Vec3::new(0.0, 0.0, NODE_GAP));
         assert_eq!(sheath.end, Vec3::new(0.0, 0.0, 8.0 - NODE_GAP));
-        assert!(sheath.start_radius > AXON_RADIUS);
+        assert!(sheath.start_radius > radii[&second]);
         assert!(sheath.end_color.max_element() > sheath.start_color.max_element());
         let caps = collect_spheres(&world, &radii, &paths, &palette, 0.0)
             .into_iter()
-            .filter(|sphere| sphere.radius == SHEATH_RADIUS)
+            .filter(|sphere| sphere.radius == sheath_radius(&display))
             .count();
         assert_eq!(caps, 2);
     }
 
     #[test]
-    fn radii_follow_the_nearest_soma() {
-        let mut rng = StdRng::seed_from_u64(1);
+    fn a_joint_is_as_wide_as_the_mean_of_its_cables() {
         let mut world = hecs::World::new();
-        let mut random_position =
-            || Vec3::new(rng.gen_range(-60.0..60.0), 0.0, rng.gen_range(-60.0..60.0));
-        let somas: Vec<Vec3> = (0..40).map(|_| random_position()).collect();
-        for &position in &somas {
-            world.spawn((Position { position }, LeakyNeuron::default()));
-        }
-        for _ in 0..500 {
-            let position = random_position();
-            world.spawn((Position { position }, Compartment, Dendrite));
-        }
-
+        let node = |world: &mut hecs::World, x: f32| {
+            spawn_compartment(world, Vec3::new(x, 0.0, 0.0), NeuronType::Excitatory)
+        };
+        let (first, middle, last) = (
+            node(&mut world, 0.0),
+            node(&mut world, 2.0),
+            node(&mut world, 4.0),
+        );
+        let thick = spawn_cable(&mut world, first, middle, false);
+        spawn_cable(&mut world, middle, last, false);
+        world.get::<&mut Cable>(thick).unwrap().diameter = 4.0;
+        let display = NeuronDisplay::default();
         let radii = compartment_radii(&world);
+        assert_eq!(radii[&first], drawn_radius(4.0, &display));
+        assert_eq!(radii[&last], axon_radius(&display));
+        let mean = (drawn_radius(4.0, &display) + axon_radius(&display)) / 2.0;
+        assert!((radii[&middle] - mean).abs() < 1e-6);
+    }
 
-        for (entity, position) in world.query::<&Position>().with::<&Compartment>().iter() {
-            let nearest = somas
-                .iter()
-                .map(|soma| soma.distance(position.position))
-                .fold(f32::MAX, f32::min);
-            assert_eq!(radii[&entity], radius_from_soma_distance(nearest));
-        }
-        assert!(radii.values().any(|&radius| radius > MIN_RADIUS + 0.05));
-        assert!(radii.values().any(|&radius| radius == MIN_RADIUS));
+    #[test]
+    fn a_cable_lights_up_inside_where_its_voltage_is_high() {
+        let palette = Theme::Light.palette();
+        let mut world = hecs::World::new();
+        let node = |world: &mut hecs::World, x: f32| {
+            spawn_compartment(world, Vec3::new(x, 0.0, 0.0), NeuronType::Excitatory)
+        };
+        let (first, second) = (node(&mut world, 0.0), node(&mut world, 3.0));
+        let laid = spawn_cable(&mut world, first, second, false);
+        world
+            .insert_one(
+                laid,
+                CableState {
+                    voltage: vec![RESTING_POTENTIAL, 30.0],
+                    gates: Vec::new(),
+                },
+            )
+            .unwrap();
+        let pieces = drawn(&world);
+        let lit = palette.compartment(&NeuronType::Excitatory, 30.0);
+        let rest = palette.compartment(&NeuronType::Excitatory, RESTING_POTENTIAL);
+        assert_eq!(pieces.len(), 3);
+        assert_eq!(pieces[1].start, Vec3::new(1.0, 0.0, 0.0));
+        assert_eq!((pieces[1].start_color, pieces[1].end_color), (rest, lit));
+        assert_eq!((pieces[2].start_color, pieces[2].end_color), (lit, rest));
+    }
+
+    #[test]
+    fn an_axon_leaves_its_soma_thick_and_narrows_to_its_drawn_width() {
+        let mut world = hecs::World::new();
+        let (_, _, axon) = neuron_with_a_dendrite_and_an_axon(&mut world, NeuronType::Excitatory);
+        let first = world.get::<&Position>(axon[0]).unwrap().position;
+        let root = drawn(&world)
+            .into_iter()
+            .find(|cylinder| cylinder.start == Vec3::ZERO && cylinder.end == first)
+            .unwrap();
+        assert_eq!((root.start_radius, root.end_radius), (0.30, 0.11));
     }
 }

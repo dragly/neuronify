@@ -1,6 +1,6 @@
 use super::v11::{
     AdaptationCurrent, Compartment, CompartmentCurrent, CurrentSynapse, GeneratorDynamics,
-    ImmediateFireSynapse, LeakCurrent, LeakyDynamics, LeakyNeuron,
+    ImmediateFireSynapse, LeakCurrent, LeakyDynamics, LeakyNeuron, NeuronDisplay,
 };
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};

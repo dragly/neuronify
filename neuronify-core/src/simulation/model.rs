@@ -3,7 +3,6 @@ use neuronify_engine::{ChannelId, Density, Membrane};
 
 use crate::components::*;
 use crate::constants::*;
-use crate::rendering::cylinders::radius_from_soma_distance;
 
 pub const AXON_DIAMETER: f64 = 0.15;
 pub const INTERNODE_DIAMETER: f64 = 1.0;
@@ -33,6 +32,11 @@ pub const AXON_PULSE_FACTOR: f64 = 3.0;
 pub const SHORTEST_PULSE_INTERVAL: f64 = 4.0;
 pub const RANVIER_PULSE_SCALE: f64 = 0.1;
 pub const DRAWN_RADIUS_PER_ROOT_MICROMETRE: f32 = 0.173;
+pub const MYELIN_G_RATIO: f64 = 0.7;
+const ROOT_DRAWN_RADIUS: f32 = 0.30;
+const TAPER: f32 = 0.85;
+const TIP_DRAWN_RADIUS: f32 = 0.16;
+const THINNEST_DRAWN_RADIUS: f32 = 0.11;
 
 impl Default for ConductanceSynapse {
     fn default() -> Self {
@@ -115,6 +119,45 @@ pub fn diameter_of_drawn_radius(radius: f32) -> f64 {
     (radius / DRAWN_RADIUS_PER_ROOT_MICROMETRE).powi(2) as f64
 }
 
+fn dendrite_drawn_radius(soma_distance: f32) -> f32 {
+    (ROOT_DRAWN_RADIUS * TAPER.powf(soma_distance / 3.0)).max(TIP_DRAWN_RADIUS)
+}
+
+pub fn drawn_radius(diameter: f64, display: &NeuronDisplay) -> f32 {
+    match display.true_proportions {
+        true => (diameter / 2.0 / MICROMETRES_PER_UNIT) as f32,
+        false => {
+            (DRAWN_RADIUS_PER_ROOT_MICROMETRE * (diameter as f32).sqrt()).max(THINNEST_DRAWN_RADIUS)
+        }
+    }
+}
+
+pub fn soma_end_radius(diameter: f64, display: &NeuronDisplay) -> f32 {
+    match display.true_proportions {
+        true => drawn_radius(diameter, display),
+        false => ROOT_DRAWN_RADIUS,
+    }
+}
+
+pub fn soma_diameter(world: &World, soma: Entity) -> f64 {
+    let dendritic = world
+        .query::<&Connection>()
+        .with::<&Cable>()
+        .iter()
+        .filter(|(_, cable)| cable.from == soma || cable.to == soma)
+        .any(|(_, cable)| dendritic(world, cable.from) || dendritic(world, cable.to));
+    if dendritic {
+        return SOMA_DIAMETER;
+    }
+    let capacitance = world
+        .get::<&LeakyNeuron>(soma)
+        .map_or(LeakyNeuron::default().capacitance, |neuron| {
+            neuron.capacitance
+        });
+    let area = capacitance * 1e5 / DENDRITE_CAPACITANCE;
+    (area / std::f64::consts::PI).sqrt()
+}
+
 fn position(world: &World, entity: Entity) -> Option<glam::Vec3> {
     world.get::<&Position>(entity).ok().map(|p| p.position)
 }
@@ -148,9 +191,9 @@ pub fn cable_between(
     let length = SEGMENT_LENGTH as f64 * MICROMETRES_PER_UNIT;
     if dendritic(world, from) || dendritic(world, to) {
         let radius = |end: Entity| {
-            position(world, end)
-                .map(|at| radius_from_soma_distance(soma_distance(world, at)))
-                .unwrap_or(0.3)
+            position(world, end).map_or(ROOT_DRAWN_RADIUS, |at| {
+                dendrite_drawn_radius(soma_distance(world, at))
+            })
         };
         let drawn = (radius(from) + radius(to)) / 2.0;
         let cable = Cable {

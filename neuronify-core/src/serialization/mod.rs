@@ -320,6 +320,7 @@ mod tests {
         let display = NeuronDisplay {
             voltage: false,
             firing_rate: true,
+            true_proportions: true,
         };
         display.set_in(&mut world);
         let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())

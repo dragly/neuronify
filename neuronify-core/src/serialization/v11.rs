@@ -7,6 +7,12 @@ use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::World;
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct NeuronDisplay {
+    pub voltage: bool,
+    pub firing_rate: bool,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LeakyNeuron {
     pub capacitance: f64,
