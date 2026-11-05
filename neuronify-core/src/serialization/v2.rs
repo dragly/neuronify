@@ -1,6 +1,10 @@
 //! Notes get a size and can be deleted.
 
 use super::v1::Inhibitory;
+use super::v11::{
+    AdaptationCurrent, Compartment, CompartmentCurrent, CurrentSynapse, GeneratorDynamics,
+    ImmediateFireSynapse, LeakCurrent, LeakyDynamics, LeakyNeuron,
+};
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use hecs::World;

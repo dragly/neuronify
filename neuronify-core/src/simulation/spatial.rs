@@ -27,17 +27,16 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
         dendrite.push(in_dendrite.is_some());
     }
     let (cables, rest_lengths): (Vec<(usize, usize, bool)>, Vec<f32>) = world
-        .query::<(&Connection, Option<&Myelin>)>()
-        .with::<&CompartmentCurrent>()
+        .query::<(&Connection, Option<&Cable>)>()
+        .with::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .iter()
-        .filter_map(|(_, (cable, myelin))| {
-            let from = *slot_of.get(&cable.from)?;
-            let to = *slot_of.get(&cable.to)?;
-            let rest_length = match myelin {
-                Some(_) => INTERNODE_LENGTH,
-                None => SEGMENT_LENGTH,
-            };
-            Some(((from, to, cable.directional), rest_length))
+        .filter_map(|(_, (connection, cable))| {
+            let from = *slot_of.get(&connection.from)?;
+            let to = *slot_of.get(&connection.to)?;
+            let rest_length = cable.map_or(SEGMENT_LENGTH, |cable| {
+                (cable.length / MICROMETRES_PER_UNIT) as f32
+            });
+            Some(((from, to, connection.directional), rest_length))
         })
         .unzip();
 

@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn a_rate_plot_follows_the_rate_of_the_neurons_wired_to_it() {
         use crate::elements::{spawn_rate_plot, Element};
-        use crate::simulation::step_simulation;
+        use crate::simulation::{step_simulation, Engine};
         let mut world = World::new();
         let source = Element::RegularSpikeGenerator.spawn(&mut world, glam::Vec3::ZERO);
         world
@@ -163,12 +163,16 @@ mod tests {
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::Z * 5.0);
         crate::elements::spawn_synapse(&mut world, source, neuron);
         let plot = spawn_rate_plot(&mut world, neuron, glam::Vec3::X * 5.0);
-        let mut time = 0.0;
+        let (mut engine, mut time) = (Engine::default(), 0.0);
         let mut spikes = 0;
         while time < 3.0 {
-            step_simulation(&mut world, &mut time, 1, None);
-            if time > 2.0 && world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0 {
-                spikes += 1;
+            step_simulation(&mut world, &mut engine, &mut time, 40, None);
+            if time > 2.0 {
+                spikes += engine
+                    .spikes()
+                    .iter()
+                    .filter(|spike| spike.entity == neuron)
+                    .count();
             }
         }
         let series = world.get::<&RateSeries>(plot).unwrap();

@@ -9,14 +9,14 @@ use neuronify_core::elements::{
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::serialization;
 use neuronify_core::{
-    Annotation, Connection, CurrentClamp, CurrentSynapse, LeakyDynamics, Link, MeterSize,
-    NeuronDisplay, NeuronType, NoteSize, Position, Setting, Tool, ToolGroup, DEFAULT_SPEED,
+    Annotation, Connection, CurrentClamp, CurrentSynapse, Link, MeterSize, NeuronDisplay,
+    NeuronType, NodeState, NoteSize, Position, Setting, Tool, ToolGroup, DEFAULT_SPEED,
     INTERNODE_LENGTH, SEGMENT_LENGTH,
 };
 
-const NANOAMPERE: f64 = 1e-9;
-const MILLIVOLT: f64 = 1e-3;
-const MILLISECOND: f64 = 1e-3;
+const NANOAMPERE: f64 = 1.0;
+const MILLIVOLT: f64 = 1.0;
+const MILLISECOND: f64 = 1.0;
 const CURRENT_DRAWN_AT_FULL_STRENGTH: f64 = 6.0 * NANOAMPERE;
 
 const WIDTH: f32 = 24.0;
@@ -243,10 +243,7 @@ impl Canvas {
     }
 
     fn start_at(&mut self, neuron: Entity, voltage: f64) {
-        self.world
-            .get::<&mut LeakyDynamics>(neuron)
-            .unwrap()
-            .voltage = voltage;
+        self.world.get::<&mut NodeState>(neuron).unwrap().voltage = voltage;
     }
 }
 

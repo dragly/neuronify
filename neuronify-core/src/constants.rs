@@ -1,22 +1,15 @@
-pub const FHN_TAU: f64 = 60.0;
-pub const FHN_A: f64 = 0.7;
-pub const FHN_B: f64 = 0.8;
-pub const FHN_EPS: f64 = 0.08;
-pub const FHN_SCALE: f64 = 50.0;
-pub const FHN_OFFSET: f64 = 50.0;
-pub const FHN_CDT: f64 = 0.01;
-
-pub const LIF_DT: f64 = 0.0001;
+pub const DT: f64 = 0.025;
+pub const DEFAULT_TEMPERATURE: f64 = 16.3;
+pub const RESTING_POTENTIAL: f64 = -65.0;
+pub const MICROMETRES_PER_UNIT: f64 = 50.0;
 pub const FIRING_RATE_TIME_CONSTANT: f64 = 0.05;
 pub const PHYSICS_DT: f64 = 0.001;
 
-pub const SIMULATION_STEPS_PER_SECOND: f64 = 1000.0 / 16.0;
+pub const SIMULATION_STEPS_PER_SECOND: f64 = 250.0;
 pub const DEFAULT_SPEED: f64 = 2.0;
 pub const PHYSICS_STEPS_PER_SECOND: f64 = 250.0;
 
-pub const STIMULATION_CURRENT: f64 = 300e-12;
-pub const STIMULATION_DRIVE: f64 = 1.0;
-pub const MAX_STIMULATION_DRIVE: f64 = 1.5;
+pub const STIMULATION_CURRENT: f64 = 0.3;
 
 pub const NODE_RADIUS: f32 = 1.0;
 pub const ERASE_RADIUS: f32 = 2.0 * NODE_RADIUS;
@@ -29,35 +22,18 @@ pub const TERMINAL_INSET: f32 = 2.0 * NODE_RADIUS;
 pub const VOLTMETER_TIME_WINDOW: f64 = 1.0 / 9.0;
 pub const LIF_VOLTAGE_MIN: f64 = -100.0;
 pub const LIF_VOLTAGE_MAX: f64 = 50.0;
-pub const FHN_VOLTAGE_MIN: f64 = -80.0;
-pub const FHN_VOLTAGE_MAX: f64 = 160.0;
 
 pub const REPULSION_STRENGTH: f32 = 5.0;
 pub const SPRING_STRENGTH: f32 = 10.0;
 pub const ANGLE_ALIGNMENT_STRENGTH: f32 = 1.0;
 pub const AXON_SMOOTHING_STRENGTH: f32 = 20.0;
 
-pub const COUPLING_CAPACITANCE: f64 = 1.0 / 17.0;
-pub const BRIDGE_CURRENT_SCALE: f64 = 10e-9;
-pub const BRIDGE_VOLTAGE_THRESHOLD: f64 = 50.0;
-pub const BRIDGE_VOLTAGE_CLAMP: f64 = 200.0;
+pub const TERMINAL_THRESHOLD: f64 = -20.0;
 
 pub const COMPARTMENT_SPHERE_SCALE: f32 = 0.3;
 pub const TRIGGER_SPHERE_SCALE: f32 = 0.5;
 
-pub const FHN_FIRE_VOLTAGE: f64 = 1.0;
-pub const FHN_FIRE_DURATION: f64 = 4.0 * LIF_DT;
-pub const COMPARTMENT_FIRE_VOLTAGE: f64 = FHN_FIRE_VOLTAGE * FHN_SCALE + FHN_OFFSET;
-pub const NODE_RECOVERY_THRESHOLD: f64 = 0.0;
-pub const SALTATORY_SPEED: f64 = 60_000.0;
-pub const ENDING_STRENGTH: f64 = 7.2;
 pub const MAX_ENDING_STRENGTH: f64 = 2.0;
-pub const ENDING_TIME_CONSTANT: f64 = 0.4;
-pub const ENDING_SPREAD: f64 = 20.0;
-pub const INHIBITION_STRENGTH: f64 = 2.0;
-pub const INHIBITION_TIME_CONSTANT: f64 = 1.0;
-pub const DENDRITE_SLOWDOWN: f64 = 3.0;
-pub const COMPARTMENT_RESTING_VOLTAGE: f64 = -10.0;
 
 pub const BEZIER_BEND_FRACTION: f32 = 0.2;
 

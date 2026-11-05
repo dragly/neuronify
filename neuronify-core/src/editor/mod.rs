@@ -15,7 +15,7 @@ use crate::measurement::visual_input::{visual_input_frame, VisualInput};
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
-use crate::simulation::{fire_nearby, touch_sensor_near, Touch};
+use crate::simulation::{touch_sensor_near, Touch};
 use crate::tools::{
     ConnectionHint, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool, Tool,
 };
@@ -70,6 +70,7 @@ pub struct Editor {
     edited: bool,
     shortcut: Option<Meter>,
     wired: bool,
+    presses: Vec<Vec3>,
 }
 
 impl Editor {
@@ -191,6 +192,10 @@ impl Editor {
             self.selection = Some(held);
         }
         self.release(world);
+    }
+
+    pub fn take_presses(&mut self) -> Vec<Vec3> {
+        std::mem::take(&mut self.presses)
     }
 
     pub fn take_edited(&mut self) -> bool {
@@ -355,9 +360,9 @@ impl Editor {
         }
     }
 
-    fn stimulate(&mut self, world: &mut World, position: Vec3) {
+    fn stimulate(&mut self, _world: &mut World, position: Vec3) {
         if self.stimulation_tool.is_none() {
-            fire_nearby(world, position);
+            self.presses.push(position);
         }
         self.stimulation_tool = Some(StimulationTool { position });
     }
@@ -963,7 +968,7 @@ fn connected(world: &World, from: Entity, to: Entity) -> bool {
 fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
     let cables: Vec<(Entity, Entity)> = world
         .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
+        .with::<&Cable>()
         .iter()
         .filter(|(_, cable)| !cable.directional)
         .map(|(_, cable)| (cable.from, cable.to))

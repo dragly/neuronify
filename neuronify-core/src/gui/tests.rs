@@ -4,8 +4,8 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics,
-    LeakyNeuron, NeuronType, RegularSpikeGenerator,
+    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Label, LeakyNeuron, NeuronType,
+    NodeState, RegularSpikeGenerator,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
 use crate::elements::{spawn_cable, spawn_compartment, Element};
@@ -307,8 +307,8 @@ fn clicking_stimulate_again_sets_the_current() {
     harness.press_the_middle_of_slider("Current", "300 pA");
     let current = harness.editor.stimulation.current;
     assert!(
-        current > 10e-12 && current < STIMULATION_CURRENT,
-        "{current} A"
+        current > 0.01 && current < STIMULATION_CURRENT,
+        "{current} nA"
     );
     harness.click(pos2(700.0, 400.0));
     assert!(harness.shows("Current"));
@@ -472,7 +472,7 @@ fn current_sources_reach_thirty_nanoamperes() {
         .get::<&CurrentClamp>(source)
         .unwrap()
         .current_output;
-    assert_eq!(current, 30e-9);
+    assert_eq!(current, 30.0);
 }
 
 fn type_of(world: &World, entity: Entity) -> NeuronType {
@@ -560,7 +560,7 @@ fn the_threshold_stays_above_the_reset() {
     harness.drag(slider, slider - vec2(400.0, 0.0));
     let neuron = harness.world.get::<&LeakyNeuron>(neuron).unwrap();
     assert!(neuron.threshold > neuron.initial_potential);
-    assert!(neuron.threshold - neuron.initial_potential < 1e-3);
+    assert!(neuron.threshold - neuron.initial_potential < 1.0);
 }
 
 #[test]
@@ -575,22 +575,18 @@ fn undoing_a_refractory_period_leaves_the_voltage_alone() {
     let refractory_period = |harness: &Harness| {
         harness
             .world
-            .get::<&LeakyDynamics>(neuron)
+            .get::<&LeakyNeuron>(neuron)
             .unwrap()
             .refractory_period
     };
-    assert_ne!(refractory_period(&harness), 0.002);
-    harness
-        .world
-        .get::<&mut LeakyDynamics>(neuron)
-        .unwrap()
-        .voltage = -0.06;
+    assert_ne!(refractory_period(&harness), 2.0);
+    harness.world.get::<&mut NodeState>(neuron).unwrap().voltage = -60.0;
 
     harness.press(Modifiers::COMMAND, Key::Z);
-    assert_eq!(refractory_period(&harness), 0.002);
+    assert_eq!(refractory_period(&harness), 2.0);
     assert_eq!(
-        harness.world.get::<&LeakyDynamics>(neuron).unwrap().voltage,
-        -0.06
+        harness.world.get::<&NodeState>(neuron).unwrap().voltage,
+        -60.0
     );
 }
 
@@ -622,12 +618,12 @@ fn a_selected_synapse_shows_its_settings_and_undoes_them() {
         .unwrap()
         + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
-    assert_eq!(maximum_current(&harness), 10e-9);
+    assert_eq!(maximum_current(&harness), 10.0);
     harness
         .world
         .get::<&mut CurrentSynapse>(synapse)
         .unwrap()
-        .time = 3.0;
+        .exponential = 0.5;
 
     harness.press(Modifiers::COMMAND, Key::Z);
     assert_eq!(
@@ -635,8 +631,12 @@ fn a_selected_synapse_shows_its_settings_and_undoes_them() {
         CurrentSynapse::default().maximum_current
     );
     assert_eq!(
-        harness.world.get::<&CurrentSynapse>(synapse).unwrap().time,
-        3.0
+        harness
+            .world
+            .get::<&CurrentSynapse>(synapse)
+            .unwrap()
+            .exponential,
+        0.5
     );
 }
 
@@ -704,7 +704,7 @@ fn the_sliders_of_an_alternating_current_source_are_logarithmic() {
     harness.press_the_middle_of_slider(Setting::Amplitude.label(), "300 pA");
     harness.press_the_middle_of_slider(Setting::AlternatingFrequency.label(), "50 Hz");
     let alternating = harness.world.get::<&AlternatingCurrent>(source).unwrap();
-    assert!((alternating.amplitude / 100e-12 - 1.0).abs() < 0.05);
+    assert!((alternating.amplitude / 0.1 - 1.0).abs() < 0.05);
     assert!((alternating.frequency / 200.0_f64.sqrt() - 1.0).abs() < 0.05);
 }
 

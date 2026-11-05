@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
 
 use glam::Vec3;
-use hecs::Entity;
+use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
 
 use crate::components::{Connection, MeterSize, Position};
+use crate::simulation::Engine;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RollingWindow<T> {
@@ -127,6 +128,25 @@ impl Corner {
             Corner::TopRight => Corner::BottomLeft,
             Corner::BottomLeft => Corner::TopRight,
             Corner::BottomRight => Corner::TopLeft,
+        }
+    }
+}
+
+pub fn record_voltages(world: &mut World, engine: &mut Engine) {
+    let samples = engine.samples();
+    let spikes = engine.spikes();
+    for probe in samples {
+        let Ok(mut series) = world.get::<&mut VoltageSeries>(probe.wire) else {
+            continue;
+        };
+        for (time, voltage) in probe.samples {
+            series.measurements.push(VoltageMeasurement {
+                voltage,
+                time: time * 1e-3,
+            });
+        }
+        for spike in spikes.iter().filter(|spike| spike.entity == probe.target) {
+            series.spike_times.push(spike.time * 1e-3);
         }
     }
 }

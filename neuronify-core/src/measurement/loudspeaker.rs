@@ -2,6 +2,7 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
+use crate::simulation::Spike;
 
 const MAXIMUM_HEARD: usize = 64;
 
@@ -63,15 +64,15 @@ impl Default for Loudspeaker {
     }
 }
 
-pub fn listen(world: &mut World, time: f64, dt: f64) {
+pub fn listen(world: &mut World, spikes: &[Spike], time: f64, duration: f64) {
     let mut speakers = world.query_mut::<&mut Loudspeaker>().into_iter().peekable();
     if speakers.peek().is_none() {
         return;
     }
     for (_, speaker) in speakers {
-        speaker.time_since_heard += dt;
+        speaker.time_since_heard += duration;
     }
-    let fired: Vec<Entity> = world
+    let wires: Vec<(Entity, Entity)> = world
         .query::<&Connection>()
         .iter()
         .filter(|(_, connection)| {
@@ -79,18 +80,18 @@ pub fn listen(world: &mut World, time: f64, dt: f64) {
                 .satisfies::<&Loudspeaker>(connection.to)
                 .unwrap_or(false)
         })
-        .filter(|(_, connection)| {
-            world
-                .get::<&LeakyDynamics>(connection.from)
-                .is_ok_and(|dynamics| dynamics.time_since_fire == 0.0)
-        })
-        .map(|(_, connection)| connection.to)
+        .map(|(_, connection)| (connection.from, connection.to))
         .collect();
-    for speaker in fired {
-        if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(speaker) {
-            speaker.time_since_heard = 0.0;
-            if speaker.heard.len() < MAXIMUM_HEARD {
-                speaker.heard.push(time);
+    for spike in spikes {
+        for &(from, to) in &wires {
+            if from != spike.entity {
+                continue;
+            }
+            if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(to) {
+                speaker.time_since_heard = time - spike.time * 1e-3;
+                if speaker.heard.len() < MAXIMUM_HEARD {
+                    speaker.heard.push(spike.time * 1e-3);
+                }
             }
         }
     }
@@ -114,41 +115,41 @@ pub fn take_heard(world: &mut World) -> Vec<(Sound, f32, f64)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::LIF_DT;
+    use crate::constants::DT;
     use crate::elements::spawn_loudspeaker;
     use glam::Vec3;
+
+    const STEP: f64 = DT * 1e-3;
+
+    fn spike(entity: Entity, time: f64) -> Spike {
+        Spike {
+            entity,
+            time: time * 1e3,
+        }
+    }
 
     #[test]
     fn a_loudspeaker_hears_each_spike_of_its_neurons_unless_muted() {
         let mut world = World::new();
-        let [wired, unwired] = [(); 2].map(|_| world.spawn((LeakyDynamics::default(),)));
+        let [wired, unwired] = [(); 2].map(|_| world.spawn((NodeState::default(),)));
         let speaker = spawn_loudspeaker(&mut world, wired, Vec3::ZERO);
         world.get::<&mut Loudspeaker>(speaker).unwrap().sound = Sound::Pop;
-        for neuron in [wired, unwired] {
-            world
-                .get::<&mut LeakyDynamics>(neuron)
-                .unwrap()
-                .time_since_fire = 0.0;
-        }
-        listen(&mut world, 1.0, LIF_DT);
-        world
-            .get::<&mut LeakyDynamics>(wired)
-            .unwrap()
-            .time_since_fire = LIF_DT;
-        listen(&mut world, 1.0 + LIF_DT, LIF_DT);
+        listen(
+            &mut world,
+            &[spike(wired, 1.0), spike(unwired, 1.0)],
+            1.0,
+            STEP,
+        );
+        listen(&mut world, &[], 1.0 + STEP, STEP);
         assert_eq!(take_heard(&mut world), [(Sound::Pop, 1.0, 1.0)]);
         assert!(take_heard(&mut world).is_empty());
         assert_eq!(
             world.get::<&Loudspeaker>(speaker).unwrap().time_since_heard,
-            LIF_DT
+            STEP
         );
 
         world.get::<&mut Loudspeaker>(speaker).unwrap().muted = true;
-        world
-            .get::<&mut LeakyDynamics>(wired)
-            .unwrap()
-            .time_since_fire = 0.0;
-        listen(&mut world, 2.0, LIF_DT);
+        listen(&mut world, &[spike(wired, 2.0)], 2.0, STEP);
         assert!(take_heard(&mut world).is_empty());
     }
 

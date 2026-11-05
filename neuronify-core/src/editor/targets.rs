@@ -230,7 +230,7 @@ fn cable_halves(world: &World, radii: &HashMap<Entity, f32>) -> Vec<Piece> {
     let mut halves = Vec::new();
     let cables = world
         .query::<(&Connection, Option<&Myelin>)>()
-        .with::<&CompartmentCurrent>()
+        .with::<&Cable>()
         .iter()
         .filter(|(_, (cable, _))| !cable.directional)
         .map(|(_, (cable, sheath))| (cable.from, cable.to, sheath.is_some()))

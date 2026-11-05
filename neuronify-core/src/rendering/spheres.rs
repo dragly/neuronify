@@ -24,7 +24,7 @@ fn spines(
     let mut spines = Vec::new();
     for (cable, connection) in world
         .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
+        .with::<&Cable>()
         .iter()
         .filter(|(_, connection)| !connection.directional)
     {
@@ -45,8 +45,9 @@ fn spines(
         let ends = [from, to].map(|end| {
             let position = end.get::<&Position>().map(|position| position.position);
             let voltage = end
-                .get::<&Compartment>()
-                .map(|compartment| shown_voltage(&compartment, display));
+                .get::<&NodeState>()
+                .filter(|_| end.has::<Compartment>())
+                .map(|state| shown_voltage(&state, display));
             (position, voltage, radii.get(&end.entity()).copied())
         });
         let [(Some(start), Some(start_voltage), Some(start_radius)), (Some(end), Some(end_voltage), Some(end_radius))] =
@@ -81,17 +82,19 @@ pub fn collect_spheres(
     radii: &HashMap<Entity, f32>,
     paths: &BTreeMap<Entity, ConnectionPath>,
     palette: &Palette,
+    time: f64,
 ) -> Vec<Sphere> {
+    let now = time * 1e3;
     let mut spheres = Vec::new();
     let display = NeuronDisplay::of(world);
 
     spheres.extend(
         world
-            .query::<(&LeakyNeuron, &LeakyDynamics, &Position)>()
+            .query::<(&LeakyNeuron, &NodeState, &Position)>()
             .iter()
-            .map(|(entity, (neuron, dynamics, position))| Sphere {
+            .map(|(entity, (neuron, state, position))| Sphere {
                 position: position.position,
-                color: soma_color(world, entity, neuron, dynamics, &display, palette),
+                color: soma_color(world, entity, neuron, state, &display, palette),
                 radius: NODE_RADIUS,
                 _padding: Default::default(),
             }),
@@ -113,7 +116,8 @@ pub fn collect_spheres(
 
     spheres.extend(
         world
-            .query::<(&Compartment, &Position, &NeuronType, Option<&Dendrite>)>()
+            .query::<(&NodeState, &Position, &NeuronType, Option<&Dendrite>)>()
+            .with::<&Compartment>()
             .iter()
             .map(
                 |(entity, (compartment, position, neuron_type, dendrite))| Sphere {
@@ -194,7 +198,7 @@ pub fn collect_spheres(
         spheres.extend(synapse.triggers.iter().map(|&trigger_time| {
             let fire_time = trigger_time - synapse.delay;
             let progress = if synapse.delay > 0.0 {
-                ((synapse.time - fire_time) / synapse.delay).clamp(0.0, 1.0) as f32
+                ((now - fire_time) / synapse.delay).clamp(0.0, 1.0) as f32
             } else {
                 1.0
             };
@@ -226,7 +230,7 @@ mod tests {
                     position: Vec3::new(x, 0.0, 0.0),
                 },
                 LeakyNeuron::default(),
-                LeakyDynamics::default(),
+                NodeState::default(),
                 NeuronType::Excitatory,
             ))
         };
@@ -240,20 +244,19 @@ mod tests {
                     directional: true,
                 },
                 CurrentSynapse {
-                    delay: 0.004,
-                    time: 0.997,
+                    delay: 4.0,
                     triggers,
                     ..Default::default()
                 },
             )
         };
-        let firing = world.spawn(synapse(first, second, vec![1.0]));
+        let firing = world.spawn(synapse(first, second, vec![1000.0]));
         world.spawn(synapse(second, first, vec![]));
         let palette = Theme::Dark.palette();
         let radii = compartment_radii(&world);
         let paths = connection_paths(&world, &radii, &palette);
 
-        let spikes: Vec<Sphere> = collect_spheres(&world, &radii, &paths, &palette)
+        let spikes: Vec<Sphere> = collect_spheres(&world, &radii, &paths, &palette, 0.997)
             .into_iter()
             .filter(|sphere| {
                 sphere.color == palette.spike && sphere.radius == NODE_RADIUS * TRIGGER_SPHERE_SCALE

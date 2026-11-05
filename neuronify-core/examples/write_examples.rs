@@ -10,13 +10,15 @@ use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
-    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, LeakyDynamics,
-    MeterSize, NeuronDisplay, NeuronType, NoteSize, PoissonGenerator, RegularSpikeGenerator,
-    Setting,
+    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, LeakyNeuron,
+    MeterSize, NeuronDisplay, NeuronType, NodeState, NoteSize, PoissonGenerator,
+    RegularSpikeGenerator, Setting,
 };
 
-const NANOAMPERE: f64 = 1e-9;
-const MILLISECOND: f64 = 1e-3;
+const NANOAMPERE: f64 = 1.0;
+const MILLISECOND: f64 = 1.0;
+const MICROSIEMENS: f64 = 1.0;
+const MILLIVOLT: f64 = 1.0;
 const CURRENT_DRAWN_AT_FULL_STRENGTH: f64 = 6.0 * NANOAMPERE;
 const WIDTH: f32 = 24.0;
 const GAP: f32 = 1.2;
@@ -108,11 +110,11 @@ impl Sheet {
         source
     }
 
-    fn refractory_period(&mut self, neuron: Entity, seconds: f64) {
+    fn refractory_period(&mut self, neuron: Entity, period: f64) {
         self.world
-            .get::<&mut LeakyDynamics>(neuron)
+            .get::<&mut LeakyNeuron>(neuron)
             .unwrap()
-            .refractory_period = seconds;
+            .refractory_period = period;
     }
 
     fn rate_plot(&mut self, target: Entity, left: f32, up: f32, maximum: f64) {
@@ -176,7 +178,7 @@ pub fn listening_to_a_neuron() -> World {
     };
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, neuron, "Cortex");
-    synapse(&mut world, eye, neuron, 1.5e-9);
+    synapse(&mut world, eye, neuron, 1.5 * NANOAMPERE);
     spawn_loudspeaker(&mut world, neuron, at(3.0, 4.0));
     spawn_spike_detector(&mut world, neuron, at(-5.0, 3.0));
     note(
@@ -203,18 +205,18 @@ pub fn adaptive_inhibition() -> World {
     let adaptive = Element::AdaptiveNeuron.spawn(&mut world, at(5.0, -5.0));
     *world.get::<&mut NeuronType>(adaptive).unwrap() = NeuronType::Inhibitory;
     *world.get::<&mut AdaptationCurrent>(adaptive).unwrap() = AdaptationCurrent {
-        adaptation: 8e-9,
-        time_constant: 0.4,
+        adaptation: 0.008 * MICROSIEMENS,
+        time_constant: 400.0 * MILLISECOND,
         ..Default::default()
     };
     label(&mut world, adaptive, "Adaptive");
     let noise = Element::PoissonGenerator.spawn(&mut world, at(-6.0, -6.0));
     *world.get::<&mut NeuronType>(noise).unwrap() = NeuronType::Inhibitory;
     world.get::<&mut PoissonGenerator>(noise).unwrap().rate = 30.0;
-    synapse(&mut world, drive, output, 3e-9);
-    synapse(&mut world, drive, adaptive, 6e-9);
-    synapse(&mut world, adaptive, output, 4e-9);
-    synapse(&mut world, noise, output, 2e-9);
+    synapse(&mut world, drive, output, 3.0 * NANOAMPERE);
+    synapse(&mut world, drive, adaptive, 6.0 * NANOAMPERE);
+    synapse(&mut world, adaptive, output, 4.0 * NANOAMPERE);
+    synapse(&mut world, noise, output, 2.0 * NANOAMPERE);
     spawn_voltmeter(&mut world, output, at(-2.0, 5.0));
     let plot = spawn_rate_plot(&mut world, output, at(-9.0, 5.0));
     *world.get::<&mut RatePlot>(plot).unwrap() = RatePlot {
@@ -397,16 +399,12 @@ pub fn half_center_oscillator() -> World {
             .world
             .get::<&mut AdaptationCurrent>(neuron)
             .unwrap()
-            .time_constant = 0.15;
+            .time_constant = 150.0 * MILLISECOND;
         sheet.current(neuron, 0.5 * NANOAMPERE, 1.5, up);
     }
     sheet.lasting_inhibition(top, bottom);
     sheet.lasting_inhibition(bottom, top);
-    sheet
-        .world
-        .get::<&mut LeakyDynamics>(bottom)
-        .unwrap()
-        .voltage = -0.075;
+    sheet.world.get::<&mut NodeState>(bottom).unwrap().voltage = -75.0 * MILLIVOLT;
     sheet.spike_detector(&[top, bottom], 10.5, middle, 13.5, 9.0);
     sheet.text(
         "Pairs like this take turns in the circuits that drive walking and swimming, \

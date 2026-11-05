@@ -1,3 +1,7 @@
+use super::v11::{
+    AdaptationCurrent, Compartment, CompartmentCurrent, CurrentSynapse, GeneratorDynamics,
+    ImmediateFireSynapse, LeakCurrent, LeakyDynamics, LeakyNeuron,
+};
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;

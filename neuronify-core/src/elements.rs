@@ -2,12 +2,12 @@ use glam::Vec3;
 use hecs::{Entity, EntityBuilder, World};
 
 use crate::components::*;
-use crate::constants::COUPLING_CAPACITANCE;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
+use crate::simulation::model::cable_between;
 
 const VOLTMETER_MEASUREMENTS: usize = 100000;
 
@@ -123,7 +123,7 @@ fn neuron(position: Position, neuron_type: NeuronType) -> EntityBuilder {
     neuron.add_bundle((
         position,
         LeakyNeuron::default(),
-        LeakyDynamics::default(),
+        NodeState::at(LeakyNeuron::default().resting_potential),
         LeakCurrent::default(),
         neuron_type,
         Label::default(),
@@ -136,7 +136,8 @@ pub fn spawn_compartment(world: &mut World, position: Vec3, neuron_type: NeuronT
     world.spawn((
         Position { position },
         neuron_type,
-        Compartment::default(),
+        Compartment,
+        NodeState::default(),
         StaticConnectionSource {},
         Deletable {},
         Selectable { selected: false },
@@ -171,16 +172,36 @@ pub fn spawn_connection(world: &mut World, from: Entity, to: Entity) -> Entity {
         world.spawn(connection)
     } else if world.get::<&TouchSensor>(from).is_ok() {
         let connection = world.spawn(connection);
-        world
-            .insert_one(connection, ImmediateFireSynapse::default())
-            .unwrap();
+        world.insert_one(connection, ImmediateFireSynapse).unwrap();
         connection
     } else {
         spawn_synapse(world, from, to)
     }
 }
 
+fn spawn_link(world: &mut World, from: Entity, to: Entity, myelinated: bool) -> Entity {
+    let (cable, membrane) = cable_between(world, from, to, myelinated);
+    let link = world.spawn((
+        Connection {
+            from,
+            to,
+            strength: 1.0,
+            directional: false,
+        },
+        Deletable {},
+        cable,
+        membrane,
+    ));
+    if myelinated {
+        world.insert_one(link, Myelin).unwrap();
+    }
+    link
+}
+
 pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: bool) -> Entity {
+    if !directional {
+        return spawn_link(world, from, to, false);
+    }
     world.spawn((
         Connection {
             from,
@@ -189,25 +210,22 @@ pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: boo
             directional,
         },
         Deletable {},
-        CompartmentCurrent {
-            capacitance: COUPLING_CAPACITANCE,
-        },
+        ConductanceSynapse::default(),
+        SynapseState::default(),
     ))
 }
 
 pub fn axon_ending(world: &World, terminal: Entity) -> Option<Entity> {
     world
         .query::<&Connection>()
-        .with::<&CompartmentCurrent>()
+        .with::<&ConductanceSynapse>()
         .iter()
-        .find(|(_, connection)| connection.directional && connection.from == terminal)
+        .find(|(_, connection)| connection.from == terminal)
         .map(|(ending, _)| ending)
 }
 
 pub fn spawn_internode(world: &mut World, from: Entity, to: Entity) -> Entity {
-    let internode = spawn_cable(world, from, to, false);
-    world.insert_one(internode, Myelin).unwrap();
-    internode
+    spawn_link(world, from, to, true)
 }
 
 pub fn spawn_axon_cable(world: &mut World, from: Entity, to: Entity, myelinated: bool) -> Entity {

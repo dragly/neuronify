@@ -39,7 +39,7 @@ const PEEKING_SHEET: f32 = 212.0;
 const EXPANDED_SHEET: f32 = 0.72;
 const HISTORY_LENGTH: usize = 240;
 const SPARKLINE_HEIGHT: f32 = 40.0;
-const SPIKE_HEIGHT: f64 = 0.02;
+const SPIKE_HEIGHT: f64 = 20.0;
 const HEADER_GLYPH: f32 = 30.0;
 const HEADER_BUTTON: f32 = 32.0;
 const HEADER_ICON: f32 = 18.0;
@@ -47,13 +47,13 @@ const DELETE_HEIGHT: f32 = 36.0;
 const DELETE_GAP: f32 = 8.0;
 const DESCRIPTION_SIZE: f32 = 11.5;
 const SWITCH_HEIGHT: f32 = 30.0;
-const POTENTIALS: RangeInclusive<f64> = -0.1..=0.05;
-const POTENTIAL_GAP: f64 = 0.05e-3;
-const REFRACTORY_PERIODS: RangeInclusive<f64> = 0.0..=0.05;
-const RESISTANCES: (RangeInclusive<f64>, f64) = (1e6..=200e6, 1e6);
-const CAPACITANCES: (RangeInclusive<f64>, f64) = (10e-12..=2e-9, 10e-12);
-const ADAPTATIONS: (RangeInclusive<f64>, f64) = (0.0..=100e-9, 0.1e-9);
-const ADAPTATION_TIME_CONSTANTS: RangeInclusive<f64> = 0.0..=0.6;
+const POTENTIALS: RangeInclusive<f64> = -100.0..=50.0;
+const POTENTIAL_GAP: f64 = 0.05;
+const REFRACTORY_PERIODS: RangeInclusive<f64> = 0.0..=50.0;
+const RESISTANCES: (RangeInclusive<f64>, f64) = (1.0..=200.0, 1.0);
+const CAPACITANCES: (RangeInclusive<f64>, f64) = (0.01..=2.0, 0.01);
+const ADAPTATIONS: (RangeInclusive<f64>, f64) = (0.0..=0.1, 0.0001);
+const ADAPTATION_TIME_CONSTANTS: RangeInclusive<f64> = 0.0..=600.0;
 const PLOTTED_VOLTAGES: RangeInclusive<f64> = -250.0..=250.0;
 const PLOTTED_VOLTAGE_GAP: f64 = 1.0;
 const RATE_WINDOWS: RangeInclusive<f64> = 0.01..=1.0;
@@ -65,12 +65,12 @@ const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
 const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
 const SENSITIVITIES: (RangeInclusive<f64>, f64) = (0.0..=10_000.0, 10.0);
 const TIME_RANGES: RangeInclusive<f64> = 1e-3..=1.0;
-const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10e-9;
-const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1e-3..=6e-3;
-const DELAYS: RangeInclusive<f64> = 0.0..=30e-3;
-const AMPLITUDES: (RangeInclusive<f64>, f64) = (0.0..=1e-9, 10e-12);
+const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10.0;
+const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1..=6.0;
+const DELAYS: RangeInclusive<f64> = 0.0..=30.0;
+const AMPLITUDES: (RangeInclusive<f64>, f64) = (0.0..=1.0, 0.01);
 const ALTERNATING_FREQUENCIES: (RangeInclusive<f64>, f64) = (0.0..=200.0, 1.0);
-const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30e-9, 0.01e-9);
+const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30.0, 0.01);
 const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
 
 enum Action {
@@ -199,22 +199,23 @@ impl Inspector {
     }
 
     fn record(&mut self, world: &World, entity: Entity) {
-        let sample = if let (Ok(neuron), Ok(dynamics)) = (
+        let sample = if let (Ok(neuron), Ok(state)) = (
             world.get::<&LeakyNeuron>(entity),
-            world.get::<&LeakyDynamics>(entity),
+            world.get::<&NodeState>(entity),
         ) {
-            let fired = dynamics.time_since_fire < self.last_time_since_fire;
-            self.last_time_since_fire = dynamics.time_since_fire;
+            let fired = state.since_spike < self.last_time_since_fire;
+            self.last_time_since_fire = state.since_spike;
             Some(if fired {
                 neuron.threshold + SPIKE_HEIGHT
             } else {
-                dynamics.voltage
+                state.voltage
             })
         } else {
             world
-                .get::<&Compartment>(entity)
+                .get::<&NodeState>(entity)
                 .ok()
-                .map(|compartment| compartment.voltage)
+                .filter(|_| world.satisfies::<&Compartment>(entity).unwrap_or(false))
+                .map(|state| state.voltage)
         };
         if let Some(sample) = sample {
             if self.history.len() == HISTORY_LENGTH {
@@ -241,13 +242,14 @@ impl Inspector {
             ui.add_space(12.0);
             return;
         }
-        let (voltage, threshold) = if let (Ok(neuron), Ok(dynamics)) = (
+        let compartment = world.satisfies::<&Compartment>(entity).unwrap_or(false);
+        let (voltage, threshold) = if let (Ok(neuron), Ok(state)) = (
             world.get::<&LeakyNeuron>(entity),
-            world.get::<&LeakyDynamics>(entity),
+            world.get::<&NodeState>(entity),
         ) {
-            (millivolts(dynamics.voltage), Some(neuron.threshold))
-        } else if let Ok(compartment) = world.get::<&Compartment>(entity) {
-            (format!("{:.2}", compartment.voltage), None)
+            (millivolts(state.voltage), Some(neuron.threshold))
+        } else if let (true, Ok(state)) = (compartment, world.get::<&NodeState>(entity)) {
+            (millivolts(state.voltage), None)
         } else if world.get::<&Voltmeter>(entity).is_ok() {
             let first = measured(world, entity).first().map(|&(wire, _)| wire);
             let Some(reading) = first.and_then(|wire| {
@@ -474,16 +476,20 @@ fn sparkline(ui: &mut Ui, chrome: &Chrome, history: &VecDeque<f64>, threshold: O
     ));
 }
 
-fn milliseconds(seconds: f64) -> String {
-    format!("{:.1} ms", seconds * 1e3)
+fn milliseconds(milliseconds: f64) -> String {
+    format!("{milliseconds:.1} ms")
 }
 
-fn nanoamperes(amperes: f64) -> String {
-    format!("{:.2} nA", amperes * 1e9)
+fn seconds_in_milliseconds(seconds: f64) -> String {
+    milliseconds(seconds * 1e3)
 }
 
-fn millivolts(volts: f64) -> String {
-    format!("{:.1} mV", volts * 1e3).replace('-', "\u{2212}")
+fn nanoamperes(nanoamperes: f64) -> String {
+    format!("{nanoamperes:.2} nA")
+}
+
+fn millivolts(millivolts: f64) -> String {
+    format!("{millivolts:.1} mV").replace('-', "\u{2212}")
 }
 
 fn parameter<N: Numeric>(
@@ -674,12 +680,12 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
         changed |= label_field(ui, chrome, &mut label.text);
     }
     changed |= type_switch(ui, chrome, world, entity);
-    if let Ok(mut dynamics) = world.get::<&mut LeakyDynamics>(entity) {
+    if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
         changed |= parameter(
             ui,
             chrome,
             Setting::RefractoryPeriod,
-            &mut dynamics.refractory_period,
+            &mut neuron.refractory_period,
             REFRACTORY_PERIODS,
             milliseconds,
         );
@@ -733,7 +739,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             Setting::Resistance,
             &mut leak.resistance,
             RESISTANCES,
-            |ohms| format!("{:.0} M\u{3a9}", ohms * 1e-6),
+            |megaohms| format!("{megaohms:.0} M\u{3a9}"),
         );
         changed |= logarithmic_parameter(
             ui,
@@ -741,7 +747,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             Setting::Capacitance,
             &mut neuron.capacitance,
             CAPACITANCES,
-            |farads| format!("{:.0} pF", farads * 1e12),
+            |nanofarads| format!("{:.0} pF", nanofarads * 1e3),
         );
         reading(
             ui,
@@ -761,7 +767,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             Setting::Adaptation,
             &mut adaptation.adaptation,
             ADAPTATIONS,
-            |siemens| format!("{:.1} nS", siemens * 1e9),
+            |microsiemens| format!("{:.1} nS", microsiemens * 1e3),
         );
         changed |= parameter(
             ui,
@@ -906,7 +912,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::TimeRange,
             &mut detector.time_range,
             TIME_RANGES,
-            milliseconds,
+            seconds_in_milliseconds,
         );
     }
     if let Ok(mut plot) = world.get::<&mut RatePlot>(entity) {
@@ -917,7 +923,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::Window,
             &mut plot.window,
             RATE_WINDOWS,
-            milliseconds,
+            seconds_in_milliseconds,
         );
         changed |= parameter(
             ui,
@@ -925,7 +931,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::KernelWidth,
             &mut plot.kernel_width,
             RATE_WINDOWS,
-            milliseconds,
+            seconds_in_milliseconds,
         );
         let highest = parameter(
             ui,
@@ -1009,7 +1015,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::Amplitude,
             &mut alternating.amplitude,
             AMPLITUDES,
-            |amperes| format!("{:.0} pA", amperes * 1e12),
+            |nanoamperes| format!("{:.0} pA", nanoamperes * 1e3),
         );
         changed |= logarithmic_parameter(
             ui,
@@ -1081,11 +1087,16 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             |strength| format!("{strength:.2}"),
         );
     }
-    if let Ok(compartment) = world.get::<&Compartment>(entity) {
+    let gates = world
+        .get::<&NodeState>(entity)
+        .ok()
+        .filter(|state| state.gates.len() == 3)
+        .map(|state| [state.gates[0], state.gates[2], state.gates[1]]);
+    if let Some(gates) = gates {
         heading(ui, chrome, "Gating", 0.0);
-        reading(ui, chrome, "m", format!("{:.2}", compartment.m), 12.5);
-        reading(ui, chrome, "n", format!("{:.2}", compartment.n), 12.5);
-        reading(ui, chrome, "h", format!("{:.2}", compartment.h), 12.5);
+        for (name, gate) in ["m", "n", "h"].into_iter().zip(gates) {
+            reading(ui, chrome, name, format!("{gate:.2}"), 12.5);
+        }
     }
     changed
 }

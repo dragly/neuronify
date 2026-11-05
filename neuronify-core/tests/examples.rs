@@ -6,18 +6,28 @@ use std::f64::consts::FRAC_PI_2;
 
 use glam::Vec3;
 use hecs::{Entity, World};
-use neuronify_core::constants::{DEFAULT_SPEED, LIF_DT, SIMULATION_STEPS_PER_SECOND};
+use neuronify_core::constants::{DEFAULT_SPEED, DT, SIMULATION_STEPS_PER_SECOND};
 use neuronify_core::measurement::visual_input::VisualInput;
 use neuronify_core::rendering::canvas_bounds;
-use neuronify_core::simulation::{fire_nearby, step_simulation};
+use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
-    CurrentClamp, Label, LeakyDynamics, NoteSize, Position, TouchSensor, NODE_RADIUS,
+    CurrentClamp, Label, LeakyNeuron, NoteSize, Position, TouchSensor, NODE_RADIUS,
 };
 
 const PHONE_WIDTH: f32 = 27.0;
 
 fn on_screen(seconds: f64) -> f64 {
-    seconds * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND * LIF_DT
+    seconds * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND * DT * 1e-3
+}
+
+const STEPS_PER_CALL: u32 = 40;
+
+fn fired(engine: &Engine, neuron: Entity) -> usize {
+    engine
+        .spikes()
+        .iter()
+        .filter(|spike| spike.entity == neuron)
+        .count()
 }
 
 fn spikes(world: &mut World, label: &str, from: f64, to: f64) -> usize {
@@ -27,12 +37,13 @@ fn spikes(world: &mut World, label: &str, from: f64, to: f64) -> usize {
         .find(|(_, neuron)| neuron.text == label)
         .unwrap()
         .0;
-    let mut time = 0.0;
+    let (mut engine, mut time) = (Engine::default(), 0.0);
     let mut spikes = 0;
     while time < to {
-        step_simulation(world, &mut time, 1, None);
-        let fired = world.get::<&LeakyDynamics>(neuron).unwrap().time_since_fire == 0.0;
-        spikes += usize::from(fired && time >= from);
+        step_simulation(world, &mut engine, &mut time, STEPS_PER_CALL, None);
+        if time >= from {
+            spikes += fired(&engine, neuron);
+        }
     }
     spikes
 }
@@ -79,12 +90,27 @@ fn the_output_fires_more_within_seconds_as_the_inhibitory_neuron_adapts() {
 
 struct Experiment {
     world: World,
+    engine: Engine,
     time: f64,
 }
 
 impl Experiment {
     fn new(world: World) -> Experiment {
-        Experiment { world, time: 0.0 }
+        Experiment {
+            world,
+            engine: Engine::default(),
+            time: 0.0,
+        }
+    }
+
+    fn step(&mut self) {
+        step_simulation(
+            &mut self.world,
+            &mut self.engine,
+            &mut self.time,
+            STEPS_PER_CALL,
+            None,
+        );
     }
 
     fn neuron(&self, label: &str) -> Entity {
@@ -112,7 +138,7 @@ impl Experiment {
         let mut neurons: Vec<(Entity, Vec3)> = self
             .world
             .query::<&Position>()
-            .with::<&LeakyDynamics>()
+            .with::<&LeakyNeuron>()
             .iter()
             .map(|(entity, position)| (entity, position.position))
             .collect();
@@ -124,17 +150,16 @@ impl Experiment {
         let end = self.time + seconds;
         let mut counts = vec![0; neurons.len()];
         while self.time < end {
-            step_simulation(&mut self.world, &mut self.time, 1, None);
+            self.step();
             for (count, &neuron) in counts.iter_mut().zip(neurons) {
-                let dynamics = self.world.get::<&LeakyDynamics>(neuron).unwrap();
-                *count += usize::from(dynamics.time_since_fire == 0.0);
+                *count += fired(&self.engine, neuron);
             }
         }
         counts
     }
 
     fn press(&mut self, sensor: Vec3) {
-        fire_nearby(&mut self.world, sensor);
+        fire_nearby(&mut self.world, &mut self.engine, sensor);
     }
 
     fn spikes_during(&mut self, seconds: f64, label: &str) -> usize {
@@ -142,14 +167,8 @@ impl Experiment {
         let end = self.time + seconds;
         let mut spikes = 0;
         while self.time < end {
-            step_simulation(&mut self.world, &mut self.time, 1, None);
-            let fired = self
-                .world
-                .get::<&LeakyDynamics>(neuron)
-                .unwrap()
-                .time_since_fire
-                == 0.0;
-            spikes += usize::from(fired);
+            self.step();
+            spikes += fired(&self.engine, neuron);
         }
         spikes
     }
@@ -208,7 +227,7 @@ fn a_long_refractory_period_caps_the_firing_rate() {
     for (nanoamperes, short_at_least, long_below) in [(1.0, 100, 70), (5.0, 250, 100)] {
         let mut experiment = Experiment::new(write_examples::refractory_period());
         for (_, source) in experiment.world.query_mut::<&mut CurrentClamp>() {
-            source.current_output = nanoamperes * 1e-9;
+            source.current_output = nanoamperes;
         }
         let neurons = [experiment.neuron("2 ms"), experiment.neuron("10 ms")];
         let [short, long] = experiment.spike_counts(1.0, &neurons)[..] else {

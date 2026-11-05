@@ -19,6 +19,7 @@ egui = "0.34"
 wasm-bindgen-futures = "0.4"
 wasm-bindgen = "0.2.104"
 js-sys = "0.3"
+neuronify-engine = { path = "../neuronify-engine" }
 hecs = { version = "0.10.5", features = [
   "column-serialize",
   "serde",

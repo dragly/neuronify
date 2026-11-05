@@ -25,6 +25,7 @@ mod schema;
 mod v1;
 mod v10;
 mod v11;
+mod v12;
 mod v2;
 mod v3;
 mod v4;
@@ -35,7 +36,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 11;
+pub const VERSION: u32 = 12;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -49,7 +50,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v11::SaveContext, &mut serializer)
+    serialize(world, &mut v12::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -110,6 +111,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v11::deserialize(body)?, time, speed)
         }
+        12 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v12::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -129,6 +135,7 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             8 => v9::upgrade_from_v8(&mut world),
             9 => v10::upgrade_from_v9(&mut world),
             10 => v11::upgrade_from_v10(&mut world),
+            11 => v12::upgrade_from_v11(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -362,6 +369,47 @@ mod tests {
         assert_eq!(saved.speed, FIXTURE_SPEED);
     }
 
+    #[test]
+    fn loads_version_12() {
+        let saved = load(include_bytes!("fixtures/v12.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn version_11_upgrades_to_engine_units_and_cables_with_membranes() {
+        let bytes = include_bytes!("fixtures/v11.neuronify");
+        let old = v11::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
+        let new = load(bytes).unwrap().world;
+        for (entity, neuron) in old.query::<&v11::LeakyNeuron>().iter() {
+            let upgraded = new.get::<&LeakyNeuron>(entity).unwrap();
+            assert_eq!(upgraded.threshold, neuron.threshold * 1e3);
+            assert_eq!(upgraded.capacitance, neuron.capacitance * 1e9);
+        }
+        for (entity, leak) in old.query::<&v11::LeakCurrent>().iter() {
+            let upgraded = new.get::<&LeakCurrent>(entity).unwrap();
+            assert_eq!(upgraded.resistance, leak.resistance / 1e6);
+        }
+        for (entity, synapse) in old.query::<&v11::CurrentSynapse>().iter() {
+            let upgraded = new.get::<&CurrentSynapse>(entity).unwrap();
+            assert_eq!(upgraded.maximum_current, synapse.maximum_current * 1e9);
+            assert_eq!(upgraded.tau, synapse.tau * 1e3);
+        }
+        for (entity, clamp) in old.query::<&CurrentClamp>().iter() {
+            let upgraded = new.get::<&CurrentClamp>(entity).unwrap();
+            assert_eq!(upgraded.current_output, clamp.current_output * 1e9);
+        }
+        assert_eq!(count::<v11::Compartment>(&new), 0);
+        assert_eq!(count::<v11::CompartmentCurrent>(&new), 0);
+        for (_, (connection, cable)) in new.query::<(&Connection, Option<&Cable>)>().iter() {
+            let cable_between_nodes =
+                !connection.directional && new.satisfies::<&Compartment>(connection.to).unwrap();
+            assert_eq!(cable.is_some(), cable_between_nodes);
+        }
+        assert_eq!(count::<Cable>(&new), count::<Membrane>(&new));
+    }
+
     fn composition(world: &World) -> BTreeMap<Vec<TypeId>, u32> {
         world
             .archetypes()
@@ -457,7 +505,7 @@ mod tests {
         assert_eq!(world.len(), 204);
         assert_eq!(count::<Position>(world), 125);
         assert_eq!(count::<LeakyNeuron>(world), neurons);
-        assert_eq!(count::<LeakyDynamics>(world), neurons);
+        assert_eq!(count::<NodeState>(world), neurons + 1);
         assert_eq!(count::<LeakCurrent>(world), neurons);
         assert_eq!(count::<AdaptationCurrent>(world), 1);
         assert_eq!(count::<BurstCurrent>(world), burst_neurons);
@@ -491,7 +539,8 @@ mod tests {
             assert_eq!(measured(world, voltmeter).len(), 1);
         }
         assert_eq!(count::<Connection>(world), 79);
-        assert_eq!(count::<CompartmentCurrent>(world), 1);
+        assert_eq!(count::<Cable>(world), 1);
+        assert_eq!(count::<Membrane>(world), 1);
         assert_eq!(count::<Compartment>(world), 1);
         assert_eq!(count::<SpatialDynamics>(world), 1);
         assert_eq!(count::<NeuronType>(world), neurons + 1);
