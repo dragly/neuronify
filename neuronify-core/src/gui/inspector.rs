@@ -2,8 +2,8 @@ use std::collections::VecDeque;
 use std::ops::RangeInclusive;
 
 use egui::{
-    pos2, style::HandleShape, vec2, Align, Align2, Context, CornerRadius, FontId, Frame, Id,
-    Layout, Margin, Order, Rect, Response, RichText, ScrollArea, Sense, Shape, Slider,
+    pos2, style::HandleShape, vec2, Align, Align2, Color32, Context, CornerRadius, FontId, Frame,
+    Id, Layout, Margin, Order, Rect, Response, RichText, ScrollArea, Sense, Shape, Slider,
     SliderClamping, Stroke, Style, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::{Entity, World};
@@ -31,6 +31,7 @@ use super::widgets::{heading, segmented, segmented_width, text_width, ROW_RADIUS
 
 pub const INSPECTOR_WIDTH: f32 = 296.0;
 pub const DELETE: &str = "inspector_delete";
+pub const REVERSE: &str = "inspector_reverse";
 pub const CLOSE: &str = "inspector_close";
 pub const LABEL: &str = "inspector_label";
 const NOTE: &str = "inspector_note";
@@ -45,8 +46,8 @@ const SPIKE_HEIGHT: Millivolts = Millivolts(20.0);
 const HEADER_GLYPH: f32 = 30.0;
 const HEADER_BUTTON: f32 = 32.0;
 const HEADER_ICON: f32 = 18.0;
-const DELETE_HEIGHT: f32 = 36.0;
-const DELETE_GAP: f32 = 8.0;
+const BUTTON_HEIGHT: f32 = 36.0;
+const BUTTON_GAP: f32 = 8.0;
 const DESCRIPTION_SIZE: f32 = 11.5;
 const SWITCH_HEIGHT: f32 = 30.0;
 const POTENTIALS: RangeInclusive<Millivolts> = Millivolts(-100.0)..=Millivolts(50.0);
@@ -420,9 +421,20 @@ fn header(ui: &mut Ui, chrome: &Chrome, theme: Theme, tool: Tool, name: &str) ->
 
 fn delete_button(ui: &mut Ui, chrome: &Chrome) -> Response {
     ui.add_space(6.0);
+    row_button(ui, chrome, DELETE, Icon::Trash, "Delete", chrome.danger)
+}
+
+fn row_button(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    id: &str,
+    icon: Icon,
+    text: &str,
+    color: Color32,
+) -> Response {
     let (rect, _) =
-        ui.allocate_exact_size(vec2(ui.available_width(), DELETE_HEIGHT), Sense::hover());
-    let response = ui.interact(rect, Id::new(DELETE), Sense::click());
+        ui.allocate_exact_size(vec2(ui.available_width(), BUTTON_HEIGHT), Sense::hover());
+    let response = ui.interact(rect, Id::new(id), Sense::click());
     ui.painter().rect_filled(
         rect,
         ROW_RADIUS,
@@ -432,30 +444,28 @@ fn delete_button(ui: &mut Ui, chrome: &Chrome) -> Response {
             chrome.raised
         },
     );
-    let label = ui.painter().layout_no_wrap(
-        "Delete".to_owned(),
-        FontId::proportional(13.5),
-        chrome.danger,
-    );
-    let left = rect.center().x - (HEADER_ICON + DELETE_GAP + label.size().x) / 2.0;
+    let label = ui
+        .painter()
+        .layout_no_wrap(text.to_owned(), FontId::proportional(13.5), color);
+    let left = rect.center().x - (HEADER_ICON + BUTTON_GAP + label.size().x) / 2.0;
     paint_icon(
         ui.painter(),
-        Icon::Trash,
+        icon,
         Rect::from_min_size(
             pos2(left, rect.center().y - HEADER_ICON / 2.0),
             Vec2::splat(HEADER_ICON),
         ),
-        chrome.danger,
+        color,
     );
     ui.painter().galley(
         pos2(
-            left + HEADER_ICON + DELETE_GAP,
+            left + HEADER_ICON + BUTTON_GAP,
             rect.center().y - label.size().y / 2.0,
         ),
         label,
-        chrome.danger,
+        color,
     );
-    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, "Delete"));
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, text));
     response
 }
 
@@ -867,6 +877,21 @@ fn picture_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput) -> 
     heading(ui, chrome, "Picture", 0.0);
     let patterns = Pattern::ALL.map(|pattern| (pattern, pattern.name()));
     changed |= choice(ui, chrome, Setting::Picture, &mut input.pattern, &patterns);
+    if row_button(
+        ui,
+        chrome,
+        REVERSE,
+        Icon::Reverse,
+        Setting::Reverse.label(),
+        chrome.text,
+    )
+    .clicked()
+    {
+        input.reverse();
+        changed = true;
+    }
+    description(ui, chrome, Setting::Reverse.description());
+    ui.add_space(8.0);
     changed |= parameter(
         ui,
         chrome,
@@ -875,14 +900,18 @@ fn picture_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput) -> 
         HALF_TURN,
         degrees,
     );
-    changed |= logarithmic_parameter(
+    let mut speed = input.speed.abs();
+    if logarithmic_parameter(
         ui,
         chrome,
         Setting::PictureSpeed,
-        &mut input.speed,
+        &mut speed,
         PICTURE_SPEEDS,
         |speed| format!("{:.1} Hz", speed.0),
-    );
+    ) {
+        input.speed = Hertz(speed.0.copysign(input.speed.0));
+        changed = true;
+    }
     changed |= parameter(
         ui,
         chrome,

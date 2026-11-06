@@ -37,6 +37,7 @@ pub enum Setting {
     Picture,
     PictureAngle,
     PictureSpeed,
+    Reverse,
     PicturePhase,
     ReceptiveField,
     FieldAngle,
@@ -88,6 +89,7 @@ impl Setting {
             Setting::Picture => "Picture",
             Setting::PictureAngle => "Picture angle",
             Setting::PictureSpeed => "Speed",
+            Setting::Reverse => "Reverse",
             Setting::PicturePhase => "Phase",
             Setting::ReceptiveField => "Receptive field",
             Setting::FieldAngle => "Field angle",
@@ -161,6 +163,7 @@ impl Setting {
             Setting::PictureSpeed => {
                 "How many times a second the picture runs through its motion. Zero stops it."
             }
+            Setting::Reverse => "Sends the picture back the way it came.",
             Setting::PicturePhase => {
                 "How far the picture is through its motion. Drag it to move the picture by hand."
             }
