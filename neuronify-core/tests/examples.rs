@@ -8,10 +8,13 @@ use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::constants::{DEFAULT_SPEED, DT, SIMULATION_STEPS_PER_SECOND};
 use neuronify_core::measurement::visual_input::VisualInput;
+use neuronify_core::measurement::voltmeter::VoltageSeries;
 use neuronify_core::rendering::canvas_bounds;
+use neuronify_core::simulation::model::prepare;
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
-    CurrentClamp, Label, LeakyNeuron, NoteSize, Position, TouchSensor, NODE_RADIUS,
+    Connection, CurrentClamp, Label, LeakyNeuron, NoteSize, Position, Preparation, Setting,
+    Temperature, TouchSensor, NODE_RADIUS,
 };
 
 const PHONE_WIDTH: f32 = 27.0;
@@ -134,6 +137,37 @@ impl Experiment {
         sensors
     }
 
+    fn neurons_from_left(&self) -> Vec<Entity> {
+        let mut neurons: Vec<(Entity, Vec3)> = self
+            .world
+            .query::<&Position>()
+            .with::<&LeakyNeuron>()
+            .iter()
+            .map(|(entity, position)| (entity, position.position))
+            .collect();
+        neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
+        neurons.into_iter().map(|(entity, _)| entity).collect()
+    }
+
+    fn meter_peaks_from_left(&self) -> Vec<f64> {
+        let mut wires: Vec<(f32, f64)> = self
+            .world
+            .query::<(&Connection, &VoltageSeries)>()
+            .iter()
+            .map(|(_, (wire, series))| {
+                let meter = self.world.get::<&Position>(wire.to).unwrap().position.z;
+                let peak = series
+                    .measurements
+                    .iter()
+                    .map(|measurement| measurement.voltage)
+                    .fold(f64::MIN, f64::max);
+                (meter, peak)
+            })
+            .collect();
+        wires.sort_by(|a, b| a.0.total_cmp(&b.0));
+        wires.into_iter().map(|(_, peak)| peak).collect()
+    }
+
     fn neurons_from_top(&self) -> Vec<Entity> {
         let mut neurons: Vec<(Entity, Vec3)> = self
             .world
@@ -236,6 +270,66 @@ fn a_long_refractory_period_caps_the_firing_rate() {
         assert!(short >= short_at_least, "{nanoamperes} nA: {short} spikes");
         assert!(long < long_below, "{nanoamperes} nA: {long} spikes");
     }
+}
+
+struct Press {
+    axon: f64,
+    dendrite: f64,
+    fired: bool,
+}
+
+fn press_when_warmed(preparation: Preparation, celsius: f64) -> Press {
+    let mut world = write_examples::body_temperature();
+    prepare(&mut world, preparation);
+    Temperature { celsius }.set_in(&mut world);
+    let mut experiment = Experiment::new(world);
+    let far = *experiment.neurons_from_left().last().unwrap();
+    experiment.spike_counts(on_screen(1.0), &[]);
+    experiment.press(experiment.sensors_from_left()[0]);
+    let fired = experiment.spike_counts(on_screen(2.0), &[far])[0] > 0;
+    let [axon, dendrite] = experiment.meter_peaks_from_left()[..] else {
+        panic!("expected two voltmeters");
+    };
+    Press {
+        axon,
+        dendrite,
+        fired,
+    }
+}
+
+#[test]
+fn both_kinds_carry_a_spike_to_the_far_neuron_at_their_own_temperature() {
+    for (preparation, celsius) in [(Preparation::Squid, 16.3), (Preparation::Mammal, 37.0)] {
+        let press = press_when_warmed(preparation, celsius);
+        assert!(
+            press.axon > 0.0 && press.dendrite > 0.0 && press.fired,
+            "{preparation:?}"
+        );
+    }
+}
+
+#[test]
+fn squid_axons_fail_when_warm_and_mammalian_ones_keep_going() {
+    assert!(press_when_warmed(Preparation::Squid, 35.0).axon < 0.0);
+    for celsius in [20.0, 42.0] {
+        assert!(
+            press_when_warmed(Preparation::Mammal, celsius).axon > 0.0,
+            "{celsius} °C"
+        );
+    }
+}
+
+#[test]
+fn the_mammalian_dendritic_spike_shrinks_as_it_warms_until_the_neuron_stays_quiet() {
+    let peaks = [20.0, 30.0, 40.0].map(|celsius| press_when_warmed(Preparation::Mammal, celsius));
+    assert!(
+        peaks
+            .windows(2)
+            .all(|pair| pair[0].dendrite > pair[1].dendrite + 5.0),
+        "{:?}",
+        peaks.map(|press| press.dendrite)
+    );
+    assert!(!press_when_warmed(Preparation::Mammal, 42.0).fired);
 }
 
 fn output_spikes_after_presses(presses: &[(usize, f64)]) -> usize {

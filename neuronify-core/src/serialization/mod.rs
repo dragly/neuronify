@@ -26,6 +26,7 @@ mod v1;
 mod v10;
 mod v11;
 mod v12;
+mod v13;
 mod v2;
 mod v3;
 mod v4;
@@ -36,7 +37,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 12;
+pub const VERSION: u32 = 13;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -50,7 +51,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v12::SaveContext, &mut serializer)
+    serialize(world, &mut v13::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -116,6 +117,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v12::deserialize(body)?, time, speed)
         }
+        13 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v13::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -136,6 +142,7 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             9 => v10::upgrade_from_v9(&mut world),
             10 => v11::upgrade_from_v10(&mut world),
             11 => v12::upgrade_from_v11(&mut world),
+            12 => v13::upgrade_from_v12(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
@@ -376,6 +383,24 @@ mod tests {
         assert_eq!(composition(&saved.world), composition(&fixture_world()));
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn loads_version_13() {
+        let saved = load(include_bytes!("fixtures/v13.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn keeps_the_channels() {
+        let mut world = World::new();
+        crate::simulation::model::prepare(&mut world, Preparation::Mammal);
+        let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+            .unwrap()
+            .world;
+        assert_eq!(Preparation::of(&loaded), Preparation::Mammal);
     }
 
     #[test]

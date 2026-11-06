@@ -16,7 +16,7 @@ use egui::{
 };
 use hecs::World;
 
-use crate::components::{NeuronDisplay, Setting, Temperature};
+use crate::components::{NeuronDisplay, Preparation, Setting, Temperature};
 use crate::editor::Editor;
 use crate::links;
 use crate::rendering::Theme;
@@ -37,7 +37,6 @@ const DISABLED_OPACITY: f32 = 0.45;
 const MENU_WIDTH: f32 = 232.0;
 const MENU_PADDING: i8 = 6;
 const MENU_ROW_HEIGHT: f32 = 34.0;
-const TEMPERATURES: std::ops::RangeInclusive<f64> = 0.0..=35.0;
 const COMPACT_WIDTH: f32 = 640.0;
 const COMPACT_HEIGHT: f32 = 560.0;
 const HINT_GAP: f32 = 20.0;
@@ -486,6 +485,8 @@ fn menu(
                 });
                 separator(ui, chrome);
                 heading(ui, chrome, "Simulation", 8.0);
+                let preparation = Preparation::of(controls.world);
+                let mut chosen = preparation;
                 let mut temperature = Temperature::of(controls.world);
                 let warmed = egui::Frame::new()
                     .inner_margin(egui::Margin {
@@ -495,17 +496,29 @@ fn menu(
                         bottom: 0,
                     })
                     .show(ui, |ui| {
+                        inspector::choice(
+                            ui,
+                            chrome,
+                            crate::settings::Setting::Channels,
+                            &mut chosen,
+                            &[
+                                (Preparation::Squid, "Squid"),
+                                (Preparation::Mammal, "Mammal"),
+                            ],
+                        );
                         inspector::parameter(
                             ui,
                             chrome,
                             crate::settings::Setting::Temperature,
                             &mut temperature.celsius,
-                            TEMPERATURES,
+                            preparation.temperatures(),
                             |celsius| format!("{celsius:.1} °C"),
                         )
                     })
                     .inner;
-                if warmed {
+                if chosen != preparation {
+                    controls.editor.prepare(controls.world, chosen);
+                } else if warmed {
                     temperature.set_in(controls.world);
                     controls.editor.mark_edited();
                 }

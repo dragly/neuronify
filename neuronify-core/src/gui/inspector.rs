@@ -622,7 +622,7 @@ fn label_field(ui: &mut Ui, chrome: &Chrome, text: &mut String) -> bool {
     changed
 }
 
-fn choice<T: PartialEq + Copy>(
+pub(super) fn choice<T: PartialEq + Copy>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,

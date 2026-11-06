@@ -57,6 +57,7 @@ pub struct Engine {
     network: Network,
     built: bool,
     fingerprint: u64,
+    preparation: Preparation,
     places: Vec<Option<(Entity, Place)>>,
     nodes: Vec<(Entity, Place)>,
     cables: Vec<(Entity, usize, usize)>,
@@ -118,7 +119,7 @@ fn node_membrane(world: &World, entity: Entity, links: &[&CableLink]) -> NodeMem
                 .fold(0.0, f64::max);
             return NodeMembrane::Patch {
                 area: std::f64::consts::PI * diameter * RANVIER_LENGTH,
-                membrane: ranvier_membrane(),
+                membrane: Preparation::of(world).ranvier_membrane(),
             };
         }
         return NodeMembrane::Point;
@@ -202,6 +203,9 @@ impl Fingerprint {
             }
         });
         hash.components(world, |_, _: &Myelin| {});
+        hash.components(world, |hash, preparation: &Preparation| {
+            hash.add(*preparation as u64)
+        });
         hash.components(world, |hash, neuron: &LeakyNeuron| {
             for value in [
                 neuron.capacitance,
@@ -271,6 +275,7 @@ impl Engine {
             network,
             built: false,
             fingerprint: 0,
+            preparation: Preparation::default(),
             places: Vec::new(),
             nodes: Vec::new(),
             cables: Vec::new(),
@@ -398,7 +403,7 @@ impl Engine {
                 continue;
             };
             let rhythm = match dendritic(world, entity) {
-                true => rhythm,
+                true => rhythm.max(Preparation::of(world).shortest_dendrite_pulse_interval()),
                 false => (rhythm / AXON_PULSE_FACTOR).max(SHORTEST_PULSE_INTERVAL),
             };
             interval = Some(interval.map_or(rhythm, |interval: f64| interval.min(rhythm)));
@@ -430,6 +435,7 @@ impl Engine {
 
     fn rebuild(&mut self, world: &World) {
         self.network.clear();
+        self.preparation = Preparation::of(world);
         self.network.set_celsius(Temperature::of(world).celsius);
         self.network.set_random_state(Randomness::of(world).state);
         self.places.clear();
@@ -555,7 +561,7 @@ impl Engine {
             match Tree::build(
                 &morphology,
                 D_LAMBDA,
-                RESTING_POTENTIAL,
+                self.preparation.resting_potential(),
                 self.network.celsius(),
             ) {
                 Ok(tree) => break tree,
@@ -661,7 +667,9 @@ impl Engine {
             }
             let rest = world
                 .get::<&LeakyNeuron>(entity)
-                .map_or(RESTING_POTENTIAL, |neuron| neuron.resting_potential);
+                .map_or(self.preparation.resting_potential(), |neuron| {
+                    neuron.resting_potential
+                });
             match world.get::<&NodeState>(entity) {
                 Ok(state) => {
                     tree.set_state(place.point, state.voltage, &state.gates, celsius);
@@ -767,11 +775,13 @@ impl Engine {
                     .unwrap_or_default();
                 let scale = match target.soma {
                     Some(_) => SOMA_ENDING_SCALE,
-                    None => self
-                        .cable_conductances
-                        .get(&connection.to)
-                        .copied()
-                        .unwrap_or(0.0),
+                    None => {
+                        self.cable_conductances
+                            .get(&connection.to)
+                            .copied()
+                            .unwrap_or(0.0)
+                            * self.preparation.cable_ending_scale()
+                    }
                 };
                 let synapse = self.network.add_conductance(Conductance {
                     site: target.site(),
@@ -956,41 +966,11 @@ impl Engine {
     }
 
     pub fn store(&self, world: &mut World) {
-        let mut missing_nodes = Vec::new();
-        for &(entity, place) in &self.nodes {
-            let tree = self.network.tree(place.tree);
-            let state = NodeState {
-                voltage: tree.voltage(place.point),
-                gates: tree.gates(place.point).collect(),
-                since_spike: place
-                    .soma
-                    .map_or(f64::INFINITY, |soma| tree.since_spike(soma)),
-            };
-            match world.get::<&mut NodeState>(entity) {
-                Ok(mut stored) => *stored = state,
-                Err(_) => missing_nodes.push((entity, state)),
-            }
-        }
-        let mut missing_cables = Vec::new();
-        for &(entity, index, cable) in &self.cables {
-            let tree = self.network.tree(index);
-            let points = tree.cable_points(cable);
-            let inner = &points[1..points.len() - 1];
-            let mut state = CableState::default();
-            for &point in inner {
-                state.voltage.push(tree.voltage(point));
-                state.gates.extend(tree.gates(point));
-            }
-            match world.get::<&mut CableState>(entity) {
-                Ok(mut stored) => *stored = state,
-                Err(_) => missing_cables.push((entity, state)),
-            }
-        }
-        for (entity, state) in missing_nodes {
-            let _ = world.insert_one(entity, state);
-        }
-        for (entity, state) in missing_cables {
-            let _ = world.insert_one(entity, state);
+        let preparation = Preparation::of(world);
+        if self.built && preparation != self.preparation {
+            rest(world, preparation);
+        } else {
+            self.store_cells(world);
         }
         for &(entity, index) in &self.conductances {
             let state = SynapseState {
@@ -1030,6 +1010,45 @@ impl Engine {
             state: self.network.random_state(),
         }
         .set_in(world);
+    }
+
+    fn store_cells(&self, world: &mut World) {
+        let mut missing_nodes = Vec::new();
+        for &(entity, place) in &self.nodes {
+            let tree = self.network.tree(place.tree);
+            let state = NodeState {
+                voltage: tree.voltage(place.point),
+                gates: tree.gates(place.point).collect(),
+                since_spike: place
+                    .soma
+                    .map_or(f64::INFINITY, |soma| tree.since_spike(soma)),
+            };
+            match world.get::<&mut NodeState>(entity) {
+                Ok(mut stored) => *stored = state,
+                Err(_) => missing_nodes.push((entity, state)),
+            }
+        }
+        let mut missing_cables = Vec::new();
+        for &(entity, index, cable) in &self.cables {
+            let tree = self.network.tree(index);
+            let points = tree.cable_points(cable);
+            let inner = &points[1..points.len() - 1];
+            let mut state = CableState::default();
+            for &point in inner {
+                state.voltage.push(tree.voltage(point));
+                state.gates.extend(tree.gates(point));
+            }
+            match world.get::<&mut CableState>(entity) {
+                Ok(mut stored) => *stored = state,
+                Err(_) => missing_cables.push((entity, state)),
+            }
+        }
+        for (entity, state) in missing_nodes {
+            let _ = world.insert_one(entity, state);
+        }
+        for (entity, state) in missing_cables {
+            let _ = world.insert_one(entity, state);
+        }
     }
 }
 

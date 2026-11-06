@@ -137,6 +137,12 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
                     which limits how fast it can fire.",
                 contents: saved!("refractory_period.neuronify"),
             },
+            Example {
+                name: "Body temperature",
+                description: "Neurons with channels from mammals at 37 °C, \
+                    to compare with the textbook squid channels.",
+                contents: saved!("body_temperature.neuronify"),
+            },
         ],
     },
     ExampleCategory {

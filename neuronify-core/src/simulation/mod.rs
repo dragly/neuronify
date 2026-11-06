@@ -1,5 +1,6 @@
 pub mod engine;
 pub mod firing_rate;
+pub mod mammal;
 pub mod model;
 pub mod spatial;
 pub mod stimulation;

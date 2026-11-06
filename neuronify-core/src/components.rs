@@ -406,6 +406,15 @@ impl Default for Temperature {
 
 impl Setting for Temperature {}
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub enum Preparation {
+    #[default]
+    Squid,
+    Mammal,
+}
+
+impl Setting for Preparation {}
+
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Randomness {
     pub state: u64,

@@ -9,7 +9,6 @@ use crate::simulation::model::cable_between;
 use hecs::{Component, Entity, World};
 
 schema!(
-    save,
     Position,
     LeakyNeuron,
     NodeState,

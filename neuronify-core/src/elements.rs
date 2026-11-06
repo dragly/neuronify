@@ -137,7 +137,7 @@ pub fn spawn_compartment(world: &mut World, position: Vec3, neuron_type: NeuronT
         Position { position },
         neuron_type,
         Compartment,
-        NodeState::default(),
+        NodeState::at(Preparation::of(world).resting_potential()),
         StaticConnectionSource {},
         Deletable {},
         Selectable { selected: false },

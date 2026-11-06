@@ -2,17 +2,19 @@ use glam::Vec3;
 use hecs::{Entity, World};
 
 use neuronify_core::constants::DEFAULT_SPEED;
+use neuronify_core::dendrites::{compartment_tree, spawn_dendrites};
 use neuronify_core::elements::{
-    spawn_loudspeaker, spawn_rate_plot, spawn_spike_detector, spawn_spike_detector_wire,
-    spawn_synapse, spawn_voltmeter, Element,
+    spawn_cable, spawn_compartment, spawn_loudspeaker, spawn_rate_plot, spawn_spike_detector,
+    spawn_spike_detector_wire, spawn_synapse, spawn_voltmeter, Element,
 };
 use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::simulation::model::prepare;
 use neuronify_core::{
     AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, LeakyNeuron,
-    MeterSize, NeuronDisplay, NeuronType, NodeState, NoteSize, PoissonGenerator,
-    RegularSpikeGenerator, Setting,
+    MeterSize, NeuronDisplay, NeuronType, NodeState, NoteSize, PoissonGenerator, Position,
+    Preparation, RegularSpikeGenerator, Setting, SEGMENT_LENGTH,
 };
 
 const NANOAMPERE: f64 = 1.0;
@@ -132,6 +134,38 @@ impl Sheet {
             spawn_spike_detector_wire(&mut self.world, target, detector);
         }
         *self.world.get::<&mut MeterSize>(detector).unwrap() = MeterSize { width, height };
+    }
+
+    fn position(&self, entity: Entity) -> Vec3 {
+        self.world.get::<&Position>(entity).unwrap().position
+    }
+
+    fn axon(&mut self, from: Entity, to: Entity) -> Vec<Entity> {
+        let (start, end) = (self.position(from), self.position(to));
+        let neuron_type = *self.world.get::<&NeuronType>(from).unwrap();
+        let pieces = (start.distance(end) / SEGMENT_LENGTH).round().max(1.0) as usize;
+        let mut previous = from;
+        let mut compartments = Vec::new();
+        for piece in 1..pieces {
+            let at = start.lerp(end, piece as f32 / pieces as f32);
+            let compartment = spawn_compartment(&mut self.world, at, neuron_type);
+            spawn_cable(&mut self.world, previous, compartment, false);
+            compartments.push(compartment);
+            previous = compartment;
+        }
+        spawn_cable(&mut self.world, previous, to, true);
+        compartments
+    }
+
+    fn branch_near(&self, neuron: Entity, right: f32, up: f32) -> Entity {
+        let target = Sheet::at(right, up);
+        compartment_tree(&self.world, neuron)
+            .into_iter()
+            .min_by(|a, b| {
+                let distance = |entity: &Entity| self.position(*entity).distance(target);
+                distance(a).total_cmp(&distance(b))
+            })
+            .unwrap()
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, width: f32, height: f32) {
@@ -326,6 +360,40 @@ pub fn refractory_period() -> World {
     sheet.text(
         "Based on figure 8.5b in Principles of Computational Modelling in Neuroscience \
          by David Sterratt and others (Cambridge University Press, 2011).",
+    );
+    sheet.world
+}
+
+pub fn body_temperature() -> World {
+    let mut sheet = Sheet::new();
+    prepare(&mut sheet.world, Preparation::Mammal);
+    sheet.text(
+        "By default we simulate squid neurons in Neuronify. \
+         In this simulation, we have added more ion channels to the axons and dendrites. \
+         These allow us to simulate mammalian neurons at body temperature.",
+    );
+    let up = sheet.row(25.0);
+    let receiver = sheet.add(Element::ExcitatoryNeuron, 18.0, up - 4.5);
+    spawn_dendrites(&mut sheet.world, receiver);
+    let branch = sheet.branch_near(receiver, 12.0, up);
+    let meeting = sheet.position(branch);
+    let sender = sheet.add(Element::ExcitatoryNeuron, 4.5, meeting.x);
+    let sensor = sheet.add(Element::TouchSensor, 1.0, meeting.x);
+    sheet.connect(sensor, sender);
+    let axon = sheet.axon(sender, branch);
+    let below = sheet.row(5.0);
+    sheet.voltmeter(axon[axon.len() / 2], 0.0, below, 11.5, 5.0);
+    sheet.voltmeter(branch, 12.5, below, 11.5, 5.0);
+    sheet.text(
+        "Press the touch sensor to watch the action potential. \
+         Then change to squid neurons in the menu and try again. \
+         Notice how the spike is slower and lasts longer in squids.",
+    );
+    sheet.text(
+        "Warm each kind with the temperature slider. \
+         Squid axons stop carrying spikes above about 30 °C. \
+         Mammalian axons keep going, but the spike in the dendrite shrinks, \
+         and at 42 °C it no longer makes the neuron fire.",
     );
     sheet.world
 }
@@ -657,6 +725,7 @@ pub fn sheets() -> Vec<(&'static str, World)> {
         ("bursting.neuronify", bursting()),
         ("firing_threshold.neuronify", firing_threshold()),
         ("refractory_period.neuronify", refractory_period()),
+        ("body_temperature.neuronify", body_temperature()),
         ("summation.neuronify", summation()),
         ("reverberation.neuronify", reverberation()),
         ("half_center_oscillator.neuronify", half_center_oscillator()),
