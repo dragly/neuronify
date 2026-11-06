@@ -1387,6 +1387,74 @@ fn spikes_travel_ten_times_as_fast_along_myelinated_axons() {
     );
 }
 
+fn axon_between_two_neurons() -> (World, Entity) {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    neuron(&mut world, at(0.0, 10.0));
+    let path: Vec<Vec3> = (0..=20).map(|step| at(0.0, step as f32 * 0.5)).collect();
+    drag(&mut editor(Tool::Axon), &mut world, &path);
+    let compartment = world
+        .query::<()>()
+        .with::<&Compartment>()
+        .iter()
+        .next()
+        .unwrap()
+        .0;
+    (world, compartment)
+}
+
+fn membranes(world: &World) -> Vec<Membrane> {
+    world
+        .query::<&Membrane>()
+        .iter()
+        .map(|(_, membrane)| membrane.clone())
+        .collect()
+}
+
+#[test]
+fn switching_the_channels_is_undone_in_one_step() {
+    let (mut world, _) = axon_between_two_neurons();
+    let squid = membranes(&world);
+    let mut editor = editor(Tool::Edit);
+    editor.prepare(&mut world, Preparation::Mammal);
+    let mammal = membranes(&world);
+    assert_ne!(mammal, squid);
+    assert_eq!(
+        Temperature::of(&world).celsius,
+        Preparation::Mammal.celsius()
+    );
+
+    editor.undo(&mut world);
+    assert_eq!(membranes(&world), squid);
+    assert_eq!(Preparation::of(&world), Preparation::Squid);
+    assert_eq!(
+        Temperature::of(&world).celsius,
+        Preparation::Squid.celsius()
+    );
+
+    editor.redo(&mut world);
+    assert_eq!(membranes(&world), mammal);
+    assert_eq!(Preparation::of(&world), Preparation::Mammal);
+}
+
+#[test]
+fn a_running_axon_rests_at_the_new_resting_potential_after_a_switch() {
+    let (mut world, compartment) = axon_between_two_neurons();
+    let (mut engine, mut time) = (Engine::default(), 0.0);
+    step_simulation(&mut world, &mut engine, &mut time, 40, None);
+    let mut editor = editor(Tool::Edit);
+    for preparation in [Preparation::Mammal, Preparation::Squid] {
+        editor.prepare(&mut world, preparation);
+        step_simulation(&mut world, &mut engine, &mut time, 1, None);
+        let voltage = world.get::<&NodeState>(compartment).unwrap().voltage;
+        let rest = preparation.resting_potential();
+        assert!(
+            (voltage - rest).abs() < 1.0,
+            "{voltage} mV against {rest} mV"
+        );
+    }
+}
+
 #[test]
 fn dendrites_move_along_with_a_dragged_neuron() {
     let mut world = World::new();

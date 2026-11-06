@@ -42,6 +42,7 @@ pub enum Setting {
     OffCenter,
     Sensitivity,
     ShowField,
+    Channels,
     Temperature,
 }
 
@@ -90,6 +91,7 @@ impl Setting {
             Setting::OffCenter => "Off center",
             Setting::Sensitivity => "Sensitivity",
             Setting::ShowField => "Show field",
+            Setting::Channels => "Channels",
             Setting::Temperature => "Temperature",
         }
     }
@@ -157,9 +159,14 @@ impl Setting {
             Setting::ShowField => {
                 "Tints the picture orange where light excites it and blue where light holds it back."
             }
+            Setting::Channels => {
+                "Squid uses the Hodgkin-Huxley channels from textbooks. \
+                 Mammal uses channels measured in rat neurons at body temperature, \
+                 with two more kinds in the dendrites."
+            }
             Setting::Temperature => {
-                "Warmer channels open and close faster. \
-                 Spikes get briefer and travel faster, until axons fail above about 30 °C."
+                "Temperature affects how fast channels open and close. \
+                 With higher temperatures, spikes are shorter and travel faster."
             }
         }
     }

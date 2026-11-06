@@ -1,6 +1,9 @@
+use std::ops::RangeInclusive;
+
 use hecs::{Entity, World};
 use neuronify_engine::{ChannelId, Density, Membrane};
 
+use super::mammal;
 use crate::components::*;
 use crate::constants::*;
 
@@ -73,11 +76,11 @@ pub fn cable_conductance(diameter: f64) -> f64 {
     diameter.powf(1.5) / 2.0
 }
 
-pub fn axon_membrane() -> Membrane {
+fn axon_membrane() -> Membrane {
     Membrane::squid()
 }
 
-pub fn dendrite_membrane() -> Membrane {
+fn dendrite_membrane() -> Membrane {
     Membrane {
         capacitance: DENDRITE_CAPACITANCE,
         axial_resistivity: DENDRITE_AXIAL_RESISTIVITY,
@@ -87,7 +90,7 @@ pub fn dendrite_membrane() -> Membrane {
     }
 }
 
-pub fn myelin_membrane() -> Membrane {
+fn myelin_membrane() -> Membrane {
     Membrane {
         capacitance: MYELIN_CAPACITANCE,
         axial_resistivity: 35.4,
@@ -97,13 +100,117 @@ pub fn myelin_membrane() -> Membrane {
     }
 }
 
-pub fn ranvier_membrane() -> Membrane {
+fn ranvier_membrane() -> Membrane {
     Membrane {
         capacitance: 1.0,
         axial_resistivity: 35.4,
         leak: RANVIER_LEAK,
         leak_reversal: -54.3,
         channels: sodium_and_potassium(SQUID, RANVIER_SODIUM, RANVIER_POTASSIUM),
+    }
+}
+
+impl Preparation {
+    pub fn celsius(self) -> f64 {
+        match self {
+            Preparation::Squid => DEFAULT_TEMPERATURE,
+            Preparation::Mammal => mammal::CELSIUS,
+        }
+    }
+
+    pub fn temperatures(self) -> RangeInclusive<f64> {
+        match self {
+            Preparation::Squid => 0.0..=35.0,
+            Preparation::Mammal => 20.0..=42.0,
+        }
+    }
+
+    pub fn resting_potential(self) -> f64 {
+        match self {
+            Preparation::Squid => RESTING_POTENTIAL,
+            Preparation::Mammal => mammal::RESTING_POTENTIAL,
+        }
+    }
+
+    pub fn axon_diameter(self) -> f64 {
+        match self {
+            Preparation::Squid => AXON_DIAMETER,
+            Preparation::Mammal => mammal::AXON_DIAMETER,
+        }
+    }
+
+    fn membrane(self, role: Role) -> Membrane {
+        match (self, role) {
+            (Preparation::Squid, Role::Axon) => axon_membrane(),
+            (Preparation::Squid, Role::Dendrite) => dendrite_membrane(),
+            (Preparation::Squid, Role::Myelin) => myelin_membrane(),
+            (Preparation::Mammal, Role::Axon) => mammal::axon_membrane(),
+            (Preparation::Mammal, Role::Dendrite) => mammal::dendrite_membrane(),
+            (Preparation::Mammal, Role::Myelin) => mammal::myelin_membrane(),
+        }
+    }
+
+    pub fn ranvier_membrane(self) -> Membrane {
+        match self {
+            Preparation::Squid => ranvier_membrane(),
+            Preparation::Mammal => mammal::ranvier_membrane(),
+        }
+    }
+
+    pub fn cable_ending_scale(self) -> f64 {
+        match self {
+            Preparation::Squid => 1.0,
+            Preparation::Mammal => mammal::ENDING_CONDUCTANCE / ENDING_CONDUCTANCE,
+        }
+    }
+
+    pub fn shortest_dendrite_pulse_interval(self) -> f64 {
+        match self {
+            Preparation::Squid => 0.0,
+            Preparation::Mammal => mammal::SHORTEST_DENDRITE_PULSE_INTERVAL,
+        }
+    }
+}
+
+pub fn prepare(world: &mut World, preparation: Preparation) {
+    preparation.set_in(world);
+    Temperature {
+        celsius: preparation.celsius(),
+    }
+    .set_in(world);
+    let links: Vec<(Entity, Entity, Entity, bool)> = world
+        .query::<(&Connection, Option<&Myelin>)>()
+        .with::<&Cable>()
+        .iter()
+        .map(|(link, (connection, myelin))| {
+            (link, connection.from, connection.to, myelin.is_some())
+        })
+        .collect();
+    for (link, from, to, myelinated) in links {
+        let role = role(world, from, to, myelinated);
+        world.insert_one(link, preparation.membrane(role)).unwrap();
+        if let Role::Axon = role {
+            world.get::<&mut Cable>(link).unwrap().diameter = preparation.axon_diameter();
+        }
+    }
+    rest(world, preparation);
+}
+
+pub fn rest(world: &mut World, preparation: Preparation) {
+    let cables: Vec<Entity> = world
+        .query::<()>()
+        .with::<&CableState>()
+        .iter()
+        .map(|(cable, _)| cable)
+        .collect();
+    for cable in cables {
+        world.remove_one::<CableState>(cable).unwrap();
+    }
+    for (_, (state, soma)) in world.query_mut::<(&mut NodeState, Option<&LeakyNeuron>)>() {
+        match soma {
+            Some(_) => state.gates.clear(),
+            None => *state = NodeState::at(preparation.resting_potential()),
+        }
     }
 }
 
@@ -184,32 +291,47 @@ pub fn dendrite_diameter(world: &World, ends: [Option<glam::Vec3>; 2]) -> f64 {
     diameter_of_drawn_radius((start + end) / 2.0)
 }
 
+#[derive(Clone, Copy)]
+enum Role {
+    Axon,
+    Dendrite,
+    Myelin,
+}
+
+fn role(world: &World, from: Entity, to: Entity, myelinated: bool) -> Role {
+    if myelinated {
+        Role::Myelin
+    } else if dendritic(world, from) || dendritic(world, to) {
+        Role::Dendrite
+    } else {
+        Role::Axon
+    }
+}
+
 pub fn cable_between(
     world: &World,
     from: Entity,
     to: Entity,
     myelinated: bool,
 ) -> (Cable, Membrane) {
-    if myelinated {
-        let cable = Cable {
+    let preparation = Preparation::of(world);
+    let role = role(world, from, to, myelinated);
+    let length = SEGMENT_LENGTH as f64 * MICROMETRES_PER_UNIT;
+    let cable = match role {
+        Role::Myelin => Cable {
             length: INTERNODE_LENGTH as f64 * MICROMETRES_PER_UNIT,
             diameter: INTERNODE_DIAMETER,
-        };
-        return (cable, myelin_membrane());
-    }
-    let length = SEGMENT_LENGTH as f64 * MICROMETRES_PER_UNIT;
-    if dendritic(world, from) || dendritic(world, to) {
-        let cable = Cable {
+        },
+        Role::Dendrite => Cable {
             length,
             diameter: dendrite_diameter(world, [from, to].map(|end| position(world, end))),
-        };
-        return (cable, dendrite_membrane());
-    }
-    let cable = Cable {
-        length,
-        diameter: AXON_DIAMETER,
+        },
+        Role::Axon => Cable {
+            length,
+            diameter: preparation.axon_diameter(),
+        },
     };
-    (cable, axon_membrane())
+    (cable, preparation.membrane(role))
 }
 
 pub fn pulse_size(world: &World, node: Entity) -> f64 {
@@ -239,7 +361,7 @@ pub fn ending_site_scale(world: &World, connection: &Connection) -> f64 {
         .unwrap_or(false)
     {
         true => SOMA_ENDING_SCALE,
-        false => node_size(world, connection.to),
+        false => node_size(world, connection.to) * Preparation::of(world).cable_ending_scale(),
     };
     site * ending_kinetics(world, connection.from).scale
 }

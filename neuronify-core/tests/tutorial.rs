@@ -4,11 +4,12 @@ use neuronify_core::dendrites::compartment_tree;
 use neuronify_core::elements::{spawn_cable, spawn_compartment, spawn_synapse};
 use neuronify_core::examples::{find, EXAMPLE_CATEGORIES};
 use neuronify_core::rendering::canvas_bounds;
+use neuronify_core::simulation::model::prepare;
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
     Annotation, Connection, CurrentClamp, LeakyNeuron, Link, NeuronDisplay, NeuronType, NodeState,
-    NoteSize, Position, Setting, TouchSensor, DEFAULT_SPEED, DT, NODE_RADIUS, SEGMENT_LENGTH,
-    SIMULATION_STEPS_PER_SECOND, TERMINAL_THRESHOLD,
+    NoteSize, Position, Preparation, Setting, TouchSensor, DEFAULT_SPEED, DT, NODE_RADIUS,
+    SEGMENT_LENGTH, SIMULATION_STEPS_PER_SECOND, TERMINAL_THRESHOLD,
 };
 
 const STEPS_PER_SECOND: f64 = DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND;
@@ -32,6 +33,12 @@ impl Canvas {
             time: 0.0,
             spikes: Vec::new(),
         }
+    }
+
+    fn prepared(file: &str, preparation: Preparation) -> Canvas {
+        let mut canvas = Canvas::open(file);
+        prepare(&mut canvas.world, preparation);
+        canvas
     }
 
     fn wait(&mut self, seconds: f64) {
@@ -385,9 +392,8 @@ fn closing_the_ring_keeps_the_beat() {
         .all(|(neuron, _)| !canvas.spikes_since(*neuron, late).is_empty()));
 }
 
-#[test]
-fn the_spike_reaches_the_near_neuron_before_the_far_one() {
-    let mut canvas = Canvas::open("tutorial/7_axons.neuronify");
+fn the_spike_reaches_the_near_neuron_before_the_far_one(preparation: Preparation) {
+    let mut canvas = Canvas::prepared("tutorial/7_axons.neuronify", preparation);
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let (near, far) = (neurons[1].0, neurons[2].0);
@@ -416,9 +422,8 @@ fn axon_length(world: &World, from: Entity, to: Entity) -> f32 {
     length
 }
 
-#[test]
-fn the_spike_on_the_myelinated_axon_arrives_first() {
-    let mut canvas = Canvas::open("tutorial/8_myelin.neuronify");
+fn the_spike_on_the_myelinated_axon_arrives_first(preparation: Preparation) {
+    let mut canvas = Canvas::prepared("tutorial/8_myelin.neuronify", preparation);
     let neurons = canvas.neurons(NeuronType::Excitatory);
     let (sender, plain, myelinated) = (neurons[0].0, neurons[1].0, neurons[2].0);
     let lengths = [plain, myelinated].map(|target| axon_length(&canvas.world, sender, target));
@@ -434,9 +439,8 @@ fn the_spike_on_the_myelinated_axon_arrives_first() {
     assert!(arrivals[0] - arrivals[1] > 0.25, "{arrivals:?}");
 }
 
-#[test]
-fn an_axon_grown_onto_a_branch_fires_the_neuron() {
-    let mut canvas = Canvas::open("tutorial/9_dendrites.neuronify");
+fn an_axon_grown_onto_a_branch_fires_the_neuron(preparation: Preparation) {
+    let mut canvas = Canvas::prepared("tutorial/9_dendrites.neuronify", preparation);
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let (sender, receiver) = (neurons[0].0, neurons[1].0);
@@ -480,9 +484,8 @@ fn an_axon_grown_onto_a_branch_fires_the_neuron() {
     assert!(!canvas.spikes_since(receiver, pressed).is_empty());
 }
 
-#[test]
-fn weak_endings_fire_the_neuron_only_together() {
-    let mut canvas = Canvas::open("tutorial/10_coincidence.neuronify");
+fn weak_endings_fire_the_neuron_only_together(preparation: Preparation) {
+    let mut canvas = Canvas::prepared("tutorial/10_coincidence.neuronify", preparation);
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let receiver = neurons.last().unwrap().0;
@@ -508,9 +511,8 @@ fn weak_endings_fire_the_neuron_only_together() {
     assert!(!canvas.spikes_since(receiver, pressed).is_empty());
 }
 
-#[test]
-fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through() {
-    let mut canvas = Canvas::open("tutorial/11_inhibition_on_a_branch.neuronify");
+fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through(preparation: Preparation) {
+    let mut canvas = Canvas::prepared("tutorial/11_inhibition_on_a_branch.neuronify", preparation);
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let receiver = neurons.last().unwrap().0;
@@ -535,9 +537,8 @@ fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through() {
     assert!(fires(&mut canvas, top));
 }
 
-#[test]
-fn the_top_spike_runs_down_to_the_red_ending_and_stops_there() {
-    let mut canvas = Canvas::open("tutorial/11_inhibition_on_a_branch.neuronify");
+fn the_top_spike_runs_down_to_the_red_ending_and_stops_there(preparation: Preparation) {
+    let mut canvas = Canvas::prepared("tutorial/11_inhibition_on_a_branch.neuronify", preparation);
     let mut neurons = canvas.neurons(NeuronType::Excitatory);
     neurons.sort_by(|a, b| a.1.z.total_cmp(&b.1.z));
     let receiver = neurons.last().unwrap().0;
@@ -610,3 +611,30 @@ fn the_top_spike_runs_down_to_the_red_ending_and_stops_there() {
         "{peaks:?}"
     );
 }
+
+macro_rules! with_either_channels {
+    ($($check:ident),* $(,)?) => {
+        mod squid {
+            $(#[test]
+            fn $check() {
+                super::$check(neuronify_core::Preparation::Squid)
+            })*
+        }
+
+        mod mammal {
+            $(#[test]
+            fn $check() {
+                super::$check(neuronify_core::Preparation::Mammal)
+            })*
+        }
+    };
+}
+
+with_either_channels!(
+    the_spike_reaches_the_near_neuron_before_the_far_one,
+    the_spike_on_the_myelinated_axon_arrives_first,
+    an_axon_grown_onto_a_branch_fires_the_neuron,
+    weak_endings_fire_the_neuron_only_together,
+    the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through,
+    the_top_spike_runs_down_to_the_red_ending_and_stops_there,
+);

@@ -260,6 +260,24 @@ impl Editor {
         self.edited |= self.history.redo(world);
     }
 
+    pub fn prepare(&mut self, world: &mut World, preparation: Preparation) {
+        self.release(world);
+        self.settle();
+        let mut recording = Recording::start(world);
+        let prepared: Vec<Entity> = world
+            .iter()
+            .filter(|entity| {
+                entity.has::<Cable>() || entity.has::<Preparation>() || entity.has::<Temperature>()
+            })
+            .map(|entity| entity.entity())
+            .collect();
+        for entity in prepared {
+            recording.edit(world, entity);
+        }
+        crate::simulation::model::prepare(world, preparation);
+        self.edited |= self.history.record(recording, world);
+    }
+
     pub fn adjust(
         &mut self,
         world: &World,

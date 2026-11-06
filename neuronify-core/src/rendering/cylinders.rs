@@ -11,8 +11,7 @@ use crate::rendering::paths::ConnectionPath;
 use crate::rendering::scene::Scene;
 use crate::rendering::shapes::shown_voltage;
 use crate::simulation::model::{
-    dendrite_diameter, drawn_radius, soma_end_radius, AXON_DIAMETER, INTERNODE_DIAMETER,
-    MYELIN_G_RATIO,
+    dendrite_diameter, drawn_radius, soma_end_radius, INTERNODE_DIAMETER, MYELIN_G_RATIO,
 };
 
 const MIN_GROWN_LENGTH: f32 = 1e-4;
@@ -26,8 +25,8 @@ pub struct Sheath {
     pub end_color: Vec3,
 }
 
-pub fn axon_radius(display: &NeuronDisplay) -> f32 {
-    drawn_radius(AXON_DIAMETER, display)
+pub fn axon_radius(display: &NeuronDisplay, preparation: Preparation) -> f32 {
+    drawn_radius(preparation.axon_diameter(), display)
 }
 
 pub fn sheath_radius(display: &NeuronDisplay) -> f32 {
@@ -126,7 +125,7 @@ pub fn compartment_radii(world: &hecs::World) -> HashMap<Entity, f32> {
     }
     sums.into_iter()
         .map(|(entity, (sum, count))| match count {
-            0 => (entity, axon_radius(&display)),
+            0 => (entity, axon_radius(&display, Preparation::of(world))),
             _ => (entity, sum / count as f32),
         })
         .collect()
@@ -324,10 +323,11 @@ fn growing(
             )
         }
         false => {
-            let end_radius = axon_radius(&display);
+            let preparation = Preparation::of(world);
+            let end_radius = axon_radius(&display, preparation);
             let start_radius = match source.has::<Compartment>() {
                 true => end_radius,
-                false => soma_end_radius(AXON_DIAMETER, &display),
+                false => soma_end_radius(preparation.axon_diameter(), &display),
             };
             (
                 palette.compartment(&neuron_type, RESTING_POTENTIAL),
@@ -538,7 +538,7 @@ mod tests {
         let (_, dendrite, axon) =
             neuron_with_a_dendrite_and_an_axon(&mut world, NeuronType::Excitatory);
         let radii = compartment_radii(&world);
-        let axon_radius = axon_radius(&NeuronDisplay::default());
+        let axon_radius = axon_radius(&NeuronDisplay::default(), Preparation::Squid);
         assert!(axon
             .iter()
             .all(|compartment| radii[compartment] == axon_radius));
@@ -562,7 +562,7 @@ mod tests {
             .insert_one(soma, NodeState::at(RESTING_POTENTIAL))
             .unwrap();
         let diameter = |entity| real[&entity] * 2.0 * MICROMETRES_PER_UNIT as f32;
-        assert!((diameter(axon[1]) - AXON_DIAMETER as f32).abs() < 1e-6);
+        assert!((diameter(axon[1]) - Preparation::Squid.axon_diameter() as f32).abs() < 1e-6);
         assert!(diameter(dendrite[0]) > 2.0 && diameter(dendrite[0]) < 3.5);
         assert!(real[&dendrite[0]] < shown[&dendrite[0]] / 5.0);
         let palette = Theme::Light.palette();
@@ -661,8 +661,8 @@ mod tests {
         let display = NeuronDisplay::default();
         let radii = compartment_radii(&world);
         assert_eq!(radii[&first], drawn_radius(4.0, &display));
-        assert_eq!(radii[&last], axon_radius(&display));
-        let mean = (drawn_radius(4.0, &display) + axon_radius(&display)) / 2.0;
+        assert_eq!(radii[&last], axon_radius(&display, Preparation::Squid));
+        let mean = (drawn_radius(4.0, &display) + axon_radius(&display, Preparation::Squid)) / 2.0;
         assert!((radii[&middle] - mean).abs() < 1e-6);
     }
 
