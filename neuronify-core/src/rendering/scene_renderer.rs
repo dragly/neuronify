@@ -1,9 +1,9 @@
 use glam::Vec3;
 use hecs::Entity;
 use visula::{
-    CylinderGeometry, CylinderMaterial, Cylinders, Expression, InstanceBuffer, LineGeometry,
-    LineMaterial, Lines, MeshPipeline, RenderData, Renderable, ShadowRenderData, SphereGeometry,
-    SphereMaterial, Spheres, Torus, TorusGeometry, TorusMaterial,
+    ArcGeometry, ArcMaterial, Arcs, CylinderGeometry, CylinderMaterial, Cylinders, Expression,
+    InstanceBuffer, LineGeometry, LineMaterial, Lines, MeshPipeline, RenderData, Renderable,
+    ShadowRenderData, SphereGeometry, SphereMaterial, Spheres, Torus, TorusGeometry, TorusMaterial,
 };
 
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSET};
@@ -14,7 +14,7 @@ use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
 use crate::rendering::ghost::Ghost;
 use crate::rendering::gpu_types::{
-    ConnectionData, CylinderData, HaloData, MeterBackgroundData, Sphere, TorusData,
+    ArcData, ConnectionData, CylinderData, HaloData, MeterBackgroundData, Sphere, TorusData,
 };
 use crate::rendering::halos::{collect_halos, create_halos};
 use crate::rendering::labels::LabelRenderer;
@@ -54,6 +54,8 @@ pub struct SceneRenderer {
     cylinder_buffer: InstanceBuffer<CylinderData>,
     rings: Torus,
     ring_buffer: InstanceBuffer<TorusData>,
+    wires: Arcs,
+    wire_buffer: InstanceBuffer<ArcData>,
     connection_lines: Lines,
     connection_spheres: Spheres,
     connection_buffer: InstanceBuffer<ConnectionData>,
@@ -109,6 +111,24 @@ impl SceneRenderer {
                 color: terminal_color().into(),
             },
             &SphereMaterial {
+                color: shaded(Expression::InputColor),
+            },
+        )
+        .unwrap();
+
+        let wire_buffer = InstanceBuffer::<ArcData>::new(&application.device);
+        let wire = wire_buffer.instance();
+        let wires = Arcs::new(
+            &application.rendering_descriptor(),
+            &ArcGeometry {
+                start: wire.start,
+                end: wire.end,
+                turn: wire.turn,
+                width: CONNECTION_WIDTH_PER_STRENGTH.into(),
+                normal: Vec3::Y.into(),
+                color: wire.color,
+            },
+            &ArcMaterial {
                 color: shaded(Expression::InputColor),
             },
         )
@@ -186,6 +206,8 @@ impl SceneRenderer {
             cylinder_buffer,
             rings,
             ring_buffer,
+            wires,
+            wire_buffer,
             connection_lines,
             connection_spheres,
             connection_buffer,
@@ -246,8 +268,8 @@ impl SceneRenderer {
         if let Some(center) = marks.eraser {
             scene.rings.push(eraser_outline(center, &palette));
         }
-        let mut connections = collect_meter_wires(world, &palette);
-        connections.extend(connection_being_drawn(marks.drawn_connection, &palette));
+        let wires = collect_meter_wires(world, &palette);
+        let mut connections = connection_being_drawn(marks.drawn_connection, &palette);
         connections.extend(collect_voltmeter_traces(world));
         connections.extend(collect_spike_detectors(world, &palette));
         connections.extend(collect_rate_plots(world));
@@ -259,6 +281,8 @@ impl SceneRenderer {
             .update(&application.device, &application.queue, &scene.cylinders);
         self.ring_buffer
             .update(&application.device, &application.queue, &scene.rings);
+        self.wire_buffer
+            .update(&application.device, &application.queue, &wires);
         self.connection_buffer
             .update(&application.device, &application.queue, &connections);
         self.meter_background_buffer.update(
@@ -282,6 +306,7 @@ impl SceneRenderer {
         self.spheres.render(data);
         self.cylinders.render(data);
         self.rings.render(data);
+        self.wires.render(data);
         self.connection_lines.render(data);
         self.connection_spheres.render(data);
         self.notes.render(data);

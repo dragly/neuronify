@@ -1,17 +1,16 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::f32::consts::FRAC_PI_2;
 
-use glam::{Vec2, Vec3};
+use glam::{Quat, Vec2, Vec3};
 
 use crate::components::*;
-use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS};
+use crate::constants::NODE_RADIUS;
 use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{measured, Frame};
 use crate::rendering::colors::Palette;
-use crate::rendering::gpu_types::ConnectionData;
+use crate::rendering::gpu_types::{ArcData, ConnectionData};
 
 const MIN_SEGMENT_LENGTH: f32 = 1e-4;
 const LANE_GAP: f32 = 0.6;
@@ -19,8 +18,8 @@ const CLEARANCE: f32 = 0.3;
 const NEURON_CLEARANCE: f32 = 1.3;
 const OVERLAP_DISTANCE: f32 = 0.5 * LANE_GAP;
 const BEND_RADIUS: f32 = 0.8;
-const BEND_STEPS: usize = 6;
-const JOINT_OVERLAP: f32 = 2.0;
+const STRAIGHT_TURN: f32 = 1e-4;
+const ARC_POINTS: usize = 8;
 const SETTLE_PASSES: usize = 4;
 const DIAGONAL_SHARES: [f32; 5] = [0.5, 0.35, 0.65, 0.2, 0.8];
 const METER_COST: f32 = 100.0;
@@ -36,7 +35,7 @@ thread_local! {
     static LAYOUTS: RefCell<Vec<Layout>> = const { RefCell::new(Vec::new()) };
 }
 
-pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
+pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<ArcData> {
     let hidden = hidden_connections(world);
     let meters: Vec<Meter> = world
         .query::<()>()
@@ -44,11 +43,10 @@ pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<Connec
         .iter()
         .filter_map(|(meter, _)| Meter::of(world, meter, &hidden))
         .collect();
-    let mut wires: Vec<ConnectionData> = meter_wire_paths(&meters, &obstacles(world))
-        .iter()
+    let mut wires: Vec<ArcData> = meter_wire_arcs(&meters, &obstacles(world), palette.neutral)
+        .into_iter()
         .flatten()
-        .flat_map(|path| joined_segments(path))
-        .map(|(start, end)| wire(start, end, palette))
+        .flatten()
         .collect();
     for (speaker, position) in world.query::<&Position>().with::<&Loudspeaker>().iter() {
         for (connection, neuron) in measured(world, speaker) {
@@ -56,7 +54,7 @@ pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<Connec
                 continue;
             }
             if let Ok(start) = world.get::<&Position>(neuron) {
-                wires.push(wire(start.position, position.position, palette));
+                wires.push(straight(start.position, position.position, palette.neutral));
             }
         }
     }
@@ -412,10 +410,15 @@ struct Placement {
     total: f32,
 }
 
-fn meter_wire_paths(meters: &[Meter], neurons: &[Vec3]) -> Vec<Vec<Vec<Vec3>>> {
+fn meter_wire_arcs(meters: &[Meter], neurons: &[Vec3], color: Vec3) -> Vec<Vec<Vec<ArcData>>> {
     meter_wire_corners(meters, neurons)
         .iter()
-        .map(|paths| paths.iter().map(|corners| rounded(corners)).collect())
+        .map(|wires| {
+            wires
+                .iter()
+                .map(|corners| rounded(corners, color))
+                .collect()
+        })
         .collect()
 }
 
@@ -892,54 +895,55 @@ fn overlap(a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) -> f32 {
     (first.max(second).min(length) - first.min(second).max(0.0)).max(0.0)
 }
 
-fn rounded(points: &[Vec3]) -> Vec<Vec3> {
-    let mut path = points[..1].to_vec();
-    for corner in points.windows(3) {
+fn rounded(corners: &[Vec3], color: Vec3) -> Vec<ArcData> {
+    let mut arcs = Vec::new();
+    let mut from = corners[0];
+    for corner in corners.windows(3) {
         let [before, at, after] = [corner[0], corner[1], corner[2]];
-        let radius = BEND_RADIUS
+        let reach = BEND_RADIUS
             .min(at.distance(before) / 2.0)
             .min(at.distance(after) / 2.0);
-        let entry = at + (before - at).normalize_or_zero() * radius;
-        let exit = at + (after - at).normalize_or_zero() * radius;
-        path.extend((0..=BEND_STEPS).map(|step| {
-            let t = step as f32 / BEND_STEPS as f32;
-            entry.lerp(at, t).lerp(at.lerp(exit, t), t)
-        }));
+        let entry = at + (before - at).normalize_or_zero() * reach;
+        let exit = at + (after - at).normalize_or_zero() * reach;
+        arcs.push(straight(from, entry, color));
+        arcs.push(ArcData {
+            turn: (at - before)
+                .cross(after - at)
+                .y
+                .atan2((at - before).dot(after - at)),
+            ..straight(entry, exit, color)
+        });
+        from = exit;
     }
-    path.extend(points.last());
-    path
+    arcs.push(straight(from, corners[corners.len() - 1], color));
+    arcs.retain(|arc| arc.start.distance(arc.end) > MIN_SEGMENT_LENGTH);
+    arcs
 }
 
-fn joined_segments(path: &[Vec3]) -> Vec<(Vec3, Vec3)> {
-    let mut points = path.to_vec();
-    points.dedup_by(|point, kept| point.distance(*kept) <= MIN_SEGMENT_LENGTH);
-    let mut reach = vec![0.0; points.len()];
-    for (index, corner) in points.windows(3).enumerate() {
-        let turn = (corner[1] - corner[0])
-            .angle_between(corner[2] - corner[1])
-            .min(FRAC_PI_2);
-        reach[index + 1] = JOINT_OVERLAP * 0.5 * CONNECTION_WIDTH_PER_STRENGTH * (0.5 * turn).tan();
-    }
-    points
-        .windows(2)
-        .zip(reach.windows(2))
-        .map(|(pair, reach)| {
-            let along = (pair[1] - pair[0]).normalize();
-            (pair[0] - along * reach[0], pair[1] + along * reach[1])
-        })
-        .collect()
-}
-
-fn wire(start: Vec3, end: Vec3, palette: &Palette) -> ConnectionData {
-    ConnectionData {
-        position_a: start,
-        position_b: end,
-        strength: 1.0,
-        directional: 0.0,
-        start_color: palette.neutral,
-        end_color: palette.neutral,
+fn straight(start: Vec3, end: Vec3, color: Vec3) -> ArcData {
+    ArcData {
+        start,
+        turn: 0.0,
+        end,
+        color,
         _padding: Default::default(),
     }
+}
+
+pub fn arc_points(arc: &ArcData) -> Vec<Vec3> {
+    let chord = arc.end - arc.start;
+    if arc.turn.abs() < STRAIGHT_TURN || chord.length() < MIN_SEGMENT_LENGTH {
+        return vec![arc.start, arc.end];
+    }
+    let radius = 0.5 * chord.length() / (0.5 * arc.turn.abs()).sin();
+    let across = Vec3::Y.cross(chord.normalize()) * arc.turn.signum();
+    let center = arc.start.midpoint(arc.end) + across * radius * (0.5 * arc.turn).cos();
+    (0..=ARC_POINTS)
+        .map(|step| {
+            let angle = arc.turn * step as f32 / ARC_POINTS as f32;
+            center + Quat::from_rotation_y(angle) * (arc.start - center)
+        })
+        .collect()
 }
 
 pub fn connection_being_drawn(points: &[Vec3], palette: &Palette) -> Vec<ConnectionData> {
@@ -998,6 +1002,22 @@ mod tests {
         meters
             .iter()
             .flat_map(|meter| meter.starts.iter().map(|&(_, start)| start))
+            .collect()
+    }
+
+    fn meter_wire_paths(meters: &[Meter], neurons: &[Vec3]) -> Vec<Vec<Vec<Vec3>>> {
+        meter_wire_arcs(meters, neurons, Vec3::ONE)
+            .iter()
+            .map(|wires| {
+                wires
+                    .iter()
+                    .map(|arcs| {
+                        let mut points: Vec<Vec3> = arcs.iter().flat_map(arc_points).collect();
+                        points.dedup_by(|point, kept| point.distance(*kept) <= MIN_SEGMENT_LENGTH);
+                        points
+                    })
+                    .collect()
+            })
             .collect()
     }
 
@@ -1226,17 +1246,11 @@ mod tests {
         }
     }
 
-    fn covers(segment: (Vec3, Vec3), point: Vec2) -> bool {
-        let (start, end) = (flat(segment.0), flat(segment.1));
-        let along = (end - start).normalize();
-        let t = (point - start).dot(along);
-        t >= -1e-5
-            && t <= start.distance(end) + 1e-5
-            && (point - start).perp_dot(along).abs() <= 0.5 * CONNECTION_WIDTH_PER_STRENGTH
-    }
-
     #[test]
-    fn segments_of_a_bend_cover_the_outer_side_of_every_joint() {
+    fn pieces_of_a_wire_meet_end_to_end_in_the_same_direction() {
+        let heading = |arc: &ArcData, share: f32| {
+            Quat::from_rotation_y(share * arc.turn) * (arc.end - arc.start).normalize()
+        };
         let frame = frame();
         let mut meters: Vec<Meter> = NEURONS
             .iter()
@@ -1244,34 +1258,24 @@ mod tests {
             .collect();
         meters.push(stacked(frame, &[12.0, 9.0, 6.0], 3.0));
         meters.push(stacked(frame, &[5.0, 1.0, -4.0], -0.4));
-        let mut joints = 0;
+        let mut bends = 0;
         for meter in meters {
-            for path in &paths(&[meter])[0] {
-                let segments = joined_segments(path);
-                let mut points = path.clone();
-                points.dedup_by(|point, kept| point.distance(*kept) <= MIN_SEGMENT_LENGTH);
-                for corner in points.windows(3) {
-                    let before = flat(corner[1] - corner[0]).normalize();
-                    let after = flat(corner[2] - corner[1]).normalize();
-                    let turn = before.perp_dot(after);
-                    if turn.abs() < 1e-4 {
-                        continue;
-                    }
-                    joints += 1;
-                    let outward = -turn.signum() * (before.perp() + after.perp()).normalize();
-                    for step in 1..10 {
-                        let reach = 0.05 * step as f32 * CONNECTION_WIDTH_PER_STRENGTH;
-                        let point = flat(corner[1]) + outward * reach;
-                        assert!(
-                            segments.iter().any(|&segment| covers(segment, point)),
-                            "gap {reach} outside the joint at {:?}",
-                            corner[1]
-                        );
-                    }
+            let neurons = starts(std::slice::from_ref(&meter));
+            for arcs in &meter_wire_arcs(&[meter], &neurons, Vec3::ONE)[0] {
+                for arc in arcs {
+                    let points = arc_points(arc);
+                    assert!(points[0].distance(arc.start) < 1e-4);
+                    assert!(points[points.len() - 1].distance(arc.end) < 1e-4, "{arc:?}");
+                    bends += usize::from(arc.turn != 0.0);
+                }
+                for pair in arcs.windows(2) {
+                    assert_eq!(pair[0].end, pair[1].start);
+                    let (out, into) = (heading(&pair[0], 0.5), heading(&pair[1], -0.5));
+                    assert!(out.distance(into) < 1e-4, "{:?}", pair);
                 }
             }
         }
-        assert!(joints > 100);
+        assert!(bends > 50, "{bends} bends");
     }
 
     #[test]
@@ -1297,7 +1301,7 @@ mod tests {
                 .filter(|segment| {
                     starts
                         .iter()
-                        .any(|start| segment.position_a.distance(*start) < MIN_SEGMENT_LENGTH)
+                        .any(|start| segment.start.distance(*start) < MIN_SEGMENT_LENGTH)
                 })
                 .count()
         };

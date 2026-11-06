@@ -40,6 +40,16 @@ pub struct ConnectionData {
 }
 
 #[repr(C, align(16))]
+#[derive(Clone, Copy, Debug, PartialEq, Instance, Pod, Zeroable)]
+pub struct ArcData {
+    pub start: Vec3,
+    pub turn: f32,
+    pub end: Vec3,
+    pub color: Vec3,
+    pub _padding: [f32; 2],
+}
+
+#[repr(C, align(16))]
 #[derive(Clone, Copy, Instance, Pod, Zeroable)]
 pub struct CylinderData {
     pub start: Vec3,

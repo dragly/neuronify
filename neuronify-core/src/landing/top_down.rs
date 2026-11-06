@@ -5,7 +5,7 @@ use hecs::World;
 use crate::constants::CONNECTION_WIDTH_PER_STRENGTH;
 use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::{
-    collect_meter_wires, collect_rate_plots, collect_scene, collect_spike_detectors,
+    arc_points, collect_meter_wires, collect_rate_plots, collect_scene, collect_spike_detectors,
     collect_voltmeter_traces, Bounds, ConnectionData, CylinderData, Palette,
 };
 
@@ -50,11 +50,11 @@ pub fn top_down_shapes(
     }
 
     for wire in collect_meter_wires(world, palette) {
-        shapes.push(Shape::line_segment(
-            [to_screen(wire.position_a), to_screen(wire.position_b)],
+        shapes.push(Shape::line(
+            arc_points(&wire).into_iter().map(&to_screen).collect(),
             Stroke::new(
-                rendered_line_width(wire.strength, scale),
-                egui_color_from_linear(wire.start_color),
+                rendered_line_width(1.0, scale),
+                egui_color_from_linear(wire.color),
             ),
         ));
     }
