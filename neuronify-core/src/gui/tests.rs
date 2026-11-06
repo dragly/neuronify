@@ -1169,6 +1169,34 @@ fn a_visual_input_picks_its_picture() {
 }
 
 #[test]
+fn the_reverse_button_turns_the_picture_around_and_undo_turns_it_back() {
+    use crate::measurement::visual_input::VisualInput;
+    let mut world = World::new();
+    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let mut harness = Harness::with(false, world, Some(input));
+    assert!(harness.shows(Setting::Reverse.description()));
+    let speed = |harness: &Harness| harness.world.get::<&VisualInput>(input).unwrap().speed;
+    let forward = speed(&harness);
+    harness.click_button(inspector::REVERSE);
+    assert_eq!(speed(&harness), -forward);
+    assert!(harness.shows(&format!("{forward:.1}")));
+    harness.press(Modifiers::COMMAND, Key::Z);
+    assert_eq!(speed(&harness), forward);
+}
+
+#[test]
+fn on_phones_reverse_shows_in_the_peeking_sheet() {
+    let mut world = World::new();
+    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let harness = Harness::phone(false, world, Some(input));
+    let reverse = harness
+        .context
+        .read_response(Id::new(inspector::REVERSE))
+        .unwrap();
+    assert!(reverse.rect.bottom() <= PHONE.y, "{:?}", reverse.rect);
+}
+
+#[test]
 fn a_receptive_field_picks_its_field_and_sensitivity() {
     use crate::measurement::visual_input::{ReceptiveField, ReceptiveFieldCell};
     let mut world = World::new();

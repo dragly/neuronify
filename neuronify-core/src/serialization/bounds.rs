@@ -58,7 +58,7 @@ pub const RATE_WINDOWS: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milli
 pub const PLOTTED_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1e6);
 pub const TIME_RANGES: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1e6);
 pub const SENSITIVITIES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1e6);
-pub const PICTURE_SPEEDS: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1000.0);
+pub const PICTURE_SPEEDS: RangeInclusive<Hertz> = Hertz(-1000.0)..=Hertz(1000.0);
 pub const ANGLES: RangeInclusive<f64> = 0.0..=TAU;
 pub const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
 pub const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
@@ -434,6 +434,19 @@ mod tests {
             bound(&mut world);
             assert!(before == saved(&world), "{}", file.display());
         }
+    }
+
+    #[test]
+    fn a_reversed_picture_still_moves_backwards_after_loading() {
+        let mut world = World::new();
+        let picture = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+        world.get::<&mut VisualInput>(picture).unwrap().reverse();
+        let speed = world.get::<&VisualInput>(picture).unwrap().speed;
+        assert!(speed < Hertz::ZERO);
+
+        let loaded = load(&saved(&world)).unwrap().world;
+
+        assert_eq!(loaded.get::<&VisualInput>(picture).unwrap().speed, speed);
     }
 
     #[test]

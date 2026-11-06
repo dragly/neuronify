@@ -62,6 +62,7 @@ pub enum Icon {
     Erase,
     Info,
     Heart,
+    Reverse,
 }
 
 pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
@@ -116,6 +117,16 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
                 ],
                 stroke,
             ));
+        }
+        Icon::Reverse => {
+            for (y, side) in [(8.0, 1.0), (16.0, -1.0)] {
+                let point = |x: f32, dy: f32| at(vec2(12.0 + side * x, y + dy));
+                painter.line_segment([point(-7.0, 0.0), point(7.0, 0.0)], stroke);
+                painter.add(Shape::line(
+                    vec![point(3.5, -3.5), point(7.0, 0.0), point(3.5, 3.5)],
+                    stroke,
+                ));
+            }
         }
         Icon::Info => {
             painter.circle_stroke(at(vec2(12.0, 12.0)), 8.5 * scale, stroke);

@@ -170,6 +170,10 @@ impl Default for VisualInput {
 }
 
 impl VisualInput {
+    pub fn reverse(&mut self) {
+        self.speed = -self.speed;
+    }
+
     pub fn picture(&self) -> Vec<f64> {
         (0..RESOLUTION)
             .flat_map(|row| (0..RESOLUTION).map(move |column| (column, row)))
@@ -486,6 +490,18 @@ mod tests {
         assert!((phase_after_a_quarter_second(0.5) - 0.125).abs() < 1e-6);
         assert!((phase_after_a_quarter_second(2.0) - 0.5).abs() < 1e-6);
         assert_eq!(phase_after_a_quarter_second(0.0), 0.0);
+    }
+
+    #[test]
+    fn a_reversed_picture_turns_around_where_it_is_and_runs_back() {
+        let mut seen = input(ReceptiveField::default(), Pattern::Bar, 0.0);
+        seen.picture.speed = Hertz(2.0);
+        seen.picture.phase = 0.3;
+        let before = seen.picture();
+        seen.picture.reverse();
+        assert_eq!(seen.picture(), before);
+        assert!((spikes(seen.clone(), 0.1).1 - 0.1).abs() < 1e-6);
+        assert!((spikes(seen, 0.25).1 - 0.8).abs() < 1e-6);
     }
 
     #[test]
