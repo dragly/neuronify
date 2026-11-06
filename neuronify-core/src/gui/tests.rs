@@ -179,9 +179,12 @@ impl Harness {
     }
 
     fn scroll_inspector_to_the_end(&mut self) {
-        let inspector = pos2(self.screen.x - 100.0, self.screen.y / 2.0);
+        self.scroll_to_the_end_at(pos2(self.screen.x - 100.0, self.screen.y / 2.0));
+    }
+
+    fn scroll_to_the_end_at(&mut self, position: Pos2) {
         self.frame(vec![
-            Event::PointerMoved(inspector),
+            Event::PointerMoved(position),
             Event::MouseWheel {
                 unit: egui::MouseWheelUnit::Point,
                 delta: vec2(0.0, -10_000.0),
@@ -1177,6 +1180,29 @@ fn the_more_menu_sits_at_the_top_right_on_phones() {
     harness.click(top_corner(true));
     harness.click_text("Light");
     assert_eq!(harness.theme, Theme::Light);
+}
+
+#[test]
+fn the_menu_scrolls_to_the_channels_when_the_window_is_short() {
+    use crate::components::{Preparation, Setting};
+    for (short, open) in [
+        (vec2(PHONE.x, 420.0), top_corner(true)),
+        (vec2(SCREEN.x, 600.0), pos2(MARGIN + 20.0, MARGIN + 20.0)),
+    ] {
+        let mut harness = Harness::sized(short, false, World::new(), None);
+        harness.click(open);
+        let menu = harness
+            .context
+            .memory(|memory| memory.area_rect(Id::new("menu")));
+        assert!(menu.unwrap().bottom() <= short.y - MARGIN);
+        harness.scroll_to_the_end_at(menu.unwrap().center());
+        let mammal = harness
+            .text_rect("Mammal")
+            .expect("Mammal is not on screen");
+        assert!(mammal.bottom() <= short.y);
+        harness.click(mammal.center());
+        assert_eq!(Preparation::of(&harness.world), Preparation::Mammal);
+    }
 }
 
 #[test]
