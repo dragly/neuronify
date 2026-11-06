@@ -179,7 +179,7 @@ impl Theme {
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: crust(),
                 myelin: srgb(222, 214, 190),
-                selection: srgb(137, 180, 250),
+                selection: srgb(80, 240, 110),
                 halo: 0.6,
                 transmitter: 0.6,
             },
@@ -195,7 +195,7 @@ impl Theme {
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: srgb(140, 143, 161),
                 myelin: srgb(244, 233, 205),
-                selection: srgb(30, 102, 245),
+                selection: srgb(15, 85, 45),
                 halo: 1.0,
                 transmitter: 0.8,
             },
@@ -264,6 +264,59 @@ pub fn lit(color: Vec3, voltage: f64) -> Vec3 {
 mod tests {
     use super::*;
     use crate::rendering::lighting::BLOOM_THRESHOLD;
+    use glam::Mat3;
+
+    fn oklab(color: Vec3) -> Vec3 {
+        let [red, green, blue] = color.clamp(Vec3::ZERO, Vec3::ONE).to_array();
+        let [long, medium, short] = [
+            0.412_221_47 * red + 0.536_332_54 * green + 0.051_445_99 * blue,
+            0.211_903_5 * red + 0.680_699_6 * green + 0.107_396_96 * blue,
+            0.088_302_46 * red + 0.281_718_84 * green + 0.629_978_7 * blue,
+        ]
+        .map(f32::cbrt);
+        Vec3::new(
+            0.210_454_26 * long + 0.793_617_8 * medium - 0.004_072_05 * short,
+            1.977_998_5 * long - 2.428_592_2 * medium + 0.450_593_7 * short,
+            0.025_904_04 * long + 0.782_771_77 * medium - 0.808_675_77 * short,
+        )
+    }
+
+    fn seen_without(rows: [f32; 9]) -> Mat3 {
+        Mat3::from_cols_array(&rows).transpose()
+    }
+
+    #[test]
+    fn the_selection_stands_apart_from_both_neuron_types_also_for_color_blind_eyes() {
+        let eyes = [
+            Mat3::IDENTITY,
+            seen_without([
+                0.152_286, 1.052_583, -0.204_868, 0.114_503, 0.786_281, 0.099_216, -0.003_882,
+                -0.048_116, 1.051_998,
+            ]),
+            seen_without([
+                0.367_322, 0.860_646, -0.227_968, 0.280_085, 0.672_501, 0.047_413, -0.011_82,
+                0.042_94, 0.968_881,
+            ]),
+            seen_without([
+                1.255_528, -0.076_749, -0.178_779, -0.078_411, 0.930_809, 0.147_602, 0.004_733,
+                0.691_367, 0.303_9,
+            ]),
+        ];
+        for theme in [Theme::Dark, Theme::Light] {
+            let palette = theme.palette();
+            for neuron in [
+                palette.excitatory,
+                palette.excitatory_active,
+                palette.inhibitory,
+                palette.inhibitory_active,
+            ] {
+                for eye in eyes {
+                    let apart = oklab(eye * palette.selection).distance(oklab(eye * neuron));
+                    assert!(apart > 0.06, "{theme:?} {neuron} {apart}");
+                }
+            }
+        }
+    }
 
     #[test]
     fn dendrites_are_paler_but_not_brighter() {
