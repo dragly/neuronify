@@ -18,6 +18,7 @@ pub mod scene;
 pub mod scene_renderer;
 pub mod selection;
 pub mod shapes;
+pub mod signals;
 pub mod spheres;
 pub mod spike_detector;
 pub mod transmitter;
