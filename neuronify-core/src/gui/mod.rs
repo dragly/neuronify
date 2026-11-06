@@ -12,7 +12,7 @@ mod widgets;
 
 use egui::{
     pos2, vec2, Align, Align2, Color32, Context, Id, Key, KeyboardShortcut, Layout, Modifiers,
-    Order, Pos2, Rect, Response, RichText, Sense, Ui, Vec2, WidgetInfo, WidgetType,
+    Order, Pos2, Rect, Response, RichText, ScrollArea, Sense, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::World;
 
@@ -426,102 +426,111 @@ fn menu(
     let saving = controls.saving;
     let mut picked = None;
     let mut opened_link = false;
+    let frame = chrome.panel_frame(MENU_PADDING);
+    let room =
+        (context.content_rect().bottom() - MARGIN - position.y - frame.total_margin().sum().y)
+            .max(MENU_ROW_HEIGHT);
     let rect = egui::Area::new(Id::new("menu"))
         .order(Order::Foreground)
         .pivot(pivot)
         .fixed_pos(position)
         .show(context, |ui| {
-            chrome.panel_frame(MENU_PADDING).show(ui, |ui| {
+            frame.show(ui, |ui| {
                 ui.set_width(MENU_WIDTH);
-                ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
-                if icon_row(ui, chrome, Icon::Folder, "Open…").clicked() {
-                    picked = Some(MenuChoice::Open);
-                }
-                if saving != Saving::Share && icon_row(ui, chrome, Icon::Save, "Save…").clicked()
-                {
-                    picked = Some(MenuChoice::Save);
-                }
-                if saving != Saving::Save && icon_row(ui, chrome, Icon::Share, "Share…").clicked()
-                {
-                    picked = Some(MenuChoice::Share);
-                }
-                if icon_row(ui, chrome, Icon::Grid, "Examples").clicked() {
-                    picked = Some(MenuChoice::Examples);
-                }
-                if icon_row(ui, chrome, Icon::Info, "About Neuronify").clicked() {
-                    picked = Some(MenuChoice::About);
-                }
-                let support = icon_row(ui, chrome, Icon::Heart, "Support Neuronify");
-                links::open_on_click(&support, links::SUPPORT);
-                opened_link = support.clicked();
-                separator(ui, chrome);
-                heading(ui, chrome, "View", 8.0);
-                labelled_row(ui, chrome, "Theme", |ui| {
-                    segmented(
+                ScrollArea::vertical().max_height(room).show(ui, |ui| {
+                    ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
+                    if icon_row(ui, chrome, Icon::Folder, "Open…").clicked() {
+                        picked = Some(MenuChoice::Open);
+                    }
+                    if saving != Saving::Share
+                        && icon_row(ui, chrome, Icon::Save, "Save…").clicked()
+                    {
+                        picked = Some(MenuChoice::Save);
+                    }
+                    if saving != Saving::Save
+                        && icon_row(ui, chrome, Icon::Share, "Share…").clicked()
+                    {
+                        picked = Some(MenuChoice::Share);
+                    }
+                    if icon_row(ui, chrome, Icon::Grid, "Examples").clicked() {
+                        picked = Some(MenuChoice::Examples);
+                    }
+                    if icon_row(ui, chrome, Icon::Info, "About Neuronify").clicked() {
+                        picked = Some(MenuChoice::About);
+                    }
+                    let support = icon_row(ui, chrome, Icon::Heart, "Support Neuronify");
+                    links::open_on_click(&support, links::SUPPORT);
+                    opened_link = support.clicked();
+                    separator(ui, chrome);
+                    heading(ui, chrome, "View", 8.0);
+                    labelled_row(ui, chrome, "Theme", |ui| {
+                        segmented(
+                            ui,
+                            chrome,
+                            controls.theme,
+                            &[(Theme::Dark, "Dark"), (Theme::Light, "Light")],
+                        );
+                    });
+                    let mut display = NeuronDisplay::of(controls.world);
+                    let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);
+                    let firing_rate =
+                        switch(ui, chrome, "Show firing rate", &mut display.firing_rate);
+                    let proportions = switch(
                         ui,
                         chrome,
-                        controls.theme,
-                        &[(Theme::Dark, "Dark"), (Theme::Light, "Light")],
+                        "True proportions",
+                        &mut display.true_proportions,
                     );
-                });
-                let mut display = NeuronDisplay::of(controls.world);
-                let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);
-                let firing_rate = switch(ui, chrome, "Show firing rate", &mut display.firing_rate);
-                let proportions = switch(
-                    ui,
-                    chrome,
-                    "True proportions",
-                    &mut display.true_proportions,
-                );
-                if voltage.changed() || firing_rate.changed() || proportions.changed() {
-                    display.set_in(controls.world);
-                }
-                labelled_row(ui, chrome, "Frame rate", |ui| {
-                    ui.label(
-                        RichText::new(format!("{:.0} fps", controls.fps))
-                            .size(13.0)
-                            .color(chrome.subtext),
-                    );
-                });
-                separator(ui, chrome);
-                heading(ui, chrome, "Simulation", 8.0);
-                let preparation = Preparation::of(controls.world);
-                let mut chosen = preparation;
-                let mut temperature = Temperature::of(controls.world);
-                let warmed = egui::Frame::new()
-                    .inner_margin(egui::Margin {
-                        left: 8,
-                        right: 4,
-                        top: 0,
-                        bottom: 0,
-                    })
-                    .show(ui, |ui| {
-                        inspector::choice(
-                            ui,
-                            chrome,
-                            crate::settings::Setting::Channels,
-                            &mut chosen,
-                            &[
-                                (Preparation::Squid, "Squid"),
-                                (Preparation::Mammal, "Mammal"),
-                            ],
+                    if voltage.changed() || firing_rate.changed() || proportions.changed() {
+                        display.set_in(controls.world);
+                    }
+                    labelled_row(ui, chrome, "Frame rate", |ui| {
+                        ui.label(
+                            RichText::new(format!("{:.0} fps", controls.fps))
+                                .size(13.0)
+                                .color(chrome.subtext),
                         );
-                        inspector::parameter(
-                            ui,
-                            chrome,
-                            crate::settings::Setting::Temperature,
-                            &mut temperature.celsius,
-                            preparation.temperatures(),
-                            |celsius| format!("{celsius:.1} °C"),
-                        )
-                    })
-                    .inner;
-                if chosen != preparation {
-                    controls.editor.prepare(controls.world, chosen);
-                } else if warmed {
-                    temperature.set_in(controls.world);
-                    controls.editor.mark_edited();
-                }
+                    });
+                    separator(ui, chrome);
+                    heading(ui, chrome, "Simulation", 8.0);
+                    let preparation = Preparation::of(controls.world);
+                    let mut chosen = preparation;
+                    let mut temperature = Temperature::of(controls.world);
+                    let warmed = egui::Frame::new()
+                        .inner_margin(egui::Margin {
+                            left: 8,
+                            right: 4,
+                            top: 0,
+                            bottom: 0,
+                        })
+                        .show(ui, |ui| {
+                            inspector::choice(
+                                ui,
+                                chrome,
+                                crate::settings::Setting::Channels,
+                                &mut chosen,
+                                &[
+                                    (Preparation::Squid, "Squid"),
+                                    (Preparation::Mammal, "Mammal"),
+                                ],
+                            );
+                            inspector::parameter(
+                                ui,
+                                chrome,
+                                crate::settings::Setting::Temperature,
+                                &mut temperature.celsius,
+                                preparation.temperatures(),
+                                |celsius| format!("{celsius:.1} °C"),
+                            )
+                        })
+                        .inner;
+                    if chosen != preparation {
+                        controls.editor.prepare(controls.world, chosen);
+                    } else if warmed {
+                        temperature.set_in(controls.world);
+                        controls.editor.mark_edited();
+                    }
+                });
             });
         })
         .response
