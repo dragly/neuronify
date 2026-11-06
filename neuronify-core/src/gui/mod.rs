@@ -18,6 +18,7 @@ use hecs::World;
 
 use crate::components::{NeuronDisplay, Setting, Temperature};
 use crate::editor::Editor;
+use crate::links;
 use crate::rendering::Theme;
 use crate::tools::Tool;
 pub use hitboxes::{paint_hitboxes, reach_slider};
@@ -249,14 +250,14 @@ impl Gui {
         if !self.menu_open {
             return None;
         }
-        let (picked, rect) = menu(context, pivot, position, controls);
+        let (picked, opened_link, rect) = menu(context, pivot, position, controls);
         let pressed_elsewhere = context.input(|input| {
             input.pointer.any_pressed()
                 && input.pointer.interact_pos().is_some_and(|position| {
                     !rect.contains(position) && !button.rect.contains(position)
                 })
         });
-        if picked.is_some() || pressed_elsewhere {
+        if picked.is_some() || opened_link || pressed_elsewhere {
             self.menu_open = false;
         }
         picked
@@ -421,10 +422,11 @@ fn menu(
     pivot: Align2,
     position: Pos2,
     controls: &mut Controls,
-) -> (Option<MenuChoice>, Rect) {
+) -> (Option<MenuChoice>, bool, Rect) {
     let chrome = Chrome::of(*controls.theme);
     let saving = controls.saving;
     let mut picked = None;
+    let mut opened_link = false;
     let rect = egui::Area::new(Id::new("menu"))
         .order(Order::Foreground)
         .pivot(pivot)
@@ -450,6 +452,9 @@ fn menu(
                 if icon_row(ui, chrome, Icon::Info, "About Neuronify").clicked() {
                     picked = Some(MenuChoice::About);
                 }
+                let support = icon_row(ui, chrome, Icon::Heart, "Support Neuronify");
+                links::open_on_click(&support, links::SUPPORT);
+                opened_link = support.clicked();
                 separator(ui, chrome);
                 heading(ui, chrome, "View", 8.0);
                 labelled_row(ui, chrome, "Theme", |ui| {
@@ -508,7 +513,7 @@ fn menu(
         })
         .response
         .rect;
-    (picked, rect)
+    (picked, opened_link, rect)
 }
 
 fn labelled_row(ui: &mut Ui, chrome: &Chrome, label: &str, value: impl FnOnce(&mut Ui)) {

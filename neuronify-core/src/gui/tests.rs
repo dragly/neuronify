@@ -26,6 +26,7 @@ struct Harness {
     speed: f64,
     choice: Option<MenuChoice>,
     output: Option<FullOutput>,
+    opened_urls: Vec<String>,
     time: f64,
     saving: Saving,
 }
@@ -55,6 +56,7 @@ impl Harness {
             speed: DEFAULT_SPEED,
             choice: None,
             output: None,
+            opened_urls: Vec::new(),
             time: 0.0,
             saving: Saving::Save,
         };
@@ -101,6 +103,11 @@ impl Harness {
                 *choice = Some(picked);
             }
         });
+        for command in &output.platform_output.commands {
+            if let egui::OutputCommand::OpenUrl(open) = command {
+                self.opened_urls.push(open.url.clone());
+            }
+        }
         self.output = Some(output);
         self.time += 0.1;
     }
@@ -394,6 +401,16 @@ fn the_menu_opens_about() {
     harness.click_text("About Neuronify");
     assert_eq!(harness.choice, Some(MenuChoice::About));
     assert!(!harness.shows("About Neuronify"));
+}
+
+#[test]
+fn the_menu_opens_the_support_page() {
+    let mut harness = Harness::new(false);
+    harness.click_text("Menu");
+    harness.click_text("Support Neuronify");
+    assert_eq!(harness.opened_urls, [crate::links::SUPPORT]);
+    assert_eq!(harness.choice, None);
+    assert!(!harness.shows("Support Neuronify"));
 }
 
 #[test]

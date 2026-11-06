@@ -10,7 +10,8 @@ use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, NaiveDateTime, Utc}
 use egui::text::LayoutJob;
 use egui::{
     pos2, vec2, Align, Align2, Color32, CursorIcon, FontId, Galley, Key, Layout, Painter, Rect,
-    Response, RichText, ScrollArea, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType,
+    Response, RichText, ScrollArea, Sense, Stroke, StrokeKind, TextWrapMode, Ui, WidgetInfo,
+    WidgetType,
 };
 use hecs::World;
 
@@ -18,6 +19,7 @@ use crate::constants::DEFAULT_SPEED;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
 use crate::gui::icons::{paint_icon, Icon};
 use crate::library::{Library, SavedSimulation};
+use crate::links;
 use crate::rendering::Theme;
 use dialogs::Dialogs;
 use preview::Preview;
@@ -72,6 +74,7 @@ const CARD_GAP: f32 = 16.0;
 const CARD_PADDING: f32 = 10.0;
 const CARD_RADIUS: u8 = 10;
 const TITLE_GAP: f32 = 4.0;
+const END_LINK_GAP: f32 = 24.0;
 const THUMBNAIL_ASPECT: f32 = 9.0 / 16.0;
 const THUMBNAIL_RADIUS: u8 = 6;
 const STACK_LAYERS: usize = 3;
@@ -370,9 +373,17 @@ impl LandingScreen {
             }
         }
         ui.add_space(48.0);
-        if text_button(ui, colors, "About Neuronify").clicked() {
-            picked = Some(Picked::About);
-        }
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = vec2(END_LINK_GAP, END_LINK_GAP / 2.0);
+            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+            if text_button(ui, colors, "About Neuronify").clicked() {
+                picked = Some(Picked::About);
+            }
+            links::open_on_click(
+                &text_button(ui, colors, "Support Neuronify"),
+                links::SUPPORT,
+            );
+        });
         ui.add_space(40.0);
         picked
     }
@@ -942,6 +953,48 @@ mod tests {
             screen_with_room_for_the_whole_landing,
         );
         assert!(matches!(choice, Some(LandingChoice::About)));
+    }
+
+    #[test]
+    fn the_support_link_sits_beside_about_and_opens_the_support_page() {
+        let context = egui::Context::default();
+        let mut landing = LandingScreen::new(false);
+        let screen_with_room_for_the_whole_landing = vec2(1280.0, 8000.0);
+        let (output, _) = run_sized(
+            &context,
+            &mut landing,
+            vec![],
+            screen_with_room_for_the_whole_landing,
+        );
+        let about = text_position(&output, "About Neuronify").unwrap();
+        let support = text_position(&output, "Support Neuronify").unwrap();
+        assert_eq!(support.y, about.y);
+        assert!(support.x > about.x);
+
+        let click = |pressed| Event::PointerButton {
+            pos: support + vec2(4.0, 4.0),
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Default::default(),
+        };
+        let events = vec![Event::PointerMoved(support + vec2(4.0, 4.0)), click(true)];
+        run_sized(
+            &context,
+            &mut landing,
+            events,
+            screen_with_room_for_the_whole_landing,
+        );
+        let (output, choice) = run_sized(
+            &context,
+            &mut landing,
+            vec![click(false)],
+            screen_with_room_for_the_whole_landing,
+        );
+        assert!(choice.is_none());
+        let opened = output.platform_output.commands.iter().any(|command| {
+            matches!(command, egui::OutputCommand::OpenUrl(open) if open.url == links::SUPPORT)
+        });
+        assert!(opened);
     }
 
     #[test]

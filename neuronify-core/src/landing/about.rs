@@ -23,6 +23,9 @@ const GPL: &str = include_str!("../../../LICENSE");
 
 const INTRO: &str = "Neuronify is an educational tool meant to give intuition for how neurons \
     and neural networks behave.";
+const SUPPORT: &str = "Support Neuronify";
+const SUPPORT_TEXT: &str = "Neuronify is currently maintained by Svenn-Arne Dragly.";
+const SUPPORT_LINK: &str = "How to support its development";
 const LICENSE: &str = "License";
 const NOTICE: &str = "Neuronify is free software: you can redistribute it and/or modify it under \
     the terms of the GNU General Public License version 3. It comes with no warranty.";
@@ -106,6 +109,10 @@ impl AboutScreen {
         );
         ui.add_space(PARAGRAPH_GAP);
         paragraph(ui, colors, INTRO);
+
+        heading(ui, colors, SUPPORT);
+        paragraph(ui, colors, SUPPORT_TEXT);
+        link(ui, colors, SUPPORT_LINK, links::SUPPORT);
 
         heading(ui, colors, LICENSE);
         paragraph(ui, colors, NOTICE);
@@ -363,5 +370,13 @@ mod tests {
         assert_eq!(page.opened_url(), Some(SOURCE_CODE));
         page.click_text(PAPER_LINK);
         assert_eq!(page.opened_url(), Some(PAPER));
+    }
+
+    #[test]
+    fn the_support_section_links_to_the_support_page() {
+        let mut page = Page::open();
+        assert!(page.shows(SUPPORT_TEXT));
+        page.click_text(SUPPORT_LINK);
+        assert_eq!(page.opened_url(), Some(links::SUPPORT));
     }
 }
