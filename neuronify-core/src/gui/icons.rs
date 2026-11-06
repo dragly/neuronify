@@ -31,6 +31,10 @@ const PYRAMIDAL: [&[(f32, f32)]; 4] = [
 ];
 const STAR_SOMA: (f32, f32) = (16.0, 16.0);
 const STAR_ARMS: usize = 5;
+const HEART_LOBE_STEPS: usize = 24;
+const HEART_LOBE_CENTER: Vec2 = vec2(8.2, 9.2);
+const HEART_LOBE_RADIUS: f32 = 4.6;
+const HEART_TIP: Vec2 = vec2(12.0, 19.5);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
@@ -56,6 +60,7 @@ pub enum Icon {
     Stimulate,
     Erase,
     Info,
+    Heart,
 }
 
 pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
@@ -115,6 +120,32 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
             painter.circle_stroke(at(vec2(12.0, 12.0)), 8.5 * scale, stroke);
             painter.circle_filled(at(vec2(12.0, 8.0)), 1.2 * scale, color);
             painter.line_segment([at(vec2(12.0, 11.0)), at(vec2(12.0, 16.5))], stroke);
+        }
+        Icon::Heart => {
+            let center = HEART_LOBE_CENTER;
+            let middle = GRID / 2.0;
+            let cusp = vec2(
+                middle,
+                center.y - (HEART_LOBE_RADIUS.powi(2) - (middle - center.x).powi(2)).sqrt(),
+            );
+            let to_tip = HEART_TIP - center;
+            let tangent = to_tip.angle() + (HEART_LOBE_RADIUS / to_tip.length()).acos() - TAU;
+            let start = (cusp - center).angle();
+            let lobe: Vec<Vec2> = (0..=HEART_LOBE_STEPS)
+                .map(|step| {
+                    let angle = start + (tangent - start) * step as f32 / HEART_LOBE_STEPS as f32;
+                    center + Vec2::angled(angle) * HEART_LOBE_RADIUS
+                })
+                .collect();
+            let mut points = lobe.clone();
+            points.push(HEART_TIP);
+            points.extend(
+                lobe[1..]
+                    .iter()
+                    .rev()
+                    .map(|point| vec2(GRID - point.x, point.y)),
+            );
+            outline(&points);
         }
         Icon::Menu => {
             for y in [7.0, 12.0, 17.0] {

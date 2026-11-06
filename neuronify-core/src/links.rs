@@ -1,5 +1,7 @@
 use egui::Response;
 
+pub const SUPPORT: &str = "https://dragly.org/neuronify/support";
+
 #[cfg(not(target_arch = "wasm32"))]
 pub fn open_on_click(response: &Response, url: &str) {
     if response.clicked() {
