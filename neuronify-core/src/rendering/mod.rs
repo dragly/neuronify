@@ -26,12 +26,14 @@ pub mod voltmeter;
 
 pub use bounds::{canvas_bounds, circuit_bounds, Bounds};
 pub use colors::{srgb, srgb_component, Palette, Theme};
-pub use connections::{collect_meter_wires, connection_being_drawn};
+pub use connections::{arc_points, collect_meter_wires, connection_being_drawn};
 pub use cylinders::{collect_cylinders, compartment_radii, growing_axon, growing_dendrite};
 pub use floor::create_floor;
 pub use gauges::GaugeRenderer;
 pub use ghost::Ghost;
-pub use gpu_types::{ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere, TorusData};
+pub use gpu_types::{
+    ArcData, ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere, TorusData,
+};
 pub use notes::NoteRenderer;
 pub use paths::{connection_paths, distance_to_segment, ConnectionPath};
 pub use rate_plot::collect_rate_plots;
