@@ -32,7 +32,6 @@ pub const AXON_SMOOTHING_STRENGTH: f32 = 20.0;
 pub const TERMINAL_THRESHOLD: f64 = -20.0;
 
 pub const COMPARTMENT_SPHERE_SCALE: f32 = 0.3;
-pub const TRIGGER_SPHERE_SCALE: f32 = 0.5;
 
 pub const MAX_ENDING_STRENGTH: f64 = 2.0;
 

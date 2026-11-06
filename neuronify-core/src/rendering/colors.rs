@@ -154,8 +154,6 @@ pub struct Palette {
     pub inhibitory_active: Vec3,
     pub excitatory_below: Vec3,
     pub inhibitory_below: Vec3,
-    /// A spike on its way along a synapse
-    pub spike: Vec3,
     /// A soma right after it fired
     pub flash: Vec3,
     /// Connections from anything that is not a neuron or a source
@@ -178,7 +176,6 @@ impl Theme {
                 inhibitory_active: red().lerp(mantle(), VOLTAGE_TINT),
                 excitatory_below: srgb(18, 138, 138),
                 inhibitory_below: srgb(212, 98, 76),
-                spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: crust(),
                 myelin: srgb(222, 214, 190),
@@ -195,7 +192,6 @@ impl Theme {
                 inhibitory_active: srgb(184, 61, 85).lerp(mantle(), VOLTAGE_TINT),
                 excitatory_below: srgb(26, 126, 126),
                 inhibitory_below: srgb(196, 94, 74),
-                spike: crust(),
                 flash: Vec3::new(1.0, 1.0, 0.55),
                 neutral: srgb(140, 143, 161),
                 myelin: srgb(244, 233, 205),
@@ -246,10 +242,22 @@ impl Palette {
     }
 
     pub fn compartment(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
-        let color = self.neurocolor(neuron_type, shown_fraction(voltage));
-        let glare = ((voltage - GLARE_START) / (GLARE_FULL - GLARE_START)).clamp(0.0, 1.0) as f32;
-        color.lerp(color / color.max_element() * GLARE_PEAK, glare)
+        glared(
+            self.neurocolor(neuron_type, shown_fraction(voltage)),
+            voltage,
+        )
     }
+}
+
+fn glared(color: Vec3, voltage: f64) -> Vec3 {
+    let glare = ((voltage - GLARE_START) / (GLARE_FULL - GLARE_START)).clamp(0.0, 1.0) as f32;
+    color.lerp(color / color.max_element() * GLARE_PEAK, glare)
+}
+
+pub fn lit(color: Vec3, voltage: f64) -> Vec3 {
+    let value = shown_fraction(voltage);
+    let tint = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
+    glared(color.lerp(color.lerp(base(), VOLTAGE_TINT), tint), voltage)
 }
 
 #[cfg(test)]

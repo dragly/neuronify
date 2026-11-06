@@ -84,9 +84,7 @@ pub fn collect_spheres(
     radii: &HashMap<Entity, f32>,
     paths: &BTreeMap<Entity, ConnectionPath>,
     palette: &Palette,
-    time: f64,
 ) -> Vec<Sphere> {
-    let now = time * 1e3;
     let mut spheres = Vec::new();
     let display = NeuronDisplay::of(world);
 
@@ -194,83 +192,5 @@ pub fn collect_spheres(
             }),
     );
 
-    for (entity, synapse) in world.query::<&CurrentSynapse>().iter() {
-        if synapse.triggers.is_empty() {
-            continue;
-        }
-        let Some(path) = paths.get(&entity) else {
-            continue;
-        };
-        spheres.extend(synapse.triggers.iter().map(|&trigger_time| {
-            let fire_time = trigger_time - synapse.delay;
-            let progress = if synapse.delay > 0.0 {
-                ((now - fire_time) / synapse.delay).clamp(0.0, 1.0) as f32
-            } else {
-                1.0
-            };
-            Sphere {
-                position: path.point_at(progress),
-                color: palette.spike,
-                radius: NODE_RADIUS * TRIGGER_SPHERE_SCALE,
-                _padding: Default::default(),
-            }
-        }));
-    }
-
     spheres
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::rendering::cylinders::compartment_radii;
-    use crate::rendering::paths::connection_paths;
-    use glam::Vec3;
-
-    #[test]
-    fn spikes_in_flight_travel_along_their_synapse() {
-        let mut world = hecs::World::new();
-        let mut neuron = |x: f32| {
-            world.spawn((
-                Position {
-                    position: Vec3::new(x, 0.0, 0.0),
-                },
-                LeakyNeuron::default(),
-                NodeState::default(),
-                NeuronType::Excitatory,
-            ))
-        };
-        let (first, second) = (neuron(0.0), neuron(20.0));
-        let synapse = |from, to, triggers| {
-            (
-                Connection {
-                    from,
-                    to,
-                    strength: 1.0,
-                    directional: true,
-                },
-                CurrentSynapse {
-                    delay: 4.0,
-                    triggers,
-                    ..Default::default()
-                },
-            )
-        };
-        let firing = world.spawn(synapse(first, second, vec![1000.0]));
-        world.spawn(synapse(second, first, vec![]));
-        let palette = Theme::Dark.palette();
-        let radii = compartment_radii(&world);
-        let paths = connection_paths(&world, &radii, &palette);
-
-        let spikes: Vec<Sphere> = collect_spheres(&world, &radii, &paths, &palette, 0.997)
-            .into_iter()
-            .filter(|sphere| {
-                sphere.color == palette.spike && sphere.radius == NODE_RADIUS * TRIGGER_SPHERE_SCALE
-            })
-            .collect();
-
-        assert_eq!(spikes.len(), 1);
-        let a_quarter_along = paths[&firing].point_at(0.25);
-        assert!(spikes[0].position.distance(a_quarter_along) < 1e-5);
-    }
 }

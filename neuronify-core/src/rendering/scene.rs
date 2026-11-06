@@ -10,6 +10,7 @@ use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
 use crate::rendering::gpu_types::{CylinderData, HaloData, Sphere, TorusData};
 use crate::rendering::paths::{connection_paths, ConnectionPath};
 use crate::rendering::shapes::{collect_rings, collect_shapes};
+use crate::rendering::signals::collect_signals;
 use crate::rendering::spheres::collect_spheres;
 use crate::rendering::transmitter::collect_transmitter;
 use crate::rendering::visual_input::collect_visual_input_tiles;
@@ -58,7 +59,7 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene
     let radii = compartment_radii(world);
     let paths = shown_paths(world, &radii, palette);
     let mut scene = Scene {
-        spheres: collect_spheres(world, &radii, &paths, palette, time),
+        spheres: collect_spheres(world, &radii, &paths, palette),
         cylinders: collect_cylinders(world, &radii, &paths, palette),
         rings: collect_rings(world, palette),
         transmitter: collect_transmitter(world, &paths, palette),
@@ -66,6 +67,7 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene
     scene
         .spheres
         .extend(collect_current_flow(world, &paths, time));
+    scene.extend(collect_signals(world, &paths, palette, time));
     scene.extend(collect_shapes(world, palette));
     scene.cylinders.extend(collect_visual_input_tiles(world));
     scene
