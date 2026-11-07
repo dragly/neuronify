@@ -2430,6 +2430,7 @@ dependencies = [
  "chrono",
  "cpal",
  "egui",
+ "egui-wgpu",
  "egui-winit",
  "getrandom 0.2.15",
  "glam 0.30.10",
