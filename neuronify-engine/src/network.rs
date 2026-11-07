@@ -211,19 +211,40 @@ impl Network {
     }
 
     pub fn clear(&mut self) {
-        self.trees.clear();
-        self.sources = 0;
-        self.outgoing.clear();
-        self.conductances.clear();
-        self.currents.clear();
-        self.alternating.clear();
-        self.adaptations.clear();
-        self.bursts.clear();
-        self.generators.clear();
-        self.queue.clear();
-        self.events.clear();
-        self.probes.clear();
-        if let Some(pulses) = &mut self.pulses {
+        let Network {
+            tables: _,
+            trees,
+            steps: _,
+            sources,
+            outgoing,
+            conductances,
+            currents,
+            alternating,
+            adaptations,
+            bursts,
+            generators,
+            decays,
+            queue,
+            order: _,
+            random: _,
+            events,
+            probes,
+            pulses,
+        } = self;
+        trees.clear();
+        *sources = 0;
+        outgoing.clear();
+        conductances.clear();
+        currents.clear();
+        alternating.clear();
+        adaptations.clear();
+        bursts.clear();
+        generators.clear();
+        *decays = Decays::default();
+        queue.clear();
+        events.clear();
+        probes.clear();
+        if let Some(pulses) = pulses {
             pulses.sites.clear();
         }
     }

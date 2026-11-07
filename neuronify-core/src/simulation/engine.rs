@@ -1507,6 +1507,68 @@ mod tests {
         assert!(!soma_fired_by_an_ending_of_strength(WEAK));
     }
 
+    fn decay_once_open(run: &mut Run, value: impl Fn(&World) -> f64) -> f64 {
+        while value(&run.world) <= 0.0 {
+            run.step();
+        }
+        run.step();
+        let before = value(&run.world);
+        run.step();
+        value(&run.world) / before
+    }
+
+    #[test]
+    fn an_ending_decays_with_the_inhibitory_time_constant_once_its_neuron_turns_inhibitory() {
+        let mut world = World::new();
+        let neuron = soma(&mut world, Vec3::ZERO);
+        let start = axon_onto(&mut world, EXCITATORY, neuron, WEAK);
+        let mut run = Run::new(world);
+        run.step();
+        let axon: Vec<Entity> = run
+            .world
+            .query::<()>()
+            .with::<&Compartment>()
+            .iter()
+            .map(|(compartment, _)| compartment)
+            .collect();
+        for compartment in axon {
+            *run.world.get::<&mut NeuronType>(compartment).unwrap() = NeuronType::Inhibitory;
+        }
+        run.fire(start);
+
+        let open = |world: &World| {
+            world
+                .query::<&SynapseState>()
+                .iter()
+                .map(|(_, state)| state.open)
+                .sum::<f64>()
+        };
+        let decay = decay_once_open(&mut run, open);
+
+        assert!(
+            (decay - (-DT / INHIBITORY_TAU).exp()).abs() < 1e-9,
+            "{decay}"
+        );
+    }
+
+    #[test]
+    fn a_synapse_decays_with_its_new_time_constant_after_an_edit() {
+        let mut world = World::new();
+        let from = soma(&mut world, Vec3::ZERO);
+        let to = soma(&mut world, Vec3::Z * 10.0);
+        let synapse = crate::elements::spawn_synapse(&mut world, from, to);
+        let mut run = Run::new(world);
+        run.step();
+        run.world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = 8.0;
+        run.fire(from);
+
+        let exponential =
+            |world: &World| world.get::<&CurrentSynapse>(synapse).unwrap().exponential;
+        let decay = decay_once_open(&mut run, exponential);
+
+        assert!((decay - (-DT / 8.0).exp()).abs() < 1e-9, "{decay}");
+    }
+
     fn myelinated(world: &mut World, xs: &[f32]) -> Vec<Entity> {
         let nodes: Vec<Entity> = xs
             .iter()
