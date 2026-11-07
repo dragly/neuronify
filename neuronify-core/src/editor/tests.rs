@@ -19,7 +19,13 @@ fn editor(tool: Tool) -> Editor {
 fn drag(editor: &mut Editor, world: &mut World, path: &[Vec3]) -> Vec<Option<Pan>> {
     let pans = path
         .iter()
-        .map(|&position| editor.edit(world, position, false))
+        .enumerate()
+        .map(|(index, &position)| {
+            if index > 0 {
+                editor.move_held();
+            }
+            editor.edit(world, position, false)
+        })
         .collect();
     editor.lift(world);
     pans
@@ -1120,14 +1126,37 @@ fn placing_a_meter_and_dragging_on_to_a_neuron_measures_it() {
 }
 
 #[test]
-fn selecting_drags_the_element_under_the_pointer() {
+fn dragging_moves_the_element_under_the_pointer_without_selecting_it() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
     let pans = drag(&mut editor, &mut world, &[at(0.5, 0.0), at(5.5, 3.0)]);
     assert_eq!(pans, [None, None]);
-    assert_eq!(editor.selection, Some(a));
+    assert_eq!(editor.selection, None);
     assert_eq!(world.get::<&Position>(a).unwrap().position, at(5.0, 3.0));
+}
+
+#[test]
+fn letting_go_of_an_element_without_moving_selects_it() {
+    let mut world = World::new();
+    let a = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Edit);
+    editor.edit(&mut world, at(0.5, 0.0), false);
+    assert_eq!(editor.selection, None);
+    editor.lift(&mut world);
+    assert_eq!(editor.selection, Some(a));
+}
+
+#[test]
+fn dragging_another_element_moves_the_selection_to_it() {
+    let mut world = World::new();
+    let a = neuron(&mut world, at(0.0, 0.0));
+    let b = neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::Edit);
+    editor.selection = Some(a);
+    drag(&mut editor, &mut world, &[at(0.5, 10.0), at(3.5, 12.0)]);
+    assert_eq!(editor.selection, Some(b));
+    assert_eq!(position(&world, b), at(3.0, 12.0));
 }
 
 #[test]
@@ -1174,7 +1203,6 @@ fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
     );
 
     drag(&mut editor, &mut world, &[at(10.0, 9.0), at(11.0, 9.0)]);
-    assert_eq!(editor.selection, Some(voltmeter));
     assert_eq!(
         world.get::<&Position>(voltmeter).unwrap().position,
         at(11.5, 5.0)
@@ -1206,9 +1234,11 @@ fn selected_notes_are_resized_by_their_corners() {
         &[top_right, top_right + at(1.0, 1.0)],
     );
     assert_eq!(size(&world), (7.2, 4.8));
-    assert_eq!(editor.selection, Some(note));
+    assert_eq!(editor.selection, None);
 
     let [bottom_left, top_right] = [bottom_left + at(1.0, 1.0), top_right + at(1.0, 1.0)];
+    drag(&mut editor, &mut world, &[top_right]);
+    assert_eq!(editor.selection, Some(note));
     let outside = top_right + at(0.3, 0.3);
     drag(&mut editor, &mut world, &[outside, outside + at(2.0, 0.8)]);
     let [resized_bottom_left, resized_top_right] = corners(&world);
@@ -1358,6 +1388,22 @@ fn a_hold_that_moves_selects_nothing() {
     assert_eq!(editor.selection, None);
     drag(&mut editor, &mut world, &[at(3.5, 2.0)]);
     assert_eq!(position(&world, target), at(3.0, 2.0));
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn a_drag_after_a_hold_that_moved_selects_nothing() {
+    let mut world = World::new();
+    let first = neuron(&mut world, at(0.0, 0.0));
+    let second = neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::View);
+
+    editor.view(&mut world, at(0.5, 0.0));
+    assert!(editor.hold(&world, at(0.5, 0.0), true));
+    drag(&mut editor, &mut world, &[at(0.5, 0.0), at(3.5, 2.0)]);
+    drag(&mut editor, &mut world, &[at(0.5, 10.0), at(3.5, 12.0)]);
+    assert_eq!(position(&world, first), at(3.0, 2.0));
+    assert_eq!(position(&world, second), at(3.0, 12.0));
     assert_eq!(editor.selection, None);
 }
 
@@ -2370,7 +2416,7 @@ fn a_tap_on_a_cable_still_selects_the_connection_and_beside_it_the_neuron() {
     let pan = [at(0.3, 3.0), at(0.3, 6.0)].map(|position| editor.edit(&mut world, position, false));
     assert_eq!(pan[1], Some(Pan(at(0.0, 3.0))));
     editor.release(&world);
-    editor.edit(&mut world, at(2.5, 0.0), false);
+    drag(&mut editor, &mut world, &[at(2.5, 0.0)]);
     assert_eq!(editor.selection, Some(a));
 }
 
