@@ -78,6 +78,48 @@ fn a_new_note_is_selected() {
 }
 
 #[test]
+fn undoing_a_new_note_drops_the_selection() {
+    let mut world = World::new();
+    let mut editor = editor(Tool::Place(Element::Note));
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+
+    editor.undo(&mut world);
+    editor.sync_selection(&mut world);
+
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn erasing_the_selected_element_drops_the_selection() {
+    let mut world = World::new();
+    let selected = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Erase);
+    editor.selection = Some(selected);
+
+    drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
+    editor.sync_selection(&mut world);
+
+    assert_eq!(editor.selection, None);
+}
+
+#[test]
+fn the_selection_marks_the_selected_element() {
+    let mut world = World::new();
+    let first = neuron(&mut world, at(0.0, 0.0));
+    let second = neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::Edit);
+
+    editor.selection = Some(first);
+    editor.sync_selection(&mut world);
+    editor.selection = Some(second);
+    editor.sync_selection(&mut world);
+    editor.selection = None;
+    editor.sync_selection(&mut world);
+
+    assert_eq!(Selected::entity(&world), Some(second));
+}
+
+#[test]
 fn dragging_a_new_note_moves_it() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::Note));

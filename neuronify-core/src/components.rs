@@ -416,7 +416,7 @@ impl Selected {
             world.remove_one::<Selected>(previous).unwrap();
         }
         if let Some(entity) = entity {
-            world.insert_one(entity, Selected).unwrap();
+            let _ = world.insert_one(entity, Selected);
         }
     }
 }
