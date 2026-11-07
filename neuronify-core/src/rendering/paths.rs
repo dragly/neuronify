@@ -92,8 +92,8 @@ fn connection_colors(
             1.0
         }
     };
-    let start_value = value(to);
-    let end_value = value(from);
+    let start_value = value(from);
+    let end_value = value(to);
     if let Some(clamp) = from.get::<&CurrentClamp>() {
         let color = current_color(clamp.current_output);
         (color, color)
@@ -319,6 +319,23 @@ mod tests {
             terminal_radius: SOMA_TERMINAL_RADIUS,
             terminal_direction: Vec3::X,
         }
+    }
+
+    #[test]
+    fn each_end_of_a_connection_shows_the_voltage_of_its_own_neuron() {
+        use crate::elements::{spawn_synapse, Element};
+        let mut world = hecs::World::new();
+        let from = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        let to = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(10.0, 0.0, 0.0));
+        let connection = spawn_synapse(&mut world, from, to);
+        *world.get::<&mut NodeState>(from).unwrap() = NodeState::at(-50.0);
+        *world.get::<&mut NodeState>(to).unwrap() = NodeState::at(-80.0);
+
+        let paths = connection_paths(&world, &HashMap::new(), &Theme::Dark.palette());
+
+        let path = &paths[&connection];
+        let brightness = |color: Vec3| color.x + color.y + color.z;
+        assert!(brightness(path.start_color) > brightness(path.end_color));
     }
 
     #[test]
