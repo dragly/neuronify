@@ -97,6 +97,48 @@ fn dendritic(world: &World, entity: Entity) -> bool {
     world.satisfies::<&Dendrite>(entity).unwrap_or(false)
 }
 
+fn positive_or(value: f64, fallback: f64) -> f64 {
+    if value.is_finite() && value > 0.0 {
+        value
+    } else {
+        fallback
+    }
+}
+
+fn bounded_cable(cable: &Cable) -> Cable {
+    Cable {
+        length: positive_or(cable.length, SEGMENT_LENGTH as f64 * MICROMETRES_PER_UNIT),
+        diameter: positive_or(cable.diameter, Preparation::Squid.axon_diameter()),
+    }
+}
+
+fn bounded_membrane(membrane: &Membrane) -> Membrane {
+    let squid = Membrane::squid();
+    Membrane {
+        capacitance: positive_or(membrane.capacitance, squid.capacitance),
+        axial_resistivity: positive_or(membrane.axial_resistivity, squid.axial_resistivity),
+        leak: if membrane.leak.is_finite() && membrane.leak >= 0.0 {
+            membrane.leak
+        } else {
+            squid.leak
+        },
+        ..membrane.clone()
+    }
+}
+
+fn bounded_celsius(world: &World) -> f64 {
+    let preparation = Preparation::of(world);
+    let celsius = Temperature::of(world).celsius;
+    if celsius.is_finite() {
+        celsius.clamp(
+            *preparation.temperatures().start(),
+            *preparation.temperatures().end(),
+        )
+    } else {
+        preparation.celsius()
+    }
+}
+
 fn root(parents: &mut [usize], mut index: usize) -> usize {
     while parents[index] != index {
         parents[index] = parents[parents[index]];
@@ -319,7 +361,7 @@ impl Engine {
     }
 
     pub fn sync(&mut self, world: &mut World) -> bool {
-        self.network.set_celsius(Temperature::of(world).celsius);
+        self.network.set_celsius(bounded_celsius(world));
         let fingerprint = Fingerprint::of(world);
         if self.built && fingerprint == self.fingerprint {
             return false;
@@ -436,7 +478,7 @@ impl Engine {
     fn rebuild(&mut self, world: &World) {
         self.network.clear();
         self.preparation = Preparation::of(world);
-        self.network.set_celsius(Temperature::of(world).celsius);
+        self.network.set_celsius(bounded_celsius(world));
         self.network.set_random_state(Randomness::of(world).state);
         self.places.clear();
         self.nodes.clear();
@@ -466,8 +508,8 @@ impl Engine {
                     entity,
                     from: connection.from,
                     to: connection.to,
-                    cable: cable.clone(),
-                    membrane: membrane.clone(),
+                    cable: bounded_cable(cable),
+                    membrane: bounded_membrane(membrane),
                     myelinated: myelin.is_some(),
                 },
             )
@@ -803,7 +845,7 @@ impl Engine {
                 let index = self.network.add_current(Current {
                     site: target.site(),
                     maximum: sign * synapse.maximum_current,
-                    tau: synapse.tau,
+                    tau: positive_or(synapse.tau, CurrentSynapse::default().tau),
                     alpha: synapse.alpha_function,
                     exponential: synapse.exponential,
                     linear: synapse.linear,
@@ -866,7 +908,10 @@ impl Engine {
                 let index = self.network.add_adaptation(Adaptation {
                     site: place.site(),
                     increment: adaptation.adaptation,
-                    tau: adaptation.time_constant,
+                    tau: positive_or(
+                        adaptation.time_constant,
+                        AdaptationCurrent::default().time_constant,
+                    ),
                     reversal: rest,
                     conductance: adaptation.conductance,
                 });
@@ -1376,6 +1421,71 @@ mod tests {
         };
         let (cold, warm) = (crossing(DEFAULT_TEMPERATURE), crossing(26.3));
         assert!(warm < 0.85 * cold, "{warm} against {cold} ms");
+    }
+
+    #[test]
+    fn a_cable_without_thickness_or_with_an_absurd_length_still_runs() {
+        let mut world = World::new();
+        let axon = chain(&mut world, EXCITATORY, Vec3::ZERO, 4);
+        let cables: Vec<Entity> = world
+            .query::<()>()
+            .with::<&Cable>()
+            .iter()
+            .map(|(cable, _)| cable)
+            .collect();
+        for (index, &cable) in cables.iter().enumerate() {
+            let mut cable = world.get::<&mut Cable>(cable).unwrap();
+            match index {
+                0 => cable.diameter = 0.0,
+                1 => cable.length = 1e15,
+                _ => cable.diameter = f64::NAN,
+            }
+        }
+        let mut run = Run::new(world);
+        for _ in 0..10 {
+            run.step();
+        }
+        assert!(axon.iter().all(|&node| run.voltage(node).is_finite()));
+    }
+
+    #[test]
+    fn a_neuron_whose_lowest_voltage_is_above_its_highest_still_runs() {
+        let mut world = World::new();
+        let neuron = soma(&mut world, Vec3::ZERO);
+        {
+            let mut leaky = world.get::<&mut LeakyNeuron>(neuron).unwrap();
+            leaky.voltage_clamped = true;
+            leaky.minimum_voltage = 10.0;
+            leaky.maximum_voltage = -10.0;
+        }
+        let mut run = Run::new(world);
+        run.step();
+        assert!((-10.0..=10.0).contains(&run.voltage(neuron)));
+    }
+
+    #[test]
+    fn a_synapse_time_constant_below_zero_falls_back_to_the_default() {
+        let mut world = World::new();
+        let from = soma(&mut world, Vec3::ZERO);
+        let to = soma(&mut world, Vec3::Z * 10.0);
+        let synapse = crate::elements::spawn_synapse(&mut world, from, to);
+        world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = -1.0;
+        let mut run = Run::new(world);
+        run.fire(from);
+        for _ in 0..400 {
+            run.step();
+        }
+        assert!(run.voltage(to).is_finite());
+    }
+
+    #[test]
+    fn a_temperature_that_is_not_a_number_runs_at_the_preparations_own() {
+        let mut world = World::new();
+        soma(&mut world, Vec3::ZERO);
+        Temperature { celsius: f64::NAN }.set_in(&mut world);
+        let mut run = Run::new(world);
+        run.step();
+        assert_eq!(run.engine.network.celsius(), Preparation::Squid.celsius());
     }
 
     fn soma(world: &mut World, at: Vec3) -> Entity {
