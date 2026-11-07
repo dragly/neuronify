@@ -32,6 +32,7 @@ pub use targets::{Shape, Targets};
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const STAYING_REACH: f32 = 1.5;
+const SHARPEST_BEND: f32 = std::f32::consts::FRAC_PI_4;
 const CORNER_REACH: f32 = 1.0;
 const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
@@ -73,6 +74,7 @@ pub struct Editor {
     presses: Vec<Vec3>,
     ending: Option<Entity>,
     formed: bool,
+    drawn: HashSet<Entity>,
 }
 
 impl Editor {
@@ -119,6 +121,10 @@ impl Editor {
             has::<Compartment>(world, ending) && !connected(world, axon.from, ending)
         })?;
         Some((axon.from, ending))
+    }
+
+    pub fn drawn(&self) -> &HashSet<Entity> {
+        &self.drawn
     }
 
     pub fn take_formed(&mut self) -> bool {
@@ -245,6 +251,7 @@ impl Editor {
         self.wired = false;
         self.ending = None;
         self.formed = false;
+        self.drawn.clear();
         if let Some(recording) = self.recording.take() {
             self.edited |= self.history.record(recording, world);
         }
@@ -367,8 +374,21 @@ impl Editor {
             .take()
             .unwrap_or_else(|| Recording::start(world));
         let pan = self.use_tool(world, &mut recording, position, shift_down);
+        self.hold_drawing(world, &recording);
         self.recording = Some(recording);
         pan
+    }
+
+    fn hold_drawing(&mut self, world: &World, recording: &Recording) {
+        let drawing = self.axon_being_grown(world).or(self.dendrite_being_grown());
+        let Some((from, _, _)) = drawing else {
+            return;
+        };
+        let drawn = recording
+            .spawned(world)
+            .chain([from])
+            .filter(|&entity| has::<Compartment>(world, entity));
+        self.drawn.extend(drawn);
     }
 
     fn use_tool(
@@ -386,8 +406,10 @@ impl Editor {
                 self.measure(world, position)
             }
             Tool::StaticConnection => self.connect(world, position, shift_down),
-            Tool::Axon | Tool::MyelinatedAxon => self.grow_axon(world, position, shift_down),
-            Tool::Dendrite => self.grow_dendrite(world, position),
+            Tool::Axon | Tool::MyelinatedAxon => {
+                self.grow_axon(world, recording, position, shift_down)
+            }
+            Tool::Dendrite => self.grow_dendrite(world, recording, position),
             Tool::Erase => erase(world, recording, position),
             Tool::Stimulate => self.stimulate(world, position),
         }
@@ -479,6 +501,7 @@ impl Editor {
         };
         self.move_origin = None;
         self.connection_tool = None;
+        self.drawn.clear();
         if select {
             self.held = Some(entity);
         }
@@ -529,7 +552,7 @@ impl Editor {
             drag.move_to(world, recording, position);
         } else if let Some(connection) = &self.connection_tool {
             if self.grows_axon(world, connection.from) {
-                self.extend_axon(world, position, shift_down);
+                self.extend_axon(world, recording, position, shift_down);
             } else {
                 self.extend_connection(world, position, shift_down);
             }
@@ -673,9 +696,15 @@ impl Editor {
         connection.end = position;
     }
 
-    fn grow_axon(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
+    fn grow_axon(
+        &mut self,
+        world: &mut World,
+        recording: &mut Recording,
+        position: Vec3,
+        shift_down: bool,
+    ) {
         if self.connection_tool.is_some() {
-            self.extend_axon(world, position, shift_down);
+            self.extend_axon(world, recording, position, shift_down);
             return;
         }
         self.connection_tool = start_connection(axon_sources(world), position);
@@ -688,7 +717,13 @@ impl Editor {
         self.tool == Tool::MyelinatedAxon
     }
 
-    fn extend_axon(&mut self, world: &mut World, position: Vec3, shift_down: bool) {
+    fn extend_axon(
+        &mut self,
+        world: &mut World,
+        recording: &mut Recording,
+        position: Vec3,
+        shift_down: bool,
+    ) {
         let myelinated = self.myelinates();
         let spacing = match myelinated {
             true => INTERNODE_LENGTH,
@@ -729,6 +764,9 @@ impl Editor {
         if target.is_some() || self.too_near_previous(world, position, spacing) {
             return;
         }
+        let Some(from) = self.back_up(world, recording, from, position, spacing) else {
+            return;
+        };
         let Ok(neuron_type) = world.get::<&NeuronType>(from).map(|t| *t) else {
             return;
         };
@@ -742,7 +780,7 @@ impl Editor {
         });
     }
 
-    fn grow_dendrite(&mut self, world: &mut World, position: Vec3) {
+    fn grow_dendrite(&mut self, world: &mut World, recording: &mut Recording, position: Vec3) {
         let Some(connection) = &mut self.connection_tool else {
             self.connection_tool = start_connection(dendrite_sources(world), position);
             self.previous_creation = self.connection_tool.as_ref().map(|dendrite| dendrite.from);
@@ -753,6 +791,9 @@ impl Editor {
         if self.too_near_previous(world, position, SEGMENT_LENGTH) {
             return;
         }
+        let Some(from) = self.back_up(world, recording, from, position, SEGMENT_LENGTH) else {
+            return;
+        };
         let Some(tip) = lay_dendrite(world, from, position) else {
             return;
         };
@@ -762,6 +803,43 @@ impl Editor {
             end: position,
             from: tip,
         });
+    }
+
+    fn back_up(
+        &mut self,
+        world: &mut World,
+        recording: &mut Recording,
+        tip: Entity,
+        position: Vec3,
+        spacing: f32,
+    ) -> Option<Entity> {
+        let mut backed = tip;
+        let sharp = loop {
+            let Some((cable, previous)) = cable_into(world, backed) else {
+                break false;
+            };
+            let at = world.get::<&Position>(backed).ok()?.position;
+            let before = world.get::<&Position>(previous).ok()?.position;
+            let sharp = (before - at).angle_between(position - at) < SHARPEST_BEND;
+            if !sharp || !recording.is_new(backed) {
+                break sharp;
+            }
+            recording.take(world, cable);
+            recording.take(world, backed);
+            self.drawn.remove(&backed);
+            backed = previous;
+        };
+        let at = world.get::<&Position>(backed).ok()?.position;
+        if !sharp && (backed == tip || at.distance(position) >= spacing) {
+            return Some(backed);
+        }
+        self.previous_creation = Some(backed);
+        self.connection_tool = Some(ConnectionTool {
+            start: at,
+            end: position,
+            from: backed,
+        });
+        None
     }
 
     fn select(
@@ -1108,6 +1186,15 @@ fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
         }
     }
     network
+}
+
+fn cable_into(world: &World, tip: Entity) -> Option<(Entity, Entity)> {
+    world
+        .query::<&Connection>()
+        .with::<&Cable>()
+        .iter()
+        .find(|(_, cable)| cable.to == tip && !cable.directional)
+        .map(|(cable, connection)| (cable, connection.from))
 }
 
 fn has<T: Component>(world: &World, entity: Entity) -> bool {

@@ -686,7 +686,7 @@ impl visula::Simulation for Neuronify {
             let plays = schedule(take_heard(&mut self.world), start, self.time, seconds);
             self.speakers.play(&plays);
         }
-        simulation::step_physics(&mut self.world, physics_steps);
+        simulation::step_physics(&mut self.world, physics_steps, self.editor.drawn());
 
         if let Some(landing) = &mut self.landing {
             landing.update(seconds, physics_steps);

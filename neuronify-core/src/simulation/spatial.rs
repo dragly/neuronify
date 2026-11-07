@@ -1,13 +1,14 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use glam::Vec3;
+use hecs::Entity;
 
 use crate::components::*;
 use crate::constants::*;
 
 const REPULSION_RANGE: f32 = 2.0 * NODE_RADIUS;
 
-pub fn apply_spatial_forces(world: &mut hecs::World) {
+pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
     let nothing_can_move = world.query::<&SpatialDynamics>().iter().next().is_none();
     if nothing_can_move {
         return;
@@ -23,7 +24,7 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
     {
         slot_of.insert(entity, positions.len());
         positions.push(position.position);
-        moving.push(dynamics.is_some());
+        moving.push(dynamics.is_some() && !held.contains(&entity));
         dendrite.push(in_dendrite.is_some());
     }
     let (cables, rest_lengths): (Vec<(usize, usize, bool)>, Vec<f32>) = world
@@ -46,6 +47,9 @@ pub fn apply_spatial_forces(world: &mut hecs::World) {
     add_cable_springs(&positions, &cables, &rest_lengths, &mut forces);
 
     for (entity, dynamics) in world.query_mut::<&mut SpatialDynamics>() {
+        if held.contains(&entity) {
+            continue;
+        }
         if let Some(&slot) = slot_of.get(&entity) {
             dynamics.acceleration += forces[slot];
         }
@@ -167,8 +171,12 @@ fn add_cable_springs(
     }
 }
 
-pub fn integrate_motion(world: &mut hecs::World, dt: f64) {
-    for (_, (position, dynamics)) in world.query_mut::<(&mut Position, &mut SpatialDynamics)>() {
+pub fn integrate_motion(world: &mut hecs::World, dt: f64, held: &HashSet<Entity>) {
+    for (entity, (position, dynamics)) in world.query_mut::<(&mut Position, &mut SpatialDynamics)>()
+    {
+        if held.contains(&entity) {
+            continue;
+        }
         let gravity = -position.position.y;
         dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
         dynamics.velocity += dynamics.acceleration * dt as f32;
@@ -218,7 +226,7 @@ mod tests {
         let soma = neuron(&mut world, 0.0, 0.0);
         let node = compartment(&mut world, INTERNODE_LENGTH, 0.0);
         spawn_internode(&mut world, soma, node);
-        apply_spatial_forces(&mut world);
+        apply_spatial_forces(&mut world, &HashSet::new());
         assert!(acceleration(&world, node).length() < 1e-3);
     }
 
@@ -238,7 +246,7 @@ mod tests {
         let below = neuron(&mut world, -1.0, 1.0);
         let far_away = compartment(&mut world, 50.0, 50.0);
 
-        apply_spatial_forces(&mut world);
+        apply_spatial_forces(&mut world, &HashSet::new());
 
         assert!(acceleration(&world, left).z < 0.0);
         assert!(acceleration(&world, right).z > 0.0);
@@ -286,8 +294,8 @@ mod tests {
         let initial_bend = bend(&world);
 
         for _ in 0..2000 {
-            apply_spatial_forces(&mut world);
-            integrate_motion(&mut world, PHYSICS_DT);
+            apply_spatial_forces(&mut world, &HashSet::new());
+            integrate_motion(&mut world, PHYSICS_DT, &HashSet::new());
         }
 
         assert!(bend(&world) < initial_bend / 2.0, "bend {}", bend(&world));
@@ -319,8 +327,8 @@ mod tests {
         chain.push(target);
 
         for _ in 0..(30.0 * PHYSICS_STEPS_PER_SECOND) as usize {
-            apply_spatial_forces(&mut world);
-            integrate_motion(&mut world, PHYSICS_DT);
+            apply_spatial_forces(&mut world, &HashSet::new());
+            integrate_motion(&mut world, PHYSICS_DT, &HashSet::new());
         }
 
         let turns: Vec<f32> = chain
@@ -347,7 +355,7 @@ mod tests {
         axon_ending(&mut world, axon, dendrite);
         cable(&mut world, dendrite, beyond);
 
-        apply_spatial_forces(&mut world);
+        apply_spatial_forces(&mut world, &HashSet::new());
 
         assert_eq!(acceleration(&world, beyond), Vec3::ZERO);
     }
@@ -360,13 +368,27 @@ mod tests {
         world.get::<&mut Position>(upper).unwrap().position.y = 0.5;
 
         for _ in 0..200 {
-            apply_spatial_forces(&mut world);
-            integrate_motion(&mut world, PHYSICS_DT);
+            apply_spatial_forces(&mut world, &HashSet::new());
+            integrate_motion(&mut world, PHYSICS_DT, &HashSet::new());
             for compartment in [lower, upper] {
                 let height = position(&world, compartment).y;
                 assert!(height >= 0.0, "sank to {height}");
             }
         }
+    }
+
+    #[test]
+    fn held_compartments_stay_put_while_the_rest_moves() {
+        let mut world = World::new();
+        let held = compartment(&mut world, 0.0, 0.0);
+        let free = compartment(&mut world, 0.5, 0.0);
+        let before = [held, free].map(|entity| position(&world, entity));
+        for _ in 0..500 {
+            apply_spatial_forces(&mut world, &HashSet::from([held]));
+            integrate_motion(&mut world, PHYSICS_DT, &HashSet::from([held]));
+        }
+        assert_eq!(position(&world, held), before[0]);
+        assert!(position(&world, free).distance(before[1]) > 0.1);
     }
 
     #[test]
@@ -376,7 +398,7 @@ mod tests {
         let second = compartment(&mut world, 0.0, 5.0);
         cable(&mut world, first, second);
 
-        apply_spatial_forces(&mut world);
+        apply_spatial_forces(&mut world, &HashSet::new());
 
         assert!(acceleration(&world, first).z > 0.0);
         assert!(acceleration(&world, second).z < 0.0);
@@ -392,7 +414,7 @@ mod tests {
         let reusing_erased_id = neuron(&mut world, 50.0, 5.0);
         assert_eq!(reusing_erased_id.id(), erased.id());
 
-        apply_spatial_forces(&mut world);
+        apply_spatial_forces(&mut world, &HashSet::new());
 
         assert_eq!(acceleration(&world, attached), Vec3::ZERO);
     }
@@ -414,7 +436,7 @@ mod tests {
 
         let mut expected = World::new();
         let expected_crowd = crowd(&mut expected);
-        apply_spatial_forces(&mut expected);
+        apply_spatial_forces(&mut expected, &HashSet::new());
 
         let mut actual = World::new();
         let actual_crowd = crowd(&mut actual);
@@ -423,7 +445,7 @@ mod tests {
             actual.spawn((Position { position }, SpatialDynamics::default()));
         }
         let far_away = compartment(&mut actual, 3e9, 3e9);
-        apply_spatial_forces(&mut actual);
+        apply_spatial_forces(&mut actual, &HashSet::new());
 
         let expected = accelerations(&expected, &expected_crowd);
         assert!(expected.iter().all(|a| a.is_finite() && *a != Vec3::ZERO));

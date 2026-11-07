@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use chrono::{DateTime, Utc};
 use egui::{pos2, Color32, Painter, Pos2, Rect, TextureHandle, TextureOptions};
 use hecs::World;
@@ -88,7 +90,7 @@ impl Preview {
             simulation_steps,
             None,
         );
-        simulation::step_physics(&mut self.world, physics_steps);
+        simulation::step_physics(&mut self.world, physics_steps, &HashSet::new());
     }
 
     pub fn paint(
