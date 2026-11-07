@@ -18,6 +18,7 @@ use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
 use crate::rendering::ghost::{self, GHOST_HEIGHT};
 use crate::rendering::{canvas_bounds, EditorMarks, Ghost, SceneRenderer, Theme};
+use crate::serialization::SavedWorld;
 use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
@@ -106,27 +107,17 @@ fn file_stem(path: &std::path::Path) -> String {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn world_from_command_line() -> Option<(String, hecs::World)> {
-    let path = std::env::args().nth(1)?;
-    let contents = std::fs::read_to_string(&path)
-        .map_err(|e| log::error!("Failed to read file {}: {}", path, e))
-        .ok()?;
-    let simulation = crate::legacy::parse_legacy_nfy(&contents)
-        .map_err(|e| log::error!("Failed to parse legacy file {}: {}", path, e))
-        .ok()?;
-    log::info!(
-        "Loaded legacy simulation from {}: {} nodes, {} edges",
-        path,
-        simulation.nodes.len(),
-        simulation.edges.len()
-    );
-    let mut world = hecs::World::new();
-    crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
-    Some((file_stem(std::path::Path::new(&path)), world))
+fn file_from_command_line() -> Option<Result<(String, SavedWorld), String>> {
+    let path = std::path::PathBuf::from(std::env::args_os().nth(1)?);
+    let loaded = std::fs::read(&path)
+        .map_err(|error| format!("Could not read {}: {error}", path.display()))
+        .and_then(|bytes| crate::serialization::load_from_bytes(&bytes))
+        .map(|saved| (file_stem(&path), saved));
+    Some(loaded)
 }
 
 #[cfg(target_arch = "wasm32")]
-fn world_from_command_line() -> Option<(String, hecs::World)> {
+fn file_from_command_line() -> Option<Result<(String, SavedWorld), String>> {
     None
 }
 
@@ -198,18 +189,17 @@ impl Neuronify {
         };
         let renderer = SceneRenderer::new(application, theme);
 
-        let opened = world_from_command_line();
-        let autosave = Autosave::copy_of(opened.as_ref().map_or(UNTITLED, |(name, _)| name));
-        Neuronify {
+        let opened = file_from_command_line();
+        let mut neuronify = Neuronify {
             tapped_background: false,
-            landing: opened.is_none().then(|| LandingScreen::new(false)),
+            landing: (!matches!(opened, Some(Ok(_)))).then(|| LandingScreen::new(false)),
             about: None,
             version,
             editor: Editor::default(),
             gui: Gui::default(),
             theme,
-            frame_scene_requested: opened.is_some(),
-            world: opened.map(|(_, world)| world).unwrap_or_default(),
+            frame_scene_requested: false,
+            world: hecs::World::new(),
             engine: simulation::Engine::default(),
             time: 0.0,
             running: true,
@@ -228,13 +218,27 @@ impl Neuronify {
             saving: saving(),
             speakers: Speakers::default(),
             library: Library::open(),
-            autosave,
+            autosave: Autosave::copy_of(UNTITLED),
             hitboxes: debug_view().as_deref() == Some("hitboxes"),
             touch_reach: input::TOUCH_REACH,
             hold_ring: None,
             attach_ring: None,
             loupe: None,
+        };
+        match opened {
+            Some(Ok((name, saved))) => neuronify.open_world(
+                saved.world,
+                saved.time,
+                saved.speed,
+                Autosave::copy_of(&name),
+            ),
+            Some(Err(error)) => {
+                log::error!("{error}");
+                neuronify.file_error = Some(FileError::load(error));
+            }
+            None => {}
         }
+        neuronify
     }
 
     fn press_pointer(&mut self, application: &mut visula::Application, pressed: bool) {
