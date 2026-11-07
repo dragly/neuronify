@@ -9,7 +9,7 @@ use visula::{
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSET};
 use crate::editor::Bead;
 use crate::rendering::colors::{terminal_color, Theme};
-use crate::rendering::connections::{collect_meter_wires, connection_being_drawn};
+use crate::rendering::connections::{connection_being_drawn, WireRouter};
 use crate::rendering::cylinders::{bead_ending, growing_axon, growing_dendrite, growing_ending};
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
@@ -60,6 +60,7 @@ pub struct SceneRenderer {
     ring_buffer: InstanceBuffer<TorusData>,
     wires: Arcs,
     wire_buffer: InstanceBuffer<ArcData>,
+    wire_router: WireRouter,
     connection_lines: Lines,
     connection_spheres: Spheres,
     connection_buffer: InstanceBuffer<ConnectionData>,
@@ -212,6 +213,7 @@ impl SceneRenderer {
             ring_buffer,
             wires,
             wire_buffer,
+            wire_router: WireRouter::default(),
             connection_lines,
             connection_spheres,
             connection_buffer,
@@ -276,7 +278,9 @@ impl SceneRenderer {
         if let Some(center) = marks.eraser {
             scene.rings.push(eraser_outline(center, &palette));
         }
-        let wires = collect_meter_wires(world, &palette);
+        let wires = self
+            .wire_router
+            .collect(world, &palette, crate::input::now());
         let mut connections = connection_being_drawn(marks.drawn_connection, &palette);
         connections.extend(collect_voltmeter_traces(world));
         connections.extend(collect_spike_detectors(world, &palette));

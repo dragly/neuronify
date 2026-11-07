@@ -30,12 +30,66 @@ const OVERLAP_COST: f32 = 30.0;
 const FAR_SIDE_COST: f32 = 5.0;
 const CACHED_LAYOUTS: usize = 8;
 const LAYOUT_TOLERANCE: f32 = 1e-3;
+const SETTLE_SECONDS: f64 = 0.2;
 
 thread_local! {
     static LAYOUTS: RefCell<Vec<Layout>> = const { RefCell::new(Vec::new()) };
 }
 
 pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<ArcData> {
+    collect_wires(world, palette, meter_wire_corners)
+}
+
+#[derive(Default)]
+pub struct WireRouter {
+    recent: Option<RecentLayout>,
+}
+
+struct RecentLayout {
+    shape: Vec<usize>,
+    searched: Vec<f32>,
+    seen: Vec<f32>,
+    changed_at: f64,
+    routes: Vec<Vec<Route>>,
+}
+
+impl WireRouter {
+    pub fn collect(&mut self, world: &hecs::World, palette: &Palette, now: f64) -> Vec<ArcData> {
+        collect_wires(world, palette, |meters, neurons| {
+            self.corners(meters, neurons, now)
+        })
+    }
+
+    fn corners(&mut self, meters: &[Meter], neurons: &[Vec3], now: f64) -> Vec<Vec<Vec<Vec3>>> {
+        let key = layout_key(meters, neurons);
+        let shape = layout_shape(meters, neurons);
+        if let Some(recent) = self.recent.as_mut().filter(|recent| recent.shape == shape) {
+            if !same_layout(&recent.seen, &key) {
+                recent.seen = key.clone();
+                recent.changed_at = now;
+            }
+            if now - recent.changed_at < SETTLE_SECONDS || same_layout(&recent.searched, &key) {
+                return corners_along(meters, &recent.routes, neurons);
+            }
+        }
+        let routes = searched_routes(meters, neurons, &key);
+        let corners = corners_along(meters, &routes, neurons);
+        self.recent = Some(RecentLayout {
+            shape,
+            searched: key.clone(),
+            seen: key,
+            changed_at: now,
+            routes,
+        });
+        corners
+    }
+}
+
+fn collect_wires(
+    world: &hecs::World,
+    palette: &Palette,
+    corners: impl FnOnce(&[Meter], &[Vec3]) -> Vec<Vec<Vec<Vec3>>>,
+) -> Vec<ArcData> {
     let hidden = hidden_connections(world);
     let meters: Vec<Meter> = world
         .query::<()>()
@@ -43,10 +97,10 @@ pub fn collect_meter_wires(world: &hecs::World, palette: &Palette) -> Vec<ArcDat
         .iter()
         .filter_map(|(meter, _)| Meter::of(world, meter, &hidden))
         .collect();
-    let mut wires: Vec<ArcData> = meter_wire_arcs(&meters, &obstacles(world), palette.neutral)
-        .into_iter()
+    let mut wires: Vec<ArcData> = corners(&meters, &obstacles(world))
+        .iter()
         .flatten()
-        .flatten()
+        .flat_map(|corners| rounded(corners, palette.neutral))
         .collect();
     for (speaker, position) in world.query::<&Position>().with::<&Loudspeaker>().iter() {
         for (connection, neuron) in measured(world, speaker) {
@@ -410,52 +464,57 @@ struct Placement {
     total: f32,
 }
 
-fn meter_wire_arcs(meters: &[Meter], neurons: &[Vec3], color: Vec3) -> Vec<Vec<Vec<ArcData>>> {
-    meter_wire_corners(meters, neurons)
-        .iter()
-        .map(|wires| {
-            wires
-                .iter()
-                .map(|corners| rounded(corners, color))
-                .collect()
-        })
-        .collect()
+fn meter_wire_corners(meters: &[Meter], neurons: &[Vec3]) -> Vec<Vec<Vec<Vec3>>> {
+    let routes = searched_routes(meters, neurons, &layout_key(meters, neurons));
+    corners_along(meters, &routes, neurons)
 }
 
-fn meter_wire_corners(meters: &[Meter], neurons: &[Vec3]) -> Vec<Vec<Vec<Vec3>>> {
-    let key = layout_key(meters, neurons);
+fn searched_routes(meters: &[Meter], neurons: &[Vec3], key: &[f32]) -> Vec<Vec<Route>> {
     let cached = LAYOUTS.with_borrow(|layouts| {
         layouts
             .iter()
-            .find(|layout| {
-                layout.key.len() == key.len()
-                    && layout
-                        .key
-                        .iter()
-                        .zip(&key)
-                        .all(|(a, b)| (a - b).abs() <= LAYOUT_TOLERANCE)
-            })
+            .find(|layout| same_layout(&layout.key, key))
             .map(|layout| layout.routes.clone())
     });
-    let routes = cached.unwrap_or_else(|| {
+    cached.unwrap_or_else(|| {
         let routes = chosen_routes(meters, neurons);
         LAYOUTS.with_borrow_mut(|layouts| {
             layouts.insert(
                 0,
                 Layout {
-                    key,
+                    key: key.to_vec(),
                     routes: routes.clone(),
                 },
             );
             layouts.truncate(CACHED_LAYOUTS);
         });
         routes
-    });
+    })
+}
+
+fn corners_along(meters: &[Meter], routes: &[Vec<Route>], neurons: &[Vec3]) -> Vec<Vec<Vec<Vec3>>> {
     meters
         .iter()
-        .zip(&routes)
+        .zip(routes)
         .map(|(meter, routes)| meter.corners(routes, neurons))
         .collect()
+}
+
+fn same_layout(first: &[f32], second: &[f32]) -> bool {
+    first.len() == second.len()
+        && first
+            .iter()
+            .zip(second)
+            .all(|(a, b)| (a - b).abs() <= LAYOUT_TOLERANCE)
+}
+
+fn layout_shape(meters: &[Meter], neurons: &[Vec3]) -> Vec<usize> {
+    let mut shape = vec![meters.len(), neurons.len()];
+    for meter in meters {
+        shape.extend([meter.rows, meter.starts.len()]);
+        shape.extend(meter.starts.iter().map(|&(row, _)| row));
+    }
+    shape
 }
 
 fn layout_key(meters: &[Meter], neurons: &[Vec3]) -> Vec<f32> {
@@ -1003,6 +1062,18 @@ mod tests {
             .collect()
     }
 
+    fn meter_wire_arcs(meters: &[Meter], neurons: &[Vec3], color: Vec3) -> Vec<Vec<Vec<ArcData>>> {
+        meter_wire_corners(meters, neurons)
+            .iter()
+            .map(|wires| {
+                wires
+                    .iter()
+                    .map(|corners| rounded(corners, color))
+                    .collect()
+            })
+            .collect()
+    }
+
     fn meter_wire_paths(meters: &[Meter], neurons: &[Vec3]) -> Vec<Vec<Vec<Vec3>>> {
         meter_wire_arcs(meters, neurons, Vec3::ONE)
             .iter()
@@ -1102,6 +1173,41 @@ mod tests {
         Vec3::new(9.0, 0.0, 14.0),
         Vec3::new(-9.0, 0.0, -2.0),
     ];
+
+    #[test]
+    fn a_moving_wire_keeps_its_route_until_things_settle() {
+        let frame = frame();
+        let mut router = WireRouter::default();
+        let mut entry = |neuron: Vec3, now: f64| {
+            let meters = [meter(frame, 1, &[(0, neuron)])];
+            *router.corners(&meters, &starts(&meters), now)[0][0]
+                .last()
+                .unwrap()
+        };
+        let (near, far) = (Vec3::new(5.0, 0.0, 1.0), Vec3::new(3.2, 0.0, 7.9));
+        let (left, right) = (
+            frame.row(0, 1).point(0.0, 0.5),
+            frame.row(0, 1).point(1.0, 0.5),
+        );
+
+        assert_eq!(entry(near, 0.0), left);
+        assert_eq!(entry(far, 0.05), left);
+        assert_eq!(entry(far, 0.1), left);
+        assert_eq!(entry(far, 0.1 + SETTLE_SECONDS), right);
+    }
+
+    #[test]
+    fn a_new_wire_is_routed_at_once() {
+        let frame = frame();
+        let mut router = WireRouter::default();
+        let one = [meter(frame, 2, &[(0, NEURONS[0])])];
+        router.corners(&one, &starts(&one), 0.0);
+
+        let two = [meter(frame, 2, &[(0, NEURONS[0]), (1, NEURONS[3])])];
+        let routed = router.corners(&two, &starts(&two), 0.05);
+
+        assert_eq!(routed, meter_wire_corners(&two, &starts(&two)));
+    }
 
     #[test]
     fn a_wire_enters_its_own_row_from_the_side_facing_the_neuron_without_passing_over_the_meter() {
