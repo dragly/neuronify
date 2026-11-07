@@ -501,9 +501,24 @@ impl Network {
                 };
             if fired {
                 let generator = &mut self.generators[index];
-                generator.since = 0.0;
+                let fired_at = match generator.rhythm {
+                    Rhythm::Regular { interval } if !forced => {
+                        let overshoot = generator.since - interval;
+                        if overshoot < dt {
+                            generator.since = overshoot;
+                            time + dt - overshoot
+                        } else {
+                            generator.since = 0.0;
+                            time + dt
+                        }
+                    }
+                    _ => {
+                        generator.since = 0.0;
+                        time
+                    }
+                };
                 let source = generator.source;
-                self.emit(source, time);
+                self.emit(source, fired_at);
             }
         }
 
@@ -654,6 +669,29 @@ mod tests {
         assert_eq!(fired.len(), 3, "{fired:?}");
         for (sent, fired) in sent.iter().zip(&fired) {
             assert!((5.0..7.0).contains(&(fired - sent)), "{sent} {fired}");
+        }
+    }
+
+    #[test]
+    fn a_regular_generator_keeps_its_frequency_and_fires_evenly() {
+        for (interval, since) in [(20.0, 0.0), (3.33, 0.0), (1.0, 0.0), (20.0, f64::INFINITY)] {
+            let mut network = Network::new(DT, 16.3);
+            let generator = network.source();
+            network.add_generator(generator, Rhythm::Regular { interval }, since);
+            let duration = 1000.0 + interval / 2.0;
+            let times: Vec<f64> = run(&mut network, duration)
+                .iter()
+                .map(|event| event.time)
+                .collect();
+            let first = if since.is_infinite() { 1 } else { 0 };
+            assert_eq!(
+                times.len(),
+                first + (duration / interval) as usize,
+                "{interval}"
+            );
+            for pair in times.windows(2) {
+                assert!((pair[1] - pair[0] - interval).abs() < 1e-6, "{pair:?}");
+            }
         }
     }
 
