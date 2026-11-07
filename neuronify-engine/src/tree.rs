@@ -462,7 +462,7 @@ impl Tree {
         for soma in &self.somas {
             if let Some((low, high)) = soma.spiking.bounds {
                 let voltage = &mut self.voltage[soma.point];
-                *voltage = voltage.clamp(low, high);
+                *voltage = voltage.max(low.min(high)).min(high.max(low));
             }
         }
         for detector in &self.detectors {

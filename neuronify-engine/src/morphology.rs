@@ -2,6 +2,8 @@ use crate::channel::ChannelId;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
+pub const MAXIMUM_SEGMENTS: usize = 1001;
+
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Density {
     pub channel: ChannelId,
@@ -105,7 +107,7 @@ impl Cable {
 
     pub fn segments(&self, d_lambda: f64) -> usize {
         let pieces = self.length / (d_lambda * self.length_constant(100.0));
-        ((pieces + 0.9) / 2.0) as usize * 2 + 1
+        (((pieces + 0.9) / 2.0) as usize).min(MAXIMUM_SEGMENTS / 2) * 2 + 1
     }
 }
 
@@ -157,5 +159,25 @@ mod tests {
         assert_eq!(cable(100.0, 0.25).segments(0.1), 5);
         assert_eq!(cable(1.0, 1.0).segments(0.1), 1);
         assert!((cable(100.0, 1.0).length_constant(100.0) - 474.1).abs() < 0.5);
+    }
+
+    #[test]
+    fn no_cable_splits_into_more_than_the_largest_number_of_segments() {
+        let cable = |length, diameter| Cable {
+            from: 0,
+            to: 1,
+            length,
+            diameter,
+            membrane: Membrane::squid(),
+        };
+        for (length, diameter) in [
+            (100.0, 0.0),
+            (100.0, 1e-20),
+            (1e15, 1.0),
+            (f64::INFINITY, 1.0),
+        ] {
+            assert_eq!(cable(length, diameter).segments(0.1), MAXIMUM_SEGMENTS);
+        }
+        assert_eq!(cable(f64::NAN, 1.0).segments(0.1), 1);
     }
 }
