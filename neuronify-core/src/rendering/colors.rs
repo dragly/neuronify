@@ -43,15 +43,15 @@ pub fn yellow() -> Vec3 {
     srgb(223, 142, 29)
 }
 
-const CURRENT_BRIGHTNESS_SCALE: f64 = 0.5e-9;
+const CURRENT_BRIGHTNESS_SCALE: f64 = 0.5;
 const CURRENT_RAMP: [(f32, (u8, u8, u8)); 3] = [
     (0.0, (96, 40, 8)),
     (0.7, (240, 116, 20)),
     (1.0, (255, 178, 104)),
 ];
 
-pub fn current_color(amperes: f64) -> Vec3 {
-    let level = (1.0 - (-amperes.abs() / CURRENT_BRIGHTNESS_SCALE).exp()) as f32;
+pub fn current_color(nanoamperes: f64) -> Vec3 {
+    let level = (1.0 - (-nanoamperes.abs() / CURRENT_BRIGHTNESS_SCALE).exp()) as f32;
     let upper = CURRENT_RAMP
         .iter()
         .position(|&(at, _)| level <= at)
