@@ -2738,3 +2738,22 @@ fn changes_to_the_circuit_count_as_edits() {
     editor.redo(&mut world);
     assert!(editor.take_edited(), "redoing");
 }
+
+#[test]
+fn moving_drawing_and_erasing_aim_but_panning_does_not() {
+    let mut world = World::new();
+    let placed = neuron(&mut world, at(0.0, 0.0));
+    let mut panning = editor(Tool::Edit);
+    panning.edit(&mut world, at(20.0, 20.0), false);
+    assert!(!panning.aims());
+    let mut moving = editor(Tool::Edit);
+    moving.edit(&mut world, at(0.0, 0.0), false);
+    assert!(moving.aims());
+    assert_eq!(moving.picked(), Some(placed));
+    let mut drawing = editor(Tool::Axon);
+    drawing.edit(&mut world, at(0.0, 0.0), false);
+    assert!(drawing.aims());
+    let mut erasing = editor(Tool::Erase);
+    erasing.edit(&mut world, at(20.0, 20.0), false);
+    assert!(erasing.aims());
+}

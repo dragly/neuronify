@@ -68,6 +68,10 @@ impl Mouse {
         self.held = false;
     }
 
+    pub fn has_held(&self) -> bool {
+        self.left_down && self.held
+    }
+
     pub fn moved_while_pressed(&self) -> bool {
         self.left_down && self.tap_start.is_none()
     }

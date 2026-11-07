@@ -35,6 +35,7 @@ pub struct EditorMarks<'a> {
     pub dendrite: Option<(Entity, Vec3, Vec3)>,
     pub ghost: Option<Ghost>,
     pub selection: Option<Entity>,
+    pub candidate: Option<Entity>,
     pub eraser: Option<Vec3>,
 }
 
@@ -266,8 +267,8 @@ impl SceneRenderer {
         scene
             .spheres
             .extend(marks.ghost.and_then(|ghost| ghost.sphere(&palette)));
-        if let Some(selection) = marks.selection {
-            scene.extend(collect_selection(world, selection, &palette));
+        for marked in marks.selection.into_iter().chain(marks.candidate) {
+            scene.extend(collect_selection(world, marked, &palette));
         }
         if let Some(center) = marks.eraser {
             scene.rings.push(eraser_outline(center, &palette));

@@ -5,14 +5,16 @@ use egui_wgpu::{CallbackResources, CallbackTrait, ScreenDescriptor};
 use super::style::{Chrome, MARGIN};
 use crate::rendering::Theme;
 
+pub const LOUPE_DELAY: f64 = 0.15;
 const RADIUS: f32 = 56.0;
-const ZOOM: f32 = 2.0;
+const ZOOM: f32 = 1.5;
 const CLEARANCE: f32 = 64.0;
 const SHADOW_DROP: f32 = 3.0;
 const CROSSHAIR_RADIUS: f32 = 4.0;
 const THIN: f32 = 1.0;
 const RIM_WIDTH: f32 = 1.5;
 const ATTACHED_RIM_WIDTH: f32 = 3.0;
+const ARC_POINTS: usize = 64;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LoupeCorner {
@@ -230,6 +232,18 @@ pub struct LoupeView {
     pub screen: Rect,
     pub srgb_target: bool,
     pub attached: bool,
+    pub progress: Option<f32>,
+    pub flash: f32,
+}
+
+fn arc(center: Pos2, radius: f32, fraction: f32) -> Vec<Pos2> {
+    let points = (ARC_POINTS as f32 * fraction).ceil().max(1.0) as usize;
+    (0..=points)
+        .map(|index| {
+            let angle = std::f32::consts::TAU * fraction * index as f32 / points as f32;
+            center + radius * Vec2::new(angle.sin(), -angle.cos())
+        })
+        .collect()
 }
 
 pub fn paint_loupe(context: &Context, theme: Theme, view: LoupeView) {
@@ -262,6 +276,14 @@ pub fn paint_loupe(context: &Context, theme: Theme, view: LoupeView) {
         false => Stroke::new(RIM_WIDTH, chrome.border),
     };
     painter.circle_stroke(center, RADIUS, rim);
+    if let Some(progress) = view.progress.filter(|&progress| progress > 0.0) {
+        let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent);
+        painter.add(egui::Shape::line(arc(center, RADIUS, progress), stroke));
+    }
+    if view.flash > 0.0 {
+        let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent.gamma_multiply(view.flash));
+        painter.circle_stroke(center, RADIUS, stroke);
+    }
 }
 
 #[cfg(test)]
@@ -284,6 +306,20 @@ mod tests {
             LoupeCorner::next(None, right_finger, phone()),
             LoupeCorner::Left
         );
+    }
+
+    #[test]
+    fn the_hold_arc_runs_clockwise_from_the_top() {
+        let center = Pos2::new(100.0, 100.0);
+        let ends = |fraction| {
+            let points = arc(center, 10.0, fraction);
+            (points[0], points[points.len() - 1])
+        };
+        let (start, quarter) = ends(0.25);
+        assert!(start.distance(Pos2::new(100.0, 90.0)) < 1e-3);
+        assert!(quarter.distance(Pos2::new(110.0, 100.0)) < 1e-3);
+        let (_, half) = ends(0.5);
+        assert!(half.distance(Pos2::new(100.0, 110.0)) < 1e-3);
     }
 
     #[test]

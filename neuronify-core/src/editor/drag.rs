@@ -29,6 +29,10 @@ impl Drag {
         drag
     }
 
+    pub fn entity(&self) -> Entity {
+        self.entity
+    }
+
     pub fn move_to(&mut self, world: &mut World, recording: &mut Recording, pointer: Vec3) {
         let target = (pointer + self.offset).with_y(0.0);
         recording.edit(world, self.entity);

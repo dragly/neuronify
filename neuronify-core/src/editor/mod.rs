@@ -512,6 +512,19 @@ impl Editor {
         true
     }
 
+    pub fn aims(&self) -> bool {
+        let erasing = self.tool == Tool::Erase && self.recording.is_some();
+        self.dragging.is_some()
+            || self.resizing.is_some()
+            || self.connection_tool.is_some()
+            || self.painting().is_some()
+            || erasing
+    }
+
+    pub fn picked(&self) -> Option<Entity> {
+        self.dragging.as_ref().map(Drag::entity)
+    }
+
     pub fn hold_target(&self, targets: &Targets, position: Vec3) -> Option<(Entity, Vec3)> {
         targets.near(position, self.touch_reach)
     }
