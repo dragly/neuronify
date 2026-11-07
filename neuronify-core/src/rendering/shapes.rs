@@ -505,6 +505,31 @@ mod tests {
     }
 
     #[test]
+    fn a_loudspeaker_flash_is_over_a_few_milliseconds_after_it_plays() {
+        use crate::measurement::loudspeaker::listen;
+        let mut world = hecs::World::new();
+        let neuron = world.spawn((Position { position: Vec3::X },));
+        crate::elements::spawn_loudspeaker(&mut world, neuron, Vec3::ZERO);
+        let palette = Theme::Dark.palette();
+        let pad_color =
+            |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
+        let spike = crate::Spike {
+            entity: neuron,
+            time: 1000.0,
+        };
+
+        listen(&mut world, &[spike], 1.0, 0.0);
+        assert_ne!(pad_color(&world), speaker_color());
+        listen(
+            &mut world,
+            &[],
+            1.0 + 2.0 * FLASH_DURATION,
+            2.0 * FLASH_DURATION,
+        );
+        assert_eq!(pad_color(&world), speaker_color());
+    }
+
+    #[test]
     fn current_source_arrow_points_at_its_target() {
         let mut world = hecs::World::new();
         let source = world.spawn((

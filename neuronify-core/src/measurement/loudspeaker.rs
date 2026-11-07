@@ -70,7 +70,7 @@ pub fn listen(world: &mut World, spikes: &[Spike], time: f64, duration: f64) {
         return;
     }
     for (_, speaker) in speakers {
-        speaker.time_since_heard += duration;
+        speaker.time_since_heard += duration * 1e3;
     }
     let wires: Vec<(Entity, Entity)> = world
         .query::<&Connection>()
@@ -88,7 +88,7 @@ pub fn listen(world: &mut World, spikes: &[Spike], time: f64, duration: f64) {
                 continue;
             }
             if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(to) {
-                speaker.time_since_heard = time - spike.time * 1e-3;
+                speaker.time_since_heard = time * 1e3 - spike.time;
                 if speaker.heard.len() < MAXIMUM_HEARD {
                     speaker.heard.push(spike.time * 1e-3);
                 }
@@ -143,10 +143,8 @@ mod tests {
         listen(&mut world, &[], 1.0 + STEP, STEP);
         assert_eq!(take_heard(&mut world), [(Sound::Pop, 1.0, 1.0)]);
         assert!(take_heard(&mut world).is_empty());
-        assert_eq!(
-            world.get::<&Loudspeaker>(speaker).unwrap().time_since_heard,
-            STEP
-        );
+        let since = world.get::<&Loudspeaker>(speaker).unwrap().time_since_heard;
+        assert!((since - DT).abs() < 1e-9, "{since}");
 
         world.get::<&mut Loudspeaker>(speaker).unwrap().muted = true;
         listen(&mut world, &[spike(wired, 2.0)], 2.0, STEP);
