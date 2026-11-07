@@ -484,8 +484,8 @@ mod tests {
             let pad = collect_shapes(&world, &Theme::Dark.palette()).cylinders[0].start_color;
             pad.x + pad.y + pad.z
         };
-        assert!(pad_brightness(0.0) < pad_brightness(0.3e-9));
-        assert_eq!(pad_brightness(0.3e-9), pad_brightness(-0.3e-9));
+        assert!(pad_brightness(0.0) < pad_brightness(0.3));
+        assert_eq!(pad_brightness(0.3), pad_brightness(-0.3));
     }
 
     #[test]
@@ -567,8 +567,9 @@ mod tests {
             let pad = collect_shapes(&world, &Theme::Dark.palette()).cylinders[0].start_color;
             pad.x + pad.y + pad.z
         };
-        assert!(pad_brightness(0.0) < pad_brightness(0.35e-9));
-        assert!(pad_brightness(0.35e-9) < pad_brightness(0.7e-9));
-        assert!(pad_brightness(0.7e-9) < pad_brightness(2e-9));
+        assert!(pad_brightness(0.0) < pad_brightness(0.1));
+        assert!(pad_brightness(0.1) < pad_brightness(0.35));
+        assert!(pad_brightness(0.35) < pad_brightness(0.7));
+        assert!(pad_brightness(0.7) < pad_brightness(2.0));
     }
 }
