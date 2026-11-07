@@ -28,7 +28,7 @@ pub use hitboxes::{paint_hitboxes, reach_slider};
 pub use hold_ring::{paint_hold_ring, HoldRing, Look};
 use icons::Icon;
 use inspector::{Inspector, Placement};
-pub use loupe::{paint_loupe, prepare_loupe, LoupeCorner, LoupeView};
+pub use loupe::{paint_loupe, prepare_loupe, LoupeCorner, LoupeView, LOUPE_DELAY};
 use playback::BAR_HEIGHT;
 use rail::{Rail, POPOVER_GAP, RAIL_WIDTH, TOOL_BAR_HEIGHT, TOOL_BAR_MARGIN};
 use style::{Chrome, MARGIN, PANEL_RADIUS};

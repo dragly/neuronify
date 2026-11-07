@@ -9,7 +9,7 @@ use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
-    self, AttachRing, Gui, HoldRing, Look, LoupeCorner, LoupeView, MenuChoice, Saving,
+    self, AttachRing, Gui, HoldRing, Look, LoupeCorner, LoupeView, MenuChoice, Saving, LOUPE_DELAY,
 };
 use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
@@ -306,10 +306,18 @@ impl Neuronify {
     }
 
     fn eraser(&self, application: &visula::Application) -> Option<Vec3> {
-        let hover = self.hover.filter(|&hover| {
-            self.editor.tool == Tool::Erase && !gui_takes_press(application, hover)
-        })?;
-        Some(camera::ground_position(application, hover))
+        if self.editor.tool != Tool::Erase {
+            return None;
+        }
+        let finger = self
+            .mouse
+            .position
+            .filter(|_| self.touch_input && self.mouse.left_down);
+        let hover = self
+            .hover
+            .filter(|&hover| !gui_takes_press(application, hover));
+        let pointer = finger.or(hover)?;
+        Some(camera::ground_position(application, pointer))
     }
 
     fn dangle_ghost(&mut self, application: &visula::Application, seconds: f64) {
@@ -452,9 +460,34 @@ impl Neuronify {
     }
 
     fn shows_loupe(&self) -> bool {
-        let drawing = self.editor.axon_being_grown(&self.world).is_some()
-            || self.editor.dendrite_being_grown().is_some();
-        self.touch_input && self.mouse.moved_while_pressed() && drawing
+        let carrying = self.mouse.moved_while_pressed() || self.mouse.has_held();
+        let aiming = carrying && self.editor.aims();
+        self.touch_input && (aiming || self.loupe_candidate().is_some())
+    }
+
+    fn loupe_candidate(&self) -> Option<hecs::Entity> {
+        let (_, held_for) = self.mouse.pending_hold(input::now())?;
+        if !self.touch_input || held_for < LOUPE_DELAY {
+            return None;
+        }
+        match self.hold_ring {
+            Some(HoldRing::Holding { target, .. }) => Some(target),
+            _ => self.editor.picked(),
+        }
+    }
+
+    fn loupe_rim(&self) -> (Option<f32>, f32) {
+        match self.hold_ring {
+            Some(HoldRing::Holding { held_for, .. }) => {
+                let progress = (held_for - LOUPE_DELAY) / (input::HOLD - LOUPE_DELAY);
+                (Some(progress.clamp(0.0, 1.0) as f32), 0.0)
+            }
+            Some(ring @ HoldRing::Grabbed { .. }) => {
+                let flash = ring.look(input::now()).map_or(0.0, |look| look.opacity);
+                (None, flash)
+            }
+            _ => (None, 0.0),
+        }
     }
 
     fn prepare_loupe(&self, application: &mut visula::Application) {
@@ -478,12 +511,15 @@ impl Neuronify {
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size / pixels_per_point);
         let corner = LoupeCorner::next(self.loupe, finger, screen);
         self.loupe = Some(corner);
+        let (progress, flash) = self.loupe_rim();
         let view = LoupeView {
             corner,
             finger,
             screen,
             srgb_target: application.config.format.is_srgb(),
             attached: self.editor.ending().is_some(),
+            progress,
+            flash,
         };
         gui::paint_loupe(context, self.theme, view);
     }
@@ -663,6 +699,9 @@ impl visula::Simulation for Neuronify {
                 grabbed = self.editor.hold(&self.world, position, select);
             }
         }
+        if grabbed {
+            tick();
+        }
         let pending = self.mouse.pending_hold(now).filter(|_| holds);
         let pending = pending.and_then(|(start, held_for)| {
             let position = camera::ground_position(application, start);
@@ -734,6 +773,9 @@ impl visula::Simulation for Neuronify {
                 dendrite: self.editor.dendrite_being_grown(),
                 ghost: self.ghost,
                 selection: self.editor.selection,
+                candidate: self
+                    .loupe_candidate()
+                    .filter(|&candidate| Some(candidate) != self.editor.selection),
                 eraser: self.eraser(application),
             },
         );
