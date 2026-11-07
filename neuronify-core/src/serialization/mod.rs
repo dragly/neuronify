@@ -22,6 +22,7 @@ use crate::constants::DEFAULT_SPEED;
 
 #[macro_use]
 mod schema;
+mod column;
 mod v1;
 mod v10;
 mod v11;
@@ -255,6 +256,82 @@ mod tests {
     fn rejects_truncated_speed() {
         let truncated = b"neuronify\x06\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
         assert!(load(truncated).is_err_and(|e| e.contains("simulation speed")));
+    }
+
+    fn varint(mut value: u64) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        while value >= 0x80 {
+            bytes.push(value as u8 | 0x80);
+            value >>= 7;
+        }
+        bytes.push(value as u8);
+        bytes
+    }
+
+    fn entity(id: u32) -> Vec<u8> {
+        varint(1 << 32 | id as u64)
+    }
+
+    fn with_body(archetypes: &[Vec<u8>]) -> Vec<u8> {
+        let mut bytes = save(&World::new(), 0.0, DEFAULT_SPEED).unwrap();
+        bytes.pop();
+        bytes.extend(varint(archetypes.len() as u64));
+        for archetype in archetypes {
+            bytes.extend(archetype);
+        }
+        bytes
+    }
+
+    fn positions(entities: &[u32]) -> Vec<u8> {
+        let mut archetype = varint(entities.len() as u64);
+        archetype.extend([1, 0]);
+        for &id in entities {
+            archetype.extend(entity(id));
+        }
+        archetype.extend(vec![0; 12 * entities.len()]);
+        archetype
+    }
+
+    #[test]
+    fn reads_a_hand_written_body() {
+        let saved = load(&with_body(&[positions(&[0, 1]), positions(&[2])])).unwrap();
+        assert_eq!(count::<Position>(&saved.world), 3);
+    }
+
+    #[test]
+    fn rejects_an_entity_that_appears_twice_in_an_archetype() {
+        let repeated = with_body(&[positions(&[0, 0])]);
+        assert!(load(&repeated).is_err_and(|e| e.contains("appears twice")));
+    }
+
+    #[test]
+    fn rejects_an_entity_that_appears_in_two_archetypes() {
+        let repeated = with_body(&[positions(&[0]), positions(&[0])]);
+        assert!(load(&repeated).is_err_and(|e| e.contains("appears twice")));
+    }
+
+    #[test]
+    fn rejects_more_entities_than_the_file_holds() {
+        let mut archetype = varint(u32::MAX as u64);
+        archetype.extend([1, 0]);
+        let crafted = with_body(&[archetype]);
+        assert!(load(&crafted).is_err_and(|e| e.contains("more entities than it holds")));
+    }
+
+    #[test]
+    fn rejects_entity_ids_beyond_the_largest_world() {
+        let far = with_body(&[positions(&[column::MAXIMUM_ENTITY_ID])]);
+        assert!(load(&far).is_err_and(|e| e.contains("too large")));
+    }
+
+    #[test]
+    fn rejects_a_component_that_appears_twice_in_an_archetype() {
+        let mut archetype = varint(1);
+        archetype.extend([2, 0, 0]);
+        archetype.extend(entity(0));
+        archetype.extend(vec![0; 24]);
+        let repeated = with_body(&[archetype]);
+        assert!(load(&repeated).is_err_and(|e| e.contains("appears twice")));
     }
 
     #[test]
