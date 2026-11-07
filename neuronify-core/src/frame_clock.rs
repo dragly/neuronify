@@ -54,9 +54,13 @@ pub struct StepClock {
 
 impl StepClock {
     pub fn steps(&mut self, seconds: f64, steps_per_second: f64) -> u32 {
-        self.pending_steps += seconds.min(MAX_STEPPED_SECONDS_PER_FRAME) * steps_per_second;
-        let steps = self.pending_steps.floor();
-        self.pending_steps -= steps;
+        let pending = self.pending_steps
+            + seconds.clamp(0.0, MAX_STEPPED_SECONDS_PER_FRAME) * steps_per_second;
+        if !pending.is_finite() {
+            return 0;
+        }
+        let steps = pending.floor();
+        self.pending_steps = pending - steps;
         steps as u32
     }
 }
@@ -91,5 +95,20 @@ mod tests {
     fn a_long_pause_does_not_catch_up() {
         let mut clock = StepClock::default();
         assert_eq!(clock.steps(10.0, 100.0), 10);
+    }
+
+    #[test]
+    fn a_rate_that_is_not_a_number_skips_the_frame_and_nothing_else() {
+        let mut clock = StepClock::default();
+        assert_eq!(clock.steps(0.05, f64::NAN), 0);
+        assert_eq!(clock.steps(0.05, f64::INFINITY), 0);
+        assert_eq!(clock.steps(0.05, 100.0), 5);
+    }
+
+    #[test]
+    fn time_running_backwards_takes_no_steps() {
+        let mut clock = StepClock::default();
+        assert_eq!(clock.steps(-1.0, 100.0), 0);
+        assert_eq!(clock.steps(0.05, 100.0), 5);
     }
 }
