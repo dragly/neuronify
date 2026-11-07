@@ -9,7 +9,7 @@ use visula::{
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSET};
 use crate::rendering::colors::{terminal_color, Theme};
 use crate::rendering::connections::{collect_meter_wires, connection_being_drawn};
-use crate::rendering::cylinders::{growing_axon, growing_dendrite};
+use crate::rendering::cylinders::{growing_axon, growing_dendrite, growing_ending};
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
 use crate::rendering::ghost::Ghost;
@@ -31,6 +31,7 @@ use crate::rendering::voltmeter::collect_voltmeter_traces;
 pub struct EditorMarks<'a> {
     pub drawn_connection: &'a [Vec3],
     pub axon: Option<(Entity, Vec3, Vec3)>,
+    pub ending: Option<(Entity, Entity)>,
     pub dendrite: Option<(Entity, Vec3, Vec3)>,
     pub ghost: Option<Ghost>,
     pub selection: Option<Entity>,
@@ -228,9 +229,12 @@ impl SceneRenderer {
 
         let palette = theme.palette();
         let mut scene = collect_scene(world, &palette, time);
-        let axon = marks
-            .axon
-            .and_then(|(from, start, end)| growing_axon(world, from, start, end, &palette));
+        let axon = match marks.ending {
+            Some((from, to)) => growing_ending(world, from, to, &palette),
+            None => marks
+                .axon
+                .and_then(|(from, start, end)| growing_axon(world, from, start, end, &palette)),
+        };
         let dendrite = marks
             .dendrite
             .and_then(|(from, start, end)| growing_dendrite(world, from, start, end, &palette));

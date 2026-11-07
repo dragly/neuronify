@@ -228,6 +228,137 @@ fn axons_do_not_end_on_their_own_dendrites() {
     assert!(axon_endings(&world).is_empty());
 }
 
+const REACH: f32 = 1.5;
+
+fn axon_beside_a_dendrite() -> (World, Editor, Vec<Entity>, Vec3) {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 30.0));
+    spawn_dendrites(&mut world, target);
+    let (dendrite, nearest) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .min_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
+        .unwrap();
+    let radius = compartment_radii(&world)[&dendrite];
+    let beside = nearest - nearest.normalize() * (radius + 0.9 * REACH);
+    let mut editor = reaching(Tool::Axon, REACH);
+    for position in straight(at(0.0, 0.5), beside) {
+        editor.edit(&mut world, position, false);
+    }
+    let tree = compartment_tree(&world, target);
+    (world, editor, tree, beside)
+}
+
+#[test]
+fn an_axon_within_touch_reach_of_a_dendrite_shows_that_it_ends_there() {
+    let (mut world, mut editor, tree, beside) = axon_beside_a_dendrite();
+    assert!(beside.distance(at(0.0, 30.0)) > 2.0 * NODE_RADIUS + REACH);
+    assert!(tree.contains(&editor.ending().unwrap()));
+    editor.lift(&mut world);
+    assert!(tree.contains(&single_ending(&world).to));
+    assert_eq!(editor.ending(), None);
+}
+
+#[test]
+fn the_snapped_tip_ends_where_the_released_axon_will() {
+    let (mut world, mut editor, _, _) = axon_beside_a_dendrite();
+    let palette = Theme::default().palette();
+    let (from, ending) = editor.new_ending(&world).unwrap();
+    assert_eq!(Some(ending), editor.ending());
+    let preview = crate::rendering::paths::ending_path(&world, from, ending, &palette).unwrap();
+    editor.lift(&mut world);
+    assert_eq!(editor.new_ending(&world), None);
+    let paths = connection_paths(&world, &compartment_radii(&world), &palette);
+    let [released] = &paths
+        .values()
+        .filter(|path| path.directional)
+        .collect::<Vec<_>>()[..]
+    else {
+        panic!("expected one ending");
+    };
+    let knob = |path: &crate::rendering::ConnectionPath| *path.points.last().unwrap();
+    assert!(knob(&preview).distance(knob(released)) < 1e-4);
+    assert_eq!(preview.terminal_radius, released.terminal_radius);
+}
+
+#[test]
+fn an_axon_stops_growing_while_it_would_end_on_a_dendrite() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(20.0, 0.0));
+    lay_dendrite(&mut world, target, at(20.0, 12.0)).unwrap();
+    let mut editor = reaching(Tool::Axon, REACH);
+    for position in straight(at(0.5, 0.0), at(19.0, 4.0)) {
+        editor.edit(&mut world, position, false);
+    }
+    let compartments = count::<Compartment>(&world);
+    let (from, _) = editor.new_ending(&world).unwrap();
+    for position in straight(at(19.0, 4.0), at(19.0, 10.0)) {
+        editor.edit(&mut world, position, false);
+        assert!(editor.ending().is_some(), "{position}");
+    }
+    assert_eq!(count::<Compartment>(&world), compartments);
+    assert_eq!(editor.new_ending(&world).unwrap().0, from);
+}
+
+#[test]
+fn an_axon_stays_on_a_dendrite_until_half_a_reach_beyond_where_it_attached() {
+    let (mut world, mut editor, tree, beside) = axon_beside_a_dendrite();
+    let outward = -beside.normalize();
+    let mut ending_at = |reaches: f32| {
+        editor.edit(
+            &mut world,
+            beside + outward * (reaches - 0.9) * REACH,
+            false,
+        );
+        editor.ending().filter(|ending| tree.contains(ending))
+    };
+    assert!(ending_at(1.3).is_some());
+    assert!(ending_at(1.6).is_none());
+    assert!(ending_at(1.3).is_none());
+    assert!(ending_at(0.9).is_some());
+}
+
+#[test]
+fn an_axon_moved_out_of_reach_again_ends_nowhere() {
+    let (mut world, mut editor, _, beside) = axon_beside_a_dendrite();
+    editor.edit(&mut world, beside - beside.normalize() * REACH, false);
+    assert_eq!(editor.ending(), None);
+    editor.lift(&mut world);
+    assert!(axon_endings(&world).is_empty());
+}
+
+#[test]
+fn an_axon_reaching_a_soma_forms_its_synapse_at_once_and_ends_there_until_it_leaves() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 20.0));
+    let mut editor = reaching(Tool::Axon, REACH);
+    for position in straight(at(0.0, 0.5), at(0.0, 18.0)) {
+        editor.edit(&mut world, position, false);
+    }
+    assert_eq!(editor.ending(), Some(target));
+    assert!(editor.take_formed());
+    assert!(!editor.take_formed());
+    assert_eq!(single_ending(&world).to, target);
+    editor.edit(&mut world, at(0.0, 18.5), false);
+    assert_eq!(editor.ending(), Some(target));
+    editor.edit(&mut world, at(6.0, 20.0), false);
+    assert_eq!(editor.ending(), None);
+    assert!(!editor.take_formed());
+}
+
+#[test]
+fn an_axon_brought_back_over_its_own_soma_does_not_end_on_it() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut editor = reaching(Tool::Axon, REACH);
+    let mut path = straight(at(0.0, 0.5), at(0.0, 8.0));
+    path.extend(straight(at(0.0, 8.0), at(0.0, 0.0)));
+    drag(&mut editor, &mut world, &path);
+    assert!(axon_endings(&world).is_empty());
+}
+
 fn grown_dendrites(world: &World, before: &[Entity]) -> Vec<(Entity, Vec3)> {
     positions_with::<Dendrite>(world)
         .into_iter()

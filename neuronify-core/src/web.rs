@@ -12,10 +12,11 @@ use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     AddEventListenerOptions, Document, DomException, File, FilePropertyBag, HtmlAnchorElement,
-    HtmlInputElement, Response, ShareData, Url,
+    HtmlElement, HtmlInputElement, Response, ShareData, Url,
 };
 
 const REVOKE_DELAY_MS: i32 = 10_000;
+const TICK_MS: u32 = 10;
 const SHARED_TYPE: &str = "application/octet-stream";
 
 struct PressedLink {
@@ -235,6 +236,33 @@ fn click(document: &Document, link: &HtmlAnchorElement) -> Result<(), JsValue> {
     document.body().ok_or("no body")?.append_child(link)?;
     link.click();
     link.remove();
+    Ok(())
+}
+
+pub fn tick() {
+    let Some(navigator) = web_sys::window().map(|window| window.navigator()) else {
+        return;
+    };
+    if js_sys::Reflect::has(&navigator, &"vibrate".into()).unwrap_or(false) {
+        navigator.vibrate_with_duration(TICK_MS);
+    } else if is_ios() {
+        if let Err(error) = flip_hidden_switch() {
+            log::error!("Could not tick: {error:?}");
+        }
+    }
+}
+
+fn flip_hidden_switch() -> Result<(), JsValue> {
+    let document = document()?;
+    let label: HtmlElement = document.create_element("label")?.dyn_into()?;
+    let switch: HtmlInputElement = document.create_element("input")?.dyn_into()?;
+    switch.set_type("checkbox");
+    switch.set_attribute("switch", "")?;
+    label.set_hidden(true);
+    label.append_child(&switch)?;
+    document.body().ok_or("no body")?.append_child(&label)?;
+    label.click();
+    label.remove();
     Ok(())
 }
 

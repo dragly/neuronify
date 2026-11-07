@@ -163,63 +163,94 @@ pub fn connection_paths(
         .filter(|(_, (connection, _))| !is_meter(world, connection.to))
         .filter(|(_, (connection, cable))| connection.directional || cable.is_none())
         .filter_map(|(entity, (connection, _))| {
-            let from = world.entity(connection.from).ok()?;
-            let to = world.entity(connection.to).ok()?;
-            let start = from.get::<&Position>()?.position;
-            let end = to.get::<&Position>()?.position;
-            let from_compartment = from.has::<Compartment>();
             // Reciprocal pairs bend to opposite sides so both stay visible.
             // An axon terminal continues its chain of compartments straight.
             let bend = if pairs.contains(&(connection.to, connection.from)) {
                 BEZIER_BEND_FRACTION
-            } else if from_compartment {
+            } else if world
+                .satisfies::<&Compartment>(connection.from)
+                .unwrap_or(false)
+            {
                 0.0
             } else {
                 ((entity.id() as f32 * 0.618_034).fract() * 2.0 - 1.0) * MAX_BEND
             };
-            let target_radius = radii.get(&connection.to).copied();
-            let terminal_radius = match target_radius {
-                Some(_) => COMPARTMENT_TERMINAL_RADIUS,
-                None => SOMA_TERMINAL_RADIUS,
-            };
-            let terminal_radius = if from_compartment {
-                terminal_radius * (connection.strength as f32).sqrt().max(MIN_TERMINAL_SCALE)
-            } else {
-                terminal_radius
-            };
-            let trim = match (connection.directional, target_radius) {
-                (false, _) => 0.0,
-                (true, Some(radius)) => radius + terminal_radius,
-                (true, None) => SYNAPSE_GAP,
-            };
-            let radius = match radii.get(&connection.from) {
-                Some(&radius) if from_compartment => radius,
-                _ => (CONNECTION_RADIUS * connection.strength as f32).max(0.05),
-            };
-            let (start_color, end_color) = connection_colors(from, to, &display, palette);
-            let points = bent_line(start, end, bend, trim);
-            let terminal_direction = match &points[..] {
-                [.., before, last] => *last - *before,
-                _ => end - start,
-            }
-            .normalize_or_zero();
             Some((
                 entity,
-                ConnectionPath {
-                    points,
-                    radius,
-                    start_color,
-                    end_color,
-                    directional: connection.directional,
-                    inhibitory: from
-                        .get::<&NeuronType>()
-                        .is_some_and(|neuron_type| *neuron_type == NeuronType::Inhibitory),
-                    terminal_radius,
-                    terminal_direction,
-                },
+                path_of(world, connection, bend, radii, &display, palette)?,
             ))
         })
         .collect()
+}
+
+pub fn ending_path(
+    world: &hecs::World,
+    from: Entity,
+    to: Entity,
+    palette: &Palette,
+) -> Option<ConnectionPath> {
+    let connection = Connection {
+        from,
+        to,
+        strength: 1.0,
+        directional: true,
+    };
+    let radii = crate::rendering::compartment_radii(world);
+    let display = NeuronDisplay::of(world);
+    path_of(world, &connection, 0.0, &radii, &display, palette)
+}
+
+fn path_of(
+    world: &hecs::World,
+    connection: &Connection,
+    bend: f32,
+    radii: &HashMap<Entity, f32>,
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> Option<ConnectionPath> {
+    let from = world.entity(connection.from).ok()?;
+    let to = world.entity(connection.to).ok()?;
+    let start = from.get::<&Position>()?.position;
+    let end = to.get::<&Position>()?.position;
+    let from_compartment = from.has::<Compartment>();
+    let target_radius = radii.get(&connection.to).copied();
+    let terminal_radius = match target_radius {
+        Some(_) => COMPARTMENT_TERMINAL_RADIUS,
+        None => SOMA_TERMINAL_RADIUS,
+    };
+    let terminal_radius = if from_compartment {
+        terminal_radius * (connection.strength as f32).sqrt().max(MIN_TERMINAL_SCALE)
+    } else {
+        terminal_radius
+    };
+    let trim = match (connection.directional, target_radius) {
+        (false, _) => 0.0,
+        (true, Some(radius)) => radius + terminal_radius,
+        (true, None) => SYNAPSE_GAP,
+    };
+    let radius = match radii.get(&connection.from) {
+        Some(&radius) if from_compartment => radius,
+        _ => (CONNECTION_RADIUS * connection.strength as f32).max(0.05),
+    };
+    let (start_color, end_color) = connection_colors(from, to, display, palette);
+    let points = bent_line(start, end, bend, trim);
+    let terminal_direction = match &points[..] {
+        [.., before, last] => *last - *before,
+        _ => end - start,
+    }
+    .normalize_or_zero();
+    Some(ConnectionPath {
+        points,
+        radius,
+        start_color,
+        end_color,
+        directional: connection.directional,
+        inhibitory: from
+            .get::<&NeuronType>()
+            .is_some_and(|neuron_type| *neuron_type == NeuronType::Inhibitory),
+        terminal_radius,
+        terminal_direction,
+    })
 }
 
 #[cfg(test)]

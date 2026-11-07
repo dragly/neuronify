@@ -1,3 +1,4 @@
+mod attach_ring;
 mod hitboxes;
 mod hold_ring;
 pub(crate) mod icons;
@@ -21,8 +22,9 @@ use crate::editor::Editor;
 use crate::links;
 use crate::rendering::Theme;
 use crate::tools::Tool;
+pub use attach_ring::AttachRing;
 pub use hitboxes::{paint_hitboxes, reach_slider};
-pub use hold_ring::{paint_hold_ring, HoldRing};
+pub use hold_ring::{paint_hold_ring, HoldRing, Look};
 use icons::Icon;
 use inspector::{Inspector, Placement};
 use playback::BAR_HEIGHT;

@@ -8,7 +8,7 @@ use crate::components::{Link, Selected};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
-use crate::gui::{self, Gui, HoldRing, MenuChoice, Saving};
+use crate::gui::{self, AttachRing, Gui, HoldRing, Look, MenuChoice, Saving};
 use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
@@ -61,6 +61,7 @@ pub struct Neuronify {
     hitboxes: bool,
     touch_reach: f64,
     hold_ring: Option<HoldRing>,
+    attach_ring: Option<AttachRing>,
 }
 
 fn ground_under(
@@ -84,6 +85,14 @@ fn debug_view() -> Option<String> {
 fn debug_view() -> Option<String> {
     std::env::var("NEURONIFY_DEBUG").ok()
 }
+
+#[cfg(target_arch = "wasm32")]
+fn tick() {
+    crate::web::tick();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn tick() {}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn file_stem(path: &std::path::Path) -> String {
@@ -219,6 +228,7 @@ impl Neuronify {
             hitboxes: debug_view().as_deref() == Some("hitboxes"),
             touch_reach: input::TOUCH_REACH,
             hold_ring: None,
+            attach_ring: None,
         }
     }
 
@@ -346,14 +356,27 @@ impl Neuronify {
         });
     }
 
-    fn paint_hold_ring(&self, application: &visula::Application, context: &egui::Context) {
-        let Some(ring) = self.hold_ring else {
-            return;
-        };
-        let Some(look) = ring.look(input::now()) else {
-            return;
-        };
-        let Some(shape) = Targets::new(&self.world).shape(ring.target()) else {
+    fn paint_rings(&self, application: &visula::Application, context: &egui::Context) {
+        let now = input::now();
+        let hold = self
+            .hold_ring
+            .and_then(|ring| Some((ring.target(), ring.look(now)?)));
+        let attach = self
+            .attach_ring
+            .and_then(|ring| Some((ring.target(), ring.look(now)?)));
+        for (target, look) in hold.into_iter().chain(attach) {
+            self.paint_ring(application, context, target, look);
+        }
+    }
+
+    fn paint_ring(
+        &self,
+        application: &visula::Application,
+        context: &egui::Context,
+        target: hecs::Entity,
+        look: Look,
+    ) {
+        let Some(shape) = Targets::new(&self.world).shape(target) else {
             return;
         };
         let pixels_per_point = context.pixels_per_point();
@@ -384,7 +407,24 @@ impl Neuronify {
         hint.filter(|_| self.editing())
     }
 
+    fn follow_ending(&mut self) {
+        let formed = self.editor.take_formed();
+        let ending = self.editor.ending();
+        let shown = self.attach_ring.and_then(AttachRing::shown);
+        let entered = ending.is_some() && (shown.is_none() || formed);
+        let left = ending.is_none() && shown.is_some() && self.mouse.left_down;
+        if entered || left {
+            tick();
+        }
+        self.attach_ring = AttachRing::next(self.attach_ring, ending, entered, input::now());
+    }
+
     fn handle_tool(&mut self, application: &mut visula::Application) {
+        self.use_tool(application);
+        self.follow_ending();
+    }
+
+    fn use_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
             self.editor.lift(&mut self.world);
             return;
@@ -589,6 +629,7 @@ impl visula::Simulation for Neuronify {
             Some((target, held_for))
         });
         self.hold_ring = HoldRing::next(self.hold_ring, pending, grabbed, now);
+        self.attach_ring = AttachRing::next(self.attach_ring, self.editor.ending(), false, now);
         for position in self.editor.take_presses() {
             simulation::fire_nearby(&mut self.world, &mut self.engine, position);
         }
@@ -647,6 +688,7 @@ impl visula::Simulation for Neuronify {
             EditorMarks {
                 drawn_connection: &drawn_connection,
                 axon: self.editor.axon_being_grown(&self.world),
+                ending: self.editor.new_ending(&self.world),
                 dendrite: self.editor.dendrite_being_grown(),
                 ghost: self.ghost,
                 selection: self.editor.selection,
@@ -733,7 +775,7 @@ impl visula::Simulation for Neuronify {
             gui::reach_slider(context, &mut self.touch_reach);
             self.paint_hitboxes(application, context);
         }
-        self.paint_hold_ring(application, context);
+        self.paint_rings(application, context);
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
