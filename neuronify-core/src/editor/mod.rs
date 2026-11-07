@@ -257,6 +257,15 @@ impl Editor {
         }
     }
 
+    pub fn sync_selection(&mut self, world: &mut World) {
+        self.selection = self.selection.filter(|&selected| world.contains(selected));
+        if let Some(selected) = self.selection {
+            if Selected::entity(world) != Some(selected) {
+                Selected::set(world, Some(selected));
+            }
+        }
+    }
+
     pub fn forget_world(&mut self) {
         *self = Editor {
             tool: self.tool,
