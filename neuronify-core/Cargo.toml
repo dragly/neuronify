@@ -17,6 +17,7 @@ bytemuck = { version = "1.24", features = ["derive"] }
 log = "0.4"
 miniz_oxide = "0.8"
 egui = "0.34"
+egui-wgpu = "0.34"
 wasm-bindgen-futures = "0.4"
 wasm-bindgen = "0.2.104"
 js-sys = "0.3"

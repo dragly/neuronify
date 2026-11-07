@@ -8,7 +8,9 @@ use crate::components::{Link, Selected};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
-use crate::gui::{self, AttachRing, Gui, HoldRing, Look, MenuChoice, Saving};
+use crate::gui::{
+    self, AttachRing, Gui, HoldRing, Look, LoupeCorner, LoupeView, MenuChoice, Saving,
+};
 use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
@@ -62,6 +64,7 @@ pub struct Neuronify {
     touch_reach: f64,
     hold_ring: Option<HoldRing>,
     attach_ring: Option<AttachRing>,
+    loupe: Option<LoupeCorner>,
 }
 
 fn ground_under(
@@ -229,6 +232,7 @@ impl Neuronify {
             touch_reach: input::TOUCH_REACH,
             hold_ring: None,
             attach_ring: None,
+            loupe: None,
         }
     }
 
@@ -445,6 +449,43 @@ impl Neuronify {
         if let Some(Pan(offset)) = requested_pan {
             camera::pan(application, offset);
         }
+    }
+
+    fn shows_loupe(&self) -> bool {
+        let drawing = self.editor.axon_being_grown(&self.world).is_some()
+            || self.editor.dendrite_being_grown().is_some();
+        self.touch_input && self.mouse.moved_while_pressed() && drawing
+    }
+
+    fn prepare_loupe(&self, application: &mut visula::Application) {
+        if self.shows_loupe() {
+            gui::prepare_loupe(application);
+        }
+    }
+
+    fn paint_loupe(&mut self, application: &visula::Application, context: &egui::Context) {
+        let finger = self.mouse.position.filter(|_| self.shows_loupe());
+        let Some(finger) = finger else {
+            self.loupe = None;
+            return;
+        };
+        let pixels_per_point = context.pixels_per_point();
+        let finger = egui::pos2(finger.x as f32, finger.y as f32) / pixels_per_point;
+        let size = egui::vec2(
+            application.config.width as f32,
+            application.config.height as f32,
+        );
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size / pixels_per_point);
+        let corner = LoupeCorner::next(self.loupe, finger, screen);
+        self.loupe = Some(corner);
+        let view = LoupeView {
+            corner,
+            finger,
+            screen,
+            srgb_target: application.config.format.is_srgb(),
+            attached: self.editor.ending().is_some(),
+        };
+        gui::paint_loupe(context, self.theme, view);
     }
 
     fn saved(&mut self) -> Result<Vec<u8>, String> {
@@ -673,6 +714,7 @@ impl visula::Simulation for Neuronify {
         }
 
         self.dangle_ghost(application, seconds);
+        self.prepare_loupe(application);
         let drawn_connection = match self.editor.connection_being_drawn(&self.world) {
             Some((start, end)) => vec![start, end],
             None => self
@@ -744,6 +786,7 @@ impl visula::Simulation for Neuronify {
         if let Some(error) = &self.load_error {
             gui::load_error(context, error);
         }
+        let drawing = self.shows_loupe();
         let controls = gui::Controls {
             editor: &mut self.editor,
             world: &mut self.world,
@@ -754,7 +797,11 @@ impl visula::Simulation for Neuronify {
             fps: self.frame_clock.fps(),
             saving: self.saving,
         };
-        match self.gui.show(context, controls) {
+        let chosen = match drawing {
+            true => None,
+            false => self.gui.show(context, controls),
+        };
+        match chosen {
             Some(MenuChoice::Examples) => self.show_landing(),
             Some(MenuChoice::About) => self.about = Some(AboutScreen::new(self.version)),
             Some(MenuChoice::Save) => self.save(),
@@ -776,6 +823,7 @@ impl visula::Simulation for Neuronify {
             self.paint_hitboxes(application, context);
         }
         self.paint_rings(application, context);
+        self.paint_loupe(application, context);
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
