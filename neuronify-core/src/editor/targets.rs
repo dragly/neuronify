@@ -194,13 +194,19 @@ impl Targets {
 
     pub fn near(&self, position: Vec3, reach: f32) -> Option<(Entity, Vec3)> {
         self.frame_at(position)
-            .or_else(|| self.piece_near(position, reach))
+            .or_else(|| self.piece_near(position, reach, |_| true))
             .or_else(|| self.note_at(position))
     }
 
-    fn piece_near(&self, position: Vec3, reach: f32) -> Option<(Entity, Vec3)> {
+    pub fn piece_near(
+        &self,
+        position: Vec3,
+        reach: f32,
+        accepts: impl Fn(Entity) -> bool,
+    ) -> Option<(Entity, Vec3)> {
         self.pieces
             .iter()
+            .filter(|piece| accepts(piece.entity))
             .map(|piece| (piece, piece.gap(position)))
             .min_by(|(_, a), (_, b)| a.total_cmp(b))
             .filter(|&(_, gap)| gap < reach)

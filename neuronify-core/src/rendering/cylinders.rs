@@ -7,9 +7,10 @@ use crate::components::*;
 use crate::constants::RESTING_POTENTIAL;
 use crate::rendering::colors::{terminal_color, Palette};
 use crate::rendering::gpu_types::{CylinderData, Sphere};
-use crate::rendering::paths::ConnectionPath;
+use crate::rendering::paths::{ending_path, ConnectionPath};
 use crate::rendering::scene::Scene;
 use crate::rendering::shapes::shown_voltage;
+use crate::rendering::spheres::path_spheres;
 use crate::simulation::model::{
     dendrite_diameter, drawn_radius, soma_end_radius, INTERNODE_DIAMETER, MYELIN_G_RATIO,
 };
@@ -216,35 +217,42 @@ pub fn collect_cylinders(
     );
     cylinders.reserve(paths.values().map(|path| path.points.len()).sum());
     for path in paths.values() {
-        let segments = path.points.len().saturating_sub(1);
-        let color_at = |i: usize| {
-            path.start_color
-                .lerp(path.end_color, i as f32 / segments as f32)
-        };
-        for (i, w) in path.points.windows(2).enumerate() {
-            cylinders.push(CylinderData {
-                start: w[0],
-                start_radius: path.radius,
-                end: w[1],
-                end_radius: path.radius,
-                start_color: color_at(i),
-                end_color: color_at(i + 1),
-                _padding: Default::default(),
-            });
-        }
-        // The bar across the end of an inhibitory synapse, as in ⊣
-        if let (true, Some(&end)) = (path.directional && path.inhibitory, path.points.last()) {
-            let direction = path.terminal_direction;
-            cylinders.push(CylinderData {
-                start: end - direction * 0.12,
-                start_radius: 1.2 * path.terminal_radius,
-                end: end + direction * 0.12,
-                end_radius: 1.2 * path.terminal_radius,
-                start_color: terminal_color(),
-                end_color: terminal_color(),
-                _padding: Default::default(),
-            });
-        }
+        cylinders.extend(path_cylinders(path));
+    }
+    cylinders
+}
+
+pub fn path_cylinders(path: &ConnectionPath) -> Vec<CylinderData> {
+    let segments = path.points.len().saturating_sub(1);
+    let color_at = |i: usize| {
+        path.start_color
+            .lerp(path.end_color, i as f32 / segments as f32)
+    };
+    let mut cylinders: Vec<CylinderData> = path
+        .points
+        .windows(2)
+        .enumerate()
+        .map(|(i, w)| CylinderData {
+            start: w[0],
+            start_radius: path.radius,
+            end: w[1],
+            end_radius: path.radius,
+            start_color: color_at(i),
+            end_color: color_at(i + 1),
+            _padding: Default::default(),
+        })
+        .collect();
+    if let (true, Some(&end)) = (path.directional && path.inhibitory, path.points.last()) {
+        let direction = path.terminal_direction;
+        cylinders.push(CylinderData {
+            start: end - direction * 0.12,
+            start_radius: 1.2 * path.terminal_radius,
+            end: end + direction * 0.12,
+            end_radius: 1.2 * path.terminal_radius,
+            start_color: terminal_color(),
+            end_color: terminal_color(),
+            _padding: Default::default(),
+        });
     }
     cylinders
 }
@@ -283,6 +291,21 @@ pub fn growing_axon(
     palette: &Palette,
 ) -> Option<Scene> {
     growing(world, from, (start, end), false, palette)
+}
+
+pub fn growing_ending(
+    world: &hecs::World,
+    from: Entity,
+    to: Entity,
+    palette: &Palette,
+) -> Option<Scene> {
+    let path = ending_path(world, from, to, palette)?;
+    Some(Scene {
+        spheres: path_spheres(&path),
+        cylinders: path_cylinders(&path),
+        rings: Vec::new(),
+        transmitter: Vec::new(),
+    })
 }
 
 pub fn growing_dendrite(

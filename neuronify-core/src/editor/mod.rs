@@ -31,7 +31,7 @@ mod tests;
 pub use targets::{Shape, Targets};
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
-const COMPARTMENT_REACH: f32 = NODE_RADIUS;
+const STAYING_REACH: f32 = 1.5;
 const CORNER_REACH: f32 = 1.0;
 const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
@@ -71,6 +71,8 @@ pub struct Editor {
     shortcut: Option<Meter>,
     wired: bool,
     presses: Vec<Vec3>,
+    ending: Option<Entity>,
+    formed: bool,
 }
 
 impl Editor {
@@ -105,6 +107,22 @@ impl Editor {
     pub fn dendrite_being_grown(&self) -> Option<(Entity, Vec3, Vec3)> {
         let connection = self.connection_tool.as_ref()?;
         (self.tool == Tool::Dendrite).then_some((connection.from, connection.start, connection.end))
+    }
+
+    pub fn ending(&self) -> Option<Entity> {
+        self.connection_tool.as_ref().and(self.ending)
+    }
+
+    pub fn new_ending(&self, world: &World) -> Option<(Entity, Entity)> {
+        let axon = self.connection_tool.as_ref()?;
+        let ending = self.ending.filter(|&ending| {
+            has::<Compartment>(world, ending) && !connected(world, axon.from, ending)
+        })?;
+        Some((axon.from, ending))
+    }
+
+    pub fn take_formed(&mut self) -> bool {
+        std::mem::take(&mut self.formed)
     }
 
     pub fn painting(&self) -> Option<Element> {
@@ -188,10 +206,8 @@ impl Editor {
         if let Some(axon) = axon {
             let measuring = self.tool.meter().is_some() || Meter::of(world, axon.from).is_some();
             if !measuring {
-                let target = foreign_compartment_near(world, axon.from, axon.end);
-                if let Some(target) = target.filter(|&target| !connected(world, axon.from, target))
-                {
-                    lay_axon(world, axon.from, target, true, self.myelinates());
+                if let Some((from, ending)) = self.new_ending(world) {
+                    lay_axon(world, from, ending, true, self.myelinates());
                 }
             } else if let Some(meter) = self.shortcut.filter(|_| !self.wired) {
                 measure_where_released(world, meter, axon);
@@ -227,6 +243,8 @@ impl Editor {
         self.resizing = None;
         self.shortcut = None;
         self.wired = false;
+        self.ending = None;
+        self.formed = false;
         if let Some(recording) = self.recording.take() {
             self.edited |= self.history.record(recording, world);
         }
@@ -680,15 +698,35 @@ impl Editor {
             return;
         };
         connection.end = position;
-        let reached_neuron = connect_to_neuron_near(
-            world,
-            connection,
-            position,
-            shift_down,
-            |world, from, to| lay_axon(world, from, to, true, myelinated),
-        );
         let from = connection.from;
-        if reached_neuron || self.too_near_previous(world, position, spacing) {
+        let targets = Targets::new(world);
+        let own = cable_network(world, from);
+        let reach = self.touch_reach;
+        let target = axon_target(world, &targets, &own, from, position, reach).or_else(|| {
+            let staying = cable_network(world, self.ending?);
+            targets.piece_near(position, STAYING_REACH * reach, |entity| {
+                staying.contains(&entity)
+                    && (entity == from
+                        || (!own.contains(&entity) && has::<Compartment>(world, entity)))
+            })
+        });
+        let on_soma = target.is_some_and(|(target, _)| !has::<Compartment>(world, target));
+        self.ending = match target {
+            Some((target, _)) if target == from => self.ending.filter(|&ending| ending == from),
+            Some((target, target_position)) if on_soma => {
+                if !connected(world, from, target) {
+                    lay_axon(world, from, target, true, myelinated);
+                    self.formed = true;
+                }
+                if !shift_down {
+                    connection.start = target_position;
+                    connection.from = target;
+                }
+                Some(target)
+            }
+            target => target.map(|(target, _)| target),
+        };
+        if target.is_some() || self.too_near_previous(world, position, spacing) {
             return;
         }
         let Ok(neuron_type) = world.get::<&NeuronType>(from).map(|t| *t) else {
@@ -1069,13 +1107,36 @@ fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
     network
 }
 
-fn foreign_compartment_near(world: &World, axon: Entity, position: Vec3) -> Option<Entity> {
-    world.get::<&Compartment>(axon).ok()?;
-    let own = cable_network(world, axon);
-    let foreign = positions_with::<Compartment>(world)
-        .into_iter()
-        .filter(|(compartment, _)| !own.contains(compartment));
-    nearest_within(foreign, position, COMPARTMENT_REACH).map(|(compartment, _)| compartment)
+fn has<T: Component>(world: &World, entity: Entity) -> bool {
+    world.satisfies::<&T>(entity).unwrap_or(false)
+}
+
+fn axon_target(
+    world: &World,
+    targets: &Targets,
+    own: &HashSet<Entity>,
+    from: Entity,
+    position: Vec3,
+    reach: f32,
+) -> Option<(Entity, Vec3)> {
+    let on_source = world
+        .get::<&Position>(from)
+        .ok()
+        .filter(|_| !has::<Compartment>(world, from))
+        .map(|source| (from, source.position))
+        .filter(|&(_, at)| {
+            at.distance(position) < CONNECTION_REACH
+                || targets
+                    .piece_near(position, reach, |entity| entity == from)
+                    .is_some()
+        });
+    if on_source.is_some() {
+        return on_source;
+    }
+    targets.piece_near(position, reach, |entity| {
+        !own.contains(&entity)
+            && (has::<LeakyNeuron>(world, entity) || has::<Compartment>(world, entity))
+    })
 }
 
 fn connection_at(world: &World, position: Vec3) -> Option<Entity> {

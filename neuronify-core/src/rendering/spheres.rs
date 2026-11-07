@@ -158,39 +158,37 @@ pub fn collect_spheres(
     }));
     spheres.reserve(paths.values().map(|path| path.points.len()).sum());
     for path in paths.values() {
-        let segments = path.points.len().saturating_sub(1);
-        let joints = path
-            .points
-            .iter()
-            .enumerate()
-            .skip(1)
-            .take(segments.saturating_sub(1));
-        spheres.extend(joints.map(|(i, &position)| {
-            Sphere {
-                position,
-                color: path
-                    .start_color
-                    .lerp(path.end_color, i as f32 / segments as f32),
-                radius: path.radius,
-                _padding: Default::default(),
-            }
-        }));
+        spheres.extend(path_spheres(path));
     }
 
-    // Inhibitory synapses end in a bar instead, see `collect_cylinders`
-    spheres.extend(
-        paths
-            .values()
-            .filter(|path| path.directional && !path.inhibitory)
-            .filter_map(|path| {
-                Some(Sphere {
-                    position: *path.points.last()?,
-                    color: terminal_color(),
-                    radius: path.terminal_radius,
-                    _padding: Default::default(),
-                })
-            }),
-    );
-
     spheres
+}
+
+pub fn path_spheres(path: &ConnectionPath) -> Vec<Sphere> {
+    let segments = path.points.len().saturating_sub(1);
+    let joints = path
+        .points
+        .iter()
+        .enumerate()
+        .skip(1)
+        .take(segments.saturating_sub(1))
+        .map(|(i, &position)| Sphere {
+            position,
+            color: path
+                .start_color
+                .lerp(path.end_color, i as f32 / segments as f32),
+            radius: path.radius,
+            _padding: Default::default(),
+        });
+    let knob = path
+        .points
+        .last()
+        .filter(|_| path.directional && !path.inhibitory)
+        .map(|&position| Sphere {
+            position,
+            color: terminal_color(),
+            radius: path.terminal_radius,
+            _padding: Default::default(),
+        });
+    joints.chain(knob).collect()
 }
