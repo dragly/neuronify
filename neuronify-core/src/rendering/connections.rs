@@ -400,7 +400,7 @@ struct Layout {
 struct Search {
     options: Vec<Vec<Route>>,
     chosen: Vec<usize>,
-    pieces: Vec<Option<(Vec<Vec3>, f32)>>,
+    pieces: HashMap<usize, (Vec<Vec3>, f32)>,
     pairs: HashMap<(usize, usize), f32>,
 }
 
@@ -487,12 +487,10 @@ fn chosen_routes(meters: &[Meter], neurons: &[Vec3]) -> Vec<Vec<Route>> {
             let options: Vec<Vec<Route>> = (0..meter.starts.len())
                 .map(|wire| meter.routes(wire, neurons))
                 .collect();
-            let wires = options.len();
-            let most = options.iter().map(Vec::len).max().unwrap_or(0);
             Search {
+                chosen: vec![0; options.len()],
                 options,
-                chosen: vec![0; wires],
-                pieces: vec![None; wires * most * wires * wires],
+                pieces: HashMap::new(),
                 pairs: HashMap::new(),
             }
         })
@@ -554,7 +552,7 @@ fn settle(
     } = search;
     let wires = options.len();
     let most = options.iter().map(Vec::len).max().unwrap_or(0);
-    let mut foreign_costs: Vec<Option<f32>> = vec![None; pieces.len()];
+    let mut foreign_costs: HashMap<usize, f32> = HashMap::new();
     let mut evaluate = |choice: &[usize]| -> (Vec<usize>, f32) {
         let routes = picked(options, choice);
         let lanes = meter.lanes(&routes);
@@ -566,14 +564,14 @@ fn settle(
             .collect();
         let mut total = 0.0;
         for (wire, &piece) in placed.iter().enumerate() {
-            let (path, own) = pieces[piece].get_or_insert_with(|| {
+            let (path, own) = pieces.entry(piece).or_insert_with(|| {
                 let path =
                     meter.wire_corners(wire, routes[wire], lanes[wire], detours[wire], neurons);
                 let own = path_cost(&path, meter.starts[wire].1, &meter.frame, &others, neurons);
                 (path, own)
             });
             total += *own
-                + *foreign_costs[piece].get_or_insert_with(|| {
+                + *foreign_costs.entry(piece).or_insert_with(|| {
                     foreign
                         .iter()
                         .map(|other| pair_cost(path, other, FOREIGN_CROSSING_COST))
@@ -583,7 +581,7 @@ fn settle(
         for (wire, &first) in placed.iter().enumerate() {
             for &second in &placed[wire + 1..] {
                 total += *pairs.entry((first, second)).or_insert_with(|| {
-                    match (&pieces[first], &pieces[second]) {
+                    match (pieces.get(&first), pieces.get(&second)) {
                         (Some((first, _)), Some((second, _))) => {
                             pair_cost(first, second, CROSSING_COST)
                         }
@@ -621,7 +619,7 @@ fn settle(
     paths[index] = current
         .pieces
         .iter()
-        .filter_map(|&piece| pieces[piece].as_ref().map(|(path, _)| path.clone()))
+        .filter_map(|&piece| pieces.get(&piece).map(|(path, _)| path.clone()))
         .collect();
     *chosen = current.choice;
     changed
