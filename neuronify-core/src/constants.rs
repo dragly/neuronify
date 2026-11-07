@@ -22,8 +22,6 @@ pub const TERMINAL_INSET: f32 = 2.0 * NODE_RADIUS;
 pub const CONNECTION_WIDTH_PER_STRENGTH: f32 = 0.3;
 
 pub const VOLTMETER_TIME_WINDOW: f64 = 1.0 / 9.0;
-pub const LIF_VOLTAGE_MIN: f64 = -100.0;
-pub const LIF_VOLTAGE_MAX: f64 = 50.0;
 
 pub const REPULSION_STRENGTH: f32 = 5.0;
 pub const SPRING_STRENGTH: f32 = 10.0;
