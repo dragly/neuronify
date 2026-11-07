@@ -809,7 +809,10 @@ impl Editor {
         };
         match picked {
             Some((entity, entity_position)) => {
-                self.selection = Some(entity);
+                match self.selection {
+                    Some(_) => self.selection = Some(entity),
+                    None => self.held = Some(entity),
+                }
                 self.grab(world, entity, entity_position, position);
             }
             None => {
