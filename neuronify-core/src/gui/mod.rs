@@ -297,6 +297,13 @@ impl FileError {
             message,
         }
     }
+
+    pub fn save(message: String) -> FileError {
+        FileError {
+            title: "Could not save file",
+            message,
+        }
+    }
 }
 
 pub fn file_error(context: &Context, error: &mut Option<FileError>) {

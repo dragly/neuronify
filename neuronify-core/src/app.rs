@@ -532,18 +532,32 @@ impl Neuronify {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn save(&mut self) {
-        let Some(path) = rfd::FileDialog::new().save_file() else {
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("Neuronify", &["neuronify"])
+            .set_file_name(format!("{UNTITLED}.neuronify"))
+            .save_file()
+        else {
             return;
         };
-        let bytes = self.saved().unwrap();
-        std::fs::write(path.with_extension("neuronify"), bytes).unwrap();
+        let written = self.saved().and_then(|bytes| {
+            std::fs::write(&path, bytes)
+                .map_err(|error| format!("Could not write {}: {error}", path.display()))
+        });
+        if let Err(error) = written {
+            log::error!("{error}");
+            self.file_error = Some(FileError::save(error));
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
     fn save(&mut self) {
-        let bytes = self.saved().unwrap();
-        if let Err(error) = crate::web::download(&bytes, SAVED_NAME) {
-            log::error!("Could not save: {error:?}");
+        match self.saved() {
+            Ok(bytes) => {
+                if let Err(error) = crate::web::download(&bytes, SAVED_NAME) {
+                    log::error!("Could not save: {error:?}");
+                }
+            }
+            Err(error) => self.file_error = Some(FileError::save(error)),
         }
     }
 
@@ -554,9 +568,13 @@ impl Neuronify {
 
     #[cfg(target_arch = "wasm32")]
     fn share(&mut self) {
-        let bytes = self.saved().unwrap();
-        if let Err(error) = crate::web::share(&bytes, SAVED_NAME) {
-            log::error!("Could not share: {error:?}");
+        match self.saved() {
+            Ok(bytes) => {
+                if let Err(error) = crate::web::share(&bytes, SAVED_NAME) {
+                    log::error!("Could not share: {error:?}");
+                }
+            }
+            Err(error) => self.file_error = Some(FileError::save(error)),
         }
     }
 
@@ -614,8 +632,10 @@ impl Neuronify {
         let Some(path) = rfd::FileDialog::new().pick_file() else {
             return;
         };
-        let bytes = std::fs::read(&path).unwrap();
-        if let Err(error) = self.open_file(&file_stem(&path), &bytes, true) {
+        let opened = std::fs::read(&path)
+            .map_err(|error| format!("Could not read {}: {error}", path.display()))
+            .and_then(|bytes| self.open_file(&file_stem(&path), &bytes, true));
+        if let Err(error) = opened {
             log::error!("{error}");
             self.file_error = Some(FileError::load(error));
         }
