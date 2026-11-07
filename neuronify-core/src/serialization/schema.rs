@@ -38,7 +38,7 @@ macro_rules! schema {
         }
     };
     ($($names:ident,)*) => {
-        #[derive(::serde::Deserialize, ::serde::Serialize)]
+        #[derive(::serde::Deserialize, ::serde::Serialize, PartialEq)]
         enum ComponentId {
             $($names),*
         }
@@ -58,6 +58,11 @@ macro_rules! schema {
                 self.components.clear(); // Discard data from the previous archetype
                 let mut batch = ::hecs::ColumnBatchType::new();
                 while let Some(id) = seq.next_element()? {
+                    if self.components.contains(&id) {
+                        return Err($crate::serialization::column::reject(
+                            "a component appears twice",
+                        ));
+                    }
                     match id {
                         $(
                             ComponentId::$names => {
@@ -99,8 +104,7 @@ macro_rules! schema {
 
         pub fn deserialize(bytes: &[u8]) -> Result<::hecs::World, String> {
             let mut context = LoadContext { components: vec![] };
-            let mut deserializer = ::postcard::Deserializer::from_bytes(bytes);
-            ::hecs::serialize::column::deserialize(&mut context, &mut deserializer)
+            $crate::serialization::column::deserialize(&mut context, bytes)
                 .map_err(|e| format!("Could not read save file: {e}"))
         }
     };
