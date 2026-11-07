@@ -18,14 +18,21 @@ pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
     let mut positions = Vec::new();
     let mut moving = Vec::new();
     let mut dendrite = Vec::new();
-    for (entity, (position, dynamics, in_dendrite)) in world
-        .query::<(&Position, Option<&SpatialDynamics>, Option<&Dendrite>)>()
+    let mut axon = Vec::new();
+    for (entity, (position, dynamics, in_dendrite, compartment)) in world
+        .query::<(
+            &Position,
+            Option<&SpatialDynamics>,
+            Option<&Dendrite>,
+            Option<&Compartment>,
+        )>()
         .iter()
     {
         slot_of.insert(entity, positions.len());
         positions.push(position.position);
         moving.push(dynamics.is_some() && !held.contains(&entity));
         dendrite.push(in_dendrite.is_some());
+        axon.push(compartment.is_some() && in_dendrite.is_none());
     }
     let (cables, rest_lengths): (Vec<(usize, usize, bool)>, Vec<f32>) = world
         .query::<(&Connection, Option<&Cable>)>()
@@ -42,7 +49,7 @@ pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
         .unzip();
 
     let mut forces = vec![Vec3::ZERO; positions.len()];
-    add_repulsion(&positions, &moving, &mut forces);
+    add_repulsion(&positions, &moving, &dendrite, &axon, &mut forces);
     add_cable_bending(&positions, &cables, &dendrite, &mut forces);
     add_cable_springs(&positions, &cables, &rest_lengths, &mut forces);
 
@@ -61,7 +68,13 @@ fn repulsion(from: Vec3, to: Vec3) -> Vec3 {
     REPULSION_STRENGTH * overlap * (to - from).normalize_or_zero()
 }
 
-fn add_repulsion(positions: &[Vec3], moving: &[bool], forces: &mut [Vec3]) {
+fn add_repulsion(
+    positions: &[Vec3],
+    moving: &[bool],
+    dendrite: &[bool],
+    axon: &[bool],
+    forces: &mut [Vec3],
+) {
     let cell_of = |position: Vec3| {
         let coordinate = |x: f32| (x / REPULSION_RANGE).floor() as i32;
         (coordinate(position.x), coordinate(position.z))
@@ -79,7 +92,7 @@ fn add_repulsion(positions: &[Vec3], moving: &[bool], forces: &mut [Vec3]) {
             for dz in -1..=1 {
                 let cell = (x.saturating_add(dx), z.saturating_add(dz));
                 for &other in cells.get(&cell).into_iter().flatten() {
-                    if other != slot {
+                    if other != slot && !(dendrite[slot] && axon[other]) {
                         forces[slot] += repulsion(position, positions[other]);
                     }
                 }
@@ -111,7 +124,7 @@ fn add_cable_bending(
         .collect();
     let (axon_joints, dendrite_joints): (Vec<_>, Vec<_>) =
         joints.into_iter().partition(|&(_, b, _)| !dendrite[b]);
-    smooth_axon_bends(positions, &axon_joints, forces);
+    smooth_axon_bends(positions, &axon_joints, dendrite, forces);
     for (a, b, c) in dendrite_joints {
         let ab = (positions[b] - positions[a]).normalize();
         let bc = (positions[c] - positions[b]).normalize();
@@ -128,7 +141,12 @@ fn add_cable_bending(
     }
 }
 
-fn smooth_axon_bends(positions: &[Vec3], joints: &[(usize, usize, usize)], forces: &mut [Vec3]) {
+fn smooth_axon_bends(
+    positions: &[Vec3],
+    joints: &[(usize, usize, usize)],
+    dendrite: &[bool],
+    forces: &mut [Vec3],
+) {
     let turns: Vec<f32> = joints
         .iter()
         .map(|&(a, b, c)| turn(positions[b] - positions[a], positions[c] - positions[b]))
@@ -152,7 +170,9 @@ fn smooth_axon_bends(positions: &[Vec3], joints: &[(usize, usize, usize)], force
         }
         forces[a] += force_a;
         forces[b] -= force_a + force_c;
-        forces[c] += force_c;
+        if !dendrite[c] {
+            forces[c] += force_c;
+        }
     }
 }
 
@@ -162,12 +182,14 @@ fn add_cable_springs(
     rest_lengths: &[f32],
     forces: &mut [Vec3],
 ) {
-    for (&(from, to, _), rest_length) in cables.iter().zip(rest_lengths) {
+    for (&(from, to, directional), rest_length) in cables.iter().zip(rest_lengths) {
         let stretch = positions[from].distance_squared(positions[to]) - rest_length.powi(2);
         let force =
             SPRING_STRENGTH * stretch * (positions[to] - positions[from]).normalize_or_zero();
         forces[from] += force;
-        forces[to] -= force;
+        if !directional {
+            forces[to] -= force;
+        }
     }
 }
 
@@ -264,7 +286,8 @@ mod tests {
         let moving: Vec<bool> = (0..positions.len()).map(|slot| slot % 3 != 0).collect();
         let mut forces = vec![Vec3::ZERO; positions.len()];
 
-        add_repulsion(&positions, &moving, &mut forces);
+        let none = vec![false; positions.len()];
+        add_repulsion(&positions, &moving, &none, &none, &mut forces);
 
         for (slot, &force) in forces.iter().enumerate() {
             let from_every_other_node: Vec3 = positions
@@ -358,6 +381,49 @@ mod tests {
         apply_spatial_forces(&mut world, &HashSet::new());
 
         assert_eq!(acceleration(&world, beyond), Vec3::ZERO);
+    }
+
+    #[test]
+    fn axons_make_way_for_dendrites_without_pushing_them() {
+        let mut world = World::new();
+        let axon = compartment(&mut world, 0.0, 0.0);
+        let dendrite = compartment(&mut world, 1.0, 0.0);
+        world.insert_one(axon, Compartment).unwrap();
+        world.insert(dendrite, (Compartment, Dendrite)).unwrap();
+
+        apply_spatial_forces(&mut world, &HashSet::new());
+
+        assert!(acceleration(&world, axon).x < 0.0);
+        assert_eq!(acceleration(&world, dendrite), Vec3::ZERO);
+    }
+
+    #[test]
+    fn smoothing_an_axon_into_its_ending_leaves_the_dendrite_alone() {
+        let mut world = World::new();
+        let start = compartment(&mut world, 0.0, 0.0);
+        let terminal = compartment(&mut world, 2.0, 0.0);
+        let dendrite = compartment(&mut world, 2.0, 2.0);
+        world.insert_one(dendrite, Dendrite).unwrap();
+        cable(&mut world, start, terminal);
+        axon_ending(&mut world, terminal, dendrite);
+
+        apply_spatial_forces(&mut world, &HashSet::new());
+
+        assert_ne!(acceleration(&world, terminal), Vec3::ZERO);
+        assert_eq!(acceleration(&world, dendrite), Vec3::ZERO);
+    }
+
+    #[test]
+    fn an_axon_ending_pulls_the_axon_but_not_the_dendrite_it_ends_on() {
+        let mut world = World::new();
+        let axon = compartment(&mut world, 0.0, 0.0);
+        let dendrite = compartment(&mut world, 6.0, 0.0);
+        axon_ending(&mut world, axon, dendrite);
+
+        apply_spatial_forces(&mut world, &HashSet::new());
+
+        assert!(acceleration(&world, axon).x > 0.0);
+        assert_eq!(acceleration(&world, dendrite), Vec3::ZERO);
     }
 
     #[test]

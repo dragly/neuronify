@@ -5,9 +5,10 @@ use hecs::{Entity, EntityRef};
 
 use crate::components::*;
 use crate::constants::RESTING_POTENTIAL;
+use crate::editor::Bead;
 use crate::rendering::colors::{terminal_color, Palette};
 use crate::rendering::gpu_types::{CylinderData, Sphere};
-use crate::rendering::paths::{ending_path, ConnectionPath};
+use crate::rendering::paths::{ending_path, ending_path_to, ConnectionPath};
 use crate::rendering::scene::Scene;
 use crate::rendering::shapes::shown_voltage;
 use crate::rendering::spheres::path_spheres;
@@ -300,6 +301,16 @@ pub fn growing_ending(
     palette: &Palette,
 ) -> Option<Scene> {
     let path = ending_path(world, from, to, palette)?;
+    Some(Scene {
+        spheres: path_spheres(&path),
+        cylinders: path_cylinders(&path),
+        rings: Vec::new(),
+        transmitter: Vec::new(),
+    })
+}
+
+pub fn bead_ending(world: &hecs::World, bead: &Bead, palette: &Palette) -> Option<Scene> {
+    let path = ending_path_to(world, bead.from, bead.onto, (bead.at, bead.radius), palette)?;
     Some(Scene {
         spheres: path_spheres(&path),
         cylinders: path_cylinders(&path),

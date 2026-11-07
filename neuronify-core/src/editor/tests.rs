@@ -334,7 +334,8 @@ fn an_axon_stops_growing_while_it_would_end_on_a_dendrite() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let target = neuron(&mut world, at(20.0, 0.0));
-    lay_dendrite(&mut world, target, at(20.0, 12.0)).unwrap();
+    let steps = steps_towards(&world, target, at(20.0, 12.0), SEGMENT_LENGTH).unwrap();
+    lay_dendrite(&mut world, target, &steps).unwrap();
     let mut editor = reaching(Tool::Axon, REACH);
     for position in straight(at(0.5, 0.0), at(19.0, 4.0)) {
         editor.edit(&mut world, position, false);
@@ -589,7 +590,7 @@ fn dendrites_end_where_they_are_let_go_even_on_another_neuron() {
 
     assert!(axon_endings(&world).is_empty());
     assert_eq!(compartment_tree(&world, other).len(), others.len());
-    assert_eq!(compartment_tree(&world, soma).len(), 5);
+    assert_eq!(compartment_tree(&world, soma).len(), 6);
 }
 
 #[test]
@@ -626,7 +627,7 @@ fn a_growing_dendrite_reaches_from_its_tip_to_the_pointer() {
     editor.edit(&mut world, at(0.0, 3.5), false);
     let (from, start, end) = editor.dendrite_being_grown().unwrap();
     assert!(world.get::<&Dendrite>(from).is_ok());
-    assert_eq!((start, end), (at(0.0, 2.5), at(0.0, 3.5)));
+    assert_eq!((start, end), (at(0.0, 2.0), at(0.0, 3.5)));
     assert_eq!(editor.axon_being_grown(&world), None);
     assert_eq!(editor.connection_being_drawn(&world), None);
 }
@@ -794,7 +795,7 @@ fn a_growing_axon_reaches_from_its_last_compartment_to_the_pointer() {
     editor.edit(&mut world, at(0.0, 3.5), false);
     let (from, start, end) = editor.axon_being_grown(&world).unwrap();
     assert!(world.get::<&Compartment>(from).is_ok());
-    assert_eq!((start, end), (at(0.0, 2.5), at(0.0, 3.5)));
+    assert_eq!((start, end), (at(0.0, 2.0), at(0.0, 3.5)));
     assert_eq!(editor.connection_being_drawn(&world), None);
     assert_eq!(editor.painting(), None);
 }
@@ -2798,4 +2799,88 @@ fn moving_drawing_and_erasing_aim_but_panning_does_not() {
     let mut erasing = editor(Tool::Erase);
     erasing.edit(&mut world, at(20.0, 20.0), false);
     assert!(erasing.aims());
+}
+
+fn axon_beside_a_cable(beside: Vec3) -> (World, Editor, [Entity; 2]) {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let ends = [at(10.0, -1.5), at(10.0, 1.5)].map(|position| {
+        let compartment = spawn_compartment(&mut world, position, NeuronType::Excitatory);
+        world.insert_one(compartment, Dendrite).unwrap();
+        compartment
+    });
+    spawn_cable(&mut world, ends[0], ends[1], false);
+    let mut editor = reaching(Tool::Axon, REACH);
+    for position in straight(at(0.0, 0.5), beside) {
+        editor.edit(&mut world, position, false);
+    }
+    (world, editor, ends)
+}
+
+#[test]
+fn an_axon_ending_slides_along_the_cable_beside_the_pointer() {
+    let (world, editor, ends) = axon_beside_a_cable(at(9.0, 0.3));
+    let bead = editor.bead(&world).unwrap();
+    assert!(bead.at.distance(at(10.0, 0.3)) < 1e-3);
+    assert_eq!(bead.onto, ends[1]);
+    let (world, editor, ends) = axon_beside_a_cable(at(9.0, -0.6));
+    let bead = editor.bead(&world).unwrap();
+    assert!(bead.at.distance(at(10.0, -0.6)) < 1e-3);
+    assert_eq!(bead.onto, ends[0]);
+}
+
+#[test]
+fn a_released_axon_glides_from_where_it_was_let_go_onto_the_nearest_compartment() {
+    let (mut world, mut editor, ends) = axon_beside_a_cable(at(9.0, 0.3));
+    editor.lift(&mut world);
+    assert_eq!(single_ending(&world).to, ends[1]);
+    let gliding: Vec<Gliding> = world.query::<&Gliding>().iter().map(|(_, g)| *g).collect();
+    assert_eq!(gliding.len(), 1);
+    assert!(gliding[0].from.distance(at(10.0, 0.3)) < 1e-3);
+    assert!(connected(&world, ends[0], ends[1]));
+    assert_eq!(editor.bead(&world), None);
+}
+
+#[test]
+fn axons_ending_along_one_branch_leave_it_where_it_was() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 0.0));
+    spawn_dendrites(&mut world, target);
+    step_physics(&mut world, 20_000, &HashSet::new());
+    let mut trunk: Vec<(Entity, Vec3)> = compartment_tree(&world, target)
+        .into_iter()
+        .map(|entity| (entity, world.get::<&Position>(entity).unwrap().position))
+        .filter(|(_, at)| at.x > 0.5 && at.z.abs() < 1.5)
+        .collect();
+    trunk.sort_by(|a, b| a.1.x.total_cmp(&b.1.x));
+    let radii = compartment_radii(&world);
+    for x in [1.5, 3.5, 5.5, 7.5, 9.5, 11.5] {
+        let &(nearest, beside) = trunk
+            .iter()
+            .min_by(|a, b| (a.1.x - x).abs().total_cmp(&(b.1.x - x).abs()))
+            .unwrap();
+        neuron(&mut world, at(x, -14.0));
+        let mut editor = reaching(Tool::Axon, REACH);
+        let finger = at(x, beside.z - radii[&nearest] - 0.6 * REACH);
+        for position in straight(at(x, -13.5), finger) {
+            editor.edit(&mut world, position, false);
+            step_physics(&mut world, 1, editor.drawn());
+        }
+        editor.lift(&mut world);
+        step_physics(&mut world, 250, &HashSet::new());
+    }
+    step_physics(&mut world, 2500, &HashSet::new());
+    let on_trunk = axon_endings(&world)
+        .iter()
+        .filter(|ending| trunk.iter().any(|&(entity, _)| entity == ending.to))
+        .count();
+    assert!(on_trunk >= 5, "{on_trunk}");
+    for (entity, before) in trunk {
+        let moved = world
+            .get::<&Position>(entity)
+            .unwrap()
+            .position
+            .distance(before);
+        assert!(moved < 0.2, "{moved}");
+    }
 }
