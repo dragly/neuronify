@@ -226,11 +226,21 @@ impl Recording {
         self.before.insert(entity, State::Whole(components));
     }
 
+    pub fn is_new(&self, entity: Entity) -> bool {
+        !self.alive.contains(&entity)
+    }
+
+    pub fn spawned<'a>(&'a self, world: &'a World) -> impl Iterator<Item = Entity> + 'a {
+        world
+            .iter()
+            .map(|entity| entity.entity())
+            .filter(|&entity| self.is_new(entity))
+    }
+
     fn finish(mut self, world: &World) -> Change {
-        for entity in world.iter().map(|entity| entity.entity()) {
-            if !self.alive.contains(&entity) {
-                self.before.insert(entity, State::Absent);
-            }
+        let spawned: Vec<Entity> = self.spawned(world).collect();
+        for entity in spawned {
+            self.before.insert(entity, State::Absent);
         }
         self.before.into_iter().collect()
     }

@@ -10,7 +10,9 @@ pub use firing_rate::update_firing_rates;
 pub use spatial::{apply_spatial_forces, integrate_motion};
 pub use stimulation::{fire_nearby, touch_sensor_near, touched, Touch};
 
-use hecs::World;
+use std::collections::HashSet;
+
+use hecs::{Entity, World};
 
 use crate::constants::*;
 use crate::measurement::firing_rate::record_rates;
@@ -40,9 +42,9 @@ pub fn step_simulation(
     record_voltages(world, engine);
 }
 
-pub fn step_physics(world: &mut World, steps: u32) {
+pub fn step_physics(world: &mut World, steps: u32, held: &HashSet<Entity>) {
     for _ in 0..steps {
-        apply_spatial_forces(world);
-        integrate_motion(world, PHYSICS_DT);
+        apply_spatial_forces(world, held);
+        integrate_motion(world, PHYSICS_DT, held);
     }
 }

@@ -2,7 +2,7 @@ use super::*;
 use crate::elements::{spawn_synapse, spawn_voltmeter};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use crate::simulation::{fire_nearby, step_simulation, Engine};
+use crate::simulation::{fire_nearby, step_physics, step_simulation, Engine};
 use std::collections::HashMap;
 
 fn at(x: f32, z: f32) -> Vec3 {
@@ -363,6 +363,118 @@ fn an_axon_brought_back_over_its_own_soma_does_not_end_on_it() {
     path.extend(straight(at(0.0, 8.0), at(0.0, 0.0)));
     drag(&mut editor, &mut world, &path);
     assert!(axon_endings(&world).is_empty());
+}
+
+#[test]
+fn what_is_being_drawn_stays_where_it_was_laid_until_released() {
+    for tool in [Tool::Axon, Tool::Dendrite] {
+        let mut world = World::new();
+        neuron(&mut world, at(0.0, 0.0));
+        let mut editor = editor(tool);
+        let mut path = straight(at(0.0, 0.5), at(0.0, 10.0));
+        path.extend(straight(at(0.0, 10.0), at(10.0, 10.0)));
+        for position in path {
+            editor.edit(&mut world, position, false);
+        }
+        let laid = positions_with::<Compartment>(&world);
+        assert!(laid.len() > 5, "{tool:?}");
+
+        step_physics(&mut world, 500, editor.drawn());
+        assert_eq!(positions_with::<Compartment>(&world), laid, "{tool:?}");
+        let growing = editor
+            .axon_being_grown(&world)
+            .or(editor.dendrite_being_grown());
+        let (tip, start, _) = growing.unwrap();
+        assert_eq!(position(&world, tip), start, "{tool:?}");
+
+        editor.lift(&mut world);
+        assert!(editor.drawn().is_empty(), "{tool:?}");
+        step_physics(&mut world, 500, editor.drawn());
+        assert_ne!(positions_with::<Compartment>(&world), laid, "{tool:?}");
+    }
+}
+
+fn stroke(editor: &mut Editor, world: &mut World, corners: &[Vec3]) {
+    let path: Vec<Vec3> = corners
+        .windows(2)
+        .flat_map(|pair| straight(pair[0], pair[1]))
+        .collect();
+    drag(editor, world, &path);
+}
+
+fn sharpest_bend(world: &World) -> f32 {
+    let cables: Vec<(Entity, Entity)> = world
+        .query::<&Connection>()
+        .with::<&Cable>()
+        .iter()
+        .filter(|(_, cable)| !cable.directional)
+        .map(|(_, cable)| (cable.from, cable.to))
+        .collect();
+    let mut sharpest = std::f32::consts::PI;
+    for &(before, joint) in &cables {
+        for &(_, after) in cables.iter().filter(|&&(from, _)| from == joint) {
+            let at = position(world, joint);
+            let bend = (position(world, before) - at).angle_between(position(world, after) - at);
+            sharpest = sharpest.min(bend);
+        }
+    }
+    sharpest
+}
+
+#[test]
+fn drawing_back_over_an_axon_or_dendrite_takes_it_back_instead_of_folding_it() {
+    for tool in [Tool::Axon, Tool::Dendrite] {
+        let mut world = World::new();
+        neuron(&mut world, at(0.0, 0.0));
+        let mut editor = editor(tool);
+        stroke(
+            &mut editor,
+            &mut world,
+            &[at(0.0, 0.5), at(0.0, 12.0), at(0.3, 5.0)],
+        );
+        let reach = positions_with::<Compartment>(&world)
+            .into_iter()
+            .map(|(_, compartment)| compartment.z)
+            .fold(0.0, f32::max);
+        assert!(reach < 7.5, "{tool:?} still reaches {reach}");
+        assert!(sharpest_bend(&world) >= SHARPEST_BEND, "{tool:?}");
+    }
+}
+
+#[test]
+fn an_axon_taken_all_the_way_back_grows_out_again_on_the_other_side() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Axon);
+    stroke(
+        &mut editor,
+        &mut world,
+        &[at(0.0, 0.5), at(0.0, 10.0), at(0.3, -10.0)],
+    );
+    let tips: Vec<Vec3> = positions_with::<Compartment>(&world)
+        .into_iter()
+        .map(|(_, compartment)| compartment)
+        .collect();
+    assert!(tips.iter().all(|tip| tip.z < 0.0), "{tips:?}");
+    assert!(tips.iter().any(|tip| tip.z < -6.0), "{tips:?}");
+    assert!(chain(&world, soma, positions_with::<Compartment>(&world)[0].0).is_some());
+}
+
+#[test]
+fn taking_a_dendrite_back_stops_where_the_stroke_began() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Dendrite);
+    stroke(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 8.0)]);
+    let first = positions_with::<Dendrite>(&world);
+    let (_, tip) = first
+        .iter()
+        .copied()
+        .max_by(|(_, a), (_, b)| a.z.total_cmp(&b.z))
+        .unwrap();
+    stroke(&mut editor, &mut world, &[tip, at(0.0, 14.0), at(0.3, 1.0)]);
+    assert_eq!(positions_with::<Dendrite>(&world), first);
+    assert!(sharpest_bend(&world) >= SHARPEST_BEND);
 }
 
 fn grown_dendrites(world: &World, before: &[Entity]) -> Vec<(Entity, Vec3)> {
