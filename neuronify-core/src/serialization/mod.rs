@@ -18,7 +18,7 @@
 use hecs::{serialize::column::serialize, World};
 use postcard::ser_flavors::Flavor;
 
-use crate::constants::DEFAULT_SPEED;
+use crate::constants::{DEFAULT_SPEED, SPEEDS};
 
 #[macro_use]
 mod schema;
@@ -154,7 +154,31 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
-    Ok(SavedWorld { world, time, speed })
+    Ok(SavedWorld {
+        world,
+        time: bounded_time(time),
+        speed: snapped_speed(speed),
+    })
+}
+
+fn bounded_time(time: f64) -> f64 {
+    if time.is_finite() && time >= 0.0 {
+        time
+    } else {
+        0.0
+    }
+}
+
+fn snapped_speed(speed: f64) -> f64 {
+    if speed.is_nan() {
+        return DEFAULT_SPEED;
+    }
+    let speed = speed.clamp(SPEEDS[0], SPEEDS[SPEEDS.len() - 1]);
+    let distance = |shown: &f64| (shown.ln() - speed.ln()).abs();
+    SPEEDS
+        .into_iter()
+        .min_by(|a, b| distance(a).total_cmp(&distance(b)))
+        .unwrap_or(DEFAULT_SPEED)
 }
 
 fn split_f64<'a>(bytes: &'a [u8], name: &str) -> Result<(f64, &'a [u8]), String> {
@@ -227,6 +251,31 @@ mod tests {
         let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
         let loaded = load(&save(&world, 0.0, 0.5).unwrap()).unwrap();
         assert_eq!(loaded.speed, 0.5);
+    }
+
+    #[test]
+    fn snaps_the_speed_to_one_the_playback_bar_offers() {
+        let loaded_speed = |speed| {
+            load(&save(&World::new(), 0.0, speed).unwrap())
+                .unwrap()
+                .speed
+        };
+        assert_eq!(loaded_speed(3.0), 4.0);
+        assert_eq!(loaded_speed(2.5), 2.0);
+        assert_eq!(loaded_speed(1e9), 8.0);
+        assert_eq!(loaded_speed(f64::INFINITY), 8.0);
+        assert_eq!(loaded_speed(0.0), 0.5);
+        assert_eq!(loaded_speed(-4.0), 0.5);
+        assert_eq!(loaded_speed(f64::NAN), DEFAULT_SPEED);
+    }
+
+    #[test]
+    fn starts_at_zero_when_the_saved_time_is_not_a_time() {
+        let loaded_time = |time| load(&save(&World::new(), time, 2.0).unwrap()).unwrap().time;
+        assert_eq!(loaded_time(f64::NAN), 0.0);
+        assert_eq!(loaded_time(f64::INFINITY), 0.0);
+        assert_eq!(loaded_time(-5.0), 0.0);
+        assert_eq!(loaded_time(7.5), 7.5);
     }
 
     #[test]

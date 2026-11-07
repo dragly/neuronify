@@ -598,6 +598,8 @@ impl Neuronify {
         self.engine = simulation::Engine::starting_at(time);
         self.time = time;
         self.speed = speed;
+        self.simulation_clock = StepClock::default();
+        self.physics_clock = StepClock::default();
         self.running = true;
         self.editor.tool = Tool::View;
         self.editor.forget_world();

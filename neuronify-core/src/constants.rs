@@ -7,6 +7,7 @@ pub const PHYSICS_DT: f64 = 0.001;
 
 pub const SIMULATION_STEPS_PER_SECOND: f64 = 250.0;
 pub const DEFAULT_SPEED: f64 = 2.0;
+pub const SPEEDS: [f64; 5] = [0.5, 1.0, 2.0, 4.0, 8.0];
 pub const PHYSICS_STEPS_PER_SECOND: f64 = 250.0;
 
 pub const STIMULATION_CURRENT: f64 = 0.3;

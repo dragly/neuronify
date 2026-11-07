@@ -3,6 +3,7 @@ use egui::{
     WidgetType,
 };
 
+use crate::constants::SPEEDS;
 use crate::rendering::Theme;
 
 use super::icons::{paint_icon, Icon};
@@ -12,7 +13,6 @@ pub const PLAY: &str = "playback_play";
 pub const SLOWER: &str = "playback_slower";
 pub const FASTER: &str = "playback_faster";
 pub const BAR_HEIGHT: f32 = 44.0;
-pub const SPEEDS: [f64; 5] = [0.5, 1.0, 2.0, 4.0, 8.0];
 const PADDING: i8 = 5;
 const BUTTON: f32 = 34.0;
 const ICON: f32 = 18.0;
