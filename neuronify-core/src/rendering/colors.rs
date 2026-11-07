@@ -8,7 +8,12 @@ pub fn shown_fraction(voltage: f64) -> f32 {
 }
 
 pub fn srgb_component(value: u8) -> f32 {
-    (value as f32 / 255.0 + 0.055_f32).powf(2.44) / 1.055
+    let encoded = value as f32 / 255.0;
+    if encoded <= 0.04045 {
+        encoded / 12.92
+    } else {
+        ((encoded + 0.055) / 1.055).powf(2.4)
+    }
 }
 
 pub fn srgb(red: u8, green: u8, blue: u8) -> Vec3 {
@@ -316,6 +321,14 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn srgb_components_follow_the_srgb_transfer_function() {
+        assert_eq!(srgb_component(0), 0.0);
+        assert_eq!(srgb_component(255), 1.0);
+        assert!((srgb_component(10) - 0.003035).abs() < 1e-6);
+        assert!((srgb_component(128) - 0.215861).abs() < 1e-6);
     }
 
     #[test]
