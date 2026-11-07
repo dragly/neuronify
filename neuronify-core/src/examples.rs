@@ -226,7 +226,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
         ],
     },
     ExampleCategory {
-        name: "Labs",
+        name: "Memory",
         examples: &[
             Example {
                 name: "Ring attractor",
