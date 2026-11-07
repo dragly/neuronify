@@ -262,6 +262,35 @@ fn corner_button(from_right: usize) -> Pos2 {
 }
 
 #[test]
+fn a_file_error_closes_with_its_button() {
+    let context = Context::default();
+    let mut error = Some(FileError::load("Could not read save file".to_owned()));
+    let frame = |events: Vec<Event>, error: &mut Option<FileError>| {
+        let input = RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, SCREEN)),
+            events,
+            ..Default::default()
+        };
+        let _ = context.run_ui(input, |ui| file_error(ui.ctx(), error));
+    };
+    frame(vec![], &mut error);
+    frame(vec![], &mut error);
+    let window = context
+        .memory(|memory| memory.area_rect(Id::new("Could not load file")))
+        .unwrap();
+    let close = pos2(window.right() - 14.0, window.top() + 14.0);
+    let button = |pressed| Event::PointerButton {
+        pos: close,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Default::default(),
+    };
+    frame(vec![Event::PointerMoved(close), button(true)], &mut error);
+    frame(vec![button(false)], &mut error);
+    assert!(error.is_none());
+}
+
+#[test]
 fn view_and_edit_sit_at_the_top_of_the_rail() {
     let mut harness = Harness::new(true);
     harness.click_text("View");

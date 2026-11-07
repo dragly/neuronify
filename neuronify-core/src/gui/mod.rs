@@ -285,10 +285,33 @@ pub fn canvas_area(screen: Rect, rail_shown: bool) -> Rect {
     area
 }
 
-pub fn load_error(context: &Context, error: &str) {
-    egui::Window::new("Could not load file").show(context, |ui| {
-        ui.label(error);
-    });
+pub struct FileError {
+    title: &'static str,
+    message: String,
+}
+
+impl FileError {
+    pub fn load(message: String) -> FileError {
+        FileError {
+            title: "Could not load file",
+            message,
+        }
+    }
+}
+
+pub fn file_error(context: &Context, error: &mut Option<FileError>) {
+    let Some(shown) = error.as_ref() else {
+        return;
+    };
+    let mut open = true;
+    egui::Window::new(shown.title)
+        .open(&mut open)
+        .show(context, |ui| {
+            ui.label(&shown.message);
+        });
+    if !open {
+        *error = None;
+    }
 }
 
 pub fn connection_hint(context: &Context, theme: Theme, tip: Pos2, shown: f32) {

@@ -9,7 +9,8 @@ use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
-    self, AttachRing, Gui, HoldRing, Look, LoupeCorner, LoupeView, MenuChoice, Saving, LOUPE_DELAY,
+    self, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeView, MenuChoice, Saving,
+    LOUPE_DELAY,
 };
 use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
@@ -54,7 +55,7 @@ pub struct Neuronify {
     frame_clock: FrameClock,
     simulation_clock: StepClock,
     physics_clock: StepClock,
-    load_error: Option<String>,
+    file_error: Option<FileError>,
     frame_scene_requested: bool,
     saving: Saving,
     speakers: Speakers,
@@ -223,7 +224,7 @@ impl Neuronify {
             frame_clock: FrameClock::default(),
             simulation_clock: StepClock::default(),
             physics_clock: StepClock::default(),
-            load_error: None,
+            file_error: None,
             saving: saving(),
             speakers: Speakers::default(),
             library: Library::open(),
@@ -282,7 +283,7 @@ impl Neuronify {
                 let autosave = Autosave::copy_of(example.name);
                 self.open_world(world, 0.0, DEFAULT_SPEED, autosave)
             }
-            Err(error) => self.load_error = Some(error),
+            Err(error) => self.file_error = Some(FileError::load(error)),
         }
     }
 
@@ -594,6 +595,7 @@ impl Neuronify {
     fn open_world(&mut self, world: hecs::World, time: f64, speed: f64, autosave: Autosave) {
         self.save_edits();
         self.autosave = autosave;
+        self.file_error = None;
         self.world = world;
         self.engine = simulation::Engine::starting_at(time);
         self.time = time;
@@ -615,7 +617,7 @@ impl Neuronify {
         let bytes = std::fs::read(&path).unwrap();
         if let Err(error) = self.open_file(&file_stem(&path), &bytes, true) {
             log::error!("{error}");
-            self.load_error = Some(error);
+            self.file_error = Some(FileError::load(error));
         }
     }
 
@@ -662,7 +664,7 @@ impl visula::Simulation for Neuronify {
                 loaded.and_then(|file| self.open_file(&file.name, &file.bytes, file.picked));
             if let Err(error) = opened {
                 log::error!("{error}");
-                self.load_error = Some(error);
+                self.file_error = Some(FileError::load(error));
             }
         }
         #[cfg(target_arch = "wasm32")]
@@ -823,9 +825,7 @@ impl visula::Simulation for Neuronify {
             }
             return;
         }
-        if let Some(error) = &self.load_error {
-            gui::load_error(context, error);
-        }
+        gui::file_error(context, &mut self.file_error);
         let drawing = self.shows_loupe();
         let controls = gui::Controls {
             editor: &mut self.editor,
