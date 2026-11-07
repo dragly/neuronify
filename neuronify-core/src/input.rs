@@ -8,8 +8,20 @@ const SECOND_FINGER_DELAY: f64 = 0.12;
 pub const HOLD: f64 = 0.33;
 pub const TOUCH_REACH: f64 = 14.0;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn now() -> f64 {
-    chrono::Utc::now().timestamp_micros() as f64 * 1e-6
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    START
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_secs_f64()
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn now() -> f64 {
+    web_sys::window()
+        .and_then(|window| window.performance())
+        .map_or(0.0, |performance| performance.now() * 1e-3)
 }
 
 fn distance(a: PhysicalPosition<f64>, b: PhysicalPosition<f64>) -> f64 {
@@ -301,6 +313,16 @@ impl Touches {
 mod tests {
     use super::*;
     use visula::winit::event::DeviceId;
+
+    #[test]
+    fn the_clock_never_runs_backwards() {
+        let mut last = now();
+        for _ in 0..1000 {
+            let next = now();
+            assert!(next >= last);
+            last = next;
+        }
+    }
 
     fn touch(id: u64, phase: TouchPhase, x: f64, y: f64) -> Touch {
         Touch {

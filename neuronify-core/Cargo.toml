@@ -63,6 +63,7 @@ web-sys = { version = "0.3.69", features = [
     "Location",
     "Navigator",
     "Node",
+    "Performance",
     "Response",
     "ShareData",
     "Storage",

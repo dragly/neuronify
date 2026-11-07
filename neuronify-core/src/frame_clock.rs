@@ -1,19 +1,19 @@
-use chrono::{DateTime, Utc};
+use crate::input::now;
 
 const FPS_LOW_PASS_FACTOR: f64 = 0.05;
 #[cfg(not(target_arch = "wasm32"))]
-const TARGET_FRAME_MS: i64 = 16;
+const TARGET_FRAME_SECONDS: f64 = 0.016;
 const MAX_STEPPED_SECONDS_PER_FRAME: f64 = 0.1;
 
 pub struct FrameClock {
-    last_frame: DateTime<Utc>,
+    last_frame: f64,
     fps: f64,
 }
 
 impl Default for FrameClock {
     fn default() -> FrameClock {
         FrameClock {
-            last_frame: Utc::now(),
+            last_frame: now(),
             fps: 60.0,
         }
     }
@@ -27,8 +27,8 @@ impl FrameClock {
     pub fn tick(&mut self) -> f64 {
         #[cfg(not(target_arch = "wasm32"))]
         self.wait_for_next_frame();
-        let now = Utc::now();
-        let seconds = (now - self.last_frame).num_nanoseconds().unwrap() as f64 * 1e-9;
+        let now = now();
+        let seconds = now - self.last_frame;
         let fps = 1.0 / seconds.max(1e-7);
         self.fps = (1.0 - FPS_LOW_PASS_FACTOR) * self.fps + FPS_LOW_PASS_FACTOR * fps;
         self.last_frame = now;
@@ -37,12 +37,9 @@ impl FrameClock {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn wait_for_next_frame(&self) {
-        let remaining =
-            chrono::Duration::milliseconds(TARGET_FRAME_MS) - (Utc::now() - self.last_frame);
-        if remaining > chrono::Duration::zero() {
-            std::thread::sleep(std::time::Duration::from_millis(
-                remaining.num_milliseconds() as u64,
-            ));
+        let remaining = TARGET_FRAME_SECONDS - (now() - self.last_frame);
+        if remaining > 0.0 {
+            std::thread::sleep(std::time::Duration::from_secs_f64(remaining));
         }
     }
 }
