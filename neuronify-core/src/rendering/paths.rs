@@ -175,9 +175,11 @@ pub fn connection_paths(
             } else {
                 ((entity.id() as f32 * 0.618_034).fract() * 2.0 - 1.0) * MAX_BEND
             };
+            let target = world.get::<&Position>(connection.to).ok()?.position;
+            let end = glided_end(world, entity, target);
             Some((
                 entity,
-                path_of(world, connection, bend, radii, &display, palette)?,
+                path_ending_at(world, connection, end, bend, radii, &display, palette)?,
             ))
         })
         .collect()
@@ -200,6 +202,40 @@ pub fn ending_path(
     path_of(world, &connection, 0.0, &radii, &display, palette)
 }
 
+pub fn ending_path_to(
+    world: &hecs::World,
+    from: Entity,
+    onto: Entity,
+    (end, radius): (Vec3, f32),
+    palette: &Palette,
+) -> Option<ConnectionPath> {
+    let connection = Connection {
+        from,
+        to: onto,
+        strength: 1.0,
+        directional: true,
+    };
+    let mut radii = crate::rendering::compartment_radii(world);
+    radii.insert(onto, radius);
+    let display = NeuronDisplay::of(world);
+    path_ending_at(
+        world,
+        &connection,
+        Some(end),
+        0.0,
+        &radii,
+        &display,
+        palette,
+    )
+}
+
+fn glided_end(world: &hecs::World, connection: Entity, end: Vec3) -> Option<Vec3> {
+    let gliding = *world.get::<&Gliding>(connection).ok()?;
+    let progress = (crate::input::now() - gliding.since) / crate::editor::GLIDE_SECONDS;
+    let left = 1.0 - progress.clamp(0.0, 1.0) as f32;
+    Some(gliding.from.lerp(end, 1.0 - left * left * left))
+}
+
 fn path_of(
     world: &hecs::World,
     connection: &Connection,
@@ -208,10 +244,25 @@ fn path_of(
     display: &NeuronDisplay,
     palette: &Palette,
 ) -> Option<ConnectionPath> {
+    path_ending_at(world, connection, None, bend, radii, display, palette)
+}
+
+fn path_ending_at(
+    world: &hecs::World,
+    connection: &Connection,
+    end: Option<Vec3>,
+    bend: f32,
+    radii: &HashMap<Entity, f32>,
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> Option<ConnectionPath> {
     let from = world.entity(connection.from).ok()?;
     let to = world.entity(connection.to).ok()?;
     let start = from.get::<&Position>()?.position;
-    let end = to.get::<&Position>()?.position;
+    let end = match end {
+        Some(end) => end,
+        None => to.get::<&Position>()?.position,
+    };
     let from_compartment = from.has::<Compartment>();
     let target_radius = radii.get(&connection.to).copied();
     let terminal_radius = match target_radius {

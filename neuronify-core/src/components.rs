@@ -373,6 +373,12 @@ pub struct Dendrite;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Myelin;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Gliding {
+    pub from: Vec3,
+    pub since: f64,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Position {
     pub position: Vec3,

@@ -19,15 +19,18 @@ use crate::simulation::{touch_sensor_near, Touch};
 use crate::tools::{
     ConnectionHint, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool, Tool,
 };
+use attach::{cable_spot, Spot};
 use drag::Drag;
 use history::{History, Recording, Snapshot};
 
+mod attach;
 mod drag;
 mod history;
 mod targets;
 #[cfg(test)]
 mod tests;
 
+pub use attach::{Bead, GLIDE_SECONDS};
 pub use targets::{Shape, Targets};
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
@@ -75,6 +78,7 @@ pub struct Editor {
     ending: Option<Entity>,
     formed: bool,
     drawn: HashSet<Entity>,
+    spot: Option<Spot>,
 }
 
 impl Editor {
@@ -121,6 +125,17 @@ impl Editor {
             has::<Compartment>(world, ending) && !connected(world, axon.from, ending)
         })?;
         Some((axon.from, ending))
+    }
+
+    pub fn bead(&self, world: &World) -> Option<Bead> {
+        let connection = self.connection_tool.as_ref()?;
+        let spot = self.spot?;
+        Some(Bead {
+            from: connection.from,
+            onto: spot.nearest(world),
+            at: spot.at(world)?,
+            radius: spot.radius,
+        })
     }
 
     pub fn drawn(&self) -> &HashSet<Entity> {
@@ -213,7 +228,10 @@ impl Editor {
             let measuring = self.tool.meter().is_some() || Meter::of(world, axon.from).is_some();
             if !measuring {
                 if let Some((from, ending)) = self.new_ending(world) {
-                    lay_axon(world, from, ending, true, self.myelinates());
+                    let synapse = lay_axon(world, from, ending, true, self.myelinates());
+                    if let Some(at) = self.spot.and_then(|spot| spot.at(world)) {
+                        glide(world, synapse, at);
+                    }
                 }
             } else if let Some(meter) = self.shortcut.filter(|_| !self.wired) {
                 measure_where_released(world, meter, axon);
@@ -250,6 +268,7 @@ impl Editor {
         self.shortcut = None;
         self.wired = false;
         self.ending = None;
+        self.spot = None;
         self.formed = false;
         self.drawn.clear();
         if let Some(recording) = self.recording.take() {
@@ -751,6 +770,7 @@ impl Editor {
             true => INTERNODE_LENGTH,
             false => MIN_CREATION_DISTANCE_AXON,
         };
+        let too_near = self.too_near_previous(world, position, spacing);
         let Some(connection) = &mut self.connection_tool else {
             return;
         };
@@ -768,22 +788,36 @@ impl Editor {
             })
         });
         let on_soma = target.is_some_and(|(target, _)| !has::<Compartment>(world, target));
-        self.ending = match target {
-            Some((target, _)) if target == from => self.ending.filter(|&ending| ending == from),
-            Some((target, target_position)) if on_soma => {
-                if !connected(world, from, target) {
-                    lay_axon(world, from, target, true, myelinated);
-                    self.formed = true;
+        if on_soma {
+            self.spot = None;
+            self.ending = match target {
+                Some((target, _)) if target == from => self.ending.filter(|&ending| ending == from),
+                Some((target, target_position)) => {
+                    if !connected(world, from, target) {
+                        lay_axon(world, from, target, true, myelinated);
+                        self.formed = true;
+                    }
+                    if !shift_down {
+                        connection.start = target_position;
+                        connection.from = target;
+                    }
+                    Some(target)
                 }
-                if !shift_down {
-                    connection.start = target_position;
-                    connection.from = target;
-                }
-                Some(target)
-            }
-            target => target.map(|(target, _)| target),
-        };
-        if target.is_some() || self.too_near_previous(world, position, spacing) {
+                None => None,
+            };
+            return;
+        }
+        let staying = self.ending.map(|ending| cable_network(world, ending));
+        let spot =
+            cable_spot(world, position, reach, |entity| !own.contains(&entity)).or_else(|| {
+                let staying = staying?;
+                cable_spot(world, position, STAYING_REACH * reach, |entity| {
+                    staying.contains(&entity) && !own.contains(&entity)
+                })
+            });
+        self.spot = spot;
+        self.ending = spot.map(|spot| spot.nearest(world));
+        if spot.is_some() || too_near {
             return;
         }
         let Some(from) = self.back_up(world, recording, from, position, spacing) else {
@@ -792,13 +826,24 @@ impl Editor {
         let Ok(neuron_type) = world.get::<&NeuronType>(from).map(|t| *t) else {
             return;
         };
-        let compartment = spawn_compartment(world, position, neuron_type);
-        lay_axon(world, from, compartment, false, myelinated);
-        self.previous_creation = Some(compartment);
+        let Some(steps) = steps_towards(world, from, position, spacing) else {
+            return;
+        };
+        let mut previous = from;
+        for &at in &steps {
+            let compartment = spawn_compartment(world, at, neuron_type);
+            lay_axon(world, previous, compartment, false, myelinated);
+            previous = compartment;
+        }
+        self.grew(previous, steps, position);
+    }
+
+    fn grew(&mut self, tip: Entity, steps: Vec<Vec3>, position: Vec3) {
+        self.previous_creation = Some(tip);
         self.connection_tool = Some(ConnectionTool {
-            start: position,
+            start: steps.last().copied().unwrap_or(position),
             end: position,
-            from: compartment,
+            from: tip,
         });
     }
 
@@ -816,15 +861,13 @@ impl Editor {
         let Some(from) = self.back_up(world, recording, from, position, SEGMENT_LENGTH) else {
             return;
         };
-        let Some(tip) = lay_dendrite(world, from, position) else {
+        let Some(steps) = steps_towards(world, from, position, SEGMENT_LENGTH) else {
             return;
         };
-        self.previous_creation = Some(tip);
-        self.connection_tool = Some(ConnectionTool {
-            start: position,
-            end: position,
-            from: tip,
-        });
+        let Some(tip) = lay_dendrite(world, from, &steps) else {
+            return;
+        };
+        self.grew(tip, steps, position);
     }
 
     fn back_up(
@@ -1001,13 +1044,21 @@ fn dendrite_sources(world: &World) -> Vec<(Entity, Vec3)> {
     .concat()
 }
 
-fn lay_dendrite(world: &mut World, from: Entity, end: Vec3) -> Option<Entity> {
+fn steps_towards(world: &World, from: Entity, position: Vec3, spacing: f32) -> Option<Vec<Vec3>> {
     let start = world.get::<&Position>(from).ok()?.position;
+    let direction = (position - start).normalize_or_zero();
+    let steps = (start.distance(position) / spacing).floor().max(1.0) as usize;
+    Some(
+        (1..=steps)
+            .map(|step| start + direction * spacing * step as f32)
+            .collect(),
+    )
+}
+
+fn lay_dendrite(world: &mut World, from: Entity, steps: &[Vec3]) -> Option<Entity> {
     let neuron_type = *world.get::<&NeuronType>(from).ok()?;
-    let segments = ((start.distance(end) / SEGMENT_LENGTH).round() as usize).max(1);
     let mut previous = from;
-    for step in 1..=segments {
-        let position = start.lerp(end, step as f32 / segments as f32);
+    for &position in steps {
         let compartment = spawn_compartment(world, position, neuron_type);
         world.insert_one(compartment, Dendrite).unwrap();
         spawn_cable(world, previous, compartment, false);
@@ -1217,6 +1268,11 @@ fn cable_into(world: &World, tip: Entity) -> Option<(Entity, Entity)> {
         .iter()
         .find(|(_, cable)| cable.to == tip && !cable.directional)
         .map(|(cable, connection)| (cable, connection.from))
+}
+
+fn glide(world: &mut World, synapse: Entity, from: Vec3) {
+    let since = crate::input::now();
+    world.insert_one(synapse, Gliding { from, since }).ok();
 }
 
 fn has<T: Component>(world: &World, entity: Entity) -> bool {
