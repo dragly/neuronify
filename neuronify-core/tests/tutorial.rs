@@ -1,3 +1,7 @@
+#[allow(dead_code)]
+#[path = "../generators/write_tutorial.rs"]
+mod write_tutorial;
+
 use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::dendrites::compartment_tree;
@@ -638,3 +642,15 @@ with_either_channels!(
     the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through,
     the_top_spike_runs_down_to_the_red_ending_and_stops_there,
 );
+
+#[test]
+fn the_bundled_tutorial_files_match_their_generator() {
+    for (file, world) in write_tutorial::canvases() {
+        let path = format!("{}/examples/tutorial/{file}", env!("CARGO_MANIFEST_DIR"));
+        let bundled = std::fs::read(path).unwrap();
+        let written =
+            neuronify_core::serialization::save(&world, 0.0, neuronify_core::DEFAULT_SPEED)
+                .unwrap();
+        assert_eq!(bundled, written, "{file} is out of date");
+    }
+}
