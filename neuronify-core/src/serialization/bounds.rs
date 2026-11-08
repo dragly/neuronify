@@ -158,6 +158,11 @@ pub fn bound(world: &mut World) {
         within(&mut state.open, CONDUCTANCES, Microsiemens::ZERO);
         state.pending.retain(|time| time.is_finite());
     }
+    for events in world.query_mut::<&mut PendingEvents>() {
+        for list in [&mut events.adaptation, &mut events.burst, &mut events.fire] {
+            list.retain(|time| time.is_finite());
+        }
+    }
     for generator in world.query_mut::<&mut RegularSpikeGenerator>() {
         let default = RegularSpikeGenerator::default();
         within(&mut generator.frequency, SPIKE_RATES, default.frequency);
