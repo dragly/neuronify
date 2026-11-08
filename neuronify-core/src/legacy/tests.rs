@@ -753,7 +753,7 @@ fn retinas_become_visual_inputs_with_their_receptive_fields() {
     assert_eq!(
         edge.field,
         ReceptiveField::Edge {
-            angle: 4.71238898038469
+            angle: std::f64::consts::PI
         }
     );
     assert_eq!((edge.sensitivity, edge.show_field), (Hertz(1000.0), true));

@@ -1,3 +1,5 @@
+use std::f64::consts::{FRAC_PI_2, TAU};
+
 use glam::Vec3;
 use hecs::{DynamicBundle, Entity, EntityBuilder, World};
 
@@ -269,7 +271,7 @@ fn receptive_field(node: &LegacyNode) -> ReceptiveField {
             y: number("yOffset"),
         },
         Some("kernels/RectangularKernel.qml") => ReceptiveField::Edge {
-            angle: number("orientation"),
+            angle: (FRAC_PI_2 - number("orientation")).rem_euclid(TAU),
         },
         _ => ReceptiveField::Orientation {
             angle: number("theta"),

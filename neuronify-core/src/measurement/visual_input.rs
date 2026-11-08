@@ -1,4 +1,4 @@
-use std::f64::consts::{FRAC_PI_2, TAU};
+use std::f64::consts::TAU;
 
 use glam::Vec3;
 use neuronify_engine::units::{Hertz, Milliseconds};
@@ -86,7 +86,7 @@ impl ReceptiveField {
             x: 0.0,
             y: 0.0,
         },
-        ReceptiveField::Edge { angle: FRAC_PI_2 },
+        ReceptiveField::Edge { angle: 0.0 },
     ];
 
     pub fn name(self) -> &'static str {
@@ -132,7 +132,7 @@ impl ReceptiveField {
                 }
             }
             ReceptiveField::Edge { angle } => {
-                if x * angle.sin() + y * angle.cos() < 0.0 {
+                if x * angle.cos() + y * angle.sin() < 0.0 {
                     -1.0
                 } else {
                     1.0
@@ -219,6 +219,8 @@ pub fn visual_input_frame(center: Vec3) -> Frame {
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::FRAC_PI_2;
+
     use super::*;
 
     fn input(field: ReceptiveField, pattern: Pattern, pattern_angle: f64) -> VisualInput {
@@ -304,7 +306,7 @@ mod tests {
                 x: 0.25,
                 y: 0.0,
             },
-            ReceptiveField::Edge { angle: FRAC_PI_2 },
+            ReceptiveField::Edge { angle: 0.0 },
         ];
         for field in fields {
             let dark = input(field, Pattern::Bar, 0.0);
@@ -353,10 +355,21 @@ mod tests {
 
     #[test]
     fn an_edge_field_is_bright_on_one_side_and_dark_on_the_other() {
-        let edge = ReceptiveField::Edge { angle: FRAC_PI_2 };
+        let edge = ReceptiveField::Edge { angle: 0.0 };
         assert_eq!(edge.weight(-0.3, 0.0), -1.0);
         assert_eq!(edge.weight(0.3, 0.0), 1.0);
         assert!(mean_response(&input(edge, Pattern::Grating, 0.0)).abs() < 0.05);
+    }
+
+    #[test]
+    fn an_edge_field_faces_the_same_way_as_a_picture_at_its_angle() {
+        for quarter in 0..4 {
+            let angle = quarter as f64 * FRAC_PI_2;
+            let edge = ReceptiveField::Edge { angle };
+            let (x, y) = (0.3 * angle.cos(), 0.3 * angle.sin());
+            assert_eq!(edge.weight(x, y), 1.0, "{angle}");
+            assert_eq!(edge.weight(-x, -y), -1.0, "{angle}");
+        }
     }
 
     #[test]

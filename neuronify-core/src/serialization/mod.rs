@@ -623,6 +623,31 @@ mod tests {
     }
 
     #[test]
+    fn version_15_edge_fields_keep_the_side_they_face() {
+        use crate::measurement::visual_input::{ReceptiveField, VisualInput};
+        let bytes = include_bytes!("fixtures/v15.neuronify");
+        let old = v15::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
+        let new = load(bytes).unwrap().world;
+        let mut checked = 0;
+        for (entity, input) in old.query::<(Entity, &VisualInput)>().iter() {
+            let ReceptiveField::Edge { angle } = input.field else {
+                continue;
+            };
+            let upgraded = new.get::<&VisualInput>(entity).unwrap().field;
+            for (x, y) in [(0.3, 0.1), (-0.2, 0.4), (0.1, -0.3), (-0.4, -0.1)] {
+                let faced = if x * angle.sin() + y * angle.cos() < 0.0 {
+                    -1.0
+                } else {
+                    1.0
+                };
+                assert_eq!(upgraded.weight(x, y), faced);
+            }
+            checked += 1;
+        }
+        assert!(checked > 0);
+    }
+
+    #[test]
     fn version_14_counts_meter_times_in_milliseconds() {
         let bytes = include_bytes!("fixtures/v14.neuronify");
         let old = v14::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
