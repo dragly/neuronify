@@ -5,13 +5,15 @@ mod folder;
 
 use chrono::{DateTime, Utc};
 
+use crate::components::Seconds;
+
 #[cfg(target_arch = "wasm32")]
 use browser::Store;
 #[cfg(not(target_arch = "wasm32"))]
 use folder::Store;
 
 pub const UNTITLED: &str = "Untitled";
-const AUTOSAVE_DELAY_SECONDS: f64 = 1.5;
+const AUTOSAVE_DELAY: Seconds = Seconds(1.5);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SavedSimulation {
@@ -192,7 +194,7 @@ fn new_id() -> String {
 pub struct Autosave {
     id: String,
     name: String,
-    last_edit: Option<f64>,
+    last_edit: Option<Seconds>,
 }
 
 impl Autosave {
@@ -214,7 +216,7 @@ impl Autosave {
         }
     }
 
-    pub fn edited(&mut self, now: f64) {
+    pub fn edited(&mut self, now: Seconds) {
         self.last_edit = Some(now);
     }
 
@@ -226,9 +228,9 @@ impl Autosave {
         self.last_edit.is_some()
     }
 
-    pub fn is_due(&self, now: f64) -> bool {
+    pub fn is_due(&self, now: Seconds) -> bool {
         self.last_edit
-            .is_some_and(|edited| now - edited >= AUTOSAVE_DELAY_SECONDS)
+            .is_some_and(|edited| now - edited >= AUTOSAVE_DELAY)
     }
 
     pub fn save(&mut self, library: &mut Library, bytes: Vec<u8>) {
@@ -335,17 +337,17 @@ mod tests {
     fn a_copy_is_saved_on_its_first_edit_and_updated_after_that() {
         let mut library = Library::default();
         let mut autosave = Autosave::copy_of("Leaky");
-        assert!(!autosave.is_due(10.0));
+        assert!(!autosave.is_due(Seconds(10.0)));
 
-        autosave.edited(1.0);
-        assert!(!autosave.is_due(2.0));
-        assert!(autosave.is_due(2.5));
+        autosave.edited(Seconds(1.0));
+        assert!(!autosave.is_due(Seconds(2.0)));
+        assert!(autosave.is_due(Seconds(2.5)));
         autosave.save(&mut library, vec![1]);
         assert!(!autosave.has_unsaved_edits());
         let id = autosave.id.clone();
         assert_eq!(library.get(&id).unwrap().name, "Leaky");
 
-        autosave.edited(3.0);
+        autosave.edited(Seconds(3.0));
         autosave.save(&mut library, vec![2]);
         assert_eq!(library.simulations().len(), 1);
         assert_eq!(library.get(&id).unwrap().bytes, [2]);
@@ -357,7 +359,7 @@ mod tests {
         let mut copy = Autosave::copy_of("Leaky");
         assert!(!copy.is_in(&library));
 
-        copy.edited(0.0);
+        copy.edited(Seconds(0.0));
         copy.save(&mut library, vec![1]);
 
         assert!(copy.is_in(&library));
@@ -370,7 +372,7 @@ mod tests {
         let mut autosave = Autosave::saved(&library, id.clone());
         library.delete(&id);
 
-        autosave.edited(0.0);
+        autosave.edited(Seconds(0.0));
         autosave.save(&mut library, vec![2]);
         let restored = library.get(&id).unwrap();
         assert_eq!(

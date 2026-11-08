@@ -231,7 +231,7 @@ pub fn ending_path_to(
 
 fn glided_end(world: &hecs::World, connection: Entity, end: Vec3) -> Option<Vec3> {
     let gliding = *world.get::<&Gliding>(connection).ok()?;
-    let progress = (crate::input::now() - gliding.since) / crate::editor::GLIDE_SECONDS;
+    let progress = (crate::input::now() - gliding.since) / crate::editor::GLIDE_DURATION;
     let left = 1.0 - progress.clamp(0.0, 1.0) as f32;
     Some(gliding.from.lerp(end, 1.0 - left * left * left))
 }

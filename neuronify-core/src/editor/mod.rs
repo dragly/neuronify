@@ -30,7 +30,7 @@ mod targets;
 #[cfg(test)]
 mod tests;
 
-pub use attach::{Bead, GLIDE_SECONDS};
+pub use attach::{Bead, GLIDE_DURATION};
 pub use targets::{Shape, Targets};
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
@@ -40,8 +40,8 @@ const CORNER_REACH: f32 = 1.0;
 const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
 const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
-const HINT_SECONDS: f64 = 2.0;
-const HINT_FADE_SECONDS: f64 = 0.25;
+const HINT_DURATION: Seconds = Seconds(2.0);
+const HINT_FADE: Seconds = Seconds(0.25);
 const HINT_LENGTH: f32 = 4.0 * NODE_RADIUS;
 const HINT_SWAY: f32 = NODE_RADIUS;
 const HINT_SEGMENTS: usize = 8;
@@ -158,7 +158,7 @@ impl Editor {
         painting.then_some(element)
     }
 
-    pub fn offer_connection(&mut self, now: f64) {
+    pub fn offer_connection(&mut self, now: Seconds) {
         let Some(connection) = &self.connection_tool else {
             return;
         };
@@ -173,9 +173,9 @@ impl Editor {
         }
     }
 
-    pub fn connection_hint(&mut self, world: &World, now: f64) -> Option<ConnectionHint> {
+    pub fn connection_hint(&mut self, world: &World, now: Seconds) -> Option<ConnectionHint> {
         let age = now - self.offer.as_ref()?.since;
-        if age >= HINT_SECONDS {
+        if age >= HINT_DURATION {
             self.offer = None;
             return None;
         }
@@ -183,9 +183,9 @@ impl Editor {
             return None;
         }
         let (_, start) = self.offered_source(world)?;
-        let shown = (age.min(HINT_SECONDS - age) / HINT_FADE_SECONDS).clamp(0.0, 1.0) as f32;
+        let shown = (age.min(HINT_DURATION - age) / HINT_FADE).clamp(0.0, 1.0) as f32;
         let grown = 1.0 - (1.0 - shown).powi(3);
-        let wiggle = age as f32 * TAU * HINT_WIGGLES_PER_SECOND;
+        let wiggle = age.0 as f32 * TAU * HINT_WIGGLES_PER_SECOND;
         let mut string: Vec<Vec3> = (0..=HINT_SEGMENTS)
             .map(|index| {
                 let along = index as f32 / HINT_SEGMENTS as f32;

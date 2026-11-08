@@ -14,13 +14,14 @@ use neuronify_core::simulation::model::prepare;
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
     Celsius, Connection, CurrentClamp, Label, LeakyNeuron, Milliseconds, Millivolts, Nanoamperes,
-    NoteSize, Position, Preparation, Setting, Temperature, TouchSensor, NODE_RADIUS,
+    NoteSize, Position, Preparation, Seconds, Setting, Temperature, TouchSensor, NODE_RADIUS,
 };
 
 const PHONE_WIDTH: f32 = 27.0;
 
 fn on_screen(seconds: f64) -> Milliseconds {
-    seconds * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND * DT
+    let steps = Seconds(seconds) * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND;
+    steps * DT
 }
 
 const STEPS_PER_CALL: u32 = 40;

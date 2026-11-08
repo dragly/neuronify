@@ -5,6 +5,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SizedSample};
 
 use super::synthesize;
+use crate::components::{Hertz, Seconds};
 use crate::measurement::loudspeaker::Sound;
 
 const MAXIMUM_VOICES: usize = 32;
@@ -61,7 +62,7 @@ impl Output {
 
     pub fn unlock(&self) {}
 
-    pub fn play(&mut self, sound: Sound, volume: f32, delay: f64) {
+    pub fn play(&mut self, sound: Sound, volume: f32, delay: Seconds) {
         let Ok(mut voices) = self.voices.lock() else {
             return;
         };
@@ -70,7 +71,7 @@ impl Output {
         }
         voices.push(Voice {
             samples: self.sounds[&sound].clone(),
-            position: -((delay * self.sample_rate as f64) as isize),
+            position: -((delay * Hertz(self.sample_rate as f64)) as isize),
             volume,
         });
     }

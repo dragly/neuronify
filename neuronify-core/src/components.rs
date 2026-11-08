@@ -381,7 +381,7 @@ pub struct Myelin;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Gliding {
     pub from: Vec3,
-    pub since: f64,
+    pub since: Seconds,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

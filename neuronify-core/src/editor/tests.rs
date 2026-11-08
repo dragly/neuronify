@@ -998,7 +998,7 @@ fn offer_from_neuron(world: &mut World) -> (Entity, Editor) {
     let a = neuron(world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(world, at(0.5, 0.0), false);
-    editor.offer_connection(10.0);
+    editor.offer_connection(Seconds(10.0));
     editor.release(world);
     (a, editor)
 }
@@ -1007,18 +1007,18 @@ fn offer_from_neuron(world: &mut World) -> (Entity, Editor) {
 fn tapping_a_neuron_while_adding_offers_a_connection_for_two_seconds() {
     let mut world = World::new();
     let (a, mut editor) = offer_from_neuron(&mut world);
-    let hint = editor.connection_hint(&world, 11.0).unwrap();
+    let hint = editor.connection_hint(&world, Seconds(11.0)).unwrap();
     let bead = hint.string[HINT_SEGMENTS];
     assert_eq!(hint.string[0], position(&world, a));
     assert_eq!(bead.y, HINT_LENGTH);
     assert!((hint.string[HINT_SEGMENTS + 1].distance(bead) - TERMINAL_INSET).abs() < 1e-5);
     assert!(hint.label.x > bead.x);
     assert_eq!(hint.shown, 1.0);
-    let later = editor.connection_hint(&world, 11.3).unwrap();
+    let later = editor.connection_hint(&world, Seconds(11.3)).unwrap();
     assert!(later.string[HINT_SEGMENTS].distance(bead) > 0.1);
     assert_eq!(later.label, hint.label);
-    assert_eq!(editor.connection_hint(&world, 12.0), None);
-    assert_eq!(editor.connection_hint(&world, 11.0), None);
+    assert_eq!(editor.connection_hint(&world, Seconds(12.0)), None);
+    assert_eq!(editor.connection_hint(&world, Seconds(11.0)), None);
 }
 
 #[test]
@@ -1026,9 +1026,9 @@ fn placing_an_input_offers_no_connection() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::CurrentSource));
     editor.edit(&mut world, at(0.0, 0.0), false);
-    editor.offer_connection(10.0);
+    editor.offer_connection(Seconds(10.0));
     editor.release(&world);
-    assert_eq!(editor.connection_hint(&world, 11.0), None);
+    assert_eq!(editor.connection_hint(&world, Seconds(11.0)), None);
 }
 
 #[test]
@@ -1038,9 +1038,9 @@ fn tapping_a_meter_with_a_meter_tool_offers_a_wire_to_pull_onto_a_neuron() {
     let speaker = Meter::Loudspeaker.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Loudspeaker);
     editor.edit(&mut world, at(0.3, 0.0), false);
-    editor.offer_connection(10.0);
+    editor.offer_connection(Seconds(10.0));
     editor.lift(&mut world);
-    let hint = editor.connection_hint(&world, 11.0).unwrap();
+    let hint = editor.connection_hint(&world, Seconds(11.0)).unwrap();
     assert_eq!(hint.string[0], at(0.0, 0.0));
     assert!(measured(&world, speaker).is_empty());
 
@@ -1056,9 +1056,13 @@ fn placing_a_meter_or_tapping_a_neuron_with_a_meter_tool_offers_no_wire() {
         neuron(&mut world, at(0.0, 0.0));
         let mut editor = editor(Tool::Voltmeter);
         editor.edit(&mut world, press, false);
-        editor.offer_connection(10.0);
+        editor.offer_connection(Seconds(10.0));
         editor.lift(&mut world);
-        assert_eq!(editor.connection_hint(&world, 11.0), None, "{press}");
+        assert_eq!(
+            editor.connection_hint(&world, Seconds(11.0)),
+            None,
+            "{press}"
+        );
         assert_eq!(editor_meters(&world).len(), 1, "{press}");
     }
 }
@@ -1077,7 +1081,7 @@ fn pulling_the_offered_connection_connects() {
 fn pressing_where_the_hint_was_adds_once_it_is_gone() {
     let mut world = World::new();
     let (_, mut editor) = offer_from_neuron(&mut world);
-    assert_eq!(editor.connection_hint(&world, 12.5), None);
+    assert_eq!(editor.connection_hint(&world, Seconds(12.5)), None);
     drag(&mut editor, &mut world, &[at(3.0, 0.0)]);
     assert_eq!(count::<LeakyNeuron>(&world), 2);
 }

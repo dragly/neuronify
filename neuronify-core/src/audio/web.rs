@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use web_sys::{AudioBuffer, AudioContext};
 
 use super::synthesize;
+use crate::components::Seconds;
 use crate::measurement::loudspeaker::Sound;
 
 pub struct Output {
@@ -34,13 +35,18 @@ impl Output {
         let _ = self.context.resume();
     }
 
-    pub fn play(&mut self, sound: Sound, volume: f32, delay: f64) {
+    pub fn play(&mut self, sound: Sound, volume: f32, delay: Seconds) {
         if let Err(error) = self.try_play(sound, volume, delay) {
             log::warn!("Could not play a sound: {error:?}");
         }
     }
 
-    fn try_play(&self, sound: Sound, volume: f32, delay: f64) -> Result<(), wasm_bindgen::JsValue> {
+    fn try_play(
+        &self,
+        sound: Sound,
+        volume: f32,
+        delay: Seconds,
+    ) -> Result<(), wasm_bindgen::JsValue> {
         let Some(buffer) = self.sounds.get(&sound) else {
             return Ok(());
         };
@@ -50,6 +56,6 @@ impl Output {
         gain.gain().set_value(volume);
         source.connect_with_audio_node(&gain)?;
         gain.connect_with_audio_node(&self.context.destination())?;
-        source.start_with_when(self.context.current_time() + delay)
+        source.start_with_when(self.context.current_time() + delay.0)
     }
 }
