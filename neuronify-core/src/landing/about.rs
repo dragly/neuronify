@@ -50,7 +50,7 @@ pub enum AboutChoice {
 pub struct AboutScreen {
     version: &'static str,
     license_shown: bool,
-    third_party: Option<ThirdParty>,
+    third_party: Option<Result<ThirdParty, String>>,
     opened: Option<usize>,
 }
 
@@ -149,19 +149,30 @@ impl AboutScreen {
             };
             self.opened = None;
         }
-        if let Some(third_party) = &self.third_party {
-            ui.add_space(PARAGRAPH_GAP);
-            for (index, package) in third_party.packages.iter().enumerate() {
-                let opened = self.opened == Some(index);
-                if package_row(ui, colors, &package.title(), &package.license).clicked() {
-                    self.opened = (!opened).then_some(index);
-                }
-                if opened {
-                    for &text in &package.texts {
-                        license_text(ui, colors, &third_party.texts[text]);
+        match &self.third_party {
+            Some(Ok(third_party)) => {
+                ui.add_space(PARAGRAPH_GAP);
+                for (index, package) in third_party.packages.iter().enumerate() {
+                    let opened = self.opened == Some(index);
+                    if package_row(ui, colors, &package.title(), &package.license).clicked() {
+                        self.opened = (!opened).then_some(index);
+                    }
+                    if opened {
+                        for text in package
+                            .texts
+                            .iter()
+                            .filter_map(|&text| third_party.texts.get(text))
+                        {
+                            license_text(ui, colors, text);
+                        }
                     }
                 }
             }
+            Some(Err(error)) => {
+                ui.add_space(PARAGRAPH_GAP);
+                paragraph(ui, colors, error);
+            }
+            None => {}
         }
         ui.add_space(40.0);
         back
@@ -340,7 +351,7 @@ mod tests {
 
     #[test]
     fn the_third_party_licenses_open_one_package_at_a_time() {
-        let third_party = third_party::load();
+        let third_party = third_party::load().unwrap();
         let first = &third_party.packages[0];
         let second = &third_party.packages[1];
         let mut page = Page::open();

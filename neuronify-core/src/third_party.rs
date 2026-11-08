@@ -22,9 +22,11 @@ impl Package {
 
 const COMPRESSED: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/third-party-licenses.deflate"));
 
-pub fn load() -> ThirdParty {
-    let list = miniz_oxide::inflate::decompress_to_vec(COMPRESSED).unwrap();
-    serde_json::from_slice(&list).unwrap()
+pub fn load() -> Result<ThirdParty, String> {
+    let list = miniz_oxide::inflate::decompress_to_vec(COMPRESSED)
+        .map_err(|error| format!("Could not unpack the list of licenses: {error}"))?;
+    serde_json::from_slice(&list)
+        .map_err(|error| format!("Could not read the list of licenses: {error}"))
 }
 
 #[cfg(test)]
@@ -34,12 +36,12 @@ mod tests {
     #[test]
     fn the_app_carries_the_generated_list() {
         let generated = include_str!("../assets/third-party-licenses.json");
-        assert_eq!(load(), serde_json::from_str(generated).unwrap());
+        assert_eq!(load().unwrap(), serde_json::from_str(generated).unwrap());
     }
 
     #[test]
     fn every_package_comes_with_license_texts() {
-        let third_party = load();
+        let third_party = load().unwrap();
         for package in &third_party.packages {
             assert!(
                 !package.texts.is_empty(),
