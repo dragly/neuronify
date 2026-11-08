@@ -1340,6 +1340,22 @@ fn the_editor_knows_whether_a_press_landed_on_the_background() {
 }
 
 #[test]
+fn a_visual_input_pressed_near_its_corner_moves() {
+    let mut world = World::new();
+    let input = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let near_corner = visual_input_frame(at(0.0, 0.0)).point(0.95, 0.95);
+    let mut editor = editor(Tool::Edit);
+
+    drag(
+        &mut editor,
+        &mut world,
+        &[near_corner, near_corner + at(2.0, 1.0)],
+    );
+
+    assert!(position(&world, input).abs_diff_eq(at(2.0, 1.0), 1e-5));
+}
+
+#[test]
 fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
