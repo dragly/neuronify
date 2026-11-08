@@ -218,6 +218,10 @@ impl Autosave {
         self.last_edit = Some(now);
     }
 
+    pub fn is_in(&self, library: &Library) -> bool {
+        library.get(&self.id).is_some()
+    }
+
     pub fn has_unsaved_edits(&self) -> bool {
         self.last_edit.is_some()
     }
@@ -345,6 +349,18 @@ mod tests {
         autosave.save(&mut library, vec![2]);
         assert_eq!(library.simulations().len(), 1);
         assert_eq!(library.get(&id).unwrap().bytes, [2]);
+    }
+
+    #[test]
+    fn a_copy_is_in_the_library_only_once_it_has_been_saved() {
+        let mut library = Library::default();
+        let mut copy = Autosave::copy_of("Leaky");
+        assert!(!copy.is_in(&library));
+
+        copy.edited(0.0);
+        copy.save(&mut library, vec![1]);
+
+        assert!(copy.is_in(&library));
     }
 
     #[test]

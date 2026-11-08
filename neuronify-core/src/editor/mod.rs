@@ -72,6 +72,7 @@ pub struct Editor {
     adjusting: Option<Snapshot>,
     history: History,
     edited: bool,
+    settings_changed: bool,
     shortcut: Option<Meter>,
     wired: bool,
     presses: Vec<Vec3>,
@@ -253,6 +254,14 @@ impl Editor {
 
     pub fn mark_edited(&mut self) {
         self.edited = true;
+    }
+
+    pub fn mark_settings_changed(&mut self) {
+        self.settings_changed = true;
+    }
+
+    pub fn take_settings_changed(&mut self) -> bool {
+        std::mem::take(&mut self.settings_changed)
     }
 
     pub fn release(&mut self, world: &World) {

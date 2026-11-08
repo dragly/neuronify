@@ -584,7 +584,10 @@ impl Neuronify {
     }
 
     fn note_edits(&mut self) {
-        if self.editor.take_edited() {
+        let edited = self.editor.take_edited();
+        let settings_changed =
+            self.editor.take_settings_changed() && self.autosave.is_in(&self.library);
+        if edited || settings_changed {
             self.autosave.edited(input::now());
             #[cfg(target_arch = "wasm32")]
             self.back_up_edits();
@@ -860,6 +863,7 @@ impl visula::Simulation for Neuronify {
         }
         gui::file_error(context, &mut self.file_error);
         let drawing = self.shows_loupe();
+        let speed = self.speed;
         let controls = gui::Controls {
             editor: &mut self.editor,
             world: &mut self.world,
@@ -874,6 +878,9 @@ impl visula::Simulation for Neuronify {
             true => None,
             false => self.gui.show(context, controls),
         };
+        if self.speed != speed {
+            self.editor.mark_settings_changed();
+        }
         match chosen {
             Some(MenuChoice::Examples) => self.show_landing(),
             Some(MenuChoice::About) => self.about = Some(AboutScreen::new(self.version)),

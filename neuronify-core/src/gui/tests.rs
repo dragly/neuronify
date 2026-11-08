@@ -1390,6 +1390,16 @@ fn undo_takes_back_a_change_of_temperature() {
 }
 
 #[test]
+fn settings_saved_with_a_simulation_are_reported_but_are_not_edits() {
+    let mut harness = Harness::sized(SCREEN, false, World::new(), None);
+    harness.click(pos2(MARGIN + 20.0, MARGIN + 20.0));
+    harness.click_text("None");
+
+    assert!(harness.editor.take_settings_changed());
+    assert!(!harness.editor.take_edited());
+}
+
+#[test]
 fn the_playback_bar_hides_behind_a_button_on_phones() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Playback");
