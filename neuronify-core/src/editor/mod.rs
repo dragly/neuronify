@@ -472,6 +472,15 @@ impl Editor {
         self.move_origin.is_some()
     }
 
+    pub fn snap_back(&mut self, world: &mut World) {
+        if self.dragging.is_none() && self.resizing.is_none() {
+            return;
+        }
+        if let Some(recording) = self.recording.take() {
+            self.history.revert(recording, world);
+        }
+    }
+
     pub fn tap_while_editing(&mut self) -> bool {
         match self.pressed_connection {
             Some(connection) => {

@@ -254,6 +254,7 @@ impl Neuronify {
 
     fn tap(&mut self, application: &visula::Application) {
         if self.editing() {
+            self.editor.snap_back(&mut self.world);
             if self.editor.tap_while_editing() {
                 self.tapped_background = true;
             } else {
