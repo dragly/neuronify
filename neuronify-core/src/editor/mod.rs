@@ -1372,8 +1372,12 @@ fn resize(
 fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
     let cut = connections_near(world, position);
     let cut_off = cut.iter().filter_map(|&connection| {
-        let to = world.get::<&Connection>(connection).ok()?.to;
-        world.get::<&Compartment>(to).is_ok().then_some(to)
+        let connection = world.get::<&Connection>(connection).ok()?;
+        let cable_beyond = !connection.directional
+            && world
+                .satisfies::<&Compartment>(connection.to)
+                .unwrap_or(false);
+        cable_beyond.then_some(connection.to)
     });
     let near: Vec<Entity> = world
         .query::<&Position>()
@@ -1397,8 +1401,7 @@ fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
         .with::<&Deletable>()
         .iter()
         .filter(|(_, connection)| {
-            world.get::<&Position>(connection.from).is_err()
-                || world.get::<&Position>(connection.to).is_err()
+            !world.contains(connection.from) || !world.contains(connection.to)
         })
         .map(|(entity, _)| entity)
         .collect();
