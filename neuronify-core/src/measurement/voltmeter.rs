@@ -90,7 +90,7 @@ pub fn measured(world: &hecs::World, meter: Entity) -> Vec<(Entity, Entity)> {
             .map_or(0.0, |position| position.position.x)
     };
     let mut wires: Vec<(Entity, Entity)> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .filter(|(_, connection)| connection.to == meter)
         .map(|(wire, connection)| (wire, connection.from))

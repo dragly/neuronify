@@ -11,7 +11,7 @@ use crate::measurement::voltmeter::VoltageSeries;
 pub trait Setting: hecs::Component + Copy + Default {
     fn of(world: &World) -> Self {
         world
-            .query::<&Self>()
+            .query::<(Entity, &Self)>()
             .iter()
             .next()
             .map(|(_, setting)| *setting)
@@ -19,7 +19,7 @@ pub trait Setting: hecs::Component + Copy + Default {
     }
 
     fn set_in(self, world: &mut World) {
-        let existing = world.query_mut::<&mut Self>().into_iter().next();
+        let existing = world.query_mut::<(Entity, &mut Self)>().into_iter().next();
         match existing {
             Some((_, setting)) => *setting = self,
             None => {
@@ -408,20 +408,14 @@ pub struct Selected;
 
 impl Selected {
     pub fn entity(world: &World) -> Option<Entity> {
-        world
-            .query::<()>()
-            .with::<&Selected>()
-            .iter()
-            .next()
-            .map(|(entity, _)| entity)
+        world.query::<Entity>().with::<&Selected>().iter().next()
     }
 
     pub fn set(world: &mut World, entity: Option<Entity>) {
         let previous: Vec<Entity> = world
-            .query_mut::<()>()
+            .query_mut::<Entity>()
             .with::<&Selected>()
             .into_iter()
-            .map(|(entity, _)| entity)
             .collect();
         for previous in previous {
             world.remove_one::<Selected>(previous).unwrap();
@@ -458,7 +452,7 @@ pub fn hidden_connections(world: &World) -> HashSet<Entity> {
     let view = ConnectionView::of(world);
     let selected = Selected::entity(world);
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .without::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .without::<&VoltageSeries>()
         .iter()

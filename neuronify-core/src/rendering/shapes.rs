@@ -169,7 +169,7 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
     let mut shapes = Scene::default();
     let hand = hand_outline();
     for (_, (dynamics, position)) in world
-        .query::<(&GeneratorDynamics, &Position)>()
+        .query::<(Entity, (&GeneratorDynamics, &Position))>()
         .with::<&TouchSensor>()
         .iter()
     {
@@ -189,7 +189,7 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
     }
 
     let targets: HashMap<Entity, Vec3> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .filter(|(_, connection)| world.get::<&CurrentClamp>(connection.from).is_ok())
         .filter_map(|(_, connection)| {
@@ -198,7 +198,7 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
         })
         .collect();
     for (_, (position, clamp)) in world
-        .query::<(&Position, &CurrentClamp)>()
+        .query::<(Entity, (&Position, &CurrentClamp))>()
         .with::<&AlternatingCurrent>()
         .iter()
     {
@@ -216,7 +216,7 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
         shapes.stroke(&wave, 0.11 * NODE_RADIUS, glyph_color());
     }
     for (entity, (position, clamp)) in world
-        .query::<(&Position, &CurrentClamp)>()
+        .query::<(Entity, (&Position, &CurrentClamp))>()
         .without::<&AlternatingCurrent>()
         .iter()
     {
@@ -269,7 +269,7 @@ pub fn speaker_waves() -> Vec<Vec<(f32, f32)>> {
 }
 
 fn collect_loudspeakers(world: &hecs::World, palette: &Palette, shapes: &mut Scene) {
-    for (_, (speaker, position)) in world.query::<(&Loudspeaker, &Position)>().iter() {
+    for (_, (speaker, position)) in world.query::<(Entity, (&Loudspeaker, &Position))>().iter() {
         let center = position.position;
         let color = speaker_color().lerp(
             palette.flash * FLASH_BRIGHTNESS,
@@ -294,7 +294,7 @@ fn collect_loudspeakers(world: &hecs::World, palette: &Palette, shapes: &mut Sce
 /// The rings around spike generators, which flash with the generator.
 pub fn collect_rings(world: &hecs::World, palette: &Palette) -> Vec<TorusData> {
     world
-        .query::<(&GeneratorDynamics, &Position, Option<&NeuronType>)>()
+        .query::<(Entity, (&GeneratorDynamics, &Position, Option<&NeuronType>))>()
         .without::<hecs::Or<&TouchSensor, &VisualInput>>()
         .iter()
         .map(|(_, (dynamics, position, neuron_type))| TorusData {

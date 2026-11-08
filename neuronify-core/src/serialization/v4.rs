@@ -5,7 +5,7 @@ use super::v11::{
 };
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use hecs::World;
+use hecs::{Entity, World};
 
 schema!(
     Position,
@@ -39,7 +39,7 @@ schema!(
 
 pub fn upgrade_from_v3(world: &mut World) {
     let inhibitory: Vec<_> = world
-        .query::<&Inhibitory>()
+        .query::<(Entity, &Inhibitory)>()
         .iter()
         .map(|(entity, _)| entity)
         .collect();

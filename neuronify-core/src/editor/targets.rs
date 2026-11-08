@@ -114,7 +114,7 @@ pub struct Targets {
 impl Targets {
     pub fn new(world: &World) -> Targets {
         let elements = world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .without::<&Annotation>()
             .iter()
             .map(|(entity, element)| (entity, element.position))
@@ -134,7 +134,7 @@ impl Targets {
             .collect();
         pieces.extend(cable_halves(world, &radii));
         let notes = world
-            .query::<(&Position, &NoteSize)>()
+            .query::<(Entity, (&Position, &NoteSize))>()
             .with::<&Annotation>()
             .iter()
             .map(|(entity, (note, size))| (entity, note.position, size.clone()))
@@ -243,7 +243,7 @@ fn cable_halves(world: &World, radii: &HashMap<Entity, f32>) -> Vec<Piece> {
     let mut halves = Vec::new();
     let sheath = sheath_radius(&NeuronDisplay::of(world));
     let cables = world
-        .query::<(&Connection, Option<&Myelin>)>()
+        .query::<(Entity, (&Connection, Option<&Myelin>))>()
         .with::<&Cable>()
         .iter()
         .filter(|(_, (cable, _))| !cable.directional)

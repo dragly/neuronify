@@ -86,11 +86,11 @@ impl Default for Engine {
 }
 
 fn soma(world: &World, entity: Entity) -> bool {
-    world.satisfies::<&LeakyNeuron>(entity).unwrap_or(false)
+    world.satisfies::<&LeakyNeuron>(entity)
 }
 
 fn compartment(world: &World, entity: Entity) -> bool {
-    world.satisfies::<&Compartment>(entity).unwrap_or(false)
+    world.satisfies::<&Compartment>(entity)
 }
 
 fn node(world: &World, entity: Entity) -> bool {
@@ -98,7 +98,7 @@ fn node(world: &World, entity: Entity) -> bool {
 }
 
 fn dendritic(world: &World, entity: Entity) -> bool {
-    world.satisfies::<&Dendrite>(entity).unwrap_or(false)
+    world.satisfies::<&Dendrite>(entity)
 }
 
 fn positive_or<T: Quantity>(value: T, fallback: T) -> T {
@@ -213,7 +213,7 @@ impl Fingerprint {
         mut each: impl FnMut(&mut Self, &T),
     ) {
         self.kind += 1;
-        for (entity, component) in world.query::<&T>().iter() {
+        for (entity, component) in world.query::<(Entity, &T)>().iter() {
             self.entry = 0xcbf2_9ce4_8422_2325 ^ self.kind;
             self.entity(entity);
             each(self, component);
@@ -412,7 +412,7 @@ impl Engine {
 
     pub fn fire(&mut self, world: &World, entity: Entity) {
         if let Some(&(_, generator)) = self.generators.iter().find(|(e, _)| *e == entity) {
-            if world.satisfies::<&TouchSensor>(entity).unwrap_or(false) {
+            if world.satisfies::<&TouchSensor>(entity) {
                 self.network.generators[generator].fire();
             }
             return;
@@ -502,7 +502,7 @@ impl Engine {
         self.touched.clear();
 
         let mut links: Vec<CableLink> = world
-            .query::<(&Connection, &Cable, &Membrane, Option<&Myelin>)>()
+            .query::<(Entity, (&Connection, &Cable, &Membrane, Option<&Myelin>))>()
             .iter()
             .filter(|(_, (connection, ..))| {
                 !connection.directional
@@ -523,10 +523,9 @@ impl Engine {
         links.sort_by_key(|link| link.entity.id());
 
         let mut entities: Vec<Entity> = world
-            .query::<()>()
+            .query::<Entity>()
             .with::<hecs::Or<&LeakyNeuron, &Compartment>>()
             .iter()
-            .map(|(entity, _)| entity)
             .collect();
         entities.sort_by_key(|entity| entity.id());
         let index: HashMap<Entity, usize> = entities
@@ -558,7 +557,7 @@ impl Engine {
         }
 
         let mut terminals: Vec<Entity> = world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .with::<&ConductanceSynapse>()
             .iter()
             .map(|(_, connection)| connection.from)
@@ -762,9 +761,12 @@ impl Engine {
     fn add_mechanisms(&mut self, world: &World) {
         let generators: Vec<(Entity, Rhythm, Milliseconds)> = world
             .query::<(
-                &GeneratorDynamics,
-                Option<&RegularSpikeGenerator>,
-                Option<&PoissonGenerator>,
+                Entity,
+                (
+                    &GeneratorDynamics,
+                    Option<&RegularSpikeGenerator>,
+                    Option<&PoissonGenerator>,
+                ),
             )>()
             .iter()
             .map(|(entity, (dynamics, regular, poisson))| {
@@ -787,7 +789,7 @@ impl Engine {
         }
 
         let mut connections: Vec<(Entity, Connection)> = world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .iter()
             .filter(|(_, connection)| connection.directional)
             .map(|(entity, connection)| (entity, connection.clone()))
@@ -862,10 +864,7 @@ impl Engine {
                     self.network.schedule(time, Target::Current(index));
                 }
                 self.currents.push((entity, index));
-            } else if world
-                .satisfies::<&ImmediateFireSynapse>(entity)
-                .unwrap_or(false)
-            {
+            } else if world.satisfies::<&ImmediateFireSynapse>(entity) {
                 let (Some(source), Some(soma)) = (self.source_of(connection.from), target.soma)
                 else {
                     continue;
@@ -889,7 +888,7 @@ impl Engine {
             self.network.tree_mut(tree).inject(point, current);
         }
         let wired: Vec<(Entity, Entity)> = world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .with::<&VoltageSeries>()
             .iter()
             .map(|(entity, connection)| (entity, connection.from))
@@ -940,7 +939,7 @@ impl Engine {
     }
 
     pub fn reflect(&self, world: &mut World) {
-        for (entity, state) in world.query_mut::<&mut NodeState>() {
+        for (entity, state) in world.query_mut::<(Entity, &mut NodeState)>() {
             if let Some(place) = self.place(entity) {
                 let tree = self.network.tree(place.tree);
                 state.voltage = tree.voltage(place.point);
@@ -1124,7 +1123,7 @@ pub fn visual_inputs(
     duration: Milliseconds,
 ) {
     let rates: Vec<(Entity, Hertz)> = world
-        .query_mut::<&mut VisualInput>()
+        .query_mut::<(Entity, &mut VisualInput)>()
         .into_iter()
         .map(|(entity, input)| {
             input.phase = (input.phase + input.speed.cycles_in(duration)).rem_euclid(1.0);
@@ -1445,12 +1444,7 @@ mod tests {
     fn a_cable_without_thickness_or_with_an_absurd_length_still_runs() {
         let mut world = World::new();
         let axon = chain(&mut world, EXCITATORY, Vec3::ZERO, 4);
-        let cables: Vec<Entity> = world
-            .query::<()>()
-            .with::<&Cable>()
-            .iter()
-            .map(|(cable, _)| cable)
-            .collect();
+        let cables: Vec<Entity> = world.query::<Entity>().with::<&Cable>().iter().collect();
         for (index, &cable) in cables.iter().enumerate() {
             let mut cable = world.get::<&mut Cable>(cable).unwrap();
             match index {
@@ -1547,10 +1541,9 @@ mod tests {
         run.step();
         let axon: Vec<Entity> = run
             .world
-            .query::<()>()
+            .query::<Entity>()
             .with::<&Compartment>()
             .iter()
-            .map(|(compartment, _)| compartment)
             .collect();
         for compartment in axon {
             *run.world.get::<&mut NeuronType>(compartment).unwrap() = NeuronType::Inhibitory;
@@ -1559,7 +1552,7 @@ mod tests {
 
         let open = |world: &World| {
             world
-                .query::<&SynapseState>()
+                .query::<(Entity, &SynapseState)>()
                 .iter()
                 .map(|(_, state)| state.open)
                 .sum::<Microsiemens>()
@@ -1675,7 +1668,11 @@ mod tests {
             let mut world = example.spawn().unwrap();
             let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
             step_simulation(&mut world, &mut engine, &mut time, 40, None);
-            for (_, state) in world.query::<&NodeState>().with::<&Compartment>().iter() {
+            for (_, state) in world
+                .query::<(Entity, &NodeState)>()
+                .with::<&Compartment>()
+                .iter()
+            {
                 assert!(
                     (Millivolts(-90.0)..Millivolts(-40.0)).contains(&state.voltage),
                     "{}: {}",

@@ -32,7 +32,7 @@ fn position(world: &World, entity: Entity) -> Option<Vec3> {
 }
 
 fn is_compartment(world: &World, entity: Entity) -> bool {
-    world.satisfies::<&Compartment>(entity).unwrap_or(false)
+    world.satisfies::<&Compartment>(entity)
 }
 
 impl Spot {
@@ -60,7 +60,7 @@ pub fn cable_spot(
     let radii = compartment_radii(world);
     let sheath = sheath_radius(&NeuronDisplay::of(world));
     world
-        .query::<(&Connection, Option<&Myelin>)>()
+        .query::<(Entity, (&Connection, Option<&Myelin>))>()
         .with::<&Cable>()
         .iter()
         .filter(|(_, (cable, _))| !cable.directional)

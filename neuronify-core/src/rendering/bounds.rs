@@ -5,6 +5,7 @@ use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::colors::Theme;
 use crate::rendering::connections::{arc_points, collect_meter_wires};
 use crate::rendering::scene::collect_scene;
+use hecs::Entity;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bounds {
@@ -33,7 +34,7 @@ pub fn circuit_bounds(world: &hecs::World) -> Option<Bounds> {
 
 pub fn canvas_bounds(world: &hecs::World) -> Option<Bounds> {
     let mut points = circuit_points(world);
-    for (_, (position, size)) in world.query::<(&Position, &NoteSize)>().iter() {
+    for (_, (position, size)) in world.query::<(Entity, (&Position, &NoteSize))>().iter() {
         points.extend(note_corners(position.position, size));
     }
     bounds_around(&points)
@@ -59,7 +60,7 @@ fn circuit_points(world: &hecs::World) -> Vec<Vec3> {
     for wire in collect_meter_wires(world, &palette) {
         points.extend(arc_points(&wire));
     }
-    for (_, (position, size)) in world.query::<(&Position, &MeterSize)>().iter() {
+    for (_, (position, size)) in world.query::<(Entity, (&Position, &MeterSize))>().iter() {
         let frame = Frame::new(position.position, size);
         points.push(frame.corner(Corner::BottomLeft));
         points.push(frame.corner(Corner::TopRight));

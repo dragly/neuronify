@@ -7,7 +7,7 @@ use super::v11::{
 };
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use hecs::World;
+use hecs::{Entity, World};
 
 schema!(
     Position,
@@ -42,7 +42,7 @@ schema!(
 /// like notes made with the note tool.
 pub fn upgrade_from_v1(world: &mut World) {
     let notes: Vec<_> = world
-        .query::<&Annotation>()
+        .query::<(Entity, &Annotation)>()
         .iter()
         .map(|(entity, _)| entity)
         .collect();

@@ -767,6 +767,7 @@ mod tests {
     use crate::components::*;
     use crate::landing::preview::{PreviewMode, PREVIEW_FADE_IN};
     use egui::{Event, PointerButton, Pos2, RawInput, Shape, Vec2};
+    use hecs::Entity;
 
     #[test]
     fn the_loading_screen_shows_the_sections_and_cards_of_the_landing_screen() {
@@ -1047,7 +1048,7 @@ mod tests {
         let Some(LandingChoice::Example { world, .. }) = choice else {
             panic!("clicking the card did not open an example");
         };
-        assert_eq!(world.query::<&LeakyNeuron>().iter().count(), 2);
+        assert_eq!(world.query::<(Entity, &LeakyNeuron)>().iter().count(), 2);
     }
 
     #[test]
@@ -1240,7 +1241,7 @@ mod tests {
         assert_eq!(opened, id);
         assert!(time >= Milliseconds(1000.0));
         assert_eq!(speed, SAVED_SPEED);
-        let neurons = |world: &World| world.query::<&LeakyNeuron>().iter().count();
+        let neurons = |world: &World| world.query::<(Entity, &LeakyNeuron)>().iter().count();
         assert_eq!(neurons(&world), neurons(&saved_example()));
     }
 

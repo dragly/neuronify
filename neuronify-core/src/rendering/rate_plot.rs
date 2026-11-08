@@ -5,6 +5,7 @@ use crate::measurement::firing_rate::{RatePlot, RateSeries, RATE_HISTORY};
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::ConnectionData;
+use hecs::Entity;
 
 const LINE_STRENGTH: f32 = 0.3;
 
@@ -23,7 +24,7 @@ fn line(position_a: Vec3, position_b: Vec3, color: Vec3) -> ConnectionData {
 pub fn collect_rate_plots(world: &hecs::World) -> Vec<ConnectionData> {
     let mut lines = Vec::new();
     for (_, (plot, series, position, size)) in world
-        .query::<(&RatePlot, &RateSeries, &Position, &MeterSize)>()
+        .query::<(Entity, (&RatePlot, &RateSeries, &Position, &MeterSize))>()
         .iter()
     {
         let frame = Frame::new(position.position, size);

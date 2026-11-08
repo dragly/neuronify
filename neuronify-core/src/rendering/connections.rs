@@ -11,6 +11,7 @@ use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{measured, Frame};
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::{ArcData, ConnectionData};
+use hecs::Entity;
 
 const MIN_SEGMENT_LENGTH: f32 = 1e-4;
 const LANE_GAP: f32 = 0.6;
@@ -97,17 +98,21 @@ fn collect_wires(
 ) -> Vec<ArcData> {
     let hidden = hidden_connections(world);
     let meters: Vec<Meter> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&MeterSize>()
         .iter()
-        .filter_map(|(meter, _)| Meter::of(world, meter, &hidden))
+        .filter_map(|meter| Meter::of(world, meter, &hidden))
         .collect();
     let mut wires: Vec<ArcData> = corners(&meters, &obstacles(world))
         .iter()
         .flatten()
         .flat_map(|corners| rounded(corners, palette.neutral))
         .collect();
-    for (speaker, position) in world.query::<&Position>().with::<&Loudspeaker>().iter() {
+    for (speaker, position) in world
+        .query::<(Entity, &Position)>()
+        .with::<&Loudspeaker>()
+        .iter()
+    {
         for (connection, neuron) in measured(world, speaker) {
             if hidden.contains(&connection) {
                 continue;
@@ -122,14 +127,14 @@ fn collect_wires(
 
 fn obstacles(world: &hecs::World) -> Vec<Vec3> {
     let mut obstacles: Vec<Vec3> = world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&LeakyNeuron>()
         .iter()
         .map(|(_, position)| position.position)
         .collect();
     obstacles.extend(
         world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .with::<&GeneratorDynamics>()
             .without::<&VisualInput>()
             .iter()
@@ -152,7 +157,7 @@ impl Meter {
     ) -> Option<Meter> {
         let frame = Frame::of(world, meter)?;
         let measured = measured(world, meter);
-        let rows = if world.satisfies::<&RatePlot>(meter).unwrap_or(false) {
+        let rows = if world.satisfies::<&RatePlot>(meter) {
             1
         } else {
             measured.len()

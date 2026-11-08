@@ -36,7 +36,7 @@ fn fired(engine: &Engine, neuron: Entity) -> usize {
 
 fn spikes(world: &mut World, label: &str, from: Milliseconds, to: Milliseconds) -> usize {
     let neuron = world
-        .query::<&Label>()
+        .query::<(Entity, &Label)>()
         .iter()
         .find(|(_, neuron)| neuron.text == label)
         .unwrap()
@@ -58,7 +58,7 @@ fn the_listened_neuron_clicks_within_seconds_for_stripes_at_its_angle_and_not_ac
         (0..5)
             .map(|_| {
                 let mut world = write_examples::listening_to_a_neuron();
-                for (_, input) in world.query_mut::<&mut VisualInput>() {
+                for (_, input) in world.query_mut::<(Entity, &mut VisualInput)>() {
                     input.pattern_angle = pattern_angle;
                 }
                 spikes(&mut world, "Cortex", Milliseconds::ZERO, on_screen(seconds))
@@ -119,7 +119,7 @@ impl Experiment {
 
     fn neuron(&self, label: &str) -> Entity {
         self.world
-            .query::<&Label>()
+            .query::<(Entity, &Label)>()
             .iter()
             .find(|(_, neuron)| neuron.text == label)
             .unwrap_or_else(|| panic!("no neuron labelled {label}"))
@@ -129,7 +129,7 @@ impl Experiment {
     fn sensors_from_left(&self) -> Vec<Vec3> {
         let mut sensors: Vec<Vec3> = self
             .world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .with::<&TouchSensor>()
             .iter()
             .map(|(_, position)| position.position)
@@ -141,7 +141,7 @@ impl Experiment {
     fn neurons_from_left(&self) -> Vec<Entity> {
         let mut neurons: Vec<(Entity, Vec3)> = self
             .world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .with::<&LeakyNeuron>()
             .iter()
             .map(|(entity, position)| (entity, position.position))
@@ -153,7 +153,7 @@ impl Experiment {
     fn meter_peaks_from_left(&self) -> Vec<Millivolts> {
         let mut wires: Vec<(f32, Millivolts)> = self
             .world
-            .query::<(&Connection, &VoltageSeries)>()
+            .query::<(Entity, (&Connection, &VoltageSeries))>()
             .iter()
             .map(|(_, (wire, series))| {
                 let meter = self.world.get::<&Position>(wire.to).unwrap().position.z;
@@ -172,7 +172,7 @@ impl Experiment {
     fn neurons_from_top(&self) -> Vec<Entity> {
         let mut neurons: Vec<(Entity, Vec3)> = self
             .world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .with::<&LeakyNeuron>()
             .iter()
             .map(|(entity, position)| (entity, position.position))
@@ -273,7 +273,7 @@ fn only_currents_above_the_threshold_fire_and_stronger_ones_fire_faster() {
 fn a_long_refractory_period_caps_the_firing_rate() {
     for (nanoamperes, short_at_least, long_below) in [(1.0, 100, 70), (5.0, 250, 100)] {
         let mut experiment = Experiment::new(write_examples::refractory_period());
-        for (_, source) in experiment.world.query_mut::<&mut CurrentClamp>() {
+        for (_, source) in experiment.world.query_mut::<(Entity, &mut CurrentClamp)>() {
             source.current_output = Nanoamperes(nanoamperes);
         }
         let neurons = [experiment.neuron("2 ms"), experiment.neuron("10 ms")];
@@ -520,7 +520,7 @@ fn each_neuron_fires_when_the_dot_crosses_its_own_field_and_never_on_the_far_sid
         let fired = experiment.spike_counts(Milliseconds(0.1), &neurons);
         let phase = experiment
             .world
-            .query_mut::<&VisualInput>()
+            .query_mut::<(Entity, &VisualInput)>()
             .into_iter()
             .next()
             .unwrap()
@@ -546,11 +546,15 @@ fn each_neuron_fires_when_the_dot_crosses_its_own_field_and_never_on_the_far_sid
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world
-            .query::<(&Position, &NoteSize)>()
+            .query::<(Entity, (&Position, &NoteSize))>()
             .iter()
             .map(|(_, (position, size))| (position.position, size.clone()))
             .collect();
-        for (entity, position) in world.query::<&Position>().without::<&NoteSize>().iter() {
+        for (entity, position) in world
+            .query::<(Entity, &Position)>()
+            .without::<&NoteSize>()
+            .iter()
+        {
             for (center, size) in &notes {
                 let offset = position.position - *center;
                 let inside = offset.x.abs() < size.height / 2.0 + NODE_RADIUS

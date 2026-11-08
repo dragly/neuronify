@@ -393,7 +393,7 @@ impl Editor {
             recording.take(world, entity);
         }
         let dangling: Vec<Entity> = world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .with::<&Deletable>()
             .iter()
             .filter(|(_, connection)| {
@@ -594,10 +594,7 @@ impl Editor {
     }
 
     fn grows_axon(&self, world: &World, from: Entity) -> bool {
-        self.compartments
-            && world
-                .satisfies::<hecs::Or<&LeakyNeuron, &Compartment>>(from)
-                .unwrap_or(false)
+        self.compartments && world.satisfies::<hecs::Or<&LeakyNeuron, &Compartment>>(from)
     }
 
     fn add(
@@ -1005,7 +1002,7 @@ fn dendrites_would_overlap(world: &World, neuron: Entity, position: Vec3) -> boo
 
 fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
     let meters = world
-        .query::<(&Position, &MeterSize)>()
+        .query::<(Entity, (&Position, &MeterSize))>()
         .iter()
         .map(|(meter, (meter_position, size))| {
             let frame = Frame::new(meter_position.position, size);
@@ -1013,7 +1010,7 @@ fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
         })
         .collect::<Vec<_>>();
     let visual_inputs = world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&VisualInput>()
         .iter()
         .map(|(input, center)| (input, center.position, visual_input_frame(center.position)))
@@ -1023,7 +1020,7 @@ fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
 
 fn positions_with<T: Component>(world: &World) -> Vec<(Entity, Vec3)> {
     world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&T>()
         .iter()
         .map(|(entity, position)| (entity, position.position))
@@ -1251,14 +1248,14 @@ fn connect_to_neuron_near(
 
 fn connected(world: &World, from: Entity, to: Entity) -> bool {
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .any(|(_, connection)| connection.from == from && connection.to == to)
 }
 
 fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
     let cables: Vec<(Entity, Entity)> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Cable>()
         .iter()
         .filter(|(_, cable)| !cable.directional)
@@ -1285,7 +1282,7 @@ fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
 
 fn connections_touching(world: &World, entity: Entity) -> Vec<Entity> {
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .filter(|(_, connection)| connection.from == entity || connection.to == entity)
         .map(|(connection, _)| connection)
@@ -1294,7 +1291,7 @@ fn connections_touching(world: &World, entity: Entity) -> Vec<Entity> {
 
 fn cable_into(world: &World, tip: Entity) -> Option<(Entity, Entity)> {
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Cable>()
         .iter()
         .find(|(_, cable)| cable.to == tip && !cable.directional)
@@ -1307,7 +1304,7 @@ fn glide(world: &mut World, synapse: Entity, from: Vec3) {
 }
 
 fn has<T: Component>(world: &World, entity: Entity) -> bool {
-    world.satisfies::<&T>(entity).unwrap_or(false)
+    world.satisfies::<&T>(entity)
 }
 
 fn axon_target(
@@ -1403,14 +1400,12 @@ fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
     let cut = connections_near(world, position);
     let cut_off = cut.iter().filter_map(|&connection| {
         let connection = world.get::<&Connection>(connection).ok()?;
-        let cable_beyond = !connection.directional
-            && world
-                .satisfies::<&Compartment>(connection.to)
-                .unwrap_or(false);
+        let cable_beyond =
+            !connection.directional && world.satisfies::<&Compartment>(connection.to);
         cable_beyond.then_some(connection.to)
     });
     let near: Vec<Entity> = world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&Deletable>()
         .iter()
         .filter(|(_, element)| element.position.distance(position) < ERASE_RADIUS)
@@ -1427,7 +1422,7 @@ fn erase(world: &mut World, recording: &mut Recording, position: Vec3) {
     }
 
     let dangling: Vec<Entity> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Deletable>()
         .iter()
         .filter(|(_, connection)| {
@@ -1452,7 +1447,7 @@ fn connections_near(world: &World, position: Vec3) -> Vec<Entity> {
     );
     let hidden = hidden_connections(world);
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Deletable>()
         .iter()
         .filter(|(entity, connection)| {

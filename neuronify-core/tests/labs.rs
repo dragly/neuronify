@@ -48,7 +48,7 @@ impl Lab {
 
     fn neurons(&self) -> Vec<Entity> {
         self.world
-            .query::<&LeakyNeuron>()
+            .query::<(Entity, &LeakyNeuron)>()
             .iter()
             .map(|(entity, _)| entity)
             .collect()
@@ -135,7 +135,7 @@ impl RingLab {
         ring.sort_by(|&a, &b| angle(a).total_cmp(&angle(b)));
         let mut touch_sensors: Vec<Entity> = lab
             .world
-            .query::<&TouchSensor>()
+            .query::<(Entity, &TouchSensor)>()
             .iter()
             .map(|(entity, _)| entity)
             .collect();
@@ -285,7 +285,7 @@ fn ring_attractors_have_a_spike_detector_with_one_row_per_cell_clockwise_from_th
         let ring = RingLab::load(name);
         let world = &ring.lab.world;
         let detectors: Vec<Entity> = world
-            .query::<&SpikeDetector>()
+            .query::<(Entity, &SpikeDetector)>()
             .iter()
             .map(|(entity, _)| entity)
             .collect();

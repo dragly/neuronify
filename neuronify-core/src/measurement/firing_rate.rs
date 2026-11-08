@@ -76,7 +76,7 @@ fn erf(x: f64) -> f64 {
 
 pub fn record_rates(world: &mut World, time: Milliseconds) {
     let plots: Vec<(Entity, RatePlot)> = world
-        .query::<(&RatePlot, &RateSeries)>()
+        .query::<(Entity, (&RatePlot, &RateSeries))>()
         .iter()
         .filter(|(_, (_, series))| {
             series

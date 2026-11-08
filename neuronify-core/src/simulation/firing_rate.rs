@@ -12,17 +12,16 @@ pub fn update_firing_rates(
     now: Milliseconds,
 ) {
     let new_neurons: Vec<Entity> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&LeakyNeuron>()
         .without::<&FiringRate>()
         .iter()
-        .map(|(entity, _)| entity)
         .collect();
     for entity in new_neurons {
         world.insert_one(entity, FiringRate::default()).unwrap();
     }
     let decay = (-duration / FIRING_RATE_TIME_CONSTANT).exp();
-    for (_, firing_rate) in world.query_mut::<&mut FiringRate>() {
+    for (_, firing_rate) in world.query_mut::<(Entity, &mut FiringRate)>() {
         firing_rate.rate *= decay;
     }
     for spike in spikes {

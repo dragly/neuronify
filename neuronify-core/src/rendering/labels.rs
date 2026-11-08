@@ -13,6 +13,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::notes::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
+use hecs::Entity;
 
 pub const LABEL_HEIGHT: f32 = 0.8;
 pub const LABEL_GAP: f32 = 0.3;
@@ -108,12 +109,15 @@ fn glyphs(application: &visula::Application, theme: Theme) -> Glyphs {
 
 fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
     let mut placed: Vec<(String, Placement, Vec3)> = world
-        .query::<(&Label, &Position)>()
+        .query::<(Entity, (&Label, &Position))>()
         .iter()
         .filter(|(_, (label, _))| !label.text.is_empty())
         .map(|(_, (label, position))| (label.text.clone(), Placement::Above, position.position))
         .collect();
-    for (_, (plot, position, size)) in world.query::<(&RatePlot, &Position, &MeterSize)>().iter() {
+    for (_, (plot, position, size)) in world
+        .query::<(Entity, (&RatePlot, &Position, &MeterSize))>()
+        .iter()
+    {
         let corner = Frame::new(position.position, size).corner(Corner::TopLeft);
         placed.push((
             format!("{:.0} Hz", plot.maximum.0),
@@ -121,8 +125,8 @@ fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
             corner,
         ));
     }
-    for (meter, _) in world
-        .query::<()>()
+    for meter in world
+        .query::<Entity>()
         .with::<&MeterSize>()
         .without::<&RatePlot>()
         .iter()
@@ -142,13 +146,17 @@ fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
             placed.push((label.text.clone(), Placement::TopLeft, corner));
         }
     }
-    for (meter, (position, size)) in world.query::<(&Position, &MeterSize)>().iter() {
+    for (meter, (position, size)) in world.query::<(Entity, (&Position, &MeterSize))>().iter() {
         if measured(world, meter).is_empty() {
             let center = Frame::new(position.position, size).point(0.5, 0.5);
             placed.push((EMPTY_METER_HINT.to_string(), Placement::Center, center));
         }
     }
-    for (speaker, position) in world.query::<&Position>().with::<&Loudspeaker>().iter() {
+    for (speaker, position) in world
+        .query::<(Entity, &Position)>()
+        .with::<&Loudspeaker>()
+        .iter()
+    {
         if measured(world, speaker).is_empty() {
             placed.push((
                 EMPTY_METER_HINT.to_string(),

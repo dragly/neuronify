@@ -32,7 +32,7 @@ fn drag(editor: &mut Editor, world: &mut World, path: &[Vec3]) -> Vec<Option<Pan
 }
 
 fn count<T: Component>(world: &World) -> usize {
-    world.query::<&T>().iter().count()
+    world.query::<(Entity, &T)>().iter().count()
 }
 
 fn neuron(world: &mut World, position: Vec3) -> Entity {
@@ -41,7 +41,7 @@ fn neuron(world: &mut World, position: Vec3) -> Entity {
 
 fn axon_endings(world: &World) -> Vec<Connection> {
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&ConductanceSynapse>()
         .iter()
         .filter(|(_, connection)| connection.directional)
@@ -480,7 +480,7 @@ fn stroke(editor: &mut Editor, world: &mut World, corners: &[Vec3]) {
 
 fn sharpest_bend(world: &World) -> f32 {
     let cables: Vec<(Entity, Entity)> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Cable>()
         .iter()
         .filter(|(_, cable)| !cable.directional)
@@ -571,7 +571,7 @@ fn dendrites_grow_out_from_a_neuron_one_segment_at_a_time() {
     assert_eq!(count::<Compartment>(&world), 5);
     assert!(axon_endings(&world).is_empty());
     let cables: Vec<Connection> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .map(|(_, cable)| cable.clone())
         .collect();
@@ -716,14 +716,14 @@ fn axons_grow_compartments_until_they_reach_a_neuron() {
     let compartments = count::<Compartment>(&world);
     assert!(compartments > 3, "{compartments}");
     let first = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .find(|(_, connection)| connection.from == source)
         .map(|(_, connection)| connection.to)
         .unwrap();
     assert!(world.get::<&Compartment>(first).is_ok());
     let ending = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&ConductanceSynapse>()
         .iter()
         .find(|(_, connection)| connection.to == target)
@@ -890,16 +890,15 @@ fn with_compartments_dragging_from_near_a_dendrite_grows_an_axon_from_it() {
     drag(&mut editor, &mut world, &path);
 
     assert_eq!(count::<LeakyNeuron>(&world), 1);
-    let grown_from_dendrite =
-        world
-            .query::<&Connection>()
-            .with::<&Cable>()
-            .iter()
-            .any(|(_, cable)| {
-                world.get::<&Dendrite>(cable.from).is_ok()
-                    && world.get::<&Dendrite>(cable.to).is_err()
-                    && world.get::<&Compartment>(cable.to).is_ok()
-            });
+    let grown_from_dendrite = world
+        .query::<(Entity, &Connection)>()
+        .with::<&Cable>()
+        .iter()
+        .any(|(_, cable)| {
+            world.get::<&Dendrite>(cable.from).is_ok()
+                && world.get::<&Dendrite>(cable.to).is_err()
+                && world.get::<&Compartment>(cable.to).is_ok()
+        });
     assert!(grown_from_dendrite);
 }
 
@@ -1135,7 +1134,12 @@ fn erasing_removes_what_is_under_the_pointer() {
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
-    let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+    let a = world
+        .query::<(Entity, &LeakyNeuron)>()
+        .iter()
+        .next()
+        .unwrap()
+        .0;
     let b = neuron(&mut world, at(0.0, 10.0));
     spawn_synapse(&mut world, a, b);
 
@@ -1173,7 +1177,12 @@ fn erasing_the_selection_takes_its_dendrites_and_connections_but_leaves_its_volt
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
-    let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+    let a = world
+        .query::<(Entity, &LeakyNeuron)>()
+        .iter()
+        .next()
+        .unwrap()
+        .0;
     let b = neuron(&mut world, at(0.0, 10.0));
     spawn_synapse(&mut world, a, b);
     let voltmeter = spawn_voltmeter(&mut world, a, at(1.0, 0.0));
@@ -1195,7 +1204,7 @@ fn tapping_a_neuron_with_a_meter_tool_places_a_meter_beside_it_measuring_it() {
     let mut editor = editor(Tool::Voltmeter);
     drag(&mut editor, &mut world, &[at(0.5, 0.0)]);
     let (voltmeter, position) = world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&Voltmeter>()
         .iter()
         .map(|(entity, position)| (entity, position.position))
@@ -1670,7 +1679,7 @@ fn position(world: &World, entity: Entity) -> Vec3 {
 
 fn cables_out_of(world: &World, from: Entity) -> Vec<Entity> {
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .iter()
         .filter(|(_, cable)| cable.from == from)
@@ -1710,7 +1719,7 @@ fn grow_myelinated_axon(world: &mut World, from: Vec3, to: Vec3) {
 
 fn myelinated(world: &World, from: Entity, to: Entity) -> bool {
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Myelin>()
         .iter()
         .any(|(_, cable)| cable.from == from && cable.to == to)
@@ -1817,18 +1826,17 @@ fn axon_between_two_neurons() -> (World, Entity) {
     let path: Vec<Vec3> = (0..=20).map(|step| at(0.0, step as f32 * 0.5)).collect();
     drag(&mut editor(Tool::Axon), &mut world, &path);
     let compartment = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&Compartment>()
         .iter()
         .next()
-        .unwrap()
-        .0;
+        .unwrap();
     (world, compartment)
 }
 
 fn membranes(world: &World) -> Vec<Membrane> {
     world
-        .query::<&Membrane>()
+        .query::<(Entity, &Membrane)>()
         .iter()
         .map(|(_, membrane)| membrane.clone())
         .collect()
@@ -1912,7 +1920,7 @@ fn dendrite_segments_added_by_a_stretch_taper_like_freshly_drawn_ones_where_they
     );
 
     let added: Vec<(Micrometres, Connection)> = world
-        .query::<(&Cable, &Connection)>()
+        .query::<(Entity, (&Cable, &Connection))>()
         .iter()
         .filter(|(cable, _)| !before.contains(cable))
         .map(|(_, (cable, connection))| (cable.diameter, connection.clone()))
@@ -1946,7 +1954,7 @@ fn taking_back_a_bend_past_a_neuron_with_shift_leaves_no_loose_synapse() {
     editor.lift(&mut world);
 
     let loose: Vec<Connection> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .filter(|(_, connection)| {
             !world.contains(connection.from) || !world.contains(connection.to)
@@ -2003,7 +2011,7 @@ fn compressed_axons_lose_compartments_but_keep_one() {
     assert_eq!(compressed.len(), 3);
     assert!(world.get::<&Compartment>(compressed[1]).is_ok());
     let into_target = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .find(|(_, cable)| cable.to == target)
         .map(|(_, cable)| cable.directional);
@@ -2241,7 +2249,12 @@ fn undo_brings_back_what_was_erased() {
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
-    let a = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+    let a = world
+        .query::<(Entity, &LeakyNeuron)>()
+        .iter()
+        .next()
+        .unwrap()
+        .0;
     let b = neuron(&mut world, at(0.0, 10.0));
     spawn_synapse(&mut world, a, b);
     let voltmeter = spawn_voltmeter(&mut world, a, at(-10.0, 0.0));
@@ -2285,7 +2298,7 @@ type Layout = HashMap<Entity, (Option<Vec3>, Option<(Entity, Entity)>)>;
 
 fn layout(world: &World) -> Layout {
     world
-        .query::<(Option<&Position>, Option<&Connection>)>()
+        .query::<(Entity, (Option<&Position>, Option<&Connection>))>()
         .iter()
         .map(|(entity, (position, connection))| {
             let ends = connection.map(|connection| (connection.from, connection.to));
@@ -2777,7 +2790,11 @@ fn a_spike_detector_gets_a_row_for_each_neuron_connected_onto_it() {
     let compartment = spawn_compartment(&mut world, at(0.0, -20.0), NeuronType::Excitatory);
     let mut editor = editor(Tool::SpikeDetector);
     drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
-    let (detector, _) = world.query::<&SpikeDetector>().iter().next().unwrap();
+    let (detector, _) = world
+        .query::<(Entity, &SpikeDetector)>()
+        .iter()
+        .next()
+        .unwrap();
     let inside = Frame::of(&world, detector).unwrap().point(0.5, 0.5);
 
     editor.tool = Tool::StaticConnection;
@@ -2799,7 +2816,7 @@ fn a_rate_plot_averages_the_neurons_connected_onto_it() {
     let mut editor = editor(Tool::RatePlot);
     drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
     let (plot, _) = world
-        .query::<&crate::measurement::firing_rate::RatePlot>()
+        .query::<(Entity, &crate::measurement::firing_rate::RatePlot)>()
         .iter()
         .next()
         .unwrap();
@@ -2821,7 +2838,7 @@ fn a_loudspeaker_listens_to_each_neuron_connected_onto_it() {
     let mut editor = editor(Tool::Loudspeaker);
     drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
     let (speaker, position) = world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&crate::measurement::loudspeaker::Loudspeaker>()
         .iter()
         .map(|(speaker, position)| (speaker, position.position))
@@ -2970,7 +2987,11 @@ fn a_released_axon_glides_from_where_it_was_let_go_onto_the_nearest_compartment(
     let (mut world, mut editor, ends) = axon_beside_a_cable(at(9.0, 0.3));
     editor.lift(&mut world);
     assert_eq!(single_ending(&world).to, ends[1]);
-    let gliding: Vec<Gliding> = world.query::<&Gliding>().iter().map(|(_, g)| *g).collect();
+    let gliding: Vec<Gliding> = world
+        .query::<(Entity, &Gliding)>()
+        .iter()
+        .map(|(_, g)| *g)
+        .collect();
     assert_eq!(gliding.len(), 1);
     assert!(gliding[0].from.distance(at(10.0, 0.3)) < 1e-3);
     assert!(connected(&world, ends[0], ends[1]));

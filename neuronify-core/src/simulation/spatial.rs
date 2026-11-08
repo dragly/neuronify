@@ -9,7 +9,11 @@ use crate::constants::*;
 const REPULSION_RANGE: f32 = 2.0 * NODE_RADIUS;
 
 pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
-    let nothing_can_move = world.query::<&SpatialDynamics>().iter().next().is_none();
+    let nothing_can_move = world
+        .query::<(Entity, &SpatialDynamics)>()
+        .iter()
+        .next()
+        .is_none();
     if nothing_can_move {
         return;
     }
@@ -21,10 +25,13 @@ pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
     let mut axon = Vec::new();
     for (entity, (position, dynamics, in_dendrite, compartment)) in world
         .query::<(
-            &Position,
-            Option<&SpatialDynamics>,
-            Option<&Dendrite>,
-            Option<&Compartment>,
+            Entity,
+            (
+                &Position,
+                Option<&SpatialDynamics>,
+                Option<&Dendrite>,
+                Option<&Compartment>,
+            ),
         )>()
         .iter()
     {
@@ -35,7 +42,7 @@ pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
         axon.push(compartment.is_some() && in_dendrite.is_none());
     }
     let (cables, rest_lengths): (Vec<(usize, usize, bool)>, Vec<f32>) = world
-        .query::<(&Connection, Option<&Cable>)>()
+        .query::<(Entity, (&Connection, Option<&Cable>))>()
         .with::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .iter()
         .filter_map(|(_, (connection, cable))| {
@@ -53,7 +60,7 @@ pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
     add_cable_bending(&positions, &cables, &dendrite, &mut forces);
     add_cable_springs(&positions, &cables, &rest_lengths, &mut forces);
 
-    for (entity, dynamics) in world.query_mut::<&mut SpatialDynamics>() {
+    for (entity, dynamics) in world.query_mut::<(Entity, &mut SpatialDynamics)>() {
         if held.contains(&entity) {
             continue;
         }
@@ -195,7 +202,8 @@ fn add_cable_springs(
 
 pub fn integrate_motion(world: &mut hecs::World, dt: Seconds, held: &HashSet<Entity>) {
     let dt = dt.0 as f32;
-    for (entity, (position, dynamics)) in world.query_mut::<(&mut Position, &mut SpatialDynamics)>()
+    for (entity, (position, dynamics)) in
+        world.query_mut::<(Entity, (&mut Position, &mut SpatialDynamics))>()
     {
         if held.contains(&entity) {
             continue;

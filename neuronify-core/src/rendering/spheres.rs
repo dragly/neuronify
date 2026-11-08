@@ -24,7 +24,7 @@ fn spines(
 ) -> Vec<Sphere> {
     let mut spines = Vec::new();
     for (cable, connection) in world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Cable>()
         .iter()
         .filter(|(_, connection)| !connection.directional)
@@ -90,7 +90,7 @@ pub fn collect_spheres(
 
     spheres.extend(
         world
-            .query::<(&LeakyNeuron, &NodeState, &Position)>()
+            .query::<(Entity, (&LeakyNeuron, &NodeState, &Position))>()
             .iter()
             .map(|(entity, (neuron, state, position))| Sphere {
                 position: position.position,
@@ -106,7 +106,7 @@ pub fn collect_spheres(
     // Touch sensors and current sources are flat pads, see `collect_shapes`
     spheres.extend(
         world
-            .query::<(&Position, &GeneratorDynamics, Option<&NeuronType>)>()
+            .query::<(Entity, (&Position, &GeneratorDynamics, Option<&NeuronType>))>()
             .without::<hecs::Or<&TouchSensor, &VisualInput>>()
             .iter()
             .map(|(_, (position, dynamics, neuron_type))| Sphere {
@@ -119,7 +119,10 @@ pub fn collect_spheres(
 
     spheres.extend(
         world
-            .query::<(&NodeState, &Position, &NeuronType, Option<&Dendrite>)>()
+            .query::<(
+                Entity,
+                (&NodeState, &Position, &NeuronType, Option<&Dendrite>),
+            )>()
             .with::<&Compartment>()
             .iter()
             .map(

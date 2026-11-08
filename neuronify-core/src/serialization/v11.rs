@@ -4,7 +4,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::World;
+use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -134,10 +134,9 @@ schema!(
 
 pub fn upgrade_from_v10(world: &mut World) {
     let inputs: Vec<hecs::Entity> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&super::v9::VisualInput>()
         .iter()
-        .map(|(input, _)| input)
         .collect();
     for input in inputs {
         let old = world.remove_one::<super::v9::VisualInput>(input).unwrap();
