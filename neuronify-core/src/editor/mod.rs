@@ -935,7 +935,8 @@ impl Editor {
             .chain(
                 frames
                     .iter()
-                    .map(|&(voltmeter, _, frame)| (voltmeter, frame)),
+                    .filter(|&&(meter, _, _)| resizable(world, meter).is_some())
+                    .map(|&(meter, _, frame)| (meter, frame)),
             )
             .find_map(|(entity, frame)| {
                 let corner = frame.corner_near(position, CORNER_REACH)?;
