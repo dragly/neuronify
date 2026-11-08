@@ -858,3 +858,22 @@ fn a_negative_legacy_fire_output_makes_a_leaky_neuron_inhibitory() {
         assert_eq!(neuron_type(&world, *neuron), NeuronType::Inhibitory);
     }
 }
+
+#[test]
+fn a_linked_file_is_only_looked_up_beside_the_open_one() {
+    assert_eq!(
+        sibling_file("tutorial_2_circuits.nfy"),
+        Some("tutorial_2_circuits.nfy")
+    );
+    for name in [
+        "",
+        ".",
+        "..",
+        "../secret.nfy",
+        "a/b.nfy",
+        "..\\b.nfy",
+        "C:b.nfy",
+    ] {
+        assert_eq!(sibling_file(name), None, "{name}");
+    }
+}

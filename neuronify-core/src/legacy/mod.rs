@@ -72,6 +72,11 @@ pub struct LegacyEdge {
     pub engine: LegacyEngine,
 }
 
+pub fn sibling_file(name: &str) -> Option<&str> {
+    let bare = !name.is_empty() && !name.contains(['/', '\\', ':']) && name != "." && name != "..";
+    bare.then_some(name)
+}
+
 pub fn parse_legacy_nfy(json_str: &str) -> Result<LegacySimulation, String> {
     let root: Value =
         serde_json::from_str(json_str).map_err(|e| format!("JSON parse error: {e}"))?;

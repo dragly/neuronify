@@ -58,6 +58,7 @@ pub struct Neuronify {
     simulation_clock: StepClock,
     physics_clock: StepClock,
     file_error: Option<FileError>,
+    origin: Option<Origin>,
     frame_scene_requested: bool,
     saving: Saving,
     speakers: Speakers,
@@ -109,17 +110,25 @@ fn file_stem(path: &std::path::Path) -> String {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn file_from_command_line() -> Option<Result<(String, SavedWorld), String>> {
-    let path = std::path::PathBuf::from(std::env::args_os().nth(1)?);
-    let loaded = std::fs::read(&path)
+type Origin = std::path::PathBuf;
+#[cfg(target_arch = "wasm32")]
+type Origin = String;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn read_file(path: &std::path::Path) -> Result<SavedWorld, String> {
+    std::fs::read(path)
         .map_err(|error| format!("Could not read {}: {error}", path.display()))
         .and_then(|bytes| crate::serialization::load_from_bytes(&bytes))
-        .map(|saved| (file_stem(&path), saved));
-    Some(loaded)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn file_from_command_line() -> Option<Result<(Origin, String, SavedWorld), String>> {
+    let path = std::path::PathBuf::from(std::env::args_os().nth(1)?);
+    Some(read_file(&path).map(|saved| (path.clone(), file_stem(&path), saved)))
 }
 
 #[cfg(target_arch = "wasm32")]
-fn file_from_command_line() -> Option<Result<(String, SavedWorld), String>> {
+fn file_from_command_line() -> Option<Result<(Origin, String, SavedWorld), String>> {
     None
 }
 
@@ -217,6 +226,7 @@ impl Neuronify {
             simulation_clock: StepClock::default(),
             physics_clock: StepClock::default(),
             file_error: None,
+            origin: None,
             saving: saving(),
             speakers: Speakers::default(),
             library: Library::open(),
@@ -229,12 +239,7 @@ impl Neuronify {
             loupe_focus: None,
         };
         match opened {
-            Some(Ok((name, saved))) => neuronify.open_world(
-                saved.world,
-                saved.time,
-                saved.speed,
-                Autosave::copy_of(&name),
-            ),
+            Some(Ok((origin, name, saved))) => neuronify.open_saved(origin, &name, saved),
             Some(Err(error)) => {
                 log::error!("{error}");
                 neuronify.file_error = Some(FileError::load(error));
@@ -283,7 +288,9 @@ impl Neuronify {
         };
         self.editor.selection = None;
         let Some(example) = crate::examples::find(&file) else {
-            self.show_landing();
+            if !self.open_beside_origin(&file) {
+                self.show_landing();
+            }
             return;
         };
         match example.spawn() {
@@ -658,6 +665,7 @@ impl Neuronify {
         self.save_edits();
         self.autosave = autosave;
         self.file_error = None;
+        self.origin = None;
         self.world = world;
         self.engine = simulation::Engine::starting_at(time);
         self.time = time;
@@ -683,9 +691,49 @@ impl Neuronify {
         let opened = std::fs::read(&path)
             .map_err(|error| format!("Could not read {}: {error}", path.display()))
             .and_then(|bytes| self.open_file(&file_stem(&path), &bytes, true));
-        if let Err(error) = opened {
-            log::error!("{error}");
-            self.file_error = Some(FileError::load(error));
+        match opened {
+            Ok(()) => self.origin = Some(path),
+            Err(error) => {
+                log::error!("{error}");
+                self.file_error = Some(FileError::load(error));
+            }
+        }
+    }
+
+    fn open_saved(&mut self, origin: Origin, name: &str, saved: SavedWorld) {
+        self.open_world(
+            saved.world,
+            saved.time,
+            saved.speed,
+            Autosave::copy_of(name),
+        );
+        self.origin = Some(origin);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn open_beside_origin(&mut self, file: &str) -> bool {
+        let Some(path) = crate::legacy::sibling_file(file)
+            .zip(self.origin.as_ref().and_then(|origin| origin.parent()))
+            .map(|(name, folder)| folder.join(name))
+            .filter(|path| path.is_file())
+        else {
+            return false;
+        };
+        match read_file(&path) {
+            Ok(saved) => {
+                let name = file_stem(&path);
+                self.open_saved(path, &name, saved)
+            }
+            Err(error) => self.file_error = Some(FileError::load(error)),
+        }
+        true
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn open_beside_origin(&mut self, file: &str) -> bool {
+        match (crate::legacy::sibling_file(file), &self.origin) {
+            (Some(name), Some(origin)) => crate::web::fetch_beside(origin, name),
+            _ => false,
         }
     }
 
@@ -728,12 +776,19 @@ impl visula::Simulation for Neuronify {
 
         #[cfg(target_arch = "wasm32")]
         if let Some(loaded) = crate::web::take_loaded_file() {
-            let opened =
-                loaded.and_then(|file| self.open_file(&file.name, &file.bytes, file.picked));
+            let opened = loaded.and_then(|file| {
+                self.open_file(&file.name, &file.bytes, file.picked)?;
+                self.origin = file.url;
+                Ok(())
+            });
             if let Err(error) = opened {
                 log::error!("{error}");
                 self.file_error = Some(FileError::load(error));
             }
+        }
+        #[cfg(target_arch = "wasm32")]
+        if crate::web::take_missing_link() {
+            self.show_landing();
         }
         #[cfg(target_arch = "wasm32")]
         crate::web::hide_loading_screen_when_ready();
