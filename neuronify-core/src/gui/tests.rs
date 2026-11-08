@@ -1126,6 +1126,23 @@ fn dragging_a_slider_is_one_step_to_undo() {
 }
 
 #[test]
+fn undo_takes_back_a_change_to_a_neuron_with_an_ending_of_its_own() {
+    let (mut world, neuron) = one_neuron();
+    let other = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(0.0, 0.0, 2.5));
+    spawn_cable(&mut world, neuron, other, true);
+    let mut harness = Harness::with(true, world, Some(neuron));
+    let threshold =
+        |harness: &Harness| harness.world.get::<&LeakyNeuron>(neuron).unwrap().threshold;
+    let original = threshold(&harness);
+    let slider = harness.text_position("Threshold").unwrap() + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(120.0, 0.0));
+    assert_ne!(threshold(&harness), original);
+
+    harness.click(corner_button(2));
+    assert_eq!(threshold(&harness), original);
+}
+
+#[test]
 fn a_selected_dendrite_is_named_a_dendrite() {
     let mut world = World::new();
     let dendrite = spawn_compartment(&mut world, Vec3::ZERO, NeuronType::Excitatory);

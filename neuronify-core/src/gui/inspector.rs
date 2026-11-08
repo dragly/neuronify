@@ -138,8 +138,7 @@ impl Inspector {
                 .min_scrolled_height(room)
                 .show(ui, |ui| {
                     inspector.live(ui, chrome, world, entity);
-                    let adjusted = axon_ending(world, entity).unwrap_or(entity);
-                    editor.adjust(world, adjusted, settled, || {
+                    editor.adjust(world, entity, settled, || {
                         parameters(ui, chrome, world, entity)
                     });
                     if world.get::<&Deletable>(entity).is_ok()
