@@ -77,10 +77,10 @@ pub fn listen(world: &mut World, spikes: &[Spike], time: Milliseconds, duration:
         speaker.time_since_heard += duration;
     }
     let wires: Vec<(Entity, Entity)> = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .iter()
-        .filter(|(_, connection)| world.satisfies::<&Loudspeaker>(connection.to))
-        .map(|(_, connection)| (connection.from, connection.to))
+        .filter(|connection| world.satisfies::<&Loudspeaker>(connection.to))
+        .map(|connection| (connection.from, connection.to))
         .collect();
     for spike in spikes {
         for &(from, to) in &wires {
@@ -99,7 +99,7 @@ pub fn listen(world: &mut World, spikes: &[Spike], time: Milliseconds, duration:
 
 pub fn take_heard(world: &mut World) -> Vec<(Sound, f32, Milliseconds)> {
     let mut heard = Vec::new();
-    for (_, speaker) in world.query_mut::<(Entity, &mut Loudspeaker)>() {
+    for speaker in world.query_mut::<&mut Loudspeaker>() {
         let times = std::mem::take(&mut speaker.heard);
         if !speaker.muted {
             heard.extend(

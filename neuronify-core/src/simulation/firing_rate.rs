@@ -21,7 +21,7 @@ pub fn update_firing_rates(
         world.insert_one(entity, FiringRate::default()).unwrap();
     }
     let decay = (-duration / FIRING_RATE_TIME_CONSTANT).exp();
-    for (_, firing_rate) in world.query_mut::<(Entity, &mut FiringRate)>() {
+    for firing_rate in world.query_mut::<&mut FiringRate>() {
         firing_rate.rate *= decay;
     }
     for spike in spikes {

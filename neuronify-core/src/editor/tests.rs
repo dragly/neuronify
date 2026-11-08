@@ -41,11 +41,11 @@ fn neuron(world: &mut World, position: Vec3) -> Entity {
 
 fn axon_endings(world: &World) -> Vec<Connection> {
     world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<&ConductanceSynapse>()
         .iter()
-        .filter(|(_, connection)| connection.directional)
-        .map(|(_, connection)| connection.clone())
+        .filter(|connection| connection.directional)
+        .cloned()
         .collect()
 }
 
@@ -480,11 +480,11 @@ fn stroke(editor: &mut Editor, world: &mut World, corners: &[Vec3]) {
 
 fn sharpest_bend(world: &World) -> f32 {
     let cables: Vec<(Entity, Entity)> = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<&Cable>()
         .iter()
-        .filter(|(_, cable)| !cable.directional)
-        .map(|(_, cable)| (cable.from, cable.to))
+        .filter(|cable| !cable.directional)
+        .map(|cable| (cable.from, cable.to))
         .collect();
     let mut sharpest = std::f32::consts::PI;
     for &(before, joint) in &cables {
@@ -570,11 +570,7 @@ fn dendrites_grow_out_from_a_neuron_one_segment_at_a_time() {
     assert_eq!(count::<Dendrite>(&world), 5);
     assert_eq!(count::<Compartment>(&world), 5);
     assert!(axon_endings(&world).is_empty());
-    let cables: Vec<Connection> = world
-        .query::<(Entity, &Connection)>()
-        .iter()
-        .map(|(_, cable)| cable.clone())
-        .collect();
+    let cables: Vec<Connection> = world.query::<&Connection>().iter().cloned().collect();
     assert_eq!(cables.len(), 5);
     let z = |entity: Entity| world.get::<&Position>(entity).unwrap().position.z;
     for cable in cables {
@@ -716,18 +712,18 @@ fn axons_grow_compartments_until_they_reach_a_neuron() {
     let compartments = count::<Compartment>(&world);
     assert!(compartments > 3, "{compartments}");
     let first = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .iter()
-        .find(|(_, connection)| connection.from == source)
-        .map(|(_, connection)| connection.to)
+        .find(|connection| connection.from == source)
+        .map(|connection| connection.to)
         .unwrap();
     assert!(world.get::<&Compartment>(first).is_ok());
     let ending = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<&ConductanceSynapse>()
         .iter()
-        .find(|(_, connection)| connection.to == target)
-        .map(|(_, connection)| connection.clone())
+        .find(|connection| connection.to == target)
+        .cloned()
         .unwrap();
     assert!(ending.directional);
     assert!(world.get::<&Compartment>(ending.from).is_ok());
@@ -891,10 +887,10 @@ fn with_compartments_dragging_from_near_a_dendrite_grows_an_axon_from_it() {
 
     assert_eq!(count::<LeakyNeuron>(&world), 1);
     let grown_from_dendrite = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<&Cable>()
         .iter()
-        .any(|(_, cable)| {
+        .any(|cable| {
             world.get::<&Dendrite>(cable.from).is_ok()
                 && world.get::<&Dendrite>(cable.to).is_err()
                 && world.get::<&Compartment>(cable.to).is_ok()
@@ -1679,11 +1675,11 @@ fn position(world: &World, entity: Entity) -> Vec3 {
 
 fn cables_out_of(world: &World, from: Entity) -> Vec<Entity> {
     world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .iter()
-        .filter(|(_, cable)| cable.from == from)
-        .map(|(_, cable)| cable.to)
+        .filter(|cable| cable.from == from)
+        .map(|cable| cable.to)
         .collect()
 }
 
@@ -1719,10 +1715,10 @@ fn grow_myelinated_axon(world: &mut World, from: Vec3, to: Vec3) {
 
 fn myelinated(world: &World, from: Entity, to: Entity) -> bool {
     world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<&Myelin>()
         .iter()
-        .any(|(_, cable)| cable.from == from && cable.to == to)
+        .any(|cable| cable.from == from && cable.to == to)
 }
 
 fn wrapped_and_bare(world: &World, nodes: &[Entity]) -> (Vec<Entity>, Vec<Entity>) {
@@ -1835,11 +1831,7 @@ fn axon_between_two_neurons() -> (World, Entity) {
 }
 
 fn membranes(world: &World) -> Vec<Membrane> {
-    world
-        .query::<(Entity, &Membrane)>()
-        .iter()
-        .map(|(_, membrane)| membrane.clone())
-        .collect()
+    world.query::<&Membrane>().iter().cloned().collect()
 }
 
 #[test]
@@ -1954,12 +1946,10 @@ fn taking_back_a_bend_past_a_neuron_with_shift_leaves_no_loose_synapse() {
     editor.lift(&mut world);
 
     let loose: Vec<Connection> = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .iter()
-        .filter(|(_, connection)| {
-            !world.contains(connection.from) || !world.contains(connection.to)
-        })
-        .map(|(_, connection)| connection.clone())
+        .filter(|connection| !world.contains(connection.from) || !world.contains(connection.to))
+        .cloned()
         .collect();
     assert!(loose.is_empty(), "{loose:?}");
 }
@@ -2011,10 +2001,10 @@ fn compressed_axons_lose_compartments_but_keep_one() {
     assert_eq!(compressed.len(), 3);
     assert!(world.get::<&Compartment>(compressed[1]).is_ok());
     let into_target = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .iter()
-        .find(|(_, cable)| cable.to == target)
-        .map(|(_, cable)| cable.directional);
+        .find(|cable| cable.to == target)
+        .map(|cable| cable.directional);
     assert_eq!(into_target, Some(true));
 }
 
@@ -2987,11 +2977,7 @@ fn a_released_axon_glides_from_where_it_was_let_go_onto_the_nearest_compartment(
     let (mut world, mut editor, ends) = axon_beside_a_cable(at(9.0, 0.3));
     editor.lift(&mut world);
     assert_eq!(single_ending(&world).to, ends[1]);
-    let gliding: Vec<Gliding> = world
-        .query::<(Entity, &Gliding)>()
-        .iter()
-        .map(|(_, g)| *g)
-        .collect();
+    let gliding: Vec<Gliding> = world.query::<&Gliding>().iter().copied().collect();
     assert_eq!(gliding.len(), 1);
     assert!(gliding[0].from.distance(at(10.0, 0.3)) < 1e-3);
     assert!(connected(&world, ends[0], ends[1]));

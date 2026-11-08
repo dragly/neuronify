@@ -153,9 +153,9 @@ pub fn connection_paths(
 ) -> BTreeMap<Entity, ConnectionPath> {
     let display = NeuronDisplay::of(world);
     let pairs: HashSet<(Entity, Entity)> = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .iter()
-        .map(|(_, c)| (c.from, c.to))
+        .map(|c| (c.from, c.to))
         .collect();
     world
         .query::<(Entity, (&Connection, Option<&Cable>))>()

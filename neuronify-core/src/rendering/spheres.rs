@@ -106,10 +106,10 @@ pub fn collect_spheres(
     // Touch sensors and current sources are flat pads, see `collect_shapes`
     spheres.extend(
         world
-            .query::<(Entity, (&Position, &GeneratorDynamics, Option<&NeuronType>))>()
+            .query::<(&Position, &GeneratorDynamics, Option<&NeuronType>)>()
             .without::<hecs::Or<&TouchSensor, &VisualInput>>()
             .iter()
-            .map(|(_, (position, dynamics, neuron_type))| Sphere {
+            .map(|(position, dynamics, neuron_type)| Sphere {
                 position: position.position,
                 color: generator_color(dynamics, neuron_type.copied().unwrap_or_default(), palette),
                 radius: NODE_RADIUS,

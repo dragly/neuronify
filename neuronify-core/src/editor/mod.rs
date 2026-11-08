@@ -1248,18 +1248,18 @@ fn connect_to_neuron_near(
 
 fn connected(world: &World, from: Entity, to: Entity) -> bool {
     world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .iter()
-        .any(|(_, connection)| connection.from == from && connection.to == to)
+        .any(|connection| connection.from == from && connection.to == to)
 }
 
 fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
     let cables: Vec<(Entity, Entity)> = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<&Cable>()
         .iter()
-        .filter(|(_, cable)| !cable.directional)
-        .map(|(_, cable)| (cable.from, cable.to))
+        .filter(|cable| !cable.directional)
+        .map(|cable| (cable.from, cable.to))
         .collect();
     let mut network = HashSet::from([start]);
     let mut frontier = vec![start];

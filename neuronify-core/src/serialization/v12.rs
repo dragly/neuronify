@@ -69,7 +69,7 @@ fn replace<Old: Component, New: Component>(world: &mut World, convert: impl Fn(O
 }
 
 fn scale<T: Component>(world: &mut World, convert: impl Fn(&mut T)) {
-    for (_, component) in world.query_mut::<(Entity, &mut T)>() {
+    for component in world.query_mut::<&mut T>() {
         convert(component);
     }
 }

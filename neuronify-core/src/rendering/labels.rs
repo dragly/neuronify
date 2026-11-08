@@ -109,10 +109,10 @@ fn glyphs(application: &visula::Application, theme: Theme) -> Glyphs {
 
 fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
     let mut placed: Vec<(String, Placement, Vec3)> = world
-        .query::<(Entity, (&Label, &Position))>()
+        .query::<(&Label, &Position)>()
         .iter()
-        .filter(|(_, (label, _))| !label.text.is_empty())
-        .map(|(_, (label, position))| (label.text.clone(), Placement::Above, position.position))
+        .filter(|(label, _)| !label.text.is_empty())
+        .map(|(label, position)| (label.text.clone(), Placement::Above, position.position))
         .collect();
     for (_, (plot, position, size)) in world
         .query::<(Entity, (&RatePlot, &Position, &MeterSize))>()

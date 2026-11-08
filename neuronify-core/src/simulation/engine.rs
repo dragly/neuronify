@@ -557,10 +557,10 @@ impl Engine {
         }
 
         let mut terminals: Vec<Entity> = world
-            .query::<(Entity, &Connection)>()
+            .query::<&Connection>()
             .with::<&ConductanceSynapse>()
             .iter()
-            .map(|(_, connection)| connection.from)
+            .map(|connection| connection.from)
             .filter(|&from| compartment(world, from))
             .collect();
         terminals.sort_by_key(|entity| entity.id());
@@ -1552,9 +1552,9 @@ mod tests {
 
         let open = |world: &World| {
             world
-                .query::<(Entity, &SynapseState)>()
+                .query::<&SynapseState>()
                 .iter()
-                .map(|(_, state)| state.open)
+                .map(|state| state.open)
                 .sum::<Microsiemens>()
         };
         let decay = decay_once_open(&mut run, open);

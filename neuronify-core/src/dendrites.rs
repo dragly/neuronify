@@ -219,7 +219,7 @@ pub fn compartment_tree(world: &hecs::World, root: Entity) -> Vec<Entity> {
     let mut tree = Vec::new();
     let mut frontier = vec![root];
     while let Some(parent) = frontier.pop() {
-        for (_, connection) in world.query::<(Entity, &Connection)>().iter() {
+        for connection in world.query::<&Connection>().iter() {
             if connection.from == parent
                 && !connection.directional
                 && world.get::<&Compartment>(connection.to).is_ok()
@@ -350,7 +350,7 @@ mod tests {
         let index = |entity| tree.iter().position(|&compartment| compartment == entity);
         let mut neighbours = vec![Vec::new(); tree.len()];
         let mut roots = Vec::new();
-        for (_, cable) in world.query::<(Entity, &Connection)>().iter() {
+        for cable in world.query::<&Connection>().iter() {
             match (index(cable.from), index(cable.to)) {
                 (Some(a), Some(b)) => {
                     neighbours[a].push(b);

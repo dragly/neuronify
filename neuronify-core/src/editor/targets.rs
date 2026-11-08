@@ -243,11 +243,11 @@ fn cable_halves(world: &World, radii: &HashMap<Entity, f32>) -> Vec<Piece> {
     let mut halves = Vec::new();
     let sheath = sheath_radius(&NeuronDisplay::of(world));
     let cables = world
-        .query::<(Entity, (&Connection, Option<&Myelin>))>()
+        .query::<(&Connection, Option<&Myelin>)>()
         .with::<&Cable>()
         .iter()
-        .filter(|(_, (cable, _))| !cable.directional)
-        .map(|(_, (cable, sheath))| (cable.from, cable.to, sheath.is_some()))
+        .filter(|(cable, _)| !cable.directional)
+        .map(|(cable, sheath)| (cable.from, cable.to, sheath.is_some()))
         .collect::<Vec<_>>();
     for (from, to, sheathed) in cables {
         let (Ok(start), Ok(end)) = (world.get::<&Position>(from), world.get::<&Position>(to))

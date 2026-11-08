@@ -58,7 +58,7 @@ fn the_listened_neuron_clicks_within_seconds_for_stripes_at_its_angle_and_not_ac
         (0..5)
             .map(|_| {
                 let mut world = write_examples::listening_to_a_neuron();
-                for (_, input) in world.query_mut::<(Entity, &mut VisualInput)>() {
+                for input in world.query_mut::<&mut VisualInput>() {
                     input.pattern_angle = pattern_angle;
                 }
                 spikes(&mut world, "Cortex", Milliseconds::ZERO, on_screen(seconds))
@@ -129,10 +129,10 @@ impl Experiment {
     fn sensors_from_left(&self) -> Vec<Vec3> {
         let mut sensors: Vec<Vec3> = self
             .world
-            .query::<(Entity, &Position)>()
+            .query::<&Position>()
             .with::<&TouchSensor>()
             .iter()
-            .map(|(_, position)| position.position)
+            .map(|position| position.position)
             .collect();
         sensors.sort_by(|a, b| a.z.total_cmp(&b.z));
         sensors
@@ -153,9 +153,9 @@ impl Experiment {
     fn meter_peaks_from_left(&self) -> Vec<Millivolts> {
         let mut wires: Vec<(f32, Millivolts)> = self
             .world
-            .query::<(Entity, (&Connection, &VoltageSeries))>()
+            .query::<(&Connection, &VoltageSeries)>()
             .iter()
-            .map(|(_, (wire, series))| {
+            .map(|(wire, series)| {
                 let meter = self.world.get::<&Position>(wire.to).unwrap().position.z;
                 let peak = series
                     .measurements
@@ -273,7 +273,7 @@ fn only_currents_above_the_threshold_fire_and_stronger_ones_fire_faster() {
 fn a_long_refractory_period_caps_the_firing_rate() {
     for (nanoamperes, short_at_least, long_below) in [(1.0, 100, 70), (5.0, 250, 100)] {
         let mut experiment = Experiment::new(write_examples::refractory_period());
-        for (_, source) in experiment.world.query_mut::<(Entity, &mut CurrentClamp)>() {
+        for source in experiment.world.query_mut::<&mut CurrentClamp>() {
             source.current_output = Nanoamperes(nanoamperes);
         }
         let neurons = [experiment.neuron("2 ms"), experiment.neuron("10 ms")];
@@ -546,9 +546,9 @@ fn each_neuron_fires_when_the_dot_crosses_its_own_field_and_never_on_the_far_sid
 fn no_note_covers_the_circuit() {
     for (file, world) in write_examples::sheets() {
         let notes: Vec<(Vec3, NoteSize)> = world
-            .query::<(Entity, (&Position, &NoteSize))>()
+            .query::<(&Position, &NoteSize)>()
             .iter()
-            .map(|(_, (position, size))| (position.position, size.clone()))
+            .map(|(position, size)| (position.position, size.clone()))
             .collect();
         for (entity, position) in world
             .query::<(Entity, &Position)>()
