@@ -132,8 +132,9 @@ fn neuron(position: Position, neuron_type: NeuronType) -> EntityBuilder {
     neuron
 }
 
-pub fn spawn_compartment(world: &mut World, position: Vec3, neuron_type: NeuronType) -> Entity {
-    world.spawn((
+fn compartment(world: &World, position: Vec3, neuron_type: NeuronType) -> EntityBuilder {
+    let mut compartment = EntityBuilder::new();
+    compartment.add_bundle((
         Position { position },
         neuron_type,
         Compartment,
@@ -142,7 +143,24 @@ pub fn spawn_compartment(world: &mut World, position: Vec3, neuron_type: NeuronT
         Deletable {},
         Selectable { selected: false },
         SpatialDynamics::default(),
-    ))
+    ));
+    compartment
+}
+
+pub fn spawn_compartment(world: &mut World, position: Vec3, neuron_type: NeuronType) -> Entity {
+    world.spawn(compartment(world, position, neuron_type).build())
+}
+
+pub fn spawn_dendrite_compartment(
+    world: &mut World,
+    position: Vec3,
+    neuron_type: NeuronType,
+) -> Entity {
+    world.spawn(
+        compartment(world, position, neuron_type)
+            .add(Dendrite)
+            .build(),
+    )
 }
 
 pub fn spawn_synapse(world: &mut World, from: Entity, to: Entity) -> Entity {
@@ -159,21 +177,16 @@ pub fn spawn_synapse(world: &mut World, from: Entity, to: Entity) -> Entity {
 }
 
 pub fn spawn_connection(world: &mut World, from: Entity, to: Entity) -> Entity {
-    let connection = (
-        Connection {
-            from,
-            to,
-            strength: 1.0,
-            directional: true,
-        },
-        Deletable {},
-    );
+    let connection = Connection {
+        from,
+        to,
+        strength: 1.0,
+        directional: true,
+    };
     if world.get::<&CurrentClamp>(from).is_ok() {
-        world.spawn(connection)
+        world.spawn((connection, Deletable {}))
     } else if world.get::<&TouchSensor>(from).is_ok() {
-        let connection = world.spawn(connection);
-        world.insert_one(connection, ImmediateFireSynapse).unwrap();
-        connection
+        world.spawn((connection, Deletable {}, ImmediateFireSynapse))
     } else {
         spawn_synapse(world, from, to)
     }
@@ -181,7 +194,8 @@ pub fn spawn_connection(world: &mut World, from: Entity, to: Entity) -> Entity {
 
 fn spawn_link(world: &mut World, from: Entity, to: Entity, myelinated: bool) -> Entity {
     let (cable, membrane) = cable_between(world, from, to, myelinated);
-    let link = world.spawn((
+    let mut link = EntityBuilder::new();
+    link.add_bundle((
         Connection {
             from,
             to,
@@ -193,9 +207,9 @@ fn spawn_link(world: &mut World, from: Entity, to: Entity, myelinated: bool) -> 
         membrane,
     ));
     if myelinated {
-        world.insert_one(link, Myelin).unwrap();
+        link.add(Myelin);
     }
-    link
+    world.spawn(link.build())
 }
 
 pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: bool) -> Entity {
@@ -271,20 +285,20 @@ impl Meter {
     }
 
     pub fn spawn(self, world: &mut World, position: Vec3) -> Entity {
-        let meter = world.spawn((Position { position }, Deletable {}));
+        let mut meter = EntityBuilder::new();
+        meter.add_bundle((Position { position }, Deletable {}));
         if let Some(size) = self.size() {
-            world.insert_one(meter, size).unwrap();
+            meter.add(size);
         }
         match self {
-            Meter::Voltmeter => world.insert(meter, (Voltmeter {}, VoltmeterRange::default())),
+            Meter::Voltmeter => meter.add_bundle((Voltmeter {}, VoltmeterRange::default())),
             Meter::SpikeDetector => {
-                world.insert(meter, (SpikeDetector::default(), RowOrder::default()))
+                meter.add_bundle((SpikeDetector::default(), RowOrder::default()))
             }
-            Meter::RatePlot => world.insert(meter, (RatePlot::default(), RateSeries::default())),
-            Meter::Loudspeaker => world.insert_one(meter, Loudspeaker::default()),
-        }
-        .unwrap();
-        meter
+            Meter::RatePlot => meter.add_bundle((RatePlot::default(), RateSeries::default())),
+            Meter::Loudspeaker => meter.add(Loudspeaker::default()),
+        };
+        world.spawn(meter.build())
     }
 
     pub fn measures(self, world: &World, target: Entity) -> bool {

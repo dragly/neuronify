@@ -6,7 +6,7 @@ use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::constants::{INTERNODE_LENGTH, SEGMENT_LENGTH};
-use crate::elements::{spawn_axon_cable, spawn_compartment};
+use crate::elements::{spawn_axon_cable, spawn_compartment, spawn_dendrite_compartment};
 
 use super::history::Recording;
 
@@ -494,18 +494,11 @@ fn spawn_compartment_like(world: &mut World, neighbours: [Entity; 2]) -> Entity 
         .into_iter()
         .find_map(|neighbour| world.get::<&NeuronType>(neighbour).ok().map(|t| *t))
         .unwrap_or_default();
-    let state = neighbours
-        .into_iter()
-        .find_map(|neighbour| world.get::<&Compartment>(neighbour).ok().map(|c| *c));
     let dendrite = neighbours
         .into_iter()
         .any(|neighbour| world.satisfies::<&Dendrite>(neighbour));
-    let compartment = spawn_compartment(world, Vec3::ZERO, neuron_type);
-    if let Some(state) = state {
-        world.insert_one(compartment, state).unwrap();
+    match dendrite {
+        true => spawn_dendrite_compartment(world, Vec3::ZERO, neuron_type),
+        false => spawn_compartment(world, Vec3::ZERO, neuron_type),
     }
-    if dendrite {
-        world.insert_one(compartment, Dendrite).unwrap();
-    }
-    compartment
 }

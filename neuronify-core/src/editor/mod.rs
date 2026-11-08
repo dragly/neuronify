@@ -8,7 +8,8 @@ use crate::components::*;
 use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{
-    spawn_axon_cable, spawn_cable, spawn_compartment, spawn_connection, Element, Meter,
+    spawn_axon_cable, spawn_cable, spawn_compartment, spawn_connection, spawn_dendrite_compartment,
+    Element, Meter,
 };
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::{visual_input_frame, VisualInput};
@@ -1078,8 +1079,7 @@ fn lay_dendrite(world: &mut World, from: Entity, steps: &[Vec3]) -> Option<Entit
     let neuron_type = *world.get::<&NeuronType>(from).ok()?;
     let mut previous = from;
     for &position in steps {
-        let compartment = spawn_compartment(world, position, neuron_type);
-        world.insert_one(compartment, Dendrite).unwrap();
+        let compartment = spawn_dendrite_compartment(world, position, neuron_type);
         spawn_cable(world, previous, compartment, false);
         previous = compartment;
     }
