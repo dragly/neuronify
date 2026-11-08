@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use hecs::{Entity, World};
 use neuronify_engine::units::{
     Celsius, Hertz, Micrometres, Microsiemens, Milliseconds, Millivolts, Nanoamperes, Quantity,
-    SiemensPerSquareCentimetre,
 };
 use neuronify_engine::{
     Adaptation, Alternating, BuildError, Burst, ConductanceSynapse as Conductance,
@@ -108,6 +107,14 @@ fn positive_or<T: Quantity>(value: T, fallback: T) -> T {
     }
 }
 
+fn non_negative_or<T: Quantity>(value: T, fallback: T) -> T {
+    if value.value().is_finite() && value.value() >= 0.0 {
+        value
+    } else {
+        fallback
+    }
+}
+
 fn bounded_cable(cable: &Cable) -> Cable {
     Cable {
         length: positive_or(cable.length, SEGMENT_LENGTH as f64 * MICROMETRES_PER_UNIT),
@@ -120,11 +127,7 @@ fn bounded_membrane(membrane: &Membrane) -> Membrane {
     Membrane {
         capacitance: positive_or(membrane.capacitance, squid.capacitance),
         axial_resistivity: positive_or(membrane.axial_resistivity, squid.axial_resistivity),
-        leak: if membrane.leak.is_finite() && membrane.leak >= SiemensPerSquareCentimetre::ZERO {
-            membrane.leak
-        } else {
-            squid.leak
-        },
+        leak: non_negative_or(membrane.leak, squid.leak),
         ..membrane.clone()
     }
 }
@@ -923,7 +926,7 @@ impl Engine {
                 let index = self.network.add_adaptation(Adaptation {
                     site: place.site(),
                     increment: adaptation.adaptation,
-                    tau: positive_or(
+                    tau: non_negative_or(
                         adaptation.time_constant,
                         AdaptationCurrent::default().time_constant,
                     ),
@@ -1507,6 +1510,34 @@ mod tests {
         let mut run = Run::new(world);
         run.step();
         assert_eq!(run.engine.network.celsius(), Preparation::Squid.celsius());
+    }
+
+    #[test]
+    fn a_recovery_time_of_zero_lets_an_adaptive_neuron_recover_at_once() {
+        let spikes = |adaptation: Option<Milliseconds>| {
+            let mut world = World::new();
+            let neuron = Element::AdaptiveNeuron.spawn(&mut world, Vec3::ZERO);
+            match adaptation {
+                Some(time_constant) => {
+                    world
+                        .get::<&mut AdaptationCurrent>(neuron)
+                        .unwrap()
+                        .time_constant = time_constant;
+                }
+                None => {
+                    world.remove_one::<AdaptationCurrent>(neuron).unwrap();
+                }
+            }
+            let source = Element::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
+            crate::elements::spawn_connection(&mut world, source, neuron);
+            run_headless(&mut world, Milliseconds(500.0))
+                .iter()
+                .filter(|spike| spike.entity == neuron)
+                .count()
+        };
+        let recovering = spikes(Some(Milliseconds::ZERO));
+        assert!(recovering > spikes(Some(AdaptationCurrent::default().time_constant)));
+        assert!(recovering.abs_diff(spikes(None)) <= 1);
     }
 
     fn soma(world: &mut World, at: Vec3) -> Entity {
