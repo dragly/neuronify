@@ -458,9 +458,9 @@ fn the_next_tutorial_button_becomes_a_link_to_the_next_tutorial() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
     let links: Vec<(String, String)> = world
-        .query::<(Entity, (&Link, &Annotation))>()
+        .query::<(&Link, &Annotation)>()
         .iter()
-        .map(|(_, (link, note))| (link.example.clone(), note.text.clone()))
+        .map(|(link, note)| (link.example.clone(), note.text.clone()))
         .collect();
     assert_eq!(
         links,
@@ -477,22 +477,22 @@ fn loads_regular_and_irregular_spike_generators() {
     spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
 
     let frequencies: Vec<Hertz> = world
-        .query::<(Entity, &RegularSpikeGenerator)>()
+        .query::<&RegularSpikeGenerator>()
         .iter()
-        .map(|(_, generator)| generator.frequency)
+        .map(|generator| generator.frequency)
         .collect();
     let rates: Vec<Hertz> = world
-        .query::<(Entity, &PoissonGenerator)>()
+        .query::<&PoissonGenerator>()
         .iter()
-        .map(|(_, generator)| generator.rate)
+        .map(|generator| generator.rate)
         .collect();
     assert_eq!(frequencies, [Hertz(200.0)]);
     assert_eq!(rates, [Hertz(200.0)]);
     for (generator, _) in world.query::<(Entity, &GeneratorDynamics)>().iter() {
         let synapses = world
-            .query::<(Entity, (&Connection, &CurrentSynapse))>()
+            .query::<(&Connection, &CurrentSynapse)>()
             .iter()
-            .filter(|(_, (connection, _))| connection.from == generator)
+            .filter(|(connection, _)| connection.from == generator)
             .count();
         assert_eq!(synapses, 1);
     }
@@ -625,10 +625,10 @@ fn neurons_keep_their_labels() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
     let mut labels: Vec<String> = world
-        .query::<(Entity, &Label)>()
+        .query::<&Label>()
         .with::<&LeakyNeuron>()
         .iter()
-        .map(|(_, label)| label.text.clone())
+        .map(|label| label.text.clone())
         .filter(|text| !text.is_empty())
         .collect();
     labels.sort();
@@ -668,10 +668,10 @@ fn loads_alternating_current_sources() {
     };
     assert_eq!((amplitude, frequency), (Nanoamperes(1.0), Hertz(34.0)));
     let targets = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .without::<&CurrentSynapse>()
         .iter()
-        .filter(|(_, connection)| connection.from == source)
+        .filter(|connection| connection.from == source)
         .count();
     assert_eq!(targets, 1);
 }
@@ -768,9 +768,9 @@ fn retinas_become_visual_inputs_with_their_receptive_fields() {
     assert_eq!(orientation.sensitivity, Hertz(1600.0));
     for input in [entities[0], entities[6]] {
         let synapses = world
-            .query::<(Entity, (&Connection, &CurrentSynapse))>()
+            .query::<(&Connection, &CurrentSynapse)>()
             .iter()
-            .filter(|(_, (connection, _))| connection.from == input && connection.to == entities[1])
+            .filter(|(connection, _)| connection.from == input && connection.to == entities[1])
             .count();
         assert_eq!(synapses, 1);
     }
@@ -830,9 +830,9 @@ fn every_bundled_neuronify_1_file_loads_with_nothing_dropped() {
             );
         }
         let connections: Vec<(hecs::Entity, hecs::Entity)> = world
-            .query::<(Entity, &Connection)>()
+            .query::<&Connection>()
             .iter()
-            .map(|(_, connection)| (connection.from, connection.to))
+            .map(|connection| (connection.from, connection.to))
             .collect();
         for edge in &sim.edges {
             let (from, to) = (entities[edge.from], entities[edge.to]);

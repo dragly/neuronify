@@ -42,10 +42,10 @@ pub fn apply_spatial_forces(world: &mut hecs::World, held: &HashSet<Entity>) {
         axon.push(compartment.is_some() && in_dendrite.is_none());
     }
     let (cables, rest_lengths): (Vec<(usize, usize, bool)>, Vec<f32>) = world
-        .query::<(Entity, (&Connection, Option<&Cable>))>()
+        .query::<(&Connection, Option<&Cable>)>()
         .with::<hecs::Or<&Cable, &ConductanceSynapse>>()
         .iter()
-        .filter_map(|(_, (connection, cable))| {
+        .filter_map(|(connection, cable)| {
             let from = *slot_of.get(&connection.from)?;
             let to = *slot_of.get(&connection.to)?;
             let rest_length = cable.map_or(SEGMENT_LENGTH, |cable| {

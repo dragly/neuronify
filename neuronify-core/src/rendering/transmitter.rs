@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn an_alpha_synapse_releases_at_most_fully() {
         let (mut world, source, _) = synapse_from(Element::ExcitatoryNeuron);
-        for (_, synapse) in world.query_mut::<(Entity, &mut CurrentSynapse)>() {
+        for synapse in world.query_mut::<&mut CurrentSynapse>() {
             synapse.alpha_function = true;
         }
         let mut firing = fire(&mut world, source);

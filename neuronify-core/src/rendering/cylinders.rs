@@ -113,7 +113,7 @@ pub fn compartment_radii(world: &hecs::World) -> HashMap<Entity, f32> {
         .iter()
         .map(|entity| (entity, (0.0, 0)))
         .collect();
-    for (_, (connection, cable)) in world.query::<(Entity, (&Connection, &Cable))>().iter() {
+    for (connection, cable) in world.query::<(&Connection, &Cable)>().iter() {
         if connection.directional {
             continue;
         }
@@ -143,10 +143,10 @@ pub fn collect_cylinders(
 ) -> Vec<CylinderData> {
     let display = NeuronDisplay::of(world);
     let mut cylinders = Vec::new();
-    for (_, (connection, segment, state)) in world
-        .query::<(Entity, (&Connection, &Cable, Option<&CableState>))>()
+    for (connection, segment, state) in world
+        .query::<(&Connection, &Cable, Option<&CableState>)>()
         .iter()
-        .filter(|(_, (connection, ..))| !connection.directional)
+        .filter(|(connection, ..)| !connection.directional)
     {
         let root = soma_end_radius(segment.diameter, &display);
         let radius = |entity: Entity| radii.get(&entity).copied().unwrap_or(root);
@@ -394,11 +394,11 @@ fn growing(
 
 fn joint_radius(world: &hecs::World, joint: Entity, grown: f32, display: &NeuronDisplay) -> f32 {
     let radii: Vec<f32> = world
-        .query::<(Entity, (&Connection, &Cable))>()
+        .query::<(&Connection, &Cable)>()
         .iter()
-        .filter(|(_, (connection, _))| !connection.directional)
-        .filter(|(_, (connection, _))| connection.from == joint || connection.to == joint)
-        .map(|(_, (_, cable))| drawn_radius(cable.diameter, display))
+        .filter(|(connection, _)| !connection.directional)
+        .filter(|(connection, _)| connection.from == joint || connection.to == joint)
+        .map(|(_, cable)| drawn_radius(cable.diameter, display))
         .chain([grown])
         .collect();
     radii.iter().sum::<f32>() / radii.len() as f32

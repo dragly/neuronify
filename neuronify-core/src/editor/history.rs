@@ -358,7 +358,7 @@ impl History {
             inverse.push((replacement, State::Absent));
         }
         if !respawned.is_empty() {
-            for (_, connection) in world.query_mut::<(Entity, &mut Connection)>() {
+            for connection in world.query_mut::<&mut Connection>() {
                 reconnect(connection, &respawned);
             }
             for change in self.undo.iter_mut().chain(&mut self.redo) {

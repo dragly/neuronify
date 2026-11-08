@@ -111,10 +111,10 @@ impl Canvas {
     fn hands(&self) -> Vec<Vec3> {
         let mut hands: Vec<Vec3> = self
             .world
-            .query::<(Entity, &Position)>()
+            .query::<&Position>()
             .with::<&TouchSensor>()
             .iter()
-            .map(|(_, position)| position.position)
+            .map(|position| position.position)
             .collect();
         hands.sort_by(|a, b| reading_order(*a, *b));
         hands
@@ -143,9 +143,9 @@ fn each_canvas_links_to_the_next_and_the_last_to_the_examples() {
         let canvas = Canvas::open(file);
         let links: Vec<String> = canvas
             .world
-            .query::<(Entity, &Link)>()
+            .query::<&Link>()
             .iter()
-            .map(|(_, link)| link.example.clone())
+            .map(|link| link.example.clone())
             .collect();
         assert_eq!(links.len(), 1, "{file}");
         match files.get(index + 1) {
@@ -170,9 +170,9 @@ fn no_note_covers_the_circuit() {
         let canvas = Canvas::open(file);
         let notes: Vec<(Vec3, NoteSize)> = canvas
             .world
-            .query::<(Entity, (&Position, &NoteSize))>()
+            .query::<(&Position, &NoteSize)>()
             .iter()
-            .map(|(_, (position, size))| (position.position, size.clone()))
+            .map(|(position, size)| (position.position, size.clone()))
             .collect();
         for (entity, position) in canvas
             .world
@@ -214,9 +214,9 @@ fn notes_name_tools_that_exist() {
             let canvas = Canvas::open(file);
             let notes: Vec<String> = canvas
                 .world
-                .query::<(Entity, &Annotation)>()
+                .query::<&Annotation>()
                 .iter()
-                .map(|(_, note)| note.text.clone())
+                .map(|note| note.text.clone())
                 .collect();
             notes
         })
@@ -416,10 +416,10 @@ fn axon_length(world: &World, from: Entity, to: Entity) -> f32 {
     let mut current = to;
     while current != from {
         let previous = world
-            .query::<(Entity, &Connection)>()
+            .query::<&Connection>()
             .iter()
-            .find(|(_, connection)| connection.to == current)
-            .map(|(_, connection)| connection.from)
+            .find(|connection| connection.to == current)
+            .map(|connection| connection.from)
             .unwrap();
         length += position(previous).distance(position(current));
         current = previous;
@@ -536,7 +536,7 @@ fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through(preparation
         assert!(fires(&mut canvas, bottom));
     }
 
-    for (_, clamp) in canvas.world.query::<(Entity, &mut CurrentClamp)>().iter() {
+    for clamp in canvas.world.query::<&mut CurrentClamp>().iter() {
         clamp.current_output = Nanoamperes::ZERO;
     }
     canvas.wait(3.0);
@@ -552,14 +552,14 @@ fn the_top_spike_runs_down_to_the_red_ending_and_stops_there(preparation: Prepar
     let ending = |canvas: &Canvas, neuron_type: NeuronType| {
         canvas
             .world
-            .query::<(Entity, &Connection)>()
+            .query::<&Connection>()
             .iter()
-            .filter(|(_, connection)| {
+            .filter(|connection| {
                 connection.directional
                     && tree.contains(&connection.to)
                     && *canvas.world.get::<&NeuronType>(connection.from).unwrap() == neuron_type
             })
-            .map(|(_, connection)| connection.to)
+            .map(|connection| connection.to)
             .max_by(|a, b| {
                 let up =
                     |entity: &Entity| canvas.world.get::<&Position>(*entity).unwrap().position.x;
@@ -574,10 +574,10 @@ fn the_top_spike_runs_down_to_the_red_ending_and_stops_there(preparation: Prepar
     let parent = |canvas: &Canvas, child: Entity| {
         canvas
             .world
-            .query::<(Entity, &Connection)>()
+            .query::<&Connection>()
             .iter()
-            .find(|(_, connection)| !connection.directional && connection.to == child)
-            .map(|(_, connection)| connection.from)
+            .find(|connection| !connection.directional && connection.to == child)
+            .map(|connection| connection.from)
             .unwrap()
     };
     let mut path = vec![tip];

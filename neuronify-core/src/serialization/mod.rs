@@ -506,7 +506,7 @@ mod tests {
         );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
-        for (_, input) in saved.world.query::<(Entity, &VisualInput)>().iter() {
+        for input in saved.world.query::<&VisualInput>().iter() {
             assert_eq!(input.speed, DEFAULT_PICTURE_SPEED);
         }
     }
@@ -520,7 +520,7 @@ mod tests {
         );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
-        for (_, input) in saved.world.query::<(Entity, &VisualInput)>().iter() {
+        for input in saved.world.query::<&VisualInput>().iter() {
             assert_eq!(input.speed, DEFAULT_PICTURE_SPEED);
         }
     }
@@ -819,9 +819,9 @@ mod tests {
         assert_eq!(count::<v1::Inhibitory>(world), 0);
         assert_eq!(
             world
-                .query::<(Entity, &NeuronType)>()
+                .query::<&NeuronType>()
                 .iter()
-                .filter(|(_, neuron_type)| **neuron_type == NeuronType::Inhibitory)
+                .filter(|neuron_type| **neuron_type == NeuronType::Inhibitory)
                 .count(),
             7
         );
@@ -849,12 +849,12 @@ mod tests {
         assert_eq!(count::<SpatialDynamics>(world), 1);
         assert_eq!(count::<NeuronType>(world), neurons + 1);
 
-        for (_, connection) in world.query::<(Entity, &Connection)>().iter() {
+        for connection in world.query::<&Connection>().iter() {
             assert!(world.contains(connection.from) && world.contains(connection.to));
         }
         assert!(world
-            .query::<(Entity, &Annotation)>()
+            .query::<&Annotation>()
             .iter()
-            .any(|(_, a)| a.text == "Touch the sensor to make the leaky neuron fire."));
+            .any(|a| a.text == "Touch the sensor to make the leaky neuron fire."));
     }
 }

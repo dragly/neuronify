@@ -127,18 +127,18 @@ fn collect_wires(
 
 fn obstacles(world: &hecs::World) -> Vec<Vec3> {
     let mut obstacles: Vec<Vec3> = world
-        .query::<(Entity, &Position)>()
+        .query::<&Position>()
         .with::<&LeakyNeuron>()
         .iter()
-        .map(|(_, position)| position.position)
+        .map(|position| position.position)
         .collect();
     obstacles.extend(
         world
-            .query::<(Entity, &Position)>()
+            .query::<&Position>()
             .with::<&GeneratorDynamics>()
             .without::<&VisualInput>()
             .iter()
-            .map(|(_, position)| position.position),
+            .map(|position| position.position),
     );
     obstacles
 }

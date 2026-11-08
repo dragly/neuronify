@@ -210,8 +210,7 @@ pub fn rest(world: &mut World, preparation: Preparation) {
     for cable in cables {
         world.remove_one::<CableState>(cable).unwrap();
     }
-    for (_, (state, soma)) in world.query_mut::<(Entity, (&mut NodeState, Option<&LeakyNeuron>))>()
-    {
+    for (state, soma) in world.query_mut::<(&mut NodeState, Option<&LeakyNeuron>)>() {
         match soma {
             Some(_) => state.gates.clear(),
             None => *state = NodeState::at(preparation.resting_potential()),
@@ -252,11 +251,11 @@ pub fn soma_end_radius(diameter: Micrometres, display: &NeuronDisplay) -> f32 {
 
 pub fn soma_diameter(world: &World, soma: Entity) -> Micrometres {
     let dendritic = world
-        .query::<(Entity, &Connection)>()
+        .query::<&Connection>()
         .with::<&Cable>()
         .iter()
-        .filter(|(_, cable)| cable.from == soma || cable.to == soma)
-        .any(|(_, cable)| dendritic(world, cable.from) || dendritic(world, cable.to));
+        .filter(|cable| cable.from == soma || cable.to == soma)
+        .any(|cable| dendritic(world, cable.from) || dendritic(world, cable.to));
     if dendritic {
         return SOMA_DIAMETER;
     }
@@ -279,10 +278,10 @@ fn dendritic(world: &World, entity: Entity) -> bool {
 
 fn soma_distance(world: &World, at: glam::Vec3) -> f32 {
     world
-        .query::<(Entity, &Position)>()
+        .query::<&Position>()
         .with::<&LeakyNeuron>()
         .iter()
-        .map(|(_, soma)| soma.position.distance(at))
+        .map(|soma| soma.position.distance(at))
         .fold(f32::MAX, f32::min)
 }
 
@@ -352,10 +351,10 @@ pub fn pulse_size(world: &World, node: Entity) -> f64 {
 
 pub fn node_size(world: &World, node: Entity) -> f64 {
     world
-        .query::<(Entity, (&Connection, &Cable))>()
+        .query::<(&Connection, &Cable)>()
         .iter()
-        .filter(|(_, (cable, _))| cable.from == node || cable.to == node)
-        .map(|(_, (_, cable))| cable_conductance(cable.diameter))
+        .filter(|(cable, _)| cable.from == node || cable.to == node)
+        .map(|(_, cable)| cable_conductance(cable.diameter))
         .sum()
 }
 
