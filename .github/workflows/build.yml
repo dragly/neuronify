@@ -9,8 +9,6 @@ name: Continuous integration
 permissions:
   contents: read
 
-env:
-  RUSTC_WRAPPER: sccache
 jobs:
   ci:
     runs-on: ubuntu-22.04
@@ -21,31 +19,18 @@ jobs:
           - 1.92.0  # Minimum supported Rust version
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev
-      - name: sccache cache files
-        uses: actions/cache@v4
-        with:
-          path: /home/runner/.cache/sccache
-          key: ${{ matrix.rust }}-sccache-${{ github.sha }}
-          restore-keys: |
-            ${{ matrix.rust }}-sccache
-      - name: Download sccache
-        run: |
-          wget https://github.com/mozilla/sccache/releases/download/v0.2.15/sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz
-          tar -xvzf sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz
-          sudo cp sccache-v0.2.15-x86_64-unknown-linux-musl/sccache /usr/bin/sccache
-          sudo chmod +x /usr/bin/sccache
-          sccache --show-stats
       - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master on 2026-10-16
         with:
           toolchain: ${{ matrix.rust }}
           components: clippy, rustfmt
           targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2.9.3
       - name: Check formatting
         run: cargo fmt --all --check
       - name: Check
