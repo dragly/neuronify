@@ -6,10 +6,8 @@ use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
-use crate::measurement::voltmeter::{RollingWindow, VoltageSeries, Voltmeter, VoltmeterRange};
+use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::simulation::model::cable_between;
-
-const VOLTMETER_MEASUREMENTS: usize = 100000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Element {
@@ -387,10 +385,7 @@ pub fn spawn_voltmeter_wire(world: &mut World, target: Entity, voltmeter: Entity
             strength: 1.0,
             directional: true,
         },
-        VoltageSeries {
-            measurements: RollingWindow::new(VOLTMETER_MEASUREMENTS),
-            spike_times: Vec::new(),
-        },
+        VoltageSeries::new(),
         Deletable {},
     ))
 }

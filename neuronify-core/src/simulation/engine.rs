@@ -18,7 +18,6 @@ use crate::measurement::visual_input::{VisualInput, FRAME_INTERVAL};
 use crate::measurement::voltmeter::VoltageSeries;
 
 const D_LAMBDA: f64 = 0.3;
-const PROBE_EVERY: u64 = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Spike {
