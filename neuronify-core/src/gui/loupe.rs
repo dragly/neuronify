@@ -8,6 +8,11 @@ use crate::rendering::Theme;
 pub const LOUPE_DELAY: f64 = 0.15;
 const RADIUS: f32 = 56.0;
 const ZOOM: f32 = 1.5;
+const LIFTED_ZOOM: f32 = 1.0;
+const FARTHEST: f32 = 0.4;
+const LIFTED_SIZE: f32 = 8.0;
+const LIFT: f32 = 2.0;
+const EASING: f32 = 0.08;
 const CLEARANCE: f32 = 64.0;
 const SHADOW_DROP: f32 = 3.0;
 const CROSSHAIR_RADIUS: f32 = 4.0;
@@ -48,6 +53,47 @@ impl LoupeCorner {
         match crowded {
             true => corner.other(),
             false => corner,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Subject {
+    pub center: Pos2,
+    pub size: f32,
+    pub lifted: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LoupeFocus {
+    pub source: Pos2,
+    pub zoom: f32,
+}
+
+impl LoupeFocus {
+    pub fn of(finger: Pos2, subject: Option<Subject>) -> LoupeFocus {
+        let Some(subject) = subject else {
+            return LoupeFocus {
+                source: finger,
+                zoom: ZOOM,
+            };
+        };
+        let lifted = (LIFTED_SIZE / subject.size).clamp(FARTHEST, LIFTED_ZOOM);
+        let zoom = match subject.lifted {
+            true => lifted,
+            false => (LIFT * lifted).min(ZOOM),
+        };
+        LoupeFocus {
+            source: subject.center,
+            zoom,
+        }
+    }
+
+    pub fn eased(self, previous: LoupeFocus, seconds: f32) -> LoupeFocus {
+        let follow = 1.0 - (-seconds / EASING).exp();
+        LoupeFocus {
+            source: self.source,
+            zoom: previous.zoom + (self.zoom - previous.zoom) * follow,
         }
     }
 }
@@ -229,6 +275,7 @@ impl CallbackTrait for Callback {
 pub struct LoupeView {
     pub corner: LoupeCorner,
     pub finger: Pos2,
+    pub focus: LoupeFocus,
     pub screen: Rect,
     pub srgb_target: bool,
     pub attached: bool,
@@ -253,10 +300,10 @@ pub fn paint_loupe(context: &Context, theme: Theme, view: LoupeView) {
     let pixels = context.pixels_per_point();
     let uniforms = Uniforms {
         center: (center.to_vec2() * pixels).into(),
-        source: (view.finger.to_vec2() * pixels).into(),
+        source: (view.focus.source.to_vec2() * pixels).into(),
         size: (view.screen.size() * pixels).into(),
         radius: RADIUS * pixels,
-        zoom: ZOOM,
+        zoom: view.focus.zoom,
         encode_srgb: u32::from(!view.srgb_target),
         padding: [0; 3],
     };
@@ -266,11 +313,14 @@ pub fn paint_loupe(context: &Context, theme: Theme, view: LoupeView) {
         bounds,
         Callback { uniforms },
     ));
-    painter.circle_stroke(
-        center,
-        CROSSHAIR_RADIUS,
-        Stroke::new(THIN, chrome.text.gamma_multiply(0.6)),
-    );
+    let crosshair = center + (view.finger - view.focus.source) * view.focus.zoom;
+    if crosshair.distance(center) < RADIUS - CROSSHAIR_RADIUS {
+        painter.circle_stroke(
+            crosshair,
+            CROSSHAIR_RADIUS,
+            Stroke::new(THIN, chrome.text.gamma_multiply(0.6)),
+        );
+    }
     let rim = match view.attached {
         true => Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent),
         false => Stroke::new(RIM_WIDTH, chrome.border),
@@ -306,6 +356,53 @@ mod tests {
             LoupeCorner::next(None, right_finger, phone()),
             LoupeCorner::Left
         );
+    }
+
+    fn subject(size: f32, lifted: bool) -> Option<Subject> {
+        Some(Subject {
+            center: Pos2::new(200.0, 300.0),
+            size,
+            lifted,
+        })
+    }
+
+    #[test]
+    fn drawing_magnifies_around_the_finger() {
+        let finger = Pos2::new(100.0, 400.0);
+        let focus = LoupeFocus::of(finger, None);
+        assert_eq!((focus.source, focus.zoom), (finger, ZOOM));
+    }
+
+    #[test]
+    fn a_held_element_is_magnified_until_it_is_lifted_and_then_fits_the_loupe() {
+        let finger = Pos2::new(205.0, 305.0);
+        let compartment = 2.5;
+        let neuron = 11.0;
+        let zoom = |size, lifted| LoupeFocus::of(finger, subject(size, lifted)).zoom;
+        assert_eq!(zoom(compartment, false), ZOOM);
+        assert_eq!(zoom(compartment, true), 1.0);
+        assert!((zoom(neuron, false) - 16.0 / 11.0).abs() < 1e-6);
+        assert!((zoom(neuron, true) - 8.0 / 11.0).abs() < 1e-6);
+        let focus = LoupeFocus::of(finger, subject(neuron, true));
+        assert_eq!(focus.source, Pos2::new(200.0, 300.0));
+    }
+
+    #[test]
+    fn large_elements_are_shown_whole_while_held_and_from_afar_once_lifted() {
+        let finger = Pos2::new(205.0, 305.0);
+        let note = 56.0;
+        assert_eq!(LoupeFocus::of(finger, subject(note, false)).zoom, 0.8);
+        assert_eq!(LoupeFocus::of(finger, subject(note, true)).zoom, 0.4);
+    }
+
+    #[test]
+    fn the_zoom_eases_towards_its_target() {
+        let source = Pos2::new(200.0, 300.0);
+        let held = LoupeFocus { source, zoom: 1.5 };
+        let lifted = LoupeFocus { source, zoom: 0.5 };
+        let soon = lifted.eased(held, 0.02).zoom;
+        assert!(soon < 1.5 && soon > 1.0);
+        assert!((lifted.eased(held, 1.0).zoom - 0.5).abs() < 1e-3);
     }
 
     #[test]

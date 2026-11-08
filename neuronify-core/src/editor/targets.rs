@@ -44,6 +44,13 @@ impl Shape {
         }
     }
 
+    pub fn size(&self) -> f32 {
+        match self {
+            Shape::Pieces(_) => self.thickness(),
+            Shape::Rectangle([min, max]) => 0.5 * min.distance(*max),
+        }
+    }
+
     pub fn thickness(&self) -> f32 {
         match self {
             Shape::Pieces(pieces) => pieces.iter().map(|piece| piece.radius).fold(0.0, f32::max),

@@ -9,8 +9,8 @@ use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
-    self, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeView, MenuChoice, Saving,
-    LOUPE_DELAY,
+    self, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus, LoupeView,
+    MenuChoice, Saving, Subject, LOUPE_DELAY,
 };
 use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
@@ -67,6 +67,7 @@ pub struct Neuronify {
     hold_ring: Option<HoldRing>,
     attach_ring: Option<AttachRing>,
     loupe: Option<LoupeCorner>,
+    loupe_focus: Option<(LoupeFocus, f64)>,
 }
 
 fn ground_under(
@@ -224,6 +225,7 @@ impl Neuronify {
             hold_ring: None,
             attach_ring: None,
             loupe: None,
+            loupe_focus: None,
         };
         match opened {
             Some(Ok((name, saved))) => neuronify.open_world(
@@ -496,6 +498,23 @@ impl Neuronify {
         }
     }
 
+    fn loupe_subject(
+        &self,
+        application: &visula::Application,
+        pixels_per_point: f32,
+    ) -> Option<Subject> {
+        let candidate = self.loupe_candidate();
+        let subject = candidate.or_else(|| self.editor.picked())?;
+        let shape = Targets::new(&self.world).shape(subject)?;
+        let per_point = camera::ground_length(application, f64::from(pixels_per_point));
+        let center = camera::screen_position(application, shape.center());
+        Some(Subject {
+            center: egui::pos2(center.x as f32, center.y as f32) / pixels_per_point,
+            size: shape.size() / per_point,
+            lifted: candidate.is_none(),
+        })
+    }
+
     fn prepare_loupe(&self, application: &mut visula::Application) {
         if self.shows_loupe() {
             gui::prepare_loupe(application);
@@ -506,10 +525,19 @@ impl Neuronify {
         let finger = self.mouse.position.filter(|_| self.shows_loupe());
         let Some(finger) = finger else {
             self.loupe = None;
+            self.loupe_focus = None;
             return;
         };
         let pixels_per_point = context.pixels_per_point();
         let finger = egui::pos2(finger.x as f32, finger.y as f32) / pixels_per_point;
+        let subject = self.loupe_subject(application, pixels_per_point);
+        let target = LoupeFocus::of(finger, subject);
+        let now = input::now();
+        let focus = match self.loupe_focus {
+            Some((previous, at)) => target.eased(previous, (now - at) as f32),
+            None => target,
+        };
+        self.loupe_focus = Some((focus, now));
         let size = egui::vec2(
             application.config.width as f32,
             application.config.height as f32,
@@ -521,6 +549,7 @@ impl Neuronify {
         let view = LoupeView {
             corner,
             finger,
+            focus,
             screen,
             srgb_target: application.config.format.is_srgb(),
             attached: self.editor.ending().is_some(),
