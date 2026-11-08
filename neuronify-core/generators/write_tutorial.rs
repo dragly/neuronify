@@ -31,10 +31,8 @@ fn choose_in(tool: Tool, group: ToolGroup) -> String {
     format!("Choose {} under {}", tool.name(), group.label())
 }
 
-fn main() {
-    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/tutorial");
-    std::fs::create_dir_all(&directory).unwrap();
-    for (file, world) in [
+pub fn canvases() -> Vec<(&'static str, World)> {
+    vec![
         ("1_spikes.neuronify", spikes()),
         ("2_leaks.neuronify", leaks()),
         ("3_push_and_pull.neuronify", push_and_pull()),
@@ -49,7 +47,13 @@ fn main() {
             "11_inhibition_on_a_branch.neuronify",
             inhibition_on_a_branch(),
         ),
-    ] {
+    ]
+}
+
+fn main() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/tutorial");
+    std::fs::create_dir_all(&directory).unwrap();
+    for (file, world) in canvases() {
         let path = directory.join(file);
         std::fs::write(
             &path,

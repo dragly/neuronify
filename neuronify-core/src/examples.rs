@@ -262,12 +262,27 @@ mod tests {
             .flat_map(|category| category.examples)
             .map(Example::file)
             .collect();
-        let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
-        for entry in std::fs::read_dir(folder).unwrap() {
-            let file = entry.unwrap().file_name().to_string_lossy().into_owned();
-            if file.ends_with(".neuronify") {
-                assert!(listed.contains(&file.as_str()), "{file} is not listed");
+        let root = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/examples"));
+        let mut folders = vec![root.to_path_buf()];
+        let mut bundled = Vec::new();
+        while let Some(folder) = folders.pop() {
+            for entry in std::fs::read_dir(folder).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    folders.push(path);
+                } else if path
+                    .extension()
+                    .is_some_and(|extension| extension == "neuronify")
+                {
+                    let file = path.strip_prefix(root).unwrap().to_string_lossy();
+                    bundled.push(file.replace('\\', "/"));
+                }
             }
+        }
+        assert!(bundled.iter().any(|file| file.starts_with("tutorial/")));
+        assert!(bundled.iter().any(|file| file.starts_with("labs/")));
+        for file in bundled {
+            assert!(listed.contains(&file.as_str()), "{file} is not listed");
         }
     }
 
