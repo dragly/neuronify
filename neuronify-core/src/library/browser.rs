@@ -84,7 +84,9 @@ impl Store {
 
     pub fn back_up(&self, simulation: &SavedSimulation) {
         if let (Some(storage), Some(text)) = (local_storage(), backup(simulation)) {
-            let _ = storage.set_item(&backup_key(&simulation.id), &text);
+            if let Err(error) = storage.set_item(&backup_key(&simulation.id), &text) {
+                log::error!("Could not back up {}: {error:?}", simulation.name);
+            }
         }
     }
 
@@ -142,7 +144,9 @@ impl Store {
 
 pub fn remember_count(count: usize) {
     if let Some(storage) = local_storage() {
-        let _ = storage.set_item(COUNT_FOR_LOADING_SCREEN, &count.to_string());
+        if let Err(error) = storage.set_item(COUNT_FOR_LOADING_SCREEN, &count.to_string()) {
+            log::error!("Could not remember the number of simulations: {error:?}");
+        }
     }
 }
 

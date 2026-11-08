@@ -26,6 +26,9 @@ pub const TERMINAL_INSET: f32 = 2.0 * NODE_RADIUS;
 pub const CONNECTION_WIDTH_PER_STRENGTH: f32 = 0.3;
 
 pub const VOLTMETER_TIME_WINDOW: Milliseconds = Milliseconds(1000.0 / 9.0);
+pub const PROBE_EVERY: u64 = 4;
+pub const VOLTMETER_MEASUREMENTS: usize =
+    (VOLTMETER_TIME_WINDOW.0 / (DT.0 * PROBE_EVERY as f64)) as usize + 2;
 
 pub const REPULSION_STRENGTH: f32 = 5.0;
 pub const SPRING_STRENGTH: f32 = 10.0;

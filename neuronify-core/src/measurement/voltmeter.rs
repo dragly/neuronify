@@ -6,6 +6,7 @@ use neuronify_engine::units::{Milliseconds, Millivolts};
 use serde::{Deserialize, Serialize};
 
 use crate::components::{Connection, MeterSize, Position};
+use crate::constants::VOLTMETER_MEASUREMENTS;
 use crate::measurement::spike_detector::RowOrder;
 use crate::simulation::Engine;
 
@@ -60,6 +61,27 @@ pub struct VoltageSeries {
     pub measurements: RollingWindow<VoltageMeasurement>,
     #[serde(default)]
     pub spike_times: Vec<Milliseconds>,
+}
+
+impl VoltageSeries {
+    pub fn new() -> VoltageSeries {
+        VoltageSeries {
+            measurements: RollingWindow::new(VOLTMETER_MEASUREMENTS),
+            spike_times: Vec::new(),
+        }
+    }
+
+    fn forget_spikes_before_measurements(&mut self) {
+        let oldest = self.measurements.iter().next().map(|m| m.time);
+        self.spike_times
+            .retain(|&time| oldest.is_none_or(|oldest| time >= oldest));
+    }
+}
+
+impl Default for VoltageSeries {
+    fn default() -> Self {
+        VoltageSeries::new()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -159,6 +181,7 @@ pub fn record_voltages(world: &mut World, engine: &mut Engine) {
         for spike in spikes.iter().filter(|spike| spike.entity == probe.target) {
             series.spike_times.push(spike.time);
         }
+        series.forget_spikes_before_measurements();
     }
 }
 
@@ -405,5 +428,29 @@ mod tests {
         let mut loaded: RollingWindow<u32> = postcard::from_bytes(&bytes).unwrap();
         loaded.push(8);
         assert_eq!(loaded.iter().copied().collect::<Vec<_>>(), [6, 7, 8]);
+    }
+
+    #[test]
+    fn a_firing_neuron_keeps_only_the_voltages_and_spikes_its_plot_shows() {
+        use crate::constants::VOLTMETER_TIME_WINDOW;
+        use crate::elements::{spawn_connection, spawn_voltmeter, Element};
+        use crate::simulation::run_headless;
+
+        let mut world = hecs::World::new();
+        let source = Element::CurrentSource.spawn(&mut world, Vec3::ZERO);
+        let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(0.0, 0.0, 5.0));
+        spawn_connection(&mut world, source, neuron);
+        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::new(10.0, 0.0, 5.0));
+        let spikes = run_headless(&mut world, Milliseconds(1000.0));
+        assert!(spikes.len() > 20, "{}", spikes.len());
+
+        let (wire, _) = measured(&world, voltmeter)[0];
+        let series = world.get::<&VoltageSeries>(wire).unwrap();
+        let oldest = series.measurements.iter().next().unwrap().time;
+        let latest = series.measurements.last().unwrap().time;
+        assert_eq!(series.measurements.len(), VOLTMETER_MEASUREMENTS);
+        assert!(latest - oldest >= VOLTMETER_TIME_WINDOW);
+        assert!(!series.spike_times.is_empty());
+        assert!(series.spike_times.iter().all(|&time| time >= oldest));
     }
 }
