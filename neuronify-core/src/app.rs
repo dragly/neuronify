@@ -67,7 +67,7 @@ pub struct Neuronify {
     hold_ring: Option<HoldRing>,
     attach_ring: Option<AttachRing>,
     loupe: Option<LoupeCorner>,
-    loupe_focus: Option<(LoupeFocus, f64)>,
+    loupe_focus: Option<(LoupeFocus, Seconds)>,
 }
 
 fn ground_under(
@@ -534,7 +534,7 @@ impl Neuronify {
         let target = LoupeFocus::of(finger, subject);
         let now = input::now();
         let focus = match self.loupe_focus {
-            Some((previous, at)) => target.eased(previous, (now - at) as f32),
+            Some((previous, at)) => target.eased(previous, (now - at).0 as f32),
             None => target,
         };
         self.loupe_focus = Some((focus, now));
