@@ -741,7 +741,8 @@ impl visula::Simulation for Neuronify {
         for position in self.editor.take_presses() {
             simulation::fire_nearby(&mut self.world, &mut self.engine, position);
         }
-        if self.running {
+        let shown = self.landing.is_none() && self.about.is_none();
+        if self.running && shown {
             let start = self.time;
             simulation::step_simulation(
                 &mut self.world,
@@ -753,7 +754,9 @@ impl visula::Simulation for Neuronify {
             let plays = schedule(take_heard(&mut self.world), start, self.time, seconds);
             self.speakers.play(&plays);
         }
-        simulation::step_physics(&mut self.world, physics_steps, self.editor.drawn());
+        if shown {
+            simulation::step_physics(&mut self.world, physics_steps, self.editor.drawn());
+        }
 
         if let Some(landing) = &mut self.landing {
             landing.update(seconds, physics_steps);
