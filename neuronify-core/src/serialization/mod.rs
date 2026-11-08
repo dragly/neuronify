@@ -587,7 +587,10 @@ mod tests {
     #[test]
     fn loads_version_14() {
         let saved = load(include_bytes!("fixtures/v14.neuronify")).unwrap();
-        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_15())
+        );
         assert_eq!(
             ConnectionView::of(&saved.world),
             ConnectionView::LastSelected
@@ -600,6 +603,17 @@ mod tests {
     #[test]
     fn loads_version_15() {
         let saved = load(include_bytes!("fixtures/v15.neuronify")).unwrap();
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_15())
+        );
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn loads_version_16() {
+        let saved = load(include_bytes!("fixtures/v16.neuronify")).unwrap();
         assert_eq!(composition(&saved.world), composition(&fixture_world()));
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
@@ -803,6 +817,28 @@ mod tests {
     }
 
     fn fixture_world() -> World {
+        let mut world = fixture_world_of_version_15();
+        let neuron = world
+            .query::<(Entity, &LeakyNeuron)>()
+            .iter()
+            .next()
+            .unwrap()
+            .0;
+        world.get::<&mut LeakyNeuron>(neuron).unwrap().soma_diameter = Micrometres(30.0);
+        world
+            .insert_one(
+                neuron,
+                PendingEvents {
+                    adaptation: vec![FIXTURE_TIME],
+                    burst: vec![FIXTURE_TIME],
+                    fire: vec![FIXTURE_TIME],
+                },
+            )
+            .unwrap();
+        world
+    }
+
+    fn fixture_world_of_version_15() -> World {
         let mut world = fixture_world_of_version_13();
         let neuron = world
             .query::<(Entity, &LeakyNeuron)>()
