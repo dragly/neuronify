@@ -285,6 +285,34 @@ pub fn canvas_area(screen: Rect, rail_shown: bool) -> Rect {
     area
 }
 
+fn warm(
+    editor: &mut Editor,
+    world: &mut World,
+    temperature: Temperature,
+    warmed: bool,
+    settled: bool,
+) {
+    let stored = world
+        .query::<()>()
+        .with::<&Temperature>()
+        .iter()
+        .next()
+        .map(|(entity, _)| entity);
+    let stored = match stored {
+        Some(entity) => entity,
+        None if warmed => world.spawn((Temperature::of(world),)),
+        None => return,
+    };
+    editor.adjust(world, stored, settled, || {
+        if warmed {
+            if let Ok(mut celsius) = world.get::<&mut Temperature>(stored) {
+                *celsius = temperature;
+            }
+        }
+        warmed
+    });
+}
+
 pub struct FileError {
     title: &'static str,
     message: String,
@@ -576,9 +604,16 @@ fn menu(
                         .inner;
                     if chosen != preparation {
                         controls.editor.prepare(controls.world, chosen);
-                    } else if warmed {
-                        temperature.set_in(controls.world);
-                        controls.editor.mark_edited();
+                    } else {
+                        let settled = !ui.ctx().egui_wants_keyboard_input()
+                            && !ui.input(|input| input.pointer.any_down());
+                        warm(
+                            controls.editor,
+                            controls.world,
+                            temperature,
+                            warmed,
+                            settled,
+                        );
                     }
                 });
             });
