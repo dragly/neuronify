@@ -4,7 +4,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::{Entity, World};
+use hecs::{ComponentError, Entity, World};
 
 schema!(
     Position,
@@ -58,13 +58,14 @@ schema!(
     RowOrder,
 );
 
-pub fn upgrade_from_v13(world: &mut World) {
+pub fn upgrade_from_v13(world: &mut World) -> Result<(), ComponentError> {
     let detectors: Vec<hecs::Entity> = world
         .query::<Entity>()
         .with::<&SpikeDetector>()
         .iter()
         .collect();
     for detector in detectors {
-        world.insert_one(detector, RowOrder::Height).unwrap();
+        world.insert_one(detector, RowOrder::Height)?;
     }
+    Ok(())
 }

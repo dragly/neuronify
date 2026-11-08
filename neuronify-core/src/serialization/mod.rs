@@ -11,12 +11,13 @@
 //! so a list must not change once files have been saved with it.
 //! To change the list, or the fields of a component, add a version:
 //! copy the newest module to `v{N+1}`, make the change there,
-//! write `upgrade_from_v{N}` to turn a version N world into a version N+1 world,
+//! write `upgrade_from_v{N}` to turn a version N world into a version N+1 world
+//! and add it to `UPGRADES`,
 //! and save a fixture with the `write_fixture` test.
 //! If the fields of a component change,
 //! the older modules need a copy of the old struct for the upgrade to convert.
 
-use hecs::{serialize::column::serialize, World};
+use hecs::{serialize::column::serialize, ComponentError, World};
 use postcard::ser_flavors::Flavor;
 
 use crate::components::{Milliseconds, Seconds};
@@ -45,6 +46,25 @@ mod v9;
 pub const VERSION: u32 = 15;
 
 const MAGIC: &[u8] = b"neuronify";
+
+type Upgrade = fn(&mut World) -> Result<(), ComponentError>;
+
+const UPGRADES: [Upgrade; VERSION as usize - 1] = [
+    v2::upgrade_from_v1,
+    v3::upgrade_from_v2,
+    v4::upgrade_from_v3,
+    v5::upgrade_from_v4,
+    v6::upgrade_from_v5,
+    v7::upgrade_from_v6,
+    v8::upgrade_from_v7,
+    v9::upgrade_from_v8,
+    v10::upgrade_from_v9,
+    v11::upgrade_from_v10,
+    v12::upgrade_from_v11,
+    v13::upgrade_from_v12,
+    v14::upgrade_from_v13,
+    v15::upgrade_from_v14,
+];
 
 pub struct SavedWorld {
     pub world: World,
@@ -144,23 +164,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             ))
         }
     };
-    for from in version..VERSION {
-        match from {
-            1 => v2::upgrade_from_v1(&mut world),
-            2 => v3::upgrade_from_v2(&mut world),
-            3 => v4::upgrade_from_v3(&mut world),
-            4 => v5::upgrade_from_v4(&mut world),
-            5 => v6::upgrade_from_v5(&mut world),
-            6 => v7::upgrade_from_v6(&mut world),
-            7 => v8::upgrade_from_v7(&mut world),
-            8 => v9::upgrade_from_v8(&mut world),
-            9 => v10::upgrade_from_v9(&mut world),
-            10 => v11::upgrade_from_v10(&mut world),
-            11 => v12::upgrade_from_v11(&mut world),
-            12 => v13::upgrade_from_v12(&mut world),
-            13 => v14::upgrade_from_v13(&mut world),
-            14 => v15::upgrade_from_v14(&mut world),
-            _ => unreachable!("no upgrade from version {from}"),
+    for (from, upgrade) in (1..VERSION).zip(UPGRADES) {
+        if from >= version {
+            upgrade(&mut world).map_err(|error| {
+                format!("Could not upgrade the save file from version {from}: {error}")
+            })?;
         }
     }
     let time = match version {

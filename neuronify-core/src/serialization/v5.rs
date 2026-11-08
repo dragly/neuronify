@@ -4,7 +4,7 @@ use super::v11::{
 };
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use hecs::World;
+use hecs::{ComponentError, World};
 
 schema!(
     Position,
@@ -36,4 +36,6 @@ schema!(
     BurstCurrent,
 );
 
-pub fn upgrade_from_v4(_world: &mut World) {}
+pub fn upgrade_from_v4(_world: &mut World) -> Result<(), ComponentError> {
+    Ok(())
+}

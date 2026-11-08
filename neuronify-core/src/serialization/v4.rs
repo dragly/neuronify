@@ -5,7 +5,7 @@ use super::v11::{
 };
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use hecs::{Entity, World};
+use hecs::{ComponentError, Entity, World};
 
 schema!(
     Position,
@@ -37,14 +37,15 @@ schema!(
     BurstCurrent,
 );
 
-pub fn upgrade_from_v3(world: &mut World) {
+pub fn upgrade_from_v3(world: &mut World) -> Result<(), ComponentError> {
     let inhibitory: Vec<_> = world
         .query::<(Entity, &Inhibitory)>()
         .iter()
         .map(|(entity, _)| entity)
         .collect();
     for entity in inhibitory {
-        world.remove_one::<Inhibitory>(entity).unwrap();
-        world.insert_one(entity, NeuronType::Inhibitory).unwrap();
+        world.remove_one::<Inhibitory>(entity)?;
+        world.insert_one(entity, NeuronType::Inhibitory)?;
     }
+    Ok(())
 }

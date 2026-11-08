@@ -7,7 +7,7 @@ use super::v11::{
 };
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use hecs::{Entity, World};
+use hecs::{ComponentError, Entity, World};
 
 schema!(
     Position,
@@ -40,15 +40,14 @@ schema!(
 
 /// Gives every note the default size and lets it be deleted,
 /// like notes made with the note tool.
-pub fn upgrade_from_v1(world: &mut World) {
+pub fn upgrade_from_v1(world: &mut World) -> Result<(), ComponentError> {
     let notes: Vec<_> = world
         .query::<(Entity, &Annotation)>()
         .iter()
         .map(|(entity, _)| entity)
         .collect();
     for entity in notes {
-        world
-            .insert(entity, (NoteSize::default(), Deletable {}))
-            .unwrap();
+        world.insert(entity, (NoteSize::default(), Deletable {}))?;
     }
+    Ok(())
 }

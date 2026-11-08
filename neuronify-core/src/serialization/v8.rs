@@ -4,7 +4,7 @@ use super::v11::{
 };
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use hecs::World;
+use hecs::{ComponentError, World};
 
 schema!(
     Position,
@@ -38,4 +38,6 @@ schema!(
     NeuronDisplay,
 );
 
-pub fn upgrade_from_v7(_world: &mut World) {}
+pub fn upgrade_from_v7(_world: &mut World) -> Result<(), ComponentError> {
+    Ok(())
+}

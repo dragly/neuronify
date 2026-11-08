@@ -4,7 +4,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::{Entity, World};
+use hecs::{ComponentError, Entity, World};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -132,26 +132,25 @@ schema!(
     Myelin,
 );
 
-pub fn upgrade_from_v10(world: &mut World) {
+pub fn upgrade_from_v10(world: &mut World) -> Result<(), ComponentError> {
     let inputs: Vec<hecs::Entity> = world
         .query::<Entity>()
         .with::<&super::v9::VisualInput>()
         .iter()
         .collect();
     for input in inputs {
-        let old = world.remove_one::<super::v9::VisualInput>(input).unwrap();
-        world
-            .insert_one(
-                input,
-                VisualInput {
-                    field: old.field,
-                    sensitivity: Hertz(old.sensitivity),
-                    show_field: old.show_field,
-                    pattern: old.pattern,
-                    pattern_angle: old.pattern_angle,
-                    ..Default::default()
-                },
-            )
-            .unwrap();
+        let old = world.remove_one::<super::v9::VisualInput>(input)?;
+        world.insert_one(
+            input,
+            VisualInput {
+                field: old.field,
+                sensitivity: Hertz(old.sensitivity),
+                show_field: old.show_field,
+                pattern: old.pattern,
+                pattern_angle: old.pattern_angle,
+                ..Default::default()
+            },
+        )?;
     }
+    Ok(())
 }

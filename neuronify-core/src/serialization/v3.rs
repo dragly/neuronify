@@ -8,7 +8,7 @@ use super::v11::{
 };
 use crate::components::*;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
-use hecs::World;
+use hecs::{ComponentError, World};
 
 schema!(
     Position,
@@ -42,4 +42,6 @@ schema!(
 );
 
 /// Version 3 only adds components, so a version 2 world is already a version 3 world.
-pub fn upgrade_from_v2(_world: &mut World) {}
+pub fn upgrade_from_v2(_world: &mut World) -> Result<(), ComponentError> {
+    Ok(())
+}

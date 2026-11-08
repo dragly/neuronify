@@ -6,7 +6,7 @@ use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::simulation::model::cable_between;
-use hecs::{Component, Entity, World};
+use hecs::{Component, ComponentError, Entity, World};
 
 schema!(
     Position,
@@ -60,12 +60,16 @@ const MILLI: f64 = 1e3;
 const NANO: f64 = 1e9;
 const MICRO: f64 = 1e6;
 
-fn replace<Old: Component, New: Component>(world: &mut World, convert: impl Fn(Old) -> New) {
+fn replace<Old: Component, New: Component>(
+    world: &mut World,
+    convert: impl Fn(Old) -> New,
+) -> Result<(), ComponentError> {
     let entities: Vec<Entity> = world.query::<Entity>().with::<&Old>().iter().collect();
     for entity in entities {
-        let old = world.remove_one::<Old>(entity).unwrap();
-        world.insert_one(entity, convert(old)).unwrap();
+        let old = world.remove_one::<Old>(entity)?;
+        world.insert_one(entity, convert(old))?;
     }
+    Ok(())
 }
 
 fn scale<T: Component>(world: &mut World, convert: impl Fn(&mut T)) {
@@ -74,19 +78,19 @@ fn scale<T: Component>(world: &mut World, convert: impl Fn(&mut T)) {
     }
 }
 
-pub fn upgrade_from_v11(world: &mut World) {
+pub fn upgrade_from_v11(world: &mut World) -> Result<(), ComponentError> {
     replace(world, |old: v11::NeuronDisplay| NeuronDisplay {
         voltage: old.voltage,
         firing_rate: old.firing_rate,
         true_proportions: false,
-    });
+    })?;
     let neurons: Vec<Entity> = world
         .query::<Entity>()
         .with::<&v11::LeakyNeuron>()
         .iter()
         .collect();
     for neuron in neurons {
-        let old = world.remove_one::<v11::LeakyNeuron>(neuron).unwrap();
+        let old = world.remove_one::<v11::LeakyNeuron>(neuron)?;
         let dynamics = world.remove_one::<v11::LeakyDynamics>(neuron).ok();
         let refractory_period = dynamics
             .as_ref()
@@ -115,17 +119,17 @@ pub fn upgrade_from_v11(world: &mut World) {
             maximum_voltage: Millivolts(old.maximum_voltage * MILLI),
             refractory_period,
         };
-        world.insert(neuron, (neuron_parameters, state)).unwrap();
+        world.insert(neuron, (neuron_parameters, state))?;
     }
-    replace(world, |_: v11::LeakyDynamics| NodeState::default());
+    replace(world, |_: v11::LeakyDynamics| NodeState::default())?;
     replace(world, |old: v11::LeakCurrent| LeakCurrent {
         resistance: Megaohms(old.resistance / MICRO),
-    });
+    })?;
     replace(world, |old: v11::AdaptationCurrent| AdaptationCurrent {
         adaptation: Microsiemens(old.adaptation * MICRO),
         conductance: Microsiemens(old.conductance * MICRO),
         time_constant: Milliseconds(old.time_constant * MILLI),
-    });
+    })?;
     scale(world, |burst: &mut BurstCurrent| {
         burst.peak *= NANO;
         burst.drain *= NANO / MILLI;
@@ -145,21 +149,19 @@ pub fn upgrade_from_v11(world: &mut World) {
         exponential: 0.0,
         linear: 0.0,
         triggers: Vec::new(),
-    });
-    replace(world, |_: v11::ImmediateFireSynapse| ImmediateFireSynapse);
+    })?;
+    replace(world, |_: v11::ImmediateFireSynapse| ImmediateFireSynapse)?;
     replace(world, |old: v11::GeneratorDynamics| GeneratorDynamics {
         time_since_fire: Milliseconds(old.time_since_fire * MILLI),
-    });
+    })?;
     let compartments: Vec<Entity> = world
         .query::<Entity>()
         .with::<&v11::Compartment>()
         .iter()
         .collect();
     for compartment in compartments {
-        world.remove_one::<v11::Compartment>(compartment).unwrap();
-        world
-            .insert(compartment, (Compartment, NodeState::default()))
-            .unwrap();
+        world.remove_one::<v11::Compartment>(compartment)?;
+        world.insert(compartment, (Compartment, NodeState::default()))?;
     }
     let links: Vec<(Entity, Connection, bool)> = world
         .query::<(Entity, (&Connection, Option<&Myelin>))>()
@@ -168,18 +170,17 @@ pub fn upgrade_from_v11(world: &mut World) {
         .map(|(link, (connection, myelin))| (link, connection.clone(), myelin.is_some()))
         .collect();
     for (link, connection, myelinated) in links {
-        world.remove_one::<v11::CompartmentCurrent>(link).unwrap();
+        world.remove_one::<v11::CompartmentCurrent>(link)?;
         if connection.directional {
-            world
-                .insert(
-                    link,
-                    (ConductanceSynapse::default(), SynapseState::default()),
-                )
-                .unwrap();
+            world.insert(
+                link,
+                (ConductanceSynapse::default(), SynapseState::default()),
+            )?;
         } else {
             let (cable, membrane) =
                 cable_between(world, connection.from, connection.to, myelinated);
-            world.insert(link, (cable, membrane)).unwrap();
+            world.insert(link, (cable, membrane))?;
         }
     }
+    Ok(())
 }

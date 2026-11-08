@@ -4,7 +4,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::World;
+use hecs::{ComponentError, World};
 
 schema!(
     Position,
@@ -55,4 +55,6 @@ schema!(
     Preparation,
 );
 
-pub fn upgrade_from_v12(_world: &mut World) {}
+pub fn upgrade_from_v12(_world: &mut World) -> Result<(), ComponentError> {
+    Ok(())
+}
