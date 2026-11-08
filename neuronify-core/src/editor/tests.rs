@@ -241,6 +241,39 @@ fn erasing_a_neuron_leaves_the_dendrite_its_axon_ends_on() {
 }
 
 #[test]
+fn erasing_across_an_axon_ending_leaves_the_dendrite_it_ends_on() {
+    let mut world = World::new();
+    let target = neuron(&mut world, at(0.0, 30.0));
+    spawn_dendrites(&mut world, target);
+    let dendrite = compartment_tree(&world, target);
+    let (end, end_position) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .min_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
+        .unwrap();
+    let outward = (end_position - at(0.0, 30.0)).normalize();
+    let tip = end_position + outward * 10.0;
+    let source = neuron(&mut world, tip + outward * 6.0);
+    let axon: Vec<Entity> = [4.0, 2.0, 0.0]
+        .map(|out| spawn_compartment(&mut world, tip + outward * out, NeuronType::Excitatory))
+        .into();
+    crate::elements::spawn_cable(&mut world, source, axon[0], false);
+    for pair in axon.windows(2) {
+        crate::elements::spawn_cable(&mut world, pair[0], pair[1], false);
+    }
+    let ending = crate::elements::spawn_cable(&mut world, axon[2], end, true);
+    let paths = connection_paths(&world, &compartment_radii(&world), &Theme::Dark.palette());
+    let eraser = paths[&ending].point_at(0.7);
+
+    drag(&mut editor(Tool::Erase), &mut world, &[eraser]);
+
+    assert!(!world.contains(ending));
+    assert!(axon.iter().all(|&compartment| world.contains(compartment)));
+    assert!(dendrite
+        .iter()
+        .all(|&compartment| world.contains(compartment)));
+}
+
+#[test]
 fn axons_pass_over_dendrites_on_their_way_to_a_neuron() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
