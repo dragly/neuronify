@@ -4,6 +4,10 @@ use std::f64::consts::TAU;
 
 use crate::table::Tables;
 use crate::tree::Tree;
+use crate::units::{
+    Celsius, Hertz, Kilohertz, Microsiemens, Milliseconds, Millivolts, Nanoamperes,
+    NanoamperesPerMillisecond,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Site {
@@ -23,30 +27,30 @@ pub enum Target {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Event {
     pub source: usize,
-    pub time: f64,
+    pub time: Milliseconds,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConductanceSynapse {
     pub site: Site,
-    pub weight: f64,
-    pub tau: f64,
-    pub reversal: f64,
-    pub open: f64,
+    pub weight: Microsiemens,
+    pub tau: Milliseconds,
+    pub reversal: Millivolts,
+    pub open: Microsiemens,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CurrentSynapse {
     pub site: Site,
-    pub maximum: f64,
-    pub tau: f64,
+    pub maximum: Nanoamperes,
+    pub tau: Milliseconds,
     pub alpha: bool,
     pub exponential: f64,
     pub linear: f64,
 }
 
 impl CurrentSynapse {
-    fn current(&self) -> f64 {
+    fn current(&self) -> Nanoamperes {
         match self.alpha {
             true => self.maximum * self.linear * self.exponential,
             false => self.maximum * self.exponential,
@@ -67,37 +71,37 @@ impl CurrentSynapse {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Alternating {
     pub site: Site,
-    pub amplitude: f64,
-    pub frequency: f64,
+    pub amplitude: Nanoamperes,
+    pub frequency: Hertz,
 }
 
 impl Alternating {
-    pub fn at(&self, time: f64) -> f64 {
-        self.amplitude * (TAU * self.frequency * time * 1e-3).sin()
+    pub fn at(&self, time: Milliseconds) -> Nanoamperes {
+        self.amplitude * (TAU * self.frequency.cycles_in(time)).sin()
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Adaptation {
     pub site: Site,
-    pub increment: f64,
-    pub tau: f64,
-    pub reversal: f64,
-    pub conductance: f64,
+    pub increment: Microsiemens,
+    pub tau: Milliseconds,
+    pub reversal: Millivolts,
+    pub conductance: Microsiemens,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Burst {
     pub site: Site,
-    pub peak: f64,
-    pub drain: f64,
-    pub boost: f64,
+    pub peak: Nanoamperes,
+    pub drain: NanoamperesPerMillisecond,
+    pub boost: Nanoamperes,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Rhythm {
-    Regular { interval: f64 },
-    Poisson { rate: f64 },
+    Regular { interval: Milliseconds },
+    Poisson { rate: Kilohertz },
     Manual,
 }
 
@@ -105,7 +109,7 @@ pub enum Rhythm {
 pub struct Generator {
     pub source: usize,
     pub rhythm: Rhythm,
-    pub since: f64,
+    pub since: Milliseconds,
     forced: bool,
 }
 
@@ -116,7 +120,7 @@ impl Generator {
 }
 
 struct Pending {
-    time: f64,
+    time: Milliseconds,
     order: u64,
     target: Target,
 }
@@ -146,16 +150,16 @@ impl Ord for Pending {
 
 #[derive(Clone, Debug, PartialEq)]
 struct Pulses {
-    sites: Vec<(Site, f64)>,
-    interval: f64,
-    duration: f64,
-    since: f64,
+    sites: Vec<(Site, Nanoamperes)>,
+    interval: Milliseconds,
+    duration: Milliseconds,
+    since: Milliseconds,
 }
 
 struct Probe {
     site: Site,
     every: u64,
-    samples: Vec<(f64, f64)>,
+    samples: Vec<(Milliseconds, Millivolts)>,
 }
 
 pub struct Network {
@@ -163,7 +167,7 @@ pub struct Network {
     trees: Vec<Tree>,
     steps: u64,
     sources: usize,
-    outgoing: Vec<Vec<(Target, f64)>>,
+    outgoing: Vec<Vec<(Target, Milliseconds)>>,
     pub conductances: Vec<ConductanceSynapse>,
     pub currents: Vec<CurrentSynapse>,
     pub alternating: Vec<Alternating>,
@@ -187,7 +191,7 @@ struct Decays {
 }
 
 impl Network {
-    pub fn new(dt: f64, celsius: f64) -> Network {
+    pub fn new(dt: Milliseconds, celsius: Celsius) -> Network {
         Network {
             tables: Tables::new(dt, celsius),
             trees: Vec::new(),
@@ -249,8 +253,16 @@ impl Network {
         }
     }
 
-    pub fn set_pulses(&mut self, sites: &[(Site, f64)], interval: f64, duration: f64) {
-        let since = self.pulses.as_ref().map_or(0.0, |pulses| pulses.since);
+    pub fn set_pulses(
+        &mut self,
+        sites: &[(Site, Nanoamperes)],
+        interval: Milliseconds,
+        duration: Milliseconds,
+    ) {
+        let since = self
+            .pulses
+            .as_ref()
+            .map_or(Milliseconds::ZERO, |pulses| pulses.since);
         self.pulses = Some(Pulses {
             sites: sites.to_vec(),
             interval,
@@ -263,25 +275,25 @@ impl Network {
         self.pulses = None;
     }
 
-    pub fn dt(&self) -> f64 {
+    pub fn dt(&self) -> Milliseconds {
         self.tables.dt()
     }
 
-    pub fn celsius(&self) -> f64 {
+    pub fn celsius(&self) -> Celsius {
         self.tables.celsius()
     }
 
-    pub fn set_celsius(&mut self, celsius: f64) {
+    pub fn set_celsius(&mut self, celsius: Celsius) {
         if celsius != self.tables.celsius() {
             self.tables = Tables::new(self.tables.dt(), celsius);
         }
     }
 
-    pub fn time(&self) -> f64 {
+    pub fn time(&self) -> Milliseconds {
         self.steps as f64 * self.tables.dt()
     }
 
-    pub fn set_time(&mut self, time: f64) {
+    pub fn set_time(&mut self, time: Milliseconds) {
         self.steps = (time / self.tables.dt()).round().max(0.0) as u64;
     }
 
@@ -329,11 +341,11 @@ impl Network {
         self.trees.iter().map(Tree::points).sum()
     }
 
-    pub fn voltage(&self, site: Site) -> f64 {
+    pub fn voltage(&self, site: Site) -> Millivolts {
         self.trees[site.tree].voltage(site.point)
     }
 
-    pub fn connect(&mut self, source: usize, target: Target, delay: f64) {
+    pub fn connect(&mut self, source: usize, target: Target, delay: Milliseconds) {
         self.outgoing[source].push((target, delay));
     }
 
@@ -371,7 +383,7 @@ impl Network {
         self.bursts.len() - 1
     }
 
-    pub fn add_generator(&mut self, source: usize, rhythm: Rhythm, since: f64) -> usize {
+    pub fn add_generator(&mut self, source: usize, rhythm: Rhythm, since: Milliseconds) -> usize {
         self.generators.push(Generator {
             source,
             rhythm,
@@ -390,11 +402,11 @@ impl Network {
         self.probes.len() - 1
     }
 
-    pub fn samples(&mut self, probe: usize) -> std::vec::Drain<'_, (f64, f64)> {
+    pub fn samples(&mut self, probe: usize) -> std::vec::Drain<'_, (Milliseconds, Millivolts)> {
         self.probes[probe].samples.drain(..)
     }
 
-    pub fn schedule(&mut self, time: f64, target: Target) {
+    pub fn schedule(&mut self, time: Milliseconds, target: Target) {
         self.order += 1;
         self.queue.push(Pending {
             time,
@@ -403,8 +415,8 @@ impl Network {
         });
     }
 
-    pub fn pending(&self, target: Target) -> Vec<f64> {
-        let mut times: Vec<(f64, u64)> = self
+    pub fn pending(&self, target: Target) -> Vec<Milliseconds> {
+        let mut times: Vec<(Milliseconds, u64)> = self
             .queue
             .iter()
             .filter(|pending| pending.target == target)
@@ -414,8 +426,8 @@ impl Network {
         times.into_iter().map(|(time, _)| time).collect()
     }
 
-    pub fn pending_all(&self) -> Vec<(Target, f64)> {
-        let mut pending: Vec<(Target, f64, u64)> = self
+    pub fn pending_all(&self) -> Vec<(Target, Milliseconds)> {
+        let mut pending: Vec<(Target, Milliseconds, u64)> = self
             .queue
             .iter()
             .map(|pending| (pending.target, pending.time, pending.order))
@@ -431,7 +443,7 @@ impl Network {
         self.events.drain(..)
     }
 
-    fn emit(&mut self, source: usize, time: f64) {
+    fn emit(&mut self, source: usize, time: Milliseconds) {
         self.events.push(Event { source, time });
         for index in 0..self.outgoing[source].len() {
             let (target, delay) = self.outgoing[source][index];
@@ -452,7 +464,7 @@ impl Network {
             }
             Target::Burst(index) => {
                 let burst = &mut self.bursts[index];
-                if burst.boost < 1e-12 {
+                if burst.boost < Nanoamperes(1e-12) {
                     burst.boost = burst.peak;
                 }
             }
@@ -463,7 +475,7 @@ impl Network {
     fn decay(&mut self) {
         let dt = self.tables.dt();
         for (synapse, decay) in self.conductances.iter_mut().zip(&self.decays.conductances) {
-            synapse.open *= decay;
+            synapse.open *= *decay;
         }
         for (synapse, decay) in self.currents.iter_mut().zip(&self.decays.currents) {
             if synapse.exponential > 0.0 {
@@ -474,10 +486,10 @@ impl Network {
             }
         }
         for (adaptation, decay) in self.adaptations.iter_mut().zip(&self.decays.adaptations) {
-            adaptation.conductance *= decay;
+            adaptation.conductance *= *decay;
         }
         for burst in &mut self.bursts {
-            burst.boost = (burst.boost - burst.drain * dt).max(0.0);
+            burst.boost = (burst.boost - burst.drain * dt).max(Nanoamperes::ZERO);
         }
     }
 
@@ -496,7 +508,9 @@ impl Network {
             let fired = forced
                 || match generator.rhythm {
                     Rhythm::Regular { interval } => generator.since >= interval,
-                    Rhythm::Poisson { rate } => rate > 0.0 && self.uniform() < rate * dt,
+                    Rhythm::Poisson { rate } => {
+                        rate > Kilohertz::ZERO && self.uniform() < rate * dt
+                    }
                     Rhythm::Manual => false,
                 };
             if fired {
@@ -508,12 +522,12 @@ impl Network {
                             generator.since = overshoot;
                             time + dt - overshoot
                         } else {
-                            generator.since = 0.0;
+                            generator.since = Milliseconds::ZERO;
                             time + dt
                         }
                     }
                     _ => {
-                        generator.since = 0.0;
+                        generator.since = Milliseconds::ZERO;
                         time
                     }
                 };
@@ -534,11 +548,11 @@ impl Network {
         }
         if pulsing {
             for &(site, current) in &self.pulses.as_ref().unwrap().sites {
-                self.trees[site.tree].add(site.point, 0.0, current);
+                self.trees[site.tree].add(site.point, Microsiemens::ZERO, current);
             }
         }
         for synapse in &self.conductances {
-            if synapse.open > 0.0 {
+            if synapse.open > Microsiemens::ZERO {
                 let tree = &mut self.trees[synapse.site.tree];
                 tree.add(
                     synapse.site.point,
@@ -550,12 +564,12 @@ impl Network {
         for synapse in &self.currents {
             if synapse.exponential > 0.0 {
                 let tree = &mut self.trees[synapse.site.tree];
-                tree.add(synapse.site.point, 0.0, synapse.current());
+                tree.add(synapse.site.point, Microsiemens::ZERO, synapse.current());
             }
         }
         for source in &self.alternating {
             let tree = &mut self.trees[source.site.tree];
-            tree.add(source.site.point, 0.0, source.at(time + dt));
+            tree.add(source.site.point, Microsiemens::ZERO, source.at(time + dt));
         }
         for adaptation in &self.adaptations {
             let tree = &mut self.trees[adaptation.site.tree];
@@ -566,9 +580,9 @@ impl Network {
             );
         }
         for burst in &self.bursts {
-            if burst.boost > 0.0 {
+            if burst.boost > Nanoamperes::ZERO {
                 let tree = &mut self.trees[burst.site.tree];
-                tree.add(burst.site.point, 0.0, burst.boost);
+                tree.add(burst.site.point, Microsiemens::ZERO, burst.boost);
             }
         }
         for index in 0..self.trees.len() {
@@ -592,26 +606,28 @@ impl Network {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::units::Nanofarads;
     use crate::{Morphology, NodeMembrane, Spiking};
 
-    const DT: f64 = 0.025;
+    const DT: Milliseconds = Milliseconds(0.025);
+    const CELSIUS: Celsius = Celsius(16.3);
 
     fn point_neuron(network: &mut Network) -> (Site, usize) {
         let mut morphology = Morphology::default();
         morphology.node(NodeMembrane::Lumped {
-            capacitance: 0.2,
-            conductance: 0.01,
-            reversal: -70.0,
+            capacitance: Nanofarads(0.2),
+            conductance: Microsiemens(0.01),
+            reversal: Millivolts(-70.0),
         });
-        let mut tree = Tree::build(&morphology, 0.1, -70.0, 16.3).unwrap();
+        let mut tree = Tree::build(&morphology, 0.1, Millivolts(-70.0), CELSIUS).unwrap();
         let source = network.source();
         tree.add_soma(
             0,
             Spiking {
-                threshold: -55.0,
-                reset: -80.0,
-                refractory: 2.0,
-                bounds: Some((-90.0, 60.0)),
+                threshold: Millivolts(-55.0),
+                reset: Millivolts(-80.0),
+                refractory: Milliseconds(2.0),
+                bounds: Some((Millivolts(-90.0), Millivolts(60.0))),
             },
             source,
         );
@@ -621,7 +637,7 @@ mod tests {
 
     fn run(network: &mut Network, duration: f64) -> Vec<Event> {
         let mut events = Vec::new();
-        for _ in 0..(duration / DT).round() as usize {
+        for _ in 0..(Milliseconds(duration) / DT).round() as usize {
             network.step();
             events.extend(network.events());
         }
@@ -630,38 +646,48 @@ mod tests {
 
     #[test]
     fn a_current_above_rheobase_fires_a_point_neuron_regularly() {
-        let mut network = Network::new(DT, 16.3);
+        let mut network = Network::new(DT, CELSIUS);
         let (site, _) = point_neuron(&mut network);
-        network.tree_mut(site.tree).inject(site.point, 0.3);
+        network
+            .tree_mut(site.tree)
+            .inject(site.point, Nanoamperes(0.3));
         let events = run(&mut network, 1000.0);
         assert!((15..80).contains(&events.len()), "{} spikes", events.len());
-        let intervals: Vec<f64> = events.windows(2).map(|w| w[1].time - w[0].time).collect();
-        let spread = intervals.iter().cloned().fold(f64::MIN, f64::max)
-            - intervals.iter().cloned().fold(f64::MAX, f64::min);
+        let intervals: Vec<Milliseconds> =
+            events.windows(2).map(|w| w[1].time - w[0].time).collect();
+        let spread = intervals
+            .iter()
+            .copied()
+            .fold(Milliseconds::NEG_INFINITY, Milliseconds::max)
+            - intervals
+                .iter()
+                .copied()
+                .fold(Milliseconds::INFINITY, Milliseconds::min);
         assert!(spread < 2.0 * DT, "{intervals:?}");
     }
 
     #[test]
     fn a_regular_generator_fires_a_neuron_through_a_delayed_synapse() {
-        let mut network = Network::new(DT, 16.3);
+        let mut network = Network::new(DT, CELSIUS);
         let (site, neuron) = point_neuron(&mut network);
         let generator = network.source();
-        network.add_generator(generator, Rhythm::Regular { interval: 50.0 }, 0.0);
+        let interval = Milliseconds(50.0);
+        network.add_generator(generator, Rhythm::Regular { interval }, Milliseconds::ZERO);
         let synapse = network.add_current(CurrentSynapse {
             site,
-            maximum: 6.0,
-            tau: 2.0,
+            maximum: Nanoamperes(6.0),
+            tau: Milliseconds(2.0),
             alpha: false,
             exponential: 0.0,
             linear: 0.0,
         });
-        network.connect(generator, Target::Current(synapse), 5.0);
+        network.connect(generator, Target::Current(synapse), Milliseconds(5.0));
         let events = run(&mut network, 160.0);
         let times = |source| {
             events
                 .iter()
                 .filter(|event| event.source == source)
-                .map(|event| event.time)
+                .map(|event| event.time.0)
                 .collect::<Vec<_>>()
         };
         let (sent, fired) = (times(generator), times(neuron));
@@ -675,13 +701,16 @@ mod tests {
     #[test]
     fn a_regular_generator_keeps_its_frequency_and_fires_evenly() {
         for (interval, since) in [(20.0, 0.0), (3.33, 0.0), (1.0, 0.0), (20.0, f64::INFINITY)] {
-            let mut network = Network::new(DT, 16.3);
+            let mut network = Network::new(DT, CELSIUS);
             let generator = network.source();
-            network.add_generator(generator, Rhythm::Regular { interval }, since);
+            let rhythm = Rhythm::Regular {
+                interval: Milliseconds(interval),
+            };
+            network.add_generator(generator, rhythm, Milliseconds(since));
             let duration = 1000.0 + interval / 2.0;
             let times: Vec<f64> = run(&mut network, duration)
                 .iter()
-                .map(|event| event.time)
+                .map(|event| event.time.0)
                 .collect();
             let first = if since.is_infinite() { 1 } else { 0 };
             assert_eq!(
@@ -697,58 +726,66 @@ mod tests {
 
     #[test]
     fn a_forced_spike_waits_out_the_refractory_period() {
-        let mut network = Network::new(DT, 16.3);
+        let mut network = Network::new(DT, CELSIUS);
         let (site, neuron) = point_neuron(&mut network);
-        network.schedule(1.0, Target::Fire { tree: 0, soma: 0 });
-        network.schedule(2.0, Target::Fire { tree: 0, soma: 0 });
-        network.schedule(4.0, Target::Fire { tree: 0, soma: 0 });
+        for time in [1.0, 2.0, 4.0] {
+            network.schedule(Milliseconds(time), Target::Fire { tree: 0, soma: 0 });
+        }
         let events = run(&mut network, 10.0);
         let times: Vec<f64> = events
             .iter()
             .filter(|event| event.source == neuron)
-            .map(|event| event.time)
+            .map(|event| event.time.0)
             .collect();
         assert_eq!(times, vec![1.0, 4.0]);
-        assert!(network.voltage(site) < -60.0);
+        assert!(network.voltage(site) < Millivolts(-60.0));
     }
 
     #[test]
     fn an_inhibitory_conductance_shunts_towards_its_reversal() {
-        let mut network = Network::new(DT, 16.3);
+        let mut network = Network::new(DT, CELSIUS);
         let (site, _) = point_neuron(&mut network);
-        network.tree_mut(site.tree).inject(site.point, 0.1);
+        network
+            .tree_mut(site.tree)
+            .inject(site.point, Nanoamperes(0.1));
         run(&mut network, 200.0);
         let depolarized = network.voltage(site);
         let synapse = network.add_conductance(ConductanceSynapse {
             site,
-            weight: 0.05,
-            tau: 6.0,
-            reversal: -70.0,
-            open: 0.0,
+            weight: Microsiemens(0.05),
+            tau: Milliseconds(6.0),
+            reversal: Millivolts(-70.0),
+            open: Microsiemens::ZERO,
         });
         network.schedule(network.time(), Target::Conductance(synapse));
         run(&mut network, 2.0);
         let shunted = network.voltage(site);
-        assert!(shunted < depolarized - 1.0, "{shunted} vs {depolarized}");
-        assert!(shunted > -70.0, "{shunted}");
+        assert!(
+            shunted < depolarized - Millivolts(1.0),
+            "{shunted:?} vs {depolarized:?}"
+        );
+        assert!(shunted > Millivolts(-70.0), "{shunted:?}");
     }
 
     #[test]
     fn pending_events_survive_a_rebuild_bit_for_bit() {
         let build = || {
-            let mut network = Network::new(DT, 16.3);
+            let mut network = Network::new(DT, CELSIUS);
             let (site, _) = point_neuron(&mut network);
             let generator = network.source();
-            network.add_generator(generator, Rhythm::Poisson { rate: 0.2 }, 0.0);
+            let rhythm = Rhythm::Poisson {
+                rate: Kilohertz(0.2),
+            };
+            network.add_generator(generator, rhythm, Milliseconds::ZERO);
             let synapse = network.add_current(CurrentSynapse {
                 site,
-                maximum: 4.0,
-                tau: 2.0,
+                maximum: Nanoamperes(4.0),
+                tau: Milliseconds(2.0),
                 alpha: true,
                 exponential: 0.0,
                 linear: 0.0,
             });
-            network.connect(generator, Target::Current(synapse), 3.0);
+            network.connect(generator, Target::Current(synapse), Milliseconds(3.0));
             (network, site)
         };
         let (mut original, site) = build();
@@ -765,7 +802,7 @@ mod tests {
         let gates: Vec<f64> = tree.gates(site.point).collect();
         let (voltage, since) = (tree.voltage(site.point), tree.since_spike(0));
         copy.tree_mut(site.tree)
-            .set_state(site.point, voltage, &gates, 16.3);
+            .set_state(site.point, voltage, &gates, CELSIUS);
         copy.tree_mut(site.tree).set_since_spike(0, since);
         let (a, b) = (run(&mut original, 300.0), run(&mut copy, 300.0));
         assert!(a.len() > 10);

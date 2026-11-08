@@ -5,7 +5,7 @@ use crate::simulation::{step_simulation, Engine};
 
 struct SpikeRecord {
     entity_index: usize,
-    time: f64,
+    time: Milliseconds,
 }
 
 fn run_headless(world: &mut hecs::World, steps: usize, dt: f64) -> Vec<SpikeRecord> {
@@ -14,12 +14,12 @@ fn run_headless(world: &mut hecs::World, steps: usize, dt: f64) -> Vec<SpikeReco
         .iter()
         .map(|(entity, _)| entity)
         .collect();
-    crate::simulation::run_headless(world, steps as f64 * dt * 1e3)
+    crate::simulation::run_headless(world, Seconds(steps as f64 * dt).to_milliseconds())
         .into_iter()
         .filter_map(|spike| {
             Some(SpikeRecord {
                 entity_index: neurons.iter().position(|&entity| entity == spike.entity)?,
-                time: spike.time * 1e-3,
+                time: spike.time,
             })
         })
         .collect()
@@ -151,7 +151,7 @@ fn test_adaptation_decreasing_rate() {
         .insert_one(
             leaky_entity,
             CurrentClamp {
-                current_output: 5.0,
+                current_output: Nanoamperes(5.0),
             },
         )
         .unwrap();
@@ -179,7 +179,7 @@ fn test_adaptation_decreasing_rate() {
         .collect();
 
     if adapt_spikes.len() >= 4 {
-        let mid_time = time / 2.0;
+        let mid_time = Seconds(time / 2.0).to_milliseconds();
         let first_half_count = adapt_spikes.iter().filter(|s| s.time < mid_time).count();
         let second_half_count = adapt_spikes.iter().filter(|s| s.time >= mid_time).count();
 
@@ -261,7 +261,7 @@ fn test_current_clamp_drives_neuron() {
 
     let neuron = world.spawn((
         LeakyNeuron::default(),
-        NodeState::at(-70.0),
+        NodeState::at(Millivolts(-70.0)),
         LeakCurrent::default(),
         NeuronType::Excitatory,
         Position {
@@ -271,7 +271,7 @@ fn test_current_clamp_drives_neuron() {
 
     let clamp = world.spawn((
         CurrentClamp {
-            current_output: 5.0,
+            current_output: Nanoamperes(5.0),
         },
         Position {
             position: Vec3::new(0.0, 0.0, -1.0),
@@ -308,7 +308,7 @@ fn test_inhibitory_suppresses_firing() {
 
     let target = world.spawn((
         LeakyNeuron::default(),
-        NodeState::at(-70.0),
+        NodeState::at(Millivolts(-70.0)),
         LeakCurrent::default(),
         NeuronType::Excitatory,
         Position {
@@ -318,7 +318,7 @@ fn test_inhibitory_suppresses_firing() {
 
     let clamp = world.spawn((
         CurrentClamp {
-            current_output: 5.0,
+            current_output: Nanoamperes(5.0),
         },
         Position {
             position: Vec3::new(0.0, 0.0, -2.0),
@@ -337,7 +337,7 @@ fn test_inhibitory_suppresses_firing() {
 
     let inhibitor = world.spawn((
         LeakyNeuron::default(),
-        NodeState::at(-70.0),
+        NodeState::at(Millivolts(-70.0)),
         LeakCurrent::default(),
         NeuronType::Inhibitory,
         Position {
@@ -347,7 +347,7 @@ fn test_inhibitory_suppresses_firing() {
 
     let inhib_clamp = world.spawn((
         CurrentClamp {
-            current_output: 10.0,
+            current_output: Nanoamperes(10.0),
         },
         Position {
             position: Vec3::new(0.0, 0.0, 2.0),
@@ -372,7 +372,7 @@ fn test_inhibitory_suppresses_firing() {
             directional: true,
         },
         CurrentSynapse {
-            maximum_current: 20.0,
+            maximum_current: Nanoamperes(20.0),
             ..CurrentSynapse::default()
         },
     ));
@@ -383,7 +383,7 @@ fn test_inhibitory_suppresses_firing() {
     let mut world_no_inhib = hecs::World::new();
     let neuron_alone = world_no_inhib.spawn((
         LeakyNeuron::default(),
-        NodeState::at(-70.0),
+        NodeState::at(Millivolts(-70.0)),
         LeakCurrent::default(),
         NeuronType::Excitatory,
         Position {
@@ -392,7 +392,7 @@ fn test_inhibitory_suppresses_firing() {
     ));
     let clamp_alone = world_no_inhib.spawn((
         CurrentClamp {
-            current_output: 5.0,
+            current_output: Nanoamperes(5.0),
         },
         Position {
             position: Vec3::new(0.0, 0.0, -2.0),
@@ -474,18 +474,18 @@ fn loads_regular_and_irregular_spike_generators() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
 
-    let frequencies: Vec<f64> = world
+    let frequencies: Vec<Hertz> = world
         .query::<&RegularSpikeGenerator>()
         .iter()
         .map(|(_, generator)| generator.frequency)
         .collect();
-    let rates: Vec<f64> = world
+    let rates: Vec<Hertz> = world
         .query::<&PoissonGenerator>()
         .iter()
         .map(|(_, generator)| generator.rate)
         .collect();
-    assert_eq!(frequencies, [200.0]);
-    assert_eq!(rates, [200.0]);
+    assert_eq!(frequencies, [Hertz(200.0)]);
+    assert_eq!(rates, [Hertz(200.0)]);
     for (generator, _) in world.query::<&GeneratorDynamics>().iter() {
         let synapses = world
             .query::<(&Connection, &CurrentSynapse)>()
@@ -527,8 +527,8 @@ fn spikes_from_an_inhibitory_generator_push_the_voltage_down() {
             .get::<&LeakyNeuron>(entities[1])
             .unwrap()
             .resting_potential;
-        let mut furthest: f64 = 0.0;
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let mut furthest = Millivolts::ZERO;
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         for _ in 0..600 {
             step_simulation(&mut world, &mut engine, &mut time, 1, None);
             let change = world.get::<&NodeState>(entities[1]).unwrap().voltage - resting;
@@ -536,8 +536,8 @@ fn spikes_from_an_inhibitory_generator_push_the_voltage_down() {
                 furthest = change;
             }
         }
-        assert!(furthest.abs() > 1.0);
-        assert_eq!(furthest < 0.0, inhibitory);
+        assert!(furthest.abs() > Millivolts(1.0));
+        assert_eq!(furthest < Millivolts::ZERO, inhibitory);
     }
 }
 
@@ -555,7 +555,7 @@ fn loads_inhibitory_adaptive_neurons() {
             .get::<&AdaptationCurrent>(entities[0])
             .unwrap()
             .adaptation,
-        0.02
+        Microsiemens(0.02)
     );
 }
 
@@ -604,7 +604,10 @@ fn a_voltmeter_keeps_its_range_and_sits_where_neuronify_1_drew_it() {
         .get::<&crate::measurement::voltmeter::VoltmeterRange>(entities[0])
         .unwrap()
         .clone();
-    assert_eq!((range.minimum, range.maximum), (-200.0, 20.0));
+    assert_eq!(
+        (range.minimum, range.maximum),
+        (Millivolts(-200.0), Millivolts(20.0))
+    );
     let frame = crate::measurement::voltmeter::Frame::of(&world, entities[0]).unwrap();
     let top_left = frame.corner(crate::measurement::voltmeter::Corner::TopLeft);
     assert!(top_left.abs_diff_eq(glam::Vec3::ZERO, 1e-5), "{top_left}");
@@ -648,7 +651,7 @@ fn labels_lose_the_spaces_around_them() {
 fn loads_alternating_current_sources() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
-    let sources: Vec<(hecs::Entity, f64, f64)> = world
+    let sources: Vec<(hecs::Entity, Nanoamperes, Hertz)> = world
         .query::<&AlternatingCurrent>()
         .with::<&CurrentClamp>()
         .iter()
@@ -657,7 +660,7 @@ fn loads_alternating_current_sources() {
     let [(source, amplitude, frequency)] = sources[..] else {
         panic!("expected one alternating current source, got {sources:?}");
     };
-    assert_eq!((amplitude, frequency), (1.0, 34.0));
+    assert_eq!((amplitude, frequency), (Nanoamperes(1.0), Hertz(34.0)));
     let targets = world
         .query::<&Connection>()
         .without::<&CurrentSynapse>()
@@ -677,7 +680,7 @@ fn spike_detectors_keep_their_rows_time_range_and_size() {
         .get::<&crate::measurement::spike_detector::SpikeDetector>(detector)
         .unwrap()
         .time_range;
-    assert_eq!(time_range, 0.101);
+    assert_eq!(time_range, Seconds(0.101).to_milliseconds());
     let rows: Vec<hecs::Entity> = crate::measurement::voltmeter::measured(&world, detector)
         .into_iter()
         .map(|(_, neuron)| neuron)
@@ -701,7 +704,11 @@ fn rate_plots_keep_their_window_smoothing_and_range() {
     for (plot, settings) in plots {
         assert_eq!(
             (settings.window, settings.kernel_width, settings.maximum),
-            (0.4, 0.3, 50.0)
+            (
+                Seconds(0.4).to_milliseconds(),
+                Seconds(0.3).to_milliseconds(),
+                Hertz(50.0)
+            )
         );
         assert!(!crate::measurement::voltmeter::measured(&world, plot).is_empty());
     }
@@ -743,7 +750,7 @@ fn retinas_become_visual_inputs_with_their_receptive_fields() {
             angle: 4.71238898038469
         }
     );
-    assert_eq!((edge.sensitivity, edge.show_field), (1000.0, true));
+    assert_eq!((edge.sensitivity, edge.show_field), (Hertz(1000.0), true));
     assert_eq!(
         orientation.field,
         ReceptiveField::Orientation {
@@ -752,7 +759,7 @@ fn retinas_become_visual_inputs_with_their_receptive_fields() {
             y: 0.0
         }
     );
-    assert_eq!(orientation.sensitivity, 1600.0);
+    assert_eq!(orientation.sensitivity, Hertz(1600.0));
     for input in [entities[0], entities[6]] {
         let synapses = world
             .query::<(&Connection, &CurrentSynapse)>()

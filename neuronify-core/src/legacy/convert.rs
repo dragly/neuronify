@@ -26,10 +26,14 @@ const LINK_SIZE: NoteSize = NoteSize {
     width: 7.2,
     height: 2.0,
 };
-const LEGACY_GENERATOR_RATE: f64 = 500.0;
+const LEGACY_GENERATOR_RATE: Hertz = Hertz(500.0);
 const LEGACY_METER_WIDTH: f64 = 320.0;
 const LEGACY_METER_HEIGHT: f64 = 240.0;
 const LEGACY_RETINA_SIZE: f64 = 240.0;
+
+fn from_seconds(seconds: f64) -> Milliseconds {
+    Seconds(seconds).to_milliseconds()
+}
 
 fn convert_position(x: f64, y: f64) -> Vec3 {
     Vec3::new(
@@ -96,7 +100,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             let current = node
                 .engine
                 .current_output
-                .map_or(2.0, |current| current * NANO);
+                .map_or(Nanoamperes(2.0), |current| Nanoamperes(current * NANO));
             world.spawn((
                 pos,
                 CurrentClamp {
@@ -111,11 +115,11 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 amplitude: node
                     .engine
                     .amplitude
-                    .map_or(default.amplitude, |amplitude| amplitude * NANO),
-                frequency: node.engine.frequency.unwrap_or(default.frequency),
+                    .map_or(default.amplitude, |amplitude| Nanoamperes(amplitude * NANO)),
+                frequency: node.engine.frequency.map_or(default.frequency, Hertz),
             };
             let clamp = CurrentClamp {
-                current_output: 0.0,
+                current_output: Nanoamperes::ZERO,
             };
             world.spawn((pos, clamp, alternating, Deletable {}))
         }
@@ -124,7 +128,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             node,
             pos,
             RegularSpikeGenerator {
-                frequency: node.engine.rate.unwrap_or(LEGACY_GENERATOR_RATE),
+                frequency: node.engine.rate.map_or(LEGACY_GENERATOR_RATE, Hertz),
             },
         ),
         "generators/IrregularSpikeGenerator.qml" => spawn_generator(
@@ -132,7 +136,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             node,
             pos,
             PoissonGenerator {
-                rate: node.engine.rate.unwrap_or(LEGACY_GENERATOR_RATE),
+                rate: node.engine.rate.map_or(LEGACY_GENERATOR_RATE, Hertz),
             },
         ),
         "sensors/TouchSensor.qml" => {
@@ -143,7 +147,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             let detector = SpikeDetector {
                 time_range: node
                     .time_range
-                    .unwrap_or(SpikeDetector::default().time_range),
+                    .map_or(SpikeDetector::default().time_range, from_seconds),
                 ..Default::default()
             };
             world.spawn((
@@ -164,7 +168,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             let default = VisualInput::default();
             let input = VisualInput {
                 field: receptive_field(node),
-                sensitivity: node.sensitivity.unwrap_or(default.sensitivity),
+                sensitivity: node.sensitivity.map_or(default.sensitivity, Hertz),
                 show_field: node.plot_kernel.unwrap_or(default.show_field),
                 ..default
             };
@@ -187,10 +191,12 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             let (left_middle, size) = meter_frame(node);
             let default = RatePlot::default();
             let plot = RatePlot {
-                window: node.window_duration.unwrap_or(default.window),
-                kernel_width: node.temporal_resolution.unwrap_or(default.kernel_width),
-                minimum: node.minimum_value.unwrap_or(default.minimum),
-                maximum: node.maximum_value.unwrap_or(default.maximum),
+                window: node.window_duration.map_or(default.window, from_seconds),
+                kernel_width: node
+                    .temporal_resolution
+                    .map_or(default.kernel_width, from_seconds),
+                minimum: node.minimum_value.map_or(default.minimum, Hertz),
+                maximum: node.maximum_value.map_or(default.maximum, Hertz),
             };
             world.spawn((left_middle, plot, RateSeries::default(), size, Deletable {}))
         }
@@ -198,8 +204,8 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             let (left_middle, size) = meter_frame(node);
             let default_range = VoltmeterRange::default();
             let range = VoltmeterRange {
-                minimum: node.minimum_value.unwrap_or(default_range.minimum),
-                maximum: node.maximum_value.unwrap_or(default_range.maximum),
+                minimum: node.minimum_value.map_or(default_range.minimum, Millivolts),
+                maximum: node.maximum_value.map_or(default_range.maximum, Millivolts),
             };
             world.spawn((left_middle, Voltmeter {}, size, range, Deletable {}))
         }
@@ -325,20 +331,23 @@ fn spawn_leaky_neuron(
     let e = &node.engine;
 
     let neuron = LeakyNeuron {
-        capacitance: e.capacitance.unwrap_or(2e-10) * NANO,
-        resting_potential: e.resting_potential.unwrap_or(-0.07) * MILLI,
-        threshold: e.threshold.unwrap_or(-0.055) * MILLI,
-        initial_potential: e.initial_potential.unwrap_or(-0.08) * MILLI,
+        capacitance: Nanofarads(e.capacitance.unwrap_or(2e-10) * NANO),
+        resting_potential: Millivolts(e.resting_potential.unwrap_or(-0.07) * MILLI),
+        threshold: Millivolts(e.threshold.unwrap_or(-0.055) * MILLI),
+        initial_potential: Millivolts(e.initial_potential.unwrap_or(-0.08) * MILLI),
         voltage_clamped: e.voltage_clamped.unwrap_or(true),
-        minimum_voltage: e.minimum_voltage.unwrap_or(-0.09) * MILLI,
-        maximum_voltage: e.maximum_voltage.unwrap_or(0.06) * MILLI,
-        refractory_period: e.refractory_period.unwrap_or(0.002) * MILLI,
+        minimum_voltage: Millivolts(e.minimum_voltage.unwrap_or(-0.09) * MILLI),
+        maximum_voltage: Millivolts(e.maximum_voltage.unwrap_or(0.06) * MILLI),
+        refractory_period: Milliseconds(e.refractory_period.unwrap_or(0.002) * MILLI),
     };
 
-    let state = NodeState::at(e.voltage.map_or(neuron.resting_potential, |v| v * MILLI));
+    let state = NodeState::at(
+        e.voltage
+            .map_or(neuron.resting_potential, |v| Millivolts(v * MILLI)),
+    );
 
     let leak = LeakCurrent {
-        resistance: e.resistance.unwrap_or(1e8) / MICRO,
+        resistance: Megaohms(e.resistance.unwrap_or(1e8) / MICRO),
     };
 
     world.spawn((
@@ -361,9 +370,9 @@ fn spawn_adaptation_neuron(
 
     let e = &node.engine;
     let adapt = AdaptationCurrent {
-        adaptation: e.adaptation.unwrap_or(1e-8) * MICRO,
-        conductance: e.conductance.unwrap_or(0.0) * MICRO,
-        time_constant: e.time_constant.unwrap_or(0.5) * MILLI,
+        adaptation: Microsiemens(e.adaptation.unwrap_or(1e-8) * MICRO),
+        conductance: Microsiemens(e.conductance.unwrap_or(0.0) * MICRO),
+        time_constant: Milliseconds(e.time_constant.unwrap_or(0.5) * MILLI),
     };
 
     world.insert_one(entity, adapt).unwrap();
@@ -392,9 +401,9 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
         "edges/CurrentSynapse.qml" => {
             let e = &edge.engine;
             let synapse = CurrentSynapse {
-                tau: e.tau.unwrap_or(0.002) * MILLI,
-                maximum_current: e.maximum_current.unwrap_or(3e-9) * NANO,
-                delay: e.delay.unwrap_or(0.005) * MILLI,
+                tau: Milliseconds(e.tau.unwrap_or(0.002) * MILLI),
+                maximum_current: Nanoamperes(e.maximum_current.unwrap_or(3e-9) * NANO),
+                delay: Milliseconds(e.delay.unwrap_or(0.005) * MILLI),
                 alpha_function: e.alpha_function.unwrap_or(false),
                 exponential: e.exponential.unwrap_or(0.0),
                 linear: e.linear.unwrap_or(0.0),
@@ -423,9 +432,9 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             }
             let e = &edge.engine;
             let synapse = CurrentSynapse {
-                tau: e.tau.unwrap_or(0.002) * MILLI,
-                maximum_current: e.maximum_current.unwrap_or(3e-9) * NANO,
-                delay: e.delay.unwrap_or(0.005) * MILLI,
+                tau: Milliseconds(e.tau.unwrap_or(0.002) * MILLI),
+                maximum_current: Nanoamperes(e.maximum_current.unwrap_or(3e-9) * NANO),
+                delay: Milliseconds(e.delay.unwrap_or(0.005) * MILLI),
                 alpha_function: e.alpha_function.unwrap_or(false),
                 exponential: e.exponential.unwrap_or(0.0),
                 linear: e.linear.unwrap_or(0.0),

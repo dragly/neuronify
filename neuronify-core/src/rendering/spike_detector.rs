@@ -84,11 +84,11 @@ mod tests {
         let detector = spawn_spike_detector(&mut world, excitatory, Vec3::ZERO);
         spawn_spike_detector_wire(&mut world, inhibitory, detector);
         *world.get::<&mut SpikeDetector>(detector).unwrap() = SpikeDetector {
-            time_range: 0.1,
-            time: 1.0,
+            time_range: Milliseconds(100.0),
+            time: Milliseconds(1000.0),
         };
         let rows = measured(&world, detector);
-        for ((wire, _), time) in rows.iter().zip([0.95, 1.0]) {
+        for ((wire, _), time) in rows.iter().zip([Milliseconds(950.0), Milliseconds(1000.0)]) {
             world
                 .get::<&mut SpikeTrain>(*wire)
                 .unwrap()

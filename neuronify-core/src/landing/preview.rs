@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use egui::{pos2, Color32, Painter, Pos2, Rect, TextureHandle, TextureOptions};
 use hecs::World;
 
+use crate::components::Milliseconds;
 use crate::constants::{DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND, VOLTMETER_TIME_WINDOW};
 use crate::frame_clock::StepClock;
 use crate::landing::raster::{tessellate_untextured_in_pixels, UnfinishedDrawing};
@@ -34,7 +35,7 @@ fn preview_mode(world: &World) -> PreviewMode {
 pub struct Preview {
     pub world: World,
     pub engine: Engine,
-    pub time: f64,
+    pub time: Milliseconds,
     simulation_clock: StepClock,
     bounds: Option<Bounds>,
     pub mode: PreviewMode,
@@ -44,7 +45,7 @@ pub struct Preview {
 }
 
 impl Preview {
-    pub fn new(mut world: World, mut time: f64) -> Preview {
+    pub fn new(mut world: World, mut time: Milliseconds) -> Preview {
         let mode = preview_mode(&world);
         let mut engine = Engine::starting_at(time);
         if mode == PreviewMode::Still {

@@ -27,7 +27,7 @@ fn release(world: &World, entity: Entity, connection: &Connection) -> f32 {
         world.get::<&ConductanceSynapse>(entity),
         world.get::<&SynapseState>(entity),
     ) {
-        (Ok(ending), Ok(state)) if ending.conductance > 0.0 => {
+        (Ok(ending), Ok(state)) if ending.conductance > Microsiemens::ZERO => {
             let full = ending.conductance * ending_site_scale(world, connection);
             (state.open / full).clamp(0.0, 1.0) as f32
         }
@@ -80,20 +80,23 @@ mod tests {
 
     struct Firing {
         engine: Engine,
-        time: f64,
+        time: Milliseconds,
     }
 
     fn fire(world: &mut World, neuron: Entity) -> Firing {
         let mut engine = Engine::default();
         engine.sync(world);
         engine.fire(world, neuron);
-        Firing { engine, time: 0.0 }
+        Firing {
+            engine,
+            time: Milliseconds::ZERO,
+        }
     }
 
     fn quiet() -> Firing {
         Firing {
             engine: Engine::default(),
-            time: 0.0,
+            time: Milliseconds::ZERO,
         }
     }
 

@@ -1,8 +1,9 @@
 use crate::channel::ChannelId;
+use crate::units::{Celsius, Milliseconds, Millivolts};
 
-const MIN_VOLTAGE: f64 = -100.0;
-const MAX_VOLTAGE: f64 = 100.0;
-const STEP: f64 = 0.1;
+const MIN_VOLTAGE: Millivolts = Millivolts(-100.0);
+const MAX_VOLTAGE: Millivolts = Millivolts(100.0);
+const STEP: Millivolts = Millivolts(0.1);
 
 #[derive(Clone, Copy, Default)]
 pub(crate) struct Lookup {
@@ -11,7 +12,7 @@ pub(crate) struct Lookup {
 }
 
 impl Lookup {
-    pub(crate) fn new(voltage: f64) -> Self {
+    pub(crate) fn new(voltage: Millivolts) -> Self {
         let last = ((MAX_VOLTAGE - MIN_VOLTAGE) / STEP) as usize;
         let x = ((voltage - MIN_VOLTAGE) / STEP).clamp(0.0, last as f64 - 1e-9);
         let index = x as usize;
@@ -57,13 +58,13 @@ fn power(state: f64, power: i32) -> f64 {
 }
 
 pub struct Tables {
-    dt: f64,
-    celsius: f64,
+    dt: Milliseconds,
+    celsius: Celsius,
     channels: Vec<ChannelTable>,
 }
 
 impl Tables {
-    pub fn new(dt: f64, celsius: f64) -> Self {
+    pub fn new(dt: Milliseconds, celsius: Celsius) -> Self {
         let points = ((MAX_VOLTAGE - MIN_VOLTAGE) / STEP) as usize + 1;
         let channels = ChannelId::ALL
             .iter()
@@ -91,11 +92,11 @@ impl Tables {
         }
     }
 
-    pub fn dt(&self) -> f64 {
+    pub fn dt(&self) -> Milliseconds {
         self.dt
     }
 
-    pub fn celsius(&self) -> f64 {
+    pub fn celsius(&self) -> Celsius {
         self.celsius
     }
 

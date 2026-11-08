@@ -72,18 +72,23 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
     result
 }
 
-fn trace(row: &Frame, series: &VoltageSeries, low: f64, high: f64) -> Vec<ConnectionData> {
+fn trace(
+    row: &Frame,
+    series: &VoltageSeries,
+    low: Millivolts,
+    high: Millivolts,
+) -> Vec<ConnectionData> {
     let mut result = Vec::new();
     let Some(latest_time) = series.measurements.last().map(|m| m.time) else {
         return result;
     };
     let start_time = latest_time - VOLTMETER_TIME_WINDOW;
-    let is_visible = |time: f64| (start_time..=latest_time).contains(&time);
+    let is_visible = |time: Milliseconds| (start_time..=latest_time).contains(&time);
     let visible = visible_tail(
         series.measurements.iter().map(|m| (m.time, m.voltage)),
         |&(time, _)| is_visible(time),
     );
-    let at = |time: f64, voltage: f64| {
+    let at = |time: Milliseconds, voltage: Millivolts| {
         row.point(
             ((time - start_time) / VOLTMETER_TIME_WINDOW) as f32,
             ((voltage - low) / (high - low)).clamp(0.0, 1.0) as f32,
@@ -107,6 +112,8 @@ mod tests {
     use super::*;
 
     const SAMPLE: f64 = 1e-4;
+    const LOW: Millivolts = Millivolts(-100.0);
+    const HIGH: Millivolts = Millivolts(50.0);
     use crate::elements::{spawn_voltmeter, spawn_voltmeter_wire};
     use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement};
     use glam::Vec3;
@@ -115,10 +122,10 @@ mod tests {
     fn trace_from_full_copy(
         row: &Frame,
         series: &VoltageSeries,
-        low: f64,
-        high: f64,
+        low: Millivolts,
+        high: Millivolts,
     ) -> Vec<ConnectionData> {
-        let measurements: Vec<(f64, f64)> = series
+        let measurements: Vec<(Milliseconds, Millivolts)> = series
             .measurements
             .iter()
             .map(|m| (m.time, m.voltage))
@@ -127,7 +134,7 @@ mod tests {
             return Vec::new();
         };
         let start_time = latest_time - VOLTMETER_TIME_WINDOW;
-        let at = |time: f64, voltage: f64| {
+        let at = |time: Milliseconds, voltage: Millivolts| {
             row.point(
                 ((time - start_time) / VOLTMETER_TIME_WINDOW) as f32,
                 ((voltage - low) / (high - low)).clamp(0.0, 1.0) as f32,
@@ -163,12 +170,18 @@ mod tests {
 
     fn series(samples: impl Iterator<Item = (f64, f64)>, spike_times: Vec<f64>) -> VoltageSeries {
         let mut measurements = RollingWindow::new(3000);
-        for (time, voltage) in samples {
-            measurements.push(VoltageMeasurement { voltage, time });
+        for (seconds, voltage) in samples {
+            measurements.push(VoltageMeasurement {
+                voltage: Millivolts(voltage),
+                time: Seconds(seconds).to_milliseconds(),
+            });
         }
         VoltageSeries {
             measurements,
-            spike_times,
+            spike_times: spike_times
+                .into_iter()
+                .map(|seconds| Seconds(seconds).to_milliseconds())
+                .collect(),
         }
     }
 
@@ -192,11 +205,11 @@ mod tests {
             || (0..5000).map(|i| (i as f64 * SAMPLE, -70.0 + (i as f64 * 0.01).sin()));
         let spikes: Vec<f64> = (0..5000).step_by(37).map(|i| i as f64 * SAMPLE).collect();
         let full = series(more_samples_than_capacity(), spikes);
-        let drawn = trace(&row(), &full, -100.0, 50.0);
+        let drawn = trace(&row(), &full, LOW, HIGH);
         assert!(drawn.len() > 1000);
         assert_eq!(
             bytes(&drawn),
-            bytes(&trace_from_full_copy(&row(), &full, -100.0, 50.0))
+            bytes(&trace_from_full_copy(&row(), &full, LOW, HIGH))
         );
     }
 
@@ -211,13 +224,10 @@ mod tests {
             [vec![4.95, 4.99], new_spikes.clone()].concat(),
         );
         let fresh = series(recorded_after_loading_at_0(), new_spikes);
-        let expected = trace(&row(), &fresh, -100.0, 50.0);
-        assert_eq!(
-            bytes(&trace(&row(), &loaded, -100.0, 50.0)),
-            bytes(&expected)
-        );
+        let expected = trace(&row(), &fresh, LOW, HIGH);
+        assert_eq!(bytes(&trace(&row(), &loaded, LOW, HIGH)), bytes(&expected));
         assert_ne!(
-            bytes(&trace_from_full_copy(&row(), &loaded, -100.0, 50.0)),
+            bytes(&trace_from_full_copy(&row(), &loaded, LOW, HIGH)),
             bytes(&expected)
         );
     }
@@ -271,8 +281,8 @@ mod tests {
         },));
         let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::ZERO);
         *world.get::<&mut VoltmeterRange>(voltmeter).unwrap() = VoltmeterRange {
-            minimum: -80.0,
-            maximum: -40.0,
+            minimum: Millivolts(-80.0),
+            maximum: Millivolts(-40.0),
         };
         let (wire, _) = measured(&world, voltmeter)[0];
         *world.get::<&mut VoltageSeries>(wire).unwrap() = series(

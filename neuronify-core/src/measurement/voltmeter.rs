@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use glam::Vec3;
 use hecs::{Entity, World};
+use neuronify_engine::units::{Milliseconds, Millivolts};
 use serde::{Deserialize, Serialize};
 
 use crate::components::{Connection, MeterSize, Position};
@@ -34,6 +35,9 @@ impl<T> RollingWindow<T> {
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &T> + ExactSizeIterator + '_ {
         self.data.iter()
     }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
+        self.data.iter_mut()
+    }
     pub fn last(&self) -> Option<&T> {
         self.data.back()
     }
@@ -47,15 +51,15 @@ impl<T> RollingWindow<T> {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VoltageMeasurement {
-    pub voltage: f64,
-    pub time: f64,
+    pub voltage: Millivolts,
+    pub time: Milliseconds,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VoltageSeries {
     pub measurements: RollingWindow<VoltageMeasurement>,
     #[serde(default)]
-    pub spike_times: Vec<f64>,
+    pub spike_times: Vec<Milliseconds>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -63,15 +67,15 @@ pub struct Voltmeter {}
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct VoltmeterRange {
-    pub minimum: f64,
-    pub maximum: f64,
+    pub minimum: Millivolts,
+    pub maximum: Millivolts,
 }
 
 impl Default for VoltmeterRange {
     fn default() -> Self {
         Self {
-            minimum: -100.0,
-            maximum: 50.0,
+            minimum: Millivolts(-100.0),
+            maximum: Millivolts(50.0),
         }
     }
 }
@@ -148,13 +152,12 @@ pub fn record_voltages(world: &mut World, engine: &mut Engine) {
             continue;
         };
         for (time, voltage) in probe.samples {
-            series.measurements.push(VoltageMeasurement {
-                voltage,
-                time: time * 1e-3,
-            });
+            series
+                .measurements
+                .push(VoltageMeasurement { voltage, time });
         }
         for spike in spikes.iter().filter(|spike| spike.entity == probe.target) {
-            series.spike_times.push(spike.time * 1e-3);
+            series.spike_times.push(spike.time);
         }
     }
 }

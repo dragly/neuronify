@@ -6,6 +6,7 @@ use visula::{
     ShadowRenderData, SphereGeometry, SphereMaterial, Spheres, Torus, TorusGeometry, TorusMaterial,
 };
 
+use crate::components::Milliseconds;
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSET};
 use crate::editor::Bead;
 use crate::rendering::colors::{terminal_color, Theme};
@@ -227,7 +228,7 @@ impl SceneRenderer {
         &mut self,
         application: &mut visula::Application,
         world: &hecs::World,
-        time: f64,
+        time: Milliseconds,
         theme: Theme,
         marks: EditorMarks,
     ) {

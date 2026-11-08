@@ -9,15 +9,12 @@ use neuronify_core::elements::{
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::serialization;
 use neuronify_core::{
-    Annotation, Connection, CurrentClamp, CurrentSynapse, Link, MeterSize, NeuronDisplay,
-    NeuronType, NodeState, NoteSize, Position, Setting, Tool, ToolGroup, DEFAULT_SPEED,
-    INTERNODE_LENGTH, SEGMENT_LENGTH,
+    Annotation, Connection, CurrentClamp, CurrentSynapse, Link, MeterSize, Milliseconds,
+    Millivolts, Nanoamperes, NeuronDisplay, NeuronType, NodeState, NoteSize, Position, Setting,
+    Tool, ToolGroup, DEFAULT_SPEED, INTERNODE_LENGTH, SEGMENT_LENGTH,
 };
 
-const NANOAMPERE: f64 = 1.0;
-const MILLIVOLT: f64 = 1.0;
-const MILLISECOND: f64 = 1.0;
-const CURRENT_DRAWN_AT_FULL_STRENGTH: f64 = 6.0 * NANOAMPERE;
+const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(6.0);
 
 const WIDTH: f32 = 24.0;
 const GAP: f32 = 1.2;
@@ -57,7 +54,7 @@ fn main() {
         let path = directory.join(file);
         std::fs::write(
             &path,
-            serialization::save(&world, 0.0, DEFAULT_SPEED).unwrap(),
+            serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap(),
         )
         .unwrap();
         println!("Wrote {}", path.display());
@@ -152,24 +149,30 @@ impl Canvas {
         spawn_synapse(&mut self.world, from, to)
     }
 
-    fn synapse(&mut self, from: Entity, to: Entity, maximum_current: f64, tau: f64) -> Entity {
+    fn synapse(
+        &mut self,
+        from: Entity,
+        to: Entity,
+        maximum_current: Nanoamperes,
+        tau: Milliseconds,
+    ) -> Entity {
         let synapse = self.connect(from, to);
         let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
         current.maximum_current = maximum_current;
         current.tau = tau;
-        let charge = maximum_current * tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * 2.0 * MILLISECOND);
+        let charge = maximum_current * tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * Milliseconds(2.0));
         self.world.get::<&mut Connection>(synapse).unwrap().strength = charge.clamp(0.4, 1.5);
         synapse
     }
 
-    fn delay(&mut self, synapse: Entity, delay: f64) {
+    fn delay(&mut self, synapse: Entity, delay: Milliseconds) {
         self.world
             .get::<&mut CurrentSynapse>(synapse)
             .unwrap()
             .delay = delay;
     }
 
-    fn current(&mut self, to: Entity, current: f64, right: f32, up: f32) {
+    fn current(&mut self, to: Entity, current: Nanoamperes, right: f32, up: f32) {
         let source = self.add(Element::CurrentSource, right, up);
         self.world
             .get::<&mut CurrentClamp>(source)
@@ -246,7 +249,7 @@ impl Canvas {
             .unwrap()
     }
 
-    fn start_at(&mut self, neuron: Entity, voltage: f64) {
+    fn start_at(&mut self, neuron: Entity, voltage: Millivolts) {
         self.world.get::<&mut NodeState>(neuron).unwrap().voltage = voltage;
     }
 }
@@ -282,7 +285,7 @@ fn leaks() -> World {
     let up = canvas.row(5.0);
     let hand = canvas.add(Element::TouchSensor, 1.5, up);
     let neuron = canvas.add(Element::ExcitatoryNeuron, 7.5, up);
-    canvas.synapse(hand, neuron, 1.0 * NANOAMPERE, 2.0 * MILLISECOND);
+    canvas.synapse(hand, neuron, Nanoamperes(1.0), Milliseconds(2.0));
     canvas.voltmeter(
         neuron,
         11.0,
@@ -315,7 +318,7 @@ fn push_and_pull() -> World {
     );
     let up = canvas.row(15.0) + 1.5;
     let middle = canvas.add(Element::ExcitatoryNeuron, 11.0, up);
-    canvas.current(middle, 0.3 * NANOAMPERE, 11.0, up - 7.0);
+    canvas.current(middle, Nanoamperes(0.3), 11.0, up - 7.0);
     let push_hand = canvas.add(Element::TouchSensor, 1.0, up + 4.0);
     let push = canvas.add(Element::ExcitatoryNeuron, 6.0, up + 4.0);
     let pull_hand = canvas.add(Element::TouchSensor, 1.0, up - 4.0);
@@ -352,33 +355,33 @@ fn choosing() -> World {
     let right = canvas.add(Element::ExcitatoryNeuron, 19.5, up + 2.5);
     let left_partner = canvas.add(Element::InhibitoryNeuron, 4.5, up - 2.5);
     let right_partner = canvas.add(Element::InhibitoryNeuron, 19.5, up - 2.5);
-    canvas.current(left, 0.5 * NANOAMPERE, 0.0, up + 2.5);
-    canvas.current(right, 0.5 * NANOAMPERE, 24.0, up + 2.5);
+    canvas.current(left, Nanoamperes(0.5), 0.0, up + 2.5);
+    canvas.current(right, Nanoamperes(0.5), 24.0, up + 2.5);
     let cross = [
         canvas.connect(left, left_partner),
         canvas.connect(right, right_partner),
-        canvas.synapse(left_partner, right, 3.0 * NANOAMPERE, 10.0 * MILLISECOND),
-        canvas.synapse(right_partner, left, 3.0 * NANOAMPERE, 10.0 * MILLISECOND),
+        canvas.synapse(left_partner, right, Nanoamperes(3.0), Milliseconds(10.0)),
+        canvas.synapse(right_partner, left, Nanoamperes(3.0), Milliseconds(10.0)),
     ];
     for synapse in cross {
-        canvas.delay(synapse, MILLISECOND);
+        canvas.delay(synapse, Milliseconds(1.0));
     }
     let left_hand = canvas.add(Element::TouchSensor, 4.5, up - 7.0);
     let right_hand = canvas.add(Element::TouchSensor, 19.5, up - 7.0);
     canvas.synapse(
         left_hand,
         left_partner,
-        3.0 * NANOAMPERE,
-        10.0 * MILLISECOND,
+        Nanoamperes(3.0),
+        Milliseconds(10.0),
     );
     canvas.synapse(
         right_hand,
         right_partner,
-        3.0 * NANOAMPERE,
-        10.0 * MILLISECOND,
+        Nanoamperes(3.0),
+        Milliseconds(10.0),
     );
-    canvas.start_at(left, -56.0 * MILLIVOLT);
-    canvas.start_at(right, -80.0 * MILLIVOLT);
+    canvas.start_at(left, Millivolts(-56.0));
+    canvas.start_at(right, Millivolts(-80.0));
     canvas.text(
         "If you press the touch sensor on either side, \
          its inhibitory neuron will pull the other side down.",
@@ -389,9 +392,9 @@ fn choosing() -> World {
 }
 
 const DETECTORS: usize = 6;
-const BRIGHT: f64 = 0.7 * NANOAMPERE;
-const DIM: f64 = 0.35 * NANOAMPERE;
-const SIDEWAYS_PULL: f64 = 1.0 * NANOAMPERE;
+const BRIGHT: Nanoamperes = Nanoamperes(0.7);
+const DIM: Nanoamperes = Nanoamperes(0.35);
+const SIDEWAYS_PULL: Nanoamperes = Nanoamperes(1.0);
 
 fn sharpening_edges() -> World {
     let mut canvas = Canvas::new();
@@ -435,7 +438,7 @@ fn sharpening_edges() -> World {
         for &neighbour in &neighbours {
             let at_the_end = neighbour == 0 || neighbour == DETECTORS - 1;
             let pull = if at_the_end { 2.0 } else { 1.0 } * SIDEWAYS_PULL;
-            canvas.synapse(partner, detectors[neighbour], pull, 2.0 * MILLISECOND);
+            canvas.synapse(partner, detectors[neighbour], pull, Milliseconds(2.0));
         }
     }
     canvas.text(&format!(
@@ -609,7 +612,7 @@ fn inhibition_on_a_branch() -> World {
     let (_, trunk_up) = position(&canvas, trunk);
     let inhibitor = canvas.add(Element::InhibitoryNeuron, 10.0, trunk_up - 1.0);
     canvas.axon(inhibitor, &[], trunk);
-    canvas.current(inhibitor, 0.6 * NANOAMPERE, 4.0, trunk_up - 1.0);
+    canvas.current(inhibitor, Nanoamperes(0.6), 4.0, trunk_up - 1.0);
     canvas.text(
         "Press the top touch sensor: the spike runs down the dendrites \
          but is stopped where the red axon ends. \

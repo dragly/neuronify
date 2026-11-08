@@ -683,7 +683,7 @@ fn an_axon_ending_on_a_drawn_dendrite_makes_its_neuron_fire() {
     );
     assert!(compartment_tree(&world, target).contains(&single_ending(&world).to));
 
-    let (mut engine, mut time) = (Engine::default(), 0.0);
+    let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
     engine.sync(&mut world);
     engine.fire(&world, source);
     let fired = (0..8000).position(|_| {
@@ -1484,9 +1484,12 @@ fn notes_lie_under_the_circuit() {
 fn stimulating_pushes_with_the_chosen_current() {
     let mut world = World::new();
     let mut editor = editor(Tool::Stimulate);
-    editor.stimulation.current = 1.0;
+    editor.stimulation.current = Nanoamperes(1.0);
     editor.edit(&mut world, at(0.0, 0.0), false);
-    assert_eq!(editor.touch().map(|touch| touch.current), Some(1.0));
+    assert_eq!(
+        editor.touch().map(|touch| touch.current),
+        Some(Nanoamperes(1.0))
+    );
 }
 
 #[test]
@@ -1780,7 +1783,7 @@ fn steps_until_a_spike_crosses(tool: Tool, length: usize) -> usize {
         .map(|step| at(0.0, step as f32 * 0.5))
         .collect();
     drag(&mut editor(tool), &mut world, &path);
-    let (mut engine, mut time) = (Engine::default(), 0.0);
+    let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
     engine.sync(&mut world);
     engine.fire(&world, source);
     (0..8000)
@@ -1856,7 +1859,7 @@ fn switching_the_channels_is_undone_in_one_step() {
 #[test]
 fn a_running_axon_rests_at_the_new_resting_potential_after_a_switch() {
     let (mut world, compartment) = axon_between_two_neurons();
-    let (mut engine, mut time) = (Engine::default(), 0.0);
+    let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
     step_simulation(&mut world, &mut engine, &mut time, 40, None);
     let mut editor = editor(Tool::Edit);
     for preparation in [Preparation::Mammal, Preparation::Squid] {
@@ -1865,8 +1868,8 @@ fn a_running_axon_rests_at_the_new_resting_potential_after_a_switch() {
         let voltage = world.get::<&NodeState>(compartment).unwrap().voltage;
         let rest = preparation.resting_potential();
         assert!(
-            (voltage - rest).abs() < 1.0,
-            "{voltage} mV against {rest} mV"
+            (voltage - rest).abs() < Millivolts(1.0),
+            "{voltage} against {rest}"
         );
     }
 }
@@ -1904,7 +1907,7 @@ fn dendrite_segments_added_by_a_stretch_taper_like_freshly_drawn_ones_where_they
         &[tip, tip + tip.normalize() * 12.0],
     );
 
-    let added: Vec<(f64, Connection)> = world
+    let added: Vec<(Micrometres, Connection)> = world
         .query::<(&Cable, &Connection)>()
         .iter()
         .filter(|(cable, _)| !before.contains(cable))
@@ -1916,7 +1919,7 @@ fn dendrite_segments_added_by_a_stretch_taper_like_freshly_drawn_ones_where_they
             .map(|end| world.get::<&Position>(end).ok().map(|p| p.position));
         let fresh = crate::simulation::model::dendrite_diameter(&world, ends);
         assert!(
-            (diameter - fresh).abs() < 1e-9,
+            (diameter - fresh).abs() < Micrometres(1e-9),
             "{diameter} against {fresh}"
         );
     }
@@ -2389,7 +2392,7 @@ fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
         .get::<&mut VoltageSeries>(wire)
         .unwrap()
         .spike_times
-        .push(1.0);
+        .push(Milliseconds(1000.0));
 
     editor.undo(&mut world);
     editor.undo(&mut world);
@@ -2398,7 +2401,7 @@ fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
     let size = world.get::<&MeterSize>(voltmeter).unwrap();
     assert_eq!((size.width, size.height), (8.0, 4.0));
     let series = world.get::<&VoltageSeries>(wire).unwrap();
-    assert_eq!(series.spike_times, [1.0]);
+    assert_eq!(series.spike_times, [Milliseconds(1000.0)]);
 }
 
 #[test]
@@ -2428,11 +2431,11 @@ fn undo_puts_back_a_resized_note() {
 }
 
 fn threshold(world: &World, neuron: Entity) -> f64 {
-    world.get::<&LeakyNeuron>(neuron).unwrap().threshold
+    world.get::<&LeakyNeuron>(neuron).unwrap().threshold.0
 }
 
 fn set_threshold(world: &World, neuron: Entity, threshold: f64) -> bool {
-    world.get::<&mut LeakyNeuron>(neuron).unwrap().threshold = threshold;
+    world.get::<&mut LeakyNeuron>(neuron).unwrap().threshold = Millivolts(threshold);
     true
 }
 
@@ -2854,7 +2857,7 @@ fn a_touch_sensor_makes_its_neuron_fire_right_away() {
     editor.tool = Tool::Stimulate;
     editor.edit(&mut world, at(0.0, 0.5), false);
     editor.release(&world);
-    let (mut engine, mut time) = (Engine::default(), 0.0);
+    let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
     for press in editor.take_presses() {
         fire_nearby(&mut world, &mut engine, press);
     }

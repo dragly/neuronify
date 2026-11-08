@@ -4,8 +4,9 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Dendrite, Label, LeakyNeuron,
-    NeuronType, NodeState, RegularSpikeGenerator,
+    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Dendrite, Hertz, Label,
+    LeakyNeuron, Milliseconds, Millivolts, Nanoamperes, NeuronType, NodeState,
+    RegularSpikeGenerator, Seconds,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
 use crate::elements::{spawn_cable, spawn_compartment, Element, Meter};
@@ -93,7 +94,7 @@ impl Harness {
                 editor,
                 world,
                 theme,
-                time: *time,
+                time: Seconds(*time).to_milliseconds(),
                 running,
                 speed,
                 fps: 60.0,
@@ -400,8 +401,8 @@ fn clicking_stimulate_again_sets_the_current() {
     harness.press_the_middle_of_slider("Current", "300 pA");
     let current = harness.editor.stimulation.current;
     assert!(
-        current > 0.01 && current < STIMULATION_CURRENT,
-        "{current} nA"
+        current > Nanoamperes(0.01) && current < STIMULATION_CURRENT,
+        "{current}"
     );
     harness.click(pos2(700.0, 400.0));
     assert!(harness.shows("Current"));
@@ -570,11 +571,11 @@ fn the_inspector_explains_each_setting() {
 #[test]
 fn the_inspector_leaves_values_beyond_a_slider_alone() {
     let (world, neuron) = one_neuron();
-    world.get::<&mut LeakyNeuron>(neuron).unwrap().threshold = 0.5;
+    world.get::<&mut LeakyNeuron>(neuron).unwrap().threshold = Millivolts(0.5);
     let harness = Harness::with(true, world, Some(neuron));
     assert_eq!(
         harness.world.get::<&LeakyNeuron>(neuron).unwrap().threshold,
-        0.5
+        Millivolts(0.5)
     );
 }
 
@@ -590,7 +591,7 @@ fn spike_generators_reach_a_thousand_spikes_a_second() {
         .get::<&RegularSpikeGenerator>(generator)
         .unwrap()
         .frequency;
-    assert_eq!(frequency, 1000.0);
+    assert_eq!(frequency, Hertz(1000.0));
 }
 
 #[test]
@@ -605,7 +606,7 @@ fn current_sources_reach_thirty_nanoamperes() {
         .get::<&CurrentClamp>(source)
         .unwrap()
         .current_output;
-    assert_eq!(current, 30.0);
+    assert_eq!(current, Nanoamperes(30.0));
 }
 
 fn type_of(world: &World, entity: Entity) -> NeuronType {
@@ -693,7 +694,7 @@ fn the_threshold_stays_above_the_reset() {
     harness.drag(slider, slider - vec2(400.0, 0.0));
     let neuron = harness.world.get::<&LeakyNeuron>(neuron).unwrap();
     assert!(neuron.threshold > neuron.initial_potential);
-    assert!(neuron.threshold - neuron.initial_potential < 1.0);
+    assert!(neuron.threshold - neuron.initial_potential < Millivolts(1.0));
 }
 
 #[test]
@@ -712,14 +713,14 @@ fn undoing_a_refractory_period_leaves_the_voltage_alone() {
             .unwrap()
             .refractory_period
     };
-    assert_ne!(refractory_period(&harness), 2.0);
-    harness.world.get::<&mut NodeState>(neuron).unwrap().voltage = -60.0;
+    assert_ne!(refractory_period(&harness), Milliseconds(2.0));
+    harness.world.get::<&mut NodeState>(neuron).unwrap().voltage = Millivolts(-60.0);
 
     harness.press(Modifiers::COMMAND, Key::Z);
-    assert_eq!(refractory_period(&harness), 2.0);
+    assert_eq!(refractory_period(&harness), Milliseconds(2.0));
     assert_eq!(
         harness.world.get::<&NodeState>(neuron).unwrap().voltage,
-        -60.0
+        Millivolts(-60.0)
     );
 }
 
@@ -751,7 +752,7 @@ fn a_selected_synapse_shows_its_settings_and_undoes_them() {
         .unwrap()
         + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
-    assert_eq!(maximum_current(&harness), 10.0);
+    assert_eq!(maximum_current(&harness), Nanoamperes(10.0));
     harness
         .world
         .get::<&mut CurrentSynapse>(synapse)
@@ -795,7 +796,10 @@ fn a_voltmeter_sets_the_voltages_at_the_top_and_bottom_of_its_plots() {
             .unwrap();
         (*range).clone()
     };
-    assert_eq!(range(&harness).minimum, range(&harness).maximum - 1.0);
+    assert_eq!(
+        range(&harness).minimum,
+        range(&harness).maximum - Millivolts(1.0)
+    );
 
     harness.press(Modifiers::COMMAND, Key::Z);
     assert_eq!(range(&harness), Default::default());
@@ -901,8 +905,8 @@ fn the_sliders_of_an_alternating_current_source_are_logarithmic() {
     harness.press_the_middle_of_slider(Setting::Amplitude.label(), "300 pA");
     harness.press_the_middle_of_slider(Setting::AlternatingFrequency.label(), "50 Hz");
     let alternating = harness.world.get::<&AlternatingCurrent>(source).unwrap();
-    assert!((alternating.amplitude / 0.1 - 1.0).abs() < 0.05);
-    assert!((alternating.frequency / 200.0_f64.sqrt() - 1.0).abs() < 0.05);
+    assert!((alternating.amplitude / Nanoamperes(0.1) - 1.0).abs() < 0.05);
+    assert!((alternating.frequency / Hertz(200.0_f64.sqrt()) - 1.0).abs() < 0.05);
 }
 
 #[test]
@@ -922,9 +926,9 @@ fn a_spike_detector_sets_its_time_range() {
             .unwrap()
             .time_range
     };
-    assert_eq!(time_range(&harness), 1.0);
+    assert_eq!(time_range(&harness), Milliseconds(1000.0));
     harness.press(Modifiers::COMMAND, Key::Z);
-    assert_eq!(time_range(&harness), 0.1);
+    assert_eq!(time_range(&harness), Milliseconds(100.0));
 }
 
 #[test]
@@ -966,7 +970,7 @@ fn a_rate_plot_sets_its_window_smoothing_and_range() {
         .world
         .get::<&crate::measurement::firing_rate::RatePlot>(plot)
         .unwrap();
-    assert_eq!(plot.minimum, plot.maximum - 1.0);
+    assert_eq!(plot.minimum, plot.maximum - Hertz(1.0));
 }
 
 #[test]
@@ -1457,7 +1461,7 @@ fn undo_takes_back_a_change_of_temperature() {
     let before = Temperature::of(&harness.world).celsius;
     harness.press_the_middle_of_slider(
         crate::settings::Setting::Temperature.label(),
-        &format!("{before:.1} °C"),
+        &format!("{before:.1}"),
     );
     let warmed = Temperature::of(&harness.world).celsius;
     assert_ne!(warmed, before);
@@ -1614,7 +1618,7 @@ fn a_visual_input_stops_at_zero_speed_and_takes_a_phase_set_by_hand() {
         + vec2(0.0, 22.0);
     harness.drag(phase, phase + vec2(400.0, 0.0));
     let input = harness.world.get::<&VisualInput>(input).unwrap();
-    assert_eq!(input.speed, 0.0);
+    assert_eq!(input.speed, Hertz(0.0));
     assert_eq!(input.phase, 1.0);
 }
 

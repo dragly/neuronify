@@ -1,14 +1,15 @@
 use std::f64::consts::{FRAC_PI_2, TAU};
 
 use glam::Vec3;
+use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
 use crate::measurement::voltmeter::Frame;
 
 pub const RESOLUTION: usize = 20;
 pub const VISUAL_INPUT_SIZE: f32 = 8.0;
-pub const FRAME_INTERVAL: f64 = 0.001;
-pub const DEFAULT_PICTURE_SPEED: f64 = 10.0;
+pub const FRAME_INTERVAL: Milliseconds = Milliseconds(1.0);
+pub const DEFAULT_PICTURE_SPEED: Hertz = Hertz(10.0);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Pattern {
@@ -148,14 +149,14 @@ pub fn grid(index: usize) -> f64 {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VisualInput {
     pub field: ReceptiveField,
-    pub sensitivity: f64,
+    pub sensitivity: Hertz,
     pub show_field: bool,
     pub pattern: Pattern,
     pub pattern_angle: f64,
-    pub speed: f64,
+    pub speed: Hertz,
     pub phase: f64,
     #[serde(skip)]
-    pub seen_at: Option<f64>,
+    pub seen_at: Option<Milliseconds>,
     #[serde(skip)]
     pub response: f64,
 }
@@ -164,7 +165,7 @@ impl Default for VisualInput {
     fn default() -> Self {
         Self {
             field: ReceptiveField::default(),
-            sensitivity: 1000.0,
+            sensitivity: Hertz(1000.0),
             show_field: true,
             pattern: Pattern::default(),
             pattern_angle: 0.0,
@@ -247,7 +248,8 @@ mod tests {
     fn spikes(input: VisualInput, seconds: f64) -> (usize, f64) {
         let mut world = hecs::World::new();
         let entity = world.spawn((input, crate::components::GeneratorDynamics::default()));
-        let spikes = crate::simulation::run_headless(&mut world, seconds * 1e3).len();
+        let duration = neuronify_engine::units::Seconds(seconds).to_milliseconds();
+        let spikes = crate::simulation::run_headless(&mut world, duration).len();
         let phase = world.get::<&VisualInput>(entity).unwrap().phase;
         (spikes, phase)
     }
@@ -379,7 +381,7 @@ mod tests {
         let phase_after_a_quarter_second = |speed: f64| {
             spikes(
                 VisualInput {
-                    speed,
+                    speed: Hertz(speed),
                     ..Default::default()
                 },
                 0.25,
@@ -396,7 +398,7 @@ mod tests {
         let stopped_at = |phase: f64| {
             spikes(
                 VisualInput {
-                    speed: 0.0,
+                    speed: Hertz(0.0),
                     phase,
                     ..input(ReceptiveField::default(), Pattern::Bar, 0.0)
                 },

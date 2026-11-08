@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
 use hecs::{Entity, World};
+use neuronify_engine::units::{
+    Celsius, Hertz, Micrometres, Microsiemens, Milliseconds, Millivolts, Nanoamperes, Quantity,
+    SiemensPerSquareCentimetre,
+};
 use neuronify_engine::{
     Adaptation, Alternating, BuildError, Burst, ConductanceSynapse as Conductance,
     CurrentSynapse as Current, Membrane, Morphology, Network, NodeMembrane, Rhythm, Site, Spiking,
@@ -19,13 +23,13 @@ const PROBE_EVERY: u64 = 4;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Spike {
     pub entity: Entity,
-    pub time: f64,
+    pub time: Milliseconds,
 }
 
 pub struct ProbeSamples {
     pub wire: Entity,
     pub target: Entity,
-    pub samples: Vec<(f64, f64)>,
+    pub samples: Vec<(Milliseconds, Millivolts)>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -68,7 +72,7 @@ pub struct Engine {
     currents: Vec<(Entity, usize)>,
     adaptations: Vec<(Entity, usize)>,
     bursts: Vec<(Entity, usize)>,
-    clamps: HashMap<(usize, usize), f64>,
+    clamps: HashMap<(usize, usize), Nanoamperes>,
     cable_conductances: HashMap<Entity, f64>,
     probes: Vec<(Entity, Entity, usize)>,
     touched: Vec<Site>,
@@ -77,7 +81,7 @@ pub struct Engine {
 
 impl Default for Engine {
     fn default() -> Self {
-        Engine::starting_at(0.0)
+        Engine::starting_at(Milliseconds::ZERO)
     }
 }
 
@@ -97,8 +101,8 @@ fn dendritic(world: &World, entity: Entity) -> bool {
     world.satisfies::<&Dendrite>(entity).unwrap_or(false)
 }
 
-fn positive_or(value: f64, fallback: f64) -> f64 {
-    if value.is_finite() && value > 0.0 {
+fn positive_or<T: Quantity>(value: T, fallback: T) -> T {
+    if value.value().is_finite() && value.value() > 0.0 {
         value
     } else {
         fallback
@@ -117,7 +121,7 @@ fn bounded_membrane(membrane: &Membrane) -> Membrane {
     Membrane {
         capacitance: positive_or(membrane.capacitance, squid.capacitance),
         axial_resistivity: positive_or(membrane.axial_resistivity, squid.axial_resistivity),
-        leak: if membrane.leak.is_finite() && membrane.leak >= 0.0 {
+        leak: if membrane.leak.is_finite() && membrane.leak >= SiemensPerSquareCentimetre::ZERO {
             membrane.leak
         } else {
             squid.leak
@@ -126,7 +130,7 @@ fn bounded_membrane(membrane: &Membrane) -> Membrane {
     }
 }
 
-fn bounded_celsius(world: &World) -> f64 {
+fn bounded_celsius(world: &World) -> Celsius {
     let preparation = Preparation::of(world);
     let celsius = Temperature::of(world).celsius;
     if celsius.is_finite() {
@@ -158,7 +162,7 @@ fn node_membrane(world: &World, entity: Entity, links: &[&CableLink]) -> NodeMem
             let diameter = touching()
                 .filter(|link| link.myelinated)
                 .map(|link| link.cable.diameter)
-                .fold(0.0, f64::max);
+                .fold(Micrometres::ZERO, Micrometres::max);
             return NodeMembrane::Patch {
                 area: std::f64::consts::PI * diameter * RANVIER_LENGTH,
                 membrane: Preparation::of(world).ranvier_membrane(),
@@ -174,7 +178,7 @@ fn node_membrane(world: &World, entity: Entity, links: &[&CableLink]) -> NodeMem
     }
     let conductance = world
         .get::<&LeakCurrent>(entity)
-        .map_or(0.0, |leak| 1.0 / leak.resistance);
+        .map_or(Microsiemens::ZERO, |leak| 1.0 / leak.resistance);
     NodeMembrane::Lumped {
         capacitance: neuron.capacitance,
         conductance,
@@ -195,8 +199,8 @@ impl Fingerprint {
             .rotate_left(29);
     }
 
-    fn float(&mut self, value: f64) {
-        self.add(value.to_bits());
+    fn float(&mut self, value: impl Quantity) {
+        self.add(value.value().to_bits());
     }
 
     fn entity(&mut self, entity: Entity) {
@@ -249,17 +253,17 @@ impl Fingerprint {
             hash.add(*preparation as u64)
         });
         hash.components(world, |hash, neuron: &LeakyNeuron| {
+            hash.float(neuron.capacitance);
             for value in [
-                neuron.capacitance,
                 neuron.resting_potential,
                 neuron.threshold,
                 neuron.initial_potential,
                 neuron.minimum_voltage,
                 neuron.maximum_voltage,
-                neuron.refractory_period,
             ] {
                 hash.float(value);
             }
+            hash.float(neuron.refractory_period);
             hash.add(neuron.voltage_clamped as u64);
         });
         hash.components(world, |hash, leak: &LeakCurrent| {
@@ -310,9 +314,9 @@ impl Fingerprint {
 }
 
 impl Engine {
-    pub fn starting_at(time: f64) -> Engine {
+    pub fn starting_at(time: Milliseconds) -> Engine {
         let mut network = Network::new(DT, DEFAULT_TEMPERATURE);
-        network.set_time(time * 1e3);
+        network.set_time(time);
         Engine {
             network,
             built: false,
@@ -344,7 +348,7 @@ impl Engine {
         engine
     }
 
-    pub fn time(&self) -> f64 {
+    pub fn time(&self) -> Milliseconds {
         self.network.time()
     }
 
@@ -382,12 +386,12 @@ impl Engine {
         }
     }
 
-    pub fn voltage(&self, entity: Entity) -> Option<f64> {
+    pub fn voltage(&self, entity: Entity) -> Option<Millivolts> {
         self.place(entity)
             .map(|place| self.network.voltage(place.site()))
     }
 
-    pub fn cable_voltages(&self, cable: Entity) -> Option<Vec<f64>> {
+    pub fn cable_voltages(&self, cable: Entity) -> Option<Vec<Millivolts>> {
         let &(_, tree, index) = self.cables.iter().find(|(entity, _, _)| *entity == cable)?;
         let tree = self.network.tree(tree);
         Some(
@@ -398,11 +402,11 @@ impl Engine {
         )
     }
 
-    pub fn inject(&mut self, entity: Entity, current: f64) {
+    pub fn inject(&mut self, entity: Entity, current: Nanoamperes) {
         if let Some(place) = self.place(entity) {
             let base = self.clamps.get(&(place.tree, place.point)).copied();
             let tree = self.network.tree_mut(place.tree);
-            tree.inject(place.point, base.unwrap_or(0.0) + current);
+            tree.inject(place.point, base.unwrap_or(Nanoamperes::ZERO) + current);
         }
     }
 
@@ -423,12 +427,12 @@ impl Engine {
         }
     }
 
-    pub fn touch(&mut self, world: &World, sites: Vec<(Entity, f64)>) {
+    pub fn touch(&mut self, world: &World, sites: Vec<(Entity, Nanoamperes)>) {
         for site in std::mem::take(&mut self.touched) {
             let base = self.clamps.get(&(site.tree, site.point)).copied();
             self.network
                 .tree_mut(site.tree)
-                .inject(site.point, base.unwrap_or(0.0));
+                .inject(site.point, base.unwrap_or(Nanoamperes::ZERO));
         }
         let mut pulses = Vec::new();
         let mut interval = None;
@@ -448,7 +452,7 @@ impl Engine {
                 true => rhythm.max(Preparation::of(world).shortest_dendrite_pulse_interval()),
                 false => (rhythm / AXON_PULSE_FACTOR).max(SHORTEST_PULSE_INTERVAL),
             };
-            interval = Some(interval.map_or(rhythm, |interval: f64| interval.min(rhythm)));
+            interval = Some(interval.map_or(rhythm, |interval: Milliseconds| interval.min(rhythm)));
             pulses.push((place.site(), PULSE_CURRENT * pulse_size(world, entity)));
         }
         match interval {
@@ -457,9 +461,11 @@ impl Engine {
         }
     }
 
-    pub fn set_rate(&mut self, generator: Entity, rate: f64) {
+    pub fn set_rate(&mut self, generator: Entity, rate: Hertz) {
         if let Some(&(_, index)) = self.generators.iter().find(|(e, _)| *e == generator) {
-            self.network.generators[index].rhythm = Rhythm::Poisson { rate: rate * 1e-3 };
+            self.network.generators[index].rhythm = Rhythm::Poisson {
+                rate: rate.to_kilohertz(),
+            };
         }
     }
 
@@ -667,7 +673,7 @@ impl Engine {
                     tree: index,
                     soma: fired,
                 },
-                0.0,
+                Milliseconds::ZERO,
             );
         }
         let first_cable = self.cables.len();
@@ -754,7 +760,7 @@ impl Engine {
     }
 
     fn add_mechanisms(&mut self, world: &World) {
-        let generators: Vec<(Entity, Rhythm, f64)> = world
+        let generators: Vec<(Entity, Rhythm, Milliseconds)> = world
             .query::<(
                 &GeneratorDynamics,
                 Option<&RegularSpikeGenerator>,
@@ -763,11 +769,11 @@ impl Engine {
             .iter()
             .map(|(entity, (dynamics, regular, poisson))| {
                 let rhythm = match (regular, poisson) {
-                    (Some(regular), _) if regular.frequency > 0.0 => Rhythm::Regular {
-                        interval: 1e3 / regular.frequency,
+                    (Some(regular), _) if regular.frequency > Hertz::ZERO => Rhythm::Regular {
+                        interval: regular.frequency.period(),
                     },
                     (_, Some(poisson)) => Rhythm::Poisson {
-                        rate: poisson.rate * 1e-3,
+                        rate: poisson.rate.to_kilohertz(),
                     },
                     _ => Rhythm::Manual,
                 };
@@ -870,11 +876,11 @@ impl Engine {
                         tree: target.tree,
                         soma,
                     },
-                    0.0,
+                    Milliseconds::ZERO,
                 );
             }
         }
-        let clamps: Vec<((usize, usize), f64)> = self
+        let clamps: Vec<((usize, usize), Nanoamperes)> = self
             .clamps
             .iter()
             .map(|(&site, &current)| (site, current))
@@ -915,7 +921,8 @@ impl Engine {
                     reversal: rest,
                     conductance: adaptation.conductance,
                 });
-                self.network.connect(source, Target::Adaptation(index), 0.0);
+                self.network
+                    .connect(source, Target::Adaptation(index), Milliseconds::ZERO);
                 self.adaptations.push((entity, index));
             }
             if let Ok(burst) = world.get::<&BurstCurrent>(entity) {
@@ -925,7 +932,8 @@ impl Engine {
                     drain: burst.drain,
                     boost: burst.boost,
                 });
-                self.network.connect(source, Target::Burst(index), 0.0);
+                self.network
+                    .connect(source, Target::Burst(index), Milliseconds::ZERO);
                 self.bursts.push((entity, index));
             }
         }
@@ -1066,7 +1074,7 @@ impl Engine {
                 gates: tree.gates(place.point).collect(),
                 since_spike: place
                     .soma
-                    .map_or(f64::INFINITY, |soma| tree.since_spike(soma)),
+                    .map_or(Milliseconds::INFINITY, |soma| tree.since_spike(soma)),
             };
             match world.get::<&mut NodeState>(entity) {
                 Ok(mut stored) => *stored = state,
@@ -1097,7 +1105,7 @@ impl Engine {
     }
 }
 
-pub fn pulse_interval(current: f64) -> Option<f64> {
+pub fn pulse_interval(current: Nanoamperes) -> Option<Milliseconds> {
     let neuron = LeakyNeuron::default();
     let resistance = LeakCurrent::default().resistance;
     let settled = neuron.resting_potential + current * resistance;
@@ -1109,12 +1117,17 @@ pub fn pulse_interval(current: f64) -> Option<f64> {
     Some(neuron.refractory_period + time_constant * rise)
 }
 
-pub fn visual_inputs(world: &mut World, engine: &mut Engine, time: f64, duration: f64) {
-    let rates: Vec<(Entity, f64)> = world
+pub fn visual_inputs(
+    world: &mut World,
+    engine: &mut Engine,
+    time: Milliseconds,
+    duration: Milliseconds,
+) {
+    let rates: Vec<(Entity, Hertz)> = world
         .query_mut::<&mut VisualInput>()
         .into_iter()
         .map(|(entity, input)| {
-            input.phase = (input.phase + input.speed * duration).rem_euclid(1.0);
+            input.phase = (input.phase + input.speed.cycles_in(duration)).rem_euclid(1.0);
             let stale = input
                 .seen_at
                 .is_none_or(|seen_at| !(seen_at..seen_at + FRAME_INTERVAL).contains(&time));
@@ -1122,7 +1135,10 @@ pub fn visual_inputs(world: &mut World, engine: &mut Engine, time: f64, duration
                 input.response = input.respond();
                 input.seen_at = Some(time);
             }
-            (entity, (input.sensitivity * input.response).max(0.0))
+            (
+                entity,
+                (input.sensitivity * input.response).max(Hertz::ZERO),
+            )
         })
         .collect();
     for (entity, rate) in rates {
@@ -1130,9 +1146,9 @@ pub fn visual_inputs(world: &mut World, engine: &mut Engine, time: f64, duration
     }
 }
 
-pub fn run_headless(world: &mut World, duration: f64) -> Vec<Spike> {
+pub fn run_headless(world: &mut World, duration: Milliseconds) -> Vec<Spike> {
     let mut engine = Engine::default();
-    let mut time = 0.0;
+    let mut time = Milliseconds::ZERO;
     let mut spikes = Vec::new();
     let mut remaining = (duration / DT).round() as u32;
     while remaining > 0 {
@@ -1200,7 +1216,7 @@ mod tests {
     struct Run {
         world: World,
         engine: Engine,
-        time: f64,
+        time: Milliseconds,
     }
 
     impl Run {
@@ -1208,12 +1224,12 @@ mod tests {
             Run {
                 world,
                 engine: Engine::default(),
-                time: 0.0,
+                time: Milliseconds::ZERO,
             }
         }
 
-        fn now(&self) -> f64 {
-            self.time * 1e3
+        fn now(&self) -> Milliseconds {
+            self.time
         }
 
         fn step(&mut self) -> Vec<Spike> {
@@ -1226,19 +1242,19 @@ mod tests {
             self.engine.fire(&self.world, entity);
         }
 
-        fn voltage(&self, entity: Entity) -> f64 {
+        fn voltage(&self, entity: Entity) -> Millivolts {
             self.world.get::<&NodeState>(entity).unwrap().voltage
         }
     }
 
     fn voltage_ranges(
         world: World,
-        fired: &[(Entity, f64)],
+        fired: &[(Entity, Milliseconds)],
         watched: &[Entity],
-        duration: f64,
-    ) -> Vec<(f64, f64)> {
+        duration: Milliseconds,
+    ) -> Vec<(Millivolts, Millivolts)> {
         let mut run = Run::new(world);
-        let mut ranges = vec![(f64::MAX, f64::MIN); watched.len()];
+        let mut ranges = vec![(Millivolts::INFINITY, Millivolts::NEG_INFINITY); watched.len()];
         while run.now() < duration {
             for &(entity, at) in fired {
                 if (run.now()..run.now() + DT).contains(&at) {
@@ -1254,30 +1270,32 @@ mod tests {
         ranges
     }
 
-    fn dendrite_receiving(endings: &[(NeuronType, usize, f64, f64)]) -> Vec<(f64, f64)> {
+    fn dendrite_receiving(
+        endings: &[(NeuronType, usize, f64, f64)],
+    ) -> Vec<(Millivolts, Millivolts)> {
         let mut world = World::new();
         let dendrite = dendrite(&mut world);
-        let fired: Vec<(Entity, f64)> = endings
+        let fired: Vec<(Entity, Milliseconds)> = endings
             .iter()
             .map(|&(axon_type, site, strength, at)| {
                 (
                     axon_onto(&mut world, axon_type, dendrite[site], strength),
-                    at,
+                    Milliseconds(at),
                 )
             })
             .collect();
-        voltage_ranges(world, &fired, &dendrite, 80.0)
+        voltage_ranges(world, &fired, &dendrite, Milliseconds(80.0))
     }
 
-    fn spiked_along(ranges: &[(f64, f64)]) -> bool {
+    fn spiked_along(ranges: &[(Millivolts, Millivolts)]) -> bool {
         ranges.iter().all(|range| range.1 > TERMINAL_THRESHOLD)
     }
 
-    fn stayed_below_threshold(ranges: &[(f64, f64)]) -> bool {
+    fn stayed_below_threshold(ranges: &[(Millivolts, Millivolts)]) -> bool {
         ranges.iter().all(|range| range.1 < TERMINAL_THRESHOLD)
     }
 
-    fn resting_dendrite() -> f64 {
+    fn resting_dendrite() -> Millivolts {
         dendrite_receiving(&[])[0].1
     }
 
@@ -1292,7 +1310,7 @@ mod tests {
         let rest = resting_dendrite();
         let ranges = dendrite_receiving(&[(EXCITATORY, 0, WEAK, 1.0)]);
         assert!(
-            ranges[0].1 > rest + 5.0,
+            ranges[0].1 > rest + Millivolts(5.0),
             "the ending reached {}",
             ranges[0].1
         );
@@ -1338,15 +1356,15 @@ mod tests {
         let dendrite = dendrite(&mut world);
         let start = axon_onto(&mut world, INHIBITORY, dendrite[0], 1.0);
         let mut run = Run::new(world);
-        while run.now() < 50.0 {
+        while run.now() < Milliseconds(50.0) {
             run.step();
         }
         let rest = run.voltage(dendrite[0]);
         run.fire(start);
-        while run.now() < 80.0 {
+        while run.now() < Milliseconds(80.0) {
             run.step();
             let moved = run.voltage(dendrite[0]) - rest;
-            assert!(moved.abs() < 3.0, "moved {moved} mV from {rest}");
+            assert!(moved.abs() < Millivolts(3.0), "moved {moved} from {rest}");
         }
     }
 
@@ -1374,8 +1392,8 @@ mod tests {
         let mut world = World::new();
         let dendrite = dendrite(&mut world);
         let start = axon_onto(&mut world, EXCITATORY, dendrite[0], 1.0);
-        let fired = [(dendrite[DENDRITE_LENGTH - 1], 1.0)];
-        let ranges = voltage_ranges(world, &fired, &[start], 40.0);
+        let fired = [(dendrite[DENDRITE_LENGTH - 1], Milliseconds(1.0))];
+        let ranges = voltage_ranges(world, &fired, &[start], Milliseconds(40.0));
         assert!(
             ranges[0].1 < TERMINAL_THRESHOLD,
             "the axon reached {}",
@@ -1383,13 +1401,13 @@ mod tests {
         );
     }
 
-    fn crossing_time(mut run: Run, nodes: &[Entity]) -> f64 {
+    fn crossing_time(mut run: Run, nodes: &[Entity]) -> Milliseconds {
         let start = run.now();
         run.fire(nodes[0]);
         let far = nodes[nodes.len() - 1];
         while run.voltage(far) < TERMINAL_THRESHOLD {
             run.step();
-            assert!(run.now() < start + 100.0);
+            assert!(run.now() < start + Milliseconds(100.0));
         }
         run.now() - start
     }
@@ -1404,13 +1422,13 @@ mod tests {
         let through_dendrite = crossing_time(Run::new(world), &dendrite);
         assert!(
             through_dendrite > 1.4 * through_axon,
-            "{through_dendrite} against {through_axon} ms"
+            "{through_dendrite} against {through_axon}"
         );
     }
 
     #[test]
     fn warming_a_running_axon_speeds_its_spikes_without_a_rebuild() {
-        let crossing = |celsius: f64| {
+        let crossing = |celsius: Celsius| {
             let mut world = World::new();
             let axon = chain(&mut world, EXCITATORY, Vec3::ZERO, DENDRITE_LENGTH);
             let mut run = Run::new(world);
@@ -1419,8 +1437,8 @@ mod tests {
             assert!(!run.engine.sync(&mut run.world));
             crossing_time(run, &axon)
         };
-        let (cold, warm) = (crossing(DEFAULT_TEMPERATURE), crossing(26.3));
-        assert!(warm < 0.85 * cold, "{warm} against {cold} ms");
+        let (cold, warm) = (crossing(DEFAULT_TEMPERATURE), crossing(Celsius(26.3)));
+        assert!(warm < 0.85 * cold, "{warm} against {cold}");
     }
 
     #[test]
@@ -1436,9 +1454,9 @@ mod tests {
         for (index, &cable) in cables.iter().enumerate() {
             let mut cable = world.get::<&mut Cable>(cable).unwrap();
             match index {
-                0 => cable.diameter = 0.0,
-                1 => cable.length = 1e15,
-                _ => cable.diameter = f64::NAN,
+                0 => cable.diameter = Micrometres(0.0),
+                1 => cable.length = Micrometres(1e15),
+                _ => cable.diameter = Micrometres(f64::NAN),
             }
         }
         let mut run = Run::new(world);
@@ -1455,12 +1473,12 @@ mod tests {
         {
             let mut leaky = world.get::<&mut LeakyNeuron>(neuron).unwrap();
             leaky.voltage_clamped = true;
-            leaky.minimum_voltage = 10.0;
-            leaky.maximum_voltage = -10.0;
+            leaky.minimum_voltage = Millivolts(10.0);
+            leaky.maximum_voltage = Millivolts(-10.0);
         }
         let mut run = Run::new(world);
         run.step();
-        assert!((-10.0..=10.0).contains(&run.voltage(neuron)));
+        assert!((Millivolts(-10.0)..=Millivolts(10.0)).contains(&run.voltage(neuron)));
     }
 
     #[test]
@@ -1469,7 +1487,7 @@ mod tests {
         let from = soma(&mut world, Vec3::ZERO);
         let to = soma(&mut world, Vec3::Z * 10.0);
         let synapse = crate::elements::spawn_synapse(&mut world, from, to);
-        world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = -1.0;
+        world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = Milliseconds(-1.0);
         let mut run = Run::new(world);
         run.fire(from);
         for _ in 0..400 {
@@ -1482,7 +1500,10 @@ mod tests {
     fn a_temperature_that_is_not_a_number_runs_at_the_preparations_own() {
         let mut world = World::new();
         soma(&mut world, Vec3::ZERO);
-        Temperature { celsius: f64::NAN }.set_in(&mut world);
+        Temperature {
+            celsius: Celsius(f64::NAN),
+        }
+        .set_in(&mut world);
         let mut run = Run::new(world);
         run.step();
         assert_eq!(run.engine.network.celsius(), Preparation::Squid.celsius());
@@ -1507,14 +1528,14 @@ mod tests {
         assert!(!soma_fired_by_an_ending_of_strength(WEAK));
     }
 
-    fn decay_once_open(run: &mut Run, value: impl Fn(&World) -> f64) -> f64 {
-        while value(&run.world) <= 0.0 {
+    fn decay_once_open<Q: Quantity>(run: &mut Run, value: impl Fn(&World) -> Q) -> f64 {
+        while value(&run.world).value() <= 0.0 {
             run.step();
         }
         run.step();
         let before = value(&run.world);
         run.step();
-        value(&run.world) / before
+        value(&run.world).value() / before.value()
     }
 
     #[test]
@@ -1541,7 +1562,7 @@ mod tests {
                 .query::<&SynapseState>()
                 .iter()
                 .map(|(_, state)| state.open)
-                .sum::<f64>()
+                .sum::<Microsiemens>()
         };
         let decay = decay_once_open(&mut run, open);
 
@@ -1559,14 +1580,17 @@ mod tests {
         let synapse = crate::elements::spawn_synapse(&mut world, from, to);
         let mut run = Run::new(world);
         run.step();
-        run.world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = 8.0;
+        run.world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = Milliseconds(8.0);
         run.fire(from);
 
         let exponential =
             |world: &World| world.get::<&CurrentSynapse>(synapse).unwrap().exponential;
         let decay = decay_once_open(&mut run, exponential);
 
-        assert!((decay - (-DT / 8.0).exp()).abs() < 1e-9, "{decay}");
+        assert!(
+            (decay - (-DT / Milliseconds(8.0)).exp()).abs() < 1e-9,
+            "{decay}"
+        );
     }
 
     fn myelinated(world: &mut World, xs: &[f32]) -> Vec<Entity> {
@@ -1580,12 +1604,12 @@ mod tests {
         nodes
     }
 
-    fn first_spikes(world: World, first: Entity, nodes: &[Entity]) -> Vec<Vec<f64>> {
+    fn first_spikes(world: World, first: Entity, nodes: &[Entity]) -> Vec<Vec<Milliseconds>> {
         let mut run = Run::new(world);
         run.fire(first);
         let mut spikes = vec![Vec::new(); nodes.len()];
         let mut above = vec![false; nodes.len()];
-        while run.now() < 20.0 {
+        while run.now() < Milliseconds(20.0) {
             run.step();
             for (index, &node) in nodes.iter().enumerate() {
                 let now_above = run.voltage(node) > TERMINAL_THRESHOLD;
@@ -1603,14 +1627,13 @@ mod tests {
         let mut world = World::new();
         let nodes = myelinated(&mut world, &[0.0, 5.6, 11.2, 16.8, 22.4, 28.0, 33.6]);
         let spikes = first_spikes(world, nodes[0], &nodes);
-        let arrivals: Vec<f64> = spikes.iter().map(|spikes| spikes[0]).collect();
+        let arrivals: Vec<Milliseconds> = spikes.iter().map(|spikes| spikes[0]).collect();
         assert!(
             arrivals.windows(2).all(|pair| pair[1] >= pair[0]),
             "{arrivals:?}"
         );
-        let speed = 5.0 * INTERNODE_LENGTH as f64 * MICROMETRES_PER_UNIT
-            / (arrivals[6] - arrivals[1])
-            * 1e-3;
+        let distance = 5.0 * INTERNODE_LENGTH as f64 * MICROMETRES_PER_UNIT;
+        let speed = distance.0 / (arrivals[6] - arrivals[1]).0 * 1e-3;
         assert!((3.0..10.0).contains(&speed), "{speed} m/s");
     }
 
@@ -1650,11 +1673,11 @@ mod tests {
     fn every_bundled_example_builds_and_rests() {
         for example in EXAMPLE_CATEGORIES.iter().flat_map(|c| c.examples) {
             let mut world = example.spawn().unwrap();
-            let mut engine = Engine::default();
-            step_simulation(&mut world, &mut engine, &mut 0.0, 40, None);
+            let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
+            step_simulation(&mut world, &mut engine, &mut time, 40, None);
             for (_, state) in world.query::<&NodeState>().with::<&Compartment>().iter() {
                 assert!(
-                    (-90.0..-40.0).contains(&state.voltage),
+                    (Millivolts(-90.0)..Millivolts(-40.0)).contains(&state.voltage),
                     "{}: {}",
                     example.file(),
                     state.voltage
@@ -1670,7 +1693,7 @@ mod tests {
         let mut run = Run::new(world);
         run.fire(neuron);
         let mut spikes = Vec::new();
-        while run.now() < 20.0 {
+        while run.now() < Milliseconds(20.0) {
             spikes.extend(run.step());
         }
         let time_of = |entity| {
@@ -1685,7 +1708,10 @@ mod tests {
             time_of(target).unwrap(),
         );
         let travel = arrived - sent;
-        assert!((3.0..6.0).contains(&travel), "{travel} ms down the axon");
+        assert!(
+            (Milliseconds(3.0)..Milliseconds(6.0)).contains(&travel),
+            "{travel} down the axon"
+        );
         assert!(fired > arrived + ENDING_DELAY, "{arrived} {fired}");
     }
 
@@ -1693,7 +1719,7 @@ mod tests {
         let mut world = World::new();
         let (neuron, axon, target) = neuron_with_axon(&mut world, 12);
         let poisson = Element::PoissonGenerator.spawn(&mut world, Vec3::X * -5.0);
-        world.get::<&mut PoissonGenerator>(poisson).unwrap().rate = 200.0;
+        world.get::<&mut PoissonGenerator>(poisson).unwrap().rate = Hertz(200.0);
         crate::elements::spawn_synapse(&mut world, poisson, neuron);
         let adaptive = Element::AdaptiveNeuron.spawn(&mut world, Vec3::X * 5.0);
         crate::elements::spawn_synapse(&mut world, target, adaptive);
@@ -1707,12 +1733,12 @@ mod tests {
         let (world, watched) = busy_circuit();
         let mut unbroken = Run::new(world);
         unbroken.fire(watched[0]);
-        while unbroken.now() < 3.0 {
+        while unbroken.now() < Milliseconds(3.0) {
             unbroken.step();
         }
         assert!(watched[3..]
             .iter()
-            .any(|&node| unbroken.voltage(node) > 0.0));
+            .any(|&node| unbroken.voltage(node) > Millivolts::ZERO));
         unbroken.engine.store(&mut unbroken.world);
         let bytes = crate::serialization::save(&unbroken.world, unbroken.time, 1.0).unwrap();
         let saved = crate::serialization::load(&bytes).unwrap();
@@ -1758,12 +1784,12 @@ mod tests {
         let (neuron, axon, _) = neuron_with_axon(&mut world, 12);
         let mut run = Run::new(world);
         run.fire(neuron);
-        while run.now() < 2.0 {
+        while run.now() < Milliseconds(2.0) {
             run.step();
         }
         Element::ExcitatoryNeuron.spawn(&mut run.world, Vec3::X * 30.0);
         let mut reached = false;
-        while run.now() < 10.0 {
+        while run.now() < Milliseconds(10.0) {
             run.step();
             reached |= run.voltage(*axon.last().unwrap()) > TERMINAL_THRESHOLD;
         }

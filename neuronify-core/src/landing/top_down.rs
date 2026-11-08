@@ -2,6 +2,7 @@ use egui::{vec2, Color32, Pos2, Rect, Shape, Stroke};
 use glam::Vec3;
 use hecs::World;
 
+use crate::components::Milliseconds;
 use crate::constants::CONNECTION_WIDTH_PER_STRENGTH;
 use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::{
@@ -32,7 +33,7 @@ pub fn top_down_shapes(
         .min(area.height() / size.x.max(THUMBNAIL_MIN_CANVAS_EXTENT));
     let center = bounds.center();
     let to_screen = |p: Vec3| area.center() + vec2(p.z - center.z, center.x - p.x) * scale;
-    let scene = collect_scene(world, palette, 0.0);
+    let scene = collect_scene(world, palette, Milliseconds::ZERO);
     let mut shapes: Vec<Shape> = scene
         .cylinders
         .iter()

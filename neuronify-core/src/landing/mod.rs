@@ -15,6 +15,7 @@ use egui::{
 };
 use hecs::World;
 
+use crate::components::Milliseconds;
 use crate::constants::DEFAULT_SPEED;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
 use crate::gui::icons::{paint_icon, Icon};
@@ -88,13 +89,13 @@ pub enum LandingChoice {
     Saved {
         id: String,
         world: Box<World>,
-        time: f64,
+        time: Milliseconds,
         speed: f64,
     },
     Example {
         name: &'static str,
         world: Box<World>,
-        time: f64,
+        time: Milliseconds,
     },
     BackToSimulation,
     About,
@@ -192,7 +193,7 @@ impl LandingScreen {
                             .ok()?;
                         Some(ExampleCard {
                             example,
-                            preview: Preview::new(world, 0.0),
+                            preview: Preview::new(world, Milliseconds::ZERO),
                         })
                     })
                     .collect()
@@ -891,7 +892,8 @@ mod tests {
     fn library_with(names: &[&str]) -> Library {
         let mut library = Library::default();
         for name in names {
-            let bytes = crate::serialization::save(&saved_example(), 1.0, SAVED_SPEED).unwrap();
+            let time = Milliseconds(1000.0);
+            let bytes = crate::serialization::save(&saved_example(), time, SAVED_SPEED).unwrap();
             library.create(name, bytes);
         }
         library
@@ -1086,8 +1088,8 @@ mod tests {
             .last()
             .unwrap()
             .preview;
-        assert!(first.on_screen && first.time > 0.0);
-        assert!(!last.on_screen && last.time == 0.0);
+        assert!(first.on_screen && first.time > Milliseconds::ZERO);
+        assert!(!last.on_screen && last.time == Milliseconds::ZERO);
     }
 
     #[test]
@@ -1236,7 +1238,7 @@ mod tests {
             panic!("clicking the card did not open the saved simulation");
         };
         assert_eq!(opened, id);
-        assert!(time >= 1.0);
+        assert!(time >= Milliseconds(1000.0));
         assert_eq!(speed, SAVED_SPEED);
         let neurons = |world: &World| world.query::<&LeakyNeuron>().iter().count();
         assert_eq!(neurons(&world), neurons(&saved_example()));

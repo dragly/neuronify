@@ -122,12 +122,12 @@ impl GaugeRenderer {
 }
 
 fn adaptation_level(adaptation: &AdaptationCurrent) -> f32 {
-    let scale = ADAPTATION_SCALE * adaptation.adaptation.max(f64::MIN_POSITIVE);
+    let scale = ADAPTATION_SCALE * adaptation.adaptation.max(Microsiemens(f64::MIN_POSITIVE));
     (1.0 - (-adaptation.conductance / scale).exp()) as f32
 }
 
 fn burst_level(burst: &BurstCurrent) -> f32 {
-    (burst.boost / burst.peak.max(f64::MIN_POSITIVE)).clamp(0.0, 1.0) as f32
+    (burst.boost / burst.peak.max(Nanoamperes(f64::MIN_POSITIVE))).clamp(0.0, 1.0) as f32
 }
 
 fn collect_gauges(

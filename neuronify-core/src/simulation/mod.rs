@@ -13,6 +13,7 @@ pub use stimulation::{fire_nearby, touch_sensor_near, touched, Touch};
 use std::collections::HashSet;
 
 use hecs::{Entity, World};
+use neuronify_engine::units::Milliseconds;
 
 use crate::constants::*;
 use crate::measurement::firing_rate::record_rates;
@@ -23,16 +24,16 @@ use crate::measurement::voltmeter::record_voltages;
 pub fn step_simulation(
     world: &mut World,
     engine: &mut Engine,
-    time: &mut f64,
+    time: &mut Milliseconds,
     steps: u32,
     touch: Option<Touch>,
 ) {
     engine.sync(world);
     engine.touch(world, touched(world, touch));
-    let duration = steps as f64 * DT * 1e-3;
+    let duration = steps as f64 * DT;
     engine::visual_inputs(world, engine, *time, duration);
     engine.run(steps);
-    *time = engine.time() * 1e-3;
+    *time = engine.time();
     engine.reflect(world);
     let spikes = engine.spikes();
     update_firing_rates(world, spikes, duration, *time);

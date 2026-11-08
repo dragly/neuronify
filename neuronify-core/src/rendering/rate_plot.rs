@@ -44,14 +44,14 @@ pub fn collect_rate_plots(world: &hecs::World) -> Vec<ConnectionData> {
         let Some(&(now, _)) = series.samples.back() else {
             continue;
         };
-        let span = (plot.maximum - plot.minimum).max(1e-9);
-        let at = |(time, rate): (f64, f64)| {
+        let span = (plot.maximum - plot.minimum).max(Hertz(1e-9));
+        let at = |(time, rate): (Milliseconds, Hertz)| {
             frame.point(
                 (1.0 - (now - time) / RATE_HISTORY) as f32,
                 ((rate - plot.minimum) / span).clamp(0.0, 1.0) as f32,
             )
         };
-        let samples: Vec<(f64, f64)> = series.samples.iter().copied().collect();
+        let samples: Vec<(Milliseconds, Hertz)> = series.samples.iter().copied().collect();
         for pair in samples.windows(2) {
             lines.push(line(at(pair[0]), at(pair[1]), rate_color()));
         }
@@ -71,8 +71,9 @@ mod tests {
         let neuron = world.spawn((NodeState::default(),));
         let plot = spawn_rate_plot(&mut world, neuron, Vec3::ZERO);
         world.get::<&mut RateSeries>(plot).unwrap().samples =
-            [(4.0, 0.0), (4.5, 50.0), (5.0, 100.0)]
+            [(4000.0, 0.0), (4500.0, 50.0), (5000.0, 100.0)]
                 .into_iter()
+                .map(|(time, rate)| (Milliseconds(time), Hertz(rate)))
                 .collect();
         let frame = Frame::of(&world, plot).unwrap();
         let curve = &collect_rate_plots(&world)[4..];

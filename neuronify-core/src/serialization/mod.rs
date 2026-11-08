@@ -1,7 +1,8 @@
 //! Save files (`.neuronify`) and scenarios.
 //!
 //! A save file starts with `MAGIC` and its version as a little-endian `u32`,
-//! followed by the simulation time as a little-endian `f64` (from version 5),
+//! followed by the simulation time as a little-endian `f64` (from version 5,
+//! in seconds until version 14 and in milliseconds from version 15),
 //! the simulation speed as a little-endian `f64` (from version 6)
 //! and the world in the hecs column format.
 //!
@@ -18,6 +19,7 @@
 use hecs::{serialize::column::serialize, World};
 use postcard::ser_flavors::Flavor;
 
+use crate::components::{Milliseconds, Seconds};
 use crate::constants::{DEFAULT_SPEED, SPEEDS};
 
 #[macro_use]
@@ -29,6 +31,7 @@ mod v11;
 mod v12;
 mod v13;
 mod v14;
+mod v15;
 mod v2;
 mod v3;
 mod v4;
@@ -39,21 +42,21 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 14;
+pub const VERSION: u32 = 15;
 
 const MAGIC: &[u8] = b"neuronify";
 
 pub struct SavedWorld {
     pub world: World,
-    pub time: f64,
+    pub time: Milliseconds,
     pub speed: f64,
 }
 
-pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
+pub fn save(world: &World, time: Milliseconds, speed: f64) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v14::SaveContext, &mut serializer)
+    serialize(world, &mut v15::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -61,7 +64,7 @@ pub fn save(world: &World, time: f64, speed: f64) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("Could not save: {e}"))?;
     let mut bytes = MAGIC.to_vec();
     bytes.extend_from_slice(&VERSION.to_le_bytes());
-    bytes.extend_from_slice(&time.to_le_bytes());
+    bytes.extend_from_slice(&time.0.to_le_bytes());
     bytes.extend_from_slice(&speed.to_le_bytes());
     bytes.extend_from_slice(&body);
     Ok(bytes)
@@ -129,6 +132,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v14::deserialize(body)?, time, speed)
         }
+        15 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v15::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -151,9 +159,14 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             11 => v12::upgrade_from_v11(&mut world),
             12 => v13::upgrade_from_v12(&mut world),
             13 => v14::upgrade_from_v13(&mut world),
+            14 => v15::upgrade_from_v14(&mut world),
             _ => unreachable!("no upgrade from version {from}"),
         }
     }
+    let time = match version {
+        ..15 => Seconds(time).to_milliseconds(),
+        _ => Milliseconds(time),
+    };
     Ok(SavedWorld {
         world,
         time: bounded_time(time),
@@ -161,11 +174,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
     })
 }
 
-fn bounded_time(time: f64) -> f64 {
-    if time.is_finite() && time >= 0.0 {
+fn bounded_time(time: Milliseconds) -> Milliseconds {
+    if time.is_finite() && time >= Milliseconds::ZERO {
         time
     } else {
-        0.0
+        Milliseconds::ZERO
     }
 }
 
@@ -204,7 +217,7 @@ fn load_legacy(bytes: &[u8]) -> Result<SavedWorld, String> {
     crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
     Ok(SavedWorld {
         world,
-        time: 0.0,
+        time: Milliseconds::ZERO,
         speed: DEFAULT_SPEED,
     })
 }
@@ -214,13 +227,15 @@ mod tests {
     use super::*;
     use crate::components::*;
     use crate::elements::{spawn_cable, spawn_compartment, spawn_internode, Element};
+    use crate::measurement::firing_rate::RatePlot;
+    use crate::measurement::spike_detector::SpikeDetector;
     use crate::measurement::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
     use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
     use std::any::TypeId;
     use std::collections::BTreeMap;
 
     const LEAKY_NFY: &str = include_str!("../legacy/fixtures/leaky.nfy");
-    const FIXTURE_TIME: f64 = 2.5;
+    const FIXTURE_TIME: Milliseconds = Milliseconds(2500.0);
     const FIXTURE_SPEED: f64 = 0.5;
 
     #[test]
@@ -232,7 +247,7 @@ mod tests {
     #[test]
     fn loads_save_file() {
         let original = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
-        let bytes = save(&original, 0.0, DEFAULT_SPEED).unwrap();
+        let bytes = save(&original, Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
         assert!(bytes.starts_with(MAGIC));
 
         let loaded = load_from_bytes(&bytes).unwrap().world;
@@ -242,21 +257,22 @@ mod tests {
     #[test]
     fn keeps_the_simulation_time() {
         let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
-        let loaded = load(&save(&world, 12.5, DEFAULT_SPEED).unwrap()).unwrap();
-        assert_eq!(loaded.time, 12.5);
+        let time = Milliseconds(12.5);
+        let loaded = load(&save(&world, time, DEFAULT_SPEED).unwrap()).unwrap();
+        assert_eq!(loaded.time, time);
     }
 
     #[test]
     fn keeps_the_simulation_speed() {
         let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
-        let loaded = load(&save(&world, 0.0, 0.5).unwrap()).unwrap();
+        let loaded = load(&save(&world, Milliseconds::ZERO, 0.5).unwrap()).unwrap();
         assert_eq!(loaded.speed, 0.5);
     }
 
     #[test]
     fn snaps_the_speed_to_one_the_playback_bar_offers() {
         let loaded_speed = |speed| {
-            load(&save(&World::new(), 0.0, speed).unwrap())
+            load(&save(&World::new(), Milliseconds::ZERO, speed).unwrap())
                 .unwrap()
                 .speed
         };
@@ -271,7 +287,10 @@ mod tests {
 
     #[test]
     fn starts_at_zero_when_the_saved_time_is_not_a_time() {
-        let loaded_time = |time| load(&save(&World::new(), time, 2.0).unwrap()).unwrap().time;
+        let loaded_time = |time| {
+            let bytes = save(&World::new(), Milliseconds(time), 2.0).unwrap();
+            load(&bytes).unwrap().time.0
+        };
         assert_eq!(loaded_time(f64::NAN), 0.0);
         assert_eq!(loaded_time(f64::INFINITY), 0.0);
         assert_eq!(loaded_time(-5.0), 0.0);
@@ -322,7 +341,7 @@ mod tests {
     }
 
     fn with_body(archetypes: &[Vec<u8>]) -> Vec<u8> {
-        let mut bytes = save(&World::new(), 0.0, DEFAULT_SPEED).unwrap();
+        let mut bytes = save(&World::new(), Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
         bytes.pop();
         bytes.extend(varint(archetypes.len() as u64));
         for archetype in archetypes {
@@ -463,7 +482,7 @@ mod tests {
             true_proportions: true,
         };
         display.set_in(&mut world);
-        let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
             .unwrap()
             .world;
         assert_eq!(NeuronDisplay::of(&loaded), display);
@@ -552,10 +571,39 @@ mod tests {
     }
 
     #[test]
+    fn loads_version_15() {
+        let saved = load(include_bytes!("fixtures/v15.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn version_14_counts_meter_times_in_milliseconds() {
+        let bytes = include_bytes!("fixtures/v14.neuronify");
+        let old = v14::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
+        let new = load(bytes).unwrap().world;
+        let in_milliseconds = |seconds: Milliseconds| Seconds(seconds.0).to_milliseconds();
+        let mut checked = 0;
+        for (entity, detector) in old.query::<&SpikeDetector>().iter() {
+            let upgraded = new.get::<&SpikeDetector>(entity).unwrap();
+            assert_eq!(upgraded.time_range, in_milliseconds(detector.time_range));
+            checked += 1;
+        }
+        for (entity, plot) in old.query::<&RatePlot>().iter() {
+            let upgraded = new.get::<&RatePlot>(entity).unwrap();
+            assert_eq!(upgraded.window, in_milliseconds(plot.window));
+            assert_eq!(upgraded.kernel_width, in_milliseconds(plot.kernel_width));
+            checked += 1;
+        }
+        assert!(checked > 0);
+    }
+
+    #[test]
     fn keeps_the_channels() {
         let mut world = World::new();
         crate::simulation::model::prepare(&mut world, Preparation::Mammal);
-        let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
             .unwrap()
             .world;
         assert_eq!(Preparation::of(&loaded), Preparation::Mammal);
@@ -570,7 +618,7 @@ mod tests {
             ConnectionView::None,
         ] {
             view.set_in(&mut world);
-            let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+            let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
                 .unwrap()
                 .world;
             assert_eq!(count::<ConnectionView>(&loaded), 1);
@@ -588,7 +636,7 @@ mod tests {
         });
         Selected::set(&mut world, Some(first));
         Selected::set(&mut world, Some(second));
-        let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
             .unwrap()
             .world;
         assert_eq!(count::<Selected>(&loaded), 1);
@@ -610,17 +658,20 @@ mod tests {
         let new = load(bytes).unwrap().world;
         for (entity, neuron) in old.query::<&v11::LeakyNeuron>().iter() {
             let upgraded = new.get::<&LeakyNeuron>(entity).unwrap();
-            assert_eq!(upgraded.threshold, neuron.threshold * 1e3);
-            assert_eq!(upgraded.capacitance, neuron.capacitance * 1e9);
+            assert_eq!(upgraded.threshold, Millivolts(neuron.threshold * 1e3));
+            assert_eq!(upgraded.capacitance, Nanofarads(neuron.capacitance * 1e9));
         }
         for (entity, leak) in old.query::<&v11::LeakCurrent>().iter() {
             let upgraded = new.get::<&LeakCurrent>(entity).unwrap();
-            assert_eq!(upgraded.resistance, leak.resistance / 1e6);
+            assert_eq!(upgraded.resistance, Megaohms(leak.resistance / 1e6));
         }
         for (entity, synapse) in old.query::<&v11::CurrentSynapse>().iter() {
             let upgraded = new.get::<&CurrentSynapse>(entity).unwrap();
-            assert_eq!(upgraded.maximum_current, synapse.maximum_current * 1e9);
-            assert_eq!(upgraded.tau, synapse.tau * 1e3);
+            assert_eq!(
+                upgraded.maximum_current,
+                Nanoamperes(synapse.maximum_current * 1e9)
+            );
+            assert_eq!(upgraded.tau, Milliseconds(synapse.tau * 1e3));
         }
         for (entity, clamp) in old.query::<&CurrentClamp>().iter() {
             let upgraded = new.get::<&CurrentClamp>(entity).unwrap();
@@ -659,7 +710,7 @@ mod tests {
         let dendrites = count::<Dendrite>(&world);
         assert!(dendrites > 0);
 
-        let loaded = load(&save(&world, 0.0, DEFAULT_SPEED).unwrap())
+        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
             .unwrap()
             .world;
         assert_eq!(count::<Dendrite>(&loaded), dendrites);

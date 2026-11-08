@@ -116,7 +116,7 @@ fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {
     for (_, (plot, position, size)) in world.query::<(&RatePlot, &Position, &MeterSize)>().iter() {
         let corner = Frame::new(position.position, size).corner(Corner::TopLeft);
         placed.push((
-            format!("{:.0} Hz", plot.maximum),
+            format!("{:.0} Hz", plot.maximum.0),
             Placement::TopLeft,
             corner,
         ));

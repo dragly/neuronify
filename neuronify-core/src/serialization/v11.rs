@@ -146,7 +146,7 @@ pub fn upgrade_from_v10(world: &mut World) {
                 input,
                 VisualInput {
                     field: old.field,
-                    sensitivity: old.sensitivity,
+                    sensitivity: Hertz(old.sensitivity),
                     show_field: old.show_field,
                     pattern: old.pattern,
                     pattern_angle: old.pattern_angle,

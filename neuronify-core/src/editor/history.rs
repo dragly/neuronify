@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use hecs::{Component, Entity, EntityBuilder, EntityRef, World};
+use neuronify_engine::units::{Microsiemens, Milliseconds, Nanoamperes};
 
 use crate::components::*;
 use crate::measurement::firing_rate::RatePlot;
@@ -37,8 +38,8 @@ trait Settings<C: Component>: Component {
 }
 
 struct Adaptation {
-    adaptation: f64,
-    time_constant: f64,
+    adaptation: Microsiemens,
+    time_constant: Milliseconds,
 }
 
 impl Settings<AdaptationCurrent> for Adaptation {
@@ -55,7 +56,7 @@ impl Settings<AdaptationCurrent> for Adaptation {
     }
 }
 
-struct TimeRange(f64);
+struct TimeRange(Milliseconds);
 
 impl Settings<SpikeDetector> for TimeRange {
     fn of(detector: &SpikeDetector) -> Self {
@@ -68,9 +69,9 @@ impl Settings<SpikeDetector> for TimeRange {
 }
 
 struct Synapse {
-    maximum_current: f64,
-    tau: f64,
-    delay: f64,
+    maximum_current: Nanoamperes,
+    tau: Milliseconds,
+    delay: Milliseconds,
 }
 
 impl Settings<CurrentSynapse> for Synapse {

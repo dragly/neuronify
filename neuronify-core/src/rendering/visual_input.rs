@@ -169,7 +169,7 @@ mod tests {
                 VisualInput {
                     field,
                     pattern: Pattern::Bar,
-                    speed: 0.0,
+                    speed: Hertz(0.0),
                     ..Default::default()
                 },
             ));

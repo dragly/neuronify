@@ -1,38 +1,43 @@
 use std::ops::RangeInclusive;
 
 use hecs::{Entity, World};
+use neuronify_engine::units::{
+    Celsius, MicrofaradsPerSquareCentimetre, Micrometres, Microsiemens, Milliseconds, Millivolts,
+    Nanoamperes, OhmCentimetres, OhmSquareCentimetres, SiemensPerSquareCentimetre,
+};
 use neuronify_engine::{ChannelId, Density, Membrane};
 
 use super::mammal;
 use crate::components::*;
 use crate::constants::*;
 
-pub const AXON_DIAMETER: f64 = 0.15;
-pub const INTERNODE_DIAMETER: f64 = 1.0;
-pub const SOMA_DIAMETER: f64 = 20.0;
-pub const SOMA_MEMBRANE_RESISTANCE: f64 = 20_000.0;
-pub const DENDRITE_AXIAL_RESISTIVITY: f64 = 250.0;
-pub const DENDRITE_CAPACITANCE: f64 = 1.0;
-pub const DENDRITE_SODIUM: f64 = 0.06;
-pub const DENDRITE_POTASSIUM: f64 = 0.018;
-pub const MYELIN_CAPACITANCE: f64 = 0.02;
-pub const MYELIN_LEAK: f64 = 1e-6;
-pub const RANVIER_LENGTH: f64 = 1.0;
-pub const RANVIER_SODIUM: f64 = 1.2;
-pub const RANVIER_POTASSIUM: f64 = 0.36;
-pub const RANVIER_LEAK: f64 = 0.003;
-pub const ENDING_CONDUCTANCE: f64 = 0.0055;
+pub const AXON_DIAMETER: Micrometres = Micrometres(0.15);
+pub const INTERNODE_DIAMETER: Micrometres = Micrometres(1.0);
+pub const SOMA_DIAMETER: Micrometres = Micrometres(20.0);
+pub const SOMA_MEMBRANE_RESISTANCE: OhmSquareCentimetres = OhmSquareCentimetres(20_000.0);
+pub const DENDRITE_AXIAL_RESISTIVITY: OhmCentimetres = OhmCentimetres(250.0);
+pub const DENDRITE_CAPACITANCE: MicrofaradsPerSquareCentimetre =
+    MicrofaradsPerSquareCentimetre(1.0);
+pub const DENDRITE_SODIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.06);
+pub const DENDRITE_POTASSIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.018);
+pub const MYELIN_CAPACITANCE: MicrofaradsPerSquareCentimetre = MicrofaradsPerSquareCentimetre(0.02);
+pub const MYELIN_LEAK: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(1e-6);
+pub const RANVIER_LENGTH: Micrometres = Micrometres(1.0);
+pub const RANVIER_SODIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(1.2);
+pub const RANVIER_POTASSIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.36);
+pub const RANVIER_LEAK: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.003);
+pub const ENDING_CONDUCTANCE: Microsiemens = Microsiemens(0.0055);
 pub const SOMA_ENDING_SCALE: f64 = 8.0;
 pub const INHIBITORY_ENDING_SCALE: f64 = 40.0;
-pub const ENDING_DELAY: f64 = 0.5;
-pub const EXCITATORY_TAU: f64 = 2.0;
-pub const INHIBITORY_TAU: f64 = 6.0;
-pub const EXCITATORY_REVERSAL: f64 = 0.0;
-pub const INHIBITORY_REVERSAL: f64 = -70.0;
-pub const PULSE_CURRENT: f64 = 2.0;
-pub const PULSE_DURATION: f64 = 0.25;
+pub const ENDING_DELAY: Milliseconds = Milliseconds(0.5);
+pub const EXCITATORY_TAU: Milliseconds = Milliseconds(2.0);
+pub const INHIBITORY_TAU: Milliseconds = Milliseconds(6.0);
+pub const EXCITATORY_REVERSAL: Millivolts = Millivolts(0.0);
+pub const INHIBITORY_REVERSAL: Millivolts = Millivolts(-70.0);
+pub const PULSE_CURRENT: Nanoamperes = Nanoamperes(2.0);
+pub const PULSE_DURATION: Milliseconds = Milliseconds(0.25);
 pub const AXON_PULSE_FACTOR: f64 = 3.0;
-pub const SHORTEST_PULSE_INTERVAL: f64 = 4.0;
+pub const SHORTEST_PULSE_INTERVAL: Milliseconds = Milliseconds(4.0);
 pub const RANVIER_PULSE_SCALE: f64 = 0.1;
 pub const DRAWN_RADIUS_PER_ROOT_MICROMETRE: f32 = 0.173;
 pub const MYELIN_G_RATIO: f64 = 0.7;
@@ -52,19 +57,19 @@ impl Default for ConductanceSynapse {
 
 fn sodium_and_potassium(
     [sodium, potassium]: [ChannelId; 2],
-    sodium_density: f64,
-    potassium_density: f64,
+    sodium_density: SiemensPerSquareCentimetre,
+    potassium_density: SiemensPerSquareCentimetre,
 ) -> Vec<Density> {
     vec![
         Density {
             channel: sodium,
             conductance: sodium_density,
-            reversal: 50.0,
+            reversal: Millivolts(50.0),
         },
         Density {
             channel: potassium,
             conductance: potassium_density,
-            reversal: -77.0,
+            reversal: Millivolts(-77.0),
         },
     ]
 }
@@ -72,8 +77,8 @@ fn sodium_and_potassium(
 const SQUID: [ChannelId; 2] = [ChannelId::SquidSodium, ChannelId::SquidPotassium];
 const SLOW: [ChannelId; 2] = [ChannelId::SlowSodium, ChannelId::SlowPotassium];
 
-pub fn cable_conductance(diameter: f64) -> f64 {
-    diameter.powf(1.5) / 2.0
+pub fn cable_conductance(diameter: Micrometres) -> f64 {
+    diameter.0.powf(1.5) / 2.0
 }
 
 fn axon_membrane() -> Membrane {
@@ -85,7 +90,7 @@ fn dendrite_membrane() -> Membrane {
         capacitance: DENDRITE_CAPACITANCE,
         axial_resistivity: DENDRITE_AXIAL_RESISTIVITY,
         leak: 1.0 / SOMA_MEMBRANE_RESISTANCE,
-        leak_reversal: -70.0,
+        leak_reversal: Millivolts(-70.0),
         channels: sodium_and_potassium(SLOW, DENDRITE_SODIUM, DENDRITE_POTASSIUM),
     }
 }
@@ -93,7 +98,7 @@ fn dendrite_membrane() -> Membrane {
 fn myelin_membrane() -> Membrane {
     Membrane {
         capacitance: MYELIN_CAPACITANCE,
-        axial_resistivity: 35.4,
+        axial_resistivity: OhmCentimetres(35.4),
         leak: MYELIN_LEAK,
         leak_reversal: RESTING_POTENTIAL,
         channels: Vec::new(),
@@ -102,37 +107,37 @@ fn myelin_membrane() -> Membrane {
 
 fn ranvier_membrane() -> Membrane {
     Membrane {
-        capacitance: 1.0,
-        axial_resistivity: 35.4,
+        capacitance: MicrofaradsPerSquareCentimetre(1.0),
+        axial_resistivity: OhmCentimetres(35.4),
         leak: RANVIER_LEAK,
-        leak_reversal: -54.3,
+        leak_reversal: Millivolts(-54.3),
         channels: sodium_and_potassium(SQUID, RANVIER_SODIUM, RANVIER_POTASSIUM),
     }
 }
 
 impl Preparation {
-    pub fn celsius(self) -> f64 {
+    pub fn celsius(self) -> Celsius {
         match self {
             Preparation::Squid => DEFAULT_TEMPERATURE,
             Preparation::Mammal => mammal::CELSIUS,
         }
     }
 
-    pub fn temperatures(self) -> RangeInclusive<f64> {
+    pub fn temperatures(self) -> RangeInclusive<Celsius> {
         match self {
-            Preparation::Squid => 0.0..=35.0,
-            Preparation::Mammal => 20.0..=42.0,
+            Preparation::Squid => Celsius(0.0)..=Celsius(35.0),
+            Preparation::Mammal => Celsius(20.0)..=Celsius(42.0),
         }
     }
 
-    pub fn resting_potential(self) -> f64 {
+    pub fn resting_potential(self) -> Millivolts {
         match self {
             Preparation::Squid => RESTING_POTENTIAL,
             Preparation::Mammal => mammal::RESTING_POTENTIAL,
         }
     }
 
-    pub fn axon_diameter(self) -> f64 {
+    pub fn axon_diameter(self) -> Micrometres {
         match self {
             Preparation::Squid => AXON_DIAMETER,
             Preparation::Mammal => mammal::AXON_DIAMETER,
@@ -164,9 +169,9 @@ impl Preparation {
         }
     }
 
-    pub fn shortest_dendrite_pulse_interval(self) -> f64 {
+    pub fn shortest_dendrite_pulse_interval(self) -> Milliseconds {
         match self {
-            Preparation::Squid => 0.0,
+            Preparation::Squid => Milliseconds::ZERO,
             Preparation::Mammal => mammal::SHORTEST_DENDRITE_PULSE_INTERVAL,
         }
     }
@@ -214,7 +219,7 @@ pub fn rest(world: &mut World, preparation: Preparation) {
     }
 }
 
-pub fn soma_membrane(resting_potential: f64) -> Membrane {
+pub fn soma_membrane(resting_potential: Millivolts) -> Membrane {
     Membrane::passive(
         SOMA_MEMBRANE_RESISTANCE,
         resting_potential,
@@ -222,31 +227,30 @@ pub fn soma_membrane(resting_potential: f64) -> Membrane {
     )
 }
 
-pub fn diameter_of_drawn_radius(radius: f32) -> f64 {
-    (radius / DRAWN_RADIUS_PER_ROOT_MICROMETRE).powi(2) as f64
+pub fn diameter_of_drawn_radius(radius: f32) -> Micrometres {
+    Micrometres((radius / DRAWN_RADIUS_PER_ROOT_MICROMETRE).powi(2) as f64)
 }
 
 fn dendrite_drawn_radius(soma_distance: f32) -> f32 {
     (ROOT_DRAWN_RADIUS * TAPER.powf(soma_distance / 3.0)).max(TIP_DRAWN_RADIUS)
 }
 
-pub fn drawn_radius(diameter: f64, display: &NeuronDisplay) -> f32 {
+pub fn drawn_radius(diameter: Micrometres, display: &NeuronDisplay) -> f32 {
     match display.true_proportions {
         true => (diameter / 2.0 / MICROMETRES_PER_UNIT) as f32,
-        false => {
-            (DRAWN_RADIUS_PER_ROOT_MICROMETRE * (diameter as f32).sqrt()).max(THINNEST_DRAWN_RADIUS)
-        }
+        false => (DRAWN_RADIUS_PER_ROOT_MICROMETRE * (diameter.0 as f32).sqrt())
+            .max(THINNEST_DRAWN_RADIUS),
     }
 }
 
-pub fn soma_end_radius(diameter: f64, display: &NeuronDisplay) -> f32 {
+pub fn soma_end_radius(diameter: Micrometres, display: &NeuronDisplay) -> f32 {
     match display.true_proportions {
         true => drawn_radius(diameter, display),
         false => ROOT_DRAWN_RADIUS,
     }
 }
 
-pub fn soma_diameter(world: &World, soma: Entity) -> f64 {
+pub fn soma_diameter(world: &World, soma: Entity) -> Micrometres {
     let dendritic = world
         .query::<&Connection>()
         .with::<&Cable>()
@@ -261,7 +265,7 @@ pub fn soma_diameter(world: &World, soma: Entity) -> f64 {
         .map_or(LeakyNeuron::default().capacitance, |neuron| {
             neuron.capacitance
         });
-    let area = capacitance * 1e5 / DENDRITE_CAPACITANCE;
+    let area = capacitance / DENDRITE_CAPACITANCE;
     (area / std::f64::consts::PI).sqrt()
 }
 
@@ -282,7 +286,7 @@ fn soma_distance(world: &World, at: glam::Vec3) -> f32 {
         .fold(f32::MAX, f32::min)
 }
 
-pub fn dendrite_diameter(world: &World, ends: [Option<glam::Vec3>; 2]) -> f64 {
+pub fn dendrite_diameter(world: &World, ends: [Option<glam::Vec3>; 2]) -> Micrometres {
     let [start, end] = ends.map(|end| {
         end.map_or(ROOT_DRAWN_RADIUS, |at| {
             dendrite_drawn_radius(soma_distance(world, at))
@@ -367,8 +371,8 @@ pub fn ending_site_scale(world: &World, connection: &Connection) -> f64 {
 }
 
 pub struct Kinetics {
-    pub tau: f64,
-    pub reversal: f64,
+    pub tau: Milliseconds,
+    pub reversal: Millivolts,
     pub scale: f64,
 }
 

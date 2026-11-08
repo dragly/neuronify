@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use glam::Vec3;
 use hecs::Entity;
 
-use crate::components::hidden_connections;
+use crate::components::{hidden_connections, Milliseconds};
 use crate::rendering::colors::Palette;
 use crate::rendering::current_flow::collect_current_flow;
 use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
@@ -55,7 +55,7 @@ impl Scene {
     }
 }
 
-pub fn collect_scene(world: &hecs::World, palette: &Palette, time: f64) -> Scene {
+pub fn collect_scene(world: &hecs::World, palette: &Palette, time: Milliseconds) -> Scene {
     let radii = compartment_radii(world);
     let paths = shown_paths(world, &radii, palette);
     let mut scene = Scene {

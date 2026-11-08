@@ -1,4 +1,5 @@
 use hecs::{Entity, World};
+use neuronify_engine::units::Milliseconds;
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
@@ -37,8 +38,8 @@ impl Sound {
     }
 }
 
-fn never() -> f64 {
-    f64::INFINITY
+fn never() -> Milliseconds {
+    Milliseconds::INFINITY
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -47,9 +48,9 @@ pub struct Loudspeaker {
     pub volume: f64,
     pub muted: bool,
     #[serde(skip)]
-    pub heard: Vec<f64>,
+    pub heard: Vec<Milliseconds>,
     #[serde(skip, default = "never")]
-    pub time_since_heard: f64,
+    pub time_since_heard: Milliseconds,
 }
 
 impl Default for Loudspeaker {
@@ -64,13 +65,13 @@ impl Default for Loudspeaker {
     }
 }
 
-pub fn listen(world: &mut World, spikes: &[Spike], time: f64, duration: f64) {
+pub fn listen(world: &mut World, spikes: &[Spike], time: Milliseconds, duration: Milliseconds) {
     let mut speakers = world.query_mut::<&mut Loudspeaker>().into_iter().peekable();
     if speakers.peek().is_none() {
         return;
     }
     for (_, speaker) in speakers {
-        speaker.time_since_heard += duration * 1e3;
+        speaker.time_since_heard += duration;
     }
     let wires: Vec<(Entity, Entity)> = world
         .query::<&Connection>()
@@ -88,16 +89,16 @@ pub fn listen(world: &mut World, spikes: &[Spike], time: f64, duration: f64) {
                 continue;
             }
             if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(to) {
-                speaker.time_since_heard = time * 1e3 - spike.time;
+                speaker.time_since_heard = time - spike.time;
                 if speaker.heard.len() < MAXIMUM_HEARD {
-                    speaker.heard.push(spike.time * 1e-3);
+                    speaker.heard.push(spike.time);
                 }
             }
         }
     }
 }
 
-pub fn take_heard(world: &mut World) -> Vec<(Sound, f32, f64)> {
+pub fn take_heard(world: &mut World) -> Vec<(Sound, f32, Milliseconds)> {
     let mut heard = Vec::new();
     for (_, speaker) in world.query_mut::<&mut Loudspeaker>() {
         let times = std::mem::take(&mut speaker.heard);
@@ -119,13 +120,10 @@ mod tests {
     use crate::elements::spawn_loudspeaker;
     use glam::Vec3;
 
-    const STEP: f64 = DT * 1e-3;
+    const SECOND: Milliseconds = Milliseconds(1000.0);
 
-    fn spike(entity: Entity, time: f64) -> Spike {
-        Spike {
-            entity,
-            time: time * 1e3,
-        }
+    fn spike(entity: Entity, time: Milliseconds) -> Spike {
+        Spike { entity, time }
     }
 
     #[test]
@@ -136,18 +134,18 @@ mod tests {
         world.get::<&mut Loudspeaker>(speaker).unwrap().sound = Sound::Pop;
         listen(
             &mut world,
-            &[spike(wired, 1.0), spike(unwired, 1.0)],
-            1.0,
-            STEP,
+            &[spike(wired, SECOND), spike(unwired, SECOND)],
+            SECOND,
+            DT,
         );
-        listen(&mut world, &[], 1.0 + STEP, STEP);
-        assert_eq!(take_heard(&mut world), [(Sound::Pop, 1.0, 1.0)]);
+        listen(&mut world, &[], SECOND + DT, DT);
+        assert_eq!(take_heard(&mut world), [(Sound::Pop, 1.0, SECOND)]);
         assert!(take_heard(&mut world).is_empty());
         let since = world.get::<&Loudspeaker>(speaker).unwrap().time_since_heard;
-        assert!((since - DT).abs() < 1e-9, "{since}");
+        assert_eq!(since, DT);
 
         world.get::<&mut Loudspeaker>(speaker).unwrap().muted = true;
-        listen(&mut world, &[spike(wired, 2.0)], 2.0, STEP);
+        listen(&mut world, &[spike(wired, 2.0 * SECOND)], 2.0 * SECOND, DT);
         assert!(take_heard(&mut world).is_empty());
     }
 

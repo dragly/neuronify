@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 use std::ops::RangeInclusive;
 
-use egui::emath::Numeric;
 use egui::{
     pos2, style::HandleShape, vec2, Align, Align2, Context, CornerRadius, FontId, Frame, Id,
     Layout, Margin, Order, Rect, Response, RichText, ScrollArea, Sense, Shape, Slider,
@@ -39,7 +38,7 @@ const PEEKING_SHEET: f32 = 212.0;
 const EXPANDED_SHEET: f32 = 0.72;
 const HISTORY_LENGTH: usize = 240;
 const SPARKLINE_HEIGHT: f32 = 40.0;
-const SPIKE_HEIGHT: f64 = 20.0;
+const SPIKE_HEIGHT: Millivolts = Millivolts(20.0);
 const HEADER_GLYPH: f32 = 30.0;
 const HEADER_BUTTON: f32 = 32.0;
 const HEADER_ICON: f32 = 18.0;
@@ -47,31 +46,38 @@ const DELETE_HEIGHT: f32 = 36.0;
 const DELETE_GAP: f32 = 8.0;
 const DESCRIPTION_SIZE: f32 = 11.5;
 const SWITCH_HEIGHT: f32 = 30.0;
-const POTENTIALS: RangeInclusive<f64> = -100.0..=50.0;
-const POTENTIAL_GAP: f64 = 0.05;
-const REFRACTORY_PERIODS: RangeInclusive<f64> = 0.0..=50.0;
-const RESISTANCES: (RangeInclusive<f64>, f64) = (1.0..=200.0, 1.0);
-const CAPACITANCES: (RangeInclusive<f64>, f64) = (0.01..=2.0, 0.01);
-const ADAPTATIONS: (RangeInclusive<f64>, f64) = (0.0..=0.1, 0.0001);
-const ADAPTATION_TIME_CONSTANTS: RangeInclusive<f64> = 0.0..=600.0;
-const PLOTTED_VOLTAGES: RangeInclusive<f64> = -250.0..=250.0;
-const PLOTTED_VOLTAGE_GAP: f64 = 1.0;
-const RATE_WINDOWS: RangeInclusive<f64> = 0.01..=1.0;
-const PLOTTED_RATES: RangeInclusive<f64> = 0.0..=2500.0;
-const PLOTTED_RATE_GAP: f64 = 1.0;
+const POTENTIALS: RangeInclusive<Millivolts> = Millivolts(-100.0)..=Millivolts(50.0);
+const POTENTIAL_GAP: Millivolts = Millivolts(0.05);
+const REFRACTORY_PERIODS: RangeInclusive<Milliseconds> = Milliseconds(0.0)..=Milliseconds(50.0);
+const RESISTANCES: (RangeInclusive<Megaohms>, Megaohms) =
+    (Megaohms(1.0)..=Megaohms(200.0), Megaohms(1.0));
+const CAPACITANCES: (RangeInclusive<Nanofarads>, Nanofarads) =
+    (Nanofarads(0.01)..=Nanofarads(2.0), Nanofarads(0.01));
+const ADAPTATIONS: (RangeInclusive<Microsiemens>, Microsiemens) =
+    (Microsiemens(0.0)..=Microsiemens(0.1), Microsiemens(0.0001));
+const ADAPTATION_TIME_CONSTANTS: RangeInclusive<Milliseconds> =
+    Milliseconds(0.0)..=Milliseconds(600.0);
+const PLOTTED_VOLTAGES: RangeInclusive<Millivolts> = Millivolts(-250.0)..=Millivolts(250.0);
+const PLOTTED_VOLTAGE_GAP: Millivolts = Millivolts(1.0);
+const RATE_WINDOWS: RangeInclusive<Milliseconds> = Milliseconds(10.0)..=Milliseconds(1000.0);
+const PLOTTED_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(2500.0);
+const PLOTTED_RATE_GAP: Hertz = Hertz(1.0);
 const HALF_TURN: RangeInclusive<f64> = 0.0..=std::f64::consts::PI;
-const PICTURE_SPEEDS: (RangeInclusive<f64>, f64) = (0.0..=50.0, 0.1);
+const PICTURE_SPEEDS: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(50.0), Hertz(0.1));
 const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
 const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
-const SENSITIVITIES: (RangeInclusive<f64>, f64) = (0.0..=10_000.0, 10.0);
-const TIME_RANGES: RangeInclusive<f64> = 1e-3..=1.0;
-const SYNAPSE_CURRENTS: RangeInclusive<f64> = 0.0..=10.0;
-const SYNAPSE_TIME_CONSTANTS: RangeInclusive<f64> = 0.1..=6.0;
-const DELAYS: RangeInclusive<f64> = 0.0..=30.0;
-const AMPLITUDES: (RangeInclusive<f64>, f64) = (0.0..=1.0, 0.01);
-const ALTERNATING_FREQUENCIES: (RangeInclusive<f64>, f64) = (0.0..=200.0, 1.0);
-const CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=30.0, 0.01);
-const SPIKE_RATES: (RangeInclusive<f64>, f64) = (0.0..=1000.0, 1.0);
+const SENSITIVITIES: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(10_000.0), Hertz(10.0));
+const TIME_RANGES: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1000.0);
+const SYNAPSE_CURRENTS: RangeInclusive<Nanoamperes> = Nanoamperes(0.0)..=Nanoamperes(10.0);
+const SYNAPSE_TIME_CONSTANTS: RangeInclusive<Milliseconds> = Milliseconds(0.1)..=Milliseconds(6.0);
+const DELAYS: RangeInclusive<Milliseconds> = Milliseconds(0.0)..=Milliseconds(30.0);
+const AMPLITUDES: (RangeInclusive<Nanoamperes>, Nanoamperes) =
+    (Nanoamperes(0.0)..=Nanoamperes(1.0), Nanoamperes(0.01));
+const ALTERNATING_FREQUENCIES: (RangeInclusive<Hertz>, Hertz) =
+    (Hertz(0.0)..=Hertz(200.0), Hertz(1.0));
+const CURRENTS: (RangeInclusive<Nanoamperes>, Nanoamperes) =
+    (Nanoamperes(0.0)..=Nanoamperes(30.0), Nanoamperes(0.01));
+const SPIKE_RATES: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(1000.0), Hertz(1.0));
 
 enum Action {
     Delete,
@@ -86,9 +92,9 @@ pub enum Placement {
 #[derive(Default)]
 pub struct Inspector {
     entity: Option<Entity>,
-    history: VecDeque<f64>,
-    last_time: f64,
-    last_time_since_fire: f64,
+    history: VecDeque<Millivolts>,
+    last_time: Milliseconds,
+    last_time_since_fire: Milliseconds,
     sheet: Sheet,
 }
 
@@ -99,7 +105,7 @@ impl Inspector {
         theme: Theme,
         world: &mut World,
         editor: &mut Editor,
-        time: f64,
+        time: Milliseconds,
         placement: Placement,
     ) {
         let selected = editor.selection.filter(|&entity| world.contains(entity));
@@ -113,7 +119,7 @@ impl Inspector {
             *self = Inspector {
                 entity: Some(entity),
                 last_time: time,
-                last_time_since_fire: f64::NEG_INFINITY,
+                last_time_since_fire: Milliseconds::NEG_INFINITY,
                 sheet: std::mem::take(&mut self.sheet),
                 ..Default::default()
             };
@@ -236,7 +242,7 @@ impl Inspector {
                 .inner_margin(Margin::same(10))
                 .show(ui, |ui| {
                     ui.set_width(ui.available_width());
-                    reading(ui, chrome, "Firing rate", format!("{rate:.1} Hz"), 17.0);
+                    reading(ui, chrome, "Firing rate", format!("{:.1} Hz", rate.0), 17.0);
                 });
             ui.add_space(12.0);
             return;
@@ -253,11 +259,11 @@ impl Inspector {
             let first = measured(world, entity).first().map(|&(wire, _)| wire);
             let Some(reading) = first.and_then(|wire| {
                 let series = world.get::<&VoltageSeries>(wire).ok()?;
-                Some(format!("{:.1} mV", series.measurements.last()?.voltage))
+                Some(millivolts(series.measurements.last()?.voltage))
             }) else {
                 return;
             };
-            (reading.replace('-', "\u{2212}"), None)
+            (reading, None)
         } else {
             return;
         };
@@ -442,18 +448,22 @@ fn delete_button(ui: &mut Ui, chrome: &Chrome) -> Response {
     response
 }
 
-fn sparkline(ui: &mut Ui, chrome: &Chrome, history: &VecDeque<f64>, threshold: Option<f64>) {
+fn sparkline(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    history: &VecDeque<Millivolts>,
+    threshold: Option<Millivolts>,
+) {
     let (rect, _) =
         ui.allocate_exact_size(vec2(ui.available_width(), SPARKLINE_HEIGHT), Sense::hover());
-    let (low, high) = history
-        .iter()
-        .chain(&threshold)
-        .fold((f64::INFINITY, f64::NEG_INFINITY), |(low, high), &value| {
-            (low.min(value), high.max(value))
-        });
-    let padding = ((high - low) * 0.08).max(1e-6);
+    let (low, high) = history.iter().chain(&threshold).fold(
+        (Millivolts::INFINITY, Millivolts::NEG_INFINITY),
+        |(low, high), &value| (low.min(value), high.max(value)),
+    );
+    let padding = ((high - low) * 0.08).max(Millivolts(1e-6));
     let (low, high) = (low - padding, high + padding);
-    let y = |value: f64| rect.bottom() - ((value - low) / (high - low)) as f32 * rect.height();
+    let y =
+        |value: Millivolts| rect.bottom() - ((value - low) / (high - low)) as f32 * rect.height();
     let step = rect.width() / (HISTORY_LENGTH - 1) as f32;
     let first = HISTORY_LENGTH - history.len();
     if let Some(threshold) = threshold {
@@ -477,47 +487,55 @@ fn sparkline(ui: &mut Ui, chrome: &Chrome, history: &VecDeque<f64>, threshold: O
     ));
 }
 
-fn milliseconds(milliseconds: f64) -> String {
-    format!("{milliseconds:.1} ms")
+fn milliseconds(duration: Milliseconds) -> String {
+    format!("{:.1} ms", duration.0)
 }
 
-fn seconds_in_milliseconds(seconds: f64) -> String {
-    milliseconds(seconds * 1e3)
+fn nanoamperes(current: Nanoamperes) -> String {
+    format!("{:.2} nA", current.0)
 }
 
-fn nanoamperes(nanoamperes: f64) -> String {
-    format!("{nanoamperes:.2} nA")
+fn picoamperes(current: Nanoamperes) -> String {
+    format!("{:.0} pA", current.in_picoamperes())
 }
 
-fn millivolts(millivolts: f64) -> String {
-    format!("{millivolts:.1} mV").replace('-', "\u{2212}")
+fn millivolts(voltage: Millivolts) -> String {
+    format!("{:.1} mV", voltage.0).replace('-', "\u{2212}")
 }
 
-pub(super) fn parameter<N: Numeric>(
+fn hertz(rate: Hertz) -> String {
+    format!("{:.0} Hz", rate.0)
+}
+
+fn values<Q: Quantity>(range: RangeInclusive<Q>) -> RangeInclusive<f64> {
+    range.start().value()..=range.end().value()
+}
+
+pub(super) fn parameter<Q: Quantity>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,
-    value: &mut N,
-    range: RangeInclusive<N>,
-    shown: impl Fn(N) -> String,
+    value: &mut Q,
+    range: RangeInclusive<Q>,
+    shown: impl Fn(Q) -> String,
 ) -> bool {
     slider_row(
         ui,
         chrome,
         setting,
         value,
-        |value| Slider::new(value, range),
+        |value| Slider::new(value, values(range)),
         shown,
     )
 }
 
-pub(super) fn logarithmic_parameter(
+pub(super) fn logarithmic_parameter<Q: Quantity>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,
-    value: &mut f64,
-    (range, smallest_positive): (RangeInclusive<f64>, f64),
-    shown: impl Fn(f64) -> String,
+    value: &mut Q,
+    (range, smallest_positive): (RangeInclusive<Q>, Q),
+    shown: impl Fn(Q) -> String,
 ) -> bool {
     slider_row(
         ui,
@@ -525,27 +543,27 @@ pub(super) fn logarithmic_parameter(
         setting,
         value,
         |value| {
-            Slider::new(value, range)
+            Slider::new(value, values(range))
                 .logarithmic(true)
-                .smallest_positive(smallest_positive)
+                .smallest_positive(smallest_positive.value())
         },
         shown,
     )
 }
 
-fn slider_row<N: Numeric>(
+fn slider_row<Q: Quantity>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,
-    value: &mut N,
-    slider: impl for<'a> FnOnce(&'a mut N) -> Slider<'a>,
-    shown: impl Fn(N) -> String,
+    value: &mut Q,
+    slider: impl for<'a> FnOnce(&'a mut f64) -> Slider<'a>,
+    shown: impl Fn(Q) -> String,
 ) -> bool {
     let (row, _) = ui.allocate_exact_size(vec2(ui.available_width(), 20.0), Sense::hover());
     ui.spacing_mut().slider_width = ui.available_width();
     let changed = ui
         .add(
-            slider(value)
+            slider(value.value_mut())
                 .show_value(false)
                 .clamping(SliderClamping::Edits),
         )
@@ -749,7 +767,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             Setting::Resistance,
             &mut leak.resistance,
             RESISTANCES,
-            |megaohms| format!("{megaohms:.0} M\u{3a9}"),
+            |resistance| format!("{:.0} M\u{3a9}", resistance.0),
         );
         changed |= logarithmic_parameter(
             ui,
@@ -757,7 +775,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             Setting::Capacitance,
             &mut neuron.capacitance,
             CAPACITANCES,
-            |nanofarads| format!("{:.0} pF", nanofarads * 1e3),
+            |capacitance| format!("{:.0} pF", capacitance.in_picofarads()),
         );
         reading(
             ui,
@@ -777,7 +795,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             Setting::Adaptation,
             &mut adaptation.adaptation,
             ADAPTATIONS,
-            |microsiemens| format!("{:.1} nS", microsiemens * 1e3),
+            |conductance| format!("{:.1} nS", conductance.in_nanosiemens()),
         );
         changed |= parameter(
             ui,
@@ -810,7 +828,7 @@ fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput
         Setting::PictureSpeed,
         &mut input.speed,
         PICTURE_SPEEDS,
-        |speed| format!("{speed:.1} Hz"),
+        |speed| format!("{:.1} Hz", speed.0),
     );
     changed |= parameter(
         ui,
@@ -865,7 +883,7 @@ fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput
         Setting::Sensitivity,
         &mut input.sensitivity,
         SENSITIVITIES,
-        |rate| format!("{rate:.0} Hz"),
+        hertz,
     );
     changed |= choice(
         ui,
@@ -883,13 +901,12 @@ fn degrees(radians: f64) -> String {
 
 fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
     let mut changed = false;
-    let hertz = |value: f64| format!("{value:.0} Hz");
     if world.get::<&LeakyNeuron>(entity).is_ok() {
         changed |= neuron_parameters(ui, chrome, world, entity);
     }
     if let Ok(mut range) = world.get::<&mut VoltmeterRange>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
-        let shown = |value: f64| format!("{value:.0} mV").replace('-', "\u{2212}");
+        let shown = |voltage: Millivolts| format!("{:.0} mV", voltage.0).replace('-', "\u{2212}");
         let highest = parameter(
             ui,
             chrome,
@@ -922,7 +939,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::TimeRange,
             &mut detector.time_range,
             TIME_RANGES,
-            seconds_in_milliseconds,
+            milliseconds,
         );
     }
     if let Ok(mut order) = world.get::<&mut RowOrder>(entity) {
@@ -945,7 +962,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::Window,
             &mut plot.window,
             RATE_WINDOWS,
-            seconds_in_milliseconds,
+            milliseconds,
         );
         changed |= parameter(
             ui,
@@ -953,7 +970,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::KernelWidth,
             &mut plot.kernel_width,
             RATE_WINDOWS,
-            seconds_in_milliseconds,
+            milliseconds,
         );
         let highest = parameter(
             ui,
@@ -1037,7 +1054,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             Setting::Amplitude,
             &mut alternating.amplitude,
             AMPLITUDES,
-            |nanoamperes| format!("{:.0} pA", nanoamperes * 1e3),
+            picoamperes,
         );
         changed |= logarithmic_parameter(
             ui,

@@ -12,16 +12,13 @@ use neuronify_core::measurement::visual_input::{Pattern, ReceptiveField, VisualI
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::{
-    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Label, LeakyNeuron,
-    MeterSize, NeuronDisplay, NeuronType, NodeState, NoteSize, PoissonGenerator, Position,
-    Preparation, RegularSpikeGenerator, Setting, SEGMENT_LENGTH,
+    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Hertz, Label,
+    LeakyNeuron, MeterSize, Microsiemens, Milliseconds, Millivolts, Nanoamperes, NeuronDisplay,
+    NeuronType, NodeState, NoteSize, PoissonGenerator, Position, Preparation,
+    RegularSpikeGenerator, Setting, SEGMENT_LENGTH,
 };
 
-const NANOAMPERE: f64 = 1.0;
-const MILLISECOND: f64 = 1.0;
-const MICROSIEMENS: f64 = 1.0;
-const MILLIVOLT: f64 = 1.0;
-const CURRENT_DRAWN_AT_FULL_STRENGTH: f64 = 6.0 * NANOAMPERE;
+const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(6.0);
 const WIDTH: f32 = 24.0;
 const GAP: f32 = 1.2;
 
@@ -80,10 +77,10 @@ impl Sheet {
     }
 
     fn lasting_inhibition(&mut self, from: Entity, to: Entity) -> Entity {
-        let synapse = self.synapse(from, to, 3.0 * NANOAMPERE);
+        let synapse = self.synapse(from, to, Nanoamperes(3.0));
         let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
-        current.tau = 10.0 * MILLISECOND;
-        current.delay = MILLISECOND;
+        current.tau = Milliseconds(10.0);
+        current.delay = Milliseconds(1.0);
         drop(current);
         synapse
     }
@@ -92,17 +89,17 @@ impl Sheet {
         spawn_synapse(&mut self.world, from, to)
     }
 
-    fn synapse(&mut self, from: Entity, to: Entity, maximum_current: f64) -> Entity {
+    fn synapse(&mut self, from: Entity, to: Entity, maximum_current: Nanoamperes) -> Entity {
         let synapse = self.connect(from, to);
         let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
         current.maximum_current = maximum_current;
         let charge =
-            maximum_current * current.tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * 2.0 * MILLISECOND);
+            maximum_current * current.tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * Milliseconds(2.0));
         self.world.get::<&mut Connection>(synapse).unwrap().strength = charge.clamp(0.4, 1.5);
         synapse
     }
 
-    fn current(&mut self, to: Entity, current: f64, right: f32, up: f32) -> Entity {
+    fn current(&mut self, to: Entity, current: Nanoamperes, right: f32, up: f32) -> Entity {
         let source = self.add(Element::CurrentSource, right, up);
         self.world
             .get::<&mut CurrentClamp>(source)
@@ -112,14 +109,14 @@ impl Sheet {
         source
     }
 
-    fn refractory_period(&mut self, neuron: Entity, period: f64) {
+    fn refractory_period(&mut self, neuron: Entity, period: Milliseconds) {
         self.world
             .get::<&mut LeakyNeuron>(neuron)
             .unwrap()
             .refractory_period = period;
     }
 
-    fn rate_plot(&mut self, target: Entity, left: f32, up: f32, maximum: f64) {
+    fn rate_plot(&mut self, target: Entity, left: f32, up: f32, maximum: Hertz) {
         let plot = spawn_rate_plot(&mut self.world, target, Sheet::at(left, up));
         self.world.get::<&mut RatePlot>(plot).unwrap().maximum = maximum;
         *self.world.get::<&mut MeterSize>(plot).unwrap() = MeterSize {
@@ -188,7 +185,7 @@ fn label(world: &mut World, entity: Entity, text: &str) {
     world.get::<&mut Label>(entity).unwrap().text = text.to_string();
 }
 
-fn synapse(world: &mut World, from: Entity, to: Entity, maximum_current: f64) {
+fn synapse(world: &mut World, from: Entity, to: Entity, maximum_current: Nanoamperes) {
     let synapse = spawn_synapse(world, from, to);
     world
         .get::<&mut CurrentSynapse>(synapse)
@@ -206,13 +203,13 @@ pub fn listening_to_a_neuron() -> World {
             y: 0.0,
         },
         pattern: Pattern::Grating,
-        sensitivity: 10000.0,
+        sensitivity: Hertz(10000.0),
         phase: 0.75,
         ..Default::default()
     };
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, neuron, "Cortex");
-    synapse(&mut world, eye, neuron, 1.5 * NANOAMPERE);
+    synapse(&mut world, eye, neuron, Nanoamperes(1.5));
     spawn_loudspeaker(&mut world, neuron, at(3.0, 4.0));
     spawn_spike_detector(&mut world, neuron, at(-5.0, 3.0));
     note(
@@ -233,30 +230,30 @@ pub fn adaptive_inhibition() -> World {
     world
         .get::<&mut RegularSpikeGenerator>(drive)
         .unwrap()
-        .frequency = 400.0;
+        .frequency = Hertz(400.0);
     let output = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, output, "Output");
     let adaptive = Element::AdaptiveNeuron.spawn(&mut world, at(5.0, -5.0));
     *world.get::<&mut NeuronType>(adaptive).unwrap() = NeuronType::Inhibitory;
     *world.get::<&mut AdaptationCurrent>(adaptive).unwrap() = AdaptationCurrent {
-        adaptation: 0.008 * MICROSIEMENS,
-        time_constant: 400.0 * MILLISECOND,
+        adaptation: Microsiemens(0.008),
+        time_constant: Milliseconds(400.0),
         ..Default::default()
     };
     label(&mut world, adaptive, "Adaptive");
     let noise = Element::PoissonGenerator.spawn(&mut world, at(-6.0, -6.0));
     *world.get::<&mut NeuronType>(noise).unwrap() = NeuronType::Inhibitory;
-    world.get::<&mut PoissonGenerator>(noise).unwrap().rate = 30.0;
-    synapse(&mut world, drive, output, 3.0 * NANOAMPERE);
-    synapse(&mut world, drive, adaptive, 6.0 * NANOAMPERE);
-    synapse(&mut world, adaptive, output, 4.0 * NANOAMPERE);
-    synapse(&mut world, noise, output, 2.0 * NANOAMPERE);
+    world.get::<&mut PoissonGenerator>(noise).unwrap().rate = Hertz(30.0);
+    synapse(&mut world, drive, output, Nanoamperes(3.0));
+    synapse(&mut world, drive, adaptive, Nanoamperes(6.0));
+    synapse(&mut world, adaptive, output, Nanoamperes(4.0));
+    synapse(&mut world, noise, output, Nanoamperes(2.0));
     spawn_voltmeter(&mut world, output, at(-2.0, 5.0));
     let plot = spawn_rate_plot(&mut world, output, at(-9.0, 5.0));
     *world.get::<&mut RatePlot>(plot).unwrap() = RatePlot {
-        window: 0.15,
-        kernel_width: 0.05,
-        maximum: 200.0,
+        window: Milliseconds(150.0),
+        kernel_width: Milliseconds(50.0),
+        maximum: Hertz(200.0),
         ..Default::default()
     };
     note(
@@ -283,7 +280,7 @@ pub fn adaptation() -> World {
     let adaptive = sheet.add(Element::AdaptiveNeuron, 11.5, up);
     sheet.label(adaptive, "Adaptive");
     sheet.connect(sensor, regular);
-    sheet.synapse(regular, adaptive, 3.0 * NANOAMPERE);
+    sheet.synapse(regular, adaptive, Nanoamperes(3.0));
     sheet.voltmeter(adaptive, 14.5, up, 9.5, 5.0);
     sheet.text(
         "Leave it alone for a while and it recovers, \
@@ -317,7 +314,7 @@ pub fn firing_threshold() -> World {
     for current in [0.14, 0.2, 0.4] {
         let up = sheet.row(4.0);
         let neuron = sheet.add(Element::ExcitatoryNeuron, 6.5, up);
-        sheet.current(neuron, current * NANOAMPERE, 1.5, up);
+        sheet.current(neuron, Nanoamperes(current), 1.5, up);
         sheet.voltmeter(neuron, 9.5, up, 14.5, 4.0);
     }
     sheet.text(
@@ -347,12 +344,12 @@ pub fn refractory_period() -> World {
     let long = sheet.add(Element::ExcitatoryNeuron, 6.5, bottom);
     sheet.label(short, "2 ms");
     sheet.label(long, "10 ms");
-    sheet.refractory_period(short, 2.0 * MILLISECOND);
-    sheet.refractory_period(long, 10.0 * MILLISECOND);
-    let source = sheet.current(short, 1.0 * NANOAMPERE, 1.5, (top + bottom) / 2.0);
+    sheet.refractory_period(short, Milliseconds(2.0));
+    sheet.refractory_period(long, Milliseconds(10.0));
+    let source = sheet.current(short, Nanoamperes(1.0), 1.5, (top + bottom) / 2.0);
     sheet.connect(source, long);
-    sheet.rate_plot(short, 9.5, top, 300.0);
-    sheet.rate_plot(long, 9.5, bottom, 300.0);
+    sheet.rate_plot(short, 9.5, top, Hertz(300.0));
+    sheet.rate_plot(long, 9.5, bottom, Hertz(300.0));
     sheet.text(
         "Select the current source and raise the current. The top neuron fires faster and faster, \
          but the bottom one never passes 100 spikes per second, one every 10 ms.",
@@ -412,7 +409,7 @@ pub fn summation() -> World {
         let sensor = sheet.add(Element::TouchSensor, 1.5, up);
         let input = sheet.add(Element::ExcitatoryNeuron, 6.5, up);
         sheet.connect(sensor, input);
-        sheet.synapse(input, output, 1.4 * NANOAMPERE);
+        sheet.synapse(input, output, Nanoamperes(1.4));
     }
     sheet.voltmeter(output, 16.0, middle, 8.0, 5.0);
     sheet.text(
@@ -440,7 +437,7 @@ pub fn reverberation() -> World {
     sheet.connect(sensor, adaptive);
     let ring = [adaptive, top, right, bottom];
     for (index, &from) in ring.iter().enumerate() {
-        sheet.synapse(from, ring[(index + 1) % ring.len()], 3.0 * NANOAMPERE);
+        sheet.synapse(from, ring[(index + 1) % ring.len()], Nanoamperes(3.0));
     }
     sheet.spike_detector(&[right], 16.5, middle, 7.5, 4.0);
     sheet.text(
@@ -467,12 +464,12 @@ pub fn half_center_oscillator() -> World {
             .world
             .get::<&mut AdaptationCurrent>(neuron)
             .unwrap()
-            .time_constant = 150.0 * MILLISECOND;
-        sheet.current(neuron, 0.5 * NANOAMPERE, 1.5, up);
+            .time_constant = Milliseconds(150.0);
+        sheet.current(neuron, Nanoamperes(0.5), 1.5, up);
     }
     sheet.lasting_inhibition(top, bottom);
     sheet.lasting_inhibition(bottom, top);
-    sheet.world.get::<&mut NodeState>(bottom).unwrap().voltage = -75.0 * MILLIVOLT;
+    sheet.world.get::<&mut NodeState>(bottom).unwrap().voltage = Millivolts(-75.0);
     sheet.spike_detector(&[top, bottom], 10.5, middle, 13.5, 9.0);
     sheet.text(
         "Pairs like this take turns in the circuits that drive walking and swimming, \
@@ -493,14 +490,14 @@ pub fn feedback_loops() -> World {
     ] {
         let up = sheet.row(9.0);
         let input = sheet.add(Element::ExcitatoryNeuron, 5.5, up + 2.5);
-        sheet.current(input, 0.3 * NANOAMPERE, 1.5, up + 2.5);
+        sheet.current(input, Nanoamperes(0.3), 1.5, up + 2.5);
         let output = sheet.add(Element::ExcitatoryNeuron, 9.5, up - 0.5);
         let partner = sheet.add(partner_element, 9.5, up - 4.0);
         sheet.label(input, "Input");
         sheet.label(output, name);
-        sheet.synapse(input, output, 3.0 * NANOAMPERE);
-        sheet.synapse(output, partner, 3.0 * NANOAMPERE);
-        sheet.synapse(partner, output, 3.0 * NANOAMPERE);
+        sheet.synapse(input, output, Nanoamperes(3.0));
+        sheet.synapse(output, partner, Nanoamperes(3.0));
+        sheet.synapse(partner, output, Nanoamperes(3.0));
         sheet.spike_detector(&[input, output], 13.0, up + 1.0, 11.0, 6.0);
     }
     sheet.text(
@@ -525,8 +522,8 @@ pub fn disinhibition() -> World {
     sheet.inhibitory(release);
     sheet.label(brake, "Brake");
     sheet.label(output, "Output");
-    sheet.current(brake, 0.3 * NANOAMPERE, 10.0, up - 4.5);
-    sheet.current(output, 0.3 * NANOAMPERE, 14.5, up - 4.5);
+    sheet.current(brake, Nanoamperes(0.3), 10.0, up - 4.5);
+    sheet.current(output, Nanoamperes(0.3), 14.5, up - 4.5);
     sheet.connect(sensor, release);
     sheet.lasting_inhibition(release, brake);
     sheet.lasting_inhibition(brake, output);
@@ -551,15 +548,15 @@ pub fn feedback_inhibition() -> World {
     );
     let middle = sheet.row(13.0) - 0.5;
     let input = sheet.add(Element::ExcitatoryNeuron, 6.0, middle + 5.0);
-    sheet.current(input, 0.3 * NANOAMPERE, 1.5, middle + 5.0);
+    sheet.current(input, Nanoamperes(0.3), 1.5, middle + 5.0);
     let relay = sheet.add(Element::ExcitatoryNeuron, 6.0, middle);
     let output = sheet.add(Element::ExcitatoryNeuron, 6.0, middle - 5.0);
     let feedback = sheet.add(Element::InhibitoryNeuron, 10.0, middle);
     sheet.label(input, "Input");
-    sheet.synapse(input, relay, 3.0 * NANOAMPERE);
-    sheet.synapse(relay, output, 3.0 * NANOAMPERE);
-    sheet.synapse(output, feedback, 3.0 * NANOAMPERE);
-    sheet.synapse(feedback, relay, 3.0 * NANOAMPERE);
+    sheet.synapse(input, relay, Nanoamperes(3.0));
+    sheet.synapse(relay, output, Nanoamperes(3.0));
+    sheet.synapse(output, feedback, Nanoamperes(3.0));
+    sheet.synapse(feedback, relay, Nanoamperes(3.0));
     sheet.spike_detector(&[input, output], 13.0, middle, 11.0, 8.0);
     sheet.text(
         "Each time the output fires, it wakes the inhibitory neuron, \
@@ -571,7 +568,7 @@ pub fn feedback_inhibition() -> World {
 }
 
 const PRESSURE: [f64; 5] = [0.18, 0.25, 0.4, 0.25, 0.18];
-const SIDEWAYS_PULL: f64 = 1.5 * NANOAMPERE;
+const SIDEWAYS_PULL: Nanoamperes = Nanoamperes(1.5);
 
 pub fn lateral_inhibition() -> World {
     let mut sheet = Sheet::new();
@@ -600,12 +597,12 @@ pub fn lateral_inhibition() -> World {
     for (index, &pressure) in PRESSURE.iter().enumerate() {
         sheet.current(
             skin[index],
-            pressure * NANOAMPERE,
+            Nanoamperes(pressure),
             right_of(index),
             up + 8.0,
         );
-        sheet.synapse(skin[index], outputs[index], 3.0 * NANOAMPERE);
-        sheet.synapse(skin[index], partners[index], 3.0 * NANOAMPERE);
+        sheet.synapse(skin[index], outputs[index], Nanoamperes(3.0));
+        sheet.synapse(skin[index], partners[index], Nanoamperes(3.0));
         for neighbour in [index.wrapping_sub(1), index + 1] {
             if neighbour < PRESSURE.len() {
                 sheet.synapse(partners[index], outputs[neighbour], SIDEWAYS_PULL);
@@ -625,7 +622,7 @@ pub fn lateral_inhibition() -> World {
     sheet.world
 }
 
-const DIRECTION_RELAY_TO_OUTPUT: f64 = 1.2 * NANOAMPERE;
+const DIRECTION_RELAY_TO_OUTPUT: Nanoamperes = Nanoamperes(1.2);
 
 pub fn direction_selectivity() -> World {
     let mut sheet = Sheet::new();
@@ -647,25 +644,25 @@ pub fn direction_selectivity() -> World {
         let partner = sheet.add(Element::InhibitoryNeuron, right_of(index) + 1.6, up + 1.0);
         let relay = sheet.add(Element::ExcitatoryNeuron, right_of(index), up - 3.5);
         sheet.connect(sensor, receptor);
-        let partner_synapse = sheet.synapse(receptor, partner, 3.0 * NANOAMPERE);
+        let partner_synapse = sheet.synapse(receptor, partner, Nanoamperes(3.0));
         sheet
             .world
             .get::<&mut CurrentSynapse>(partner_synapse)
             .unwrap()
-            .delay = MILLISECOND;
-        let relay_synapse = sheet.synapse(receptor, relay, 3.0 * NANOAMPERE);
+            .delay = Milliseconds(1.0);
+        let relay_synapse = sheet.synapse(receptor, relay, Nanoamperes(3.0));
         sheet
             .world
             .get::<&mut CurrentSynapse>(relay_synapse)
             .unwrap()
-            .delay = 2.0 * MILLISECOND;
+            .delay = Milliseconds(2.0);
         sheet.synapse(relay, output, DIRECTION_RELAY_TO_OUTPUT);
         relays.push(relay);
         partners.push(partner);
     }
     for index in 0..columns - 1 {
         let synapse = sheet.lasting_inhibition(partners[index], relays[index + 1]);
-        sheet.world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = 20.0 * MILLISECOND;
+        sheet.world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = Milliseconds(20.0);
     }
     sheet.voltmeter(output, 11.0, up - 10.0, 13.0, 4.0);
     sheet.text(
@@ -680,8 +677,8 @@ pub fn direction_selectivity() -> World {
     sheet.world
 }
 
-const RECEPTIVE_FIELD_SENSITIVITY: f64 = 10000.0;
-const RECEPTIVE_FIELD_SYNAPSE: f64 = 2.0 * NANOAMPERE;
+const RECEPTIVE_FIELD_SENSITIVITY: Hertz = Hertz(10000.0);
+const RECEPTIVE_FIELD_SYNAPSE: Nanoamperes = Nanoamperes(2.0);
 
 pub fn receptive_fields() -> World {
     let mut sheet = Sheet::new();
@@ -750,7 +747,8 @@ pub fn examples() -> Vec<(&'static str, World)> {
 fn main() {
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
     for (file, world) in examples() {
-        let bytes = neuronify_core::serialization::save(&world, 0.0, DEFAULT_SPEED).unwrap();
+        let bytes =
+            neuronify_core::serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
         std::fs::write(format!("{folder}/{file}"), bytes).unwrap();
         println!("Wrote {file}");
     }
