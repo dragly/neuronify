@@ -63,6 +63,7 @@ pub struct LeakyNeuron {
     pub minimum_voltage: Millivolts,
     pub maximum_voltage: Millivolts,
     pub refractory_period: Milliseconds,
+    pub soma_diameter: Micrometres,
 }
 
 impl Default for LeakyNeuron {
@@ -76,6 +77,7 @@ impl Default for LeakyNeuron {
             minimum_voltage: Millivolts(-90.0),
             maximum_voltage: Millivolts(60.0),
             refractory_period: Milliseconds(2.0),
+            soma_diameter: Micrometres(20.0),
         }
     }
 }

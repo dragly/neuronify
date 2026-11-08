@@ -20,6 +20,7 @@ pub const VOLTAGES: RangeInclusive<Millivolts> = Millivolts(-1000.0)..=Millivolt
 pub const GATES: RangeInclusive<f64> = 0.0..=1.0;
 pub const REFRACTORY_PERIODS: RangeInclusive<Milliseconds> =
     Milliseconds(0.0)..=Milliseconds(1000.0);
+pub const SOMA_DIAMETERS: RangeInclusive<Micrometres> = Micrometres(1.0)..=Micrometres(1000.0);
 pub const CAPACITANCES: RangeInclusive<Nanofarads> = Nanofarads(0.001)..=Nanofarads(10_000.0);
 pub const RESISTANCES: RangeInclusive<Megaohms> = Megaohms(0.01)..=Megaohms(100_000.0);
 pub const ADAPTATIONS: RangeInclusive<Microsiemens> = Microsiemens(0.0)..=Microsiemens(10.0);
@@ -271,6 +272,11 @@ fn bound_neuron(neuron: &mut LeakyNeuron) {
         &mut neuron.refractory_period,
         REFRACTORY_PERIODS,
         default.refractory_period,
+    );
+    within(
+        &mut neuron.soma_diameter,
+        SOMA_DIAMETERS,
+        default.soma_diameter,
     );
 }
 

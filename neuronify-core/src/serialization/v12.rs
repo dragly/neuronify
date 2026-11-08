@@ -1,4 +1,5 @@
 use super::v11;
+use super::v15::LeakyNeuron;
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
@@ -92,11 +93,10 @@ pub fn upgrade_from_v11(world: &mut World) -> Result<(), ComponentError> {
     for neuron in neurons {
         let old = world.remove_one::<v11::LeakyNeuron>(neuron)?;
         let dynamics = world.remove_one::<v11::LeakyDynamics>(neuron).ok();
-        let refractory_period = dynamics
-            .as_ref()
-            .map_or(LeakyNeuron::default().refractory_period, |dynamics| {
-                Milliseconds(dynamics.refractory_period * MILLI)
-            });
+        let refractory_period = dynamics.as_ref().map_or(
+            crate::components::LeakyNeuron::default().refractory_period,
+            |dynamics| Milliseconds(dynamics.refractory_period * MILLI),
+        );
         let state = NodeState {
             voltage: Millivolts(
                 dynamics

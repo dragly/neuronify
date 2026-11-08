@@ -1,10 +1,11 @@
+use super::v15;
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::{ComponentError, World};
+use hecs::{ComponentError, Entity, World};
 
 schema!(
     save,
@@ -60,6 +61,26 @@ schema!(
     PendingEvents,
 );
 
-pub fn upgrade_from_v15(_world: &mut World) -> Result<(), ComponentError> {
+pub fn upgrade_from_v15(world: &mut World) -> Result<(), ComponentError> {
+    let neurons: Vec<Entity> = world
+        .query::<Entity>()
+        .with::<&v15::LeakyNeuron>()
+        .iter()
+        .collect();
+    for neuron in neurons {
+        let old = world.remove_one::<v15::LeakyNeuron>(neuron)?;
+        let upgraded = LeakyNeuron {
+            capacitance: old.capacitance,
+            resting_potential: old.resting_potential,
+            threshold: old.threshold,
+            initial_potential: old.initial_potential,
+            voltage_clamped: old.voltage_clamped,
+            minimum_voltage: old.minimum_voltage,
+            maximum_voltage: old.maximum_voltage,
+            refractory_period: old.refractory_period,
+            ..LeakyNeuron::default()
+        };
+        world.insert_one(neuron, upgraded)?;
+    }
     Ok(())
 }

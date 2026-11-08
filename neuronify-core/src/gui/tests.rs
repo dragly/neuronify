@@ -5,7 +5,7 @@ use hecs::Entity;
 use super::*;
 use crate::components::{
     AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Dendrite, Hertz, Label,
-    LeakyNeuron, Milliseconds, Millivolts, Nanoamperes, NeuronType, NodeState,
+    LeakyNeuron, Micrometres, Milliseconds, Millivolts, Nanoamperes, NeuronType, NodeState,
     RegularSpikeGenerator, Seconds,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
@@ -607,6 +607,27 @@ fn current_sources_reach_thirty_nanoamperes() {
         .unwrap()
         .current_output;
     assert_eq!(current, Nanoamperes(30.0));
+}
+
+#[test]
+fn a_neuron_with_dendrites_sets_its_soma_diameter_instead_of_resistance_and_capacitance() {
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    crate::dendrites::spawn_dendrites(&mut world, neuron);
+    let mut harness = Harness::with(true, world, Some(neuron));
+    assert!(!harness.shows(Setting::Resistance.label()));
+    assert!(!harness.shows(Setting::Capacitance.label()));
+    let slider = harness
+        .text_position(Setting::SomaDiameter.label())
+        .unwrap()
+        + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    let diameter = harness
+        .world
+        .get::<&LeakyNeuron>(neuron)
+        .unwrap()
+        .soma_diameter;
+    assert_eq!(diameter, Micrometres(100.0));
 }
 
 fn type_of(world: &World, entity: Entity) -> NeuronType {
