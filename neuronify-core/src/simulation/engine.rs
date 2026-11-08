@@ -917,6 +917,9 @@ impl Engine {
             let Some(source) = self.source_of(entity) else {
                 continue;
             };
+            let pending = world
+                .get::<&PendingEvents>(entity)
+                .map_or_else(|_| PendingEvents::default(), |events| (*events).clone());
             if let Ok(adaptation) = world.get::<&AdaptationCurrent>(entity) {
                 let rest = world
                     .get::<&LeakyNeuron>(entity)
@@ -935,6 +938,9 @@ impl Engine {
                 });
                 self.network
                     .connect(source, Target::Adaptation(index), Milliseconds::ZERO);
+                for &time in &pending.adaptation {
+                    self.network.schedule(time, Target::Adaptation(index));
+                }
                 self.adaptations.push((entity, index));
             }
             if let Ok(burst) = world.get::<&BurstCurrent>(entity) {
@@ -946,7 +952,16 @@ impl Engine {
                 });
                 self.network
                     .connect(source, Target::Burst(index), Milliseconds::ZERO);
+                for &time in &pending.burst {
+                    self.network.schedule(time, Target::Burst(index));
+                }
                 self.bursts.push((entity, index));
+            }
+            if let Some(soma) = place.soma {
+                let tree = place.tree;
+                for &time in &pending.fire {
+                    self.network.schedule(time, Target::Fire { tree, soma });
+                }
             }
         }
     }
@@ -1067,10 +1082,63 @@ impl Engine {
                 dynamics.time_since_fire = self.network.generators[generator].since;
             }
         }
+        self.store_pending_events(world);
         Randomness {
             state: self.network.random_state(),
         }
         .set_in(world);
+    }
+
+    fn store_pending_events(&self, world: &mut World) {
+        let adaptations: HashMap<usize, Entity> = self
+            .adaptations
+            .iter()
+            .map(|&(entity, index)| (index, entity))
+            .collect();
+        let bursts: HashMap<usize, Entity> = self
+            .bursts
+            .iter()
+            .map(|&(entity, index)| (index, entity))
+            .collect();
+        let somas: HashMap<(usize, usize), Entity> = self
+            .nodes
+            .iter()
+            .filter_map(|&(entity, place)| Some(((place.tree, place.soma?), entity)))
+            .collect();
+        let mut pending: HashMap<Entity, PendingEvents> = HashMap::new();
+        for (target, time) in self.network.pending_all() {
+            match target {
+                Target::Adaptation(index) => {
+                    if let Some(&entity) = adaptations.get(&index) {
+                        pending.entry(entity).or_default().adaptation.push(time);
+                    }
+                }
+                Target::Burst(index) => {
+                    if let Some(&entity) = bursts.get(&index) {
+                        pending.entry(entity).or_default().burst.push(time);
+                    }
+                }
+                Target::Fire { tree, soma } => {
+                    if let Some(&entity) = somas.get(&(tree, soma)) {
+                        pending.entry(entity).or_default().fire.push(time);
+                    }
+                }
+                Target::Conductance(_) | Target::Current(_) => {}
+            }
+        }
+        for &(entity, place) in &self.nodes {
+            if place.soma.is_none() {
+                continue;
+            }
+            match pending.remove(&entity) {
+                Some(events) => {
+                    let _ = world.insert_one(entity, events);
+                }
+                None => {
+                    let _ = world.remove_one::<PendingEvents>(entity);
+                }
+            }
+        }
     }
 
     fn store_cells(&self, world: &mut World) {
@@ -1810,6 +1878,91 @@ mod tests {
         assert!(spikes.0.len() > 10, "{} spikes", spikes.0.len());
         assert_eq!(spikes.0, spikes.1);
         assert_eq!(traces.0, traces.1);
+    }
+
+    fn continues_unbroken_when_saved_while_pending(
+        world: World,
+        fired: Option<Entity>,
+        pending: impl Fn(Target) -> bool,
+    ) {
+        let mut unbroken = Run::new(world);
+        if let Some(entity) = fired {
+            unbroken.fire(entity);
+        }
+        while !unbroken
+            .engine
+            .network
+            .pending_all()
+            .into_iter()
+            .any(|(target, _)| pending(target))
+        {
+            unbroken.step();
+            assert!(unbroken.now() < Milliseconds(500.0));
+        }
+        unbroken.engine.store(&mut unbroken.world);
+        let bytes = crate::serialization::save(&unbroken.world, unbroken.time, 1.0).unwrap();
+        let saved = crate::serialization::load(&bytes).unwrap();
+        let mut loaded = Run {
+            world: saved.world,
+            engine: Engine::starting_at(saved.time),
+            time: saved.time,
+        };
+        let (mut kept, mut continued) = (Vec::new(), Vec::new());
+        for _ in 0..4000 {
+            kept.extend(unbroken.step().iter().map(|spike| spike.time));
+            continued.extend(loaded.step().iter().map(|spike| spike.time));
+        }
+        assert!(kept.len() > 1, "{} spikes", kept.len());
+        assert_eq!(kept, continued);
+    }
+
+    fn driven(element: Element) -> World {
+        let mut world = World::new();
+        let neuron = element.spawn(&mut world, Vec3::ZERO);
+        let source = Element::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
+        crate::elements::spawn_connection(&mut world, source, neuron);
+        world
+    }
+
+    #[test]
+    fn saving_right_after_a_spike_keeps_its_adaptation() {
+        continues_unbroken_when_saved_while_pending(
+            driven(Element::AdaptiveNeuron),
+            None,
+            |target| matches!(target, Target::Adaptation(_)),
+        );
+    }
+
+    #[test]
+    fn saving_right_after_a_spike_keeps_its_burst() {
+        continues_unbroken_when_saved_while_pending(driven(Element::BurstNeuron), None, |target| {
+            matches!(target, Target::Burst(_))
+        });
+    }
+
+    #[test]
+    fn saving_right_after_a_touch_keeps_the_spike_it_fires() {
+        let mut world = driven(Element::ExcitatoryNeuron);
+        let neuron = world
+            .query::<(Entity, &LeakyNeuron)>()
+            .iter()
+            .next()
+            .unwrap()
+            .0;
+        let sensor = Element::TouchSensor.spawn(&mut world, Vec3::X * -5.0);
+        crate::elements::spawn_connection(&mut world, sensor, neuron);
+        continues_unbroken_when_saved_while_pending(world, Some(sensor), |target| {
+            matches!(target, Target::Fire { .. })
+        });
+    }
+
+    #[test]
+    fn saving_right_after_an_axon_reaches_a_neuron_keeps_the_spike_it_fires() {
+        let mut world = World::new();
+        let (neuron, _, _) = neuron_with_axon(&mut world, 12);
+        continues_unbroken_when_saved_while_pending(world, Some(neuron), |target| {
+            matches!(target, Target::Fire { .. })
+        });
     }
 
     #[test]

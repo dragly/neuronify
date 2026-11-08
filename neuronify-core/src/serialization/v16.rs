@@ -57,6 +57,7 @@ schema!(
     ConnectionView,
     Selected,
     RowOrder,
+    PendingEvents,
 );
 
 pub fn upgrade_from_v15(_world: &mut World) -> Result<(), ComponentError> {

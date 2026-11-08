@@ -245,6 +245,13 @@ pub struct SynapseState {
     pub pending: Vec<Milliseconds>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+pub struct PendingEvents {
+    pub adaptation: Vec<Milliseconds>,
+    pub burst: Vec<Milliseconds>,
+    pub fire: Vec<Milliseconds>,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TouchSensor;
 
