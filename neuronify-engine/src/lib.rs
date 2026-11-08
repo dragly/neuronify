@@ -4,6 +4,7 @@ mod network;
 mod spiking;
 mod table;
 mod tree;
+pub mod units;
 
 pub use channel::{Channel, ChannelId, Gate, Rate};
 pub use morphology::{Cable, Density, Membrane, Morphology, NodeMembrane};
