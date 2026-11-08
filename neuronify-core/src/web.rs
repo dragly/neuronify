@@ -29,11 +29,13 @@ pub struct LoadedFile {
     pub name: String,
     pub bytes: Vec<u8>,
     pub picked: bool,
+    pub url: Option<String>,
 }
 
 thread_local! {
     static LOADED: RefCell<Option<Result<LoadedFile, String>>> = const { RefCell::new(None) };
     static FETCHING: Cell<bool> = const { Cell::new(false) };
+    static MISSING_LINK: Cell<bool> = const { Cell::new(false) };
     static LOADING_SCREEN_SHOWN: Cell<bool> = const { Cell::new(true) };
     static PRESSED_LINK: RefCell<Option<PressedLink>> = const { RefCell::new(None) };
     static OPENED_ON_POINTER_UP: RefCell<Option<String>> = const { RefCell::new(None) };
@@ -54,6 +56,7 @@ pub fn fetch_requested_file() -> bool {
                 name: name_in(&url),
                 bytes,
                 picked: false,
+                url: absolute(&url),
             })
             .map_err(|e| {
                 // fetch rejects with a TypeError, while fetch_bytes rejects with a string
@@ -73,6 +76,39 @@ pub fn fetch_requested_file() -> bool {
 /// Returns a fetched or picked file once, after it has been read.
 pub fn take_loaded_file() -> Option<Result<LoadedFile, String>> {
     LOADED.with(|loaded| loaded.borrow_mut().take())
+}
+
+pub fn fetch_beside(origin: &str, name: &str) -> bool {
+    let Some(url) = Url::new_with_base(name, origin).ok().map(|url| url.href()) else {
+        return false;
+    };
+    wasm_bindgen_futures::spawn_local(async move {
+        match fetch_bytes(&url).await {
+            Ok(bytes) => {
+                let file = LoadedFile {
+                    name: name_in(&url),
+                    bytes,
+                    picked: false,
+                    url: Some(url),
+                };
+                LOADED.with(|loaded| *loaded.borrow_mut() = Some(Ok(file)));
+            }
+            Err(error) => {
+                log::warn!("Could not fetch {url}: {error:?}");
+                MISSING_LINK.set(true);
+            }
+        }
+    });
+    true
+}
+
+pub fn take_missing_link() -> bool {
+    MISSING_LINK.replace(false)
+}
+
+fn absolute(url: &str) -> Option<String> {
+    let page = web_sys::window()?.location().href().ok()?;
+    Url::new_with_base(url, &page).ok().map(|url| url.href())
 }
 
 pub fn hide_loading_screen_when_ready() {
@@ -105,6 +141,7 @@ pub fn pick_file() -> Result<(), JsValue> {
                     name: stem(&file.name()).to_owned(),
                     bytes: js_sys::Uint8Array::new(&buffer).to_vec(),
                     picked: true,
+                    url: None,
                 })
                 .map_err(|error| format!("Could not read {}: {error:?}", file.name()));
             LOADED.with(|loaded| *loaded.borrow_mut() = Some(result));
