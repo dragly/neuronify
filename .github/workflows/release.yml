@@ -11,14 +11,14 @@ jobs:
   web:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/build-web
         with:
           dist: package/neuronify
       - name: Package
         working-directory: package
         run: zip -r ../neuronify-web.zip neuronify
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: neuronify-web
           path: neuronify-web.zip
@@ -26,7 +26,7 @@ jobs:
   linux:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master on 2026-10-16
         with:
@@ -42,7 +42,7 @@ jobs:
           mkdir -p package/neuronify
           cp target/release/neuronify LICENSE README.md package/neuronify/
           tar -czf neuronify-linux-x86_64.tar.gz -C package neuronify
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: neuronify-linux
           path: neuronify-linux-x86_64.tar.gz
@@ -50,7 +50,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master on 2026-10-16
         with:
@@ -63,7 +63,7 @@ jobs:
           New-Item -ItemType Directory package/neuronify
           Copy-Item target/release/neuronify.exe, LICENSE, README.md package/neuronify/
           Compress-Archive package/neuronify neuronify-windows-x86_64.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: neuronify-windows
           path: neuronify-windows-x86_64.zip
@@ -71,7 +71,7 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master on 2026-10-16
         with:
@@ -127,7 +127,7 @@ jobs:
           codesign --force --deep --sign - package/neuronify/Neuronify.app
           cp LICENSE README.md package/neuronify/
           ditto -c -k --keepParent package/neuronify neuronify-macos.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: neuronify-macos
           path: neuronify-macos.zip
@@ -139,7 +139,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: assets
           merge-multiple: true
