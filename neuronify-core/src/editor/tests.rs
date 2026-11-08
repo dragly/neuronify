@@ -1870,6 +1870,41 @@ fn dendrites_move_along_with_a_dragged_neuron() {
 }
 
 #[test]
+fn dendrite_segments_added_by_a_stretch_taper_like_freshly_drawn_ones_where_they_land() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    spawn_dendrites(&mut world, soma);
+    let before: HashSet<Entity> = world.iter().map(|entity| entity.entity()).collect();
+    let (_, tip) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .max_by(|(_, a), (_, b)| a.length().total_cmp(&b.length()))
+        .unwrap();
+
+    drag(
+        &mut editor(Tool::Edit),
+        &mut world,
+        &[tip, tip + tip.normalize() * 12.0],
+    );
+
+    let added: Vec<(f64, Connection)> = world
+        .query::<(&Cable, &Connection)>()
+        .iter()
+        .filter(|(cable, _)| !before.contains(cable))
+        .map(|(_, (cable, connection))| (cable.diameter, connection.clone()))
+        .collect();
+    assert!(!added.is_empty());
+    for (diameter, connection) in added {
+        let ends = [connection.from, connection.to]
+            .map(|end| world.get::<&Position>(end).ok().map(|p| p.position));
+        let fresh = crate::simulation::model::dendrite_diameter(&world, ends);
+        assert!(
+            (diameter - fresh).abs() < 1e-9,
+            "{diameter} against {fresh}"
+        );
+    }
+}
+
+#[test]
 fn stretched_axons_grow_compartments() {
     let mut world = World::new();
     let source = neuron(&mut world, at(0.0, 0.0));

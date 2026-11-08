@@ -440,21 +440,26 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
         recording.take(world, cable);
     }
     let mut compartments = interior[..kept].to_vec();
-    let mut previous = nodes[kept];
+    let mut added = Vec::new();
     for _ in kept + 1..segments {
-        let compartment = spawn_compartment_like(world, [previous, end]);
-        spawn_axon_cable(world, previous, compartment, myelinated);
+        let neighbour = compartments.last().copied().unwrap_or(nodes[kept]);
+        let compartment = spawn_compartment_like(world, [neighbour, end]);
         compartments.push(compartment);
-        previous = compartment;
+        added.push(compartment);
     }
-    let last = chain[chain.len() - 1];
-    recording.edit(world, last);
-    world.get::<&mut Connection>(last).unwrap().from = previous;
     for (step, &compartment) in compartments.iter().enumerate() {
         recording.edit(world, compartment);
         let distance = (step + 1) as f32 * length / segments as f32;
         world.get::<&mut Position>(compartment).unwrap().position = point_along(&points, distance);
     }
+    let mut previous = nodes[kept];
+    for &compartment in &added {
+        spawn_axon_cable(world, previous, compartment, myelinated);
+        previous = compartment;
+    }
+    let last = chain[chain.len() - 1];
+    recording.edit(world, last);
+    world.get::<&mut Connection>(last).unwrap().from = previous;
     true
 }
 
