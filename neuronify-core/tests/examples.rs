@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-#[path = "../examples/write_examples.rs"]
+#[path = "../generators/write_examples.rs"]
 mod write_examples;
 
 use std::f64::consts::FRAC_PI_2;

@@ -87,3 +87,15 @@ png = "0.18"
 
 [build-dependencies]
 miniz_oxide = "0.8"
+
+[[example]]
+name = "write_examples"
+path = "generators/write_examples.rs"
+
+[[example]]
+name = "write_labs"
+path = "generators/write_labs.rs"
+
+[[example]]
+name = "write_tutorial"
+path = "generators/write_tutorial.rs"
