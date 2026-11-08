@@ -48,6 +48,17 @@ impl<T> RollingWindow<T> {
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
+
+    pub fn retain(&mut self, keep: impl FnMut(&T) -> bool) {
+        self.data.retain(keep);
+    }
+
+    pub fn keep_latest(&mut self, capacity: usize) {
+        let surplus = self.data.len().saturating_sub(capacity);
+        self.data.drain(..surplus);
+        self.data.shrink_to(capacity);
+        self.max_capacity = capacity;
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -69,6 +80,14 @@ impl VoltageSeries {
             measurements: RollingWindow::new(VOLTMETER_MEASUREMENTS),
             spike_times: Vec::new(),
         }
+    }
+
+    pub fn bound(&mut self, capacity: usize) {
+        self.measurements
+            .retain(|m| m.time.is_finite() && m.voltage.is_finite());
+        self.measurements.keep_latest(capacity);
+        self.spike_times.retain(|time| time.is_finite());
+        self.forget_spikes_before_measurements();
     }
 
     fn forget_spikes_before_measurements(&mut self) {

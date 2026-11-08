@@ -10,6 +10,7 @@ use neuronify_engine::{ChannelId, Density, Membrane};
 use super::mammal;
 use crate::components::*;
 use crate::constants::*;
+use crate::serialization::bounds;
 
 pub const AXON_DIAMETER: Micrometres = Micrometres(0.15);
 pub const INTERNODE_DIAMETER: Micrometres = Micrometres(1.0);
@@ -125,8 +126,8 @@ impl Preparation {
 
     pub fn temperatures(self) -> RangeInclusive<Celsius> {
         match self {
-            Preparation::Squid => Celsius(0.0)..=Celsius(35.0),
-            Preparation::Mammal => Celsius(20.0)..=Celsius(42.0),
+            Preparation::Squid => bounds::SQUID_TEMPERATURES,
+            Preparation::Mammal => bounds::MAMMAL_TEMPERATURES,
         }
     }
 

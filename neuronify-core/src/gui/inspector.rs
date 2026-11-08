@@ -78,6 +78,8 @@ const ALTERNATING_FREQUENCIES: (RangeInclusive<Hertz>, Hertz) =
 const CURRENTS: (RangeInclusive<Nanoamperes>, Nanoamperes) =
     (Nanoamperes(0.0)..=Nanoamperes(30.0), Nanoamperes(0.01));
 const SPIKE_RATES: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(1000.0), Hertz(1.0));
+const VOLUMES: RangeInclusive<f64> = 0.0..=1.0;
+const STRENGTHS: RangeInclusive<f64> = 0.0..=MAX_ENDING_STRENGTH;
 
 enum Action {
     Delete,
@@ -1008,7 +1010,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             chrome,
             Setting::Volume,
             &mut speaker.volume,
-            0.0..=1.0,
+            VOLUMES,
             |volume| format!("{:.0} %", volume * 100.0),
         );
         changed |= choice(
@@ -1124,7 +1126,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             chrome,
             Setting::Strength,
             &mut ending.strength,
-            0.0..=MAX_ENDING_STRENGTH,
+            STRENGTHS,
             |strength| format!("{strength:.2}"),
         );
     }
@@ -1140,4 +1142,51 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         }
     }
     changed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::serialization::bounds;
+
+    fn inside<Q: Quantity>(slider: RangeInclusive<Q>, bound: RangeInclusive<Q>) -> bool {
+        bound.contains(slider.start()) && bound.contains(slider.end())
+    }
+
+    #[test]
+    fn every_slider_stays_within_what_a_save_file_may_hold() {
+        assert!(inside(REFRACTORY_PERIODS, bounds::REFRACTORY_PERIODS));
+        assert!(inside(POTENTIALS, bounds::POTENTIALS));
+        assert!(inside(RESISTANCES.0, bounds::RESISTANCES));
+        assert!(inside(CAPACITANCES.0, bounds::CAPACITANCES));
+        assert!(inside(ADAPTATIONS.0, bounds::ADAPTATIONS));
+        assert!(inside(
+            ADAPTATION_TIME_CONSTANTS,
+            bounds::ADAPTATION_TIME_CONSTANTS
+        ));
+        assert!(inside(PLOTTED_VOLTAGES, bounds::PLOTTED_VOLTAGES));
+        assert!(inside(RATE_WINDOWS, bounds::RATE_WINDOWS));
+        assert!(inside(PLOTTED_RATES, bounds::PLOTTED_RATES));
+        assert!(inside(HALF_TURN, bounds::ANGLES));
+        assert!(inside(PICTURE_SPEEDS.0, bounds::PICTURE_SPEEDS));
+        assert!(inside(PICTURE_PHASES, bounds::PICTURE_PHASES));
+        assert!(inside(OFFSETS, bounds::OFFSETS));
+        assert!(inside(SENSITIVITIES.0, bounds::SENSITIVITIES));
+        assert!(inside(TIME_RANGES, bounds::TIME_RANGES));
+        assert!(inside(SYNAPSE_CURRENTS, bounds::SYNAPSE_CURRENTS));
+        assert!(inside(
+            SYNAPSE_TIME_CONSTANTS,
+            bounds::SYNAPSE_TIME_CONSTANTS
+        ));
+        assert!(inside(DELAYS, bounds::DELAYS));
+        assert!(inside(AMPLITUDES.0, bounds::AMPLITUDES));
+        assert!(inside(
+            ALTERNATING_FREQUENCIES.0,
+            bounds::ALTERNATING_FREQUENCIES
+        ));
+        assert!(inside(CURRENTS.0, bounds::CURRENTS));
+        assert!(inside(SPIKE_RATES.0, bounds::SPIKE_RATES));
+        assert!(inside(VOLUMES, bounds::VOLUMES));
+        assert!(inside(STRENGTHS, bounds::STRENGTHS));
+    }
 }
