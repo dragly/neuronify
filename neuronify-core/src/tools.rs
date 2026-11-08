@@ -2,7 +2,7 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
-use crate::components::Nanoamperes;
+use crate::components::{Nanoamperes, Seconds};
 use crate::constants::STIMULATION_CURRENT;
 use crate::elements::{Element, Meter};
 
@@ -190,7 +190,7 @@ pub struct ConnectionTool {
 #[derive(Clone, Debug)]
 pub struct ConnectionOffer {
     pub from: Entity,
-    pub since: f64,
+    pub since: Seconds,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use egui::{pos2, Color32, Painter, Pos2, Rect, TextureHandle, TextureOptions};
 use hecs::World;
 
-use crate::components::Milliseconds;
+use crate::components::{Milliseconds, Seconds};
 use crate::constants::{DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND, VOLTMETER_TIME_WINDOW};
 use crate::frame_clock::StepClock;
 use crate::landing::raster::{tessellate_untextured_in_pixels, UnfinishedDrawing};
@@ -14,7 +14,7 @@ use crate::simulation::{self, Engine};
 
 pub const THUMBNAIL_PADDING: f32 = 10.0;
 const WARM_UP_STEPS_PER_FRAME: u32 = 256;
-pub const PREVIEW_FADE_IN_SECONDS: f64 = 0.25;
+pub const PREVIEW_FADE_IN: Seconds = Seconds(0.25);
 const MAX_LIVE_PREVIEW_ENTITIES: u32 = 1000;
 const STEPS_UNTIL_VOLTMETERS_ARE_DRAWN: u32 = 8;
 
@@ -40,7 +40,7 @@ pub struct Preview {
     bounds: Option<Bounds>,
     pub mode: PreviewMode,
     pub on_screen: bool,
-    fade_in_started_at: Option<f64>,
+    fade_in_started_at: Option<Seconds>,
     pub still_drawing: Option<StillDrawing>,
 }
 
@@ -74,13 +74,13 @@ impl Preview {
         self.time >= VOLTMETER_TIME_WINDOW
     }
 
-    pub fn step(&mut self, seconds: f64, physics_steps: u32) {
+    pub fn step(&mut self, elapsed: Seconds, physics_steps: u32) {
         if self.mode == PreviewMode::Still || !self.on_screen {
             return;
         }
         let simulation_steps = if self.warmed_up() {
             self.simulation_clock
-                .steps(seconds, DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND)
+                .steps(elapsed, DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND)
         } else {
             WARM_UP_STEPS_PER_FRAME
         };
@@ -135,9 +135,9 @@ fn paint_live_preview(
     if !preview.warmed_up() {
         return;
     }
-    let now = painter.ctx().input(|input| input.time);
+    let now = Seconds(painter.ctx().input(|input| input.time));
     let fade_in_started_at = *preview.fade_in_started_at.get_or_insert(now);
-    let opacity = ((now - fade_in_started_at) / PREVIEW_FADE_IN_SECONDS).min(1.0) as f32;
+    let opacity = ((now - fade_in_started_at) / PREVIEW_FADE_IN).min(1.0) as f32;
     if opacity > 0.0 {
         let mut painter = painter.clone();
         painter.multiply_opacity(opacity);

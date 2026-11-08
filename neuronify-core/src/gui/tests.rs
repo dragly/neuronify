@@ -97,7 +97,7 @@ impl Harness {
                 time: Seconds(*time).to_milliseconds(),
                 running,
                 speed,
-                fps: 60.0,
+                fps: Hertz(60.0),
                 saving: *saving,
             };
             if let Some(picked) = gui.show(ui.ctx(), controls) {

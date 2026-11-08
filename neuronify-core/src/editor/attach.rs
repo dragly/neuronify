@@ -6,7 +6,7 @@ use crate::constants::*;
 use crate::rendering::compartment_radii;
 use crate::rendering::cylinders::sheath_radius;
 
-pub const GLIDE_SECONDS: f64 = 0.45;
+pub const GLIDE_DURATION: Seconds = Seconds(0.45);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Spot {

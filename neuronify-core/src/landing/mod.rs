@@ -15,7 +15,7 @@ use egui::{
 };
 use hecs::World;
 
-use crate::components::Milliseconds;
+use crate::components::{Milliseconds, Seconds};
 use crate::constants::DEFAULT_SPEED;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
 use crate::gui::icons::{paint_icon, Icon};
@@ -211,9 +211,9 @@ impl LandingScreen {
         }
     }
 
-    pub fn update(&mut self, seconds: f64, physics_steps: u32) {
+    pub fn update(&mut self, elapsed: Seconds, physics_steps: u32) {
         for preview in self.previews() {
-            preview.step(seconds, physics_steps);
+            preview.step(elapsed, physics_steps);
         }
     }
 
@@ -765,7 +765,7 @@ fn paint_stack(
 mod tests {
     use super::*;
     use crate::components::*;
-    use crate::landing::preview::{PreviewMode, PREVIEW_FADE_IN_SECONDS};
+    use crate::landing::preview::{PreviewMode, PREVIEW_FADE_IN};
     use egui::{Event, PointerButton, Pos2, RawInput, Shape, Vec2};
 
     #[test]
@@ -1079,7 +1079,7 @@ mod tests {
             vec![],
             window_with_room_for_two_rows,
         );
-        landing.update(1.0 / 60.0, 4);
+        landing.update(Seconds(1.0 / 60.0), 4);
         let first = &landing.examples_by_category[0][0].preview;
         let last = &landing
             .examples_by_category
@@ -1145,7 +1145,7 @@ mod tests {
         };
         let mut frame = 0;
         let mut next_frame = |landing: &mut LandingScreen| {
-            landing.update(1.0 / 60.0, 4);
+            landing.update(Seconds(1.0 / 60.0), 4);
             frame += 1;
             run_at(
                 &context,
@@ -1165,7 +1165,7 @@ mod tests {
             let output = next_frame(&mut landing);
             assert!(neuron_opacities(&output).is_empty());
         }
-        let fade_frames = (PREVIEW_FADE_IN_SECONDS * 60.0) as usize;
+        let fade_frames = (PREVIEW_FADE_IN * Hertz(60.0)) as usize;
         let mut output = next_frame(&mut landing);
         for _ in 0..fade_frames / 2 {
             output = next_frame(&mut landing);

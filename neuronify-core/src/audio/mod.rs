@@ -5,7 +5,7 @@ mod web;
 
 use std::f32::consts::TAU;
 
-use neuronify_engine::units::Milliseconds;
+use neuronify_engine::units::{Milliseconds, Seconds};
 
 use crate::measurement::loudspeaker::Sound;
 
@@ -61,14 +61,14 @@ pub fn schedule(
     heard: Vec<(Sound, f32, Milliseconds)>,
     start: Milliseconds,
     end: Milliseconds,
-    seconds: f64,
-) -> Vec<(Sound, f32, f64)> {
+    elapsed: Seconds,
+) -> Vec<(Sound, f32, Seconds)> {
     heard
         .into_iter()
         .map(|(sound, volume, time)| {
             let span = (end - start).max(Milliseconds(f64::EPSILON));
             let progress = ((time - start) / span).clamp(0.0, 1.0);
-            (sound, volume, progress * seconds)
+            (sound, volume, progress * elapsed)
         })
         .collect()
 }
@@ -96,7 +96,7 @@ impl Speakers {
         }
     }
 
-    pub fn play(&mut self, plays: &[(Sound, f32, f64)]) {
+    pub fn play(&mut self, plays: &[(Sound, f32, Seconds)]) {
         if plays.is_empty() {
             return;
         }
@@ -138,10 +138,15 @@ mod tests {
             (Sound::Click, 1.0, Milliseconds(1000.0)),
             (Sound::Pop, 0.5, Milliseconds(1050.0)),
         ];
-        let plays = schedule(heard, Milliseconds(1000.0), Milliseconds(1100.0), 0.02);
-        assert_eq!(plays[0], (Sound::Click, 1.0, 0.0));
+        let plays = schedule(
+            heard,
+            Milliseconds(1000.0),
+            Milliseconds(1100.0),
+            Seconds(0.02),
+        );
+        assert_eq!(plays[0], (Sound::Click, 1.0, Seconds::ZERO));
         assert_eq!(plays[1].0, Sound::Pop);
-        assert!((plays[1].2 - 0.01).abs() < 1e-9);
+        assert!((plays[1].2 - Seconds(0.01)).abs() < Seconds(1e-9));
     }
 
     #[test]

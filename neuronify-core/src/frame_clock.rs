@@ -1,45 +1,46 @@
+use crate::components::{Hertz, Seconds};
 use crate::input::now;
 
 const FPS_LOW_PASS_FACTOR: f64 = 0.05;
 #[cfg(not(target_arch = "wasm32"))]
-const TARGET_FRAME_SECONDS: f64 = 0.016;
-const MAX_STEPPED_SECONDS_PER_FRAME: f64 = 0.1;
+const TARGET_FRAME_TIME: Seconds = Seconds(0.016);
+const LONGEST_STEPPED_FRAME: Seconds = Seconds(0.1);
 
 pub struct FrameClock {
-    last_frame: f64,
-    fps: f64,
+    last_frame: Seconds,
+    fps: Hertz,
 }
 
 impl Default for FrameClock {
     fn default() -> FrameClock {
         FrameClock {
             last_frame: now(),
-            fps: 60.0,
+            fps: Hertz(60.0),
         }
     }
 }
 
 impl FrameClock {
-    pub fn fps(&self) -> f64 {
+    pub fn fps(&self) -> Hertz {
         self.fps
     }
 
-    pub fn tick(&mut self) -> f64 {
+    pub fn tick(&mut self) -> Seconds {
         #[cfg(not(target_arch = "wasm32"))]
         self.wait_for_next_frame();
         let now = now();
-        let seconds = now - self.last_frame;
-        let fps = 1.0 / seconds.max(1e-7);
+        let elapsed = now - self.last_frame;
+        let fps = 1.0 / elapsed.max(Seconds(1e-7));
         self.fps = (1.0 - FPS_LOW_PASS_FACTOR) * self.fps + FPS_LOW_PASS_FACTOR * fps;
         self.last_frame = now;
-        seconds
+        elapsed
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     fn wait_for_next_frame(&self) {
-        let remaining = TARGET_FRAME_SECONDS - (now() - self.last_frame);
-        if remaining > 0.0 {
-            std::thread::sleep(std::time::Duration::from_secs_f64(remaining));
+        let remaining = TARGET_FRAME_TIME - (now() - self.last_frame);
+        if remaining > Seconds::ZERO {
+            std::thread::sleep(std::time::Duration::from_secs_f64(remaining.0));
         }
     }
 }
@@ -50,9 +51,9 @@ pub struct StepClock {
 }
 
 impl StepClock {
-    pub fn steps(&mut self, seconds: f64, steps_per_second: f64) -> u32 {
+    pub fn steps(&mut self, elapsed: Seconds, steps_per_second: Hertz) -> u32 {
         let pending = self.pending_steps
-            + seconds.clamp(0.0, MAX_STEPPED_SECONDS_PER_FRAME) * steps_per_second;
+            + elapsed.clamp(Seconds::ZERO, LONGEST_STEPPED_FRAME) * steps_per_second;
         if !pending.is_finite() {
             return 0;
         }
@@ -69,7 +70,7 @@ mod tests {
     fn steps_in_one_second(fps: u32, steps_per_second: f64) -> u32 {
         let mut clock = StepClock::default();
         (0..fps)
-            .map(|_| clock.steps(1.0 / fps as f64, steps_per_second))
+            .map(|_| clock.steps(Seconds(1.0 / fps as f64), Hertz(steps_per_second)))
             .sum()
     }
 
@@ -84,28 +85,30 @@ mod tests {
     #[test]
     fn fewer_steps_than_frames_skip_frames() {
         let mut clock = StepClock::default();
-        let steps: Vec<u32> = (0..4).map(|_| clock.steps(1.0 / 64.0, 32.0)).collect();
+        let steps: Vec<u32> = (0..4)
+            .map(|_| clock.steps(Seconds(1.0 / 64.0), Hertz(32.0)))
+            .collect();
         assert_eq!(steps, [0, 1, 0, 1]);
     }
 
     #[test]
     fn a_long_pause_does_not_catch_up() {
         let mut clock = StepClock::default();
-        assert_eq!(clock.steps(10.0, 100.0), 10);
+        assert_eq!(clock.steps(Seconds(10.0), Hertz(100.0)), 10);
     }
 
     #[test]
     fn a_rate_that_is_not_a_number_skips_the_frame_and_nothing_else() {
         let mut clock = StepClock::default();
-        assert_eq!(clock.steps(0.05, f64::NAN), 0);
-        assert_eq!(clock.steps(0.05, f64::INFINITY), 0);
-        assert_eq!(clock.steps(0.05, 100.0), 5);
+        assert_eq!(clock.steps(Seconds(0.05), Hertz(f64::NAN)), 0);
+        assert_eq!(clock.steps(Seconds(0.05), Hertz(f64::INFINITY)), 0);
+        assert_eq!(clock.steps(Seconds(0.05), Hertz(100.0)), 5);
     }
 
     #[test]
     fn time_running_backwards_takes_no_steps() {
         let mut clock = StepClock::default();
-        assert_eq!(clock.steps(-1.0, 100.0), 0);
-        assert_eq!(clock.steps(0.05, 100.0), 5);
+        assert_eq!(clock.steps(Seconds(-1.0), Hertz(100.0)), 0);
+        assert_eq!(clock.steps(Seconds(0.05), Hertz(100.0)), 5);
     }
 }

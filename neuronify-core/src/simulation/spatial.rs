@@ -193,7 +193,8 @@ fn add_cable_springs(
     }
 }
 
-pub fn integrate_motion(world: &mut hecs::World, dt: f64, held: &HashSet<Entity>) {
+pub fn integrate_motion(world: &mut hecs::World, dt: Seconds, held: &HashSet<Entity>) {
+    let dt = dt.0 as f32;
     for (entity, (position, dynamics)) in world.query_mut::<(&mut Position, &mut SpatialDynamics)>()
     {
         if held.contains(&entity) {
@@ -201,14 +202,14 @@ pub fn integrate_motion(world: &mut hecs::World, dt: f64, held: &HashSet<Entity>
         }
         let gravity = -position.position.y;
         dynamics.acceleration += Vec3::new(0.0, gravity, 0.0);
-        dynamics.velocity += dynamics.acceleration * dt as f32;
-        position.position += dynamics.velocity * dt as f32;
+        dynamics.velocity += dynamics.acceleration * dt;
+        position.position += dynamics.velocity * dt;
         if position.position.y < 0.0 {
             position.position.y = 0.0;
             dynamics.velocity.y = dynamics.velocity.y.max(0.0);
         }
         dynamics.acceleration = Vec3::new(0.0, 0.0, 0.0);
-        dynamics.velocity -= dynamics.velocity * dt as f32;
+        dynamics.velocity -= dynamics.velocity * dt;
     }
 }
 
@@ -349,7 +350,7 @@ mod tests {
         axon_ending(&mut world, *chain.last().unwrap(), target);
         chain.push(target);
 
-        for _ in 0..(30.0 * PHYSICS_STEPS_PER_SECOND) as usize {
+        for _ in 0..(Seconds(30.0) * PHYSICS_STEPS_PER_SECOND) as usize {
             apply_spatial_forces(&mut world, &HashSet::new());
             integrate_motion(&mut world, PHYSICS_DT, &HashSet::new());
         }

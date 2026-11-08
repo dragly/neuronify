@@ -3,9 +3,10 @@ use egui::{Context, Id, LayerId, Order, Pos2, Rect, Stroke, Vec2};
 use egui_wgpu::{CallbackResources, CallbackTrait, ScreenDescriptor};
 
 use super::style::{Chrome, MARGIN};
+use crate::components::Seconds;
 use crate::rendering::Theme;
 
-pub const LOUPE_DELAY: f64 = 0.15;
+pub const LOUPE_DELAY: Seconds = Seconds(0.15);
 const RADIUS: f32 = 56.0;
 const ZOOM: f32 = 1.5;
 const CLEARANCE: f32 = 64.0;

@@ -19,7 +19,7 @@ use egui::{
 use hecs::World;
 
 use crate::components::{
-    Celsius, ConnectionView, Milliseconds, NeuronDisplay, Preparation, Setting, Temperature,
+    Celsius, ConnectionView, Hertz, Milliseconds, NeuronDisplay, Preparation, Setting, Temperature,
 };
 use crate::editor::Editor;
 use crate::links;
@@ -75,7 +75,7 @@ pub struct Controls<'a> {
     pub time: Milliseconds,
     pub running: &'a mut bool,
     pub speed: &'a mut f64,
-    pub fps: f64,
+    pub fps: Hertz,
     pub saving: Saving,
 }
 
@@ -570,7 +570,7 @@ fn menu(
                     }
                     labelled_row(ui, chrome, "Frame rate", |ui| {
                         ui.label(
-                            RichText::new(format!("{:.0} fps", controls.fps))
+                            RichText::new(format!("{:.0} fps", controls.fps.0))
                                 .size(13.0)
                                 .color(chrome.subtext),
                         );

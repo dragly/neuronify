@@ -1,16 +1,18 @@
-use neuronify_engine::units::{Celsius, Micrometres, Milliseconds, Millivolts, Nanoamperes};
+use neuronify_engine::units::{
+    Celsius, Hertz, Micrometres, Milliseconds, Millivolts, Nanoamperes, Seconds,
+};
 
 pub const DT: Milliseconds = Milliseconds(0.025);
 pub const DEFAULT_TEMPERATURE: Celsius = Celsius(16.3);
 pub const RESTING_POTENTIAL: Millivolts = Millivolts(-65.0);
 pub const MICROMETRES_PER_UNIT: Micrometres = Micrometres(50.0);
 pub const FIRING_RATE_TIME_CONSTANT: Milliseconds = Milliseconds(50.0);
-pub const PHYSICS_DT: f64 = 0.001;
+pub const PHYSICS_DT: Seconds = Seconds(0.001);
 
-pub const SIMULATION_STEPS_PER_SECOND: f64 = 250.0;
+pub const SIMULATION_STEPS_PER_SECOND: Hertz = Hertz(250.0);
 pub const DEFAULT_SPEED: f64 = 2.0;
 pub const SPEEDS: [f64; 5] = [0.5, 1.0, 2.0, 4.0, 8.0];
-pub const PHYSICS_STEPS_PER_SECOND: f64 = 250.0;
+pub const PHYSICS_STEPS_PER_SECOND: Hertz = Hertz(250.0);
 
 pub const STIMULATION_CURRENT: Nanoamperes = Nanoamperes(0.3);
 

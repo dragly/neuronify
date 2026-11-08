@@ -30,7 +30,7 @@ const OVERLAP_COST: f32 = 30.0;
 const FAR_SIDE_COST: f32 = 5.0;
 const CACHED_LAYOUTS: usize = 8;
 const LAYOUT_TOLERANCE: f32 = 1e-3;
-const SETTLE_SECONDS: f64 = 0.2;
+const SETTLE_TIME: Seconds = Seconds(0.2);
 
 thread_local! {
     static LAYOUTS: RefCell<Vec<Layout>> = const { RefCell::new(Vec::new()) };
@@ -49,18 +49,23 @@ struct RecentLayout {
     shape: Vec<usize>,
     searched: Vec<f32>,
     seen: Vec<f32>,
-    changed_at: f64,
+    changed_at: Seconds,
     routes: Vec<Vec<Route>>,
 }
 
 impl WireRouter {
-    pub fn collect(&mut self, world: &hecs::World, palette: &Palette, now: f64) -> Vec<ArcData> {
+    pub fn collect(
+        &mut self,
+        world: &hecs::World,
+        palette: &Palette,
+        now: Seconds,
+    ) -> Vec<ArcData> {
         collect_wires(world, palette, |meters, neurons| {
             self.corners(meters, neurons, now)
         })
     }
 
-    fn corners(&mut self, meters: &[Meter], neurons: &[Vec3], now: f64) -> Vec<Vec<Vec<Vec3>>> {
+    fn corners(&mut self, meters: &[Meter], neurons: &[Vec3], now: Seconds) -> Vec<Vec<Vec<Vec3>>> {
         let key = layout_key(meters, neurons);
         let shape = layout_shape(meters, neurons);
         if let Some(recent) = self.recent.as_mut().filter(|recent| recent.shape == shape) {
@@ -68,7 +73,7 @@ impl WireRouter {
                 recent.seen = key.clone();
                 recent.changed_at = now;
             }
-            if now - recent.changed_at < SETTLE_SECONDS || same_layout(&recent.searched, &key) {
+            if now - recent.changed_at < SETTLE_TIME || same_layout(&recent.searched, &key) {
                 return corners_along(meters, &recent.routes, neurons);
             }
         }
@@ -1179,6 +1184,7 @@ mod tests {
         let frame = frame();
         let mut router = WireRouter::default();
         let mut entry = |neuron: Vec3, now: f64| {
+            let now = Seconds(now);
             let meters = [meter(frame, 1, &[(0, neuron)])];
             *router.corners(&meters, &starts(&meters), now)[0][0]
                 .last()
@@ -1193,7 +1199,7 @@ mod tests {
         assert_eq!(entry(near, 0.0), left);
         assert_eq!(entry(far, 0.05), left);
         assert_eq!(entry(far, 0.1), left);
-        assert_eq!(entry(far, 0.1 + SETTLE_SECONDS), right);
+        assert_eq!(entry(far, 0.1 + SETTLE_TIME.0), right);
     }
 
     #[test]
@@ -1201,10 +1207,10 @@ mod tests {
         let frame = frame();
         let mut router = WireRouter::default();
         let one = [meter(frame, 2, &[(0, NEURONS[0])])];
-        router.corners(&one, &starts(&one), 0.0);
+        router.corners(&one, &starts(&one), Seconds(0.0));
 
         let two = [meter(frame, 2, &[(0, NEURONS[0]), (1, NEURONS[3])])];
-        let routed = router.corners(&two, &starts(&two), 0.05);
+        let routed = router.corners(&two, &starts(&two), Seconds(0.05));
 
         assert_eq!(routed, meter_wire_corners(&two, &starts(&two)));
     }

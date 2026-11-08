@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
-use crate::components::{Link, Milliseconds};
+use crate::components::{Link, Milliseconds, Seconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
@@ -326,7 +326,7 @@ impl Neuronify {
         Some(camera::ground_position(application, pointer))
     }
 
-    fn dangle_ghost(&mut self, application: &visula::Application, seconds: f64) {
+    fn dangle_ghost(&mut self, application: &visula::Application, elapsed: Seconds) {
         let painting = self
             .editor
             .painting()
@@ -340,7 +340,7 @@ impl Neuronify {
         let anchor = camera::position_at_height(application, above, GHOST_HEIGHT);
         self.ghost
             .get_or_insert_with(|| Ghost::new(element, anchor))
-            .follow(element, anchor, self.touch_input, seconds as f32);
+            .follow(element, anchor, self.touch_input, elapsed.0 as f32);
     }
 
     fn paint_hitboxes(&self, application: &visula::Application, context: &egui::Context) {
@@ -690,11 +690,11 @@ impl visula::Simulation for Neuronify {
         }
     }
     fn update(&mut self, application: &mut visula::Application) {
-        let seconds = self.frame_clock.tick();
+        let elapsed = self.frame_clock.tick();
         let simulation_steps = self
             .simulation_clock
-            .steps(seconds, self.speed * SIMULATION_STEPS_PER_SECOND);
-        let physics_steps = self.physics_clock.steps(seconds, PHYSICS_STEPS_PER_SECOND);
+            .steps(elapsed, self.speed * SIMULATION_STEPS_PER_SECOND);
+        let physics_steps = self.physics_clock.steps(elapsed, PHYSICS_STEPS_PER_SECOND);
 
         #[cfg(target_arch = "wasm32")]
         if let Some(loaded) = crate::web::take_loaded_file() {
@@ -761,7 +761,7 @@ impl visula::Simulation for Neuronify {
                 simulation_steps,
                 self.editor.touch(),
             );
-            let plays = schedule(take_heard(&mut self.world), start, self.time, seconds);
+            let plays = schedule(take_heard(&mut self.world), start, self.time, elapsed);
             self.speakers.play(&plays);
         }
         if shown {
@@ -769,7 +769,7 @@ impl visula::Simulation for Neuronify {
         }
 
         if let Some(landing) = &mut self.landing {
-            landing.update(seconds, physics_steps);
+            landing.update(elapsed, physics_steps);
         }
         if self.frame_scene_requested {
             self.frame_scene_requested = false;
@@ -793,7 +793,7 @@ impl visula::Simulation for Neuronify {
             camera::frame(application, canvas_bounds(&self.world), free);
         }
 
-        self.dangle_ghost(application, seconds);
+        self.dangle_ghost(application, elapsed);
         self.prepare_loupe(application);
         let drawn_connection = match self.editor.connection_being_drawn(&self.world) {
             Some((start, end)) => vec![start, end],
