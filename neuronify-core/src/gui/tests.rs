@@ -959,6 +959,64 @@ fn a_visual_input_picks_its_picture_and_receptive_field() {
 }
 
 #[test]
+fn two_on_off_rows_in_the_inspector_switch_only_themselves() {
+    use crate::measurement::visual_input::{ReceptiveField, VisualInput};
+    let mut world = World::new();
+    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    {
+        let mut visual = world.get::<&mut VisualInput>(input).unwrap();
+        visual.field = ReceptiveField::CenterSurround {
+            off_center: false,
+            x: 0.0,
+            y: 0.0,
+        };
+        visual.show_field = false;
+    }
+    let mut harness = Harness::with(true, world, Some(input));
+    harness.scroll_inspector_to_the_end();
+    let on_beside = |harness: &Harness, setting: Setting| {
+        let label = harness.text_rect(setting.label()).unwrap();
+        harness
+            .output
+            .as_ref()
+            .unwrap()
+            .shapes
+            .iter()
+            .filter_map(|clipped| match &clipped.shape {
+                Shape::Text(shape) if shape.galley.text() == "On" => {
+                    Some(Rect::from_min_size(shape.pos, shape.galley.size()).center())
+                }
+                _ => None,
+            })
+            .min_by(|a, b| {
+                (a.y - label.center().y)
+                    .abs()
+                    .total_cmp(&(b.y - label.center().y).abs())
+            })
+            .unwrap()
+    };
+    let state = |harness: &Harness| {
+        let visual = harness.world.get::<&VisualInput>(input).unwrap();
+        let off_center = matches!(
+            visual.field,
+            ReceptiveField::CenterSurround {
+                off_center: true,
+                ..
+            }
+        );
+        (off_center, visual.show_field)
+    };
+
+    let off_center = on_beside(&harness, Setting::OffCenter);
+    harness.click(off_center);
+    assert_eq!(state(&harness), (true, false));
+
+    let show_field = on_beside(&harness, Setting::ShowField);
+    harness.click(show_field);
+    assert_eq!(state(&harness), (true, true));
+}
+
+#[test]
 fn the_inspector_deletes_the_selection() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));

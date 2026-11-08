@@ -72,9 +72,11 @@ pub fn icon_row(ui: &mut Ui, chrome: &Chrome, icon: Icon, label: &str) -> Respon
 pub fn segmented<T: PartialEq + Copy>(
     ui: &mut Ui,
     chrome: &Chrome,
+    id: impl std::hash::Hash,
     value: &mut T,
     options: &[(T, &str)],
 ) -> bool {
+    let id = ui.id().with(id);
     let mut changed = false;
     let font = FontId::proportional(SEGMENT_TEXT);
     let widths = segment_widths(ui, options);
@@ -85,7 +87,7 @@ pub fn segmented<T: PartialEq + Copy>(
     for ((option, label), width) in options.iter().zip(widths) {
         let rect = Rect::from_min_size(pos2(left, track.top() + 2.0), vec2(width, size.y - 4.0));
         left += width;
-        let response = ui.interact(rect, ui.id().with(label), Sense::click());
+        let response = ui.interact(rect, id.with(label), Sense::click());
         let chosen = *value == *option;
         if chosen {
             ui.painter().rect_filled(rect, ROW_RADIUS - 2, chrome.panel);

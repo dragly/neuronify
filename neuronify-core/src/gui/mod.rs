@@ -529,6 +529,7 @@ fn menu(
                         segmented(
                             ui,
                             chrome,
+                            "theme",
                             controls.theme,
                             &[(Theme::Dark, "Dark"), (Theme::Light, "Light")],
                         );
@@ -538,6 +539,7 @@ fn menu(
                         segmented(
                             ui,
                             chrome,
+                            "connections",
                             &mut connection_view,
                             &[
                                 (ConnectionView::All, "All"),

@@ -645,13 +645,13 @@ pub(super) fn choice<T: PartialEq + Copy>(
             |ui| {
                 ui.label(label);
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    changed = segmented(ui, chrome, value, options);
+                    changed = segmented(ui, chrome, setting, value, options);
                 });
             },
         );
     } else {
         ui.label(label);
-        changed = segmented(ui, chrome, value, options);
+        changed = segmented(ui, chrome, setting, value, options);
     }
     description(ui, chrome, setting.description());
     ui.add_space(8.0);
