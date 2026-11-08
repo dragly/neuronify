@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-#[path = "../examples/write_labs.rs"]
+#[path = "../generators/write_labs.rs"]
 mod write_labs;
 
 use std::f32::consts::TAU;
