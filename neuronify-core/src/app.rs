@@ -977,6 +977,11 @@ impl visula::Simulation for Neuronify {
                         self.press_pointer(application, true);
                     }
                     TouchGesture::Drag(position) => self.move_pointer(application, position),
+                    TouchGesture::Stroke { start, current } => {
+                        self.move_pointer(application, start);
+                        self.press_pointer(application, true);
+                        self.move_pointer(application, current);
+                    }
                     TouchGesture::Release => self.press_pointer(application, false),
                     TouchGesture::Tap(position) => {
                         self.move_pointer(application, position);
