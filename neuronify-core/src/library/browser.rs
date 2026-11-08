@@ -63,7 +63,10 @@ impl Store {
         let record = record(simulation);
         let (id, modified) = (simulation.id.clone(), simulation.modified);
         self.change(
-            move |simulations| simulations.put(&record),
+            move |simulations| {
+                let record = record?;
+                simulations.put(&record)
+            },
             move || forget_backup(&id, modified),
         );
         Ok(())
@@ -260,7 +263,7 @@ async fn read_all(database: &IdbDatabase) -> Result<Vec<SavedSimulation>, JsValu
         .collect())
 }
 
-fn record(simulation: &SavedSimulation) -> Object {
+fn record(simulation: &SavedSimulation) -> Result<Object, JsValue> {
     let record = Object::new();
     let fields: [(&str, JsValue); 4] = [
         ("id", simulation.id.as_str().into()),
@@ -272,9 +275,9 @@ fn record(simulation: &SavedSimulation) -> Object {
         ("bytes", Uint8Array::from(&simulation.bytes[..]).into()),
     ];
     for (key, value) in fields {
-        Reflect::set(&record, &key.into(), &value).unwrap();
+        Reflect::set(&record, &key.into(), &value)?;
     }
-    record
+    Ok(record)
 }
 
 fn backup(simulation: &SavedSimulation) -> Option<String> {
@@ -283,7 +286,7 @@ fn backup(simulation: &SavedSimulation) -> Option<String> {
         .iter()
         .map(|&byte| char::from(byte))
         .collect();
-    let record = record(simulation);
+    let record = record(simulation).ok()?;
     let encoded = web_sys::window()?.btoa(&binary).ok()?;
     Reflect::set(&record, &"bytes".into(), &encoded.into()).ok()?;
     js_sys::JSON::stringify(&record).ok().map(String::from)
