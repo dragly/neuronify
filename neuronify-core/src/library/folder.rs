@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
@@ -100,7 +99,7 @@ fn file_name(name: &str) -> String {
     for (index, character) in name.chars().enumerate() {
         let device = index == 0 && is_windows_device(name);
         if device || character.is_control() || ESCAPED.contains(&character) {
-            write!(file_name, "%{:02X}", character as u32).unwrap();
+            file_name.push_str(&format!("%{:02X}", character as u32));
         } else {
             file_name.push(character);
         }

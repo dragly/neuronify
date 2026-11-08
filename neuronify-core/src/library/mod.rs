@@ -192,13 +192,13 @@ impl Library {
                     && simulation.name.to_lowercase() == name.to_lowercase()
             })
         };
-        (1..)
-            .map(|number| match number {
-                1 => wanted.to_owned(),
-                _ => format!("{wanted} {number}"),
-            })
-            .find(|name| !taken(name))
-            .unwrap()
+        let mut name = wanted.to_owned();
+        let mut number = 1;
+        while taken(&name) {
+            number += 1;
+            name = format!("{wanted} {number}");
+        }
+        name
     }
 }
 
