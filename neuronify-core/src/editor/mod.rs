@@ -346,10 +346,11 @@ impl Editor {
             self.settle();
         }
         let ongoing = self.adjusting.is_some();
-        let before = self
-            .adjusting
-            .take()
-            .or_else(|| Snapshot::of(world, entity, compartment_tree(world, entity)));
+        let before = self.adjusting.take().or_else(|| {
+            let mut parts = compartment_tree(world, entity);
+            parts.extend(crate::elements::axon_ending(world, entity));
+            Snapshot::of(world, entity, parts)
+        });
         let adjusted = adjust();
         self.edited |= adjusted;
         if adjusted || ongoing {
