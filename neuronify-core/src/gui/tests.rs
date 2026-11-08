@@ -1290,6 +1290,31 @@ fn the_menu_scrolls_to_the_channels_when_the_window_is_short() {
 }
 
 #[test]
+fn undo_takes_back_a_change_of_temperature() {
+    use crate::components::{Setting, Temperature};
+    let mut harness = Harness::sized(SCREEN, false, World::new(), None);
+    harness.click(pos2(MARGIN + 20.0, MARGIN + 20.0));
+    harness.scroll_to_the_end_at(
+        harness
+            .context
+            .memory(|memory| memory.area_rect(Id::new("menu")))
+            .unwrap()
+            .center(),
+    );
+    let before = Temperature::of(&harness.world).celsius;
+    harness.press_the_middle_of_slider(
+        crate::settings::Setting::Temperature.label(),
+        &format!("{before:.1} °C"),
+    );
+    let warmed = Temperature::of(&harness.world).celsius;
+    assert_ne!(warmed, before);
+
+    harness.editor.undo(&mut harness.world);
+
+    assert_eq!(Temperature::of(&harness.world).celsius, before);
+}
+
+#[test]
 fn the_playback_bar_hides_behind_a_button_on_phones() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Playback");
