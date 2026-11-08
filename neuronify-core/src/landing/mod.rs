@@ -767,6 +767,31 @@ mod tests {
     use crate::landing::preview::{PreviewMode, PREVIEW_FADE_IN_SECONDS};
     use egui::{Event, PointerButton, Pos2, RawInput, Shape, Vec2};
 
+    #[test]
+    fn the_loading_screen_shows_the_sections_and_cards_of_the_landing_screen() {
+        let page = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../neuronify/index.html"
+        ))
+        .unwrap();
+        let sections: Vec<usize> = page
+            .split(r#"<div class="cards">"#)
+            .skip(1)
+            .map(|section| {
+                let end = section
+                    .find(r#"<div class="heading">"#)
+                    .unwrap_or(section.len());
+                section[..end].matches(r#"<div class="card">"#).count()
+            })
+            .collect();
+        let expected: Vec<usize> = EXAMPLE_CATEGORIES
+            .iter()
+            .map(|category| category.examples.len().min(CARDS_PER_SECTION))
+            .collect();
+        assert_eq!(sections.len(), 1 + expected.len());
+        assert_eq!(sections[1..], expected);
+    }
+
     fn run(
         context: &egui::Context,
         landing: &mut LandingScreen,
