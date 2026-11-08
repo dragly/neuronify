@@ -22,9 +22,9 @@ use crate::serialization::SavedWorld;
 use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
-use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, ShadowRenderData};
+use visula::{CustomEvent, RenderData, ShadowRenderData};
 
-use crate::input::{self, Keyboard, Mouse, TouchGesture, Touches};
+use crate::input::{self, Mouse, TouchGesture, Touches};
 use crate::simulation;
 use crate::tools::{ConnectionHint, Tool};
 use hecs::Entity;
@@ -50,7 +50,6 @@ pub struct Neuronify {
     mouse: Mouse,
     hover: Option<PhysicalPosition<f64>>,
     touch_input: bool,
-    keyboard: Keyboard,
     touches: Touches,
     ghost: Option<Ghost>,
     renderer: SceneRenderer,
@@ -219,7 +218,6 @@ impl Neuronify {
             mouse: Mouse::default(),
             hover: None,
             touch_input: false,
-            keyboard: Keyboard::default(),
             touches: Touches::default(),
             ghost: None,
             renderer,
@@ -437,10 +435,9 @@ impl Neuronify {
     }
 
     fn follow_ending(&mut self) {
-        let formed = self.editor.take_formed();
         let ending = self.editor.ending();
         let shown = self.attach_ring.and_then(AttachRing::shown);
-        let entered = ending.is_some() && (shown.is_none() || formed);
+        let entered = ending.is_some() && shown.is_none();
         let left = ending.is_none() && shown.is_some() && self.mouse.left_down;
         if entered || left {
             tick();
@@ -466,8 +463,7 @@ impl Neuronify {
         };
         let position = camera::ground_position(application, screen_position);
         let requested_pan = if self.editing() {
-            self.editor
-                .edit(&mut self.world, position, self.keyboard.shift_down)
+            self.editor.edit(&mut self.world, position)
         } else {
             self.editor.view(&mut self.world, position)
         };
@@ -1046,13 +1042,6 @@ impl visula::Simulation for Neuronify {
             } => {
                 self.touch_input = false;
                 self.press_pointer(application, *state == ElementState::Pressed);
-            }
-            Event::WindowEvent {
-                event: WindowEvent::ModifiersChanged(state),
-                ..
-            } => {
-                self.keyboard.shift_down = state.lshift_state() == ModifiersKeyState::Pressed
-                    || state.rshift_state() == ModifiersKeyState::Pressed;
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
