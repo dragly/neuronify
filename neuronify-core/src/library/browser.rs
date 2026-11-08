@@ -58,7 +58,7 @@ impl Store {
         self.loaded.borrow_mut().take()
     }
 
-    pub fn write(&self, simulation: &SavedSimulation) {
+    pub fn write(&self, simulation: &SavedSimulation) -> Result<(), String> {
         self.ask_to_persist();
         let record = record(simulation);
         let (id, modified) = (simulation.id.clone(), simulation.modified);
@@ -66,10 +66,11 @@ impl Store {
             move |simulations| simulations.put(&record),
             move || forget_backup(&id, modified),
         );
+        Ok(())
     }
 
-    pub fn rename(&self, _old_name: &str, simulation: &SavedSimulation) {
-        self.write(simulation);
+    pub fn rename(&self, _old_name: &str, simulation: &SavedSimulation) -> Result<(), String> {
+        self.write(simulation)
     }
 
     pub fn delete(&self, simulation: &SavedSimulation) {

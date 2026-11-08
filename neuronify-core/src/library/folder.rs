@@ -55,24 +55,22 @@ impl Store {
             .collect()
     }
 
-    pub fn write(&self, simulation: &SavedSimulation) {
+    pub fn write(&self, simulation: &SavedSimulation) -> Result<(), String> {
         let path = self.path(&simulation.name);
-        let written = std::fs::create_dir_all(&self.directory)
-            .and_then(|()| std::fs::write(&path, &simulation.bytes));
-        if let Err(error) = written {
-            log::error!("Could not save {}: {error}", path.display());
-        }
+        std::fs::create_dir_all(&self.directory)
+            .and_then(|()| std::fs::write(&path, &simulation.bytes))
+            .map_err(|error| format!("Could not write {}: {error}", path.display()))
     }
 
-    pub fn rename(&self, old_name: &str, simulation: &SavedSimulation) {
+    pub fn rename(&self, old_name: &str, simulation: &SavedSimulation) -> Result<(), String> {
         let (from, to) = (self.path(old_name), self.path(&simulation.name));
-        if let Err(error) = std::fs::rename(&from, &to) {
-            log::error!(
+        std::fs::rename(&from, &to).map_err(|error| {
+            format!(
                 "Could not rename {} to {}: {error}",
                 from.display(),
                 to.display()
-            );
-        }
+            )
+        })
     }
 
     pub fn delete(&self, simulation: &SavedSimulation) {
@@ -99,14 +97,28 @@ fn read(path: &Path, name: String) -> std::io::Result<SavedSimulation> {
 
 fn file_name(name: &str) -> String {
     let mut file_name = String::new();
-    for character in name.chars() {
-        if character.is_control() || ESCAPED.contains(&character) {
+    for (index, character) in name.chars().enumerate() {
+        let device = index == 0 && is_windows_device(name);
+        if device || character.is_control() || ESCAPED.contains(&character) {
             write!(file_name, "%{:02X}", character as u32).unwrap();
         } else {
             file_name.push(character);
         }
     }
     file_name + EXTENSION
+}
+
+fn is_windows_device(name: &str) -> bool {
+    let stem = name
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .trim_end()
+        .to_uppercase();
+    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.as_bytes()[3].is_ascii_digit())
 }
 
 fn name_of(file_name: &str) -> Option<String> {
@@ -152,7 +164,7 @@ mod tests {
 
     impl Drop for TemporaryDirectory {
         fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
+            let _ = std::fs::remove_dir_all(&self.0).or_else(|_| std::fs::remove_file(&self.0));
         }
     }
 
@@ -175,6 +187,54 @@ mod tests {
         );
         assert_eq!(name_of("100%.neuronify").as_deref(), Some("100%"));
         assert_eq!(name_of("notes.txt"), None);
+    }
+
+    #[test]
+    fn windows_device_names_get_their_first_letter_escaped() {
+        for name in ["CON", "con", "Nul", "COM1", "lpt9", "aux.backup"] {
+            let file_name = file_name(name);
+            assert!(file_name.starts_with('%'), "{file_name}");
+            assert_eq!(name_of(&file_name).as_deref(), Some(name));
+        }
+        for name in ["Console", "COM", "COMA", "Nullcline", "LPT10"] {
+            assert!(!file_name(name).starts_with('%'), "{name}");
+        }
+    }
+
+    #[test]
+    fn the_longest_name_still_makes_a_file_name_most_file_systems_allow() {
+        let mut library = Library::default();
+        let id = library.create(&"\u{1F9E0}".repeat(300), Vec::new());
+        let name = &library.get(&id).unwrap().name;
+        assert!(file_name(&format!("{name} 999")).len() <= 255);
+    }
+
+    #[test]
+    fn a_failed_rename_keeps_the_old_name_and_says_why() {
+        let directory = TemporaryDirectory::new("rename");
+        let mut library = Library::in_folder(Store::new(directory.0.clone()));
+        let id = library.create("Leaky", vec![1]);
+        std::fs::remove_file(directory.0.join(file_name("Leaky"))).unwrap();
+
+        library.rename(&id, "Renamed");
+
+        assert_eq!(library.get(&id).unwrap().name, "Leaky");
+        assert!(library
+            .take_problem()
+            .is_some_and(|problem| problem.contains("rename")));
+    }
+
+    #[test]
+    fn a_failed_write_is_reported() {
+        let directory = TemporaryDirectory::new("write");
+        std::fs::write(&directory.0, b"not a folder").unwrap();
+        let mut library = Library::in_folder(Store::new(directory.0.clone()));
+
+        library.create("Leaky", vec![1]);
+
+        assert!(library
+            .take_problem()
+            .is_some_and(|problem| problem.contains("write")));
     }
 
     #[test]

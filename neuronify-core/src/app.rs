@@ -740,6 +740,10 @@ impl visula::Simulation for Neuronify {
         let reach = self.touch_reach * application.window.scale_factor();
         self.editor.touch_reach = camera::ground_length(application, reach);
         self.library.poll();
+        if let Some(problem) = self.library.take_problem() {
+            log::error!("{problem}");
+            self.file_error = Some(FileError::save(problem));
+        }
         self.note_edits();
         if self.autosave.is_due(input::now()) {
             self.save_edits();

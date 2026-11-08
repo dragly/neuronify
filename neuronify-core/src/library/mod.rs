@@ -14,6 +14,7 @@ use folder::Store;
 
 pub const UNTITLED: &str = "Untitled";
 const AUTOSAVE_DELAY: Seconds = Seconds(1.5);
+const LONGEST_NAME: usize = 50;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SavedSimulation {
@@ -28,6 +29,7 @@ pub struct Library {
     simulations: Vec<SavedSimulation>,
     store: Option<Store>,
     revision: u64,
+    problems: Vec<String>,
 }
 
 impl Library {
@@ -45,7 +47,7 @@ impl Library {
         let mut library = Library {
             simulations: store.read_all(),
             store: Some(store),
-            revision: 0,
+            ..Default::default()
         };
         library.sort();
         library
@@ -116,9 +118,15 @@ impl Library {
             }
         };
         if let Some(store) = &self.store {
-            store.write(&self.simulations[index]);
+            if let Err(problem) = store.write(&self.simulations[index]) {
+                self.problems.push(problem);
+            }
         }
         self.changed();
+    }
+
+    pub fn take_problem(&mut self) -> Option<String> {
+        (!self.problems.is_empty()).then(|| self.problems.remove(0))
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -138,7 +146,10 @@ impl Library {
         };
         let old_name = std::mem::replace(&mut simulation.name, name);
         if let Some(store) = &self.store {
-            store.rename(&old_name, simulation);
+            if let Err(problem) = store.rename(&old_name, simulation) {
+                simulation.name = old_name;
+                self.problems.push(problem);
+            }
         }
         self.changed();
     }
@@ -167,10 +178,14 @@ impl Library {
     }
 
     fn unique_name(&self, wanted: &str, renamed: Option<&str>) -> String {
-        let wanted = match wanted.trim() {
+        let wanted: String = match wanted.trim() {
             "" => UNTITLED,
             trimmed => trimmed,
-        };
+        }
+        .chars()
+        .take(LONGEST_NAME)
+        .collect();
+        let wanted = wanted.trim_end();
         let taken = |name: &str| {
             self.simulations.iter().any(|simulation| {
                 Some(simulation.id.as_str()) != renamed
