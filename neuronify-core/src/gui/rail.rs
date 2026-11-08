@@ -125,6 +125,9 @@ impl Rail {
     }
 
     fn choose(&mut self, editor: &mut Editor, tool: Tool) {
+        if tool == Tool::View {
+            editor.selection = None;
+        }
         editor.tool = tool;
         self.recent.retain(|recent| *recent != tool);
         self.recent.push(tool);

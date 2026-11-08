@@ -528,6 +528,18 @@ fn a_selection_starts_editing_on_desktops_and_phones() {
 }
 
 #[test]
+fn choosing_view_leaves_the_selection_behind() {
+    let (world, neuron) = one_neuron();
+    let mut harness = Harness::with(true, world, Some(neuron));
+
+    harness.press(Modifiers::NONE, Key::H);
+    harness.frame(vec![]);
+
+    assert_eq!(harness.editor.tool, Tool::View);
+    assert_eq!(harness.editor.selection, None);
+}
+
+#[test]
 fn the_inspector_explains_each_setting() {
     let (world, neuron) = one_neuron();
     let harness = Harness::with(true, world, Some(neuron));
