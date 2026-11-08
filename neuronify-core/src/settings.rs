@@ -9,6 +9,7 @@ pub enum Setting {
     Resistance,
     Capacitance,
     TimeConstant,
+    SomaDiameter,
     Adaptation,
     AdaptationTimeConstant,
     Current,
@@ -59,6 +60,7 @@ impl Setting {
             Setting::Resistance => "Resistance",
             Setting::Capacitance => "Capacitance",
             Setting::TimeConstant => "Time constant",
+            Setting::SomaDiameter => "Soma diameter",
             Setting::Adaptation => "Adaptation",
             Setting::AdaptationTimeConstant => "Recovery time",
             Setting::Current => "Current",
@@ -117,6 +119,9 @@ impl Setting {
             }
             Setting::TimeConstant => {
                 "Resistance times capacitance: roughly how long the voltage takes to settle back."
+            }
+            Setting::SomaDiameter => {
+                "How wide the cell body is. A bigger body takes more current to fire."
             }
             Setting::Adaptation => "How much harder it gets to fire after each spike.",
             Setting::AdaptationTimeConstant => {

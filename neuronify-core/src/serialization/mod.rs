@@ -606,6 +606,23 @@ mod tests {
     }
 
     #[test]
+    fn version_15_neurons_keep_their_values_and_the_soma_they_were_simulated_with() {
+        let bytes = include_bytes!("fixtures/v15.neuronify");
+        let old = v15::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
+        let new = load(bytes).unwrap().world;
+        let mut checked = 0;
+        for (entity, neuron) in old.query::<(Entity, &v15::LeakyNeuron)>().iter() {
+            let upgraded = new.get::<&LeakyNeuron>(entity).unwrap();
+            assert_eq!(upgraded.capacitance, neuron.capacitance);
+            assert_eq!(upgraded.threshold, neuron.threshold);
+            assert_eq!(upgraded.refractory_period, neuron.refractory_period);
+            assert_eq!(upgraded.soma_diameter, Micrometres(20.0));
+            checked += 1;
+        }
+        assert!(checked > 0);
+    }
+
+    #[test]
     fn version_14_counts_meter_times_in_milliseconds() {
         let bytes = include_bytes!("fixtures/v14.neuronify");
         let old = v14::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();

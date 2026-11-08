@@ -5,6 +5,19 @@ use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::{ComponentError, World};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct LeakyNeuron {
+    pub capacitance: Nanofarads,
+    pub resting_potential: Millivolts,
+    pub threshold: Millivolts,
+    pub initial_potential: Millivolts,
+    pub voltage_clamped: bool,
+    pub minimum_voltage: Millivolts,
+    pub maximum_voltage: Millivolts,
+    pub refractory_period: Milliseconds,
+}
 
 schema!(
     Position,

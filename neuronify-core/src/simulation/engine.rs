@@ -174,7 +174,7 @@ fn node_membrane(world: &World, entity: Entity, links: &[&CableLink]) -> NodeMem
     };
     if touching().any(|link| dendritic(world, link.from) || dendritic(world, link.to)) {
         return NodeMembrane::Patch {
-            area: std::f64::consts::PI * SOMA_DIAMETER * SOMA_DIAMETER,
+            area: std::f64::consts::PI * neuron.soma_diameter * neuron.soma_diameter,
             membrane: soma_membrane(neuron.resting_potential),
         };
     }
@@ -266,6 +266,7 @@ impl Fingerprint {
                 hash.float(value);
             }
             hash.float(neuron.refractory_period);
+            hash.float(neuron.soma_diameter);
             hash.add(neuron.voltage_clamped as u64);
         });
         hash.components(world, |hash, leak: &LeakCurrent| {
@@ -1606,6 +1607,28 @@ mod tests {
         let recovering = spikes(Some(Milliseconds::ZERO));
         assert!(recovering > spikes(Some(AdaptationCurrent::default().time_constant)));
         assert!(recovering.abs_diff(spikes(None)) <= 1);
+    }
+
+    #[test]
+    fn a_smaller_soma_fires_more_on_the_same_current_when_the_neuron_has_dendrites() {
+        let spikes = |diameter: Micrometres| {
+            let mut world = World::new();
+            let neuron = soma(&mut world, Vec3::ZERO);
+            crate::dendrites::spawn_dendrites(&mut world, neuron);
+            world.get::<&mut LeakyNeuron>(neuron).unwrap().soma_diameter = diameter;
+            let source = Element::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
+            crate::elements::spawn_connection(&mut world, source, neuron);
+            run_headless(&mut world, Milliseconds(200.0))
+                .iter()
+                .filter(|spike| spike.entity == neuron)
+                .count()
+        };
+        let (small, usual, large) = (
+            spikes(Micrometres(10.0)),
+            spikes(Micrometres(20.0)),
+            spikes(Micrometres(40.0)),
+        );
+        assert!(small > usual && usual > large, "{small} {usual} {large}");
     }
 
     fn soma(world: &mut World, at: Vec3) -> Entity {

@@ -1,3 +1,4 @@
+use super::v15::LeakyNeuron;
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;

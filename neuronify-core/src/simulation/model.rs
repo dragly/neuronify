@@ -14,7 +14,6 @@ use crate::serialization::bounds;
 
 pub const AXON_DIAMETER: Micrometres = Micrometres(0.15);
 pub const INTERNODE_DIAMETER: Micrometres = Micrometres(1.0);
-pub const SOMA_DIAMETER: Micrometres = Micrometres(20.0);
 pub const SOMA_MEMBRANE_RESISTANCE: OhmSquareCentimetres = OhmSquareCentimetres(20_000.0);
 pub const DENDRITE_AXIAL_RESISTIVITY: OhmCentimetres = OhmCentimetres(250.0);
 pub const DENDRITE_CAPACITANCE: MicrofaradsPerSquareCentimetre =
@@ -251,22 +250,23 @@ pub fn soma_end_radius(diameter: Micrometres, display: &NeuronDisplay) -> f32 {
     }
 }
 
-pub fn soma_diameter(world: &World, soma: Entity) -> Micrometres {
-    let dendritic = world
+pub fn has_dendrites(world: &World, soma: Entity) -> bool {
+    world
         .query::<&Connection>()
         .with::<&Cable>()
         .iter()
         .filter(|cable| cable.from == soma || cable.to == soma)
-        .any(|cable| dendritic(world, cable.from) || dendritic(world, cable.to));
-    if dendritic {
-        return SOMA_DIAMETER;
-    }
-    let capacitance = world
+        .any(|cable| dendritic(world, cable.from) || dendritic(world, cable.to))
+}
+
+pub fn soma_diameter(world: &World, soma: Entity) -> Micrometres {
+    let neuron = world
         .get::<&LeakyNeuron>(soma)
-        .map_or(LeakyNeuron::default().capacitance, |neuron| {
-            neuron.capacitance
-        });
-    let area = capacitance / DENDRITE_CAPACITANCE;
+        .map_or_else(|_| LeakyNeuron::default(), |neuron| (*neuron).clone());
+    if has_dendrites(world, soma) {
+        return neuron.soma_diameter;
+    }
+    let area = neuron.capacitance / DENDRITE_CAPACITANCE;
     (area / std::f64::consts::PI).sqrt()
 }
 
@@ -386,5 +386,27 @@ pub fn ending_kinetics(world: &World, from: Entity) -> Kinetics {
             reversal: INHIBITORY_REVERSAL,
             scale: INHIBITORY_ENDING_SCALE,
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dendrites::spawn_dendrites;
+    use crate::elements::Element;
+
+    #[test]
+    fn a_neuron_with_dendrites_is_drawn_as_wide_as_its_soma_diameter() {
+        let mut world = World::new();
+        let point = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::ZERO);
+        let branched = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::X * 40.0);
+        spawn_dendrites(&mut world, branched);
+        for neuron in [point, branched] {
+            world.get::<&mut LeakyNeuron>(neuron).unwrap().soma_diameter = Micrometres(35.0);
+        }
+        assert_eq!(soma_diameter(&world, branched), Micrometres(35.0));
+        let capacitance = LeakyNeuron::default().capacitance;
+        let point_diameter = (capacitance / DENDRITE_CAPACITANCE / std::f64::consts::PI).sqrt();
+        assert_eq!(soma_diameter(&world, point), point_diameter);
     }
 }

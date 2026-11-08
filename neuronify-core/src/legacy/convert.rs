@@ -326,6 +326,7 @@ fn leaky_neuron(node: &LegacyNode, pos: Position, inhibitory: bool) -> EntityBui
         minimum_voltage: Millivolts(e.minimum_voltage.unwrap_or(-0.09) * MILLI),
         maximum_voltage: Millivolts(e.maximum_voltage.unwrap_or(0.06) * MILLI),
         refractory_period: Milliseconds(e.refractory_period.unwrap_or(0.002) * MILLI),
+        ..LeakyNeuron::default()
     };
 
     let state = NodeState::at(

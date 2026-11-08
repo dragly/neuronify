@@ -20,6 +20,7 @@ use crate::measurement::visual_input::{Pattern, ReceptiveField, VisualInput};
 use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::Theme;
 use crate::settings::Setting;
+use crate::simulation::model::has_dendrites;
 use crate::tools::Tool;
 
 use super::icons::{paint_icon, paint_tool, Icon};
@@ -53,6 +54,8 @@ const RESISTANCES: (RangeInclusive<Megaohms>, Megaohms) =
     (Megaohms(1.0)..=Megaohms(200.0), Megaohms(1.0));
 const CAPACITANCES: (RangeInclusive<Nanofarads>, Nanofarads) =
     (Nanofarads(0.01)..=Nanofarads(2.0), Nanofarads(0.01));
+const SOMA_DIAMETERS: (RangeInclusive<Micrometres>, Micrometres) =
+    (Micrometres(5.0)..=Micrometres(100.0), Micrometres(1.0));
 const ADAPTATIONS: (RangeInclusive<Microsiemens>, Microsiemens) =
     (Microsiemens(0.0)..=Microsiemens(0.1), Microsiemens(0.0001));
 const ADAPTATION_TIME_CONSTANTS: RangeInclusive<Milliseconds> =
@@ -758,7 +761,19 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             millivolts,
         );
     }
-    if let (Ok(mut neuron), Ok(mut leak)) = (
+    if has_dendrites(world, entity) {
+        if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
+            heading(ui, chrome, "Membrane", 0.0);
+            changed |= logarithmic_parameter(
+                ui,
+                chrome,
+                Setting::SomaDiameter,
+                &mut neuron.soma_diameter,
+                SOMA_DIAMETERS,
+                |diameter| format!("{:.0} \u{b5}m", diameter.0),
+            );
+        }
+    } else if let (Ok(mut neuron), Ok(mut leak)) = (
         world.get::<&mut LeakyNeuron>(entity),
         world.get::<&mut LeakCurrent>(entity),
     ) {
@@ -1159,6 +1174,7 @@ mod tests {
         assert!(inside(POTENTIALS, bounds::POTENTIALS));
         assert!(inside(RESISTANCES.0, bounds::RESISTANCES));
         assert!(inside(CAPACITANCES.0, bounds::CAPACITANCES));
+        assert!(inside(SOMA_DIAMETERS.0, bounds::SOMA_DIAMETERS));
         assert!(inside(ADAPTATIONS.0, bounds::ADAPTATIONS));
         assert!(inside(
             ADAPTATION_TIME_CONSTANTS,
