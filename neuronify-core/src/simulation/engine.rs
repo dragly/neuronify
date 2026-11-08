@@ -615,7 +615,10 @@ impl Engine {
                 Err(BuildError::Loop { cable }) => {
                     tree_links.remove(cable);
                 }
-                Err(error) => panic!("Could not build a tree: {error:?}"),
+                Err(error) => {
+                    log::error!("Left out a cell that could not be built: {error:?}");
+                    return;
+                }
             }
         };
         let index = self.network.trees().len();
@@ -729,7 +732,9 @@ impl Engine {
         }
         for &(entity, _, cable) in &self.cables[first_cable..] {
             let points = tree.cable_points(cable).to_vec();
-            let inner = &points[1..points.len() - 1];
+            let [first, ref inner @ .., last] = points[..] else {
+                continue;
+            };
             let state = world.get::<&CableState>(entity);
             match state {
                 Ok(state) if state.voltage.len() == inner.len() => {
@@ -740,11 +745,11 @@ impl Engine {
                     }
                 }
                 state => {
-                    let mut stored = vec![tree.voltage(points[0])];
+                    let mut stored = vec![tree.voltage(first)];
                     if let Ok(state) = state {
                         stored.extend(&state.voltage);
                     }
-                    stored.push(tree.voltage(*points.last().unwrap()));
+                    stored.push(tree.voltage(last));
                     for (k, &point) in inner.iter().enumerate() {
                         let x =
                             (k + 1) as f64 / (inner.len() + 1) as f64 * (stored.len() - 1) as f64;
@@ -907,9 +912,15 @@ impl Engine {
             .copied()
             .collect();
         for (entity, place) in somas {
-            let source = self.source_of(entity).unwrap();
+            let Some(source) = self.source_of(entity) else {
+                continue;
+            };
             if let Ok(adaptation) = world.get::<&AdaptationCurrent>(entity) {
-                let rest = world.get::<&LeakyNeuron>(entity).unwrap().resting_potential;
+                let rest = world
+                    .get::<&LeakyNeuron>(entity)
+                    .map_or(self.preparation.resting_potential(), |neuron| {
+                        neuron.resting_potential
+                    });
                 let index = self.network.add_adaptation(Adaptation {
                     site: place.site(),
                     increment: adaptation.adaptation,
