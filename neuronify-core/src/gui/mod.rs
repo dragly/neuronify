@@ -550,6 +550,7 @@ fn menu(
                     });
                     if connection_view != ConnectionView::of(controls.world) {
                         connection_view.set_in(controls.world);
+                        controls.editor.mark_settings_changed();
                     }
                     let mut display = NeuronDisplay::of(controls.world);
                     let voltage = switch(ui, chrome, "Show voltage", &mut display.voltage);
@@ -563,6 +564,7 @@ fn menu(
                     );
                     if voltage.changed() || firing_rate.changed() || proportions.changed() {
                         display.set_in(controls.world);
+                        controls.editor.mark_settings_changed();
                     }
                     labelled_row(ui, chrome, "Frame rate", |ui| {
                         ui.label(
