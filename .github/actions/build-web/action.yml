@@ -12,14 +12,13 @@ runs:
       with:
         toolchain: stable
         targets: wasm32-unknown-unknown
-    - name: Install trunk
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2.9.3
+    - name: Install trunk and wasm-bindgen
       shell: bash
       run: |
-        mkdir -p "$HOME/.local/bin"
-        curl --fail --location --silent --show-error \
-          https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
-          | tar -xz -C "$HOME/.local/bin"
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        cargo install --locked trunk@0.21.14
+        version=$(sed -n '/^name = "wasm-bindgen"$/{n;s/version = "\(.*\)"/\1/p}' Cargo.lock)
+        cargo install --locked wasm-bindgen-cli@"$version"
     - name: Build
       shell: bash
       working-directory: neuronify
