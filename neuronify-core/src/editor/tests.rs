@@ -24,7 +24,7 @@ fn drag(editor: &mut Editor, world: &mut World, path: &[Vec3]) -> Vec<Option<Pan
             if index > 0 {
                 editor.move_held();
             }
-            editor.edit(world, position, false)
+            editor.edit(world, position)
         })
         .collect();
     editor.lift(world);
@@ -162,26 +162,33 @@ fn with_compartments_an_inhibitory_generator_connects_with_a_synapse() {
 }
 
 #[test]
-fn static_connections_chain_from_neuron_to_neuron_unless_shift_is_held() {
+fn a_static_connection_forms_only_with_the_neuron_it_is_released_on() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
     let b = neuron(&mut world, at(0.0, 10.0));
     let c = neuron(&mut world, at(0.0, 20.0));
     let mut editor = editor(Tool::StaticConnection);
+    for position in [at(0.0, 0.5), at(0.0, 5.0), at(0.3, 10.5)] {
+        editor.edit(&mut world, position);
+    }
+    assert_eq!(editor.ending(), Some(b));
+    let (_, end) = editor.connection_being_drawn(&world).unwrap();
+    assert_eq!(end, at(0.0, 10.0));
+    assert_eq!(count::<CurrentSynapse>(&world), 0);
+
+    editor.edit(&mut world, at(0.0, 19.5));
+    assert_eq!(editor.ending(), Some(c));
+    editor.lift(&mut world);
+    assert!(connected(&world, a, c));
+    assert_eq!(count::<CurrentSynapse>(&world), 1);
+
     drag(
         &mut editor,
         &mut world,
-        &[at(0.0, 0.5), at(0.0, 5.0), at(0.0, 10.5), at(0.0, 19.5)],
+        &[at(0.0, 0.5), at(0.0, 9.5), at(5.0, 9.5)],
     );
-    assert!(connected(&world, a, b) && connected(&world, b, c));
-    assert_eq!(count::<CurrentSynapse>(&world), 2);
-
-    for position in [at(0.0, 0.0), at(0.0, 10.0), at(0.0, 20.0)] {
-        editor.edit(&mut world, position, true);
-    }
-    editor.release(&world);
-    assert!(connected(&world, a, c));
-    assert_eq!(count::<CurrentSynapse>(&world), 3);
+    assert!(!connected(&world, a, b));
+    assert_eq!(count::<CurrentSynapse>(&world), 1);
 }
 
 fn straight(from: Vec3, to: Vec3) -> Vec<Vec3> {
@@ -324,7 +331,7 @@ fn axon_beside_a_dendrite() -> (World, Editor, Vec<Entity>, Vec3) {
     let beside = nearest - nearest.normalize() * (radius + 0.9 * REACH);
     let mut editor = reaching(Tool::Axon, REACH);
     for position in straight(at(0.0, 0.5), beside) {
-        editor.edit(&mut world, position, false);
+        editor.edit(&mut world, position);
     }
     let tree = compartment_tree(&world, target);
     (world, editor, tree, beside)
@@ -371,12 +378,12 @@ fn an_axon_stops_growing_while_it_would_end_on_a_dendrite() {
     lay_dendrite(&mut world, target, &steps).unwrap();
     let mut editor = reaching(Tool::Axon, REACH);
     for position in straight(at(0.5, 0.0), at(19.0, 4.0)) {
-        editor.edit(&mut world, position, false);
+        editor.edit(&mut world, position);
     }
     let compartments = count::<Compartment>(&world);
     let (from, _) = editor.new_ending(&world).unwrap();
     for position in straight(at(19.0, 4.0), at(19.0, 10.0)) {
-        editor.edit(&mut world, position, false);
+        editor.edit(&mut world, position);
         assert!(editor.ending().is_some(), "{position}");
     }
     assert_eq!(count::<Compartment>(&world), compartments);
@@ -388,11 +395,7 @@ fn an_axon_stays_on_a_dendrite_until_half_a_reach_beyond_where_it_attached() {
     let (mut world, mut editor, tree, beside) = axon_beside_a_dendrite();
     let outward = -beside.normalize();
     let mut ending_at = |reaches: f32| {
-        editor.edit(
-            &mut world,
-            beside + outward * (reaches - 0.9) * REACH,
-            false,
-        );
+        editor.edit(&mut world, beside + outward * (reaches - 0.9) * REACH);
         editor.ending().filter(|ending| tree.contains(ending))
     };
     assert!(ending_at(1.3).is_some());
@@ -404,30 +407,55 @@ fn an_axon_stays_on_a_dendrite_until_half_a_reach_beyond_where_it_attached() {
 #[test]
 fn an_axon_moved_out_of_reach_again_ends_nowhere() {
     let (mut world, mut editor, _, beside) = axon_beside_a_dendrite();
-    editor.edit(&mut world, beside - beside.normalize() * REACH, false);
+    editor.edit(&mut world, beside - beside.normalize() * REACH);
     assert_eq!(editor.ending(), None);
     editor.lift(&mut world);
     assert!(axon_endings(&world).is_empty());
 }
 
 #[test]
-fn an_axon_reaching_a_soma_forms_its_synapse_at_once_and_ends_there_until_it_leaves() {
+fn an_axon_on_a_soma_ends_there_when_released_like_on_a_dendrite() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let target = neuron(&mut world, at(0.0, 20.0));
     let mut editor = reaching(Tool::Axon, REACH);
     for position in straight(at(0.0, 0.5), at(0.0, 18.0)) {
-        editor.edit(&mut world, position, false);
+        editor.edit(&mut world, position);
     }
     assert_eq!(editor.ending(), Some(target));
-    assert!(editor.take_formed());
-    assert!(!editor.take_formed());
+    let (tip, _) = editor.new_ending(&world).unwrap();
+    assert!(has::<Compartment>(&world, tip));
+    assert!(axon_endings(&world).is_empty());
+
+    let compartments = count::<Compartment>(&world);
+    for position in straight(at(0.0, 18.0), at(0.0, 17.0)) {
+        editor.edit(&mut world, position);
+        assert_eq!(editor.ending(), Some(target), "{position}");
+    }
+    assert_eq!(count::<Compartment>(&world), compartments);
+    editor.lift(&mut world);
     assert_eq!(single_ending(&world).to, target);
-    editor.edit(&mut world, at(0.0, 18.5), false);
+}
+
+#[test]
+fn an_axon_that_leaves_a_soma_grows_on_from_its_own_tip_and_ends_where_released() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let passed = neuron(&mut world, at(0.0, 20.0));
+    let target = neuron(&mut world, at(20.0, 20.0));
+    let mut editor = reaching(Tool::Axon, REACH);
+    let mut path = straight(at(0.0, 0.5), at(0.0, 18.0));
+    path.extend(straight(at(0.0, 18.0), at(10.0, 14.0)));
+    path.extend(straight(at(10.0, 14.0), at(19.0, 19.0)));
+    for position in path {
+        editor.edit(&mut world, position);
+    }
     assert_eq!(editor.ending(), Some(target));
-    editor.edit(&mut world, at(6.0, 20.0), false);
-    assert_eq!(editor.ending(), None);
-    assert!(!editor.take_formed());
+    editor.lift(&mut world);
+
+    assert_eq!(single_ending(&world).to, target);
+    assert!(chain(&world, source, target).is_some());
+    assert!(chain(&world, passed, target).is_none());
 }
 
 #[test]
@@ -450,7 +478,7 @@ fn what_is_being_drawn_stays_where_it_was_laid_until_released() {
         let mut path = straight(at(0.0, 0.5), at(0.0, 10.0));
         path.extend(straight(at(0.0, 10.0), at(10.0, 10.0)));
         for position in path {
-            editor.edit(&mut world, position, false);
+            editor.edit(&mut world, position);
         }
         let laid = positions_with::<Compartment>(&world);
         assert!(laid.len() > 5, "{tool:?}");
@@ -646,14 +674,14 @@ fn a_growing_dendrite_reaches_from_its_tip_to_the_pointer() {
     let mut world = World::new();
     let soma = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Dendrite);
-    editor.edit(&mut world, at(0.0, 0.5), false);
-    editor.edit(&mut world, at(0.0, 1.5), false);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.0, 1.5));
     assert_eq!(
         editor.dendrite_being_grown(),
         Some((soma, at(0.0, 0.0), at(0.0, 1.5)))
     );
-    editor.edit(&mut world, at(0.0, 2.5), false);
-    editor.edit(&mut world, at(0.0, 3.5), false);
+    editor.edit(&mut world, at(0.0, 2.5));
+    editor.edit(&mut world, at(0.0, 3.5));
     let (from, start, end) = editor.dendrite_being_grown().unwrap();
     assert!(world.get::<&Dendrite>(from).is_ok());
     assert_eq!((start, end), (at(0.0, 2.0), at(0.0, 3.5)));
@@ -694,9 +722,9 @@ fn connections_start_only_near_a_source() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::StaticConnection);
-    editor.edit(&mut world, at(0.0, 3.0), false);
+    editor.edit(&mut world, at(0.0, 3.0));
     assert!(editor.connection_tool.is_none());
-    editor.edit(&mut world, at(0.0, 1.0), false);
+    editor.edit(&mut world, at(0.0, 1.0));
     assert!(editor.connection_tool.is_some());
 }
 
@@ -734,16 +762,15 @@ fn dragging_from_an_element_while_adding_connects_it() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
     let b = neuron(&mut world, at(0.0, 10.0));
-    let c = neuron(&mut world, at(0.0, 20.0));
     let mut editor = editor(Tool::Place(Element::InhibitoryNeuron));
     drag(
         &mut editor,
         &mut world,
-        &[at(0.0, 1.5), at(0.0, 5.0), at(0.0, 10.5), at(0.0, 19.5)],
+        &[at(0.0, 1.5), at(0.0, 5.0), at(0.0, 9.5)],
     );
-    assert!(connected(&world, a, b) && connected(&world, b, c));
-    assert_eq!(count::<CurrentSynapse>(&world), 2);
-    assert_eq!(count::<LeakyNeuron>(&world), 3);
+    assert!(connected(&world, a, b));
+    assert_eq!(count::<CurrentSynapse>(&world), 1);
+    assert_eq!(count::<LeakyNeuron>(&world), 2);
 }
 
 #[test]
@@ -751,8 +778,8 @@ fn the_connection_being_added_is_drawn() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, at(0.0, 0.5), false);
-    editor.edit(&mut world, at(0.0, 5.0), false);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.0, 5.0));
     assert_eq!(
         editor.connection_being_drawn(&world),
         Some((at(0.0, 0.0), at(0.0, 5.0)))
@@ -764,10 +791,10 @@ fn the_connection_being_added_is_hidden_until_its_terminal_clears_the_source() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, at(0.0, 0.5), false);
-    editor.edit(&mut world, at(0.3, 1.2), false);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.3, 1.2));
     assert_eq!(editor.connection_being_drawn(&world), None);
-    editor.edit(&mut world, at(0.0, 2.5), false);
+    editor.edit(&mut world, at(0.0, 2.5));
     assert_eq!(
         editor.connection_being_drawn(&world),
         Some((at(0.0, 0.0), at(0.0, 2.5)))
@@ -779,9 +806,9 @@ fn painting_neurons_lasts_until_release() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::InhibitoryNeuron));
     assert_eq!(editor.painting(), None);
-    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.edit(&mut world, at(0.0, 0.0));
     assert_eq!(editor.painting(), Some(Element::InhibitoryNeuron));
-    editor.edit(&mut world, at(0.0, 3.0), false);
+    editor.edit(&mut world, at(0.0, 3.0));
     assert_eq!(editor.painting(), Some(Element::InhibitoryNeuron));
     editor.release(&world);
     assert_eq!(editor.painting(), None);
@@ -791,7 +818,7 @@ fn painting_neurons_lasts_until_release() {
 fn holding_after_placing_stops_painting() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.edit(&mut world, at(0.0, 0.0));
     assert!(editor.hold(&world, at(0.0, 0.0), false));
     assert_eq!(editor.painting(), None);
 }
@@ -801,10 +828,10 @@ fn pulling_a_connection_or_placing_an_input_is_not_painting() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let mut pulling = editor(Tool::Place(Element::ExcitatoryNeuron));
-    pulling.edit(&mut world, at(0.0, 0.5), false);
+    pulling.edit(&mut world, at(0.0, 0.5));
     assert_eq!(pulling.painting(), None);
     let mut placing = editor(Tool::Place(Element::CurrentSource));
-    placing.edit(&mut world, at(10.0, 10.0), false);
+    placing.edit(&mut world, at(10.0, 10.0));
     assert_eq!(placing.painting(), None);
 }
 
@@ -814,14 +841,14 @@ fn a_growing_axon_reaches_from_its_last_compartment_to_the_pointer() {
     let source = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.compartments = true;
-    editor.edit(&mut world, at(0.0, 0.5), false);
-    editor.edit(&mut world, at(0.0, 1.5), false);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.0, 1.5));
     assert_eq!(
         editor.axon_being_grown(&world),
         Some((source, at(0.0, 0.0), at(0.0, 1.5)))
     );
-    editor.edit(&mut world, at(0.0, 2.5), false);
-    editor.edit(&mut world, at(0.0, 3.5), false);
+    editor.edit(&mut world, at(0.0, 2.5));
+    editor.edit(&mut world, at(0.0, 3.5));
     let (from, start, end) = editor.axon_being_grown(&world).unwrap();
     assert!(world.get::<&Compartment>(from).is_ok());
     assert_eq!((start, end), (at(0.0, 2.0), at(0.0, 3.5)));
@@ -834,8 +861,8 @@ fn a_plain_connection_is_not_a_growing_axon() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, at(0.0, 0.5), false);
-    editor.edit(&mut world, at(0.0, 5.0), false);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.0, 5.0));
     assert_eq!(editor.axon_being_grown(&world), None);
 }
 
@@ -859,8 +886,8 @@ fn with_compartments_dragging_from_a_neuron_while_adding_grows_an_axon() {
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.compartments = true;
     let path: Vec<Vec3> = (0..=40).map(|step| at(0.0, step as f32 * 0.5)).collect();
-    editor.edit(&mut world, path[0], false);
-    editor.edit(&mut world, path[10], false);
+    editor.edit(&mut world, path[0]);
+    editor.edit(&mut world, path[10]);
     assert_eq!(editor.connection_being_drawn(&world), None);
     drag(&mut editor, &mut world, &path[10..]);
 
@@ -908,7 +935,7 @@ fn with_point_neurons_pressing_near_a_dendrite_adds_nothing() {
         .unwrap();
     let beside_tip = tip_position * (1.0 + 1.5 / tip_position.length());
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, beside_tip, false);
+    editor.edit(&mut world, beside_tip);
     editor.release(&world);
     assert_eq!(count::<LeakyNeuron>(&world), 1);
     assert_eq!(editor.selection, None);
@@ -981,7 +1008,7 @@ fn tapping_an_element_while_adding_does_nothing() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, at(0.5, 0.0), false);
+    editor.edit(&mut world, at(0.5, 0.0));
     assert!(!editor.pressed_background());
     editor.release(&world);
     assert_eq!(editor.selection, None);
@@ -992,7 +1019,7 @@ fn tapping_an_element_while_adding_does_nothing() {
 fn offer_from_neuron(world: &mut World) -> (Entity, Editor) {
     let a = neuron(world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(world, at(0.5, 0.0), false);
+    editor.edit(world, at(0.5, 0.0));
     editor.offer_connection(Seconds(10.0));
     editor.release(world);
     (a, editor)
@@ -1020,7 +1047,7 @@ fn tapping_a_neuron_while_adding_offers_a_connection_for_two_seconds() {
 fn placing_an_input_offers_no_connection() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::CurrentSource));
-    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.edit(&mut world, at(0.0, 0.0));
     editor.offer_connection(Seconds(10.0));
     editor.release(&world);
     assert_eq!(editor.connection_hint(&world, Seconds(11.0)), None);
@@ -1032,7 +1059,7 @@ fn tapping_a_meter_with_a_meter_tool_offers_a_wire_to_pull_onto_a_neuron() {
     let target = neuron(&mut world, at(10.0, 10.0));
     let speaker = Meter::Loudspeaker.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Loudspeaker);
-    editor.edit(&mut world, at(0.3, 0.0), false);
+    editor.edit(&mut world, at(0.3, 0.0));
     editor.offer_connection(Seconds(10.0));
     editor.lift(&mut world);
     let hint = editor.connection_hint(&world, Seconds(11.0)).unwrap();
@@ -1050,7 +1077,7 @@ fn placing_a_meter_or_tapping_a_neuron_with_a_meter_tool_offers_no_wire() {
         let mut world = World::new();
         neuron(&mut world, at(0.0, 0.0));
         let mut editor = editor(Tool::Voltmeter);
-        editor.edit(&mut world, press, false);
+        editor.edit(&mut world, press);
         editor.offer_connection(Seconds(10.0));
         editor.lift(&mut world);
         assert_eq!(
@@ -1087,7 +1114,7 @@ fn holding_an_element_while_adding_moves_it() {
     let a = neuron(&mut world, at(0.0, 0.0));
     let b = neuron(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, at(0.0, 1.5), false);
+    editor.edit(&mut world, at(0.0, 1.5));
     assert!(editor.hold(&world, at(0.0, 1.5), false));
     assert_eq!(editor.connection_being_drawn(&world), None);
     drag(&mut editor, &mut world, &[at(0.0, 10.0), at(5.0, 3.5)]);
@@ -1102,7 +1129,7 @@ fn holding_an_element_while_adding_moves_it() {
 fn holding_after_placing_moves_the_new_element() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::CurrentSource));
-    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.edit(&mut world, at(0.0, 0.0));
     assert!(editor.hold(&world, at(0.0, 0.0), false));
     drag(&mut editor, &mut world, &[at(3.0, 4.0), at(6.0, 8.0)]);
     let placed = positions_with::<CurrentClamp>(&world);
@@ -1115,7 +1142,7 @@ fn undo_puts_back_an_element_moved_while_adding() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.edit(&mut world, at(0.0, 0.5), false);
+    editor.edit(&mut world, at(0.0, 0.5));
     assert!(editor.hold(&world, at(0.0, 0.5), false));
     drag(&mut editor, &mut world, &[at(5.0, 3.5)]);
     assert_eq!(position(&world, a), at(5.0, 3.0));
@@ -1338,7 +1365,7 @@ fn letting_go_of_an_element_without_moving_selects_it() {
     let mut world = World::new();
     let a = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
-    editor.edit(&mut world, at(0.5, 0.0), false);
+    editor.edit(&mut world, at(0.5, 0.0));
     assert_eq!(editor.selection, None);
     editor.lift(&mut world);
     assert_eq!(editor.selection, Some(a));
@@ -1372,10 +1399,10 @@ fn the_editor_knows_whether_a_press_landed_on_the_background() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
-    editor.edit(&mut world, at(0.5, 0.0), false);
+    editor.edit(&mut world, at(0.5, 0.0));
     assert!(!editor.pressed_background());
     editor.release(&world);
-    editor.edit(&mut world, at(10.0, 10.0), false);
+    editor.edit(&mut world, at(10.0, 10.0));
     assert!(editor.pressed_background());
     editor.release(&world);
     assert!(!editor.pressed_background());
@@ -1402,9 +1429,9 @@ fn a_tap_that_nudged_an_element_puts_it_back_and_leaves_nothing_to_undo() {
     let mut world = World::new();
     let neuron = neuron(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
-    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.edit(&mut world, at(0.0, 0.0));
     editor.move_held();
-    editor.edit(&mut world, at(0.04, 0.03), false);
+    editor.edit(&mut world, at(0.04, 0.03));
     assert_ne!(position(&world, neuron), at(0.0, 0.0));
 
     editor.snap_back(&mut world);
@@ -1494,7 +1521,7 @@ fn stimulating_pushes_with_the_chosen_current() {
     let mut world = World::new();
     let mut editor = editor(Tool::Stimulate);
     editor.stimulation.current = Nanoamperes(1.0);
-    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.edit(&mut world, at(0.0, 0.0));
     assert_eq!(
         editor.touch().map(|touch| touch.current),
         Some(Nanoamperes(1.0))
@@ -1529,7 +1556,7 @@ fn touch_sensors_fire_once_per_press() {
     let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Stimulate);
     let fired = |world: &mut World, editor: &mut Editor| {
-        editor.edit(world, at(0.5, 0.0), false);
+        editor.edit(world, at(0.5, 0.0));
         let presses = editor.take_presses();
         presses.iter().any(|&press| {
             touch_sensor_near(world, press) && press.distance(position(world, sensor)) < 1.0
@@ -1586,7 +1613,7 @@ fn holding_an_element_grabs_it() {
     editor.view(&mut world, at(0.5, 0.0));
     assert!(editor.hold(&world, at(0.5, 0.0), true));
     assert_eq!(editor.tool, Tool::Edit);
-    assert_eq!(editor.edit(&mut world, at(3.5, 2.0), false), None);
+    assert_eq!(editor.edit(&mut world, at(3.5, 2.0)), None);
     assert_eq!(
         world.get::<&Position>(target).unwrap().position,
         at(3.0, 2.0)
@@ -1930,7 +1957,7 @@ fn dendrite_segments_added_by_a_stretch_taper_like_freshly_drawn_ones_where_they
 }
 
 #[test]
-fn taking_back_a_bend_past_a_neuron_with_shift_leaves_no_loose_synapse() {
+fn taking_back_a_bend_past_a_neuron_leaves_no_loose_synapse() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
     neuron(&mut world, at(0.0, 10.0));
@@ -1941,7 +1968,7 @@ fn taking_back_a_bend_past_a_neuron_with_shift_leaves_no_loose_synapse() {
         if index > 0 {
             editor.move_held();
         }
-        editor.edit(&mut world, position, true);
+        editor.edit(&mut world, position);
     }
     editor.lift(&mut world);
 
@@ -2137,11 +2164,7 @@ fn swinging_around_a_neuron_moves_nothing_far_in_one_step() {
     let mut previous = positions_with::<Compartment>(&world);
     for step in 0..=300 {
         let swing = 1.5 * std::f32::consts::PI * step as f32 / 300.0;
-        editor.edit(
-            &mut world,
-            centre + 30.0 * at(swing.sin(), -swing.cos()),
-            false,
-        );
+        editor.edit(&mut world, centre + 30.0 * at(swing.sin(), -swing.cos()));
         let current = positions_with::<Compartment>(&world);
         for &(compartment, now) in &current {
             if let Some(&(_, then)) = previous.iter().find(|(other, _)| *other == compartment) {
@@ -2528,14 +2551,14 @@ fn a_tap_on_a_connection_while_editing_selects_it_and_a_drag_pans() {
     let mut world = World::new();
     let (_, _, synapse) = two_connected_neurons(&mut world);
     let mut editor = editor(Tool::Edit);
-    editor.edit(&mut world, at(0.3, 9.0), false);
+    editor.edit(&mut world, at(0.3, 9.0));
     assert!(!editor.tap_while_editing());
     assert_eq!(editor.selection, Some(synapse));
     editor.release(&world);
 
     editor.selection = None;
-    editor.edit(&mut world, at(0.3, 9.0), false);
-    let pan = editor.edit(&mut world, at(0.3, 12.0), false);
+    editor.edit(&mut world, at(0.3, 9.0));
+    let pan = editor.edit(&mut world, at(0.3, 12.0));
     assert_eq!(pan, Some(Pan(at(0.0, 3.0))));
     editor.release(&world);
     assert_eq!(editor.selection, None);
@@ -2707,7 +2730,7 @@ fn a_tap_on_a_cable_still_selects_the_connection_and_beside_it_the_neuron() {
     assert!(editor.empty_at(&world, at(5.0, 0.0)));
 
     let mut editor = reaching(Tool::Edit, 3.5);
-    let pan = [at(0.3, 3.0), at(0.3, 6.0)].map(|position| editor.edit(&mut world, position, false));
+    let pan = [at(0.3, 3.0), at(0.3, 6.0)].map(|position| editor.edit(&mut world, position));
     assert_eq!(pan[1], Some(Pan(at(0.0, 3.0))));
     editor.release(&world);
     drag(&mut editor, &mut world, &[at(2.5, 0.0)]);
@@ -2866,7 +2889,7 @@ fn a_touch_sensor_makes_its_neuron_fire_right_away() {
     assert_eq!(count::<ImmediateFireSynapse>(&world), 1);
 
     editor.tool = Tool::Stimulate;
-    editor.edit(&mut world, at(0.0, 0.5), false);
+    editor.edit(&mut world, at(0.0, 0.5));
     editor.release(&world);
     let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
     for press in editor.take_presses() {
@@ -2930,17 +2953,17 @@ fn moving_drawing_and_erasing_aim_but_panning_does_not() {
     let mut world = World::new();
     let placed = neuron(&mut world, at(0.0, 0.0));
     let mut panning = editor(Tool::Edit);
-    panning.edit(&mut world, at(20.0, 20.0), false);
+    panning.edit(&mut world, at(20.0, 20.0));
     assert!(!panning.aims());
     let mut moving = editor(Tool::Edit);
-    moving.edit(&mut world, at(0.0, 0.0), false);
+    moving.edit(&mut world, at(0.0, 0.0));
     assert!(moving.aims());
     assert_eq!(moving.picked(), Some(placed));
     let mut drawing = editor(Tool::Axon);
-    drawing.edit(&mut world, at(0.0, 0.0), false);
+    drawing.edit(&mut world, at(0.0, 0.0));
     assert!(drawing.aims());
     let mut erasing = editor(Tool::Erase);
-    erasing.edit(&mut world, at(20.0, 20.0), false);
+    erasing.edit(&mut world, at(20.0, 20.0));
     assert!(erasing.aims());
 }
 
@@ -2955,7 +2978,7 @@ fn axon_beside_a_cable(beside: Vec3) -> (World, Editor, [Entity; 2]) {
     spawn_cable(&mut world, ends[0], ends[1], false);
     let mut editor = reaching(Tool::Axon, REACH);
     for position in straight(at(0.0, 0.5), beside) {
-        editor.edit(&mut world, position, false);
+        editor.edit(&mut world, position);
     }
     (world, editor, ends)
 }
@@ -3006,7 +3029,7 @@ fn axons_ending_along_one_branch_leave_it_where_it_was() {
         let mut editor = reaching(Tool::Axon, REACH);
         let finger = at(x, beside.z - radii[&nearest] - 0.6 * REACH);
         for position in straight(at(x, -13.5), finger) {
-            editor.edit(&mut world, position, false);
+            editor.edit(&mut world, position);
             step_physics(&mut world, 1, editor.drawn());
         }
         editor.lift(&mut world);

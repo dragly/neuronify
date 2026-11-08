@@ -95,11 +95,6 @@ impl Mouse {
     }
 }
 
-#[derive(Default)]
-pub struct Keyboard {
-    pub shift_down: bool,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TouchGesture {
     Press(PhysicalPosition<f64>),
