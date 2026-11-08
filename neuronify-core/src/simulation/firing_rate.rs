@@ -1,4 +1,4 @@
-use hecs::{Entity, World};
+use hecs::{CommandBuffer, Entity, World};
 use neuronify_engine::units::Milliseconds;
 
 use super::Spike;
@@ -11,15 +11,15 @@ pub fn update_firing_rates(
     duration: Milliseconds,
     now: Milliseconds,
 ) {
-    let new_neurons: Vec<Entity> = world
-        .query::<Entity>()
+    let mut commands = CommandBuffer::new();
+    for entity in world
+        .query_mut::<Entity>()
         .with::<&LeakyNeuron>()
         .without::<&FiringRate>()
-        .iter()
-        .collect();
-    for entity in new_neurons {
-        world.insert_one(entity, FiringRate::default()).unwrap();
+    {
+        commands.insert_one(entity, FiringRate::default());
     }
+    commands.run_on(world);
     let decay = (-duration / FIRING_RATE_TIME_CONSTANT).exp();
     for firing_rate in world.query_mut::<&mut FiringRate>() {
         firing_rate.rate *= decay;

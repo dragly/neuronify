@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use glam::Vec3;
-use hecs::{Entity, World};
+use hecs::{CommandBuffer, Entity, World};
 use serde::{Deserialize, Serialize};
 
 pub use neuronify_engine::units::*;
@@ -412,14 +412,11 @@ impl Selected {
     }
 
     pub fn set(world: &mut World, entity: Option<Entity>) {
-        let previous: Vec<Entity> = world
-            .query_mut::<Entity>()
-            .with::<&Selected>()
-            .into_iter()
-            .collect();
-        for previous in previous {
-            world.remove_one::<Selected>(previous).unwrap();
+        let mut commands = CommandBuffer::new();
+        for previous in world.query_mut::<Entity>().with::<&Selected>() {
+            commands.remove_one::<Selected>(previous);
         }
+        commands.run_on(world);
         if let Some(entity) = entity {
             let _ = world.insert_one(entity, Selected);
         }
