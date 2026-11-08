@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use hecs::{Entity, World};
+use hecs::{CommandBuffer, Entity, World};
 use neuronify_engine::units::{
     Celsius, MicrofaradsPerSquareCentimetre, Micrometres, Microsiemens, Milliseconds, Millivolts,
     Nanoamperes, OhmCentimetres, OhmSquareCentimetres, SiemensPerSquareCentimetre,
@@ -191,25 +191,26 @@ pub fn prepare(world: &mut World, preparation: Preparation) {
             (link, connection.from, connection.to, myelin.is_some())
         })
         .collect();
+    let mut commands = CommandBuffer::new();
     for (link, from, to, myelinated) in links {
         let role = role(world, from, to, myelinated);
-        world.insert_one(link, preparation.membrane(role)).unwrap();
+        commands.insert_one(link, preparation.membrane(role));
         if let Role::Axon = role {
-            world.get::<&mut Cable>(link).unwrap().diameter = preparation.axon_diameter();
+            if let Ok(mut cable) = world.get::<&mut Cable>(link) {
+                cable.diameter = preparation.axon_diameter();
+            }
         }
     }
+    commands.run_on(world);
     rest(world, preparation);
 }
 
 pub fn rest(world: &mut World, preparation: Preparation) {
-    let cables: Vec<Entity> = world
-        .query::<Entity>()
-        .with::<&CableState>()
-        .iter()
-        .collect();
-    for cable in cables {
-        world.remove_one::<CableState>(cable).unwrap();
+    let mut commands = CommandBuffer::new();
+    for cable in world.query_mut::<Entity>().with::<&CableState>() {
+        commands.remove_one::<CableState>(cable);
     }
+    commands.run_on(world);
     for (state, soma) in world.query_mut::<(&mut NodeState, Option<&LeakyNeuron>)>() {
         match soma {
             Some(_) => state.gates.clear(),

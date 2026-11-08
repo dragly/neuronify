@@ -1029,11 +1029,7 @@ impl Engine {
                 open: self.network.conductances[index].open,
                 pending: self.network.pending(Target::Conductance(index)),
             };
-            if world.get::<&SynapseState>(entity).is_ok() {
-                *world.get::<&mut SynapseState>(entity).unwrap() = state;
-            } else {
-                let _ = world.insert_one(entity, state);
-            }
+            let _ = world.insert_one(entity, state);
         }
         for &(entity, index) in &self.currents {
             if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {

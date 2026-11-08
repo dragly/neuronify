@@ -451,7 +451,9 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
     for (step, &compartment) in compartments.iter().enumerate() {
         recording.edit(world, compartment);
         let distance = (step + 1) as f32 * length / segments as f32;
-        world.get::<&mut Position>(compartment).unwrap().position = point_along(&points, distance);
+        if let Ok(mut position) = world.get::<&mut Position>(compartment) {
+            position.position = point_along(&points, distance);
+        }
     }
     let mut previous = nodes[kept];
     for &compartment in &added {
@@ -460,7 +462,9 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
     }
     let last = chain[chain.len() - 1];
     recording.edit(world, last);
-    world.get::<&mut Connection>(last).unwrap().from = previous;
+    if let Ok(mut connection) = world.get::<&mut Connection>(last) {
+        connection.from = previous;
+    }
     true
 }
 

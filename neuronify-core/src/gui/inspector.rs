@@ -1115,13 +1115,15 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             .changed();
         ui.add_space(8.0);
     }
-    if let Some(ending) = axon_ending(world, entity) {
+    let ending =
+        axon_ending(world, entity).and_then(|ending| world.get::<&mut Connection>(ending).ok());
+    if let Some(mut ending) = ending {
         heading(ui, chrome, "Parameters", 0.0);
         changed |= parameter(
             ui,
             chrome,
             Setting::Strength,
-            &mut world.get::<&mut Connection>(ending).unwrap().strength,
+            &mut ending.strength,
             0.0..=MAX_ENDING_STRENGTH,
             |strength| format!("{strength:.2}"),
         );
