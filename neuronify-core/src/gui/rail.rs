@@ -221,90 +221,103 @@ impl Rail {
                     .show(ui, |ui| {
                         let inner_height = height - 2.0 * RAIL_PADDING as f32 - 2.0;
                         ui.set_width(RAIL_WIDTH - 2.0 * RAIL_PADDING as f32);
-                        ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
-                        let menu = item(
-                            ui,
-                            chrome,
-                            "Menu",
-                            menu_open,
-                            false,
-                            |painter, rect, color| paint_icon(painter, Icon::Menu, rect, color),
-                        );
-                        for (index, section) in SECTIONS.into_iter().enumerate() {
-                            separator(ui, chrome);
-                            if index == ADD_SECTION {
-                                if !self.folded && add_heading(ui, chrome).clicked() {
-                                    self.folded = true;
-                                    self.flyout = self.flyout.filter(|&slot| slot == STIMULATION);
-                                }
-                                if self.folded {
-                                    if add_button(ui, chrome, theme, editor, false).clicked() {
-                                        self.folded = false;
-                                    }
-                                    continue;
-                                }
-                            }
-                            for &(slot, key) in section {
-                                match slot {
-                                    Slot::Tool(tool) => {
-                                        let response = tool_item(
-                                            ui,
-                                            chrome,
-                                            theme,
-                                            tool,
-                                            tool.name(),
-                                            editor.tool == tool,
-                                        )
-                                        .on_hover_text(format!(
-                                            "{} ({})\n{}",
-                                            tool.name(),
-                                            key.name(),
-                                            tool.description()
-                                        ));
-                                        anchors.push((slot, response.rect));
-                                        if response.clicked() {
-                                            self.press(editor, tool);
+                        ScrollArea::vertical()
+                            .max_height(inner_height)
+                            .min_scrolled_height(inner_height)
+                            .show(ui, |ui| {
+                                ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
+                                let menu = item(
+                                    ui,
+                                    chrome,
+                                    "Menu",
+                                    menu_open,
+                                    false,
+                                    |painter, rect, color| {
+                                        paint_icon(painter, Icon::Menu, rect, color)
+                                    },
+                                );
+                                for (index, section) in SECTIONS.into_iter().enumerate() {
+                                    separator(ui, chrome);
+                                    if index == ADD_SECTION {
+                                        if !self.folded && add_heading(ui, chrome).clicked() {
+                                            self.folded = true;
+                                            self.flyout =
+                                                self.flyout.filter(|&slot| slot == STIMULATION);
+                                        }
+                                        if self.folded {
+                                            if add_button(ui, chrome, theme, editor, false)
+                                                .clicked()
+                                            {
+                                                self.folded = false;
+                                            }
+                                            continue;
                                         }
                                     }
-                                    Slot::Group(group) => {
-                                        let shown = self.shown_for(group, editor.tool);
-                                        let on = group.tools().contains(&editor.tool);
-                                        let compartments = editor.compartments;
-                                        let response = item(
-                                            ui,
-                                            chrome,
-                                            group.label(),
-                                            on,
-                                            true,
-                                            |painter, rect, color| {
-                                                paint_tool(
-                                                    painter,
-                                                    shown,
-                                                    rect,
+                                    for &(slot, key) in section {
+                                        match slot {
+                                            Slot::Tool(tool) => {
+                                                let response = tool_item(
+                                                    ui,
+                                                    chrome,
                                                     theme,
-                                                    color,
-                                                    compartments,
+                                                    tool,
+                                                    tool.name(),
+                                                    editor.tool == tool,
                                                 )
-                                            },
-                                        )
-                                        .on_hover_text(format!(
-                                            "{} ({})",
-                                            group.label(),
-                                            key.name()
-                                        ));
-                                        anchors.push((slot, response.rect));
-                                        if response.clicked() {
-                                            toggled = Some(slot);
+                                                .on_hover_text(format!(
+                                                    "{} ({})\n{}",
+                                                    tool.name(),
+                                                    key.name(),
+                                                    tool.description()
+                                                ));
+                                                anchors.push((slot, response.rect));
+                                                if response.clicked() {
+                                                    self.press(editor, tool);
+                                                }
+                                            }
+                                            Slot::Group(group) => {
+                                                let shown = self.shown_for(group, editor.tool);
+                                                let on = group.tools().contains(&editor.tool);
+                                                let compartments = editor.compartments;
+                                                let response = item(
+                                                    ui,
+                                                    chrome,
+                                                    group.label(),
+                                                    on,
+                                                    true,
+                                                    |painter, rect, color| {
+                                                        paint_tool(
+                                                            painter,
+                                                            shown,
+                                                            rect,
+                                                            theme,
+                                                            color,
+                                                            compartments,
+                                                        )
+                                                    },
+                                                )
+                                                .on_hover_text(format!(
+                                                    "{} ({})",
+                                                    group.label(),
+                                                    key.name()
+                                                ));
+                                                anchors.push((slot, response.rect));
+                                                if response.clicked() {
+                                                    toggled = Some(slot);
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        }
-                        let spacing = ui.spacing().item_spacing.y;
-                        let used = ui.min_rect().height();
-                        ui.add_space((inner_height - used - HIDE_HEIGHT - spacing).max(0.0));
-                        hide = hide_button(ui, chrome).clicked();
-                        menu
+                                let spacing = ui.spacing().item_spacing.y;
+                                let used = ui.min_rect().height();
+                                ui.add_space(
+                                    (inner_height - used - HIDE_HEIGHT - spacing).max(0.0),
+                                );
+                                hide = hide_button(ui, chrome).clicked();
+                                menu
+                            })
+                            .inner
                     })
                     .inner
             });

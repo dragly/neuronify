@@ -337,6 +337,20 @@ fn the_rail_hides_behind_a_round_button() {
 }
 
 #[test]
+fn the_rail_fits_a_short_window_and_can_still_hide() {
+    let short = vec2(SCREEN.x, 600.0);
+    let mut harness = Harness::sized(short, true, World::new(), None);
+    let rail = harness
+        .context
+        .memory(|memory| memory.area_rect(Id::new("rail")))
+        .unwrap();
+    assert!(rail.bottom() <= short.y - MARGIN + 0.5, "{rail:?}");
+    harness.scroll_to_the_end_at(rail.center());
+    harness.click(rail.center_bottom() - vec2(0.0, 12.0));
+    assert!(!harness.gui.rail_shown());
+}
+
+#[test]
 fn a_tool_on_the_rail_is_chosen_with_one_click() {
     let mut harness = Harness::new(true);
     harness.click_text("Erase");
