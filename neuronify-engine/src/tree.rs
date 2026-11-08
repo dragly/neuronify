@@ -136,7 +136,8 @@ impl Tree {
                 let area = PI * cable.diameter * piece;
                 let resistance = (4.0 * cable.membrane.axial_resistivity)
                     .along(piece, PI * cable.diameter.squared());
-                let mut points = vec![node_points[node]];
+                let mut previous = node_points[node];
+                let mut points = vec![previous];
                 for step in 0..segments {
                     let point = if step + 1 == segments {
                         let point = accumulator.point();
@@ -146,12 +147,12 @@ impl Tree {
                     } else {
                         accumulator.point()
                     };
-                    parent.push(*points.last().unwrap());
+                    parent.push(previous);
                     axial.push(1.0 / resistance);
-                    let previous = *points.last().unwrap();
                     accumulator.membrane(previous, area / 2.0, &cable.membrane);
                     accumulator.membrane(point, area / 2.0, &cable.membrane);
                     points.push(point);
+                    previous = point;
                 }
                 if cable.from != node {
                     points.reverse();
@@ -303,7 +304,9 @@ impl Tree {
             let arrays = &mut self.channels[index];
             let states = &mut arrays.states[k * arrays.gates..(k + 1) * arrays.gates];
             if gates.len() == count {
-                states.fill_with(|| stored.next().unwrap());
+                for (state, gate) in states.iter_mut().zip(&mut stored) {
+                    *state = gate;
+                }
             } else {
                 for (state, gate) in states.iter_mut().zip(arrays.channel.channel().gates) {
                     *state = gate.steady_state(voltage, celsius);

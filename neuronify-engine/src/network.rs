@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::BinaryHeap;
+use std::collections::binary_heap::{BinaryHeap, PeekMut};
 use std::f64::consts::TAU;
 
 use crate::table::Tables;
@@ -497,8 +497,12 @@ impl Network {
         let dt = self.tables.dt();
         let time = self.time();
         self.decay();
-        while self.queue.peek().is_some_and(|next| next.time <= time) {
-            let pending = self.queue.pop().unwrap();
+        while let Some(pending) = self
+            .queue
+            .peek_mut()
+            .filter(|next| next.time <= time)
+            .map(PeekMut::pop)
+        {
             self.deliver(pending.target);
         }
         for index in 0..self.generators.len() {
@@ -546,8 +550,8 @@ impl Network {
         for tree in &mut self.trees {
             tree.begin(&self.tables);
         }
-        if pulsing {
-            for &(site, current) in &self.pulses.as_ref().unwrap().sites {
+        if let Some(pulses) = self.pulses.as_ref().filter(|_| pulsing) {
+            for &(site, current) in &pulses.sites {
                 self.trees[site.tree].add(site.point, Microsiemens::ZERO, current);
             }
         }
