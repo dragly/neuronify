@@ -272,6 +272,11 @@ impl History {
         self.push(recording.finish(world))
     }
 
+    pub fn revert(&mut self, recording: Recording, world: &mut World) {
+        let change = recording.finish(world);
+        self.apply(world, change);
+    }
+
     pub fn record_snapshot(&mut self, snapshot: Snapshot) {
         self.push(
             snapshot

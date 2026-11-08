@@ -1389,6 +1389,24 @@ fn a_visual_input_pressed_near_its_corner_moves() {
 }
 
 #[test]
+fn a_tap_that_nudged_an_element_puts_it_back_and_leaves_nothing_to_undo() {
+    let mut world = World::new();
+    let neuron = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Edit);
+    editor.edit(&mut world, at(0.0, 0.0), false);
+    editor.move_held();
+    editor.edit(&mut world, at(0.04, 0.03), false);
+    assert_ne!(position(&world, neuron), at(0.0, 0.0));
+
+    editor.snap_back(&mut world);
+    editor.lift(&mut world);
+
+    assert_eq!(position(&world, neuron), at(0.0, 0.0));
+    assert!(!editor.can_undo());
+    assert!(!editor.take_edited());
+}
+
+#[test]
 fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
