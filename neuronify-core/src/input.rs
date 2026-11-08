@@ -98,6 +98,10 @@ pub struct Keyboard {
 pub enum TouchGesture {
     Press(PhysicalPosition<f64>),
     Drag(PhysicalPosition<f64>),
+    Stroke {
+        start: PhysicalPosition<f64>,
+        current: PhysicalPosition<f64>,
+    },
     Release,
     Tap(PhysicalPosition<f64>),
     Cancel,
@@ -289,7 +293,13 @@ impl Touches {
             }
             _ => {
                 self.stroke = None;
-                self.drag(location)
+                match self.waiting.take() {
+                    Some((start, _)) => TouchGesture::Stroke {
+                        start,
+                        current: location,
+                    },
+                    None => self.drag(location),
+                }
             }
         }
     }
@@ -477,6 +487,27 @@ mod tests {
             touches.update(&touch(2, TouchPhase::Moved, 50.0, 10.0), 1.0, true, 1.0),
             TouchGesture::Pinch { .. }
         ));
+    }
+
+    #[test]
+    fn a_quick_swipe_while_waiting_is_a_stroke_from_where_it_started() {
+        let mut touches = Touches::default();
+        touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), 0.0, true, 1.0);
+        assert_eq!(
+            touches.update(&touch(1, TouchPhase::Moved, 40.0, 10.0), 0.03, true, 1.0),
+            TouchGesture::Stroke {
+                start: at(10.0, 10.0),
+                current: at(40.0, 10.0)
+            }
+        );
+        assert_eq!(
+            touches.update(&touch(1, TouchPhase::Moved, 60.0, 10.0), 0.05, true, 1.0),
+            TouchGesture::Drag(at(60.0, 10.0))
+        );
+        assert_eq!(
+            touches.update(&touch(1, TouchPhase::Ended, 60.0, 10.0), 0.08, true, 1.0),
+            TouchGesture::Release
+        );
     }
 
     #[test]
