@@ -1,5 +1,5 @@
 use glam::Vec3;
-use hecs::{Entity, World};
+use hecs::{DynamicBundle, Entity, EntityBuilder, World};
 
 use crate::components::*;
 use crate::elements::{
@@ -61,17 +61,22 @@ pub fn spawn_legacy_simulation(world: &mut World, sim: &LegacySimulation) -> Vec
 }
 
 fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
-    let entity = spawn_element(world, node);
-    if !node.label.is_empty() || world.get::<&LeakyNeuron>(entity).is_ok() {
-        let label = Label {
+    let mut element = element(node);
+    if !node.label.is_empty() || element.has::<LeakyNeuron>() {
+        element.add(Label {
             text: node.label.trim().to_string(),
-        };
-        world.insert_one(entity, label).unwrap();
+        });
     }
-    entity
+    world.spawn(element.build())
 }
 
-fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
+fn builder(components: impl DynamicBundle) -> EntityBuilder {
+    let mut builder = EntityBuilder::new();
+    builder.add_bundle(components);
+    builder
+}
+
+fn element(node: &LegacyNode) -> EntityBuilder {
     let pos = Position {
         position: convert_position(node.x, node.y),
     };
@@ -79,29 +84,19 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
     match node.filename.as_str() {
         "neurons/LeakyNeuron.qml" => {
             let negative_output = node.engine.fire_output.is_some_and(|output| output < 0.0);
-            spawn_leaky_neuron(world, node, pos, node.inhibitory || negative_output)
+            leaky_neuron(node, pos, node.inhibitory || negative_output)
         }
-        "neurons/LeakyInhibitoryNeuron.qml" => spawn_leaky_neuron(world, node, pos, true),
-        "neurons/AdaptationNeuron.qml" => {
-            spawn_adaptation_neuron(world, node, pos, node.inhibitory)
-        }
-        "neurons/AdaptationInhibitoryNeuron.qml" => spawn_adaptation_neuron(world, node, pos, true),
-        "neurons/BurstNeuron.qml" => {
-            let entity = spawn_leaky_neuron(world, node, pos, node.inhibitory);
-            world.insert_one(entity, BurstCurrent::default()).unwrap();
-            entity
-        }
-        "neurons/BurstInhibitoryNeuron.qml" => {
-            let entity = spawn_leaky_neuron(world, node, pos, true);
-            world.insert_one(entity, BurstCurrent::default()).unwrap();
-            entity
-        }
+        "neurons/LeakyInhibitoryNeuron.qml" => leaky_neuron(node, pos, true),
+        "neurons/AdaptationNeuron.qml" => adaptation_neuron(node, pos, node.inhibitory),
+        "neurons/AdaptationInhibitoryNeuron.qml" => adaptation_neuron(node, pos, true),
+        "neurons/BurstNeuron.qml" => burst_neuron(node, pos, node.inhibitory),
+        "neurons/BurstInhibitoryNeuron.qml" => burst_neuron(node, pos, true),
         "generators/CurrentClamp.qml" => {
             let current = node
                 .engine
                 .current_output
                 .map_or(Nanoamperes(2.0), |current| Nanoamperes(current * NANO));
-            world.spawn((
+            builder((
                 pos,
                 CurrentClamp {
                     current_output: current,
@@ -121,18 +116,16 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             let clamp = CurrentClamp {
                 current_output: Nanoamperes::ZERO,
             };
-            world.spawn((pos, clamp, alternating, Deletable {}))
+            builder((pos, clamp, alternating, Deletable {}))
         }
-        "generators/RegularSpikeGenerator.qml" => spawn_generator(
-            world,
+        "generators/RegularSpikeGenerator.qml" => spike_generator(
             node,
             pos,
             RegularSpikeGenerator {
                 frequency: node.engine.rate.map_or(LEGACY_GENERATOR_RATE, Hertz),
             },
         ),
-        "generators/IrregularSpikeGenerator.qml" => spawn_generator(
-            world,
+        "generators/IrregularSpikeGenerator.qml" => spike_generator(
             node,
             pos,
             PoissonGenerator {
@@ -140,7 +133,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
             },
         ),
         "sensors/TouchSensor.qml" => {
-            world.spawn((pos, TouchSensor, GeneratorDynamics::default(), Deletable {}))
+            builder((pos, TouchSensor, GeneratorDynamics::default(), Deletable {}))
         }
         "meters/SpikeDetector.qml" => {
             let (left_middle, size) = meter_frame(node);
@@ -150,7 +143,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                     .map_or(SpikeDetector::default().time_range, from_seconds),
                 ..Default::default()
             };
-            world.spawn((
+            builder((
                 left_middle,
                 detector,
                 RowOrder::default(),
@@ -172,7 +165,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 show_field: node.plot_kernel.unwrap_or(default.show_field),
                 ..default
             };
-            world.spawn((
+            builder((
                 center,
                 input,
                 GeneratorDynamics::default(),
@@ -185,7 +178,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 sound: Sound::from_legacy(node.source.as_deref().unwrap_or_default()),
                 ..Default::default()
             };
-            world.spawn((pos, speaker, Deletable {}))
+            builder((pos, speaker, Deletable {}))
         }
         "meters/RatePlot.qml" => {
             let (left_middle, size) = meter_frame(node);
@@ -198,7 +191,7 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 minimum: node.minimum_value.map_or(default.minimum, Hertz),
                 maximum: node.maximum_value.map_or(default.maximum, Hertz),
             };
-            world.spawn((left_middle, plot, RateSeries::default(), size, Deletable {}))
+            builder((left_middle, plot, RateSeries::default(), size, Deletable {}))
         }
         "meters/Voltmeter.qml" => {
             let (left_middle, size) = meter_frame(node);
@@ -207,9 +200,9 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 minimum: node.minimum_value.map_or(default_range.minimum, Millivolts),
                 maximum: node.maximum_value.map_or(default_range.maximum, Millivolts),
             };
-            world.spawn((left_middle, Voltmeter {}, size, range, Deletable {}))
+            builder((left_middle, Voltmeter {}, size, range, Deletable {}))
         }
-        "annotations/NextTutorial.qml" => world.spawn((
+        "annotations/NextTutorial.qml" => builder((
             Position {
                 position: convert_position(
                     node.x + NEXT_TUTORIAL_PIXELS / 2.0,
@@ -242,9 +235,9 @@ fn spawn_element(world: &mut World, node: &LegacyNode) -> Entity {
                 width: width as f32 / PIXELS_PER_UNIT,
                 height: height as f32 / PIXELS_PER_UNIT,
             };
-            world.spawn((center, Annotation { text }, size, Deletable {}))
+            builder((center, Annotation { text }, size, Deletable {}))
         }
-        _ => world.spawn((pos,)),
+        _ => builder((pos,)),
     }
 }
 
@@ -299,13 +292,12 @@ fn meter_frame(node: &LegacyNode) -> (Position, MeterSize) {
     (left_middle, size)
 }
 
-fn spawn_generator(
-    world: &mut World,
+fn spike_generator(
     node: &LegacyNode,
     pos: Position,
     generator: impl hecs::Component,
-) -> Entity {
-    world.spawn((
+) -> EntityBuilder {
+    builder((
         pos,
         generator,
         GeneratorDynamics::default(),
@@ -322,12 +314,7 @@ fn legacy_type(inhibitory: bool) -> NeuronType {
     }
 }
 
-fn spawn_leaky_neuron(
-    world: &mut World,
-    node: &LegacyNode,
-    pos: Position,
-    inhibitory: bool,
-) -> Entity {
+fn leaky_neuron(node: &LegacyNode, pos: Position, inhibitory: bool) -> EntityBuilder {
     let e = &node.engine;
 
     let neuron = LeakyNeuron {
@@ -350,7 +337,7 @@ fn spawn_leaky_neuron(
         resistance: Megaohms(e.resistance.unwrap_or(1e8) / MICRO),
     };
 
-    world.spawn((
+    builder((
         pos,
         neuron,
         state,
@@ -360,13 +347,8 @@ fn spawn_leaky_neuron(
     ))
 }
 
-fn spawn_adaptation_neuron(
-    world: &mut World,
-    node: &LegacyNode,
-    pos: Position,
-    inhibitory: bool,
-) -> Entity {
-    let entity = spawn_leaky_neuron(world, node, pos, inhibitory);
+fn adaptation_neuron(node: &LegacyNode, pos: Position, inhibitory: bool) -> EntityBuilder {
+    let mut neuron = leaky_neuron(node, pos, inhibitory);
 
     let e = &node.engine;
     let adapt = AdaptationCurrent {
@@ -375,8 +357,14 @@ fn spawn_adaptation_neuron(
         time_constant: Milliseconds(e.time_constant.unwrap_or(0.5) * MILLI),
     };
 
-    world.insert_one(entity, adapt).unwrap();
-    entity
+    neuron.add(adapt);
+    neuron
+}
+
+fn burst_neuron(node: &LegacyNode, pos: Position, inhibitory: bool) -> EntityBuilder {
+    let mut neuron = leaky_neuron(node, pos, inhibitory);
+    neuron.add(BurstCurrent::default());
+    neuron
 }
 
 fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
