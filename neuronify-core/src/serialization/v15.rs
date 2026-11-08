@@ -4,7 +4,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::World;
+use hecs::{ComponentError, World};
 
 schema!(
     save,
@@ -59,7 +59,7 @@ schema!(
     RowOrder,
 );
 
-pub fn upgrade_from_v14(world: &mut World) {
+pub fn upgrade_from_v14(world: &mut World) -> Result<(), ComponentError> {
     for series in world.query_mut::<&mut VoltageSeries>() {
         for measurement in series.measurements.iter_mut() {
             measurement.time = from_seconds(measurement.time);
@@ -86,6 +86,7 @@ pub fn upgrade_from_v14(world: &mut World) {
             *time = from_seconds(*time);
         }
     }
+    Ok(())
 }
 
 fn from_seconds(time: Milliseconds) -> Milliseconds {

@@ -8,7 +8,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::{Pattern, ReceptiveField};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::{Entity, World};
+use hecs::{ComponentError, Entity, World};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -61,14 +61,14 @@ schema!(
     VisualInput,
 );
 
-pub fn upgrade_from_v8(world: &mut World) {
+pub fn upgrade_from_v8(world: &mut World) -> Result<(), ComponentError> {
     let neurons: Vec<hecs::Entity> = world
         .query::<Entity>()
         .with::<&LeakyNeuron>()
         .iter()
         .collect();
     for neuron in neurons {
-        world.insert_one(neuron, Label::default()).unwrap();
+        world.insert_one(neuron, Label::default())?;
     }
     let voltmeters: Vec<hecs::Entity> = world
         .query::<Entity>()
@@ -77,9 +77,7 @@ pub fn upgrade_from_v8(world: &mut World) {
         .collect();
     for voltmeter in voltmeters {
         let measured = world.remove::<(Connection, VoltageSeries)>(voltmeter);
-        world
-            .insert_one(voltmeter, VoltmeterRange::default())
-            .unwrap();
+        world.insert_one(voltmeter, VoltmeterRange::default())?;
         if let Ok((connection, series)) = measured {
             world.spawn((
                 Connection {
@@ -91,4 +89,5 @@ pub fn upgrade_from_v8(world: &mut World) {
             ));
         }
     }
+    Ok(())
 }
