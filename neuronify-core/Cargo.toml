@@ -36,6 +36,7 @@ web-sys = { version = "0.3.69", features = [
     "AudioBuffer",
     "AudioBufferSourceNode",
     "AudioContext",
+    "AudioContextState",
     "AudioDestinationNode",
     "AudioNode",
     "AudioParam",
