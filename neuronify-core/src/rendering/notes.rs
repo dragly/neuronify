@@ -49,8 +49,12 @@ struct Layer {
 }
 
 impl Layer {
-    fn new(application: &visula::Application, background: Vec4, text: Vec4) -> Layer {
-        Layer {
+    fn new(
+        application: &visula::Application,
+        background: Vec4,
+        text: Vec4,
+    ) -> Result<Layer, visula_core::ShaderError> {
+        Ok(Layer {
             backgrounds: Polygons::new(
                 &application.rendering_descriptor(),
                 &PolygonDelegate {
@@ -59,17 +63,15 @@ impl Layer {
                 },
                 &[],
                 &[],
-            )
-            .unwrap(),
+            )?,
             text: Glyphs::new(
                 &application.rendering_descriptor(),
                 &GlyphDelegate {
                     color: text.into(),
                     transform: Expression::from(note_plane(NOTE_TEXT_Y)),
                 },
-            )
-            .unwrap(),
-        }
+            )?,
+        })
     }
 
     fn upload(
@@ -114,15 +116,15 @@ pub struct NoteRenderer {
 }
 
 impl NoteRenderer {
-    pub fn new(application: &visula::Application) -> Self {
-        Self {
-            notes_layer: Layer::new(application, NOTE_BACKGROUND, NOTE_TEXT),
-            links_layer: Layer::new(application, link_background(), LINK_TEXT),
-            atlas: GlyphAtlas::new(NOTE_FONT_DATA).unwrap(),
+    pub fn new(application: &visula::Application) -> Result<Self, visula::error::Error> {
+        Ok(Self {
+            notes_layer: Layer::new(application, NOTE_BACKGROUND, NOTE_TEXT)?,
+            links_layer: Layer::new(application, link_background(), LINK_TEXT)?,
+            atlas: GlyphAtlas::new(NOTE_FONT_DATA)?,
             unprepared: PREPARED_CHARACTERS,
             notes: HashMap::new(),
             uploaded: Vec::new(),
-        }
+        })
     }
 
     pub fn update(&mut self, application: &visula::Application, world: &hecs::World) {

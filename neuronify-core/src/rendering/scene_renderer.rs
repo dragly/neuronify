@@ -71,7 +71,10 @@ pub struct SceneRenderer {
 }
 
 impl SceneRenderer {
-    pub fn new(application: &mut visula::Application, theme: Theme) -> SceneRenderer {
+    pub fn new(
+        application: &mut visula::Application,
+        theme: Theme,
+    ) -> Result<SceneRenderer, visula::error::Error> {
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
         let connection_buffer = InstanceBuffer::<ConnectionData>::new(&application.device);
         let sphere = sphere_buffer.instance();
@@ -87,8 +90,7 @@ impl SceneRenderer {
             &SphereMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let connection_vector = connection.position_b.clone() - connection.position_a.clone();
         let connection_endpoint = connection.position_a.clone() + connection_vector.clone()
@@ -106,8 +108,7 @@ impl SceneRenderer {
             &LineMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let connection_spheres = Spheres::new(
             &application.rendering_descriptor(),
@@ -119,8 +120,7 @@ impl SceneRenderer {
             &SphereMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let wire_buffer = InstanceBuffer::<ArcData>::new(&application.device);
         let wire = wire_buffer.instance();
@@ -137,8 +137,7 @@ impl SceneRenderer {
             &ArcMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let cylinder_buffer = InstanceBuffer::<CylinderData>::new(&application.device);
         let cylinder = cylinder_buffer.instance();
@@ -155,8 +154,7 @@ impl SceneRenderer {
             &CylinderMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let ring_buffer = InstanceBuffer::<TorusData>::new(&application.device);
         let ring = ring_buffer.instance();
@@ -172,15 +170,13 @@ impl SceneRenderer {
             &TorusMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let floor = create_floor(
             &application.rendering_descriptor(),
             &application.device,
             theme.palette().floor,
-        )
-        .unwrap();
+        )?;
         let meter_background_buffer =
             InstanceBuffer::<MeterBackgroundData>::new(&application.device);
         let meter_backgrounds = create_meter_backgrounds(
@@ -188,18 +184,16 @@ impl SceneRenderer {
             &application.device,
             &meter_background_buffer,
             &theme.palette(),
-        )
-        .unwrap();
+        )?;
         let halo_buffer = InstanceBuffer::<HaloData>::new(&application.device);
         let halos = create_halos(
             &application.rendering_descriptor(),
             &application.device,
             &halo_buffer,
-        )
-        .unwrap();
+        )?;
         configure_lighting(application, theme);
 
-        SceneRenderer {
+        Ok(SceneRenderer {
             theme,
             floor,
             meter_backgrounds,
@@ -218,10 +212,10 @@ impl SceneRenderer {
             connection_lines,
             connection_spheres,
             connection_buffer,
-            notes: NoteRenderer::new(application),
-            labels: LabelRenderer::new(application, theme),
-            gauges: GaugeRenderer::new(application),
-        }
+            notes: NoteRenderer::new(application)?,
+            labels: LabelRenderer::new(application, theme)?,
+            gauges: GaugeRenderer::new(application)?,
+        })
     }
 
     pub fn update(
@@ -233,19 +227,23 @@ impl SceneRenderer {
         marks: EditorMarks,
     ) {
         if self.theme != theme {
-            self.floor = create_floor(
+            match create_floor(
                 &application.rendering_descriptor(),
                 &application.device,
                 theme.palette().floor,
-            )
-            .unwrap();
-            self.meter_backgrounds = create_meter_backgrounds(
+            ) {
+                Ok(floor) => self.floor = floor,
+                Err(error) => log::error!("Kept the floor of the last theme: {error}"),
+            }
+            match create_meter_backgrounds(
                 &application.rendering_descriptor(),
                 &application.device,
                 &self.meter_background_buffer,
                 &theme.palette(),
-            )
-            .unwrap();
+            ) {
+                Ok(backgrounds) => self.meter_backgrounds = backgrounds,
+                Err(error) => log::error!("Kept the meter backgrounds of the last theme: {error}"),
+            }
             set_theme_lighting(application, theme);
             self.theme = theme;
         }

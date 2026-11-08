@@ -45,20 +45,26 @@ pub struct LabelRenderer {
 }
 
 impl LabelRenderer {
-    pub fn new(application: &visula::Application, theme: Theme) -> Self {
-        Self {
+    pub fn new(
+        application: &visula::Application,
+        theme: Theme,
+    ) -> Result<Self, visula::error::Error> {
+        Ok(Self {
             theme,
-            text: glyphs(application, theme),
-            atlas: GlyphAtlas::new(NOTE_FONT_DATA).unwrap(),
+            text: glyphs(application, theme)?,
+            atlas: GlyphAtlas::new(NOTE_FONT_DATA)?,
             laid: HashMap::new(),
             uploaded: Vec::new(),
-        }
+        })
     }
 
     pub fn update(&mut self, application: &visula::Application, world: &hecs::World, theme: Theme) {
         if theme != self.theme {
+            match glyphs(application, theme) {
+                Ok(text) => self.text = text,
+                Err(error) => log::error!("Kept the label colour of the last theme: {error}"),
+            }
             self.theme = theme;
-            self.text = glyphs(application, theme);
             self.uploaded.clear();
         }
         let placed = placed_labels(world);
@@ -96,7 +102,10 @@ impl LabelRenderer {
     }
 }
 
-fn glyphs(application: &visula::Application, theme: Theme) -> Glyphs {
+fn glyphs(
+    application: &visula::Application,
+    theme: Theme,
+) -> Result<Glyphs, visula_core::ShaderError> {
     Glyphs::new(
         &application.rendering_descriptor(),
         &GlyphDelegate {
@@ -104,7 +113,6 @@ fn glyphs(application: &visula::Application, theme: Theme) -> Glyphs {
             transform: Expression::from(note_plane(NOTE_TEXT_Y)),
         },
     )
-    .unwrap()
 }
 
 fn placed_labels(world: &hecs::World) -> Vec<(String, Placement, Vec3)> {

@@ -209,13 +209,9 @@ impl Resources {
 pub fn prepare_loupe(application: &mut visula::Application) {
     let device = &application.device;
     let resources = &mut application.egui_renderer.renderer.callback_resources;
-    let loupe = match resources.get_mut::<Resources>() {
-        Some(loupe) => loupe,
-        None => {
-            resources.insert(Resources::new(device, application.config.format));
-            resources.get_mut::<Resources>().unwrap()
-        }
-    };
+    let loupe = resources
+        .entry::<Resources>()
+        .or_insert_with(|| Resources::new(device, application.config.format));
     loupe.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("loupe"),
         layout: &loupe.layout,

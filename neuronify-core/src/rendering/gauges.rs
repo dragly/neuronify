@@ -37,7 +37,7 @@ pub struct GaugeRenderer {
 }
 
 impl GaugeRenderer {
-    pub fn new(application: &visula::Application) -> Self {
+    pub fn new(application: &visula::Application) -> Result<Self, visula_core::ShaderError> {
         let sphere_buffer = InstanceBuffer::<Sphere>::new(&application.device);
         let sphere = sphere_buffer.instance();
         let spheres = Spheres::new(
@@ -50,8 +50,7 @@ impl GaugeRenderer {
             &SphereMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let cylinder_buffer = InstanceBuffer::<CylinderData>::new(&application.device);
         let cylinder = cylinder_buffer.instance();
@@ -68,8 +67,7 @@ impl GaugeRenderer {
             &CylinderMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
         let ring_buffer = InstanceBuffer::<TorusData>::new(&application.device);
         let ring = ring_buffer.instance();
@@ -85,17 +83,16 @@ impl GaugeRenderer {
             &TorusMaterial {
                 color: shaded(Expression::InputColor),
             },
-        )
-        .unwrap();
+        )?;
 
-        Self {
+        Ok(Self {
             spheres,
             sphere_buffer,
             cylinders,
             cylinder_buffer,
             rings,
             ring_buffer,
-        }
+        })
     }
 
     pub fn update(
