@@ -1,9 +1,11 @@
+use std::f64::consts::{FRAC_PI_2, TAU};
+
 use super::v15;
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::VisualInput;
+use crate::measurement::visual_input::{ReceptiveField, VisualInput};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::{ComponentError, Entity, World};
 
@@ -81,6 +83,11 @@ pub fn upgrade_from_v15(world: &mut World) -> Result<(), ComponentError> {
             ..LeakyNeuron::default()
         };
         world.insert_one(neuron, upgraded)?;
+    }
+    for input in world.query_mut::<&mut VisualInput>() {
+        if let ReceptiveField::Edge { angle } = &mut input.field {
+            *angle = (FRAC_PI_2 - *angle).rem_euclid(TAU);
+        }
     }
     Ok(())
 }
