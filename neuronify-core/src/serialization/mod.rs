@@ -16,6 +16,9 @@
 //! and save a fixture with the `write_fixture` test.
 //! If the fields of a component change,
 //! the older modules need a copy of the old struct for the upgrade to convert.
+//! Loading clamps every value to the ranges in `bounds`, which belong to the newest version.
+//! To change a range, add a version too,
+//! and let its upgrade move values from the old range into the new one where it can.
 
 use hecs::{serialize::column::serialize, ComponentError, World};
 use postcard::ser_flavors::Flavor;
@@ -25,6 +28,7 @@ use crate::constants::{DEFAULT_SPEED, SPEEDS};
 
 #[macro_use]
 mod schema;
+pub mod bounds;
 mod column;
 mod v1;
 mod v10;
@@ -33,6 +37,7 @@ mod v12;
 mod v13;
 mod v14;
 mod v15;
+mod v16;
 mod v2;
 mod v3;
 mod v4;
@@ -43,7 +48,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 15;
+pub const VERSION: u32 = 16;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -64,6 +69,7 @@ const UPGRADES: [Upgrade; VERSION as usize - 1] = [
     v13::upgrade_from_v12,
     v14::upgrade_from_v13,
     v15::upgrade_from_v14,
+    v16::upgrade_from_v15,
 ];
 
 pub struct SavedWorld {
@@ -76,7 +82,7 @@ pub fn save(world: &World, time: Milliseconds, speed: f64) -> Result<Vec<u8>, St
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v15::SaveContext, &mut serializer)
+    serialize(world, &mut v16::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -92,6 +98,12 @@ pub fn save(world: &World, time: Milliseconds, speed: f64) -> Result<Vec<u8>, St
 
 /// Reads a save file of any version and upgrades it to the current one.
 pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
+    let mut saved = read(bytes)?;
+    bounds::bound(&mut saved.world);
+    Ok(saved)
+}
+
+fn read(bytes: &[u8]) -> Result<SavedWorld, String> {
     let (version, body) = bytes
         .strip_prefix(MAGIC)
         .ok_or("This is not a Neuronify save file")?
@@ -156,6 +168,11 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (time, body) = split_f64(body, "simulation time")?;
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v15::deserialize(body)?, time, speed)
+        }
+        16 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v16::deserialize(body)?, time, speed)
         }
         _ => {
             return Err(format!(
@@ -223,6 +240,7 @@ fn load_legacy(bytes: &[u8]) -> Result<SavedWorld, String> {
     let simulation = crate::legacy::parse_legacy_nfy(contents)?;
     let mut world = World::new();
     crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
+    bounds::bound(&mut world);
     Ok(SavedWorld {
         world,
         time: Milliseconds::ZERO,
