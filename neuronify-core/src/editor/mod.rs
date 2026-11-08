@@ -881,7 +881,7 @@ impl Editor {
     ) -> Option<Entity> {
         let mut backed = tip;
         let sharp = loop {
-            let Some((cable, previous)) = cable_into(world, backed) else {
+            let Some((_, previous)) = cable_into(world, backed) else {
                 break false;
             };
             let at = world.get::<&Position>(backed).ok()?.position;
@@ -890,7 +890,9 @@ impl Editor {
             if !sharp || !recording.is_new(backed) {
                 break sharp;
             }
-            recording.take(world, cable);
+            for connection in connections_touching(world, backed) {
+                recording.take(world, connection);
+            }
             recording.take(world, backed);
             self.drawn.remove(&backed);
             backed = previous;
@@ -1261,6 +1263,15 @@ fn cable_network(world: &World, start: Entity) -> HashSet<Entity> {
         }
     }
     network
+}
+
+fn connections_touching(world: &World, entity: Entity) -> Vec<Entity> {
+    world
+        .query::<&Connection>()
+        .iter()
+        .filter(|(_, connection)| connection.from == entity || connection.to == entity)
+        .map(|(connection, _)| connection)
+        .collect()
 }
 
 fn cable_into(world: &World, tip: Entity) -> Option<(Entity, Entity)> {
