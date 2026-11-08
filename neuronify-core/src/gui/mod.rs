@@ -16,7 +16,7 @@ use egui::{
     pos2, vec2, Align, Align2, Color32, Context, Id, Key, KeyboardShortcut, Layout, Modifiers,
     Order, Pos2, Rect, Response, RichText, ScrollArea, Sense, Ui, Vec2, WidgetInfo, WidgetType,
 };
-use hecs::World;
+use hecs::{Entity, World};
 
 use crate::components::{
     Celsius, ConnectionView, Hertz, Milliseconds, NeuronDisplay, Preparation, Setting, Temperature,
@@ -296,12 +296,7 @@ fn warm(
     warmed: bool,
     settled: bool,
 ) {
-    let stored = world
-        .query::<()>()
-        .with::<&Temperature>()
-        .iter()
-        .next()
-        .map(|(entity, _)| entity);
+    let stored = world.query::<Entity>().with::<&Temperature>().iter().next();
     let stored = match stored {
         Some(entity) => entity,
         None if warmed => world.spawn((Temperature::of(world),)),

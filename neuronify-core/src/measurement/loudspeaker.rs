@@ -66,7 +66,10 @@ impl Default for Loudspeaker {
 }
 
 pub fn listen(world: &mut World, spikes: &[Spike], time: Milliseconds, duration: Milliseconds) {
-    let mut speakers = world.query_mut::<&mut Loudspeaker>().into_iter().peekable();
+    let mut speakers = world
+        .query_mut::<(Entity, &mut Loudspeaker)>()
+        .into_iter()
+        .peekable();
     if speakers.peek().is_none() {
         return;
     }
@@ -74,13 +77,9 @@ pub fn listen(world: &mut World, spikes: &[Spike], time: Milliseconds, duration:
         speaker.time_since_heard += duration;
     }
     let wires: Vec<(Entity, Entity)> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
-        .filter(|(_, connection)| {
-            world
-                .satisfies::<&Loudspeaker>(connection.to)
-                .unwrap_or(false)
-        })
+        .filter(|(_, connection)| world.satisfies::<&Loudspeaker>(connection.to))
         .map(|(_, connection)| (connection.from, connection.to))
         .collect();
     for spike in spikes {
@@ -100,7 +99,7 @@ pub fn listen(world: &mut World, spikes: &[Spike], time: Milliseconds, duration:
 
 pub fn take_heard(world: &mut World) -> Vec<(Sound, f32, Milliseconds)> {
     let mut heard = Vec::new();
-    for (_, speaker) in world.query_mut::<&mut Loudspeaker>() {
+    for (_, speaker) in world.query_mut::<(Entity, &mut Loudspeaker)>() {
         let times = std::mem::take(&mut speaker.heard);
         if !speaker.muted {
             heard.extend(

@@ -27,6 +27,7 @@ use visula::{winit::keyboard::ModifiersKeyState, CustomEvent, RenderData, Shadow
 use crate::input::{self, Keyboard, Mouse, TouchGesture, Touches};
 use crate::simulation;
 use crate::tools::{ConnectionHint, Tool};
+use hecs::Entity;
 
 #[cfg(target_arch = "wasm32")]
 const SAVED_NAME: &str = "circuit.neuronify";
@@ -948,7 +949,12 @@ impl visula::Simulation for Neuronify {
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
         if is_press(event) {
-            let needed = self.world.query::<&Loudspeaker>().iter().next().is_some();
+            let needed = self
+                .world
+                .query::<(Entity, &Loudspeaker)>()
+                .iter()
+                .next()
+                .is_some();
             self.speakers.unlock(needed);
         }
         if matches!(

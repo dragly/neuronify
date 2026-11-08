@@ -61,12 +61,7 @@ const NANO: f64 = 1e9;
 const MICRO: f64 = 1e6;
 
 fn replace<Old: Component, New: Component>(world: &mut World, convert: impl Fn(Old) -> New) {
-    let entities: Vec<Entity> = world
-        .query::<()>()
-        .with::<&Old>()
-        .iter()
-        .map(|(entity, _)| entity)
-        .collect();
+    let entities: Vec<Entity> = world.query::<Entity>().with::<&Old>().iter().collect();
     for entity in entities {
         let old = world.remove_one::<Old>(entity).unwrap();
         world.insert_one(entity, convert(old)).unwrap();
@@ -74,7 +69,7 @@ fn replace<Old: Component, New: Component>(world: &mut World, convert: impl Fn(O
 }
 
 fn scale<T: Component>(world: &mut World, convert: impl Fn(&mut T)) {
-    for (_, component) in world.query_mut::<&mut T>() {
+    for (_, component) in world.query_mut::<(Entity, &mut T)>() {
         convert(component);
     }
 }
@@ -86,10 +81,9 @@ pub fn upgrade_from_v11(world: &mut World) {
         true_proportions: false,
     });
     let neurons: Vec<Entity> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&v11::LeakyNeuron>()
         .iter()
-        .map(|(neuron, _)| neuron)
         .collect();
     for neuron in neurons {
         let old = world.remove_one::<v11::LeakyNeuron>(neuron).unwrap();
@@ -157,10 +151,9 @@ pub fn upgrade_from_v11(world: &mut World) {
         time_since_fire: Milliseconds(old.time_since_fire * MILLI),
     });
     let compartments: Vec<Entity> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&v11::Compartment>()
         .iter()
-        .map(|(compartment, _)| compartment)
         .collect();
     for compartment in compartments {
         world.remove_one::<v11::Compartment>(compartment).unwrap();
@@ -169,7 +162,7 @@ pub fn upgrade_from_v11(world: &mut World) {
             .unwrap();
     }
     let links: Vec<(Entity, Connection, bool)> = world
-        .query::<(&Connection, Option<&Myelin>)>()
+        .query::<(Entity, (&Connection, Option<&Myelin>))>()
         .with::<&v11::CompartmentCurrent>()
         .iter()
         .map(|(link, (connection, myelin))| (link, connection.clone(), myelin.is_some()))

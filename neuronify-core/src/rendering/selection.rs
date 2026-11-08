@@ -105,10 +105,7 @@ pub fn element_radius(
     entity: Entity,
     compartment_radii: &HashMap<Entity, f32>,
 ) -> f32 {
-    if world
-        .satisfies::<hecs::Or<&TouchSensor, hecs::Or<&CurrentClamp, &Loudspeaker>>>(entity)
-        .unwrap_or(false)
-    {
+    if world.satisfies::<hecs::Or<&TouchSensor, hecs::Or<&CurrentClamp, &Loudspeaker>>>(entity) {
         PAD_RADIUS
     } else if world.get::<&GeneratorDynamics>(entity).is_ok() {
         GENERATOR_RING_RADIUS + GENERATOR_RING_THICKNESS

@@ -14,6 +14,7 @@ use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{CylinderData, Sphere, TorusData};
 use crate::rendering::lighting::shaded;
 use crate::rendering::scene::Scene;
+use hecs::Entity;
 
 /// Adaptation conductance, in spikes' worth, at which the ring is about two thirds full.
 const ADAPTATION_SCALE: f64 = 2.0;
@@ -139,7 +140,11 @@ fn collect_gauges(
 ) -> Scene {
     let screen_right = forward.cross(view_up).normalize();
     let mut gauges = Scene::default();
-    for (entity, position) in world.query::<&Position>().with::<&LeakyNeuron>().iter() {
+    for (entity, position) in world
+        .query::<(Entity, &Position)>()
+        .with::<&LeakyNeuron>()
+        .iter()
+    {
         let adaptation = world
             .get::<&AdaptationCurrent>(entity)
             .ok()

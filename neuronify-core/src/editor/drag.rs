@@ -99,8 +99,11 @@ impl Cables {
         };
         for (entity, (connection, cable)) in world
             .query::<(
-                &Connection,
-                Option<hecs::Or<&crate::components::Cable, &ConductanceSynapse>>,
+                Entity,
+                (
+                    &Connection,
+                    Option<hecs::Or<&crate::components::Cable, &ConductanceSynapse>>,
+                ),
             )>()
             .iter()
         {
@@ -178,10 +181,10 @@ impl Reached {
                 if index.contains_key(&other) {
                     continue;
                 }
-                if !world.satisfies::<&Position>(other).unwrap_or(false) {
+                if !world.satisfies::<&Position>(other) {
                     continue;
                 }
-                let moves = world.satisfies::<&SpatialDynamics>(other).unwrap_or(false);
+                let moves = world.satisfies::<&SpatialDynamics>(other);
                 if moves {
                     queue.push_back(other);
                 }
@@ -390,7 +393,7 @@ fn fit(free: &[bool], pairs: &[(usize, usize)], fixed: &[DVec2], guide: &[DVec2]
 }
 
 fn runs<'a>(world: &World, chain: &'a [Entity]) -> Vec<&'a [Entity]> {
-    let myelinated = |cable: &Entity| world.satisfies::<&Myelin>(*cable).unwrap_or(false);
+    let myelinated = |cable: &Entity| world.satisfies::<&Myelin>(*cable);
     chain
         .chunk_by(|a, b| myelinated(a) == myelinated(b))
         .collect()
@@ -415,15 +418,13 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
         return false;
     }
     let (start, end) = (nodes[0], nodes[nodes.len() - 1]);
-    let is_compartment = |node| world.satisfies::<&Compartment>(node).unwrap_or(false);
+    let is_compartment = |node| world.satisfies::<&Compartment>(node);
     let fewest = if is_compartment(start) || is_compartment(end) {
         1
     } else {
         2
     };
-    let myelinated = chain
-        .iter()
-        .any(|&cable| world.satisfies::<&Myelin>(cable).unwrap_or(false));
+    let myelinated = chain.iter().any(|&cable| world.satisfies::<&Myelin>(cable));
     let spacing = match myelinated {
         true => INTERNODE_LENGTH,
         false => SEGMENT_LENGTH,
@@ -498,7 +499,7 @@ fn spawn_compartment_like(world: &mut World, neighbours: [Entity; 2]) -> Entity 
         .find_map(|neighbour| world.get::<&Compartment>(neighbour).ok().map(|c| *c));
     let dendrite = neighbours
         .into_iter()
-        .any(|neighbour| world.satisfies::<&Dendrite>(neighbour).unwrap_or(false));
+        .any(|neighbour| world.satisfies::<&Dendrite>(neighbour));
     let compartment = spawn_compartment(world, Vec3::ZERO, neuron_type);
     if let Some(state) = state {
         world.insert_one(compartment, state).unwrap();

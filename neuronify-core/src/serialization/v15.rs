@@ -4,7 +4,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::VisualInput;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::World;
+use hecs::{Entity, World};
 
 schema!(
     save,
@@ -60,7 +60,7 @@ schema!(
 );
 
 pub fn upgrade_from_v14(world: &mut World) {
-    for (_, series) in world.query_mut::<&mut VoltageSeries>() {
+    for (_, series) in world.query_mut::<(Entity, &mut VoltageSeries)>() {
         for measurement in series.measurements.iter_mut() {
             measurement.time = from_seconds(measurement.time);
         }
@@ -68,20 +68,20 @@ pub fn upgrade_from_v14(world: &mut World) {
             *time = from_seconds(*time);
         }
     }
-    for (_, detector) in world.query_mut::<&mut SpikeDetector>() {
+    for (_, detector) in world.query_mut::<(Entity, &mut SpikeDetector)>() {
         detector.time_range = from_seconds(detector.time_range);
         detector.time = from_seconds(detector.time);
     }
-    for (_, train) in world.query_mut::<&mut SpikeTrain>() {
+    for (_, train) in world.query_mut::<(Entity, &mut SpikeTrain)>() {
         for time in &mut train.times {
             *time = from_seconds(*time);
         }
     }
-    for (_, plot) in world.query_mut::<&mut RatePlot>() {
+    for (_, plot) in world.query_mut::<(Entity, &mut RatePlot)>() {
         plot.window = from_seconds(plot.window);
         plot.kernel_width = from_seconds(plot.kernel_width);
     }
-    for (_, series) in world.query_mut::<&mut RateSeries>() {
+    for (_, series) in world.query_mut::<(Entity, &mut RateSeries)>() {
         for (time, _) in &mut series.samples {
             *time = from_seconds(*time);
         }

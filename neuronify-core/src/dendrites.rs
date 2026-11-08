@@ -219,7 +219,7 @@ pub fn compartment_tree(world: &hecs::World, root: Entity) -> Vec<Entity> {
     let mut tree = Vec::new();
     let mut frontier = vec![root];
     while let Some(parent) = frontier.pop() {
-        for (_, connection) in world.query::<&Connection>().iter() {
+        for (_, connection) in world.query::<(Entity, &Connection)>().iter() {
             if connection.from == parent
                 && !connection.directional
                 && world.get::<&Compartment>(connection.to).is_ok()
@@ -350,7 +350,7 @@ mod tests {
         let index = |entity| tree.iter().position(|&compartment| compartment == entity);
         let mut neighbours = vec![Vec::new(); tree.len()];
         let mut roots = Vec::new();
-        for (_, cable) in world.query::<&Connection>().iter() {
+        for (_, cable) in world.query::<(Entity, &Connection)>().iter() {
             match (index(cable.from), index(cable.to)) {
                 (Some(a), Some(b)) => {
                     neighbours[a].push(b);
@@ -455,7 +455,7 @@ mod tests {
         let neuron = driven_neuron(&mut world);
         let other = driven_neuron(&mut world);
         spawn_dendrites(&mut world, neuron);
-        let spawned = world.query::<&Dendrite>().iter().count();
+        let spawned = world.query::<(Entity, &Dendrite)>().iter().count();
         spawn_dendrites(&mut world, other);
         let tree = compartment_tree(&world, neuron);
         assert_eq!(tree.len(), spawned);

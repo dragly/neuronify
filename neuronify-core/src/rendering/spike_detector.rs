@@ -5,6 +5,7 @@ use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::ConnectionData;
+use hecs::Entity;
 
 const LINE_STRENGTH: f32 = 0.3;
 const TICK_MARGIN: f32 = 0.15;
@@ -24,7 +25,7 @@ fn line(position_a: Vec3, position_b: Vec3, color: Vec3) -> ConnectionData {
 pub fn collect_spike_detectors(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
     let mut lines = Vec::new();
     for (detector, (spike_detector, position, size)) in world
-        .query::<(&SpikeDetector, &Position, &MeterSize)>()
+        .query::<(Entity, (&SpikeDetector, &Position, &MeterSize))>()
         .iter()
     {
         let frame = Frame::new(position.position, size);

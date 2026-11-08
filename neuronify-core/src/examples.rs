@@ -248,6 +248,7 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
 mod tests {
     use super::*;
     use crate::components::LeakyNeuron;
+    use hecs::Entity;
 
     #[test]
     fn examples_are_found_by_their_file() {
@@ -290,7 +291,7 @@ mod tests {
     fn every_example_has_neurons() {
         for example in EXAMPLE_CATEGORIES.iter().flat_map(|c| c.examples) {
             let world = example.spawn().unwrap();
-            let neurons = world.query::<&LeakyNeuron>().iter().count();
+            let neurons = world.query::<(Entity, &LeakyNeuron)>().iter().count();
             assert!(neurons > 0, "{} has no neurons", example.name);
         }
     }

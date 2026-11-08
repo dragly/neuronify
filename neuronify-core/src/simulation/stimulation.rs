@@ -14,7 +14,7 @@ pub struct Touch {
 
 pub fn touch_sensor_near(world: &World, position: Vec3) -> bool {
     world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&TouchSensor>()
         .iter()
         .any(|(_, sensor)| sensor.position.distance(position) < ERASE_RADIUS)
@@ -22,7 +22,7 @@ pub fn touch_sensor_near(world: &World, position: Vec3) -> bool {
 
 fn near<Q: hecs::Query>(world: &World, position: Vec3) -> Vec<Entity> {
     world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<Q>()
         .iter()
         .filter(|(_, at)| at.position.distance(position) < ERASE_RADIUS)
@@ -123,7 +123,7 @@ mod tests {
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
         spawn_dendrites(&mut world, neuron);
         let tip = world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .with::<&Dendrite>()
             .iter()
             .map(|(_, dendrite)| dendrite.position)
@@ -199,7 +199,7 @@ mod tests {
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
         spawn_dendrites(&mut world, neuron);
         let mut dendrites: Vec<Vec3> = world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .with::<&Dendrite>()
             .iter()
             .map(|(_, dendrite)| dendrite.position)

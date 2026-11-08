@@ -231,6 +231,7 @@ mod tests {
     use crate::measurement::spike_detector::SpikeDetector;
     use crate::measurement::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
     use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
+    use hecs::Entity;
     use std::any::TypeId;
     use std::collections::BTreeMap;
 
@@ -505,7 +506,7 @@ mod tests {
         );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
-        for (_, input) in saved.world.query::<&VisualInput>().iter() {
+        for (_, input) in saved.world.query::<(Entity, &VisualInput)>().iter() {
             assert_eq!(input.speed, DEFAULT_PICTURE_SPEED);
         }
     }
@@ -519,7 +520,7 @@ mod tests {
         );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
-        for (_, input) in saved.world.query::<&VisualInput>().iter() {
+        for (_, input) in saved.world.query::<(Entity, &VisualInput)>().iter() {
             assert_eq!(input.speed, DEFAULT_PICTURE_SPEED);
         }
     }
@@ -585,12 +586,12 @@ mod tests {
         let new = load(bytes).unwrap().world;
         let in_milliseconds = |seconds: Milliseconds| Seconds(seconds.0).to_milliseconds();
         let mut checked = 0;
-        for (entity, detector) in old.query::<&SpikeDetector>().iter() {
+        for (entity, detector) in old.query::<(Entity, &SpikeDetector)>().iter() {
             let upgraded = new.get::<&SpikeDetector>(entity).unwrap();
             assert_eq!(upgraded.time_range, in_milliseconds(detector.time_range));
             checked += 1;
         }
-        for (entity, plot) in old.query::<&RatePlot>().iter() {
+        for (entity, plot) in old.query::<(Entity, &RatePlot)>().iter() {
             let upgraded = new.get::<&RatePlot>(entity).unwrap();
             assert_eq!(upgraded.window, in_milliseconds(plot.window));
             assert_eq!(upgraded.kernel_width, in_milliseconds(plot.kernel_width));
@@ -656,16 +657,16 @@ mod tests {
         let bytes = include_bytes!("fixtures/v11.neuronify");
         let old = v11::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
-        for (entity, neuron) in old.query::<&v11::LeakyNeuron>().iter() {
+        for (entity, neuron) in old.query::<(Entity, &v11::LeakyNeuron)>().iter() {
             let upgraded = new.get::<&LeakyNeuron>(entity).unwrap();
             assert_eq!(upgraded.threshold, Millivolts(neuron.threshold * 1e3));
             assert_eq!(upgraded.capacitance, Nanofarads(neuron.capacitance * 1e9));
         }
-        for (entity, leak) in old.query::<&v11::LeakCurrent>().iter() {
+        for (entity, leak) in old.query::<(Entity, &v11::LeakCurrent)>().iter() {
             let upgraded = new.get::<&LeakCurrent>(entity).unwrap();
             assert_eq!(upgraded.resistance, Megaohms(leak.resistance / 1e6));
         }
-        for (entity, synapse) in old.query::<&v11::CurrentSynapse>().iter() {
+        for (entity, synapse) in old.query::<(Entity, &v11::CurrentSynapse)>().iter() {
             let upgraded = new.get::<&CurrentSynapse>(entity).unwrap();
             assert_eq!(
                 upgraded.maximum_current,
@@ -673,15 +674,18 @@ mod tests {
             );
             assert_eq!(upgraded.tau, Milliseconds(synapse.tau * 1e3));
         }
-        for (entity, clamp) in old.query::<&CurrentClamp>().iter() {
+        for (entity, clamp) in old.query::<(Entity, &CurrentClamp)>().iter() {
             let upgraded = new.get::<&CurrentClamp>(entity).unwrap();
             assert_eq!(upgraded.current_output, clamp.current_output * 1e9);
         }
         assert_eq!(count::<v11::Compartment>(&new), 0);
         assert_eq!(count::<v11::CompartmentCurrent>(&new), 0);
-        for (_, (connection, cable)) in new.query::<(&Connection, Option<&Cable>)>().iter() {
+        for (_, (connection, cable)) in new
+            .query::<(Entity, (&Connection, Option<&Cable>))>()
+            .iter()
+        {
             let cable_between_nodes =
-                !connection.directional && new.satisfies::<&Compartment>(connection.to).unwrap();
+                !connection.directional && new.satisfies::<&Compartment>(connection.to);
             assert_eq!(cable.is_some(), cable_between_nodes);
         }
         assert_eq!(count::<Cable>(&new), count::<Membrane>(&new));
@@ -732,7 +736,12 @@ mod tests {
 
     fn fixture_world() -> World {
         let mut world = fixture_world_of_version_13();
-        let neuron = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+        let neuron = world
+            .query::<(Entity, &LeakyNeuron)>()
+            .iter()
+            .next()
+            .unwrap()
+            .0;
         ConnectionView::LastSelected.set_in(&mut world);
         Selected::set(&mut world, Some(neuron));
         world
@@ -741,7 +750,12 @@ mod tests {
     fn fixture_world_of_version_13() -> World {
         let mut world = fixture_world_of_version_9();
         let position = |x: f32| glam::Vec3::new(x, 0.0, 40.0);
-        let neuron = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+        let neuron = world
+            .query::<(Entity, &LeakyNeuron)>()
+            .iter()
+            .next()
+            .unwrap()
+            .0;
         let node = spawn_compartment(&mut world, position(8.0), NeuronType::Excitatory);
         spawn_internode(&mut world, neuron, node);
         world
@@ -773,14 +787,19 @@ mod tests {
         let position = |x: f32| glam::Vec3::new(x, 0.0, 30.0);
         Element::RegularSpikeGenerator.spawn(&mut world, position(0.0));
         Element::PoissonGenerator.spawn(&mut world, position(3.0));
-        let neuron = world.query::<&LeakyNeuron>().iter().next().unwrap().0;
+        let neuron = world
+            .query::<(Entity, &LeakyNeuron)>()
+            .iter()
+            .next()
+            .unwrap()
+            .0;
         let compartment = spawn_compartment(&mut world, position(6.0), NeuronType::Excitatory);
         spawn_cable(&mut world, neuron, compartment, false);
         world
     }
 
     fn count<T: hecs::Component>(world: &World) -> usize {
-        world.query::<&T>().iter().count()
+        world.query::<(Entity, &T)>().iter().count()
     }
 
     /// Checks a fixture after it has been upgraded to the current version.
@@ -800,7 +819,7 @@ mod tests {
         assert_eq!(count::<v1::Inhibitory>(world), 0);
         assert_eq!(
             world
-                .query::<&NeuronType>()
+                .query::<(Entity, &NeuronType)>()
                 .iter()
                 .filter(|(_, neuron_type)| **neuron_type == NeuronType::Inhibitory)
                 .count(),
@@ -820,7 +839,7 @@ mod tests {
         assert_eq!(count::<VoltageSeries>(world), 14);
         assert_eq!(count::<VoltmeterRange>(world), 14);
         assert_eq!(count::<Label>(world), neurons);
-        for (voltmeter, _) in world.query::<&Voltmeter>().iter() {
+        for (voltmeter, _) in world.query::<(Entity, &Voltmeter)>().iter() {
             assert_eq!(measured(world, voltmeter).len(), 1);
         }
         assert_eq!(count::<Connection>(world), 79);
@@ -830,11 +849,11 @@ mod tests {
         assert_eq!(count::<SpatialDynamics>(world), 1);
         assert_eq!(count::<NeuronType>(world), neurons + 1);
 
-        for (_, connection) in world.query::<&Connection>().iter() {
+        for (_, connection) in world.query::<(Entity, &Connection)>().iter() {
             assert!(world.contains(connection.from) && world.contains(connection.to));
         }
         assert!(world
-            .query::<&Annotation>()
+            .query::<(Entity, &Annotation)>()
             .iter()
             .any(|(_, a)| a.text == "Touch the sensor to make the leaky neuron fire."));
     }

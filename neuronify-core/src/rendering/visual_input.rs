@@ -7,6 +7,7 @@ use crate::measurement::visual_input::{
 use crate::measurement::voltmeter::Corner;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{ConnectionData, CylinderData};
+use hecs::Entity;
 
 const TILE_HEIGHT: f32 = 0.05;
 const TILE_FILL: f32 = 0.42;
@@ -35,7 +36,7 @@ pub fn tile_position(center: Vec3, column: usize, row: usize) -> Vec3 {
 pub fn collect_visual_input_tiles(world: &hecs::World) -> Vec<CylinderData> {
     let tile_radius = TILE_FILL * VISUAL_INPUT_SIZE / RESOLUTION as f32;
     let mut tiles = Vec::new();
-    for (_, (input, position)) in world.query::<(&VisualInput, &Position)>().iter() {
+    for (_, (input, position)) in world.query::<(Entity, (&VisualInput, &Position))>().iter() {
         let picture = input.picture();
         let weights = input.field_weights();
         let peak = weights
@@ -67,7 +68,7 @@ pub fn collect_visual_input_tiles(world: &hecs::World) -> Vec<CylinderData> {
 
 pub fn collect_visual_input_lines(world: &hecs::World) -> Vec<ConnectionData> {
     let mut lines = Vec::new();
-    for (_, (input, position)) in world.query::<(&VisualInput, &Position)>().iter() {
+    for (_, (input, position)) in world.query::<(Entity, (&VisualInput, &Position))>().iter() {
         let frame = visual_input_frame(position.position);
         let corners = [
             Corner::TopLeft,

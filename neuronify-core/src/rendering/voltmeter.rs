@@ -5,6 +5,7 @@ use crate::measurement::voltmeter::{
 };
 use crate::rendering::colors;
 use crate::rendering::gpu_types::ConnectionData;
+use hecs::Entity;
 
 const LINE_STRENGTH: f32 = 0.3;
 
@@ -32,7 +33,7 @@ fn line(position_a: glam::Vec3, position_b: glam::Vec3, color: glam::Vec3) -> Co
 pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
     let mut result = Vec::new();
     for (voltmeter, (position, size, range)) in world
-        .query::<(&Position, &MeterSize, Option<&VoltmeterRange>)>()
+        .query::<(Entity, (&Position, &MeterSize, Option<&VoltmeterRange>))>()
         .with::<&Voltmeter>()
         .iter()
     {

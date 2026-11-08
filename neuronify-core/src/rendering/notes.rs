@@ -130,7 +130,7 @@ impl NoteRenderer {
         let mut changed = false;
         let mut placed = Vec::new();
         for (entity, (annotation, position, size, link)) in world
-            .query::<(&Annotation, &Position, &NoteSize, Option<&Link>)>()
+            .query::<(Entity, (&Annotation, &Position, &NoteSize, Option<&Link>))>()
             .iter()
         {
             let current = self.notes.get(&entity).is_some_and(|note| {

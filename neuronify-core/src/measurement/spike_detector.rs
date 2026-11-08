@@ -45,11 +45,11 @@ pub struct SpikeTrain {
 }
 
 pub fn record_spikes(world: &mut World, spikes: &[Spike], time: Milliseconds) {
-    for (_, detector) in world.query_mut::<&mut SpikeDetector>() {
+    for (_, detector) in world.query_mut::<(Entity, &mut SpikeDetector)>() {
         detector.time = time;
     }
     let wires: Vec<(Entity, Entity, Milliseconds)> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&SpikeTrain>()
         .iter()
         .filter_map(|(wire, connection)| {

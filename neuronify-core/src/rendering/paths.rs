@@ -153,12 +153,12 @@ pub fn connection_paths(
 ) -> BTreeMap<Entity, ConnectionPath> {
     let display = NeuronDisplay::of(world);
     let pairs: HashSet<(Entity, Entity)> = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .iter()
         .map(|(_, c)| (c.from, c.to))
         .collect();
     world
-        .query::<(&Connection, Option<&Cable>)>()
+        .query::<(Entity, (&Connection, Option<&Cable>))>()
         .iter()
         .filter(|(_, (connection, _))| !is_meter(world, connection.to))
         .filter(|(_, (connection, cable))| connection.directional || cable.is_none())
@@ -167,10 +167,7 @@ pub fn connection_paths(
             // An axon terminal continues its chain of compartments straight.
             let bend = if pairs.contains(&(connection.to, connection.from)) {
                 BEZIER_BEND_FRACTION
-            } else if world
-                .satisfies::<&Compartment>(connection.from)
-                .unwrap_or(false)
-            {
+            } else if world.satisfies::<&Compartment>(connection.from) {
                 0.0
             } else {
                 ((entity.id() as f32 * 0.618_034).fract() * 2.0 - 1.0) * MAX_BEND

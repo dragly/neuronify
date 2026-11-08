@@ -23,7 +23,7 @@ pub fn collect_current_flow(
     time: Milliseconds,
 ) -> Vec<Sphere> {
     let mut particles = Vec::new();
-    for (entity, connection) in world.query::<&Connection>().iter() {
+    for (entity, connection) in world.query::<(Entity, &Connection)>().iter() {
         let Ok(clamp) = world.get::<&CurrentClamp>(connection.from) else {
             continue;
         };

@@ -184,7 +184,7 @@ pub fn prepare(world: &mut World, preparation: Preparation) {
     }
     .set_in(world);
     let links: Vec<(Entity, Entity, Entity, bool)> = world
-        .query::<(&Connection, Option<&Myelin>)>()
+        .query::<(Entity, (&Connection, Option<&Myelin>))>()
         .with::<&Cable>()
         .iter()
         .map(|(link, (connection, myelin))| {
@@ -203,15 +203,15 @@ pub fn prepare(world: &mut World, preparation: Preparation) {
 
 pub fn rest(world: &mut World, preparation: Preparation) {
     let cables: Vec<Entity> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&CableState>()
         .iter()
-        .map(|(cable, _)| cable)
         .collect();
     for cable in cables {
         world.remove_one::<CableState>(cable).unwrap();
     }
-    for (_, (state, soma)) in world.query_mut::<(&mut NodeState, Option<&LeakyNeuron>)>() {
+    for (_, (state, soma)) in world.query_mut::<(Entity, (&mut NodeState, Option<&LeakyNeuron>))>()
+    {
         match soma {
             Some(_) => state.gates.clear(),
             None => *state = NodeState::at(preparation.resting_potential()),
@@ -252,7 +252,7 @@ pub fn soma_end_radius(diameter: Micrometres, display: &NeuronDisplay) -> f32 {
 
 pub fn soma_diameter(world: &World, soma: Entity) -> Micrometres {
     let dendritic = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Cable>()
         .iter()
         .filter(|(_, cable)| cable.from == soma || cable.to == soma)
@@ -274,12 +274,12 @@ fn position(world: &World, entity: Entity) -> Option<glam::Vec3> {
 }
 
 fn dendritic(world: &World, entity: Entity) -> bool {
-    world.satisfies::<&Dendrite>(entity).unwrap_or(false)
+    world.satisfies::<&Dendrite>(entity)
 }
 
 fn soma_distance(world: &World, at: glam::Vec3) -> f32 {
     world
-        .query::<&Position>()
+        .query::<(Entity, &Position)>()
         .with::<&LeakyNeuron>()
         .iter()
         .map(|(_, soma)| soma.position.distance(at))
@@ -340,7 +340,7 @@ pub fn cable_between(
 
 pub fn pulse_size(world: &World, node: Entity) -> f64 {
     world
-        .query::<(&Connection, &Cable, Option<&Myelin>)>()
+        .query::<(Entity, (&Connection, &Cable, Option<&Myelin>))>()
         .iter()
         .filter(|(_, (cable, ..))| cable.from == node || cable.to == node)
         .map(|(_, (_, cable, myelin))| {
@@ -352,7 +352,7 @@ pub fn pulse_size(world: &World, node: Entity) -> f64 {
 
 pub fn node_size(world: &World, node: Entity) -> f64 {
     world
-        .query::<(&Connection, &Cable)>()
+        .query::<(Entity, (&Connection, &Cable))>()
         .iter()
         .filter(|(_, (cable, _))| cable.from == node || cable.to == node)
         .map(|(_, (_, cable))| cable_conductance(cable.diameter))
@@ -360,10 +360,7 @@ pub fn node_size(world: &World, node: Entity) -> f64 {
 }
 
 pub fn ending_site_scale(world: &World, connection: &Connection) -> f64 {
-    let site = match world
-        .satisfies::<&LeakyNeuron>(connection.to)
-        .unwrap_or(false)
-    {
+    let site = match world.satisfies::<&LeakyNeuron>(connection.to) {
         true => SOMA_ENDING_SCALE,
         false => node_size(world, connection.to) * Preparation::of(world).cable_ending_scale(),
     };

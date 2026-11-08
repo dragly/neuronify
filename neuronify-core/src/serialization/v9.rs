@@ -8,7 +8,7 @@ use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::{Pattern, ReceptiveField};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use hecs::World;
+use hecs::{Entity, World};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -63,19 +63,17 @@ schema!(
 
 pub fn upgrade_from_v8(world: &mut World) {
     let neurons: Vec<hecs::Entity> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&LeakyNeuron>()
         .iter()
-        .map(|(neuron, _)| neuron)
         .collect();
     for neuron in neurons {
         world.insert_one(neuron, Label::default()).unwrap();
     }
     let voltmeters: Vec<hecs::Entity> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&Voltmeter>()
         .iter()
-        .map(|(voltmeter, _)| voltmeter)
         .collect();
     for voltmeter in voltmeters {
         let measured = world.remove::<(Connection, VoltageSeries)>(voltmeter);

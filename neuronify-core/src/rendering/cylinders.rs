@@ -108,12 +108,12 @@ fn cable(
 pub fn compartment_radii(world: &hecs::World) -> HashMap<Entity, f32> {
     let display = NeuronDisplay::of(world);
     let mut sums: HashMap<Entity, (f32, u32)> = world
-        .query::<()>()
+        .query::<Entity>()
         .with::<&Compartment>()
         .iter()
-        .map(|(entity, _)| (entity, (0.0, 0)))
+        .map(|entity| (entity, (0.0, 0)))
         .collect();
-    for (_, (connection, cable)) in world.query::<(&Connection, &Cable)>().iter() {
+    for (_, (connection, cable)) in world.query::<(Entity, (&Connection, &Cable))>().iter() {
         if connection.directional {
             continue;
         }
@@ -144,7 +144,7 @@ pub fn collect_cylinders(
     let display = NeuronDisplay::of(world);
     let mut cylinders = Vec::new();
     for (_, (connection, segment, state)) in world
-        .query::<(&Connection, &Cable, Option<&CableState>)>()
+        .query::<(Entity, (&Connection, &Cable, Option<&CableState>))>()
         .iter()
         .filter(|(_, (connection, ..))| !connection.directional)
     {
@@ -261,7 +261,7 @@ pub fn path_cylinders(path: &ConnectionPath) -> Vec<CylinderData> {
 pub fn sheaths(world: &hecs::World, palette: &Palette) -> Vec<Sheath> {
     let display = NeuronDisplay::of(world);
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&Myelin>()
         .iter()
         .filter_map(|(_, connection)| {
@@ -394,7 +394,7 @@ fn growing(
 
 fn joint_radius(world: &hecs::World, joint: Entity, grown: f32, display: &NeuronDisplay) -> f32 {
     let radii: Vec<f32> = world
-        .query::<(&Connection, &Cable)>()
+        .query::<(Entity, (&Connection, &Cable))>()
         .iter()
         .filter(|(_, (connection, _))| !connection.directional)
         .filter(|(_, (connection, _))| connection.from == joint || connection.to == joint)

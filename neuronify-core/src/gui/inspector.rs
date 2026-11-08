@@ -219,7 +219,7 @@ impl Inspector {
             world
                 .get::<&NodeState>(entity)
                 .ok()
-                .filter(|_| world.satisfies::<&Compartment>(entity).unwrap_or(false))
+                .filter(|_| world.satisfies::<&Compartment>(entity))
                 .map(|state| state.voltage)
         };
         if let Some(sample) = sample {
@@ -247,7 +247,7 @@ impl Inspector {
             ui.add_space(12.0);
             return;
         }
-        let compartment = world.satisfies::<&Compartment>(entity).unwrap_or(false);
+        let compartment = world.satisfies::<&Compartment>(entity);
         let (voltage, threshold) = if let (Ok(neuron), Ok(state)) = (
             world.get::<&LeakyNeuron>(entity),
             world.get::<&NodeState>(entity),

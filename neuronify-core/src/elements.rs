@@ -217,7 +217,7 @@ pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: boo
 
 pub fn axon_ending(world: &World, terminal: Entity) -> Option<Entity> {
     world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .with::<&ConductanceSynapse>()
         .iter()
         .find(|(_, connection)| connection.from == terminal)
@@ -258,7 +258,7 @@ impl Meter {
             Meter::Loudspeaker,
         ]
         .into_iter()
-        .find(|&meter| has(meter).unwrap_or(false))
+        .find(|&meter| has(meter))
     }
 
     pub fn size(self) -> Option<MeterSize> {
@@ -288,8 +288,8 @@ impl Meter {
     }
 
     pub fn measures(self, world: &World, target: Entity) -> bool {
-        let neuron = world.satisfies::<&LeakyNeuron>(target).unwrap_or(false);
-        let compartment = world.satisfies::<&Compartment>(target).unwrap_or(false);
+        let neuron = world.satisfies::<&LeakyNeuron>(target);
+        let compartment = world.satisfies::<&Compartment>(target);
         neuron || (self == Meter::Voltmeter && compartment)
     }
 

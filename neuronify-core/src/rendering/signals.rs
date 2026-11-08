@@ -241,7 +241,10 @@ pub fn collect_signals(
     now: Milliseconds,
 ) -> Scene {
     let mut scene = Scene::default();
-    for (entity, (connection, synapse)) in world.query::<(&Connection, &CurrentSynapse)>().iter() {
+    for (entity, (connection, synapse)) in world
+        .query::<(Entity, (&Connection, &CurrentSynapse))>()
+        .iter()
+    {
         let Some(path) = paths.get(&entity) else {
             continue;
         };

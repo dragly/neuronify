@@ -11,6 +11,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::rendering::colors::{firing_rate_color, Palette};
 use crate::rendering::gpu_types::HaloData;
+use hecs::Entity;
 
 const FIRING_RATE_SCALE: Hertz = Hertz(60.0);
 const HALO_RADIUS: f32 = 3.15 * NODE_RADIUS;
@@ -89,7 +90,7 @@ pub fn collect_halos(world: &hecs::World, palette: &Palette) -> Vec<HaloData> {
         return Vec::new();
     }
     let mut halos: Vec<(f32, Vec3)> = world
-        .query::<(&FiringRate, &Position)>()
+        .query::<(Entity, (&FiringRate, &Position))>()
         .iter()
         .map(|(_, (firing_rate, position))| (firing_rate_level(firing_rate), position.position))
         .collect();

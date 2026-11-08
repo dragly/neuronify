@@ -8,6 +8,7 @@ use crate::components::*;
 use crate::measurement::voltmeter::Frame;
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::MeterBackgroundData;
+use hecs::Entity;
 
 const METER_BACKGROUND_DROP: f32 = 0.1;
 
@@ -47,7 +48,7 @@ pub fn create_meter_backgrounds(
 
 pub fn collect_meter_backgrounds(world: &hecs::World) -> Vec<MeterBackgroundData> {
     world
-        .query::<(&Position, &MeterSize)>()
+        .query::<(Entity, (&Position, &MeterSize))>()
         .iter()
         .map(|(_, (position, size))| {
             let frame = Frame::new(position.position, size);

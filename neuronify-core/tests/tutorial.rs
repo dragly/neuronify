@@ -98,7 +98,7 @@ impl Canvas {
     fn neurons(&self, neuron_type: NeuronType) -> Vec<(Entity, Vec3)> {
         let mut neurons: Vec<(Entity, Vec3)> = self
             .world
-            .query::<(&Position, &NeuronType)>()
+            .query::<(Entity, (&Position, &NeuronType))>()
             .with::<&LeakyNeuron>()
             .iter()
             .filter(|(_, (_, kind))| **kind == neuron_type)
@@ -111,7 +111,7 @@ impl Canvas {
     fn hands(&self) -> Vec<Vec3> {
         let mut hands: Vec<Vec3> = self
             .world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .with::<&TouchSensor>()
             .iter()
             .map(|(_, position)| position.position)
@@ -143,7 +143,7 @@ fn each_canvas_links_to_the_next_and_the_last_to_the_examples() {
         let canvas = Canvas::open(file);
         let links: Vec<String> = canvas
             .world
-            .query::<&Link>()
+            .query::<(Entity, &Link)>()
             .iter()
             .map(|(_, link)| link.example.clone())
             .collect();
@@ -170,13 +170,13 @@ fn no_note_covers_the_circuit() {
         let canvas = Canvas::open(file);
         let notes: Vec<(Vec3, NoteSize)> = canvas
             .world
-            .query::<(&Position, &NoteSize)>()
+            .query::<(Entity, (&Position, &NoteSize))>()
             .iter()
             .map(|(_, (position, size))| (position.position, size.clone()))
             .collect();
         for (entity, position) in canvas
             .world
-            .query::<&Position>()
+            .query::<(Entity, &Position)>()
             .without::<&NoteSize>()
             .iter()
         {
@@ -214,7 +214,7 @@ fn notes_name_tools_that_exist() {
             let canvas = Canvas::open(file);
             let notes: Vec<String> = canvas
                 .world
-                .query::<&Annotation>()
+                .query::<(Entity, &Annotation)>()
                 .iter()
                 .map(|(_, note)| note.text.clone())
                 .collect();
@@ -416,7 +416,7 @@ fn axon_length(world: &World, from: Entity, to: Entity) -> f32 {
     let mut current = to;
     while current != from {
         let previous = world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .iter()
             .find(|(_, connection)| connection.to == current)
             .map(|(_, connection)| connection.from)
@@ -536,7 +536,7 @@ fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through(preparation
         assert!(fires(&mut canvas, bottom));
     }
 
-    for (_, clamp) in canvas.world.query::<&mut CurrentClamp>().iter() {
+    for (_, clamp) in canvas.world.query::<(Entity, &mut CurrentClamp)>().iter() {
         clamp.current_output = Nanoamperes::ZERO;
     }
     canvas.wait(3.0);
@@ -552,7 +552,7 @@ fn the_top_spike_runs_down_to_the_red_ending_and_stops_there(preparation: Prepar
     let ending = |canvas: &Canvas, neuron_type: NeuronType| {
         canvas
             .world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .iter()
             .filter(|(_, connection)| {
                 connection.directional
@@ -574,7 +574,7 @@ fn the_top_spike_runs_down_to_the_red_ending_and_stops_there(preparation: Prepar
     let parent = |canvas: &Canvas, child: Entity| {
         canvas
             .world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .iter()
             .find(|(_, connection)| !connection.directional && connection.to == child)
             .map(|(_, connection)| connection.from)

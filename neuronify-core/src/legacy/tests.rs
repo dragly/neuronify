@@ -2,6 +2,7 @@ use super::convert::spawn_legacy_simulation;
 use super::*;
 use crate::components::*;
 use crate::simulation::{step_simulation, Engine};
+use hecs::Entity;
 
 struct SpikeRecord {
     entity_index: usize,
@@ -10,7 +11,7 @@ struct SpikeRecord {
 
 fn run_headless(world: &mut hecs::World, steps: usize, dt: f64) -> Vec<SpikeRecord> {
     let neurons: Vec<hecs::Entity> = world
-        .query::<&LeakyNeuron>()
+        .query::<(Entity, &LeakyNeuron)>()
         .iter()
         .map(|(entity, _)| entity)
         .collect();
@@ -160,7 +161,7 @@ fn test_adaptation_decreasing_rate() {
     let total_steps = 20_000;
 
     let neuron_entities: Vec<hecs::Entity> = world
-        .query::<&LeakyNeuron>()
+        .query::<(Entity, &LeakyNeuron)>()
         .iter()
         .map(|(e, _)| e)
         .collect();
@@ -430,7 +431,8 @@ fn test_annotation_loads_with_size() {
     spawn_legacy_simulation(&mut world, &sim);
 
     let mut annotation_count = 0;
-    for (_entity, (annotation, size)) in world.query::<(&Annotation, &NoteSize)>().iter() {
+    for (_entity, (annotation, size)) in world.query::<(Entity, (&Annotation, &NoteSize))>().iter()
+    {
         annotation_count += 1;
         assert!(!annotation.text.is_empty());
         assert!(size.width > 0.0);
@@ -447,7 +449,7 @@ fn test_burst_neuron_loads_with_burst_current() {
     let sim = parse_legacy_nfy(BURST_NFY).unwrap();
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
-    assert_eq!(world.query::<&BurstCurrent>().iter().count(), 1);
+    assert_eq!(world.query::<(Entity, &BurstCurrent)>().iter().count(), 1);
 }
 
 #[test]
@@ -456,7 +458,7 @@ fn the_next_tutorial_button_becomes_a_link_to_the_next_tutorial() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
     let links: Vec<(String, String)> = world
-        .query::<(&Link, &Annotation)>()
+        .query::<(Entity, (&Link, &Annotation))>()
         .iter()
         .map(|(_, (link, note))| (link.example.clone(), note.text.clone()))
         .collect();
@@ -475,20 +477,20 @@ fn loads_regular_and_irregular_spike_generators() {
     spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
 
     let frequencies: Vec<Hertz> = world
-        .query::<&RegularSpikeGenerator>()
+        .query::<(Entity, &RegularSpikeGenerator)>()
         .iter()
         .map(|(_, generator)| generator.frequency)
         .collect();
     let rates: Vec<Hertz> = world
-        .query::<&PoissonGenerator>()
+        .query::<(Entity, &PoissonGenerator)>()
         .iter()
         .map(|(_, generator)| generator.rate)
         .collect();
     assert_eq!(frequencies, [Hertz(200.0)]);
     assert_eq!(rates, [Hertz(200.0)]);
-    for (generator, _) in world.query::<&GeneratorDynamics>().iter() {
+    for (generator, _) in world.query::<(Entity, &GeneratorDynamics)>().iter() {
         let synapses = world
-            .query::<(&Connection, &CurrentSynapse)>()
+            .query::<(Entity, (&Connection, &CurrentSynapse))>()
             .iter()
             .filter(|(_, (connection, _))| connection.from == generator)
             .count();
@@ -563,8 +565,12 @@ fn loads_inhibitory_adaptive_neurons() {
 fn current_sources_load_without_a_synapse() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
-    let (source, _) = world.query::<&CurrentClamp>().iter().next().unwrap();
-    let mut connections = world.query::<(&Connection, Option<&CurrentSynapse>)>();
+    let (source, _) = world
+        .query::<(Entity, &CurrentClamp)>()
+        .iter()
+        .next()
+        .unwrap();
+    let mut connections = world.query::<(Entity, (&Connection, Option<&CurrentSynapse>))>();
     let from_source: Vec<bool> = connections
         .iter()
         .filter(|(_, (connection, _))| connection.from == source)
@@ -619,7 +625,7 @@ fn neurons_keep_their_labels() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
     let mut labels: Vec<String> = world
-        .query::<&Label>()
+        .query::<(Entity, &Label)>()
         .with::<&LeakyNeuron>()
         .iter()
         .map(|(_, label)| label.text.clone())
@@ -628,8 +634,8 @@ fn neurons_keep_their_labels() {
     labels.sort();
     assert_eq!(labels, ["A", "B", "C"]);
     assert_eq!(
-        world.query::<&Label>().iter().count(),
-        world.query::<&LeakyNeuron>().iter().count()
+        world.query::<(Entity, &Label)>().iter().count(),
+        world.query::<(Entity, &LeakyNeuron)>().iter().count()
     );
 }
 
@@ -652,7 +658,7 @@ fn loads_alternating_current_sources() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &parse_legacy_nfy(GENERATORS_NFY).unwrap());
     let sources: Vec<(hecs::Entity, Nanoamperes, Hertz)> = world
-        .query::<&AlternatingCurrent>()
+        .query::<(Entity, &AlternatingCurrent)>()
         .with::<&CurrentClamp>()
         .iter()
         .map(|(source, alternating)| (source, alternating.amplitude, alternating.frequency))
@@ -662,7 +668,7 @@ fn loads_alternating_current_sources() {
     };
     assert_eq!((amplitude, frequency), (Nanoamperes(1.0), Hertz(34.0)));
     let targets = world
-        .query::<&Connection>()
+        .query::<(Entity, &Connection)>()
         .without::<&CurrentSynapse>()
         .iter()
         .filter(|(_, connection)| connection.from == source)
@@ -696,7 +702,7 @@ fn rate_plots_keep_their_window_smoothing_and_range() {
     let mut world = hecs::World::new();
     spawn_legacy_simulation(&mut world, &sim);
     let plots: Vec<(hecs::Entity, crate::measurement::firing_rate::RatePlot)> = world
-        .query::<&crate::measurement::firing_rate::RatePlot>()
+        .query::<(Entity, &crate::measurement::firing_rate::RatePlot)>()
         .iter()
         .map(|(plot, settings)| (plot, settings.clone()))
         .collect();
@@ -762,7 +768,7 @@ fn retinas_become_visual_inputs_with_their_receptive_fields() {
     assert_eq!(orientation.sensitivity, Hertz(1600.0));
     for input in [entities[0], entities[6]] {
         let synapses = world
-            .query::<(&Connection, &CurrentSynapse)>()
+            .query::<(Entity, (&Connection, &CurrentSynapse))>()
             .iter()
             .filter(|(_, (connection, _))| connection.from == input && connection.to == entities[1])
             .count();
@@ -777,7 +783,7 @@ fn a_visual_input_drives_the_neuron_it_connects_to() {
     let entities = spawn_legacy_simulation(&mut world, &sim);
     let spikes = run_headless(&mut world, 20_000, 0.0001);
     let neuron = world
-        .query::<&LeakyNeuron>()
+        .query::<(Entity, &LeakyNeuron)>()
         .iter()
         .position(|(entity, _)| entity == entities[1])
         .unwrap();
@@ -801,15 +807,10 @@ fn bundled_neuronify_1_files() -> Vec<(String, String)> {
 
 fn converted(world: &hecs::World, entity: hecs::Entity) -> bool {
     use crate::measurement::{is_meter, visual_input::VisualInput};
-    world
-        .satisfies::<hecs::Or<
-            &LeakyNeuron,
-            hecs::Or<
-                &CurrentClamp,
-                hecs::Or<&GeneratorDynamics, hecs::Or<&VisualInput, &Annotation>>,
-            >,
-        >>(entity)
-        .unwrap_or(false)
+    world.satisfies::<hecs::Or<
+        &LeakyNeuron,
+        hecs::Or<&CurrentClamp, hecs::Or<&GeneratorDynamics, hecs::Or<&VisualInput, &Annotation>>>,
+    >>(entity)
         || is_meter(world, entity)
 }
 
@@ -829,7 +830,7 @@ fn every_bundled_neuronify_1_file_loads_with_nothing_dropped() {
             );
         }
         let connections: Vec<(hecs::Entity, hecs::Entity)> = world
-            .query::<&Connection>()
+            .query::<(Entity, &Connection)>()
             .iter()
             .map(|(_, connection)| (connection.from, connection.to))
             .collect();
