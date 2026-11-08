@@ -46,7 +46,7 @@ impl Sheet {
             NOTE_TEXT_HEIGHT,
             WIDTH - 2.0 * NOTE_MARGIN,
         )
-        .unwrap();
+        .expect("the note font should lay out text");
         let height = wrapped.height + 2.0 * NOTE_MARGIN;
         note(
             &mut self.world,
@@ -73,12 +73,18 @@ impl Sheet {
     }
 
     fn inhibitory(&mut self, neuron: Entity) {
-        *self.world.get::<&mut NeuronType>(neuron).unwrap() = NeuronType::Inhibitory;
+        *self
+            .world
+            .get::<&mut NeuronType>(neuron)
+            .expect("neurons and generators spawn with a NeuronType") = NeuronType::Inhibitory;
     }
 
     fn lasting_inhibition(&mut self, from: Entity, to: Entity) -> Entity {
         let synapse = self.synapse(from, to, Nanoamperes(3.0));
-        let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
+        let mut current = self
+            .world
+            .get::<&mut CurrentSynapse>(synapse)
+            .expect("synapses spawn with a CurrentSynapse");
         current.tau = Milliseconds(10.0);
         current.delay = Milliseconds(1.0);
         drop(current);
@@ -91,11 +97,17 @@ impl Sheet {
 
     fn synapse(&mut self, from: Entity, to: Entity, maximum_current: Nanoamperes) -> Entity {
         let synapse = self.connect(from, to);
-        let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
+        let mut current = self
+            .world
+            .get::<&mut CurrentSynapse>(synapse)
+            .expect("synapses spawn with a CurrentSynapse");
         current.maximum_current = maximum_current;
         let charge =
             maximum_current * current.tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * Milliseconds(2.0));
-        self.world.get::<&mut Connection>(synapse).unwrap().strength = charge.clamp(0.4, 1.5);
+        self.world
+            .get::<&mut Connection>(synapse)
+            .expect("synapses and cables spawn with a Connection")
+            .strength = charge.clamp(0.4, 1.5);
         synapse
     }
 
@@ -103,7 +115,7 @@ impl Sheet {
         let source = self.add(Element::CurrentSource, right, up);
         self.world
             .get::<&mut CurrentClamp>(source)
-            .unwrap()
+            .expect("current sources spawn with a CurrentClamp")
             .current_output = current;
         self.connect(source, to);
         source
@@ -112,14 +124,20 @@ impl Sheet {
     fn refractory_period(&mut self, neuron: Entity, period: Milliseconds) {
         self.world
             .get::<&mut LeakyNeuron>(neuron)
-            .unwrap()
+            .expect("neurons spawn with a LeakyNeuron")
             .refractory_period = period;
     }
 
     fn rate_plot(&mut self, target: Entity, left: f32, up: f32, maximum: Hertz) {
         let plot = spawn_rate_plot(&mut self.world, target, Sheet::at(left, up));
-        self.world.get::<&mut RatePlot>(plot).unwrap().maximum = maximum;
-        *self.world.get::<&mut MeterSize>(plot).unwrap() = MeterSize {
+        self.world
+            .get::<&mut RatePlot>(plot)
+            .expect("rate plots spawn with a RatePlot")
+            .maximum = maximum;
+        *self
+            .world
+            .get::<&mut MeterSize>(plot)
+            .expect("meters spawn with a MeterSize") = MeterSize {
             width: 14.5,
             height: 4.0,
         };
@@ -130,16 +148,25 @@ impl Sheet {
         for &target in &targets[1..] {
             spawn_spike_detector_wire(&mut self.world, target, detector);
         }
-        *self.world.get::<&mut MeterSize>(detector).unwrap() = MeterSize { width, height };
+        *self
+            .world
+            .get::<&mut MeterSize>(detector)
+            .expect("meters spawn with a MeterSize") = MeterSize { width, height };
     }
 
     fn position(&self, entity: Entity) -> Vec3 {
-        self.world.get::<&Position>(entity).unwrap().position
+        self.world
+            .get::<&Position>(entity)
+            .expect("elements spawn with a Position")
+            .position
     }
 
     fn axon(&mut self, from: Entity, to: Entity) -> Vec<Entity> {
         let (start, end) = (self.position(from), self.position(to));
-        let neuron_type = *self.world.get::<&NeuronType>(from).unwrap();
+        let neuron_type = *self
+            .world
+            .get::<&NeuronType>(from)
+            .expect("neurons and generators spawn with a NeuronType");
         let pieces = (start.distance(end) / SEGMENT_LENGTH).round().max(1.0) as usize;
         let mut previous = from;
         let mut compartments = Vec::new();
@@ -162,12 +189,15 @@ impl Sheet {
                 let distance = |entity: &Entity| self.position(*entity).distance(target);
                 distance(a).total_cmp(&distance(b))
             })
-            .unwrap()
+            .expect("the neuron should have grown dendrites")
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, width: f32, height: f32) {
         let voltmeter = spawn_voltmeter(&mut self.world, target, Sheet::at(left, up));
-        *self.world.get::<&mut MeterSize>(voltmeter).unwrap() = MeterSize { width, height };
+        *self
+            .world
+            .get::<&mut MeterSize>(voltmeter)
+            .expect("meters spawn with a MeterSize") = MeterSize { width, height };
     }
 }
 
@@ -177,26 +207,36 @@ fn at(up: f32, right: f32) -> Vec3 {
 
 fn note(world: &mut World, position: Vec3, width: f32, height: f32, text: &str) {
     let note = Element::Note.spawn(world, position);
-    world.get::<&mut Annotation>(note).unwrap().text = text.to_string();
-    *world.get::<&mut NoteSize>(note).unwrap() = NoteSize { width, height };
+    world
+        .get::<&mut Annotation>(note)
+        .expect("notes spawn with an Annotation")
+        .text = text.to_string();
+    *world
+        .get::<&mut NoteSize>(note)
+        .expect("notes spawn with a NoteSize") = NoteSize { width, height };
 }
 
 fn label(world: &mut World, entity: Entity, text: &str) {
-    world.get::<&mut Label>(entity).unwrap().text = text.to_string();
+    world
+        .get::<&mut Label>(entity)
+        .expect("neurons spawn with a Label")
+        .text = text.to_string();
 }
 
 fn synapse(world: &mut World, from: Entity, to: Entity, maximum_current: Nanoamperes) {
     let synapse = spawn_synapse(world, from, to);
     world
         .get::<&mut CurrentSynapse>(synapse)
-        .unwrap()
+        .expect("synapses spawn with a CurrentSynapse")
         .maximum_current = maximum_current;
 }
 
 pub fn listening_to_a_neuron() -> World {
     let mut world = World::new();
     let eye = Element::VisualInput.spawn(&mut world, at(0.0, -9.0));
-    *world.get::<&mut VisualInput>(eye).unwrap() = VisualInput {
+    *world
+        .get::<&mut VisualInput>(eye)
+        .expect("visual inputs spawn with a VisualInput") = VisualInput {
         field: ReceptiveField::Orientation {
             angle: 0.0,
             x: 0.0,
@@ -229,28 +269,39 @@ pub fn adaptive_inhibition() -> World {
     let drive = Element::RegularSpikeGenerator.spawn(&mut world, at(0.0, -11.0));
     world
         .get::<&mut RegularSpikeGenerator>(drive)
-        .unwrap()
+        .expect("regular generators spawn with a RegularSpikeGenerator")
         .frequency = Hertz(400.0);
     let output = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, output, "Output");
     let adaptive = Element::AdaptiveNeuron.spawn(&mut world, at(5.0, -5.0));
-    *world.get::<&mut NeuronType>(adaptive).unwrap() = NeuronType::Inhibitory;
-    *world.get::<&mut AdaptationCurrent>(adaptive).unwrap() = AdaptationCurrent {
+    *world
+        .get::<&mut NeuronType>(adaptive)
+        .expect("neurons and generators spawn with a NeuronType") = NeuronType::Inhibitory;
+    *world
+        .get::<&mut AdaptationCurrent>(adaptive)
+        .expect("adaptive neurons spawn with an AdaptationCurrent") = AdaptationCurrent {
         adaptation: Microsiemens(0.008),
         time_constant: Milliseconds(400.0),
         ..Default::default()
     };
     label(&mut world, adaptive, "Adaptive");
     let noise = Element::PoissonGenerator.spawn(&mut world, at(-6.0, -6.0));
-    *world.get::<&mut NeuronType>(noise).unwrap() = NeuronType::Inhibitory;
-    world.get::<&mut PoissonGenerator>(noise).unwrap().rate = Hertz(30.0);
+    *world
+        .get::<&mut NeuronType>(noise)
+        .expect("neurons and generators spawn with a NeuronType") = NeuronType::Inhibitory;
+    world
+        .get::<&mut PoissonGenerator>(noise)
+        .expect("Poisson generators spawn with a PoissonGenerator")
+        .rate = Hertz(30.0);
     synapse(&mut world, drive, output, Nanoamperes(3.0));
     synapse(&mut world, drive, adaptive, Nanoamperes(6.0));
     synapse(&mut world, adaptive, output, Nanoamperes(4.0));
     synapse(&mut world, noise, output, Nanoamperes(2.0));
     spawn_voltmeter(&mut world, output, at(-2.0, 5.0));
     let plot = spawn_rate_plot(&mut world, output, at(-9.0, 5.0));
-    *world.get::<&mut RatePlot>(plot).unwrap() = RatePlot {
+    *world
+        .get::<&mut RatePlot>(plot)
+        .expect("rate plots spawn with a RatePlot") = RatePlot {
         window: Milliseconds(150.0),
         kernel_width: Milliseconds(50.0),
         maximum: Hertz(200.0),
@@ -463,13 +514,17 @@ pub fn half_center_oscillator() -> World {
         sheet
             .world
             .get::<&mut AdaptationCurrent>(neuron)
-            .unwrap()
+            .expect("adaptive neurons spawn with an AdaptationCurrent")
             .time_constant = Milliseconds(150.0);
         sheet.current(neuron, Nanoamperes(0.5), 1.5, up);
     }
     sheet.lasting_inhibition(top, bottom);
     sheet.lasting_inhibition(bottom, top);
-    sheet.world.get::<&mut NodeState>(bottom).unwrap().voltage = Millivolts(-75.0);
+    sheet
+        .world
+        .get::<&mut NodeState>(bottom)
+        .expect("neurons spawn with a NodeState")
+        .voltage = Millivolts(-75.0);
     sheet.spike_detector(&[top, bottom], 10.5, middle, 13.5, 9.0);
     sheet.text(
         "Pairs like this take turns in the circuits that drive walking and swimming, \
@@ -648,13 +703,13 @@ pub fn direction_selectivity() -> World {
         sheet
             .world
             .get::<&mut CurrentSynapse>(partner_synapse)
-            .unwrap()
+            .expect("synapses spawn with a CurrentSynapse")
             .delay = Milliseconds(1.0);
         let relay_synapse = sheet.synapse(receptor, relay, Nanoamperes(3.0));
         sheet
             .world
             .get::<&mut CurrentSynapse>(relay_synapse)
-            .unwrap()
+            .expect("synapses spawn with a CurrentSynapse")
             .delay = Milliseconds(2.0);
         sheet.synapse(relay, output, DIRECTION_RELAY_TO_OUTPUT);
         relays.push(relay);
@@ -662,7 +717,11 @@ pub fn direction_selectivity() -> World {
     }
     for index in 0..columns - 1 {
         let synapse = sheet.lasting_inhibition(partners[index], relays[index + 1]);
-        sheet.world.get::<&mut CurrentSynapse>(synapse).unwrap().tau = Milliseconds(20.0);
+        sheet
+            .world
+            .get::<&mut CurrentSynapse>(synapse)
+            .expect("synapses spawn with a CurrentSynapse")
+            .tau = Milliseconds(20.0);
     }
     sheet.voltmeter(output, 11.0, up - 10.0, 13.0, 4.0);
     sheet.text(
@@ -693,7 +752,10 @@ pub fn receptive_fields() -> World {
         let up = sheet.row(8.0);
         middle += up / 2.0;
         let eye = sheet.add(Element::VisualInput, 5.0, up);
-        *sheet.world.get::<&mut VisualInput>(eye).unwrap() = VisualInput {
+        *sheet
+            .world
+            .get::<&mut VisualInput>(eye)
+            .expect("visual inputs spawn with a VisualInput") = VisualInput {
             field: ReceptiveField::CenterSurround {
                 off_center: false,
                 x: spot,
@@ -747,9 +809,10 @@ pub fn examples() -> Vec<(&'static str, World)> {
 fn main() {
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
     for (file, world) in examples() {
-        let bytes =
-            neuronify_core::serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
-        std::fs::write(format!("{folder}/{file}"), bytes).unwrap();
+        let bytes = neuronify_core::serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED)
+            .expect("the example should save");
+        std::fs::write(format!("{folder}/{file}"), bytes)
+            .expect("the examples folder should be writable");
         println!("Wrote {file}");
     }
 }

@@ -24,11 +24,12 @@ pub fn labs() -> [(&'static str, World); 2] {
 
 fn main() {
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/labs");
-    std::fs::create_dir_all(folder).unwrap();
+    std::fs::create_dir_all(folder).expect("the labs folder should be writable");
     for (file, world) in labs() {
-        let bytes =
-            neuronify_core::serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
-        std::fs::write(format!("{folder}/{file}"), bytes).unwrap();
+        let bytes = neuronify_core::serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED)
+            .expect("the lab should save");
+        std::fs::write(format!("{folder}/{file}"), bytes)
+            .expect("the labs folder should be writable");
         println!("Wrote {file}");
     }
 }
@@ -143,7 +144,10 @@ fn ring_attractor(input: RingInput) -> World {
     match input {
         RingInput::Bias => {
             let bias = Element::CurrentSource.spawn(&mut world, Vec3::ZERO);
-            world.get::<&mut CurrentClamp>(bias).unwrap().current_output = BIAS;
+            world
+                .get::<&mut CurrentClamp>(bias)
+                .expect("current sources spawn with a CurrentClamp")
+                .current_output = BIAS;
             for &excitatory in &ring {
                 world.spawn((
                     Connection {
@@ -162,7 +166,10 @@ fn ring_attractor(input: RingInput) -> World {
                 let position =
                     clockwise_from_top(NOISE_RADIUS, (i as f32 + 0.5) / EXCITATORY as f32);
                 let generator = Element::PoissonGenerator.spawn(&mut world, position);
-                world.get::<&mut PoissonGenerator>(generator).unwrap().rate = NOISE_RATE;
+                world
+                    .get::<&mut PoissonGenerator>(generator)
+                    .expect("Poisson generators spawn with a PoissonGenerator")
+                    .rate = NOISE_RATE;
                 synapse(
                     &mut world,
                     generator,
@@ -204,10 +211,14 @@ fn ring_attractor(input: RingInput) -> World {
     let detector = spawn_spike_detector(&mut world, ring[0], detector_position);
     world
         .get::<&mut SpikeDetector>(detector)
-        .unwrap()
+        .expect("spike detectors spawn with a SpikeDetector")
         .time_range = SPIKE_DETECTOR_TIME_RANGE;
-    *world.get::<&mut MeterSize>(detector).unwrap() = SPIKE_DETECTOR_SIZE;
-    *world.get::<&mut RowOrder>(detector).unwrap() = RowOrder::Connection;
+    *world
+        .get::<&mut MeterSize>(detector)
+        .expect("meters spawn with a MeterSize") = SPIKE_DETECTOR_SIZE;
+    *world
+        .get::<&mut RowOrder>(detector)
+        .expect("spike detectors spawn with a RowOrder") = RowOrder::Connection;
     for &excitatory in &ring[1..] {
         spawn_spike_detector_wire(&mut world, excitatory, detector);
     }

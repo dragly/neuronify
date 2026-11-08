@@ -49,14 +49,15 @@ pub fn canvases() -> Vec<(&'static str, World)> {
 
 fn main() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/tutorial");
-    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::create_dir_all(&directory).expect("the tutorial folder should be writable");
     for (file, world) in canvases() {
         let path = directory.join(file);
         std::fs::write(
             &path,
-            serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap(),
+            serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED)
+                .expect("the canvas should save"),
         )
-        .unwrap();
+        .expect("the tutorial folder should be writable");
         println!("Wrote {}", path.display());
     }
 }
@@ -85,7 +86,7 @@ impl Canvas {
             NOTE_TEXT_HEIGHT,
             width - 2.0 * NOTE_MARGIN,
         )
-        .unwrap();
+        .expect("the note font should lay out text");
         NoteSize {
             width,
             height: wrapped.height + 2.0 * NOTE_MARGIN,
@@ -95,8 +96,14 @@ impl Canvas {
     fn note_at(&mut self, text: &str, right: f32, up: f32, width: f32) -> Entity {
         let note = Element::Note.spawn(&mut self.world, Canvas::at(right, up));
         let size = Canvas::note_size(text, width);
-        self.world.get::<&mut Annotation>(note).unwrap().text = text.to_string();
-        *self.world.get::<&mut NoteSize>(note).unwrap() = size;
+        self.world
+            .get::<&mut Annotation>(note)
+            .expect("notes spawn with an Annotation")
+            .text = text.to_string();
+        *self
+            .world
+            .get::<&mut NoteSize>(note)
+            .expect("notes spawn with a NoteSize") = size;
         note
     }
 
@@ -114,7 +121,7 @@ impl Canvas {
 
     fn link(&mut self, label: &str, example: &str) {
         let width = visula::text::measure_text_width(NOTE_FONT_DATA, label, NOTE_TEXT_HEIGHT)
-            .unwrap()
+            .expect("the note font should measure text")
             + 3.0 * NOTE_MARGIN;
         let note = self.note_at(
             label,
@@ -122,7 +129,10 @@ impl Canvas {
             self.top - LINK_HEIGHT / 2.0,
             width,
         );
-        *self.world.get::<&mut NoteSize>(note).unwrap() = NoteSize {
+        *self
+            .world
+            .get::<&mut NoteSize>(note)
+            .expect("notes spawn with a NoteSize") = NoteSize {
             width,
             height: LINK_HEIGHT,
         };
@@ -133,7 +143,7 @@ impl Canvas {
                     example: example.to_string(),
                 },
             )
-            .unwrap();
+            .expect("the note was just spawned");
         self.top -= LINK_HEIGHT + GAP;
     }
 
@@ -157,18 +167,24 @@ impl Canvas {
         tau: Milliseconds,
     ) -> Entity {
         let synapse = self.connect(from, to);
-        let mut current = self.world.get::<&mut CurrentSynapse>(synapse).unwrap();
+        let mut current = self
+            .world
+            .get::<&mut CurrentSynapse>(synapse)
+            .expect("synapses spawn with a CurrentSynapse");
         current.maximum_current = maximum_current;
         current.tau = tau;
         let charge = maximum_current * tau / (CURRENT_DRAWN_AT_FULL_STRENGTH * Milliseconds(2.0));
-        self.world.get::<&mut Connection>(synapse).unwrap().strength = charge.clamp(0.4, 1.5);
+        self.world
+            .get::<&mut Connection>(synapse)
+            .expect("synapses and cables spawn with a Connection")
+            .strength = charge.clamp(0.4, 1.5);
         synapse
     }
 
     fn delay(&mut self, synapse: Entity, delay: Milliseconds) {
         self.world
             .get::<&mut CurrentSynapse>(synapse)
-            .unwrap()
+            .expect("synapses spawn with a CurrentSynapse")
             .delay = delay;
     }
 
@@ -176,20 +192,30 @@ impl Canvas {
         let source = self.add(Element::CurrentSource, right, up);
         self.world
             .get::<&mut CurrentClamp>(source)
-            .unwrap()
+            .expect("current sources spawn with a CurrentClamp")
             .current_output = current;
         self.connect(source, to);
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, size: MeterSize) {
         let voltmeter = spawn_voltmeter(&mut self.world, target, Canvas::at(left, up));
-        *self.world.get::<&mut MeterSize>(voltmeter).unwrap() = size;
+        *self
+            .world
+            .get::<&mut MeterSize>(voltmeter)
+            .expect("meters spawn with a MeterSize") = size;
     }
 
     fn axon(&mut self, from: Entity, waypoints: &[(f32, f32)], to: Entity) -> Entity {
-        let position =
-            |world: &World, entity: Entity| world.get::<&Position>(entity).unwrap().position;
-        let neuron_type = *self.world.get::<&NeuronType>(from).unwrap();
+        let position = |world: &World, entity: Entity| {
+            world
+                .get::<&Position>(entity)
+                .expect("elements spawn with a Position")
+                .position
+        };
+        let neuron_type = *self
+            .world
+            .get::<&NeuronType>(from)
+            .expect("neurons and generators spawn with a NeuronType");
         let mut points = vec![position(&self.world, from)];
         points.extend(waypoints.iter().map(|&(right, up)| Canvas::at(right, up)));
         points.push(position(&self.world, to));
@@ -213,9 +239,16 @@ impl Canvas {
     }
 
     fn myelinated_axon(&mut self, from: Entity, to: Entity) -> Entity {
-        let position =
-            |world: &World, entity: Entity| world.get::<&Position>(entity).unwrap().position;
-        let neuron_type = *self.world.get::<&NeuronType>(from).unwrap();
+        let position = |world: &World, entity: Entity| {
+            world
+                .get::<&Position>(entity)
+                .expect("elements spawn with a Position")
+                .position
+        };
+        let neuron_type = *self
+            .world
+            .get::<&NeuronType>(from)
+            .expect("neurons and generators spawn with a NeuronType");
         let start = position(&self.world, from);
         let end = position(&self.world, to);
         let internodes = ((start.distance(end) - SEGMENT_LENGTH) / INTERNODE_LENGTH).floor();
@@ -231,7 +264,10 @@ impl Canvas {
 
     fn weak_axon(&mut self, from: Entity, to: Entity, strength: f64) {
         let ending = self.axon(from, &[], to);
-        self.world.get::<&mut Connection>(ending).unwrap().strength = strength;
+        self.world
+            .get::<&mut Connection>(ending)
+            .expect("synapses and cables spawn with a Connection")
+            .strength = strength;
     }
 
     fn branch_near(&self, neuron: Entity, right: f32, up: f32) -> Entity {
@@ -239,18 +275,21 @@ impl Canvas {
         let distance = |entity: &Entity| {
             self.world
                 .get::<&Position>(*entity)
-                .unwrap()
+                .expect("elements spawn with a Position")
                 .position
                 .distance(target)
         };
         compartment_tree(&self.world, neuron)
             .into_iter()
             .min_by(|a, b| distance(a).total_cmp(&distance(b)))
-            .unwrap()
+            .expect("the neuron should have grown dendrites")
     }
 
     fn start_at(&mut self, neuron: Entity, voltage: Millivolts) {
-        self.world.get::<&mut NodeState>(neuron).unwrap().voltage = voltage;
+        self.world
+            .get::<&mut NodeState>(neuron)
+            .expect("neurons spawn with a NodeState")
+            .voltage = voltage;
     }
 }
 
@@ -554,7 +593,11 @@ fn coincidence() -> World {
     let receiver = canvas.add(Element::ExcitatoryNeuron, 18.0, up - 4.5);
     spawn_dendrites(&mut canvas.world, receiver);
     let branch = canvas.branch_near(receiver, 12.0, up);
-    let meeting = canvas.world.get::<&Position>(branch).unwrap().position;
+    let meeting = canvas
+        .world
+        .get::<&Position>(branch)
+        .expect("elements spawn with a Position")
+        .position;
     let (right, up) = (meeting.z, meeting.x);
     let upper = canvas.add(Element::ExcitatoryNeuron, right - 6.0, up + 4.5);
     let lower = canvas.add(Element::ExcitatoryNeuron, right - 6.0, up - 4.5);
@@ -596,7 +639,11 @@ fn inhibition_on_a_branch() -> World {
     let trunk = canvas.branch_near(receiver, 18.0, up + 3.5);
     let basal = canvas.branch_near(receiver, 12.0, up);
     let position = |canvas: &Canvas, entity: Entity| {
-        let position = canvas.world.get::<&Position>(entity).unwrap().position;
+        let position = canvas
+            .world
+            .get::<&Position>(entity)
+            .expect("elements spawn with a Position")
+            .position;
         (position.z, position.x)
     };
     let (tuft_right, tuft_up) = position(&canvas, tuft);
