@@ -198,7 +198,8 @@ impl Neuronify {
             Some(visula::winit::window::Theme::Light) => Theme::Light,
             _ => Theme::Dark,
         };
-        let renderer = SceneRenderer::new(application, theme);
+        let renderer = SceneRenderer::new(application, theme)
+            .expect("the shaders and font built into Neuronify should compile");
 
         let opened = file_from_command_line();
         let mut neuronify = Neuronify {
