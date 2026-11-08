@@ -817,6 +817,70 @@ fn a_neuron_gets_a_label_that_undo_takes_back() {
 }
 
 #[test]
+fn undo_in_a_label_never_brings_back_the_label_of_another_neuron() {
+    let (mut world, first) = one_neuron();
+    let second = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(0.0, 0.0, 10.0));
+    let mut harness = Harness::with(true, world, Some(first));
+    harness.click_button(inspector::LABEL);
+    harness.frame(vec![Event::Text("Alpha".to_string())]);
+    harness.frame(vec![]);
+    harness.click(pos2(SCREEN.x / 2.0, SCREEN.y / 2.0));
+
+    harness.editor.selection = Some(second);
+    for _ in 0..10 {
+        harness.frame(vec![]);
+    }
+    harness.click_button(inspector::LABEL);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    harness.frame(vec![]);
+
+    let label = |entity| {
+        harness
+            .world
+            .get::<&Label>(entity)
+            .map(|label| label.text.clone())
+            .unwrap_or_default()
+    };
+    assert_eq!(label(second), "");
+    assert_eq!(label(first), "Alpha");
+}
+
+#[test]
+fn undo_in_a_note_never_brings_back_the_text_of_another_note() {
+    use crate::components::Annotation;
+    let mut world = World::new();
+    let first = Element::Note.spawn(&mut world, Vec3::ZERO);
+    let second = Element::Note.spawn(&mut world, Vec3::new(0.0, 0.0, 20.0));
+    let mut harness = Harness::with(true, world, Some(first));
+    let text = |harness: &Harness, entity| {
+        harness
+            .world
+            .get::<&Annotation>(entity)
+            .unwrap()
+            .text
+            .clone()
+    };
+    let original = text(&harness, second);
+    let field = harness.text_position(&text(&harness, first)).unwrap();
+    harness.click(field);
+    harness.frame(vec![Event::Text(" Alpha".to_string())]);
+    harness.frame(vec![]);
+    assert!(text(&harness, first).contains("Alpha"));
+    harness.click(pos2(SCREEN.x / 2.0, SCREEN.y / 2.0));
+
+    harness.editor.selection = Some(second);
+    for _ in 0..10 {
+        harness.frame(vec![]);
+    }
+    let field = harness.text_position(&original).unwrap();
+    harness.click(field);
+    harness.press(Modifiers::COMMAND, Key::Z);
+    harness.frame(vec![]);
+
+    assert_eq!(text(&harness, second), original);
+}
+
+#[test]
 fn an_alternating_current_source_sets_its_amplitude_and_frequency() {
     let mut world = World::new();
     let source = Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
