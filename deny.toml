@@ -1,0 +1,17 @@
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+ignore = [
+    { id = "RUSTSEC-2023-0089", reason = "atomic-polyfill comes through heapless in postcard; unmaintained, no known issue" },
+    { id = "RUSTSEC-2024-0436", reason = "paste comes through nalgebra and simba in visula's font code; unmaintained, no known issue" },
+    { id = "RUSTSEC-2025-0124", reason = "rand_os comes through cgmath in visula; goes away with cgmath" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser comes through visula and only reads the bundled font" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml only parses Wayland protocol files in wayland-scanner at build time" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml only parses Wayland protocol files in wayland-scanner at build time" },
+    { id = "RUSTSEC-2026-0196", reason = "cgmath comes through visula; replacing it there is planned" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant comes through zbus in the native file dialog; unmaintained, no known issue" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names comes through zbus in the native file dialog; unmaintained, no known issue" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive comes through zbus in the native file dialog; unmaintained, no known issue" },
+]
