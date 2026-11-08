@@ -12,7 +12,7 @@ use crate::constants::*;
 use crate::rendering::colors::{firing_rate_color, Palette};
 use crate::rendering::gpu_types::HaloData;
 
-const FIRING_RATE_SCALE: f64 = 60.0;
+const FIRING_RATE_SCALE: Hertz = Hertz(60.0);
 const HALO_RADIUS: f32 = 3.15 * NODE_RADIUS;
 const HALO_LIFT: f32 = 0.1;
 const HALO_RINGS: usize = 8;
@@ -116,7 +116,7 @@ mod tests {
                 Position {
                     position: Vec3::new(index as f32, 0.0, 0.0),
                 },
-                FiringRate { rate },
+                FiringRate { rate: Hertz(rate) },
             ));
         }
         NeuronDisplay {

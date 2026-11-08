@@ -14,7 +14,7 @@ use crate::rendering::shapes::{generator_color, shown_voltage, soma_color};
 use crate::simulation::model::{drawn_radius, soma_diameter};
 
 pub const SPINES_PER_CABLE: usize = 4;
-const SPINE_HEAD_DIAMETER: f64 = 0.5;
+const SPINE_HEAD_DIAMETER: Micrometres = Micrometres(0.5);
 
 fn spines(
     world: &hecs::World,

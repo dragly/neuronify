@@ -3,6 +3,7 @@ use egui::{
     WidgetType,
 };
 
+use crate::components::Milliseconds;
 use crate::constants::SPEEDS;
 use crate::rendering::Theme;
 
@@ -26,7 +27,7 @@ pub fn bar(
     offset: Vec2,
     running: &mut bool,
     speed: &mut f64,
-    time: f64,
+    time: Milliseconds,
 ) {
     let chrome = Chrome::of(theme);
     egui::Area::new(Id::new("playback"))
@@ -69,7 +70,7 @@ pub fn bar(
                         text(
                             ui,
                             TIME_WIDTH,
-                            format!("{time:.3} s"),
+                            format!("{:.3} s", time.to_seconds().0),
                             FontId::monospace(12.5),
                             chrome.subtext,
                         )

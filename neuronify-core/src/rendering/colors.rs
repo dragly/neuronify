@@ -1,8 +1,8 @@
 use glam::Vec3;
 
-use crate::components::NeuronType;
+use crate::components::{Millivolts, Nanoamperes, NeuronType};
 
-pub fn shown_fraction(voltage: f64) -> f32 {
+pub fn shown_fraction(voltage: Millivolts) -> f32 {
     ((voltage - LOWEST_SHOWN_VOLTAGE) / (HIGHEST_SHOWN_VOLTAGE - LOWEST_SHOWN_VOLTAGE))
         .clamp(0.0, 1.0) as f32
 }
@@ -48,15 +48,15 @@ pub fn yellow() -> Vec3 {
     srgb(223, 142, 29)
 }
 
-const CURRENT_BRIGHTNESS_SCALE: f64 = 0.5;
+const CURRENT_BRIGHTNESS_SCALE: Nanoamperes = Nanoamperes(0.5);
 const CURRENT_RAMP: [(f32, (u8, u8, u8)); 3] = [
     (0.0, (96, 40, 8)),
     (0.7, (240, 116, 20)),
     (1.0, (255, 178, 104)),
 ];
 
-pub fn current_color(nanoamperes: f64) -> Vec3 {
-    let level = (1.0 - (-nanoamperes.abs() / CURRENT_BRIGHTNESS_SCALE).exp()) as f32;
+pub fn current_color(current: Nanoamperes) -> Vec3 {
+    let level = (1.0 - (-current.abs() / CURRENT_BRIGHTNESS_SCALE).exp()) as f32;
     let upper = CURRENT_RAMP
         .iter()
         .position(|&(at, _)| level <= at)
@@ -128,14 +128,14 @@ pub fn firing_rate_color(level: f32) -> Vec3 {
 /// How far a neuron at threshold has gone from the colour of its type towards white.
 pub const VOLTAGE_TINT: f32 = 0.55;
 
-const GLARE_START: f64 = -20.0;
+const GLARE_START: Millivolts = Millivolts(-20.0);
 const DENDRITE_DESATURATION: f32 = 0.2;
 const SHEATH_TINT: f32 = 0.5;
 const LUMINANCE: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
-const GLARE_FULL: f64 = 20.0;
+const GLARE_FULL: Millivolts = Millivolts(20.0);
 const GLARE_PEAK: f32 = 2.0;
-const LOWEST_SHOWN_VOLTAGE: f64 = -86.0;
-const HIGHEST_SHOWN_VOLTAGE: f64 = 20.0;
+const LOWEST_SHOWN_VOLTAGE: Millivolts = Millivolts(-86.0);
+const HIGHEST_SHOWN_VOLTAGE: Millivolts = Millivolts(20.0);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Theme {
@@ -237,7 +237,7 @@ impl Palette {
         self.soma(neuron_type, v)
     }
 
-    pub fn dendrite(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
+    pub fn dendrite(&self, neuron_type: &NeuronType, voltage: Millivolts) -> Vec3 {
         paler(self.compartment(neuron_type, voltage))
     }
 
@@ -246,7 +246,7 @@ impl Palette {
         axon.lerp(cream, SHEATH_TINT)
     }
 
-    pub fn compartment(&self, neuron_type: &NeuronType, voltage: f64) -> Vec3 {
+    pub fn compartment(&self, neuron_type: &NeuronType, voltage: Millivolts) -> Vec3 {
         glared(
             self.neurocolor(neuron_type, shown_fraction(voltage)),
             voltage,
@@ -254,12 +254,12 @@ impl Palette {
     }
 }
 
-fn glared(color: Vec3, voltage: f64) -> Vec3 {
+fn glared(color: Vec3, voltage: Millivolts) -> Vec3 {
     let glare = ((voltage - GLARE_START) / (GLARE_FULL - GLARE_START)).clamp(0.0, 1.0) as f32;
     color.lerp(color / color.max_element() * GLARE_PEAK, glare)
 }
 
-pub fn lit(color: Vec3, voltage: f64) -> Vec3 {
+pub fn lit(color: Vec3, voltage: Millivolts) -> Vec3 {
     let value = shown_fraction(voltage);
     let tint = 1.0 / (1.0 + (-5.0 * (value - 0.5)).exp());
     glared(color.lerp(color.lerp(base(), VOLTAGE_TINT), tint), voltage)
@@ -335,7 +335,7 @@ mod tests {
     fn dendrites_are_paler_but_not_brighter() {
         for theme in [Theme::Dark, Theme::Light] {
             for neuron_type in [NeuronType::Excitatory, NeuronType::Inhibitory] {
-                for voltage in [-65.0, 0.0, GLARE_FULL] {
+                for voltage in [Millivolts(-65.0), Millivolts(0.0), GLARE_FULL] {
                     let palette = theme.palette();
                     let axon = palette.compartment(&neuron_type, voltage);
                     let dendrite = palette.dendrite(&neuron_type, voltage);
@@ -350,7 +350,7 @@ mod tests {
     #[test]
     fn sheaths_turn_towards_myelin_but_not_brighter() {
         for theme in [Theme::Dark, Theme::Light] {
-            for voltage in [-65.0, 0.0, GLARE_FULL] {
+            for voltage in [Millivolts(-65.0), Millivolts(0.0), GLARE_FULL] {
                 let palette = theme.palette();
                 let axon = palette.compartment(&NeuronType::Excitatory, voltage);
                 let sheath = palette.sheath(axon);

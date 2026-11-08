@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
-use crate::components::Link;
+use crate::components::{Link, Milliseconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
@@ -43,7 +43,7 @@ pub struct Neuronify {
     theme: Theme,
     world: hecs::World,
     engine: simulation::Engine,
-    time: f64,
+    time: Milliseconds,
     running: bool,
     speed: f64,
     mouse: Mouse,
@@ -201,7 +201,7 @@ impl Neuronify {
             frame_scene_requested: false,
             world: hecs::World::new(),
             engine: simulation::Engine::default(),
-            time: 0.0,
+            time: Milliseconds::ZERO,
             running: true,
             speed: DEFAULT_SPEED,
             mouse: Mouse::default(),
@@ -286,7 +286,7 @@ impl Neuronify {
         match example.spawn() {
             Ok(world) => {
                 let autosave = Autosave::copy_of(example.name);
-                self.open_world(world, 0.0, DEFAULT_SPEED, autosave)
+                self.open_world(world, Milliseconds::ZERO, DEFAULT_SPEED, autosave)
             }
             Err(error) => self.file_error = Some(FileError::load(error)),
         }
@@ -618,7 +618,13 @@ impl Neuronify {
         self.landing = Some(LandingScreen::new(true));
     }
 
-    fn open_world(&mut self, world: hecs::World, time: f64, speed: f64, autosave: Autosave) {
+    fn open_world(
+        &mut self,
+        world: hecs::World,
+        time: Milliseconds,
+        speed: f64,
+        autosave: Autosave,
+    ) {
         self.save_edits();
         self.autosave = autosave;
         self.file_error = None;
@@ -853,7 +859,12 @@ impl visula::Simulation for Neuronify {
                 }
                 Some(LandingChoice::NewSimulation) => {
                     let autosave = Autosave::copy_of(UNTITLED);
-                    self.open_world(hecs::World::new(), 0.0, DEFAULT_SPEED, autosave)
+                    self.open_world(
+                        hecs::World::new(),
+                        Milliseconds::ZERO,
+                        DEFAULT_SPEED,
+                        autosave,
+                    )
                 }
                 Some(LandingChoice::BackToSimulation) => self.landing = None,
                 Some(LandingChoice::About) => self.about = Some(AboutScreen::new(self.version)),

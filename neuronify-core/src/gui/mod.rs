@@ -18,7 +18,9 @@ use egui::{
 };
 use hecs::World;
 
-use crate::components::{ConnectionView, NeuronDisplay, Preparation, Setting, Temperature};
+use crate::components::{
+    Celsius, ConnectionView, Milliseconds, NeuronDisplay, Preparation, Setting, Temperature,
+};
 use crate::editor::Editor;
 use crate::links;
 use crate::rendering::Theme;
@@ -70,7 +72,7 @@ pub struct Controls<'a> {
     pub editor: &'a mut Editor,
     pub world: &'a mut World,
     pub theme: &'a mut Theme,
-    pub time: f64,
+    pub time: Milliseconds,
     pub running: &'a mut bool,
     pub speed: &'a mut f64,
     pub fps: f64,
@@ -602,7 +604,7 @@ fn menu(
                                 crate::settings::Setting::Temperature,
                                 &mut temperature.celsius,
                                 preparation.temperatures(),
-                                |celsius| format!("{celsius:.1} °C"),
+                                |celsius: Celsius| format!("{:.1} °C", celsius.0),
                             )
                         })
                         .inner;

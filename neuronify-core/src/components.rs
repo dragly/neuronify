@@ -4,6 +4,8 @@ use glam::Vec3;
 use hecs::{Entity, World};
 use serde::{Deserialize, Serialize};
 
+pub use neuronify_engine::units::*;
+
 use crate::measurement::voltmeter::VoltageSeries;
 
 pub trait Setting: hecs::Component + Copy + Default {
@@ -48,53 +50,53 @@ impl Setting for NeuronDisplay {}
 
 #[derive(Clone, Debug, Default)]
 pub struct FiringRate {
-    pub rate: f64,
+    pub rate: Hertz,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LeakyNeuron {
-    pub capacitance: f64,
-    pub resting_potential: f64,
-    pub threshold: f64,
-    pub initial_potential: f64,
+    pub capacitance: Nanofarads,
+    pub resting_potential: Millivolts,
+    pub threshold: Millivolts,
+    pub initial_potential: Millivolts,
     pub voltage_clamped: bool,
-    pub minimum_voltage: f64,
-    pub maximum_voltage: f64,
-    pub refractory_period: f64,
+    pub minimum_voltage: Millivolts,
+    pub maximum_voltage: Millivolts,
+    pub refractory_period: Milliseconds,
 }
 
 impl Default for LeakyNeuron {
     fn default() -> Self {
         Self {
-            capacitance: 0.2,
-            resting_potential: -70.0,
-            threshold: -55.0,
-            initial_potential: -80.0,
+            capacitance: Nanofarads(0.2),
+            resting_potential: Millivolts(-70.0),
+            threshold: Millivolts(-55.0),
+            initial_potential: Millivolts(-80.0),
             voltage_clamped: true,
-            minimum_voltage: -90.0,
-            maximum_voltage: 60.0,
-            refractory_period: 2.0,
+            minimum_voltage: Millivolts(-90.0),
+            maximum_voltage: Millivolts(60.0),
+            refractory_period: Milliseconds(2.0),
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct NodeState {
-    pub voltage: f64,
+    pub voltage: Millivolts,
     pub gates: Vec<f64>,
-    pub since_spike: f64,
+    pub since_spike: Milliseconds,
 }
 
 impl NodeState {
-    pub fn at(voltage: f64) -> NodeState {
+    pub fn at(voltage: Millivolts) -> NodeState {
         NodeState {
             voltage,
             gates: Vec::new(),
-            since_spike: f64::INFINITY,
+            since_spike: Milliseconds::INFINITY,
         }
     }
 
-    pub fn fired_within(&self, duration: f64) -> bool {
+    pub fn fired_within(&self, duration: Milliseconds) -> bool {
         self.since_spike < duration
     }
 }
@@ -107,34 +109,36 @@ impl Default for NodeState {
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct CableState {
-    pub voltage: Vec<f64>,
+    pub voltage: Vec<Millivolts>,
     pub gates: Vec<f64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LeakCurrent {
-    pub resistance: f64,
+    pub resistance: Megaohms,
 }
 
 impl Default for LeakCurrent {
     fn default() -> Self {
-        Self { resistance: 100.0 }
+        Self {
+            resistance: Megaohms(100.0),
+        }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AdaptationCurrent {
-    pub adaptation: f64,
-    pub conductance: f64,
-    pub time_constant: f64,
+    pub adaptation: Microsiemens,
+    pub conductance: Microsiemens,
+    pub time_constant: Milliseconds,
 }
 
 impl Default for AdaptationCurrent {
     fn default() -> Self {
         Self {
-            adaptation: 0.01,
-            conductance: 0.0,
-            time_constant: 500.0,
+            adaptation: Microsiemens(0.01),
+            conductance: Microsiemens::ZERO,
+            time_constant: Milliseconds(500.0),
         }
     }
 }
@@ -144,81 +148,80 @@ impl Default for AdaptationCurrent {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BurstCurrent {
     /// The current at the start of a burst
-    pub peak: f64,
-    /// How fast the current drains, in nanoamperes per millisecond
-    pub drain: f64,
-    pub boost: f64,
+    pub peak: Nanoamperes,
+    pub drain: NanoamperesPerMillisecond,
+    pub boost: Nanoamperes,
 }
 
 impl Default for BurstCurrent {
     fn default() -> Self {
         Self {
-            peak: 1.2,
-            drain: 0.006,
-            boost: 0.0,
+            peak: Nanoamperes(1.2),
+            drain: NanoamperesPerMillisecond(0.006),
+            boost: Nanoamperes::ZERO,
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CurrentClamp {
-    pub current_output: f64,
+    pub current_output: Nanoamperes,
 }
 
 impl Default for CurrentClamp {
     fn default() -> Self {
         Self {
-            current_output: 2.0,
+            current_output: Nanoamperes(2.0),
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AlternatingCurrent {
-    pub amplitude: f64,
-    pub frequency: f64,
+    pub amplitude: Nanoamperes,
+    pub frequency: Hertz,
 }
 
 impl Default for AlternatingCurrent {
     fn default() -> Self {
         Self {
-            amplitude: 0.3,
-            frequency: 50.0,
+            amplitude: Nanoamperes(0.3),
+            frequency: Hertz(50.0),
         }
     }
 }
 
 impl AlternatingCurrent {
-    pub fn at(&self, time: f64) -> f64 {
-        self.amplitude * (std::f64::consts::TAU * self.frequency * time).sin()
+    pub fn at(&self, time: Milliseconds) -> Nanoamperes {
+        self.amplitude * (std::f64::consts::TAU * self.frequency.cycles_in(time)).sin()
     }
 
-    pub fn charge_until(&self, time: f64) -> f64 {
-        let angular_frequency = std::f64::consts::TAU * self.frequency;
-        if angular_frequency == 0.0 {
-            return 0.0;
+    pub fn charge_until(&self, time: Milliseconds) -> Picocoulombs {
+        let angular_frequency = std::f64::consts::TAU * self.frequency.to_kilohertz();
+        if angular_frequency == Kilohertz::ZERO {
+            return Picocoulombs::ZERO;
         }
-        self.amplitude * (1.0 - (angular_frequency * time).cos()) / angular_frequency
+        self.amplitude * (1.0 - (angular_frequency * time).cos()) * (1.0 / angular_frequency)
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CurrentSynapse {
-    pub tau: f64,
-    pub maximum_current: f64,
-    pub delay: f64,
+    pub tau: Milliseconds,
+    pub maximum_current: Nanoamperes,
+    pub delay: Milliseconds,
     pub alpha_function: bool,
     pub exponential: f64,
     pub linear: f64,
-    pub triggers: Vec<f64>,
+    pub triggers: Vec<Milliseconds>,
 }
 
 impl Default for CurrentSynapse {
     fn default() -> Self {
         Self {
-            tau: 2.0,
-            maximum_current: 6.0,
-            delay: 5.0,
+            tau: Milliseconds(2.0),
+            maximum_current: Nanoamperes(6.0),
+            delay: Milliseconds(5.0),
             alpha_function: false,
             exponential: 0.0,
             linear: 0.0,
@@ -232,14 +235,14 @@ pub struct ImmediateFireSynapse;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConductanceSynapse {
-    pub conductance: f64,
-    pub delay: f64,
+    pub conductance: Microsiemens,
+    pub delay: Milliseconds,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct SynapseState {
-    pub open: f64,
-    pub pending: Vec<f64>,
+    pub open: Microsiemens,
+    pub pending: Vec<Milliseconds>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -292,36 +295,38 @@ impl Default for NoteSize {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GeneratorDynamics {
-    pub time_since_fire: f64,
+    pub time_since_fire: Milliseconds,
 }
 
 impl Default for GeneratorDynamics {
     fn default() -> Self {
         Self {
-            time_since_fire: f64::INFINITY,
+            time_since_fire: Milliseconds::INFINITY,
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RegularSpikeGenerator {
-    pub frequency: f64,
+    pub frequency: Hertz,
 }
 
 impl Default for RegularSpikeGenerator {
     fn default() -> Self {
-        Self { frequency: 20.0 }
+        Self {
+            frequency: Hertz(20.0),
+        }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PoissonGenerator {
-    pub rate: f64,
+    pub rate: Hertz,
 }
 
 impl Default for PoissonGenerator {
     fn default() -> Self {
-        Self { rate: 20.0 }
+        Self { rate: Hertz(20.0) }
     }
 }
 
@@ -350,8 +355,8 @@ pub fn neuron_type(world: &hecs::World, entity: Entity) -> NeuronType {
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Cable {
-    pub length: f64,
-    pub diameter: f64,
+    pub length: Micrometres,
+    pub diameter: Micrometres,
 }
 
 pub use neuronify_engine::Membrane;
@@ -468,7 +473,7 @@ pub struct Compartment;
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Temperature {
-    pub celsius: f64,
+    pub celsius: Celsius,
 }
 
 impl Default for Temperature {

@@ -55,7 +55,7 @@ fn compartment_color(
 fn inside_color(
     from: EntityRef,
     to: EntityRef,
-    voltage: f64,
+    voltage: Millivolts,
     display: &NeuronDisplay,
     palette: &Palette,
 ) -> Option<Vec3> {
@@ -476,7 +476,8 @@ mod tests {
                 .unwrap();
             let bead = growing.spheres[0];
             assert_eq!((bead.radius, bead.color), (joint.radius, joint.color));
-            world.get::<&mut NodeState>(compartment).unwrap().voltage = -65.0 + 25.0 * step as f64;
+            world.get::<&mut NodeState>(compartment).unwrap().voltage =
+                Millivolts(-65.0 + 25.0 * step as f64);
             from = compartment;
             start = tip;
         }
@@ -595,8 +596,8 @@ mod tests {
         world
             .insert_one(soma, NodeState::at(RESTING_POTENTIAL))
             .unwrap();
-        let diameter = |entity| real[&entity] * 2.0 * MICROMETRES_PER_UNIT as f32;
-        assert!((diameter(axon[1]) - Preparation::Squid.axon_diameter() as f32).abs() < 1e-6);
+        let diameter = |entity| real[&entity] * 2.0 * MICROMETRES_PER_UNIT.0 as f32;
+        assert!((diameter(axon[1]) - Preparation::Squid.axon_diameter().0 as f32).abs() < 1e-6);
         assert!(diameter(dendrite[0]) > 2.0 && diameter(dendrite[0]) < 3.5);
         assert!(real[&dendrite[0]] < shown[&dendrite[0]] / 5.0);
         let palette = Theme::Light.palette();
@@ -656,7 +657,7 @@ mod tests {
         );
         spawn_internode(&mut world, first, second);
         spawn_cable(&mut world, second, third, false);
-        world.get::<&mut NodeState>(second).unwrap().voltage = 30.0;
+        world.get::<&mut NodeState>(second).unwrap().voltage = Millivolts(30.0);
         let radii = compartment_radii(&world);
         let paths = connection_paths(&world, &radii, &palette);
         let display = NeuronDisplay::default();
@@ -691,12 +692,14 @@ mod tests {
         );
         let thick = spawn_cable(&mut world, first, middle, false);
         spawn_cable(&mut world, middle, last, false);
-        world.get::<&mut Cable>(thick).unwrap().diameter = 4.0;
+        let diameter = Micrometres(4.0);
+        world.get::<&mut Cable>(thick).unwrap().diameter = diameter;
         let display = NeuronDisplay::default();
         let radii = compartment_radii(&world);
-        assert_eq!(radii[&first], drawn_radius(4.0, &display));
+        assert_eq!(radii[&first], drawn_radius(diameter, &display));
         assert_eq!(radii[&last], axon_radius(&display, Preparation::Squid));
-        let mean = (drawn_radius(4.0, &display) + axon_radius(&display, Preparation::Squid)) / 2.0;
+        let mean =
+            (drawn_radius(diameter, &display) + axon_radius(&display, Preparation::Squid)) / 2.0;
         assert!((radii[&middle] - mean).abs() < 1e-6);
     }
 
@@ -713,13 +716,13 @@ mod tests {
             .insert_one(
                 laid,
                 CableState {
-                    voltage: vec![RESTING_POTENTIAL, 30.0],
+                    voltage: vec![RESTING_POTENTIAL, Millivolts(30.0)],
                     gates: Vec::new(),
                 },
             )
             .unwrap();
         let pieces = drawn(&world);
-        let lit = palette.compartment(&NeuronType::Excitatory, 30.0);
+        let lit = palette.compartment(&NeuronType::Excitatory, Millivolts(30.0));
         let rest = palette.compartment(&NeuronType::Excitatory, RESTING_POTENTIAL);
         assert_eq!(pieces.len(), 3);
         assert_eq!(pieces[1].start, Vec3::new(1.0, 0.0, 0.0));

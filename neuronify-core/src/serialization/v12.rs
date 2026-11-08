@@ -97,37 +97,40 @@ pub fn upgrade_from_v11(world: &mut World) {
         let refractory_period = dynamics
             .as_ref()
             .map_or(LeakyNeuron::default().refractory_period, |dynamics| {
-                dynamics.refractory_period * MILLI
+                Milliseconds(dynamics.refractory_period * MILLI)
             });
         let state = NodeState {
-            voltage: dynamics
-                .as_ref()
-                .map_or(old.resting_potential, |dynamics| dynamics.voltage)
-                * MILLI,
+            voltage: Millivolts(
+                dynamics
+                    .as_ref()
+                    .map_or(old.resting_potential, |dynamics| dynamics.voltage)
+                    * MILLI,
+            ),
             gates: Vec::new(),
-            since_spike: dynamics
-                .map_or(f64::INFINITY, |dynamics| dynamics.time_since_fire * MILLI),
+            since_spike: Milliseconds(
+                dynamics.map_or(f64::INFINITY, |dynamics| dynamics.time_since_fire * MILLI),
+            ),
         };
         let neuron_parameters = LeakyNeuron {
-            capacitance: old.capacitance * NANO,
-            resting_potential: old.resting_potential * MILLI,
-            threshold: old.threshold * MILLI,
-            initial_potential: old.initial_potential * MILLI,
+            capacitance: Nanofarads(old.capacitance * NANO),
+            resting_potential: Millivolts(old.resting_potential * MILLI),
+            threshold: Millivolts(old.threshold * MILLI),
+            initial_potential: Millivolts(old.initial_potential * MILLI),
             voltage_clamped: old.voltage_clamped,
-            minimum_voltage: old.minimum_voltage * MILLI,
-            maximum_voltage: old.maximum_voltage * MILLI,
+            minimum_voltage: Millivolts(old.minimum_voltage * MILLI),
+            maximum_voltage: Millivolts(old.maximum_voltage * MILLI),
             refractory_period,
         };
         world.insert(neuron, (neuron_parameters, state)).unwrap();
     }
     replace(world, |_: v11::LeakyDynamics| NodeState::default());
     replace(world, |old: v11::LeakCurrent| LeakCurrent {
-        resistance: old.resistance / MICRO,
+        resistance: Megaohms(old.resistance / MICRO),
     });
     replace(world, |old: v11::AdaptationCurrent| AdaptationCurrent {
-        adaptation: old.adaptation * MICRO,
-        conductance: old.conductance * MICRO,
-        time_constant: old.time_constant * MILLI,
+        adaptation: Microsiemens(old.adaptation * MICRO),
+        conductance: Microsiemens(old.conductance * MICRO),
+        time_constant: Milliseconds(old.time_constant * MILLI),
     });
     scale(world, |burst: &mut BurstCurrent| {
         burst.peak *= NANO;
@@ -141,9 +144,9 @@ pub fn upgrade_from_v11(world: &mut World) {
         alternating.amplitude *= NANO;
     });
     replace(world, |old: v11::CurrentSynapse| CurrentSynapse {
-        tau: old.tau * MILLI,
-        maximum_current: old.maximum_current * NANO,
-        delay: old.delay * MILLI,
+        tau: Milliseconds(old.tau * MILLI),
+        maximum_current: Nanoamperes(old.maximum_current * NANO),
+        delay: Milliseconds(old.delay * MILLI),
         alpha_function: old.alpha_function,
         exponential: 0.0,
         linear: 0.0,
@@ -151,7 +154,7 @@ pub fn upgrade_from_v11(world: &mut World) {
     });
     replace(world, |_: v11::ImmediateFireSynapse| ImmediateFireSynapse);
     replace(world, |old: v11::GeneratorDynamics| GeneratorDynamics {
-        time_since_fire: old.time_since_fire * MILLI,
+        time_since_fire: Milliseconds(old.time_since_fire * MILLI),
     });
     let compartments: Vec<Entity> = world
         .query::<()>()

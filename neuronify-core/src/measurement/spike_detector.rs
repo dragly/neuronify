@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use hecs::{Entity, World};
+use neuronify_engine::units::Milliseconds;
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
@@ -9,15 +10,15 @@ use crate::simulation::Spike;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SpikeDetector {
-    pub time_range: f64,
-    pub time: f64,
+    pub time_range: Milliseconds,
+    pub time: Milliseconds,
 }
 
 impl Default for SpikeDetector {
     fn default() -> Self {
         Self {
-            time_range: 0.1,
-            time: 0.0,
+            time_range: Milliseconds(100.0),
+            time: Milliseconds::ZERO,
         }
     }
 }
@@ -40,14 +41,14 @@ pub enum RowOrder {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SpikeTrain {
-    pub times: VecDeque<f64>,
+    pub times: VecDeque<Milliseconds>,
 }
 
-pub fn record_spikes(world: &mut World, spikes: &[Spike], time: f64) {
+pub fn record_spikes(world: &mut World, spikes: &[Spike], time: Milliseconds) {
     for (_, detector) in world.query_mut::<&mut SpikeDetector>() {
         detector.time = time;
     }
-    let wires: Vec<(Entity, Entity, f64)> = world
+    let wires: Vec<(Entity, Entity, Milliseconds)> = world
         .query::<&Connection>()
         .with::<&SpikeTrain>()
         .iter()
@@ -64,7 +65,7 @@ pub fn record_spikes(world: &mut World, spikes: &[Spike], time: f64) {
             continue;
         };
         for spike in spikes.iter().filter(|spike| spike.entity == from) {
-            train.times.push_back(spike.time * 1e-3);
+            train.times.push_back(spike.time);
         }
         while train
             .times
@@ -83,9 +84,7 @@ mod tests {
     use crate::elements::spawn_spike_detector;
     use glam::Vec3;
 
-    const STEP: f64 = DT * 1e-3;
-
-    fn spikes(world: &World, wire: Entity) -> Vec<f64> {
+    fn spikes(world: &World, wire: Entity) -> Vec<Milliseconds> {
         world
             .get::<&SpikeTrain>(wire)
             .unwrap()
@@ -101,22 +100,18 @@ mod tests {
         let [wired, unwired] = [(); 2].map(|_| world.spawn((NodeState::default(),)));
         let detector = spawn_spike_detector(&mut world, wired, Vec3::ZERO);
         let wire = crate::measurement::voltmeter::measured(&world, detector)[0].0;
-        let spikes_at = |time: f64| {
-            [wired, unwired].map(|entity| Spike {
-                entity,
-                time: time * 1e3,
-            })
-        };
-        record_spikes(&mut world, &spikes_at(1.0), 1.0);
-        assert_eq!(spikes(&world, wire), [1.0]);
-        assert_eq!(world.get::<&SpikeDetector>(detector).unwrap().time, 1.0);
+        let fired = Milliseconds(1000.0);
+        let spikes_at = |time| [wired, unwired].map(|entity| Spike { entity, time });
+        record_spikes(&mut world, &spikes_at(fired), fired);
+        assert_eq!(spikes(&world, wire), [fired]);
+        assert_eq!(world.get::<&SpikeDetector>(detector).unwrap().time, fired);
 
-        record_spikes(&mut world, &[], 1.05);
-        assert_eq!(spikes(&world, wire), [1.0]);
+        record_spikes(&mut world, &[], Milliseconds(1050.0));
+        assert_eq!(spikes(&world, wire), [fired]);
         record_spikes(
             &mut world,
             &[],
-            1.0 + SpikeDetector::default().time_range + STEP,
+            fired + SpikeDetector::default().time_range + DT,
         );
         assert!(spikes(&world, wire).is_empty());
     }

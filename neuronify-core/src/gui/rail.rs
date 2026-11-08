@@ -8,6 +8,7 @@ use egui::{
     WidgetInfo, WidgetType,
 };
 
+use crate::components::Nanoamperes;
 use crate::editor::Editor;
 use crate::elements::Element;
 use crate::rendering::Theme;
@@ -47,7 +48,8 @@ const OPTION_INSET: f32 = 8.0;
 const CARD_SPACING: f32 = 6.0;
 const CARD_GAP: f32 = 6.0;
 const CARD_PICTURE: Vec2 = vec2(80.0, 40.0);
-const TOUCH_CURRENTS: (RangeInclusive<f64>, f64) = (0.0..=1.0, 0.01);
+const TOUCH_CURRENTS: (RangeInclusive<Nanoamperes>, Nanoamperes) =
+    (Nanoamperes(0.0)..=Nanoamperes(1.0), Nanoamperes(0.01));
 const INPUT_HINT: &str = "Press and drag to place an input and connect it to a neuron.";
 const MORPHOLOGIES: [(bool, &str, &str); 2] = [
     (
@@ -633,7 +635,7 @@ fn stimulation_settings(ui: &mut Ui, chrome: &Chrome, editor: &mut Editor) {
                 Setting::TouchCurrent,
                 &mut editor.stimulation.current,
                 TOUCH_CURRENTS,
-                |nanoamperes| format!("{:.0} pA", nanoamperes * 1e3),
+                |current| format!("{:.0} pA", current.in_picoamperes()),
             );
         });
 }

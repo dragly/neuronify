@@ -328,8 +328,8 @@ mod tests {
         let from = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
         let to = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(10.0, 0.0, 0.0));
         let connection = spawn_synapse(&mut world, from, to);
-        *world.get::<&mut NodeState>(from).unwrap() = NodeState::at(-50.0);
-        *world.get::<&mut NodeState>(to).unwrap() = NodeState::at(-80.0);
+        *world.get::<&mut NodeState>(from).unwrap() = NodeState::at(Millivolts(-50.0));
+        *world.get::<&mut NodeState>(to).unwrap() = NodeState::at(Millivolts(-80.0));
 
         let paths = connection_paths(&world, &HashMap::new(), &Theme::Dark.palette());
 

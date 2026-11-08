@@ -6,13 +6,11 @@ use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::elements::{spawn_spike_detector, spawn_spike_detector_wire, Element};
 use neuronify_core::measurement::spike_detector::{RowOrder, SpikeDetector};
 use neuronify_core::{
-    Connection, ConnectionView, CurrentClamp, CurrentSynapse, Deletable, MeterSize, NeuronDisplay,
-    NeuronType, PoissonGenerator, Selected, Setting,
+    Connection, ConnectionView, CurrentClamp, CurrentSynapse, Deletable, Hertz, MeterSize,
+    Milliseconds, Nanoamperes, NeuronDisplay, NeuronType, PoissonGenerator, Selected, Setting,
 };
 
-const NANOAMPERE: f64 = 1.0;
-const MILLISECOND: f64 = 1.0;
-const CURRENT_DRAWN_AT_FULL_STRENGTH: f64 = 2.0 * NANOAMPERE;
+const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(2.0);
 
 pub fn labs() -> [(&'static str, World); 2] {
     [
@@ -28,7 +26,8 @@ fn main() {
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/labs");
     std::fs::create_dir_all(folder).unwrap();
     for (file, world) in labs() {
-        let bytes = neuronify_core::serialization::save(&world, 0.0, DEFAULT_SPEED).unwrap();
+        let bytes =
+            neuronify_core::serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
         std::fs::write(format!("{folder}/{file}"), bytes).unwrap();
         println!("Wrote {file}");
     }
@@ -42,7 +41,13 @@ fn neuron(world: &mut World, position: Vec3, neuron_type: NeuronType) -> Entity 
     .spawn(world, position)
 }
 
-fn synapse(world: &mut World, from: Entity, to: Entity, maximum_current: f64, delay: f64) {
+fn synapse(
+    world: &mut World,
+    from: Entity,
+    to: Entity,
+    maximum_current: Nanoamperes,
+    delay: Milliseconds,
+) {
     world.spawn((
         Connection {
             from,
@@ -76,22 +81,23 @@ fn ring_attractor(input: RingInput) -> World {
     const POOL_RADIUS: f32 = 7.0;
     const TOUCH_SENSOR_RADIUS: f32 = 19.0;
     const NOISE_RADIUS: f32 = 23.0;
-    const NEIGHBOUR_CURRENTS: [f64; 3] = [2.0 * NANOAMPERE, 1.32 * NANOAMPERE, 0.66 * NANOAMPERE];
-    const EXCITATORY_TO_INHIBITORY: f64 = 0.3 * NANOAMPERE;
-    const INHIBITORY_TO_EXCITATORY: f64 = 1.0 * NANOAMPERE;
-    const BIAS: f64 = 0.1 * NANOAMPERE;
+    const NEIGHBOUR_CURRENTS: [Nanoamperes; 3] =
+        [Nanoamperes(2.0), Nanoamperes(1.32), Nanoamperes(0.66)];
+    const EXCITATORY_TO_INHIBITORY: Nanoamperes = Nanoamperes(0.3);
+    const INHIBITORY_TO_EXCITATORY: Nanoamperes = Nanoamperes(1.0);
+    const BIAS: Nanoamperes = Nanoamperes(0.1);
     const BIAS_CONNECTION_STRENGTH: f64 = 0.15;
-    const NOISE_RATE: f64 = 100.0;
-    const NOISE_CURRENT: f64 = 0.3 * NANOAMPERE;
-    const NOISE_DELAY: f64 = 1.0 * MILLISECOND;
-    const CUE_CURRENT: f64 = 6.0 * NANOAMPERE;
-    const CUE_TIME_CONSTANT: f64 = 100.0 * MILLISECOND;
+    const NOISE_RATE: Hertz = Hertz(100.0);
+    const NOISE_CURRENT: Nanoamperes = Nanoamperes(0.3);
+    const NOISE_DELAY: Milliseconds = Milliseconds(1.0);
+    const CUE_CURRENT: Nanoamperes = Nanoamperes(6.0);
+    const CUE_TIME_CONSTANT: Milliseconds = Milliseconds(100.0);
     const SPIKE_DETECTOR_GAP: f32 = 5.0;
     const SPIKE_DETECTOR_SIZE: MeterSize = MeterSize {
         width: 40.0,
         height: 16.0,
     };
-    const SPIKE_DETECTOR_TIME_RANGE: f64 = 2.0;
+    const SPIKE_DETECTOR_TIME_RANGE: Milliseconds = Milliseconds(2000.0);
 
     let delay = CurrentSynapse::default().delay;
     let mut world = World::new();
@@ -180,7 +186,7 @@ fn ring_attractor(input: RingInput) -> World {
             CurrentSynapse {
                 tau: CUE_TIME_CONSTANT,
                 maximum_current: CUE_CURRENT,
-                delay: 0.0,
+                delay: Milliseconds::ZERO,
                 ..Default::default()
             },
             Deletable {},

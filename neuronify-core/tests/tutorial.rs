@@ -11,20 +11,21 @@ use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
-    Annotation, Connection, CurrentClamp, LeakyNeuron, Link, NeuronDisplay, NeuronType, NodeState,
-    NoteSize, Position, Preparation, Setting, TouchSensor, DEFAULT_SPEED, DT, NODE_RADIUS,
-    SEGMENT_LENGTH, SIMULATION_STEPS_PER_SECOND, TERMINAL_THRESHOLD,
+    Annotation, Connection, CurrentClamp, LeakyNeuron, Link, Milliseconds, Millivolts, Nanoamperes,
+    NeuronDisplay, NeuronType, NodeState, NoteSize, Position, Preparation, Setting, TouchSensor,
+    DEFAULT_SPEED, DT, NODE_RADIUS, SEGMENT_LENGTH, SIMULATION_STEPS_PER_SECOND,
+    TERMINAL_THRESHOLD,
 };
 
 const STEPS_PER_SECOND: f64 = DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND;
-const SIMULATED_PER_REAL_SECOND: f64 = STEPS_PER_SECOND * DT * 1e-3;
+const SIMULATED_PER_REAL_SECOND: Milliseconds = Milliseconds(STEPS_PER_SECOND * DT.0);
 const PHONE_WIDTH: f32 = 27.0;
 
 struct Canvas {
     world: World,
     engine: Engine,
-    time: f64,
-    spikes: Vec<(Entity, f64)>,
+    time: Milliseconds,
+    spikes: Vec<(Entity, Milliseconds)>,
 }
 
 const STEPS_PER_FRAME: u32 = 8;
@@ -34,7 +35,7 @@ impl Canvas {
         Canvas {
             world: find(file).unwrap().spawn().unwrap(),
             engine: Engine::default(),
-            time: 0.0,
+            time: Milliseconds::ZERO,
             spikes: Vec::new(),
         }
     }
@@ -61,16 +62,16 @@ impl Canvas {
                 self.engine
                     .spikes()
                     .iter()
-                    .map(|spike| (spike.entity, spike.time * 1e-3)),
+                    .map(|spike| (spike.entity, spike.time)),
             );
         }
     }
 
-    fn now(&self) -> f64 {
+    fn now(&self) -> Milliseconds {
         self.time
     }
 
-    fn wait_for_spike(&mut self, neuron: Entity) -> f64 {
+    fn wait_for_spike(&mut self, neuron: Entity) -> Milliseconds {
         let since = self.now();
         while self.spikes_since(neuron, since).is_empty() {
             self.wait(STEPS_PER_FRAME as f64 / STEPS_PER_SECOND);
@@ -82,7 +83,7 @@ impl Canvas {
         fire_nearby(&mut self.world, &mut self.engine, hand);
     }
 
-    fn spikes_since(&self, neuron: Entity, since: f64) -> Vec<f64> {
+    fn spikes_since(&self, neuron: Entity, since: Milliseconds) -> Vec<Milliseconds> {
         self.spikes
             .iter()
             .filter(|(entity, time)| *entity == neuron && *time >= since)
@@ -90,7 +91,7 @@ impl Canvas {
             .collect()
     }
 
-    fn voltage(&self, neuron: Entity) -> f64 {
+    fn voltage(&self, neuron: Entity) -> Millivolts {
         self.world.get::<&NodeState>(neuron).unwrap().voltage
     }
 
@@ -254,7 +255,7 @@ fn quick_presses_add_up_and_slow_ones_leak_away() {
             canvas.wait(every);
         }
         canvas.wait(1.0);
-        canvas.spikes_since(neuron, 0.0).len()
+        canvas.spikes_since(neuron, Milliseconds::ZERO).len()
     };
     assert_eq!(presses(3.0, 1), 0);
     assert!(presses(0.25, 3) >= 1);
@@ -270,7 +271,7 @@ fn the_blue_side_pushes_and_the_red_side_pulls() {
         panic!("expected two hands");
     };
     canvas.wait(5.0);
-    let alone = canvas.spikes_since(middle, 0.0);
+    let alone = canvas.spikes_since(middle, Milliseconds::ZERO);
     let period = alone[alone.len() - 1] - alone[alone.len() - 2];
     let real_period = period / SIMULATED_PER_REAL_SECOND;
     assert!(
@@ -281,7 +282,7 @@ fn the_blue_side_pushes_and_the_red_side_pulls() {
     let last = canvas.wait_for_spike(middle);
     canvas.press(push_hand);
     canvas.wait(2.0);
-    let next = canvas.spikes_since(middle, last + 1e-9)[0];
+    let next = canvas.spikes_since(middle, last + Milliseconds(1e-6))[0];
     assert!(
         next - last < 0.7 * period,
         "fired after {} instead of {period}",
@@ -299,7 +300,7 @@ fn the_blue_side_pushes_and_the_red_side_pulls() {
         .resting_potential;
     assert!(canvas.voltage(middle) < rest);
     canvas.wait(3.0);
-    let next = canvas.spikes_since(middle, last + 1e-9)[0];
+    let next = canvas.spikes_since(middle, last + Milliseconds(1e-6))[0];
     assert!(
         next - last > 1.5 * period,
         "waited {} instead of {period}",
@@ -403,8 +404,8 @@ fn the_spike_reaches_the_near_neuron_before_the_far_one(preparation: Preparation
     let (near, far) = (neurons[1].0, neurons[2].0);
     canvas.press(canvas.hands()[0]);
     canvas.wait(3.0);
-    let near_spike = canvas.spikes_since(near, 0.0)[0];
-    let far_spike = canvas.spikes_since(far, 0.0)[0];
+    let near_spike = canvas.spikes_since(near, Milliseconds::ZERO)[0];
+    let far_spike = canvas.spikes_since(far, Milliseconds::ZERO)[0];
     let delay = (far_spike - near_spike) / SIMULATED_PER_REAL_SECOND;
     assert!(delay > 0.25, "the far neuron fired only {delay} s later");
 }
@@ -437,9 +438,10 @@ fn the_spike_on_the_myelinated_axon_arrives_first(preparation: Preparation) {
     );
     canvas.press(canvas.hands()[0]);
     canvas.wait(3.0);
-    let sent = canvas.spikes_since(sender, 0.0)[0];
-    let arrivals = [plain, myelinated]
-        .map(|target| (canvas.spikes_since(target, 0.0)[0] - sent) / SIMULATED_PER_REAL_SECOND);
+    let sent = canvas.spikes_since(sender, Milliseconds::ZERO)[0];
+    let arrivals = [plain, myelinated].map(|target| {
+        (canvas.spikes_since(target, Milliseconds::ZERO)[0] - sent) / SIMULATED_PER_REAL_SECOND
+    });
     assert!(arrivals[0] - arrivals[1] > 0.25, "{arrivals:?}");
 }
 
@@ -451,7 +453,7 @@ fn an_axon_grown_onto_a_branch_fires_the_neuron(preparation: Preparation) {
     let hand = canvas.hands()[0];
     canvas.press(hand);
     canvas.wait(3.0);
-    assert!(canvas.spikes_since(receiver, 0.0).is_empty());
+    assert!(canvas.spikes_since(receiver, Milliseconds::ZERO).is_empty());
 
     let start = canvas.world.get::<&Position>(sender).unwrap().position;
     let branch = compartment_tree(&canvas.world, receiver)
@@ -535,7 +537,7 @@ fn the_red_axon_blocks_the_top_input_and_lets_the_bottom_one_through(preparation
     }
 
     for (_, clamp) in canvas.world.query::<&mut CurrentClamp>().iter() {
-        clamp.current_output = 0.0;
+        clamp.current_output = Nanoamperes::ZERO;
     }
     canvas.wait(3.0);
     assert!(fires(&mut canvas, top));
@@ -594,7 +596,7 @@ fn the_top_spike_runs_down_to_the_red_ending_and_stops_there(preparation: Prepar
 
     canvas.wait(3.0);
     canvas.press(canvas.hands()[0]);
-    let mut peaks = vec![f64::MIN; path.len()];
+    let mut peaks = vec![Millivolts::NEG_INFINITY; path.len()];
     for _ in 0..(3.0 * STEPS_PER_SECOND) as usize {
         canvas.wait(1.0 / STEPS_PER_SECOND);
         for (peak, &compartment) in peaks.iter_mut().zip(&path) {
@@ -648,9 +650,12 @@ fn the_bundled_tutorial_files_match_their_generator() {
     for (file, world) in write_tutorial::canvases() {
         let path = format!("{}/examples/tutorial/{file}", env!("CARGO_MANIFEST_DIR"));
         let bundled = std::fs::read(path).unwrap();
-        let written =
-            neuronify_core::serialization::save(&world, 0.0, neuronify_core::DEFAULT_SPEED)
-                .unwrap();
+        let written = neuronify_core::serialization::save(
+            &world,
+            Milliseconds::ZERO,
+            neuronify_core::DEFAULT_SPEED,
+        )
+        .unwrap();
         assert_eq!(bundled, written, "{file} is out of date");
     }
 }

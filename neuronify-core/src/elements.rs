@@ -74,7 +74,7 @@ impl Element {
             Element::AlternatingCurrentSource => world.spawn((
                 position,
                 CurrentClamp {
-                    current_output: 0.0,
+                    current_output: Nanoamperes::ZERO,
                 },
                 AlternatingCurrent::default(),
                 Deletable {},

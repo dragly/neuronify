@@ -18,8 +18,8 @@ use crate::rendering::gpu_types::{CylinderData, TorusData};
 use crate::rendering::scene::Scene;
 use neuronify_engine::SPIKE_DURATION;
 
-/// How long a soma or generator keeps glowing after it fires, in simulated seconds.
-const FLASH_DURATION: f64 = 0.004;
+/// How long a soma or generator keeps glowing after it fires.
+const FLASH_DURATION: Milliseconds = Milliseconds(4.0);
 /// Up and right on the screen with the default camera.
 const SCREEN_UP: Vec3 = Vec3::X;
 const SCREEN_RIGHT: Vec3 = Vec3::Z;
@@ -68,8 +68,8 @@ const WAVE_STEPS: usize = 16;
 /// How much brighter than white a flash starts, so that only flashes bloom.
 const FLASH_BRIGHTNESS: f32 = 3.0;
 
-fn flash(time_since_fire: f64) -> f32 {
-    let remaining = (1.0 - time_since_fire * 1e-3 / FLASH_DURATION).max(0.0) as f32;
+fn flash(time_since_fire: Milliseconds) -> f32 {
+    let remaining = (1.0 - time_since_fire / FLASH_DURATION).max(0.0) as f32;
     remaining * remaining
 }
 
@@ -81,7 +81,7 @@ pub fn voltage_fraction(neuron: &LeakyNeuron, state: &NodeState, display: &Neuro
         .clamp(0.0, 1.0) as f32
 }
 
-pub fn shown_voltage(state: &NodeState, display: &NeuronDisplay) -> f64 {
+pub fn shown_voltage(state: &NodeState, display: &NeuronDisplay) -> Millivolts {
     if display.voltage {
         state.voltage
     } else {
@@ -323,7 +323,7 @@ mod tests {
         ] {
             let entity = element.spawn(&mut world, Vec3::ZERO);
             let neuron = world.get::<&LeakyNeuron>(entity).unwrap().clone();
-            let color_at = |voltage: f64| {
+            let color_at = |voltage: Millivolts| {
                 let state = NodeState::at(voltage);
                 soma_color(
                     &world,
@@ -411,11 +411,11 @@ mod tests {
         let pad_color =
             |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
         let resting = pad_color(&world);
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         fire_nearby(&mut world, &mut engine, Vec3::ZERO);
         step_simulation(&mut world, &mut engine, &mut time, 1, None);
         assert_ne!(pad_color(&world), resting);
-        let steps = (FLASH_DURATION * 1e3 / DT).ceil() as u32;
+        let steps = (FLASH_DURATION / DT).ceil() as u32;
         step_simulation(&mut world, &mut engine, &mut time, steps, None);
         assert_eq!(pad_color(&world), resting);
     }
@@ -444,7 +444,7 @@ mod tests {
         let entity = world.spawn((NeuronType::Inhibitory,));
         let neuron = LeakyNeuron::default();
         let palette = Theme::Dark.palette();
-        let steps = (12.5 / DT).round() as usize;
+        let steps = (Milliseconds(12.5) / DT).round() as usize;
         let unlit = (0..steps)
             .filter(|&step| {
                 let state = NodeState {
@@ -480,7 +480,7 @@ mod tests {
             world
                 .get::<&mut CurrentClamp>(source)
                 .unwrap()
-                .current_output = current;
+                .current_output = Nanoamperes(current);
             let pad = collect_shapes(&world, &Theme::Dark.palette()).cylinders[0].start_color;
             pad.x + pad.y + pad.z
         };
@@ -500,7 +500,7 @@ mod tests {
         world
             .get::<&mut Loudspeaker>(speaker)
             .unwrap()
-            .time_since_heard = 0.0;
+            .time_since_heard = Milliseconds::ZERO;
         assert_ne!(pad_color(&world), speaker_color());
     }
 
@@ -513,17 +513,18 @@ mod tests {
         let palette = Theme::Dark.palette();
         let pad_color =
             |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
+        let heard = Milliseconds(1000.0);
         let spike = crate::Spike {
             entity: neuron,
-            time: 1000.0,
+            time: heard,
         };
 
-        listen(&mut world, &[spike], 1.0, 0.0);
+        listen(&mut world, &[spike], heard, Milliseconds::ZERO);
         assert_ne!(pad_color(&world), speaker_color());
         listen(
             &mut world,
             &[],
-            1.0 + 2.0 * FLASH_DURATION,
+            heard + 2.0 * FLASH_DURATION,
             2.0 * FLASH_DURATION,
         );
         assert_eq!(pad_color(&world), speaker_color());
@@ -561,7 +562,7 @@ mod tests {
                     position: Vec3::ZERO,
                 },
                 CurrentClamp {
-                    current_output: current,
+                    current_output: Nanoamperes(current),
                 },
             ));
             let pad = collect_shapes(&world, &Theme::Dark.palette()).cylinders[0].start_color;

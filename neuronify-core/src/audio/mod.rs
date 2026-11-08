@@ -5,6 +5,8 @@ mod web;
 
 use std::f32::consts::TAU;
 
+use neuronify_engine::units::Milliseconds;
+
 use crate::measurement::loudspeaker::Sound;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -56,15 +58,16 @@ pub fn synthesize(sound: Sound, sample_rate: f32) -> Vec<f32> {
 }
 
 pub fn schedule(
-    heard: Vec<(Sound, f32, f64)>,
-    start: f64,
-    end: f64,
+    heard: Vec<(Sound, f32, Milliseconds)>,
+    start: Milliseconds,
+    end: Milliseconds,
     seconds: f64,
 ) -> Vec<(Sound, f32, f64)> {
     heard
         .into_iter()
         .map(|(sound, volume, time)| {
-            let progress = ((time - start) / (end - start).max(f64::EPSILON)).clamp(0.0, 1.0);
+            let span = (end - start).max(Milliseconds(f64::EPSILON));
+            let progress = ((time - start) / span).clamp(0.0, 1.0);
             (sound, volume, progress * seconds)
         })
         .collect()
@@ -131,8 +134,11 @@ mod tests {
 
     #[test]
     fn spikes_in_a_frame_play_spread_over_the_frame() {
-        let heard = vec![(Sound::Click, 1.0, 1.0), (Sound::Pop, 0.5, 1.05)];
-        let plays = schedule(heard, 1.0, 1.1, 0.02);
+        let heard = vec![
+            (Sound::Click, 1.0, Milliseconds(1000.0)),
+            (Sound::Pop, 0.5, Milliseconds(1050.0)),
+        ];
+        let plays = schedule(heard, Milliseconds(1000.0), Milliseconds(1100.0), 0.02);
         assert_eq!(plays[0], (Sound::Click, 1.0, 0.0));
         assert_eq!(plays[1].0, Sound::Pop);
         assert!((plays[1].2 - 0.01).abs() < 1e-9);

@@ -13,14 +13,14 @@ use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
-    Connection, CurrentClamp, Label, LeakyNeuron, NoteSize, Position, Preparation, Setting,
-    Temperature, TouchSensor, NODE_RADIUS,
+    Celsius, Connection, CurrentClamp, Label, LeakyNeuron, Milliseconds, Millivolts, Nanoamperes,
+    NoteSize, Position, Preparation, Setting, Temperature, TouchSensor, NODE_RADIUS,
 };
 
 const PHONE_WIDTH: f32 = 27.0;
 
-fn on_screen(seconds: f64) -> f64 {
-    seconds * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND * DT * 1e-3
+fn on_screen(seconds: f64) -> Milliseconds {
+    seconds * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND * DT
 }
 
 const STEPS_PER_CALL: u32 = 40;
@@ -33,14 +33,14 @@ fn fired(engine: &Engine, neuron: Entity) -> usize {
         .count()
 }
 
-fn spikes(world: &mut World, label: &str, from: f64, to: f64) -> usize {
+fn spikes(world: &mut World, label: &str, from: Milliseconds, to: Milliseconds) -> usize {
     let neuron = world
         .query::<&Label>()
         .iter()
         .find(|(_, neuron)| neuron.text == label)
         .unwrap()
         .0;
-    let (mut engine, mut time) = (Engine::default(), 0.0);
+    let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
     let mut spikes = 0;
     while time < to {
         step_simulation(world, &mut engine, &mut time, STEPS_PER_CALL, None);
@@ -60,7 +60,7 @@ fn the_listened_neuron_clicks_within_seconds_for_stripes_at_its_angle_and_not_ac
                 for (_, input) in world.query_mut::<&mut VisualInput>() {
                     input.pattern_angle = pattern_angle;
                 }
-                spikes(&mut world, "Cortex", 0.0, on_screen(seconds))
+                spikes(&mut world, "Cortex", Milliseconds::ZERO, on_screen(seconds))
             })
             .sum::<usize>()
     };
@@ -79,7 +79,7 @@ fn the_output_fires_more_within_seconds_as_the_inhibitory_neuron_adapts() {
     let early = spikes(
         &mut write_examples::adaptive_inhibition(),
         "Output",
-        0.0,
+        Milliseconds::ZERO,
         on_screen(8.0),
     );
     let late = spikes(
@@ -94,7 +94,7 @@ fn the_output_fires_more_within_seconds_as_the_inhibitory_neuron_adapts() {
 struct Experiment {
     world: World,
     engine: Engine,
-    time: f64,
+    time: Milliseconds,
 }
 
 impl Experiment {
@@ -102,7 +102,7 @@ impl Experiment {
         Experiment {
             world,
             engine: Engine::default(),
-            time: 0.0,
+            time: Milliseconds::ZERO,
         }
     }
 
@@ -149,8 +149,8 @@ impl Experiment {
         neurons.into_iter().map(|(entity, _)| entity).collect()
     }
 
-    fn meter_peaks_from_left(&self) -> Vec<f64> {
-        let mut wires: Vec<(f32, f64)> = self
+    fn meter_peaks_from_left(&self) -> Vec<Millivolts> {
+        let mut wires: Vec<(f32, Millivolts)> = self
             .world
             .query::<(&Connection, &VoltageSeries)>()
             .iter()
@@ -160,7 +160,7 @@ impl Experiment {
                     .measurements
                     .iter()
                     .map(|measurement| measurement.voltage)
-                    .fold(f64::MIN, f64::max);
+                    .fold(Millivolts::NEG_INFINITY, Millivolts::max);
                 (meter, peak)
             })
             .collect();
@@ -180,8 +180,8 @@ impl Experiment {
         neurons.into_iter().map(|(entity, _)| entity).collect()
     }
 
-    fn spike_counts(&mut self, seconds: f64, neurons: &[Entity]) -> Vec<usize> {
-        let end = self.time + seconds;
+    fn spike_counts(&mut self, duration: Milliseconds, neurons: &[Entity]) -> Vec<usize> {
+        let end = self.time + duration;
         let mut counts = vec![0; neurons.len()];
         while self.time < end {
             self.step();
@@ -196,9 +196,9 @@ impl Experiment {
         fire_nearby(&mut self.world, &mut self.engine, sensor);
     }
 
-    fn spikes_during(&mut self, seconds: f64, label: &str) -> usize {
+    fn spikes_during(&mut self, duration: Milliseconds, label: &str) -> usize {
         let neuron = self.neuron(label);
-        let end = self.time + seconds;
+        let end = self.time + duration;
         let mut spikes = 0;
         while self.time < end {
             self.step();
@@ -207,7 +207,13 @@ impl Experiment {
         spikes
     }
 
-    fn presses(&mut self, sensor: Vec3, count: usize, interval: f64, label: &str) -> usize {
+    fn presses(
+        &mut self,
+        sensor: Vec3,
+        count: usize,
+        interval: Milliseconds,
+        label: &str,
+    ) -> usize {
         (0..count)
             .map(|_| {
                 self.press(sensor);
@@ -221,17 +227,23 @@ impl Experiment {
 fn the_adaptive_neuron_starts_to_skip_presses() {
     let mut experiment = Experiment::new(write_examples::adaptation());
     let sensor = experiment.sensors_from_left()[0];
-    assert_eq!(experiment.presses(sensor, 3, 0.02, "Adaptive"), 3);
-    assert!(experiment.presses(sensor, 9, 0.02, "Adaptive") < 6);
+    assert_eq!(
+        experiment.presses(sensor, 3, Milliseconds(20.0), "Adaptive"),
+        3
+    );
+    assert!(experiment.presses(sensor, 9, Milliseconds(20.0), "Adaptive") < 6);
 }
 
 #[test]
 fn the_adaptive_neuron_recovers_after_a_rest() {
     let mut experiment = Experiment::new(write_examples::adaptation());
     let sensor = experiment.sensors_from_left()[0];
-    experiment.presses(sensor, 12, 0.02, "Adaptive");
-    experiment.spikes_during(0.5, "Adaptive");
-    assert_eq!(experiment.presses(sensor, 3, 0.02, "Adaptive"), 3);
+    experiment.presses(sensor, 12, Milliseconds(20.0), "Adaptive");
+    experiment.spikes_during(Milliseconds(500.0), "Adaptive");
+    assert_eq!(
+        experiment.presses(sensor, 3, Milliseconds(20.0), "Adaptive"),
+        3
+    );
 }
 
 #[test]
@@ -239,16 +251,16 @@ fn one_press_sets_off_a_burst_that_ends_on_its_own() {
     let mut experiment = Experiment::new(write_examples::bursting());
     let sensor = experiment.sensors_from_left()[0];
     experiment.press(sensor);
-    let burst = experiment.spikes_during(0.25, "Bursting");
+    let burst = experiment.spikes_during(Milliseconds(250.0), "Bursting");
     assert!((10..40).contains(&burst), "{burst} spikes");
-    assert_eq!(experiment.spikes_during(0.3, "Bursting"), 0);
+    assert_eq!(experiment.spikes_during(Milliseconds(300.0), "Bursting"), 0);
 }
 
 #[test]
 fn only_currents_above_the_threshold_fire_and_stronger_ones_fire_faster() {
     let mut experiment = Experiment::new(write_examples::firing_threshold());
     let neurons = experiment.neurons_from_top();
-    let [weak, medium, strong] = experiment.spike_counts(1.0, &neurons)[..] else {
+    let [weak, medium, strong] = experiment.spike_counts(Milliseconds(1000.0), &neurons)[..] else {
         panic!("expected three neurons");
     };
     assert_eq!(weak, 0);
@@ -261,10 +273,10 @@ fn a_long_refractory_period_caps_the_firing_rate() {
     for (nanoamperes, short_at_least, long_below) in [(1.0, 100, 70), (5.0, 250, 100)] {
         let mut experiment = Experiment::new(write_examples::refractory_period());
         for (_, source) in experiment.world.query_mut::<&mut CurrentClamp>() {
-            source.current_output = nanoamperes;
+            source.current_output = Nanoamperes(nanoamperes);
         }
         let neurons = [experiment.neuron("2 ms"), experiment.neuron("10 ms")];
-        let [short, long] = experiment.spike_counts(1.0, &neurons)[..] else {
+        let [short, long] = experiment.spike_counts(Milliseconds(1000.0), &neurons)[..] else {
             unreachable!()
         };
         assert!(short >= short_at_least, "{nanoamperes} nA: {short} spikes");
@@ -273,15 +285,18 @@ fn a_long_refractory_period_caps_the_firing_rate() {
 }
 
 struct Press {
-    axon: f64,
-    dendrite: f64,
+    axon: Millivolts,
+    dendrite: Millivolts,
     fired: bool,
 }
 
 fn press_when_warmed(preparation: Preparation, celsius: f64) -> Press {
     let mut world = write_examples::body_temperature();
     prepare(&mut world, preparation);
-    Temperature { celsius }.set_in(&mut world);
+    Temperature {
+        celsius: Celsius(celsius),
+    }
+    .set_in(&mut world);
     let mut experiment = Experiment::new(world);
     let far = *experiment.neurons_from_left().last().unwrap();
     experiment.spike_counts(on_screen(1.0), &[]);
@@ -302,7 +317,7 @@ fn both_kinds_carry_a_spike_to_the_far_neuron_at_their_own_temperature() {
     for (preparation, celsius) in [(Preparation::Squid, 16.3), (Preparation::Mammal, 37.0)] {
         let press = press_when_warmed(preparation, celsius);
         assert!(
-            press.axon > 0.0 && press.dendrite > 0.0 && press.fired,
+            press.axon > Millivolts::ZERO && press.dendrite > Millivolts::ZERO && press.fired,
             "{preparation:?}"
         );
     }
@@ -310,10 +325,10 @@ fn both_kinds_carry_a_spike_to_the_far_neuron_at_their_own_temperature() {
 
 #[test]
 fn squid_axons_fail_when_warm_and_mammalian_ones_keep_going() {
-    assert!(press_when_warmed(Preparation::Squid, 35.0).axon < 0.0);
+    assert!(press_when_warmed(Preparation::Squid, 35.0).axon < Millivolts::ZERO);
     for celsius in [20.0, 42.0] {
         assert!(
-            press_when_warmed(Preparation::Mammal, celsius).axon > 0.0,
+            press_when_warmed(Preparation::Mammal, celsius).axon > Millivolts::ZERO,
             "{celsius} °C"
         );
     }
@@ -325,7 +340,7 @@ fn the_mammalian_dendritic_spike_shrinks_as_it_warms_until_the_neuron_stays_quie
     assert!(
         peaks
             .windows(2)
-            .all(|pair| pair[0].dendrite > pair[1].dendrite + 5.0),
+            .all(|pair| pair[0].dendrite > pair[1].dendrite + Millivolts(5.0)),
         "{:?}",
         peaks.map(|press| press.dendrite)
     );
@@ -339,9 +354,9 @@ fn output_spikes_after_presses(presses: &[(usize, f64)]) -> usize {
     let mut spikes = 0;
     for &(sensor, wait) in presses {
         experiment.press(sensors[sensor]);
-        spikes += experiment.spikes_during(wait, "Output");
+        spikes += experiment.spikes_during(Milliseconds(wait), "Output");
     }
-    spikes + experiment.spikes_during(0.1, "Output")
+    spikes + experiment.spikes_during(Milliseconds(100.0), "Output")
 }
 
 #[test]
@@ -353,14 +368,14 @@ fn one_input_alone_does_not_fire_the_output() {
 
 #[test]
 fn two_inputs_close_together_fire_the_output() {
-    assert_eq!(output_spikes_after_presses(&[(0, 0.005), (2, 0.0)]), 1);
-    assert_eq!(output_spikes_after_presses(&[(1, 0.005), (1, 0.0)]), 1);
+    assert_eq!(output_spikes_after_presses(&[(0, 5.0), (2, 0.0)]), 1);
+    assert_eq!(output_spikes_after_presses(&[(1, 5.0), (1, 0.0)]), 1);
 }
 
 #[test]
 fn two_inputs_far_apart_leak_away() {
-    assert_eq!(output_spikes_after_presses(&[(0, 0.05), (2, 0.0)]), 0);
-    assert_eq!(output_spikes_after_presses(&[(1, 0.05), (1, 0.0)]), 0);
+    assert_eq!(output_spikes_after_presses(&[(0, 50.0), (2, 0.0)]), 0);
+    assert_eq!(output_spikes_after_presses(&[(1, 50.0), (1, 0.0)]), 0);
 }
 
 #[test]
@@ -368,10 +383,10 @@ fn one_press_keeps_the_loop_going_until_the_adaptive_neuron_tires() {
     let mut experiment = Experiment::new(write_examples::reverberation());
     let sensor = experiment.sensors_from_left()[0];
     experiment.press(sensor);
-    let early = experiment.spikes_during(0.05, "Adaptive");
-    let later = experiment.spikes_during(0.05, "Adaptive");
-    experiment.spikes_during(0.3, "Adaptive");
-    let at_rest = experiment.spikes_during(0.2, "Adaptive");
+    let early = experiment.spikes_during(Milliseconds(50.0), "Adaptive");
+    let later = experiment.spikes_during(Milliseconds(50.0), "Adaptive");
+    experiment.spikes_during(Milliseconds(300.0), "Adaptive");
+    let at_rest = experiment.spikes_during(Milliseconds(200.0), "Adaptive");
     assert!(early >= 2 && later >= 1, "{early} and {later} spikes");
     assert_eq!(at_rest, 0);
 }
@@ -380,12 +395,12 @@ fn one_press_keeps_the_loop_going_until_the_adaptive_neuron_tires() {
 fn the_two_neurons_take_turns() {
     let mut experiment = Experiment::new(write_examples::half_center_oscillator());
     let neurons = experiment.neurons_from_top();
-    experiment.spike_counts(0.2, &neurons);
+    experiment.spike_counts(Milliseconds(200.0), &neurons);
     let mut last = None;
     let mut turns = 0;
     let mut spikes = [0, 0];
     for _ in 0..10_000 {
-        let fired = experiment.spike_counts(0.0001, &neurons);
+        let fired = experiment.spike_counts(Milliseconds(0.1), &neurons);
         for (side, &count) in fired.iter().enumerate() {
             spikes[side] += count;
             if count > 0 && last != Some(side) {
@@ -409,7 +424,8 @@ fn excitatory_feedback_speeds_the_output_up_and_inhibitory_feedback_slows_it_dow
         experiment.neuron("Faster"),
         experiment.neuron("Slower"),
     ];
-    let [input, faster, slower] = experiment.spike_counts(1.0, &neurons)[..] else {
+    let [input, faster, slower] = experiment.spike_counts(Milliseconds(1000.0), &neurons)[..]
+    else {
         unreachable!()
     };
     assert!(faster > 2 * input, "{faster} against {input}");
@@ -423,12 +439,12 @@ fn excitatory_feedback_speeds_the_output_up_and_inhibitory_feedback_slows_it_dow
 fn the_brake_holds_the_output_until_a_press_releases_it() {
     let mut experiment = Experiment::new(write_examples::disinhibition());
     let sensor = experiment.sensors_from_left()[0];
-    experiment.spikes_during(0.05, "Output");
-    assert_eq!(experiment.spikes_during(0.3, "Output"), 0);
+    experiment.spikes_during(Milliseconds(50.0), "Output");
+    assert_eq!(experiment.spikes_during(Milliseconds(300.0), "Output"), 0);
     experiment.press(sensor);
-    assert!(experiment.spikes_during(0.2, "Output") >= 4);
-    experiment.spikes_during(0.3, "Output");
-    assert_eq!(experiment.spikes_during(0.3, "Output"), 0);
+    assert!(experiment.spikes_during(Milliseconds(200.0), "Output") >= 4);
+    experiment.spikes_during(Milliseconds(300.0), "Output");
+    assert_eq!(experiment.spikes_during(Milliseconds(300.0), "Output"), 0);
 }
 
 #[test]
@@ -436,7 +452,7 @@ fn feedback_inhibition_halves_the_output_rate() {
     let mut experiment = Experiment::new(write_examples::feedback_inhibition());
     let from_top = experiment.neurons_from_top();
     let neurons = [from_top[0], from_top[3]];
-    let [input, output] = experiment.spike_counts(1.0, &neurons)[..] else {
+    let [input, output] = experiment.spike_counts(Milliseconds(1000.0), &neurons)[..] else {
         unreachable!()
     };
     assert!(
@@ -449,14 +465,14 @@ fn feedback_inhibition_halves_the_output_rate() {
 fn lateral_inhibition_sharpens_the_middle_of_the_touch() {
     let mut experiment = Experiment::new(write_examples::lateral_inhibition());
     let neurons = experiment.neurons_from_top();
-    let counts = experiment.spike_counts(1.0, &neurons);
+    let counts = experiment.spike_counts(Milliseconds(1000.0), &neurons);
     let (skin, outputs) = (&counts[..5], &counts[10..]);
     assert!(skin[2] < 2 * skin[1], "skin {skin:?}");
     assert!(outputs[2] > 4 * outputs[1], "outputs {outputs:?}");
     assert_eq!(outputs[1], outputs[3]);
 }
 
-fn output_spikes_after_a_sweep(right_to_left: bool, interval: f64) -> usize {
+fn output_spikes_after_a_sweep(right_to_left: bool, interval: Milliseconds) -> usize {
     let mut experiment = Experiment::new(write_examples::direction_selectivity());
     let mut sensors = experiment.sensors_from_left();
     if right_to_left {
@@ -466,20 +482,20 @@ fn output_spikes_after_a_sweep(right_to_left: bool, interval: f64) -> usize {
         .into_iter()
         .map(|sensor| experiment.presses(sensor, 1, interval, "Output"))
         .sum();
-    presses + experiment.spikes_during(0.1, "Output")
+    presses + experiment.spikes_during(Milliseconds(100.0), "Output")
 }
 
 #[test]
 fn the_output_fires_for_a_sweep_from_right_to_left_but_not_from_left_to_right() {
-    for interval in [0.001, 0.003, 0.008, 0.015] {
+    for interval in [1.0, 3.0, 8.0, 15.0].map(Milliseconds) {
         assert!(
             output_spikes_after_a_sweep(true, interval) >= 1,
-            "{interval} s"
+            "{interval}"
         );
         assert_eq!(
             output_spikes_after_a_sweep(false, interval),
             0,
-            "{interval} s"
+            "{interval}"
         );
     }
 }
@@ -489,7 +505,7 @@ fn a_single_press_does_not_fire_the_direction_detector() {
     let mut experiment = Experiment::new(write_examples::direction_selectivity());
     for sensor in experiment.sensors_from_left() {
         experiment.press(sensor);
-        assert_eq!(experiment.spikes_during(0.1, "Output"), 0);
+        assert_eq!(experiment.spikes_during(Milliseconds(100.0), "Output"), 0);
     }
 }
 
@@ -500,7 +516,7 @@ fn each_neuron_fires_when_the_dot_crosses_its_own_field_and_never_on_the_far_sid
     let mut near = [0, 0];
     let mut far = [0, 0];
     for _ in 0..20_000 {
-        let fired = experiment.spike_counts(0.0001, &neurons);
+        let fired = experiment.spike_counts(Milliseconds(0.1), &neurons);
         let phase = experiment
             .world
             .query_mut::<&VisualInput>()
@@ -564,7 +580,7 @@ fn the_bundled_example_files_match_their_generators() {
         let bundled = std::fs::read(path).unwrap();
         let written = neuronify_core::serialization::save(
             &world,
-            0.0,
+            Milliseconds::ZERO,
             neuronify_core::constants::DEFAULT_SPEED,
         )
         .unwrap();

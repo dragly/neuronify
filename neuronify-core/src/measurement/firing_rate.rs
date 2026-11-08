@@ -1,30 +1,31 @@
 use std::collections::VecDeque;
 
 use hecs::{Entity, World};
+use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
 use crate::measurement::spike_detector::SpikeTrain;
 use crate::measurement::voltmeter::measured;
 
-pub const RATE_SAMPLE_INTERVAL: f64 = 1e-3;
-pub const RATE_HISTORY: f64 = 1.0;
+pub const RATE_SAMPLE_INTERVAL: Milliseconds = Milliseconds(1.0);
+pub const RATE_HISTORY: Milliseconds = Milliseconds(1000.0);
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct RatePlot {
-    pub window: f64,
-    pub kernel_width: f64,
-    pub minimum: f64,
-    pub maximum: f64,
+    pub window: Milliseconds,
+    pub kernel_width: Milliseconds,
+    pub minimum: Hertz,
+    pub maximum: Hertz,
 }
 
 impl Default for RatePlot {
     fn default() -> Self {
         Self {
-            window: 0.3,
-            kernel_width: 0.2,
-            minimum: 0.0,
-            maximum: 100.0,
+            window: Milliseconds(300.0),
+            kernel_width: Milliseconds(200.0),
+            minimum: Hertz(0.0),
+            maximum: Hertz(100.0),
         }
     }
 }
@@ -40,25 +41,28 @@ impl RatePlot {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct RateSeries {
-    pub samples: VecDeque<(f64, f64)>,
+    pub samples: VecDeque<(Milliseconds, Hertz)>,
 }
 
 pub fn firing_rate(
-    spike_times: impl Iterator<Item = f64>,
-    now: f64,
-    window: f64,
-    kernel_width: f64,
-) -> f64 {
-    let sigma = kernel_width.max(1e-6);
+    spike_times: impl Iterator<Item = Milliseconds>,
+    now: Milliseconds,
+    window: Milliseconds,
+    kernel_width: Milliseconds,
+) -> Hertz {
+    let sigma = kernel_width.max(Milliseconds(1e-3));
     let area = sigma
         * (std::f64::consts::PI / 2.0).sqrt()
         * erf(window / (sigma * std::f64::consts::SQRT_2));
-    spike_times
+    let weight: f64 = spike_times
         .map(|time| now - time)
-        .filter(|age| (0.0..window).contains(age))
-        .map(|age| (-age * age / (2.0 * sigma * sigma)).exp())
-        .sum::<f64>()
-        / area.max(1e-12)
+        .filter(|age| (Milliseconds::ZERO..window).contains(age))
+        .map(|age| {
+            let spread = age / sigma;
+            (-spread * spread / 2.0).exp()
+        })
+        .sum();
+    (weight / area.max(Milliseconds(1e-9))).to_hertz()
 }
 
 fn erf(x: f64) -> f64 {
@@ -70,7 +74,7 @@ fn erf(x: f64) -> f64 {
     (1.0 - polynomial * (-x * x).exp()).copysign(x)
 }
 
-pub fn record_rates(world: &mut World, time: f64) {
+pub fn record_rates(world: &mut World, time: Milliseconds) {
     let plots: Vec<(Entity, RatePlot)> = world
         .query::<(&RatePlot, &RateSeries)>()
         .iter()
@@ -83,7 +87,7 @@ pub fn record_rates(world: &mut World, time: f64) {
         .map(|(plot, (settings, _))| (plot, settings.clone()))
         .collect();
     for (plot, settings) in plots {
-        let rates: Vec<f64> = measured(world, plot)
+        let rates: Vec<Hertz> = measured(world, plot)
             .into_iter()
             .filter_map(|(wire, _)| {
                 let train = world.get::<&SpikeTrain>(wire).ok()?;
@@ -96,9 +100,9 @@ pub fn record_rates(world: &mut World, time: f64) {
             })
             .collect();
         let rate = if rates.is_empty() {
-            0.0
+            Hertz::ZERO
         } else {
-            rates.iter().sum::<f64>() / rates.len() as f64
+            rates.iter().sum::<Hertz>() / rates.len() as f64
         };
         let Ok(mut series) = world.get::<&mut RateSeries>(plot) else {
             continue;
@@ -123,18 +127,22 @@ mod tests {
 
     #[test]
     fn a_steady_rate_reads_as_itself_on_average() {
-        for (frequency, window, kernel_width) in
-            [(40.0, 0.3, 0.2), (40.0, 0.4, 0.3), (10.0, 1.0, 0.1)]
-        {
-            let spikes: Vec<f64> = (0..200).map(|i| i as f64 / frequency).collect();
-            let interval = 1.0 / frequency;
+        for (frequency, window, kernel_width) in [
+            (40.0, 300.0, 200.0),
+            (40.0, 400.0, 300.0),
+            (10.0, 1000.0, 100.0),
+        ] {
+            let frequency = Hertz(frequency);
+            let (window, kernel_width) = (Milliseconds(window), Milliseconds(kernel_width));
+            let interval = frequency.period();
+            let spikes: Vec<Milliseconds> = (0..200).map(|i| i as f64 * interval).collect();
             let samples = 100;
             let mean = (0..samples)
                 .map(|step| {
                     let now = 100.0 * interval + interval * step as f64 / samples as f64;
                     firing_rate(spikes.iter().copied(), now, window, kernel_width)
                 })
-                .sum::<f64>()
+                .sum::<Hertz>()
                 / samples as f64;
             assert!(
                 (mean - frequency).abs() < 0.03 * frequency,
@@ -145,9 +153,16 @@ mod tests {
 
     #[test]
     fn only_spikes_within_the_window_count() {
-        let rate = firing_rate([0.0, 0.5].into_iter(), 1.0, 0.3, 0.2);
-        assert_eq!(rate, 0.0);
-        assert!(firing_rate([0.8].into_iter(), 1.0, 0.3, 0.2) > 0.0);
+        let rate = |spikes: &[f64]| {
+            firing_rate(
+                spikes.iter().copied().map(Milliseconds),
+                Milliseconds(1000.0),
+                Milliseconds(300.0),
+                Milliseconds(200.0),
+            )
+        };
+        assert_eq!(rate(&[0.0, 500.0]), Hertz::ZERO);
+        assert!(rate(&[800.0]) > Hertz::ZERO);
     }
 
     #[test]
@@ -159,15 +174,15 @@ mod tests {
         world
             .get::<&mut crate::components::RegularSpikeGenerator>(source)
             .unwrap()
-            .frequency = 40.0;
+            .frequency = Hertz(40.0);
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::Z * 5.0);
         crate::elements::spawn_synapse(&mut world, source, neuron);
         let plot = spawn_rate_plot(&mut world, neuron, glam::Vec3::X * 5.0);
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         let mut spikes = 0;
-        while time < 3.0 {
+        while time < Milliseconds(3000.0) {
             step_simulation(&mut world, &mut engine, &mut time, 40, None);
-            if time > 2.0 {
+            if time > Milliseconds(2000.0) {
                 spikes += engine
                     .spikes()
                     .iter()
@@ -176,8 +191,8 @@ mod tests {
             }
         }
         let series = world.get::<&RateSeries>(plot).unwrap();
-        let recent: Vec<f64> = series.samples.iter().map(|&(_, rate)| rate).collect();
-        let mean = recent.iter().sum::<f64>() / recent.len() as f64;
+        let recent: Vec<Hertz> = series.samples.iter().map(|&(_, rate)| rate).collect();
+        let mean = (recent.iter().sum::<Hertz>() / recent.len() as f64).0;
         assert!(spikes > 20, "{spikes} spikes");
         assert!(
             (mean - spikes as f64).abs() < 0.1 * spikes as f64,

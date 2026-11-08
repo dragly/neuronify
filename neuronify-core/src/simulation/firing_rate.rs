@@ -1,10 +1,16 @@
 use hecs::{Entity, World};
+use neuronify_engine::units::Milliseconds;
 
 use super::Spike;
 use crate::components::*;
 use crate::constants::*;
 
-pub fn update_firing_rates(world: &mut World, spikes: &[Spike], duration: f64, now: f64) {
+pub fn update_firing_rates(
+    world: &mut World,
+    spikes: &[Spike],
+    duration: Milliseconds,
+    now: Milliseconds,
+) {
     let new_neurons: Vec<Entity> = world
         .query::<()>()
         .with::<&LeakyNeuron>()
@@ -21,9 +27,9 @@ pub fn update_firing_rates(world: &mut World, spikes: &[Spike], duration: f64, n
     }
     for spike in spikes {
         if let Ok(mut firing_rate) = world.get::<&mut FiringRate>(spike.entity) {
-            let age = (now - spike.time * 1e-3).max(0.0);
-            firing_rate.rate +=
-                (-age / FIRING_RATE_TIME_CONSTANT).exp() / FIRING_RATE_TIME_CONSTANT;
+            let age = (now - spike.time).max(Milliseconds::ZERO);
+            let rise = (-age / FIRING_RATE_TIME_CONSTANT).exp() / FIRING_RATE_TIME_CONSTANT;
+            firing_rate.rate += rise.to_hertz();
         }
     }
 }
@@ -32,20 +38,20 @@ pub fn update_firing_rates(world: &mut World, spikes: &[Spike], duration: f64, n
 mod tests {
     use super::*;
 
-    const FRAME: f64 = 0.0004;
+    const FRAME: Milliseconds = Milliseconds(0.4);
 
     #[test]
     fn a_neuron_firing_at_50_hz_settles_near_50_hz() {
         let mut world = World::new();
         let neuron = world.spawn((LeakyNeuron::default(),));
         let frames_between_spikes = 50;
-        let rates: Vec<f64> = (0..5000)
+        let rates: Vec<Hertz> = (0..5000)
             .map(|frame_index| {
                 let now = (frame_index + 1) as f64 * FRAME;
                 let spikes: Vec<Spike> = (frame_index % frames_between_spikes == 0)
                     .then_some(Spike {
                         entity: neuron,
-                        time: (now - FRAME / 2.0) * 1e3,
+                        time: now - FRAME / 2.0,
                     })
                     .into_iter()
                     .collect();
@@ -54,17 +60,17 @@ mod tests {
             })
             .collect();
         let last_period = &rates[rates.len() - frames_between_spikes..];
-        let rate = last_period.iter().sum::<f64>() / frames_between_spikes as f64;
-        assert!((45.0..55.0).contains(&rate), "{rate} Hz");
+        let rate = last_period.iter().sum::<Hertz>() / frames_between_spikes as f64;
+        assert!((Hertz(45.0)..Hertz(55.0)).contains(&rate), "{rate}");
     }
 
     #[test]
     fn a_silent_neuron_decays_towards_zero() {
         let mut world = World::new();
-        let neuron = world.spawn((LeakyNeuron::default(), FiringRate { rate: 100.0 }));
+        let neuron = world.spawn((LeakyNeuron::default(), FiringRate { rate: Hertz(100.0) }));
         for frame in 0..2500 {
             update_firing_rates(&mut world, &[], FRAME, frame as f64 * FRAME);
         }
-        assert!(world.get::<&FiringRate>(neuron).unwrap().rate < 1.0);
+        assert!(world.get::<&FiringRate>(neuron).unwrap().rate < Hertz(1.0));
     }
 }

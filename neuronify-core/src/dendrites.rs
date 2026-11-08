@@ -254,7 +254,7 @@ mod tests {
         let neuron = neuron_at(world, NeuronType::Excitatory);
         let clamp = world.spawn((
             CurrentClamp {
-                current_output: 5.0,
+                current_output: Nanoamperes(5.0),
             },
             Position {
                 position: Vec3::new(0.0, 0.0, -1.0),
@@ -270,10 +270,10 @@ mod tests {
     }
 
     /// Steps in which `neuron` fired, and the highest voltage seen in `tree`.
-    fn run(world: &mut hecs::World, neuron: Entity, tree: &[Entity]) -> (Vec<usize>, f64) {
+    fn run(world: &mut hecs::World, neuron: Entity, tree: &[Entity]) -> (Vec<usize>, Millivolts) {
         let mut spikes = Vec::new();
-        let mut peak = f64::MIN;
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let mut peak = Millivolts::NEG_INFINITY;
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         for step in 0..16000 {
             step_simulation(world, &mut engine, &mut time, 1, None);
             if engine.fired(neuron) {
@@ -312,7 +312,7 @@ mod tests {
             .map(|compartment| world.get::<&Position>(compartment).unwrap().position)
             .max_by(|a, b| a.length().total_cmp(&b.length()))
             .unwrap();
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         fire_nearby(&mut world, &mut engine, farthest);
         (0..16000)
             .filter(|_| {
@@ -378,7 +378,7 @@ mod tests {
             .iter()
             .map(|&site| axon_onto(&mut world, tree[site], strength))
             .collect();
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         engine.sync(&mut world);
         for start in starts {
             engine.fire(&world, start);

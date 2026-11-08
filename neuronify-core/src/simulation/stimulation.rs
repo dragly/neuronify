@@ -1,5 +1,6 @@
 use glam::Vec3;
 use hecs::{Entity, World};
+use neuronify_engine::units::Nanoamperes;
 
 use super::Engine;
 use crate::components::*;
@@ -8,7 +9,7 @@ use crate::constants::*;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Touch {
     pub position: Vec3,
-    pub current: f64,
+    pub current: Nanoamperes,
 }
 
 pub fn touch_sensor_near(world: &World, position: Vec3) -> bool {
@@ -41,7 +42,7 @@ pub fn fire_nearby(world: &mut World, engine: &mut Engine, position: Vec3) {
     }
 }
 
-pub fn touched(world: &World, touch: Option<Touch>) -> Vec<(Entity, f64)> {
+pub fn touched(world: &World, touch: Option<Touch>) -> Vec<(Entity, Nanoamperes)> {
     let Some(touch) = touch else {
         return Vec::new();
     };
@@ -73,9 +74,9 @@ mod tests {
     }
 
     fn spikes_in_a_second(world: &mut hecs::World, neuron: hecs::Entity, touch: Touch) -> usize {
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         let mut spikes = 0;
-        while time < 1.0 {
+        while time < Milliseconds(1000.0) {
             step_simulation(world, &mut engine, &mut time, 40, Some(touch));
             spikes += engine
                 .spikes()
@@ -160,7 +161,7 @@ mod tests {
         let spikes = |moving: bool| {
             let mut world = hecs::World::new();
             let neuron = neuron_with_axon(&mut world);
-            let (mut engine, mut time) = (Engine::default(), 0.0);
+            let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
             let mut spikes = 0;
             for frame in 0..500 {
                 let node = if moving { 3 + (frame / 3) % 4 } else { 4 };
@@ -179,17 +180,17 @@ mod tests {
 
     #[test]
     fn a_held_neuron_fires_faster_the_stronger_the_current() {
-        let spikes = |current| {
+        let spikes = |current: f64| {
             let mut world = hecs::World::new();
             let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
             let touch = Touch {
                 position: Vec3::ZERO,
-                current,
+                current: Nanoamperes(current),
             };
             spikes_in_a_second(&mut world, neuron, touch)
         };
         assert_eq!(spikes(0.1), 0);
-        assert!(spikes(STIMULATION_CURRENT) < spikes(1.0));
+        assert!(spikes(STIMULATION_CURRENT.0) < spikes(1.0));
     }
 
     #[test]
@@ -206,7 +207,7 @@ mod tests {
         dendrites.sort_by(|a, b| a.length().total_cmp(&b.length()));
         let touch = Touch {
             position: dendrites[dendrites.len() / 2],
-            current: 2.0,
+            current: Nanoamperes(2.0),
         };
         let spikes = spikes_in_a_second(&mut world, neuron, touch);
         assert!(spikes >= 30, "{spikes} spikes in a second");
@@ -236,14 +237,14 @@ mod tests {
         let touched = chain_at(&mut world, Vec3::ZERO);
         let far = chain_at(&mut world, 10.0 * Vec3::X);
 
-        let (mut engine, mut time) = (Engine::default(), 0.0);
+        let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         fire_nearby(&mut world, &mut engine, 0.5 * Vec3::Z);
         step_simulation(&mut world, &mut engine, &mut time, 8, None);
 
         let voltage = |entity| world.get::<&NodeState>(entity).unwrap().voltage;
-        assert!(voltage(touched) > 0.0, "{}", voltage(touched));
+        assert!(voltage(touched) > Millivolts::ZERO, "{}", voltage(touched));
         assert!(
-            (voltage(far) - RESTING_POTENTIAL).abs() < 1.0,
+            (voltage(far) - RESTING_POTENTIAL).abs() < Millivolts(1.0),
             "{}",
             voltage(far)
         );

@@ -4,6 +4,9 @@ use crate::spiking::{
     crossing, Crossing, Detector, Kick, Soma, Spiking, CLAMP_CONDUCTANCE, KICK_VOLTAGE,
 };
 use crate::table::{Lookup, Tables};
+use crate::units::{
+    Celsius, Microsiemens, Milliseconds, Millivolts, Nanoamperes, Nanofarads, SquareMicrometres,
+};
 use std::f64::consts::PI;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -16,17 +19,17 @@ pub enum BuildError {
 struct ChannelPoints {
     channel: ChannelId,
     points: Vec<usize>,
-    conductance: Vec<f64>,
-    reversal: Vec<f64>,
+    conductance: Vec<Microsiemens>,
+    reversal: Vec<Millivolts>,
     gates: usize,
     states: Vec<f64>,
 }
 
 struct Accumulator {
-    capacitance: Vec<f64>,
-    leak: Vec<f64>,
-    leak_current: Vec<f64>,
-    channels: [Vec<(f64, f64)>; ChannelId::ALL.len()],
+    capacitance: Vec<Nanofarads>,
+    leak: Vec<Microsiemens>,
+    leak_current: Vec<Nanoamperes>,
+    channels: [Vec<(Microsiemens, Nanoamperes)>; ChannelId::ALL.len()],
 }
 
 impl Default for Accumulator {
@@ -42,22 +45,22 @@ impl Default for Accumulator {
 
 impl Accumulator {
     fn point(&mut self) -> usize {
-        self.capacitance.push(0.0);
-        self.leak.push(0.0);
-        self.leak_current.push(0.0);
+        self.capacitance.push(Nanofarads::ZERO);
+        self.leak.push(Microsiemens::ZERO);
+        self.leak_current.push(Nanoamperes::ZERO);
         for channel in &mut self.channels {
-            channel.push((0.0, 0.0));
+            channel.push((Microsiemens::ZERO, Nanoamperes::ZERO));
         }
         self.capacitance.len() - 1
     }
 
-    fn membrane(&mut self, point: usize, area: f64, membrane: &Membrane) {
-        self.capacitance[point] += membrane.capacitance * area * 1e-5;
-        let leak = membrane.leak * area * 1e-2;
+    fn membrane(&mut self, point: usize, area: SquareMicrometres, membrane: &Membrane) {
+        self.capacitance[point] += membrane.capacitance * area;
+        let leak = membrane.leak * area;
         self.leak[point] += leak;
         self.leak_current[point] += leak * membrane.leak_reversal;
         for density in &membrane.channels {
-            let conductance = density.conductance * area * 1e-2;
+            let conductance = density.conductance * area;
             let entry = &mut self.channels[density.channel.index()][point];
             entry.0 += conductance;
             entry.1 += conductance * density.reversal;
@@ -67,12 +70,12 @@ impl Accumulator {
 
 pub struct Tree {
     parent: Vec<usize>,
-    capacitance: Vec<f64>,
-    axial: Vec<f64>,
-    leak: Vec<f64>,
-    leak_current: Vec<f64>,
-    voltage: Vec<f64>,
-    injection: Vec<f64>,
+    capacitance: Vec<Nanofarads>,
+    axial: Vec<Microsiemens>,
+    leak: Vec<Microsiemens>,
+    leak_current: Vec<Nanoamperes>,
+    voltage: Vec<Millivolts>,
+    injection: Vec<Nanoamperes>,
     channels: Vec<ChannelPoints>,
     node_points: Vec<usize>,
     cable_points: Vec<Vec<usize>>,
@@ -82,8 +85,8 @@ pub struct Tree {
     detectors: Vec<Detector>,
     kicks: Vec<Kick>,
     crossings: Vec<Crossing>,
-    diagonal: Vec<f64>,
-    rhs: Vec<f64>,
+    diagonal: Vec<Microsiemens>,
+    rhs: Vec<Nanoamperes>,
     lookups: Vec<Lookup>,
 }
 
@@ -91,8 +94,8 @@ impl Tree {
     pub fn build(
         morphology: &Morphology,
         d_lambda: f64,
-        voltage: f64,
-        celsius: f64,
+        voltage: Millivolts,
+        celsius: Celsius,
     ) -> Result<Tree, BuildError> {
         if morphology.nodes.is_empty() {
             return Err(BuildError::Empty);
@@ -111,7 +114,7 @@ impl Tree {
 
         node_points[0] = accumulator.point();
         parent.push(0);
-        axial.push(0.0);
+        axial.push(Microsiemens::ZERO);
         let mut queue = std::collections::VecDeque::from([0]);
         while let Some(node) = queue.pop_front() {
             for &index in &neighbours[node] {
@@ -131,9 +134,8 @@ impl Tree {
                 let segments = cable.segments(d_lambda);
                 let piece = cable.length / segments as f64;
                 let area = PI * cable.diameter * piece;
-                let resistance = 4.0 * cable.membrane.axial_resistivity * piece
-                    / (PI * cable.diameter.powi(2))
-                    * 1e-2;
+                let resistance = (4.0 * cable.membrane.axial_resistivity)
+                    .along(piece, PI * cable.diameter.squared());
                 let mut points = vec![node_points[node]];
                 for step in 0..segments {
                     let point = if step + 1 == segments {
@@ -169,9 +171,9 @@ impl Tree {
                     conductance,
                     reversal,
                 } => {
-                    accumulator.capacitance[point] += capacitance;
-                    accumulator.leak[point] += conductance;
-                    accumulator.leak_current[point] += conductance * reversal;
+                    accumulator.capacitance[point] += *capacitance;
+                    accumulator.leak[point] += *conductance;
+                    accumulator.leak_current[point] += *conductance * *reversal;
                 }
                 NodeMembrane::Patch { area, membrane } => {
                     accumulator.membrane(point, *area, membrane)
@@ -196,7 +198,7 @@ impl Tree {
                 states: Vec::new(),
             };
             for (point, &(conductance, driving)) in sums.iter().enumerate() {
-                if conductance > 0.0 {
+                if conductance > Microsiemens::ZERO {
                     arrays.points.push(point);
                     arrays.conductance.push(conductance);
                     arrays.reversal.push(driving / conductance);
@@ -233,7 +235,7 @@ impl Tree {
             leak: accumulator.leak,
             leak_current: accumulator.leak_current,
             voltage: vec![voltage; count],
-            injection: vec![0.0; count],
+            injection: vec![Nanoamperes::ZERO; count],
             channels,
             node_points,
             cable_points,
@@ -243,8 +245,8 @@ impl Tree {
             detectors: Vec::new(),
             kicks: Vec::new(),
             crossings: Vec::new(),
-            diagonal: vec![0.0; count],
-            rhs: vec![0.0; count],
+            diagonal: vec![Microsiemens::ZERO; count],
+            rhs: vec![Nanoamperes::ZERO; count],
             lookups: vec![Lookup::default(); count],
         })
     }
@@ -261,11 +263,11 @@ impl Tree {
         &self.cable_points[cable]
     }
 
-    pub fn node_voltage(&self, node: usize) -> f64 {
+    pub fn node_voltage(&self, node: usize) -> Millivolts {
         self.voltage[self.node_points[node]]
     }
 
-    pub fn voltage(&self, point: usize) -> f64 {
+    pub fn voltage(&self, point: usize) -> Millivolts {
         self.voltage[point]
     }
 
@@ -282,7 +284,13 @@ impl Tree {
         })
     }
 
-    pub fn set_state(&mut self, point: usize, voltage: f64, gates: &[f64], celsius: f64) {
+    pub fn set_state(
+        &mut self,
+        point: usize,
+        voltage: Millivolts,
+        gates: &[f64],
+        celsius: Celsius,
+    ) {
         self.voltage[point] = voltage;
         let count: usize = self
             .point_slots(point)
@@ -304,7 +312,7 @@ impl Tree {
         }
     }
 
-    pub fn cable_voltage(&self, cable: usize, fraction: f64) -> f64 {
+    pub fn cable_voltage(&self, cable: usize, fraction: f64) -> Millivolts {
         let points = &self.cable_points[cable];
         let x = fraction.clamp(0.0, 1.0) * (points.len() - 1) as f64;
         let index = (x as usize).min(points.len() - 2);
@@ -318,10 +326,10 @@ impl Tree {
             source,
             point: self.node_points[node],
             spiking,
-            since: f64::INFINITY,
+            since: Milliseconds::INFINITY,
             forced: false,
             clamped: false,
-            before: 0.0,
+            before: Millivolts::ZERO,
         });
         self.somas.len() - 1
     }
@@ -330,11 +338,11 @@ impl Tree {
         self.somas.len()
     }
 
-    pub fn since_spike(&self, soma: usize) -> f64 {
+    pub fn since_spike(&self, soma: usize) -> Milliseconds {
         self.somas[soma].since
     }
 
-    pub fn set_since_spike(&mut self, soma: usize, since: f64) {
+    pub fn set_since_spike(&mut self, soma: usize, since: Milliseconds) {
         self.somas[soma].since = since;
     }
 
@@ -342,16 +350,16 @@ impl Tree {
         self.somas[soma].forced = true;
     }
 
-    pub fn detect(&mut self, node: usize, threshold: f64, source: usize) {
+    pub fn detect(&mut self, node: usize, threshold: Millivolts, source: usize) {
         self.detectors.push(Detector {
             source,
             point: self.node_points[node],
             threshold,
-            before: 0.0,
+            before: Millivolts::ZERO,
         });
     }
 
-    pub fn kick(&mut self, point: usize, duration: f64) {
+    pub fn kick(&mut self, point: usize, duration: Milliseconds) {
         match self.kicks.iter_mut().find(|kick| kick.point == point) {
             Some(kick) => kick.remaining = kick.remaining.max(duration),
             None => self.kicks.push(Kick {
@@ -365,11 +373,11 @@ impl Tree {
         self.crossings.drain(..)
     }
 
-    pub fn inject(&mut self, point: usize, current: f64) {
+    pub fn inject(&mut self, point: usize, current: Nanoamperes) {
         self.injection[point] = current;
     }
 
-    pub fn add(&mut self, point: usize, conductance: f64, current: f64) {
+    pub fn add(&mut self, point: usize, conductance: Microsiemens, current: Nanoamperes) {
         self.diagonal[point] += conductance;
         self.rhs[point] += current;
     }
@@ -403,7 +411,7 @@ impl Tree {
         for soma in &mut self.somas {
             soma.before = self.voltage[soma.point];
             if std::mem::take(&mut soma.forced) && soma.spiking.target(soma.since + dt).is_none() {
-                soma.since = 0.0;
+                soma.since = Milliseconds::ZERO;
                 self.crossings.push(Crossing {
                     source: soma.source,
                     fraction: 0.0,
@@ -421,7 +429,8 @@ impl Tree {
             self.rhs[kick.point] += CLAMP_CONDUCTANCE * KICK_VOLTAGE;
             kick.remaining -= dt;
         }
-        self.kicks.retain(|kick| kick.remaining > 0.0);
+        self.kicks
+            .retain(|kick| kick.remaining > Milliseconds::ZERO);
         for detector in &mut self.detectors {
             detector.before = self.voltage[detector.point];
         }
@@ -438,7 +447,8 @@ impl Tree {
             let p = self.parent[i];
             let factor = self.axial[i] / self.diagonal[i];
             self.diagonal[p] -= factor * self.axial[i];
-            self.rhs[p] += factor * self.rhs[i];
+            let carried = factor * self.rhs[i];
+            self.rhs[p] += carried;
         }
         self.voltage[0] = self.rhs[0] / self.diagonal[0];
         for i in 1..self.points() {
@@ -483,50 +493,85 @@ impl Tree {
 mod tests {
     use super::*;
     use crate::morphology::Density;
+    use crate::units::{
+        MicrofaradsPerSquareCentimetre, Micrometres, OhmCentimetres, OhmSquareCentimetres,
+        SiemensPerSquareCentimetre,
+    };
 
-    const CELSIUS: f64 = 16.3;
+    const CELSIUS: Celsius = Celsius(16.3);
+    const DT: Milliseconds = Milliseconds(0.025);
+
+    fn passive(resistance: f64, reversal: f64, axial_resistivity: f64) -> Membrane {
+        Membrane::passive(
+            OhmSquareCentimetres(resistance),
+            Millivolts(reversal),
+            OhmCentimetres(axial_resistivity),
+        )
+    }
+
+    fn cable(
+        morphology: &mut Morphology,
+        ends: (usize, usize),
+        size: (f64, f64),
+        membrane: Membrane,
+    ) {
+        morphology.cable(
+            ends.0,
+            ends.1,
+            Micrometres(size.0),
+            Micrometres(size.1),
+            membrane,
+        );
+    }
 
     fn passive_cable(length: f64, diameter: f64) -> Morphology {
         let mut morphology = Morphology::default();
         let start = morphology.node(NodeMembrane::Point);
         let end = morphology.node(NodeMembrane::Point);
-        morphology.cable(
-            start,
-            end,
-            length,
-            diameter,
-            Membrane::passive(10_000.0, 0.0, 100.0),
+        cable(
+            &mut morphology,
+            (start, end),
+            (length, diameter),
+            passive(10_000.0, 0.0, 100.0),
         );
         morphology
+    }
+
+    fn build(morphology: &Morphology, d_lambda: f64, voltage: f64, celsius: Celsius) -> Tree {
+        Tree::build(morphology, d_lambda, Millivolts(voltage), celsius).unwrap()
     }
 
     #[test]
     fn the_hines_solve_matches_a_dense_solve_on_a_branched_tree() {
         let mut morphology = Morphology::default();
         let soma = morphology.node(NodeMembrane::Lumped {
-            capacitance: 0.02,
-            conductance: 0.001,
-            reversal: -70.0,
+            capacitance: Nanofarads(0.02),
+            conductance: Microsiemens(0.001),
+            reversal: Millivolts(-70.0),
         });
         let mut previous = soma;
         let mut tips = Vec::new();
-        for (length, diameter) in [(120.0, 2.0), (80.0, 1.2), (200.0, 0.6)] {
+        for size in [(120.0, 2.0), (80.0, 1.2), (200.0, 0.6)] {
             let node = morphology.node(NodeMembrane::Point);
-            morphology.cable(
-                previous,
-                node,
-                length,
-                diameter,
-                Membrane::passive(20_000.0, -70.0, 150.0),
+            cable(
+                &mut morphology,
+                (previous, node),
+                size,
+                passive(20_000.0, -70.0, 150.0),
             );
             tips.push(node);
             previous = node;
         }
         let side = morphology.node(NodeMembrane::Point);
-        morphology.cable(side, tips[0], 150.0, 0.8, Membrane::squid());
-        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
-        tree.inject(tree.node_point(side), 0.05);
-        let tables = Tables::new(0.025, 6.3);
+        cable(
+            &mut morphology,
+            (side, tips[0]),
+            (150.0, 0.8),
+            Membrane::squid(),
+        );
+        let mut tree = build(&morphology, 0.1, -65.0, CELSIUS);
+        tree.inject(tree.node_point(side), Nanoamperes(0.05));
+        let tables = Tables::new(DT, Celsius(6.3));
         for _ in 0..40 {
             tree.step(&tables);
         }
@@ -537,8 +582,8 @@ mod tests {
         let mut rhs = vec![0.0; n];
         for i in 0..n {
             let capacitive = tree.capacitance[i] / tables.dt();
-            matrix[i][i] += capacitive + tree.leak[i];
-            rhs[i] = capacitive * before[i] + tree.leak_current[i] + tree.injection[i];
+            matrix[i][i] += (capacitive + tree.leak[i]).0;
+            rhs[i] = (capacitive * before[i] + tree.leak_current[i] + tree.injection[i]).0;
         }
         for arrays in &tree.channels {
             let powers: Vec<i32> = arrays
@@ -553,12 +598,12 @@ mod tests {
                 for (gate, power) in powers.iter().enumerate() {
                     open *= arrays.states[k * arrays.gates + gate].powi(*power);
                 }
-                matrix[point][point] += open;
-                rhs[point] += open * arrays.reversal[k];
+                matrix[point][point] += open.0;
+                rhs[point] += (open * arrays.reversal[k]).0;
             }
         }
         for i in 1..n {
-            let (p, g) = (tree.parent[i], tree.axial[i]);
+            let (p, g) = (tree.parent[i], tree.axial[i].0);
             matrix[i][i] += g;
             matrix[p][p] += g;
             matrix[i][p] -= g;
@@ -587,8 +632,8 @@ mod tests {
         }
         for (i, (expected, actual)) in dense.iter().zip(&tree.voltage).enumerate() {
             assert!(
-                (expected - actual).abs() < 1e-9,
-                "point {i}: {expected} vs {actual}"
+                (expected - actual.0).abs() < 1e-9,
+                "point {i}: {expected} vs {actual:?}"
             );
         }
     }
@@ -596,10 +641,10 @@ mod tests {
     #[test]
     fn a_passive_cable_attenuates_like_the_cable_equation() {
         let (length, diameter, current) = (1000.0, 1.0, 0.01);
-        let mut tree = Tree::build(&passive_cable(length, diameter), 0.1, 0.0, CELSIUS).unwrap();
-        tree.inject(tree.node_point(0), current);
-        let tables = Tables::new(0.025, 6.3);
-        for _ in 0..(300.0 / tables.dt()) as usize {
+        let mut tree = build(&passive_cable(length, diameter), 0.1, 0.0, CELSIUS);
+        tree.inject(tree.node_point(0), Nanoamperes(current));
+        let tables = Tables::new(DT, Celsius(6.3));
+        for _ in 0..(Milliseconds(300.0) / tables.dt()) as usize {
             tree.step(&tables);
         }
         let lambda = (10_000.0 * diameter * 1e-4 / (4.0 * 100.0)).sqrt() * 1e4;
@@ -610,7 +655,7 @@ mod tests {
         };
         for fraction in [0.0, 0.5, 1.0] {
             let expected = analytic(fraction * length);
-            let actual = tree.cable_voltage(0, fraction);
+            let actual = tree.cable_voltage(0, fraction).0;
             assert!(
                 ((actual - expected) / expected).abs() < 0.01,
                 "{fraction}: {actual} vs {expected}"
@@ -622,10 +667,10 @@ mod tests {
     fn a_loop_is_refused() {
         let mut morphology = passive_cable(100.0, 1.0);
         let third = morphology.node(NodeMembrane::Point);
-        morphology.cable(1, third, 100.0, 1.0, Membrane::squid());
-        morphology.cable(third, 0, 100.0, 1.0, Membrane::squid());
+        cable(&mut morphology, (1, third), (100.0, 1.0), Membrane::squid());
+        cable(&mut morphology, (third, 0), (100.0, 1.0), Membrane::squid());
         assert!(matches!(
-            Tree::build(&morphology, 0.1, -65.0, CELSIUS),
+            Tree::build(&morphology, 0.1, Millivolts(-65.0), CELSIUS),
             Err(BuildError::Loop { .. })
         ));
     }
@@ -636,22 +681,26 @@ mod tests {
         let start = morphology.node(NodeMembrane::Point);
         let middle = morphology.node(NodeMembrane::Point);
         let end = morphology.node(NodeMembrane::Point);
-        morphology.cable(start, middle, 400.0, 1.0, Membrane::squid());
-        morphology.cable(
-            middle,
-            end,
-            300.0,
-            0.5,
-            Membrane::passive(20_000.0, -65.0, 150.0),
+        cable(
+            &mut morphology,
+            (start, middle),
+            (400.0, 1.0),
+            Membrane::squid(),
         );
-        let tables = Tables::new(0.025, 16.3);
-        let mut original = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
-        original.inject(original.node_point(start), 0.5);
+        cable(
+            &mut morphology,
+            (middle, end),
+            (300.0, 0.5),
+            passive(20_000.0, -65.0, 150.0),
+        );
+        let tables = Tables::new(DT, CELSIUS);
+        let mut original = build(&morphology, 0.1, -65.0, CELSIUS);
+        original.inject(original.node_point(start), Nanoamperes(0.5));
         for _ in 0..60 {
             original.step(&tables);
         }
-        original.inject(original.node_point(start), 0.0);
-        let mut copy = Tree::build(&morphology, 0.1, -40.0, CELSIUS).unwrap();
+        original.inject(original.node_point(start), Nanoamperes::ZERO);
+        let mut copy = build(&morphology, 0.1, -40.0, CELSIUS);
         for point in 0..original.points() {
             let gates: Vec<f64> = original.gates(point).collect();
             copy.set_state(point, original.voltage(point), &gates, CELSIUS);
@@ -667,29 +716,35 @@ mod tests {
     fn a_soma_spike_follows_its_shape_and_starts_a_spike_down_the_axon() {
         let mut morphology = Morphology::default();
         let soma = morphology.node(NodeMembrane::Lumped {
-            capacitance: 0.2,
-            conductance: 0.01,
-            reversal: -70.0,
+            capacitance: Nanofarads(0.2),
+            conductance: Microsiemens(0.01),
+            reversal: Millivolts(-70.0),
         });
         let end = morphology.node(NodeMembrane::Point);
-        morphology.cable(soma, end, 1000.0, 0.25, Membrane::squid());
-        let tables = Tables::new(0.025, 16.3);
-        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
+        cable(
+            &mut morphology,
+            (soma, end),
+            (1000.0, 0.25),
+            Membrane::squid(),
+        );
+        let tables = Tables::new(DT, CELSIUS);
+        let mut tree = build(&morphology, 0.1, -65.0, CELSIUS);
         let spiking = Spiking {
-            threshold: -55.0,
-            reset: -80.0,
-            refractory: 2.0,
+            threshold: Millivolts(-55.0),
+            reset: Millivolts(-80.0),
+            refractory: Milliseconds(2.0),
             bounds: None,
         };
         tree.add_soma(soma, spiking, 0);
-        tree.detect(end, -20.0, 1);
+        tree.detect(end, Millivolts(-20.0), 1);
         let mut events = Vec::new();
         let mut trace = Vec::new();
-        for step in 0..(20.0 / tables.dt()) as usize {
+        for step in 0..(Milliseconds(20.0) / tables.dt()) as usize {
             let t = step as f64 * tables.dt();
-            tree.inject(tree.node_point(soma), if t < 1.5 { 2.0 } else { 0.0 });
+            let current = if t < Milliseconds(1.5) { 2.0 } else { 0.0 };
+            tree.inject(tree.node_point(soma), Nanoamperes(current));
             tree.step(&tables);
-            trace.push((t + tables.dt(), tree.node_voltage(soma)));
+            trace.push((t + tables.dt(), tree.node_voltage(soma).0));
             events.extend(
                 tree.crossings()
                     .map(|c| (c.source, t + c.fraction * tables.dt())),
@@ -703,11 +758,11 @@ mod tests {
         assert!((25.0..=30.0).contains(&peak), "peak {peak}");
         let held = trace
             .iter()
-            .find(|&&(t, _)| t >= fired + 1.5)
+            .find(|&&(t, _)| t >= fired + Milliseconds(1.5))
             .map(|&(_, v)| v)
             .unwrap();
         assert!((held + 80.0).abs() < 0.5, "held at {held}");
-        let speed = 1000.0 / (arrived - fired) / 1000.0;
+        let speed = 1000.0 / (arrived - fired).0 / 1000.0;
         assert!((0.25..0.6).contains(&speed), "speed {speed} m/s");
     }
 
@@ -720,29 +775,27 @@ mod tests {
 
     #[test]
     fn a_squid_patch_rests_near_minus_65_mv_and_fires_repeatedly() {
-        let area = PI * 31.83 * 31.83;
+        let area = SquareMicrometres(PI * 31.83 * 31.83);
         let mut morphology = Morphology::default();
         morphology.node(NodeMembrane::Patch {
             area,
             membrane: Membrane::squid(),
         });
-        let tables = Tables::new(0.025, 6.3);
-        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
+        let tables = Tables::new(DT, Celsius(6.3));
+        let mut tree = build(&morphology, 0.1, -65.0, CELSIUS);
         let mut trace = Vec::new();
-        for step in 0..(50.0 / tables.dt()) as usize {
+        let current = Nanoamperes(10.0 * area.0 * 1e-5);
+        for step in 0..(Milliseconds(50.0) / tables.dt()) as usize {
             let t = (step as f64 + 0.5) * tables.dt();
+            let during = (Milliseconds(5.0)..Milliseconds(45.0)).contains(&t);
             tree.inject(
                 tree.node_point(0),
-                if (5.0..45.0).contains(&t) {
-                    10.0 * area * 1e-5
-                } else {
-                    0.0
-                },
+                if during { current } else { Nanoamperes::ZERO },
             );
             tree.step(&tables);
-            trace.push(tree.node_voltage(0));
+            trace.push(tree.node_voltage(0).0);
         }
-        assert!((trace[(4.0 / tables.dt()) as usize] + 65.0).abs() < 0.5);
+        assert!((trace[(Milliseconds(4.0) / tables.dt()) as usize] + 65.0).abs() < 0.5);
         assert!(spikes(&trace) >= 2);
         let peak = trace.iter().cloned().fold(f64::MIN, f64::max);
         assert!((30.0..50.0).contains(&peak), "peak {peak}");
@@ -753,19 +806,25 @@ mod tests {
         let mut morphology = Morphology::default();
         let start = morphology.node(NodeMembrane::Point);
         let end = morphology.node(NodeMembrane::Point);
-        morphology.cable(start, end, 5000.0, 1.0, Membrane::squid());
-        let tables = Tables::new(0.025, 6.3);
-        let mut tree = Tree::build(&morphology, 0.1, -65.0, CELSIUS).unwrap();
+        cable(
+            &mut morphology,
+            (start, end),
+            (5000.0, 1.0),
+            Membrane::squid(),
+        );
+        let tables = Tables::new(DT, Celsius(6.3));
+        let mut tree = build(&morphology, 0.1, -65.0, CELSIUS);
         let mut arrivals = [None; 2];
-        for step in 0..(30.0 / tables.dt()) as usize {
+        for step in 0..(Milliseconds(30.0) / tables.dt()) as usize {
             let t = (step as f64 + 0.5) * tables.dt();
+            let during = (Milliseconds(1.0)..Milliseconds(2.0)).contains(&t);
             tree.inject(
                 tree.node_point(start),
-                if (1.0..2.0).contains(&t) { 0.5 } else { 0.0 },
+                Nanoamperes(if during { 0.5 } else { 0.0 }),
             );
             tree.step(&tables);
             for (arrival, fraction) in arrivals.iter_mut().zip([0.3, 0.7]) {
-                if arrival.is_none() && tree.cable_voltage(0, fraction) > -20.0 {
+                if arrival.is_none() && tree.cable_voltage(0, fraction) > Millivolts(-20.0) {
                     *arrival = Some(t);
                 }
             }
@@ -773,26 +832,26 @@ mod tests {
         let [Some(a), Some(b)] = arrivals else {
             panic!("no spike: {arrivals:?}")
         };
-        let speed = 0.4 * 5000.0 / (b - a) / 1000.0;
+        let speed = 0.4 * 5000.0 / (b - a).0 / 1000.0;
         assert!((0.4..0.7).contains(&speed), "speed {speed} m/s");
     }
 
     fn cortical(sodium: f64, potassium: f64) -> Membrane {
         Membrane {
-            capacitance: 1.0,
-            axial_resistivity: 150.0,
-            leak: 1.0 / 20_000.0,
-            leak_reversal: -70.0,
+            capacitance: MicrofaradsPerSquareCentimetre(1.0),
+            axial_resistivity: OhmCentimetres(150.0),
+            leak: SiemensPerSquareCentimetre(1.0 / 20_000.0),
+            leak_reversal: Millivolts(-70.0),
             channels: vec![
                 Density {
                     channel: ChannelId::CorticalSodium,
-                    conductance: sodium,
-                    reversal: 60.0,
+                    conductance: SiemensPerSquareCentimetre(sodium),
+                    reversal: Millivolts(60.0),
                 },
                 Density {
                     channel: ChannelId::CorticalPotassium,
-                    conductance: potassium,
-                    reversal: -90.0,
+                    conductance: SiemensPerSquareCentimetre(potassium),
+                    reversal: Millivolts(-90.0),
                 },
             ],
         }
@@ -803,20 +862,22 @@ mod tests {
         let mut a_type = cortical(0.05, 0.015);
         a_type.channels.push(Density {
             channel: ChannelId::ATypePotassium,
-            conductance: 0.03,
-            reversal: -90.0,
+            conductance: SiemensPerSquareCentimetre(0.03),
+            reversal: Millivolts(-90.0),
         });
+        let body = Celsius(37.0);
         for membrane in [Membrane::squid(), cortical(0.1, 0.03), a_type] {
             let mut morphology = Morphology::default();
             let start = morphology.node(NodeMembrane::Point);
             let end = morphology.node(NodeMembrane::Point);
-            morphology.cable(start, end, 500.0, 0.6, membrane.resting_at(-70.0, 37.0));
-            let tables = Tables::new(0.025, 37.0);
-            let mut tree = Tree::build(&morphology, 0.1, -70.0, 37.0).unwrap();
-            for _ in 0..(100.0 / tables.dt()) as usize {
+            let membrane = membrane.resting_at(Millivolts(-70.0), body);
+            cable(&mut morphology, (start, end), (500.0, 0.6), membrane);
+            let tables = Tables::new(DT, body);
+            let mut tree = build(&morphology, 0.1, -70.0, body);
+            for _ in 0..(Milliseconds(100.0) / tables.dt()) as usize {
                 tree.step(&tables);
             }
-            let drift = (0..tree.points()).map(|point| (tree.voltage(point) + 70.0).abs());
+            let drift = (0..tree.points()).map(|point| (tree.voltage(point).0 + 70.0).abs());
             assert!(drift.fold(0.0, f64::max) < 1e-6);
         }
     }
@@ -826,32 +887,34 @@ mod tests {
         let mut morphology = Morphology::default();
         let start = morphology.node(NodeMembrane::Point);
         let end = morphology.node(NodeMembrane::Point);
-        let membrane = cortical(0.1, 0.03).resting_at(-70.0, 37.0);
-        morphology.cable(start, end, 2000.0, 0.6, membrane);
-        let tables = Tables::new(0.025, 37.0);
-        let mut tree = Tree::build(&morphology, 0.3, -70.0, 37.0).unwrap();
+        let body = Celsius(37.0);
+        let membrane = cortical(0.1, 0.03).resting_at(Millivolts(-70.0), body);
+        cable(&mut morphology, (start, end), (2000.0, 0.6), membrane);
+        let tables = Tables::new(DT, body);
+        let mut tree = build(&morphology, 0.3, -70.0, body);
         let mut arrivals = [None; 2];
         let mut above = 0;
-        for step in 0..(30.0 / tables.dt()) as usize {
+        for step in 0..(Milliseconds(30.0) / tables.dt()) as usize {
             let t = (step as f64 + 0.5) * tables.dt();
+            let during = (Milliseconds(1.0)..Milliseconds(1.25)).contains(&t);
             tree.inject(
                 tree.node_point(start),
-                if (1.0..1.25).contains(&t) { 0.5 } else { 0.0 },
+                Nanoamperes(if during { 0.5 } else { 0.0 }),
             );
             tree.step(&tables);
             for (arrival, fraction) in arrivals.iter_mut().zip([0.3, 0.7]) {
-                if arrival.is_none() && tree.cable_voltage(0, fraction) > -20.0 {
+                if arrival.is_none() && tree.cable_voltage(0, fraction) > Millivolts(-20.0) {
                     *arrival = Some(t);
                 }
             }
-            above += usize::from(tree.cable_voltage(0, 0.5) > -40.0);
+            above += usize::from(tree.cable_voltage(0, 0.5) > Millivolts(-40.0));
         }
         let [Some(a), Some(b)] = arrivals else {
             panic!("no spike: {arrivals:?}")
         };
-        let speed = 0.4 * 2000.0 / (b - a) / 1000.0;
+        let speed = 0.4 * 2000.0 / (b - a).0 / 1000.0;
         assert!((0.2..0.4).contains(&speed), "speed {speed} m/s");
-        let width = above as f64 * tables.dt();
+        let width = (above as f64 * tables.dt()).0;
         assert!((0.5..1.2).contains(&width), "{width} ms above -40 mV");
     }
 }

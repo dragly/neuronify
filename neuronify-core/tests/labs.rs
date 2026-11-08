@@ -14,20 +14,21 @@ use neuronify_core::measurement::voltmeter::measured;
 use neuronify_core::serialization::{load_from_bytes, save};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
-    neuron_type, ConnectionView, LeakyNeuron, NeuronType, Position, Selected, Setting, TouchSensor,
+    neuron_type, ConnectionView, Hertz, LeakyNeuron, Milliseconds, NeuronType, Position, Selected,
+    Setting, TouchSensor,
 };
 
 const STEPS_PER_CALL: u32 = 40;
-const STEP_DURATION: f64 = STEPS_PER_CALL as f64 * DT * 1e-3;
-const TAP_DURATION: f64 = STEP_DURATION;
-const BEFORE_THE_FIRST_SYNAPTIC_DELAY: f64 = 0.004;
+const STEP_DURATION: Milliseconds = Milliseconds(STEPS_PER_CALL as f64 * DT.0);
+const TAP_DURATION: Milliseconds = STEP_DURATION;
+const BEFORE_THE_FIRST_SYNAPTIC_DELAY: Milliseconds = Milliseconds(4.0);
 
 struct Lab {
     world: World,
     engine: Engine,
     editor: Editor,
-    time: f64,
-    spikes: Vec<(Entity, f64)>,
+    time: Milliseconds,
+    spikes: Vec<(Entity, Milliseconds)>,
 }
 
 impl Lab {
@@ -40,7 +41,7 @@ impl Lab {
             world,
             engine: Engine::default(),
             editor: Editor::default(),
-            time: 0.0,
+            time: Milliseconds::ZERO,
             spikes: Vec::new(),
         }
     }
@@ -53,7 +54,7 @@ impl Lab {
             .collect()
     }
 
-    fn run_until(&mut self, until: f64) {
+    fn run_until(&mut self, until: Milliseconds) {
         while self.time < until - STEP_DURATION / 2.0 {
             step_simulation(
                 &mut self.world,
@@ -66,12 +67,12 @@ impl Lab {
                 self.engine
                     .spikes()
                     .iter()
-                    .map(|spike| (spike.entity, spike.time * 1e-3)),
+                    .map(|spike| (spike.entity, spike.time)),
             );
         }
     }
 
-    fn press_until(&mut self, finger: Vec3, until: f64) {
+    fn press_until(&mut self, finger: Vec3, until: Milliseconds) {
         self.editor.view(&mut self.world, finger);
         for position in self.editor.take_presses() {
             fire_nearby(&mut self.world, &mut self.engine, position);
@@ -80,7 +81,7 @@ impl Lab {
         self.editor.release(&self.world);
     }
 
-    fn spike_counts(&self, cells: &[Entity], from: f64, to: f64) -> Vec<usize> {
+    fn spike_counts(&self, cells: &[Entity], from: Milliseconds, to: Milliseconds) -> Vec<usize> {
         let mut counts = vec![0; cells.len()];
         for &(neuron, time) in &self.spikes {
             if time < from || time >= to {
@@ -93,14 +94,14 @@ impl Lab {
         counts
     }
 
-    fn spikes_between(&self, from: f64, to: f64) -> usize {
+    fn spikes_between(&self, from: Milliseconds, to: Milliseconds) -> usize {
         self.spikes
             .iter()
             .filter(|&&(_, time)| time >= from && time < to)
             .count()
     }
 
-    fn spike_times(&self, cell: Entity) -> Vec<f64> {
+    fn spike_times(&self, cell: Entity) -> Vec<Milliseconds> {
         self.spikes
             .iter()
             .filter(|&&(neuron, _)| neuron == cell)
@@ -147,21 +148,21 @@ impl RingLab {
         }
     }
 
-    fn tap(&mut self, cell: usize, at: f64) {
+    fn tap(&mut self, cell: usize, at: Milliseconds) {
         let finger = self.lab.position(self.touch_sensors[cell]);
         self.lab.run_until(at);
         self.lab.press_until(finger, at + TAP_DURATION);
     }
 
-    fn ring_counts(&self, from: f64, to: f64) -> Vec<usize> {
+    fn ring_counts(&self, from: Milliseconds, to: Milliseconds) -> Vec<usize> {
         self.lab.spike_counts(&self.ring, from, to)
     }
 }
 
-const FIRST_CUE: f64 = 0.2;
-const SECOND_CUE: f64 = 1.2;
-const END: f64 = 1.9;
-const SETTLED_WINDOW: f64 = 0.5;
+const FIRST_CUE: Milliseconds = Milliseconds(200.0);
+const SECOND_CUE: Milliseconds = Milliseconds(1200.0);
+const END: Milliseconds = Milliseconds(1900.0);
+const SETTLED_WINDOW: Milliseconds = Milliseconds(500.0);
 const FIRST_CUED_CELL: usize = 8;
 const SECOND_CUED_CELL: usize = 24;
 
@@ -181,15 +182,15 @@ fn noisy_ring_cued_once() -> &'static RingLab {
     RUN.get_or_init(|| {
         let mut ring = RingLab::load("ring_attractor_noise.neuronify");
         ring.tap(FIRST_CUED_CELL, FIRST_CUE);
-        ring.lab.run_until(3.0);
+        ring.lab.run_until(Milliseconds(3000.0));
         ring
     })
 }
 
-fn cells_firing_at_10_hz_or_more(counts: &[usize], duration: f64) -> usize {
+fn cells_firing_at_10_hz_or_more(counts: &[usize], duration: Milliseconds) -> usize {
     counts
         .iter()
-        .filter(|&&count| count as f64 >= 10.0 * duration)
+        .filter(|&&count| count as f64 >= Hertz(10.0).cycles_in(duration))
         .count()
 }
 
@@ -258,7 +259,7 @@ fn ring_attractor_poke_on_a_touch_sensor_starts_a_bump_at_its_cell() {
 fn cells_fired_by_a_poke(ring: &mut RingLab, finger: Vec3) -> Vec<usize> {
     ring.lab.press_until(finger, TAP_DURATION);
     ring.lab.run_until(BEFORE_THE_FIRST_SYNAPTIC_DELAY);
-    ring.ring_counts(0.0, BEFORE_THE_FIRST_SYNAPTIC_DELAY)
+    ring.ring_counts(Milliseconds::ZERO, BEFORE_THE_FIRST_SYNAPTIC_DELAY)
         .iter()
         .enumerate()
         .filter(|(_, &count)| count > 0)
@@ -302,7 +303,7 @@ fn the_bundled_lab_files_match_their_generators() {
     for (file, world) in write_labs::labs() {
         let path = format!("{}/examples/labs/{file}", env!("CARGO_MANIFEST_DIR"));
         let bundled = std::fs::read(path).unwrap();
-        let written = save(&world, 0.0, DEFAULT_SPEED).unwrap();
+        let written = save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
         assert_eq!(bundled, written, "{file} is out of date");
     }
 }
@@ -310,14 +311,14 @@ fn the_bundled_lab_files_match_their_generators() {
 #[test]
 fn ring_attractor_is_silent_before_the_cue() {
     let ring = ring_cued_twice();
-    assert_eq!(ring.lab.spikes_between(0.0, FIRST_CUE), 0);
+    assert_eq!(ring.lab.spikes_between(Milliseconds::ZERO, FIRST_CUE), 0);
 }
 
 #[test]
 fn ring_attractor_cue_leaves_a_bump_of_nine_cells_at_the_cue() {
     let ring = ring_cued_twice();
     let counts = ring.ring_counts(SECOND_CUE - SETTLED_WINDOW, SECOND_CUE);
-    let peak_rate = *counts.iter().max().unwrap() as f64 / SETTLED_WINDOW;
+    let peak_rate = (*counts.iter().max().unwrap() as f64 / SETTLED_WINDOW).to_hertz();
     let centre = bump_centre_in_cells(&counts);
     assert_eq!(
         cells_firing_at_10_hz_or_more(&counts, SETTLED_WINDOW),
@@ -325,7 +326,10 @@ fn ring_attractor_cue_leaves_a_bump_of_nine_cells_at_the_cue() {
         "{counts:?}"
     );
     assert!(distance_round_ring(centre, FIRST_CUED_CELL as f32, ring.ring.len()) < 0.5);
-    assert!((140.0..=170.0).contains(&peak_rate), "{peak_rate} Hz");
+    assert!(
+        (Hertz(140.0)..=Hertz(170.0)).contains(&peak_rate),
+        "{peak_rate}"
+    );
 }
 
 #[test]
@@ -355,18 +359,18 @@ fn ring_attractor_inhibitory_cells_fire_together() {
 #[test]
 fn ring_attractor_noise_alone_lights_no_bump() {
     let ring = noisy_ring_cued_once();
-    let counts = ring.ring_counts(0.0, FIRST_CUE);
+    let counts = ring.ring_counts(Milliseconds::ZERO, FIRST_CUE);
     assert_eq!(cells_firing_at_10_hz_or_more(&counts, FIRST_CUE), 0);
 }
 
 #[test]
 fn ring_attractor_bump_survives_three_seconds_of_noise() {
     let ring = noisy_ring_cued_once();
-    for second in [1.0, 2.0, 3.0] {
+    for second in [1000.0, 2000.0, 3000.0].map(Milliseconds) {
         let counts = ring.ring_counts(second - SETTLED_WINDOW, second);
         assert!(
             cells_firing_at_10_hz_or_more(&counts, SETTLED_WINDOW) >= 5,
-            "{second} s: {counts:?}"
+            "{second}: {counts:?}"
         );
     }
 }

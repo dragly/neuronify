@@ -2,6 +2,7 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
+use crate::components::Nanoamperes;
 use crate::constants::STIMULATION_CURRENT;
 use crate::elements::{Element, Meter};
 
@@ -206,7 +207,7 @@ pub struct StimulationTool {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Stimulation {
-    pub current: f64,
+    pub current: Nanoamperes,
 }
 
 impl Default for Stimulation {
