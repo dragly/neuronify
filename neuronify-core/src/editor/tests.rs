@@ -1905,6 +1905,33 @@ fn dendrite_segments_added_by_a_stretch_taper_like_freshly_drawn_ones_where_they
 }
 
 #[test]
+fn taking_back_a_bend_past_a_neuron_with_shift_leaves_no_loose_synapse() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    neuron(&mut world, at(0.0, 10.0));
+    let mut editor = editor(Tool::Axon);
+    let out = (0..=26).map(|step| at(0.0, step as f32 * 0.5));
+    let back = (1..=10).map(|step| at(0.0, 13.0 - step as f32 * 0.5));
+    for (index, position) in out.chain(back).enumerate() {
+        if index > 0 {
+            editor.move_held();
+        }
+        editor.edit(&mut world, position, true);
+    }
+    editor.lift(&mut world);
+
+    let loose: Vec<Connection> = world
+        .query::<&Connection>()
+        .iter()
+        .filter(|(_, connection)| {
+            !world.contains(connection.from) || !world.contains(connection.to)
+        })
+        .map(|(_, connection)| connection.clone())
+        .collect();
+    assert!(loose.is_empty(), "{loose:?}");
+}
+
+#[test]
 fn stretched_axons_grow_compartments() {
     let mut world = World::new();
     let source = neuron(&mut world, at(0.0, 0.0));
