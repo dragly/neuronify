@@ -89,10 +89,11 @@ fn trace(
         series.measurements.iter().map(|m| (m.time, m.voltage)),
         |&(time, _)| is_visible(time),
     );
+    let span = (high - low).max(Millivolts(1e-9));
     let at = |time: Milliseconds, voltage: Millivolts| {
         row.point(
             ((time - start_time) / VOLTMETER_TIME_WINDOW) as f32,
-            ((voltage - low) / (high - low)).clamp(0.0, 1.0) as f32,
+            ((voltage - low) / span).clamp(0.0, 1.0) as f32,
         )
     };
     let color = colors::green();
@@ -297,5 +298,28 @@ mod tests {
         assert!((bottom.x - frame.bottom_left.x).abs() < 1e-4);
         assert!((middle.x - (frame.bottom_left.x + frame.height * 0.5)).abs() < 1e-4);
         assert!((top.x - (frame.bottom_left.x + frame.height)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn a_range_without_height_still_draws_inside_the_chart() {
+        let mut world = World::new();
+        let neuron = world.spawn((Position {
+            position: Vec3::new(-10.0, 0.0, 0.0),
+        },));
+        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::ZERO);
+        *world.get::<&mut VoltmeterRange>(voltmeter).unwrap() = VoltmeterRange {
+            minimum: Millivolts(-60.0),
+            maximum: Millivolts(-60.0),
+        };
+        let (wire, _) = measured(&world, voltmeter)[0];
+        *world.get::<&mut VoltageSeries>(wire).unwrap() = series(
+            [(0.0, -80.0), (SAMPLE, -60.0), (2.0 * SAMPLE, 0.0)].into_iter(),
+            vec![],
+        );
+        let traces = collect_voltmeter_traces(&world);
+        assert!(traces.len() > 4);
+        assert!(traces
+            .iter()
+            .all(|line| line.position_a.is_finite() && line.position_b.is_finite()));
     }
 }
