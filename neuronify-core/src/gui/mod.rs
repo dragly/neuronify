@@ -25,7 +25,7 @@ use crate::editor::Editor;
 use crate::links;
 use crate::rendering::Theme;
 use crate::tools::Tool;
-pub use attach_ring::AttachRing;
+pub use attach_ring::{dwell_progress, AttachBurst, AttachRing, WAITING};
 pub use hitboxes::{paint_hitboxes, reach_slider};
 pub use hold_ring::{paint_hold_ring, HoldRing, Look};
 use icons::Icon;

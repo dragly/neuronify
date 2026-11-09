@@ -4,7 +4,7 @@ use std::sync::Arc;
 use egui::text::LayoutJob;
 use egui::{
     pos2, vec2, Align, Align2, Color32, Context, Event, FontId, Frame, Galley, Id, Key, Margin,
-    Order, Painter, Rect, Response, ScrollArea, Sense, Shape, Stroke, StrokeKind, Ui, Vec2,
+    Order, Painter, Pos2, Rect, Response, ScrollArea, Sense, Shape, Stroke, StrokeKind, Ui, Vec2,
     WidgetInfo, WidgetType,
 };
 
@@ -13,10 +13,11 @@ use crate::editor::Editor;
 use crate::elements::Element;
 use crate::rendering::Theme;
 use crate::settings::Setting;
-use crate::tools::{Tool, ToolGroup};
+use crate::tools::{ConnectionMode, Tool, ToolGroup};
 
-use super::icons::{paint_icon, paint_morphology, paint_tool, Icon};
+use super::icons::{paint_connection_mode, paint_icon, paint_morphology, paint_tool, Icon};
 use super::inspector::logarithmic_parameter;
+use super::playback::BAR_HEIGHT;
 use super::sheet::{self, Sheet, HANDLE_HEIGHT};
 use super::style::{Chrome, MARGIN, PANEL_RADIUS};
 use super::widgets::{heading, paint_flyout_marker, separator, ROW_INSET, ROW_RADIUS};
@@ -41,6 +42,10 @@ const CHEVRON: f32 = 3.0;
 const ITEM_HEIGHT: f32 = 52.0;
 const ITEM_RADIUS: u8 = 10;
 const ITEM_ICON: f32 = 24.0;
+const STROKE_BUTTON: f32 = 44.0;
+const STROKE_RING: f32 = 1.5;
+const STROKE_HEADING: &str = "Stroke";
+pub const STROKE_ID: &str = "stroke";
 const FLYOUT_WIDTH: f32 = 272.0;
 const FLYOUT_PADDING: i8 = 8;
 const OPTION_GLYPH: f32 = 34.0;
@@ -61,6 +66,20 @@ const MORPHOLOGIES: [(bool, &str, &str); 2] = [
         true,
         "Compartmental neurons",
         "Drag from a neuron or dendrite to grow an axon.",
+    ),
+];
+
+const CONNECTION_MODES: [(ConnectionMode, &str, &str); 3] = [
+    (ConnectionMode::One, "Single", "Connect to a single neuron"),
+    (
+        ConnectionMode::Chain,
+        "Chain",
+        "Connect in a chain by pausing briefly on each neuron",
+    ),
+    (
+        ConnectionMode::FanOut,
+        "Spread",
+        "Connect one source to several neurons by pausing briefly on each",
     ),
 ];
 
@@ -102,6 +121,7 @@ pub struct Rail {
     recent: Vec<Tool>,
     hidden: bool,
     folded: bool,
+    stroke_open: bool,
 }
 
 impl Rail {
@@ -112,6 +132,7 @@ impl Rail {
     pub fn close(&mut self) {
         self.flyout = None;
         self.adding = false;
+        self.stroke_open = false;
     }
 
     fn shown_for(&self, group: ToolGroup, current: Tool) -> Tool {
@@ -130,11 +151,15 @@ impl Rail {
         if tool == Tool::View {
             editor.selection = None;
         }
+        if editor.tool != tool {
+            editor.set_connection_mode(ConnectionMode::One);
+        }
         editor.tool = tool;
         self.recent.retain(|recent| *recent != tool);
         self.recent.push(tool);
         self.flyout = None;
         self.adding = false;
+        self.stroke_open = false;
     }
 
     fn press(&mut self, editor: &mut Editor, tool: Tool) {
@@ -215,6 +240,7 @@ impl Rail {
         let mut hide = false;
         let mut toggled = None;
         let mut anchors = Vec::new();
+        let mut stroke_anchor = None;
         let inner = egui::Area::new(Id::new("rail"))
             .anchor(Align2::LEFT_TOP, [MARGIN, MARGIN])
             .show(context, |ui| {
@@ -247,9 +273,10 @@ impl Rail {
                                                 self.flyout.filter(|&slot| slot == STIMULATION);
                                         }
                                         if self.folded {
-                                            if add_button(ui, chrome, theme, editor, false)
-                                                .clicked()
-                                            {
+                                            let response =
+                                                add_button(ui, chrome, theme, editor, false);
+                                            stroke_anchor = Some(response.rect);
+                                            if response.clicked() {
                                                 self.folded = false;
                                             }
                                             continue;
@@ -303,6 +330,9 @@ impl Rail {
                                                     group.label(),
                                                     key.name()
                                                 ));
+                                                if on {
+                                                    stroke_anchor = Some(response.rect);
+                                                }
                                                 anchors.push((slot, response.rect));
                                                 if response.clicked() {
                                                     toggled = Some(slot);
@@ -350,6 +380,27 @@ impl Rail {
             if pressed_elsewhere && slot != STIMULATION {
                 self.flyout = None;
             }
+        }
+        match stroke_anchor.filter(|_| self.flyout.is_none()) {
+            Some(anchor) => self.stroke(
+                context,
+                chrome,
+                editor,
+                (
+                    Align2::LEFT_CENTER,
+                    pos2(rail.right() + POPOVER_GAP, anchor.center().y),
+                ),
+                |button| {
+                    (
+                        Align2::LEFT_TOP,
+                        pos2(
+                            button.right() + POPOVER_GAP,
+                            button.top() - FLYOUT_PADDING as f32,
+                        ),
+                    )
+                },
+            ),
+            None => self.stroke_open = false,
         }
         RailResponse {
             rect: rail,
@@ -406,6 +457,75 @@ impl Rail {
             })
             .response
             .rect
+    }
+
+    fn stroke(
+        &mut self,
+        context: &Context,
+        chrome: &Chrome,
+        editor: &mut Editor,
+        (pivot, position): (Align2, Pos2),
+        menu_at: impl FnOnce(Rect) -> (Align2, Pos2),
+    ) {
+        if !editor.tool.connects() {
+            self.stroke_open = false;
+            return;
+        }
+        let mode = editor.connection_mode();
+        let open = self.stroke_open;
+        let button = egui::Area::new(Id::new("stroke_button"))
+            .pivot(pivot)
+            .fixed_pos(position)
+            .show(context, |ui| stroke_button(ui, chrome, mode, open))
+            .inner;
+        if button.clicked() {
+            self.stroke_open = !self.stroke_open;
+        }
+        if !self.stroke_open {
+            return;
+        }
+        let (pivot, position) = menu_at(button.rect);
+        let room = context.content_rect().width() - 2.0 * (MARGIN + FLYOUT_PADDING as f32);
+        let menu = egui::Area::new(Id::new("stroke_menu"))
+            .order(Order::Foreground)
+            .pivot(pivot)
+            .fixed_pos(position)
+            .show(context, |ui| {
+                chrome
+                    .panel_frame(FLYOUT_PADDING)
+                    .show(ui, |ui| {
+                        ui.set_width(FLYOUT_WIDTH.min(room));
+                        ui.spacing_mut().item_spacing = vec2(0.0, 2.0);
+                        heading(ui, chrome, STROKE_HEADING, ROW_INSET);
+                        let mut picked = None;
+                        for (candidate, label, hint) in CONNECTION_MODES {
+                            let on = candidate == mode;
+                            let color = if on { chrome.accent } else { chrome.text };
+                            let paint = |painter: &Painter, glyph: Rect| {
+                                let icon =
+                                    Rect::from_center_size(glyph.center(), Vec2::splat(ITEM_ICON));
+                                paint_connection_mode(painter, candidate, icon, color);
+                            };
+                            if choice(ui, chrome, label, hint, on, paint).clicked() {
+                                picked = Some(candidate);
+                            }
+                        }
+                        picked
+                    })
+                    .inner
+            });
+        if let Some(picked) = menu.inner {
+            editor.set_connection_mode(picked);
+        }
+        let pressed_elsewhere = context.input(|input| {
+            input.pointer.any_pressed()
+                && input.pointer.interact_pos().is_some_and(|position| {
+                    !menu.response.rect.contains(position) && !button.rect.contains(position)
+                })
+        });
+        if menu.inner.is_some() || pressed_elsewhere {
+            self.stroke_open = false;
+        }
     }
 }
 
@@ -494,6 +614,34 @@ impl Rail {
                         stimulation_settings(ui, chrome, editor);
                     });
                 });
+        }
+        match add.filter(|_| !self.adding) {
+            Some(add) => {
+                let screen = context.content_rect();
+                let lift = match *playback_open {
+                    true => BAR_HEIGHT + POPOVER_GAP,
+                    false => 0.0,
+                };
+                let bottom =
+                    screen.bottom() - TOOL_BAR_MARGIN - TOOL_BAR_HEIGHT - POPOVER_GAP - lift;
+                self.stroke(
+                    context,
+                    chrome,
+                    editor,
+                    (Align2::CENTER_BOTTOM, pos2(add.center().x, bottom)),
+                    |button| {
+                        let width = FLYOUT_WIDTH + 2.0 * FLYOUT_PADDING as f32;
+                        let right = (button.center().x + width / 2.0)
+                            .max(screen.left() + TOOL_BAR_MARGIN + width)
+                            .min(screen.right() - TOOL_BAR_MARGIN);
+                        (
+                            Align2::RIGHT_BOTTOM,
+                            pos2(right, button.top() - POPOVER_GAP),
+                        )
+                    },
+                );
+            }
+            None => self.stroke_open = false,
         }
         if self.adding {
             let sheet = self.add_sheet(context, theme, editor);
@@ -911,6 +1059,36 @@ fn tool_item(
     })
 }
 
+fn stroke_button(ui: &mut Ui, chrome: &Chrome, mode: ConnectionMode, open: bool) -> Response {
+    let (rect, _) = ui.allocate_exact_size(Vec2::splat(STROKE_BUTTON), Sense::hover());
+    let response = ui.interact(rect, Id::new(STROKE_ID), Sense::click());
+    let fill = match open || response.hovered() {
+        true => chrome.hovered,
+        false => chrome.panel,
+    };
+    let radius = STROKE_BUTTON / 2.0;
+    let painter = ui.painter();
+    chrome.paint_floating(painter, rect, radius as u8, fill);
+    let chosen = mode != ConnectionMode::One;
+    if chosen {
+        painter.circle_stroke(
+            rect.center(),
+            radius - STROKE_RING / 2.0,
+            Stroke::new(STROKE_RING, chrome.accent),
+        );
+    }
+    let color = if chosen { chrome.accent } else { chrome.text };
+    let icon = Rect::from_center_size(rect.center(), Vec2::splat(ITEM_ICON));
+    paint_connection_mode(painter, mode, icon, color);
+    let name = CONNECTION_MODES
+        .iter()
+        .find(|(candidate, _, _)| *candidate == mode)
+        .map_or("", |(_, name, _)| name);
+    let label = format!("{STROKE_HEADING}: {name}");
+    response.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &label));
+    response.on_hover_text(label)
+}
+
 fn option(
     ui: &mut Ui,
     chrome: &Chrome,
@@ -919,15 +1097,31 @@ fn option(
     on: bool,
     compartments: bool,
 ) -> Response {
+    choice(
+        ui,
+        chrome,
+        tool.name(),
+        tool.description(),
+        on,
+        |painter, glyph| paint_tool(painter, tool, glyph, theme, chrome.text, compartments),
+    )
+}
+
+fn choice(
+    ui: &mut Ui,
+    chrome: &Chrome,
+    label: &str,
+    description: &str,
+    on: bool,
+    paint: impl FnOnce(&Painter, Rect),
+) -> Response {
     let width = ui.available_width();
     let text_width = width - OPTION_GLYPH - 3.0 * OPTION_INSET;
-    let name = ui.painter().layout_no_wrap(
-        tool.name().to_string(),
-        FontId::proportional(14.0),
-        chrome.text,
-    );
+    let name =
+        ui.painter()
+            .layout_no_wrap(label.to_string(), FontId::proportional(14.0), chrome.text);
     let description = ui.painter().layout(
-        tool.description().to_string(),
+        description.to_string(),
         FontId::proportional(12.0),
         chrome.subtext,
         text_width,
@@ -948,7 +1142,7 @@ fn option(
         ),
         Vec2::splat(OPTION_GLYPH),
     );
-    paint_tool(painter, tool, glyph, theme, chrome.text, compartments);
+    paint(painter, glyph);
     let text_left = glyph.right() + OPTION_INSET;
     let text_top = rect.center().y - text_height / 2.0;
     let name_height = name.size().y;
@@ -958,6 +1152,6 @@ fn option(
         description,
         chrome.subtext,
     );
-    response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, on, tool.name()));
+    response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, on, label));
     response
 }

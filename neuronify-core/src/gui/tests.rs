@@ -11,7 +11,8 @@ use crate::components::{
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
 use crate::elements::{spawn_cable, spawn_compartment, Element, Meter};
 use crate::settings::Setting;
-use crate::tools::Tool;
+use crate::tools::{ConnectionMode, Tool};
+use rail::STROKE_ID;
 
 const SCREEN: Vec2 = vec2(1280.0, 800.0);
 const PHONE: Vec2 = vec2(390.0, 760.0);
@@ -423,6 +424,67 @@ fn the_neurons_flyout_chooses_between_point_and_compartmental_neurons() {
     assert!(harness.shows("Drag from a neuron or dendrite to grow an axon."));
     harness.click_text("Point neurons");
     assert!(!harness.editor.compartments);
+}
+
+fn stroke_button(harness: &mut Harness) -> Option<Rect> {
+    for _ in 0..3 {
+        harness.frame(vec![]);
+    }
+    let response = harness.context.read_response(Id::new(STROKE_ID))?;
+    Some(response.rect)
+}
+
+#[test]
+fn the_stroke_button_beside_the_rail_picks_a_stroke_until_another_tool_is_picked() {
+    let mut harness = Harness::new(true);
+    assert_eq!(stroke_button(&mut harness), None);
+    harness.click_text("Connect");
+    harness.click_text("Axon");
+    let button = stroke_button(&mut harness).unwrap();
+    let connect = harness.text_rect("Connect").unwrap();
+    assert!(button.left() > connect.right());
+    assert!(button.y_range().contains(connect.top()));
+    harness.click_button(STROKE_ID);
+    assert!(harness.shows("Connect in a chain by pausing briefly on each neuron"));
+    harness.click_text("Chain");
+    assert_eq!(harness.editor.connection_mode(), ConnectionMode::Chain);
+    assert!(!harness.shows("Connect in a chain by pausing briefly on each neuron"));
+    harness.click_text("Erase");
+    assert_eq!(stroke_button(&mut harness), None);
+    harness.press(Modifiers::NONE, Key::C);
+    assert_eq!(harness.editor.tool, Tool::Axon);
+    assert_eq!(harness.editor.connection_mode(), ConnectionMode::One);
+}
+
+#[test]
+fn placing_neurons_and_inputs_offers_the_stroke_but_dendrites_do_not() {
+    let mut harness = Harness::new(true);
+    for (tool, offered) in [
+        (Tool::Place(Element::ExcitatoryNeuron), true),
+        (Tool::Place(Element::TouchSensor), true),
+        (Tool::StaticConnection, true),
+        (Tool::Dendrite, false),
+        (Tool::Place(Element::Note), false),
+        (Tool::Voltmeter, false),
+    ] {
+        harness.editor.tool = tool;
+        assert_eq!(stroke_button(&mut harness).is_some(), offered, "{tool:?}");
+    }
+}
+
+#[test]
+fn phones_pick_the_stroke_from_a_button_above_add() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.editor.tool = Tool::StaticConnection;
+    let button = stroke_button(&mut harness).unwrap();
+    let add = harness.text_rect("Add").unwrap();
+    assert!(button.bottom() < add.top());
+    assert!((button.center().x - add.center().x).abs() < 1.0);
+    harness.click_button(STROKE_ID);
+    harness.click_text("Spread");
+    assert_eq!(harness.editor.connection_mode(), ConnectionMode::FanOut);
+    harness.click_text("Add");
+    assert_eq!(stroke_button(&mut harness), None);
 }
 
 #[test]

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::components::{Nanoamperes, Seconds};
 use crate::constants::STIMULATION_CURRENT;
 use crate::elements::{Element, Meter};
+use crate::input::DWELL;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Tool {
@@ -126,6 +127,31 @@ impl Tool {
             Tool::RatePlot => Some(Meter::RatePlot),
             Tool::Loudspeaker => Some(Meter::Loudspeaker),
             _ => None,
+        }
+    }
+
+    pub fn connects(self) -> bool {
+        match self {
+            Tool::StaticConnection | Tool::Axon | Tool::MyelinatedAxon => true,
+            Tool::Place(element) => element.is_neuron() || element.is_input(),
+            _ => false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ConnectionMode {
+    #[default]
+    One,
+    Chain,
+    FanOut,
+}
+
+impl ConnectionMode {
+    pub fn dwell(self) -> Seconds {
+        match self {
+            ConnectionMode::Chain => 2.0 * DWELL,
+            ConnectionMode::One | ConnectionMode::FanOut => DWELL,
         }
     }
 }

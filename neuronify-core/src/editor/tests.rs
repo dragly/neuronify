@@ -1,5 +1,6 @@
 use super::*;
 use crate::elements::{spawn_synapse, spawn_voltmeter};
+use crate::input::DWELL;
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::simulation::{fire_nearby, step_physics, step_simulation, Engine};
@@ -456,6 +457,345 @@ fn an_axon_that_leaves_a_soma_grows_on_from_its_own_tip_and_ends_where_released(
     assert_eq!(single_ending(&world).to, target);
     assert!(chain(&world, source, target).is_some());
     assert!(chain(&world, passed, target).is_none());
+}
+
+fn hold_still(editor: &mut Editor, world: &mut World) -> Option<Entity> {
+    let dwell = editor.connection_mode().dwell();
+    editor.dwell(world, Seconds(0.0));
+    editor.dwell(world, dwell)
+}
+
+fn drag_pausing(editor: &mut Editor, world: &mut World, path: &[Vec3], pauses: &[Vec3]) {
+    for (index, &position) in path.iter().enumerate() {
+        if index > 0 {
+            editor.move_held();
+        }
+        editor.edit(world, position);
+        if pauses.iter().any(|pause| pause.distance(position) < 1e-4) {
+            hold_still(editor, world);
+        }
+    }
+    editor.lift(world);
+}
+
+fn neurons_in_a_row() -> (World, [Entity; 4]) {
+    let mut world = World::new();
+    let row = [at(0.0, 0.0), at(0.0, 10.0), at(0.0, 20.0), at(4.0, 15.0)]
+        .map(|position| neuron(&mut world, position));
+    (world, row)
+}
+
+const PAST_THE_MIDDLE: [Vec3; 5] = [
+    Vec3::new(0.0, 0.0, 0.5),
+    Vec3::new(0.0, 0.0, 5.0),
+    Vec3::new(0.3, 0.0, 10.5),
+    Vec3::new(0.0, 0.0, 15.0),
+    Vec3::new(0.0, 0.0, 19.5),
+];
+
+fn connect_past_the_middle(mode: ConnectionMode, pauses: &[Vec3]) -> (World, [Entity; 4]) {
+    let (mut world, row) = neurons_in_a_row();
+    let mut editor = editor(Tool::StaticConnection);
+    editor.set_connection_mode(mode);
+    drag_pausing(&mut editor, &mut world, &PAST_THE_MIDDLE, pauses);
+    (world, row)
+}
+
+#[test]
+fn in_a_chain_each_neuron_held_connects_to_the_next() {
+    let (world, [a, b, c, beside]) =
+        connect_past_the_middle(ConnectionMode::Chain, &[at(0.3, 10.5)]);
+    assert!(connected(&world, a, b) && connected(&world, b, c));
+    assert!(!connected(&world, a, c) && !connected(&world, b, beside));
+    assert_eq!(count::<CurrentSynapse>(&world), 2);
+}
+
+#[test]
+fn fanning_out_connects_the_source_to_every_neuron_held() {
+    let (world, [a, b, c, beside]) =
+        connect_past_the_middle(ConnectionMode::FanOut, &[at(0.3, 10.5)]);
+    assert!(connected(&world, a, b) && connected(&world, a, c));
+    assert!(!connected(&world, a, beside) && !connected(&world, b, c));
+    assert_eq!(count::<CurrentSynapse>(&world), 2);
+}
+
+#[test]
+fn passing_a_neuron_without_holding_still_leaves_it_alone() {
+    for mode in [ConnectionMode::Chain, ConnectionMode::FanOut] {
+        let (world, [a, b, c, _]) = connect_past_the_middle(mode, &[]);
+        assert!(connected(&world, a, c));
+        assert!(!connected(&world, a, b) && !connected(&world, b, c));
+        assert_eq!(count::<CurrentSynapse>(&world), 1);
+    }
+}
+
+#[test]
+fn holding_still_on_a_neuron_attaches_it_once_the_dwell_is_over() {
+    let (mut world, [a, b, _, _]) = neurons_in_a_row();
+    let mut editor = editor(Tool::StaticConnection);
+    editor.set_connection_mode(ConnectionMode::FanOut);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.3, 10.5));
+    assert_eq!(editor.dwell(&mut world, Seconds(0.0)), None);
+    assert_eq!(editor.dwelling(&world, Seconds(0.25)), Some(Seconds(0.25)));
+    assert_eq!(editor.dwell(&mut world, 0.9 * DWELL), None);
+    assert!(!connected(&world, a, b));
+    assert_eq!(editor.dwell(&mut world, DWELL), Some(b));
+    assert!(connected(&world, a, b));
+    assert_eq!(editor.ending(), None);
+}
+
+#[test]
+fn holding_still_waits_for_the_release_when_connecting_one_neuron() {
+    let (mut world, [a, b, _, _]) = neurons_in_a_row();
+    let mut editor = editor(Tool::StaticConnection);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.3, 10.5));
+    assert_eq!(hold_still(&mut editor, &mut world), None);
+    assert_eq!(editor.dwelling(&world, DWELL), None);
+    assert_eq!(editor.ending(), Some(b));
+    editor.lift(&mut world);
+    assert!(connected(&world, a, b));
+}
+
+#[test]
+fn moving_on_a_neuron_starts_the_dwell_over() {
+    let (mut world, [_, b, _, _]) = neurons_in_a_row();
+    let mut editor = reaching(Tool::StaticConnection, 1.0);
+    editor.set_connection_mode(ConnectionMode::Chain);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.3, 10.5));
+    editor.dwell(&mut world, Seconds(0.0));
+    editor.edit(&mut world, at(0.4, 10.6));
+    editor.dwell(&mut world, Seconds(0.3));
+    editor.edit(&mut world, at(-0.6, 10.2));
+    let dwell = ConnectionMode::Chain.dwell();
+    assert_eq!(editor.dwell(&mut world, Seconds(0.4)), None);
+    assert_eq!(editor.dwell(&mut world, Seconds(0.4) + 0.9 * dwell), None);
+    assert_eq!(
+        editor.dwell(&mut world, Seconds(0.4) + 1.1 * dwell),
+        Some(b)
+    );
+}
+
+#[test]
+fn holding_still_in_a_chain_takes_twice_as_long_as_fanning_out() {
+    let (mut world, [_, b, _, _]) = neurons_in_a_row();
+    let mut editor = editor(Tool::StaticConnection);
+    editor.set_connection_mode(ConnectionMode::Chain);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(0.3, 10.5));
+    editor.dwell(&mut world, Seconds(0.0));
+    assert_eq!(editor.dwell(&mut world, 1.5 * DWELL), None);
+    assert_eq!(editor.dwell(&mut world, 2.0 * DWELL), Some(b));
+}
+
+#[test]
+fn after_an_attach_the_stroke_moves_before_the_next_neuron_can_attach() {
+    let mut world = World::new();
+    let [a, b, c] =
+        [at(0.0, 0.0), at(0.0, 10.0), at(2.5, 10.0)].map(|position| neuron(&mut world, position));
+    let mut editor = reaching(Tool::StaticConnection, 1.0);
+    editor.set_connection_mode(ConnectionMode::FanOut);
+    editor.edit(&mut world, at(0.0, 0.5));
+    editor.edit(&mut world, at(1.0, 10.0));
+    assert_eq!(hold_still(&mut editor, &mut world), Some(b));
+    editor.edit(&mut world, at(1.4, 10.0));
+    assert_eq!(editor.ending(), Some(c));
+    assert_eq!(editor.dwell(&mut world, Seconds(5.0)), None);
+    assert_eq!(editor.dwelling(&world, Seconds(5.0)), Some(Seconds(0.0)));
+    editor.edit(&mut world, at(1.6, 10.0));
+    assert_eq!(editor.dwell(&mut world, Seconds(6.0)), None);
+    assert_eq!(
+        editor.dwell(&mut world, Seconds(6.0) + 1.1 * DWELL),
+        Some(c)
+    );
+    assert!(connected(&world, a, b) && connected(&world, a, c));
+}
+
+#[test]
+fn only_tools_that_connect_follow_the_connection_mode() {
+    let follows = |tool: Tool| {
+        let mut editor = editor(tool);
+        editor.set_connection_mode(ConnectionMode::Chain);
+        editor.connection_mode() == ConnectionMode::Chain
+    };
+    for tool in [
+        Tool::StaticConnection,
+        Tool::Axon,
+        Tool::MyelinatedAxon,
+        Tool::Place(Element::ExcitatoryNeuron),
+        Tool::Place(Element::TouchSensor),
+    ] {
+        assert!(follows(tool), "{tool:?}");
+    }
+    for tool in [
+        Tool::Dendrite,
+        Tool::Voltmeter,
+        Tool::Place(Element::Note),
+        Tool::Edit,
+    ] {
+        assert!(!follows(tool), "{tool:?}");
+    }
+}
+
+#[test]
+fn placing_neurons_chains_the_neurons_held_on_the_way() {
+    let (mut world, [a, b, c, _]) = neurons_in_a_row();
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    editor.set_connection_mode(ConnectionMode::Chain);
+    drag_pausing(
+        &mut editor,
+        &mut world,
+        &[at(0.0, 1.5), at(0.0, 5.0), at(0.3, 10.5), at(0.0, 19.5)],
+        &[at(0.3, 10.5)],
+    );
+    assert!(connected(&world, a, b) && connected(&world, b, c));
+    assert!(!connected(&world, a, c));
+}
+
+fn axon_around_the_middle(mode: ConnectionMode) -> (World, [Entity; 3]) {
+    let mut world = World::new();
+    let row =
+        [at(0.0, 0.0), at(0.0, 20.0), at(0.0, 40.0)].map(|position| neuron(&mut world, position));
+    let mut editor = reaching(Tool::Axon, REACH);
+    editor.set_connection_mode(mode);
+    let mut path = straight(at(0.0, 0.5), at(0.0, 18.0));
+    path.extend(straight(at(0.0, 18.0), at(8.0, 22.0)));
+    path.extend(straight(at(8.0, 22.0), at(0.0, 38.0)));
+    drag_pausing(&mut editor, &mut world, &path, &[at(0.0, 18.0)]);
+    (world, row)
+}
+
+#[test]
+fn a_chained_axon_grows_on_from_the_soma_it_held() {
+    let (world, [source, passed, target]) = axon_around_the_middle(ConnectionMode::Chain);
+    let endings = axon_endings(&world);
+    assert_eq!(endings.len(), 2, "{endings:?}");
+    let onto = |to: Entity| endings.iter().find(|ending| ending.to == to).unwrap();
+    assert!(cable_network(&world, source).contains(&onto(passed).from));
+    assert!(cable_network(&world, passed).contains(&onto(target).from));
+}
+
+#[test]
+fn a_fanned_out_axon_ends_on_every_soma_it_held() {
+    let (world, [source, passed, target]) = axon_around_the_middle(ConnectionMode::FanOut);
+    let endings = axon_endings(&world);
+    assert_eq!(endings.len(), 2, "{endings:?}");
+    for to in [passed, target] {
+        let ending = endings.iter().find(|ending| ending.to == to).unwrap();
+        assert!(cable_network(&world, source).contains(&ending.from));
+    }
+}
+
+#[test]
+fn fanning_out_attaches_to_each_neuron_once() {
+    let (mut world, mut editor, tree, beside) = axon_beside_a_dendrite();
+    editor.set_connection_mode(ConnectionMode::FanOut);
+    editor.edit(&mut world, beside);
+    assert!(editor.ending().is_some_and(|ending| tree.contains(&ending)));
+    let attached = hold_still(&mut editor, &mut world);
+    assert!(attached.is_some_and(|ending| tree.contains(&ending)));
+    let along = Vec3::new(-beside.z, 0.0, beside.x).normalize() * 0.4;
+    for step in [-2.0, -1.0, 1.0, 2.0] {
+        editor.edit(&mut world, beside + step * along);
+        assert_eq!(editor.ending(), None);
+    }
+    editor.edit(&mut world, at(-15.0, 5.0));
+    editor.edit(&mut world, beside);
+    assert_eq!(editor.ending(), None);
+    editor.lift(&mut world);
+    assert!(tree.contains(&single_ending(&world).to));
+}
+
+#[test]
+fn a_chain_can_close_a_ring_back_to_its_first_neuron() {
+    let mut world = World::new();
+    let [a, b, c] =
+        [at(0.0, 0.0), at(0.0, 10.0), at(8.0, 5.0)].map(|position| neuron(&mut world, position));
+    let mut editor = editor(Tool::StaticConnection);
+    editor.set_connection_mode(ConnectionMode::Chain);
+    drag_pausing(
+        &mut editor,
+        &mut world,
+        &[
+            at(0.0, 0.5),
+            at(0.0, 5.0),
+            at(0.3, 10.5),
+            at(4.0, 8.0),
+            at(7.5, 5.3),
+            at(4.0, 3.0),
+            at(0.5, 0.3),
+        ],
+        &[at(0.3, 10.5), at(7.5, 5.3)],
+    );
+    assert!(connected(&world, a, b) && connected(&world, b, c) && connected(&world, c, a));
+    assert_eq!(count::<CurrentSynapse>(&world), 3);
+}
+
+fn edit_along(editor: &mut Editor, world: &mut World, path: &[Vec3]) {
+    for &position in path {
+        editor.move_held();
+        editor.edit(world, position);
+    }
+}
+
+fn chained_onto_a_dendrite() -> (World, Editor, [Entity; 3], HashSet<Entity>) {
+    let mut world = World::new();
+    let [a, b, c] =
+        [at(0.0, 0.0), at(0.0, 20.0), at(0.0, 40.0)].map(|position| neuron(&mut world, position));
+    let steps = [12.0, 14.0, 16.0, 18.0].map(|z| at(0.0, z));
+    lay_dendrite(&mut world, b, &steps);
+    let dendrite = cable_network(&world, b);
+    let mut editor = reaching(Tool::Axon, REACH);
+    editor.set_connection_mode(ConnectionMode::Chain);
+    edit_along(
+        &mut editor,
+        &mut world,
+        &straight(at(0.0, 0.5), at(0.0, 12.0)),
+    );
+    let held = hold_still(&mut editor, &mut world);
+    assert!(held.is_some_and(|ending| ending != b && dendrite.contains(&ending)));
+    (world, editor, [a, b, c], dendrite)
+}
+
+#[test]
+fn a_chained_axon_leaves_a_soma_held_by_its_dendrite_only_once_the_stroke_reaches_it() {
+    let (mut world, mut editor, [_, b, c], dendrite) = chained_onto_a_dendrite();
+    let compartments = count::<Compartment>(&world);
+    let mut beside = straight(at(0.0, 12.0), at(4.0, 17.0));
+    beside.extend(straight(at(4.0, 17.0), at(4.0, 26.0)));
+    edit_along(&mut editor, &mut world, &beside);
+    assert_eq!(count::<Compartment>(&world), compartments);
+    assert_eq!(
+        editor.axon_waiting(&world).map(|(soma, _, _)| soma),
+        Some(b)
+    );
+    assert_eq!(editor.axon_being_grown(&world), None);
+    assert_eq!(editor.ending(), None);
+    edit_along(
+        &mut editor,
+        &mut world,
+        &straight(at(4.0, 26.0), at(0.5, 21.5)),
+    );
+    assert_eq!(editor.axon_waiting(&world), None);
+    edit_along(
+        &mut editor,
+        &mut world,
+        &straight(at(0.5, 21.5), at(0.0, 39.5)),
+    );
+    editor.lift(&mut world);
+    let network = cable_network(&world, b);
+    let axon: Vec<Vec3> = network
+        .difference(&dendrite)
+        .map(|&compartment| world.get::<&Position>(compartment).unwrap().position)
+        .collect();
+    assert!(!axon.is_empty());
+    assert!(axon.iter().all(|position| position.z > 20.0), "{axon:?}");
+    let endings = axon_endings(&world);
+    assert!(endings
+        .iter()
+        .any(|ending| ending.to == c && network.contains(&ending.from)));
 }
 
 #[test]
