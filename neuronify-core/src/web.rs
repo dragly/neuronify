@@ -17,6 +17,7 @@ use web_sys::{
 
 const REVOKE_DELAY_MS: i32 = 10_000;
 const TICK_MS: u32 = 10;
+const THUMP_MS: u32 = 35;
 const SHARED_TYPE: &str = "application/octet-stream";
 
 struct PressedLink {
@@ -277,11 +278,19 @@ fn click(document: &Document, link: &HtmlAnchorElement) -> Result<(), JsValue> {
 }
 
 pub fn tick() {
+    buzz(TICK_MS);
+}
+
+pub fn thump() {
+    buzz(THUMP_MS);
+}
+
+fn buzz(duration: u32) {
     let Some(navigator) = web_sys::window().map(|window| window.navigator()) else {
         return;
     };
     if js_sys::Reflect::has(&navigator, &"vibrate".into()).unwrap_or(false) {
-        navigator.vibrate_with_duration(TICK_MS);
+        navigator.vibrate_with_duration(duration);
     } else if is_ios() {
         if let Err(error) = flip_hidden_switch() {
             log::error!("Could not tick: {error:?}");

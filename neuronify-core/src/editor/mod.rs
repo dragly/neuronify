@@ -18,7 +18,8 @@ use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};
 use crate::tools::{
-    ConnectionHint, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool, Tool,
+    ConnectionHint, ConnectionMode, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool,
+    Tool,
 };
 use attach::{cable_spot, Spot};
 use drag::Drag;
@@ -35,6 +36,7 @@ pub use attach::{Bead, GLIDE_DURATION};
 pub use targets::{Shape, Targets};
 
 const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
+const DWELL_SLACK: f32 = 0.5;
 const STAYING_REACH: f32 = 1.5;
 const SHARPEST_BEND: f32 = std::f32::consts::FRAC_PI_4;
 const CORNER_REACH: f32 = 1.0;
@@ -52,6 +54,14 @@ const HINT_WIGGLE_LAG: f32 = 1.5;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pan(pub Vec3);
 
+#[derive(Clone, Copy, Debug)]
+struct Dwell {
+    anchor: Vec3,
+    since: Seconds,
+    neuron: Option<Entity>,
+    spent: bool,
+}
+
 #[derive(Default)]
 pub struct Editor {
     pub tool: Tool,
@@ -59,6 +69,7 @@ pub struct Editor {
     pub stimulation: Stimulation,
     pub selection: Option<Entity>,
     pub touch_reach: f32,
+    connection_mode: ConnectionMode,
     connection_tool: Option<ConnectionTool>,
     offer: Option<ConnectionOffer>,
     stimulation_tool: Option<StimulationTool>,
@@ -80,6 +91,9 @@ pub struct Editor {
     ending: Option<Entity>,
     drawn: HashSet<Entity>,
     spot: Option<Spot>,
+    attached: HashSet<Entity>,
+    dwell: Option<Dwell>,
+    soma_ahead: Option<Entity>,
 }
 
 impl Editor {
@@ -112,7 +126,15 @@ impl Editor {
             Tool::Place(_) => self.grows_axon(world, connection.from),
             _ => false,
         };
-        grows.then_some((connection.from, connection.start, connection.end))
+        let waits = self.soma_ahead.is_some();
+        (grows && !waits).then_some((connection.from, connection.start, connection.end))
+    }
+
+    pub fn axon_waiting(&self, world: &World) -> Option<(Entity, Vec3, Vec3)> {
+        let soma = self.soma_ahead?;
+        let connection = self.connection_tool.as_ref()?;
+        let start = world.get::<&Position>(soma).ok()?.position;
+        Some((soma, start, connection.end))
     }
 
     pub fn dendrite_being_grown(&self) -> Option<(Entity, Vec3, Vec3)> {
@@ -120,8 +142,74 @@ impl Editor {
         (self.tool == Tool::Dendrite).then_some((connection.from, connection.start, connection.end))
     }
 
+    pub fn connection_mode(&self) -> ConnectionMode {
+        match self.tool.connects() {
+            true => self.connection_mode,
+            false => ConnectionMode::One,
+        }
+    }
+
+    pub fn set_connection_mode(&mut self, mode: ConnectionMode) {
+        self.connection_mode = mode;
+    }
+
     pub fn ending(&self) -> Option<Entity> {
         self.connection_tool.as_ref().and(self.ending)
+    }
+
+    pub fn dwell(&mut self, world: &mut World, now: Seconds) -> Option<Entity> {
+        let pointer = self
+            .connection_tool
+            .as_ref()
+            .map(|connection| connection.end);
+        let Some(pointer) = pointer.filter(|_| self.connection_mode() != ConnectionMode::One)
+        else {
+            self.dwell = None;
+            return None;
+        };
+        let neuron = self.ending_neuron(world);
+        let slack = DWELL_SLACK * self.touch_reach;
+        let needed = self.connection_mode().dwell();
+        if self
+            .dwell
+            .is_none_or(|dwell| dwell.anchor.distance(pointer) > slack)
+        {
+            self.dwell = Some(Dwell {
+                anchor: pointer,
+                since: now,
+                neuron,
+                spent: false,
+            });
+        }
+        let dwell = self.dwell.as_mut()?;
+        if dwell.neuron != neuron {
+            dwell.neuron = neuron;
+            dwell.since = now;
+        }
+        if dwell.spent || neuron.is_none() || now - dwell.since < needed {
+            return None;
+        }
+        dwell.spent = true;
+        let ending = self.ending.take()?;
+        let spot = self.spot.take();
+        self.attach(world, ending, spot);
+        Some(ending)
+    }
+
+    pub fn dwelling(&self, world: &World, now: Seconds) -> Option<Seconds> {
+        if self.connection_mode() == ConnectionMode::One {
+            return None;
+        }
+        let neuron = self.ending_neuron(world)?;
+        let held = self
+            .dwell
+            .filter(|dwell| !dwell.spent && dwell.neuron == Some(neuron));
+        Some(held.map_or(Seconds(0.0), |dwell| now - dwell.since))
+    }
+
+    fn ending_neuron(&self, world: &World) -> Option<Entity> {
+        let (soma, _) = soma_of(world, self.ending()?)?;
+        Some(soma)
     }
 
     pub fn new_ending(&self, world: &World) -> Option<(Entity, Entity)> {
@@ -275,6 +363,9 @@ impl Editor {
         self.wired = false;
         self.ending = None;
         self.spot = None;
+        self.attached.clear();
+        self.dwell = None;
+        self.soma_ahead = None;
         self.drawn.clear();
         if let Some(recording) = self.recording.take() {
             self.edited |= self.history.record(recording, world);
@@ -744,12 +835,13 @@ impl Editor {
             return;
         };
         connection.end = position;
+        let from = connection.from;
         let neurons = positions_with::<LeakyNeuron>(world);
         let near = nearest_within(neurons, position, CONNECTION_REACH).map(|(neuron, _)| neuron);
         if near.is_none() {
-            measure_with_meter_at(world, connection.from, position);
+            measure_with_meter_at(world, from, position);
         }
-        self.ending = near.filter(|&neuron| neuron != connection.from);
+        self.ending = near.filter(|&neuron| neuron != from && !self.attached.contains(&neuron));
     }
 
     fn source(&self) -> Option<Entity> {
@@ -775,6 +867,36 @@ impl Editor {
         }
     }
 
+    fn attach(&mut self, world: &mut World, ending: Entity, spot: Option<Spot>) {
+        self.form(world, ending, spot);
+        let Some((soma, at)) = soma_of(world, ending) else {
+            return;
+        };
+        self.attached.insert(soma);
+        if self.connection_mode() != ConnectionMode::Chain {
+            return;
+        }
+        self.soma_ahead = (ending != soma).then_some(soma);
+        self.previous_creation = Some(soma);
+        if let Some(connection) = &mut self.connection_tool {
+            connection.from = soma;
+            connection.start = at;
+        }
+    }
+
+    fn wait_for_soma(&mut self, world: &World, position: Vec3) -> bool {
+        let Some(soma) = self.soma_ahead else {
+            return false;
+        };
+        let reached = Targets::new(world)
+            .piece_near(position, self.touch_reach, |entity| entity == soma)
+            .is_some();
+        if reached {
+            self.soma_ahead = None;
+        }
+        !reached
+    }
+
     fn grow_axon(&mut self, world: &mut World, recording: &mut Recording, position: Vec3) {
         if self.connection_tool.is_some() {
             self.extend_axon(world, recording, position);
@@ -791,24 +913,34 @@ impl Editor {
     }
 
     fn extend_axon(&mut self, world: &mut World, recording: &mut Recording, position: Vec3) {
-        let myelinated = self.myelinates();
-        let spacing = match myelinated {
-            true => INTERNODE_LENGTH,
-            false => MIN_CREATION_DISTANCE_AXON,
-        };
-        let too_near = self.too_near_previous(world, position, spacing);
         let Some(connection) = &mut self.connection_tool else {
             return;
         };
         connection.end = position;
-        let from = connection.from;
+        if self.wait_for_soma(world, position) {
+            self.ending = None;
+            self.spot = None;
+            return;
+        }
+        if !self.aim_axon(world, position) {
+            self.grow_tip(world, recording, position);
+        }
+    }
+
+    fn aim_axon(&mut self, world: &World, position: Vec3) -> bool {
+        let Some(from) = self.source() else {
+            return true;
+        };
         let targets = Targets::new(world);
-        let own = cable_network(world, from);
+        let mut skip = cable_network(world, from);
+        for &neuron in &self.attached {
+            skip.extend(cable_network(world, neuron));
+        }
         let reach = self.touch_reach;
-        let target = axon_target(world, &targets, &own, from, position, reach).or_else(|| {
+        let target = axon_target(world, &targets, &skip, from, position, reach).or_else(|| {
             let staying = cable_network(world, self.ending?);
             targets.piece_near(position, STAYING_REACH * reach, |entity| {
-                staying.contains(&entity) && !own.contains(&entity)
+                staying.contains(&entity) && !skip.contains(&entity)
             })
         });
         let soma = target
@@ -817,19 +949,31 @@ impl Editor {
         if let Some(soma) = soma {
             self.spot = None;
             self.ending = (soma != from).then_some(soma);
-            return;
+            return true;
         }
         let staying = self.ending.map(|ending| cable_network(world, ending));
         let spot =
-            cable_spot(world, position, reach, |entity| !own.contains(&entity)).or_else(|| {
+            cable_spot(world, position, reach, |entity| !skip.contains(&entity)).or_else(|| {
                 let staying = staying?;
                 cable_spot(world, position, STAYING_REACH * reach, |entity| {
-                    staying.contains(&entity) && !own.contains(&entity)
+                    staying.contains(&entity) && !skip.contains(&entity)
                 })
             });
         self.spot = spot;
         self.ending = spot.map(|spot| spot.nearest(world));
-        if spot.is_some() || too_near {
+        spot.is_some()
+    }
+
+    fn grow_tip(&mut self, world: &mut World, recording: &mut Recording, position: Vec3) {
+        let myelinated = self.myelinates();
+        let spacing = match myelinated {
+            true => INTERNODE_LENGTH,
+            false => MIN_CREATION_DISTANCE_AXON,
+        };
+        let Some(from) = self.source() else {
+            return;
+        };
+        if self.too_near_previous(world, position, spacing) {
             return;
         }
         let Some(from) = self.back_up(world, recording, from, position, spacing) else {
@@ -898,7 +1042,7 @@ impl Editor {
             let at = world.get::<&Position>(backed).ok()?.position;
             let before = world.get::<&Position>(previous).ok()?.position;
             let sharp = (before - at).angle_between(position - at) < SHARPEST_BEND;
-            if !sharp || !recording.is_new(backed) {
+            if !sharp || !recording.is_new(backed) || leads_on(world, backed) {
                 break sharp;
             }
             for connection in connections_touching(world, backed) {
@@ -1274,6 +1418,24 @@ fn cable_into(world: &World, tip: Entity) -> Option<(Entity, Entity)> {
 fn glide(world: &mut World, synapse: Entity, from: Vec3) {
     let since = crate::input::now();
     world.insert_one(synapse, Gliding { from, since }).ok();
+}
+
+fn leads_on(world: &World, compartment: Entity) -> bool {
+    world
+        .query::<&Connection>()
+        .iter()
+        .any(|connection| connection.from == compartment)
+}
+
+fn soma_of(world: &World, entity: Entity) -> Option<(Entity, Vec3)> {
+    let soma = match has::<LeakyNeuron>(world, entity) {
+        true => entity,
+        false => cable_network(world, entity)
+            .into_iter()
+            .find(|&member| has::<LeakyNeuron>(world, member))?,
+    };
+    let at = world.get::<&Position>(soma).ok()?.position;
+    Some((soma, at))
 }
 
 fn has<T: Component>(world: &World, entity: Entity) -> bool {

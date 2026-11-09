@@ -9,8 +9,8 @@ use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS
 use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
-    self, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus, LoupeView,
-    MenuChoice, Saving, Subject, LOUPE_DELAY,
+    self, AttachBurst, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus,
+    LoupeView, MenuChoice, Saving, Subject, LOUPE_DELAY, WAITING,
 };
 use crate::inertia::Inertia;
 use crate::landing::about::{AboutChoice, AboutScreen};
@@ -70,6 +70,7 @@ pub struct Neuronify {
     touch_reach: f64,
     hold_ring: Option<HoldRing>,
     attach_ring: Option<AttachRing>,
+    attach_burst: Option<AttachBurst>,
     loupe: Option<LoupeCorner>,
     loupe_focus: Option<(LoupeFocus, Seconds)>,
 }
@@ -103,6 +104,14 @@ fn tick() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn tick() {}
+
+#[cfg(target_arch = "wasm32")]
+fn thump() {
+    crate::web::thump();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn thump() {}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn file_stem(path: &std::path::Path) -> String {
@@ -239,6 +248,7 @@ impl Neuronify {
             touch_reach: input::TOUCH_REACH,
             hold_ring: None,
             attach_ring: None,
+            attach_burst: None,
             loupe: None,
             loupe_focus: None,
         };
@@ -405,7 +415,15 @@ impl Neuronify {
         let attach = self
             .attach_ring
             .and_then(|ring| Some((ring.target(), ring.look(now)?)));
-        for (target, look) in hold.into_iter().chain(attach) {
+        let burst = self
+            .attach_burst
+            .and_then(|burst| Some((burst.target, burst.look(now)?)));
+        let waiting = self
+            .editor
+            .axon_waiting(&self.world)
+            .map(|(soma, _, _)| (soma, WAITING));
+        let rings = hold.into_iter().chain(attach).chain(burst).chain(waiting);
+        for (target, look) in rings {
             self.paint_ring(application, context, target, look);
         }
     }
@@ -456,7 +474,15 @@ impl Neuronify {
         if entered || left {
             tick();
         }
-        self.attach_ring = AttachRing::next(self.attach_ring, ending, entered, input::now());
+        let now = input::now();
+        let progress = self.dwell_progress(now);
+        self.attach_ring = AttachRing::next(self.attach_ring, ending, progress, entered, now);
+    }
+
+    fn dwell_progress(&self, now: Seconds) -> Option<f32> {
+        let dwell = self.editor.connection_mode().dwell();
+        let held_for = self.editor.dwelling(&self.world, now)?;
+        Some(gui::dwell_progress(held_for, dwell))
     }
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
@@ -694,6 +720,7 @@ impl Neuronify {
         self.ghost = None;
         self.hold_ring = None;
         self.attach_ring = None;
+        self.attach_burst = None;
         self.loupe = None;
         self.landing = None;
         self.frame_scene_requested = true;
@@ -852,7 +879,15 @@ impl visula::Simulation for Neuronify {
             Some((target, held_for))
         });
         self.hold_ring = HoldRing::next(self.hold_ring, pending, grabbed, now);
-        self.attach_ring = AttachRing::next(self.attach_ring, self.editor.ending(), false, now);
+        if let Some(target) = self.editor.dwell(&mut self.world, now) {
+            thump();
+            self.attach_ring = None;
+            self.attach_burst = Some(AttachBurst { target, since: now });
+        }
+        self.attach_burst = self.attach_burst.filter(|burst| burst.look(now).is_some());
+        let progress = self.dwell_progress(now);
+        self.attach_ring =
+            AttachRing::next(self.attach_ring, self.editor.ending(), progress, false, now);
         for position in self.editor.take_presses() {
             simulation::fire_nearby(&mut self.world, &mut self.engine, position);
         }
@@ -918,6 +953,10 @@ impl visula::Simulation for Neuronify {
             self.theme,
             EditorMarks {
                 drawn_connection: &drawn_connection,
+                waiting: self
+                    .editor
+                    .axon_waiting(&self.world)
+                    .map(|(_, start, end)| (start, end)),
                 axon: self.editor.axon_being_grown(&self.world),
                 ending: self.editor.new_ending(&self.world),
                 bead: self.editor.bead(&self.world),

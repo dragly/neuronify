@@ -10,7 +10,7 @@ use crate::rendering::colors::{
 };
 use crate::rendering::shapes::{hand_outline, speaker_outline, speaker_waves};
 use crate::rendering::Theme;
-use crate::tools::Tool;
+use crate::tools::{ConnectionMode, Tool};
 
 use super::style::Chrome;
 
@@ -326,6 +326,49 @@ pub fn paint_icon(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
             painter.line_segment([at(vec2(9.2, 10.6)), at(vec2(14.6, 16.0))], stroke);
             painter.line_segment([at(vec2(11.4, 19.6)), at(vec2(19.5, 19.6))], stroke);
         }
+    }
+}
+
+pub fn paint_connection_mode(painter: &Painter, mode: ConnectionMode, rect: Rect, color: Color32) {
+    let scale = rect.width().min(rect.height()) / GRID;
+    let origin = rect.center() - Vec2::splat(GRID / 2.0) * scale;
+    let at = |point: Vec2| origin + point * scale;
+    let stroke = Stroke::new(STROKE * scale, color);
+    let (lines, dots): (&[[Vec2; 2]], &[(Vec2, f32)]) = match mode {
+        ConnectionMode::One => (
+            &[[vec2(6.5, 16.0), vec2(17.5, 8.0)]],
+            &[(vec2(5.0, 17.0), 2.4), (vec2(19.0, 7.0), 2.4)],
+        ),
+        ConnectionMode::Chain => (
+            &[
+                [vec2(4.5, 17.0), vec2(11.5, 8.0)],
+                [vec2(11.5, 8.0), vec2(19.5, 15.5)],
+            ],
+            &[
+                (vec2(4.0, 17.5), 2.3),
+                (vec2(11.5, 7.5), 2.3),
+                (vec2(20.0, 16.0), 2.3),
+            ],
+        ),
+        ConnectionMode::FanOut => (
+            &[
+                [vec2(6.0, 12.0), vec2(17.5, 5.0)],
+                [vec2(6.0, 12.0), vec2(18.5, 12.0)],
+                [vec2(6.0, 12.0), vec2(17.5, 19.0)],
+            ],
+            &[
+                (vec2(4.5, 12.0), 2.4),
+                (vec2(19.0, 4.5), 2.0),
+                (vec2(20.0, 12.0), 2.0),
+                (vec2(19.0, 19.5), 2.0),
+            ],
+        ),
+    };
+    for &[from, to] in lines {
+        painter.line_segment([at(from), at(to)], stroke);
+    }
+    for &(center, radius) in dots {
+        painter.circle_filled(at(center), radius * scale, color);
     }
 }
 

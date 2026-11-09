@@ -10,7 +10,7 @@ use crate::components::Milliseconds;
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSET};
 use crate::editor::Bead;
 use crate::rendering::colors::{terminal_color, Theme};
-use crate::rendering::connections::{connection_being_drawn, WireRouter};
+use crate::rendering::connections::{axon_waiting, connection_being_drawn, WireRouter};
 use crate::rendering::cylinders::{
     bead_ending, compartment_radii, growing_axon, growing_dendrite, growing_ending,
 };
@@ -35,6 +35,7 @@ use crate::rendering::voltmeter::collect_voltmeter_traces;
 
 pub struct EditorMarks<'a> {
     pub drawn_connection: &'a [Vec3],
+    pub waiting: Option<(Vec3, Vec3)>,
     pub axon: Option<(Entity, Vec3, Vec3)>,
     pub ending: Option<(Entity, Entity)>,
     pub bead: Option<Bead>,
@@ -289,6 +290,11 @@ impl SceneRenderer {
             .wire_router
             .collect(world, &palette, crate::input::now());
         let mut connections = connection_being_drawn(marks.drawn_connection, &palette);
+        connections.extend(
+            marks
+                .waiting
+                .and_then(|(start, end)| axon_waiting(start, end, &palette)),
+        );
         connections.extend(collect_voltmeter_traces(world, &palette));
         connections.extend(collect_spike_detectors(world, &palette));
         connections.extend(collect_rate_plots(world, &palette));

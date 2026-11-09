@@ -8,6 +8,7 @@ const DOUBLE_TAP_SLOP: f64 = 40.0;
 const DOUBLE_TAP_DELAY: Seconds = Seconds(0.3);
 const SECOND_FINGER_DELAY: Seconds = Seconds(0.12);
 pub const HOLD: Seconds = Seconds(0.33);
+pub const DWELL: Seconds = Seconds(0.45);
 pub const TOUCH_REACH: f64 = 14.0;
 
 #[cfg(not(target_arch = "wasm32"))]

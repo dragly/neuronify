@@ -28,6 +28,8 @@ const NEURON_COST: f32 = 10.0;
 const CROSSING_COST: f32 = 60.0;
 const FOREIGN_CROSSING_COST: f32 = 10.0;
 const OVERLAP_COST: f32 = 30.0;
+const WAITING_STRENGTH: f32 = 0.4;
+const WAITING_FADE: f32 = 0.5;
 const FAR_SIDE_COST: f32 = 5.0;
 const CACHED_LAYOUTS: usize = 8;
 const LAYOUT_TOLERANCE: f32 = 1e-3;
@@ -1031,12 +1033,36 @@ pub fn connection_being_drawn(points: &[Vec3], palette: &Palette) -> Vec<Connect
         .collect()
 }
 
+pub fn axon_waiting(start: Vec3, end: Vec3, palette: &Palette) -> Option<ConnectionData> {
+    let color = palette.neutral.lerp(palette.floor, WAITING_FADE);
+    (start.distance(end) > MIN_SEGMENT_LENGTH).then(|| ConnectionData {
+        position_a: start,
+        position_b: end,
+        strength: WAITING_STRENGTH,
+        directional: 0.0,
+        start_color: color,
+        end_color: color,
+        _padding: Default::default(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::elements::{spawn_spike_detector, spawn_spike_detector_wire, spawn_voltmeter};
     use crate::rendering::colors::Theme;
     use hecs::World;
+
+    #[test]
+    fn an_axon_waiting_on_a_soma_is_a_thin_line_without_an_arrow() {
+        let palette = Theme::Dark.palette();
+        let end = Vec3::X * 5.0;
+        let drawn = connection_being_drawn(&[Vec3::ZERO, end], &palette);
+        let waiting = axon_waiting(Vec3::ZERO, end, &palette).unwrap();
+        assert!(waiting.strength < drawn[0].strength);
+        assert_eq!(waiting.directional, 0.0);
+        assert!(axon_waiting(end, end, &palette).is_none());
+    }
 
     fn frame() -> Frame {
         Frame::new(
