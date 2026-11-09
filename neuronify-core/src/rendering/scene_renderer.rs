@@ -11,7 +11,9 @@ use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSE
 use crate::editor::Bead;
 use crate::rendering::colors::{terminal_color, Theme};
 use crate::rendering::connections::{connection_being_drawn, WireRouter};
-use crate::rendering::cylinders::{bead_ending, growing_axon, growing_dendrite, growing_ending};
+use crate::rendering::cylinders::{
+    bead_ending, compartment_radii, growing_axon, growing_dendrite, growing_ending,
+};
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
 use crate::rendering::ghost::Ghost;
@@ -19,12 +21,12 @@ use crate::rendering::gpu_types::{
     ArcData, ConnectionData, CylinderData, HaloData, MeterBackgroundData, Sphere, TorusData,
 };
 use crate::rendering::halos::{collect_halos, create_halos};
-use crate::rendering::labels::LabelRenderer;
+use crate::rendering::labels::{Drawn, LabelRenderer};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::meter_backgrounds::{collect_meter_backgrounds, create_meter_backgrounds};
 use crate::rendering::notes::NoteRenderer;
 use crate::rendering::rate_plot::collect_rate_plots;
-use crate::rendering::scene::collect_scene;
+use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spike_detector::collect_spike_detectors;
 use crate::rendering::visual_input::collect_visual_input_lines;
@@ -254,7 +256,9 @@ impl SceneRenderer {
             .clamp(MIN_SHADOW_EXTENT, MAX_SHADOW_EXTENT);
 
         let palette = theme.palette();
-        let mut scene = collect_scene(world, &palette, time);
+        let radii = compartment_radii(world);
+        let paths = shown_paths(world, &radii, &palette);
+        let mut scene = collect_scene_along(world, &radii, &paths, &palette, time);
         let axon = match (marks.bead, marks.ending) {
             (Some(bead), _) => bead_ending(world, &bead, &palette),
             (None, Some((from, to))) => growing_ending(world, from, to, &palette),
@@ -306,7 +310,12 @@ impl SceneRenderer {
         self.halo_buffer
             .update(&application.device, &application.queue, &halos);
         self.notes.update(application, world);
-        self.labels.update(application, world, theme);
+        let drawn = Drawn {
+            radii: &radii,
+            paths: &paths,
+            wires: &wires,
+        };
+        self.labels.update(application, world, theme, &drawn);
         self.gauges.update(application, world, &palette);
     }
 
