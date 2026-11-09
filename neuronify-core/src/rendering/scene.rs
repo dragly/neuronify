@@ -58,23 +58,33 @@ impl Scene {
 pub fn collect_scene(world: &hecs::World, palette: &Palette, time: Milliseconds) -> Scene {
     let radii = compartment_radii(world);
     let paths = shown_paths(world, &radii, palette);
+    collect_scene_along(world, &radii, &paths, palette, time)
+}
+
+pub fn collect_scene_along(
+    world: &hecs::World,
+    radii: &HashMap<Entity, f32>,
+    paths: &BTreeMap<Entity, ConnectionPath>,
+    palette: &Palette,
+    time: Milliseconds,
+) -> Scene {
     let mut scene = Scene {
-        spheres: collect_spheres(world, &radii, &paths, palette),
-        cylinders: collect_cylinders(world, &radii, &paths, palette),
+        spheres: collect_spheres(world, radii, paths, palette),
+        cylinders: collect_cylinders(world, radii, paths, palette),
         rings: collect_rings(world, palette),
         transmitter: Vec::new(),
     };
-    scene.extend(collect_transmitter(world, &paths, &radii, palette, time));
+    scene.extend(collect_transmitter(world, paths, radii, palette, time));
     scene
         .spheres
-        .extend(collect_current_flow(world, &paths, time));
-    scene.extend(collect_signals(world, &paths, palette, time));
+        .extend(collect_current_flow(world, paths, time));
+    scene.extend(collect_signals(world, paths, palette, time));
     scene.extend(collect_shapes(world, palette));
     scene.cylinders.extend(collect_visual_input_tiles(world));
     scene
 }
 
-fn shown_paths(
+pub fn shown_paths(
     world: &hecs::World,
     radii: &HashMap<Entity, f32>,
     palette: &Palette,
