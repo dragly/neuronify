@@ -987,7 +987,7 @@ impl Editor {
         let target = axon_target(world, &targets, &skip, from, position, reach).or_else(|| {
             let staying = cable_network(world, self.ending?);
             targets.piece_near(position, STAYING_REACH * reach, |entity| {
-                staying.contains(&entity) && !skip.contains(&entity)
+                staying.contains(&entity) && !skip.contains(&entity) && takes_axons(world, entity)
             })
         });
         let soma = target
@@ -999,13 +999,13 @@ impl Editor {
             return true;
         }
         let staying = self.ending.map(|ending| cable_network(world, ending));
-        let spot =
-            cable_spot(world, position, reach, |entity| !skip.contains(&entity)).or_else(|| {
-                let staying = staying?;
-                cable_spot(world, position, STAYING_REACH * reach, |entity| {
-                    staying.contains(&entity) && !skip.contains(&entity)
-                })
-            });
+        let accepts = |entity: Entity| !skip.contains(&entity) && takes_axons(world, entity);
+        let spot = cable_spot(world, position, reach, accepts).or_else(|| {
+            let staying = staying?;
+            cable_spot(world, position, STAYING_REACH * reach, |entity| {
+                staying.contains(&entity) && accepts(entity)
+            })
+        });
         self.spot = spot;
         self.ending = spot.map(|spot| spot.nearest(world));
         spot.is_some()
@@ -1519,9 +1519,12 @@ fn axon_target(
         return on_source;
     }
     targets.piece_near(position, reach, |entity| {
-        !own.contains(&entity)
-            && (has::<LeakyNeuron>(world, entity) || has::<Compartment>(world, entity))
+        !own.contains(&entity) && takes_axons(world, entity)
     })
+}
+
+fn takes_axons(world: &World, entity: Entity) -> bool {
+    has::<LeakyNeuron>(world, entity) || has::<Dendrite>(world, entity)
 }
 
 fn connection_at(world: &World, position: Vec3) -> Option<Entity> {
