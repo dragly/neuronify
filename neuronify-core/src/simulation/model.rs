@@ -29,7 +29,7 @@ pub const RANVIER_LEAK: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(
 pub const ENDING_CONDUCTANCE: Microsiemens = Microsiemens(0.0055);
 pub const SOMA_ENDING_SCALE: f64 = 8.0;
 pub const INHIBITORY_ENDING_SCALE: f64 = 40.0;
-pub const ENDING_DELAY: Milliseconds = Milliseconds(0.5);
+pub const ENDING_DELAY: Milliseconds = Milliseconds(1.5);
 pub const EXCITATORY_TAU: Milliseconds = Milliseconds(2.0);
 pub const INHIBITORY_TAU: Milliseconds = Milliseconds(6.0);
 pub const EXCITATORY_REVERSAL: Millivolts = Millivolts(0.0);
@@ -162,6 +162,13 @@ impl Preparation {
         }
     }
 
+    pub fn ending_delay(self) -> Milliseconds {
+        match self {
+            Preparation::Squid => ENDING_DELAY,
+            Preparation::Mammal => mammal::ENDING_DELAY,
+        }
+    }
+
     pub fn cable_ending_scale(self) -> f64 {
         match self {
             Preparation::Squid => 1.0,
@@ -202,6 +209,9 @@ pub fn prepare(world: &mut World, preparation: Preparation) {
         }
     }
     commands.run_on(world);
+    for ending in world.query_mut::<&mut ConductanceSynapse>() {
+        ending.delay = preparation.ending_delay();
+    }
     rest(world, preparation);
 }
 
@@ -393,7 +403,7 @@ pub fn ending_kinetics(world: &World, from: Entity) -> Kinetics {
 mod tests {
     use super::*;
     use crate::dendrites::spawn_dendrites;
-    use crate::elements::Element;
+    use crate::elements::{spawn_cable, Element};
 
     #[test]
     fn a_neuron_with_dendrites_is_drawn_as_wide_as_its_soma_diameter() {
@@ -408,5 +418,19 @@ mod tests {
         let capacitance = LeakyNeuron::default().capacitance;
         let point_diameter = (capacitance / DENDRITE_CAPACITANCE / std::f64::consts::PI).sqrt();
         assert_eq!(soma_diameter(&world, point), point_diameter);
+    }
+
+    #[test]
+    fn an_axon_ending_waits_the_synaptic_delay_of_its_preparation() {
+        let mut world = World::new();
+        prepare(&mut world, Preparation::Mammal);
+        let from = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::ZERO);
+        let to = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::X * 10.0);
+        let ending = spawn_cable(&mut world, from, to, true);
+        let delay = |world: &World| world.get::<&ConductanceSynapse>(ending).unwrap().delay;
+        assert_eq!(delay(&world), mammal::ENDING_DELAY);
+
+        prepare(&mut world, Preparation::Squid);
+        assert_eq!(delay(&world), ENDING_DELAY);
     }
 }
