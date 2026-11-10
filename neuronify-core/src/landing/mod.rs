@@ -16,7 +16,6 @@ use egui::{
 use hecs::World;
 
 use crate::components::{Milliseconds, Seconds};
-use crate::constants::DEFAULT_SPEED;
 use crate::examples::{Example, EXAMPLE_CATEGORIES};
 use crate::gui::icons::{paint_icon, Icon};
 use crate::library::{Library, SavedSimulation};
@@ -95,7 +94,6 @@ pub enum LandingChoice {
     Example {
         name: &'static str,
         world: Box<World>,
-        time: Milliseconds,
     },
     BackToSimulation,
     About,
@@ -150,19 +148,17 @@ struct SavedCard {
     id: String,
     name: String,
     modified: DateTime<Utc>,
-    speed: f64,
     preview: Result<Preview, String>,
 }
 
 impl SavedCard {
     fn new(simulation: &SavedSimulation) -> SavedCard {
-        let loaded = crate::serialization::load(&simulation.bytes);
         SavedCard {
             id: simulation.id.clone(),
             name: simulation.name.clone(),
             modified: simulation.modified,
-            speed: loaded.as_ref().map_or(DEFAULT_SPEED, |saved| saved.speed),
-            preview: loaded.map(|saved| Preview::new(saved.world, saved.time)),
+            preview: crate::serialization::load(&simulation.bytes)
+                .map(|saved| Preview::new(saved.world, saved.time)),
         }
     }
 }
@@ -283,24 +279,25 @@ impl LandingScreen {
             }
             Picked::Card(Card::NewSimulation) => Some(LandingChoice::NewSimulation),
             Picked::Card(Card::Saved(index)) => {
-                if self.saved[index].preview.is_err() {
-                    return None;
-                }
-                let card = self.saved.swap_remove(index);
-                let preview = card.preview.ok()?;
+                let id = self.saved[index].id.clone();
+                let simulation = library.get(&id)?;
+                let saved = crate::serialization::load(&simulation.bytes).ok()?;
                 Some(LandingChoice::Saved {
-                    id: card.id,
-                    world: Box::new(preview.world),
-                    time: preview.time,
-                    speed: card.speed,
+                    id,
+                    world: Box::new(saved.world),
+                    time: saved.time,
+                    speed: saved.speed,
                 })
             }
             Picked::Card(Card::Example { category, index }) => {
-                let card = self.examples_by_category[category].swap_remove(index);
+                let example = self.examples_by_category[category][index].example;
+                let world = example
+                    .spawn()
+                    .map_err(|e| log::error!("Could not load {}: {e}", example.name))
+                    .ok()?;
                 Some(LandingChoice::Example {
-                    name: card.example.name,
-                    world: Box::new(card.preview.world),
-                    time: card.preview.time,
+                    name: example.name,
+                    world: Box::new(world),
                 })
             }
             Picked::BackToSimulation => Some(LandingChoice::BackToSimulation),
@@ -1025,11 +1022,23 @@ mod tests {
         assert!(opened);
     }
 
+    fn run_previews(landing: &mut LandingScreen) {
+        landing.update(Seconds(1.0), 10);
+        assert!(landing
+            .previews()
+            .any(|preview| preview.time > Milliseconds::ZERO));
+    }
+
+    fn as_saved(world: &World, time: Milliseconds, speed: f64) -> Vec<u8> {
+        crate::serialization::save(world, time, speed).unwrap()
+    }
+
     #[test]
     fn clicking_a_card_opens_its_example() {
         let context = egui::Context::default();
         let mut landing = LandingScreen::new(false);
         let (output, _) = run(&context, &mut landing, vec![]);
+        run_previews(&mut landing);
         let position = text_position(&output, "1. Spikes").unwrap() + vec2(4.0, 4.0);
 
         let click = |pressed| Event::PointerButton {
@@ -1045,10 +1054,20 @@ mod tests {
         );
         let (_, choice) = run(&context, &mut landing, vec![click(false)]);
 
-        let Some(LandingChoice::Example { world, .. }) = choice else {
+        let Some(LandingChoice::Example { name, world }) = choice else {
             panic!("clicking the card did not open an example");
         };
         assert_eq!(world.query::<(Entity, &LeakyNeuron)>().iter().count(), 2);
+        let example = EXAMPLE_CATEGORIES
+            .iter()
+            .flat_map(|category| category.examples)
+            .find(|example| example.name == name)
+            .unwrap();
+        assert_eq!(
+            as_saved(&world, Milliseconds::ZERO, SAVED_SPEED),
+            as_saved(&example.spawn().unwrap(), Milliseconds::ZERO, SAVED_SPEED),
+            "the example did not open as its file has it"
+        );
     }
 
     #[test]
@@ -1220,6 +1239,7 @@ mod tests {
         let id = library.simulations()[0].id.clone();
         let mut landing = LandingScreen::new(false);
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        run_previews(&mut landing);
         let primary = PointerButton::Primary;
         let (_, choice) = click_text(
             &context,
@@ -1239,10 +1259,13 @@ mod tests {
             panic!("clicking the card did not open the saved simulation");
         };
         assert_eq!(opened, id);
-        assert!(time >= Milliseconds(1000.0));
+        assert_eq!(time, Milliseconds(1000.0));
         assert_eq!(speed, SAVED_SPEED);
-        let neurons = |world: &World| world.query::<(Entity, &LeakyNeuron)>().iter().count();
-        assert_eq!(neurons(&world), neurons(&saved_example()));
+        assert_eq!(
+            as_saved(&world, time, speed),
+            library.simulations()[0].bytes,
+            "the simulation did not open as it was saved"
+        );
     }
 
     #[test]
