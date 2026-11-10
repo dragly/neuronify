@@ -214,6 +214,10 @@ pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: boo
     if !directional {
         return spawn_link(world, from, to, false);
     }
+    let ending = ConductanceSynapse {
+        delay: Preparation::of(world).ending_delay(),
+        ..Default::default()
+    };
     world.spawn((
         Connection {
             from,
@@ -222,7 +226,7 @@ pub fn spawn_cable(world: &mut World, from: Entity, to: Entity, directional: boo
             directional,
         },
         Deletable {},
-        ConductanceSynapse::default(),
+        ending,
         SynapseState::default(),
     ))
 }

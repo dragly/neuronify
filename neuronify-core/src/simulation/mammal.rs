@@ -10,6 +10,7 @@ pub const CELSIUS: Celsius = Celsius(37.0);
 pub const RESTING_POTENTIAL: Millivolts = Millivolts(-70.0);
 pub const AXON_DIAMETER: Micrometres = Micrometres(0.4);
 pub const ENDING_CONDUCTANCE: Microsiemens = Microsiemens(0.01);
+pub const ENDING_DELAY: Milliseconds = Milliseconds(0.5);
 pub const SHORTEST_DENDRITE_PULSE_INTERVAL: Milliseconds = Milliseconds(15.0);
 const MEMBRANE_RESISTANCE: OhmSquareCentimetres = OhmSquareCentimetres(20_000.0);
 const AXIAL_RESISTIVITY: OhmCentimetres = OhmCentimetres(150.0);
