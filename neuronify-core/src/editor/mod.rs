@@ -39,6 +39,7 @@ const CONNECTION_REACH: f32 = 2.0 * NODE_RADIUS;
 const DWELL_SLACK: f32 = 0.5;
 const STAYING_REACH: f32 = 1.5;
 const SHARPEST_BEND: f32 = std::f32::consts::FRAC_PI_4;
+const SHARPEST_ENDING_TURN: f32 = std::f32::consts::FRAC_PI_4;
 const CORNER_REACH: f32 = 1.0;
 const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
@@ -922,9 +923,52 @@ impl Editor {
             self.spot = None;
             return;
         }
-        if !self.aim_axon(world, position) {
+        let ends = self.aim_axon(world, position) && self.straighten(world, recording, position);
+        if !ends {
             self.grow_tip(world, recording, position);
         }
+    }
+
+    fn straighten(&mut self, world: &mut World, recording: &mut Recording, position: Vec3) -> bool {
+        let Some(at) = self.ending_at(world) else {
+            return true;
+        };
+        while let Some(tip) = self.source() {
+            let Some(previous) = turns_sharply(world, tip, at) else {
+                return true;
+            };
+            if !recording.is_new(tip) || leads_on(world, tip) {
+                self.ending = None;
+                self.spot = None;
+                return false;
+            }
+            self.take_back(world, recording, tip);
+            let Ok(start) = world.get::<&Position>(previous).map(|p| p.position) else {
+                return true;
+            };
+            self.previous_creation = Some(previous);
+            self.connection_tool = Some(ConnectionTool {
+                start,
+                end: position,
+                from: previous,
+            });
+        }
+        true
+    }
+
+    fn ending_at(&self, world: &World) -> Option<Vec3> {
+        match self.spot {
+            Some(spot) => spot.at(world),
+            None => Some(world.get::<&Position>(self.ending?).ok()?.position),
+        }
+    }
+
+    fn take_back(&mut self, world: &mut World, recording: &mut Recording, compartment: Entity) {
+        for connection in connections_touching(world, compartment) {
+            recording.take(world, connection);
+        }
+        recording.take(world, compartment);
+        self.drawn.remove(&compartment);
     }
 
     fn aim_axon(&mut self, world: &World, position: Vec3) -> bool {
@@ -1045,11 +1089,7 @@ impl Editor {
             if !sharp || !recording.is_new(backed) || leads_on(world, backed) {
                 break sharp;
             }
-            for connection in connections_touching(world, backed) {
-                recording.take(world, connection);
-            }
-            recording.take(world, backed);
-            self.drawn.remove(&backed);
+            self.take_back(world, recording, backed);
             backed = previous;
         };
         let at = world.get::<&Position>(backed).ok()?.position;
@@ -1418,6 +1458,17 @@ fn cable_into(world: &World, tip: Entity) -> Option<(Entity, Entity)> {
 fn glide(world: &mut World, synapse: Entity, from: Vec3) {
     let since = crate::input::now();
     world.insert_one(synapse, Gliding { from, since }).ok();
+}
+
+fn turns_sharply(world: &World, tip: Entity, at: Vec3) -> Option<Entity> {
+    if !has::<Compartment>(world, tip) {
+        return None;
+    }
+    let (_, previous) = cable_into(world, tip)?;
+    let tip_at = world.get::<&Position>(tip).ok()?.position;
+    let before = world.get::<&Position>(previous).ok()?.position;
+    let turn = (tip_at - before).angle_between(at - tip_at);
+    (turn > SHARPEST_ENDING_TURN).then_some(previous)
 }
 
 fn leads_on(world: &World, compartment: Entity) -> bool {
