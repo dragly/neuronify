@@ -1,0 +1,24 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"current source" = 6
+"excitatory neuron" = 6
+"inhibitory neuron" = 6
+link = 1
+note = 6
+synapse = 22
+
+[spikes]
+1 = [10]
+2 = [8]
+3 = [10]
+4 = [2]
+5 = [5]
+6 = [4]
+7 = [9]
+8 = [8]
+9 = [10]
+10 = [2]
+11 = [4]
+12 = [4]

@@ -1,0 +1,16 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"adaptive neuron" = 1
+"excitatory neuron" = 1
+note = 1
+"Poisson generator" = 1
+"rate plot" = 1
+"regular spike generator" = 1
+synapse = 4
+voltmeter = 1
+
+[spikes]
+"1 Adaptive" = [30]
+"2 Output" = [1]

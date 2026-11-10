@@ -1,0 +1,17 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"alternating current source" = 1
+"current source" = 1
+"excitatory neuron" = 4
+"Poisson generator" = 1
+"regular spike generator" = 1
+"spike detector" = 1
+synapse = 2
+
+[spikes]
+"1 DC current source" = [5]
+"2 AC current source" = [4]
+"3 Irregular spike generator" = [12]
+"4 Regular Spike generator" = [19]

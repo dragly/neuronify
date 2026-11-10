@@ -1,0 +1,16 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"current source" = 1
+"excitatory neuron" = 3
+"inhibitory neuron" = 1
+note = 2
+"spike detector" = 1
+synapse = 5
+
+[spikes]
+"1 Input" = [6]
+2 = [3]
+3 = [3]
+4 = [3]

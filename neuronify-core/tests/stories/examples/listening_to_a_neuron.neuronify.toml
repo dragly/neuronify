@@ -1,0 +1,13 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"excitatory neuron" = 1
+loudspeaker = 1
+note = 1
+"spike detector" = 1
+synapse = 1
+"visual input" = 1
+
+[spikes]
+"1 Cortex" = [5]

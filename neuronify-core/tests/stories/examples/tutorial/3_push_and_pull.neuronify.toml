@@ -1,0 +1,17 @@
+seconds = 10.0
+runs = ["alone", "sensor 1", "sensor 2"]
+
+[elements]
+"current source" = 1
+"excitatory neuron" = 2
+"inhibitory neuron" = 1
+link = 1
+note = 2
+synapse = 5
+"touch sensor" = 2
+voltmeter = 1
+
+[spikes]
+1 = [0, 1, 0]
+2 = [6, 6, 5]
+3 = [0, 0, 1]

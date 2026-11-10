@@ -1,0 +1,12 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"current source" = 1
+"excitatory neuron" = 1
+link = 1
+note = 4
+voltmeter = 1
+
+[spikes]
+1 = [8]
