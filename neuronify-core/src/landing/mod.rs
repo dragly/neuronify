@@ -10,7 +10,7 @@ use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, NaiveDateTime, Utc}
 use egui::text::LayoutJob;
 use egui::{
     pos2, vec2, Align, Align2, Color32, CursorIcon, FontId, Galley, Key, Layout, Painter, Rect,
-    Response, RichText, ScrollArea, Sense, Stroke, StrokeKind, TextWrapMode, Ui, WidgetInfo,
+    Response, RichText, ScrollArea, Sense, Stroke, StrokeKind, TextWrapMode, Ui, Vec2, WidgetInfo,
     WidgetType,
 };
 use hecs::World;
@@ -33,6 +33,8 @@ struct Colors {
     danger: Color32,
     text: Color32,
     subtext: Color32,
+    folder: Color32,
+    sheet: Color32,
 }
 
 const DARK: Colors = Colors {
@@ -43,6 +45,8 @@ const DARK: Colors = Colors {
     danger: Color32::from_rgb(243, 139, 168),
     text: Color32::from_rgb(205, 214, 244),
     subtext: Color32::from_rgb(166, 173, 200),
+    folder: Color32::from_rgb(88, 91, 112),
+    sheet: Color32::from_rgb(127, 132, 156),
 };
 
 const LIGHT: Colors = Colors {
@@ -53,6 +57,8 @@ const LIGHT: Colors = Colors {
     danger: Color32::from_rgb(210, 15, 57),
     text: Color32::from_rgb(76, 79, 105),
     subtext: Color32::from_rgb(92, 95, 119),
+    folder: Color32::from_rgb(204, 208, 218),
+    sheet: Color32::from_rgb(255, 255, 255),
 };
 
 impl Colors {
@@ -77,12 +83,22 @@ const CARD_RADIUS: u8 = 10;
 const TITLE_GAP: f32 = 4.0;
 const END_LINK_GAP: f32 = 24.0;
 const THUMBNAIL_ASPECT: f32 = 9.0 / 16.0;
+const FOLDER_THUMBNAIL_ASPECT: f32 = 3.0 / 4.0;
 const THUMBNAIL_RADIUS: u8 = 6;
 const STACK_LAYERS: usize = 3;
 const STACK_TILE_SCALE: f32 = 0.74;
 const STACK_STEP: f32 = 0.07;
+const FOLDER_TAB_WIDTH: f32 = 0.4;
+const FOLDER_TAB_HEIGHT: f32 = 16.0;
+const FOLDER_TAB_RADIUS: u8 = 4;
+const FOLDER_BACK_TOP: f32 = 8.0;
+const FOLDER_FRONT_TOP: f32 = 21.0;
+const FOLDER_FRONT_MARGIN: f32 = 5.0;
+const FOLDER_SHEETS: usize = 2;
+const FOLDER_SHEET_STEP: Vec2 = vec2(4.0, 5.0);
 const STILL_DRAWING_MICROSECONDS_PER_FRAME: i64 = 2000;
 const YOUR_SIMULATIONS: &str = "Your simulations";
+const EXAMPLES: &str = "Examples";
 
 pub enum LandingChoice {
     NewSimulation,
@@ -107,6 +123,7 @@ enum Card {
     Saved(usize),
     Example { category: usize, index: usize },
     More { section: Section, hidden: usize },
+    Folder { category: usize },
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -277,6 +294,10 @@ impl LandingScreen {
                 self.section = Some(section);
                 None
             }
+            Picked::Card(Card::Folder { category }) => {
+                self.section = Some(Section::Examples(category));
+                None
+            }
             Picked::Overview => {
                 self.section = None;
                 None
@@ -368,9 +389,15 @@ impl LandingScreen {
                 .color(colors.subtext),
         );
 
-        for section in Section::all() {
+        let folded = columns(width) == 2;
+        for section in Section::all().filter(|&section| !folded || section == Section::Yours) {
             if let Some(section_picked) = self.section(ui, width, section) {
                 picked = Some(section_picked);
+            }
+        }
+        if folded {
+            if let Some(folder_picked) = self.folders(ui, width) {
+                picked = Some(folder_picked);
             }
         }
         ui.add_space(48.0);
@@ -393,20 +420,10 @@ impl LandingScreen {
         let colors = Colors::of(self.theme);
         let cards = self.cards(section);
         let mut picked = None;
-        ui.add_space(24.0);
-        let (header, _) =
-            ui.allocate_exact_size(vec2(width, SECTION_HEADER_HEIGHT), Sense::hover());
-        ui.painter().text(
-            header.left_center(),
-            Align2::LEFT_CENTER,
-            section.title(),
-            FontId::proportional(20.0),
-            colors.text,
-        );
+        let header = heading(ui, colors, width, section.title());
         if cards.len() > CARDS_PER_SECTION && see_all(ui, colors, header, section).clicked() {
             picked = Some(Picked::Section(section));
         }
-        ui.add_space(8.0);
         let shown: Vec<Card> = if cards.len() > CARDS_PER_SECTION {
             let kept = CARDS_PER_SECTION - 1;
             let more = Card::More {
@@ -417,10 +434,20 @@ impl LandingScreen {
         } else {
             cards
         };
-        if let Some(card) = self.card_grid(ui, width, &shown) {
+        if let Some(card) = self.card_grid(ui, width, &shown, THUMBNAIL_ASPECT) {
             picked = Some(Picked::Card(card));
         }
         picked
+    }
+
+    fn folders(&mut self, ui: &mut Ui, width: f32) -> Option<Picked> {
+        heading(ui, Colors::of(self.theme), width, EXAMPLES);
+        let folders: Vec<Card> = (0..self.examples_by_category.len())
+            .filter(|&category| !self.examples_by_category[category].is_empty())
+            .map(|category| Card::Folder { category })
+            .collect();
+        self.card_grid(ui, width, &folders, FOLDER_THUMBNAIL_ASPECT)
+            .map(Picked::Card)
     }
 
     fn section_page(&mut self, ui: &mut Ui, width: f32, section: Section) -> Option<Picked> {
@@ -434,7 +461,7 @@ impl LandingScreen {
         ui.label(RichText::new(section.title()).size(34.0).color(colors.text));
         ui.add_space(24.0);
         let cards = self.cards(section);
-        if let Some(card) = self.card_grid(ui, width, &cards) {
+        if let Some(card) = self.card_grid(ui, width, &cards, THUMBNAIL_ASPECT) {
             picked = Some(Picked::Card(card));
         }
         ui.add_space(40.0);
@@ -479,6 +506,11 @@ impl LandingScreen {
                 )
             }
             Card::More { hidden, .. } => ("See all".to_owned(), format!("{hidden} more"), rows),
+            Card::Folder { category } => (
+                EXAMPLE_CATEGORIES[category].name.to_owned(),
+                simulations(self.examples_by_category[category].len()),
+                rows,
+            ),
         };
         let colors = Colors::of(self.theme);
         let name_color = match card {
@@ -496,7 +528,13 @@ impl LandingScreen {
         ]
     }
 
-    fn card_grid(&mut self, ui: &mut Ui, width: f32, cards: &[Card]) -> Option<Card> {
+    fn card_grid(
+        &mut self,
+        ui: &mut Ui,
+        width: f32,
+        cards: &[Card],
+        thumbnail_aspect: f32,
+    ) -> Option<Card> {
         let columns = columns(width);
         let text_rows = if columns == 2 {
             COMPACT_TEXT_ROWS
@@ -505,7 +543,7 @@ impl LandingScreen {
         };
         let card_width = (width - CARD_GAP * (columns - 1) as f32) / columns as f32;
         let text_width = card_width - 2.0 * CARD_PADDING;
-        let thumbnail_size = vec2(text_width, (text_width * THUMBNAIL_ASPECT).round());
+        let thumbnail_size = vec2(text_width, (text_width * thumbnail_aspect).round());
         let theme = self.theme;
         let colors = Colors::of(theme);
         let mut clicked = None;
@@ -530,6 +568,7 @@ impl LandingScreen {
                     let on_screen = ui.is_rect_visible(rect);
                     let previewed = match card {
                         Card::More { section, .. } => self.cards(section)[CARDS_PER_SECTION - 1],
+                        Card::Folder { category } => Card::Example { category, index: 0 },
                         card => card,
                     };
                     let mut preview =
@@ -561,7 +600,7 @@ impl LandingScreen {
                         rect.min + vec2(CARD_PADDING, CARD_PADDING),
                         thumbnail_size,
                     );
-                    if !matches!(card, Card::More { .. }) {
+                    if !matches!(card, Card::More { .. } | Card::Folder { .. }) {
                         painter.rect_filled(thumbnail, THUMBNAIL_RADIUS, colors.background);
                     }
                     let thumbnail_painter = ui.painter_at(thumbnail);
@@ -570,6 +609,13 @@ impl LandingScreen {
                             paint_plus(&thumbnail_painter, thumbnail, colors.subtext)
                         }
                         (Card::More { .. }, preview) => paint_stack(
+                            &thumbnail_painter,
+                            thumbnail,
+                            preview,
+                            theme,
+                            &mut self.still_drawing_deadline,
+                        ),
+                        (Card::Folder { .. }, preview) => paint_folder(
                             &thumbnail_painter,
                             thumbnail,
                             preview,
@@ -631,7 +677,7 @@ fn preview_mut<'a>(
     card: Card,
 ) -> Option<&'a mut Preview> {
     match card {
-        Card::NewSimulation | Card::More { .. } => None,
+        Card::NewSimulation | Card::More { .. } | Card::Folder { .. } => None,
         Card::Saved(index) => saved[index].preview.as_mut().ok(),
         Card::Example { category, index } => {
             Some(&mut examples_by_category[category][index].preview)
@@ -652,6 +698,27 @@ fn columns(width: f32) -> usize {
         3
     } else {
         2
+    }
+}
+
+fn heading(ui: &mut Ui, colors: &Colors, width: f32, title: &str) -> Rect {
+    ui.add_space(24.0);
+    let (header, _) = ui.allocate_exact_size(vec2(width, SECTION_HEADER_HEIGHT), Sense::hover());
+    ui.painter().text(
+        header.left_center(),
+        Align2::LEFT_CENTER,
+        title,
+        FontId::proportional(20.0),
+        colors.text,
+    );
+    ui.add_space(8.0);
+    header
+}
+
+fn simulations(count: usize) -> String {
+    match count {
+        1 => "1 simulation".to_owned(),
+        count => format!("{count} simulations"),
     }
 }
 
@@ -761,12 +828,49 @@ fn paint_stack(
     }
 }
 
+fn paint_folder(
+    painter: &Painter,
+    area: Rect,
+    preview: Option<&mut Preview>,
+    theme: Theme,
+    still_drawing_deadline: &mut Option<DateTime<Utc>>,
+) {
+    let colors = Colors::of(theme);
+    let tab = Rect::from_min_size(
+        area.min,
+        vec2(area.width() * FOLDER_TAB_WIDTH, FOLDER_TAB_HEIGHT),
+    );
+    painter.rect_filled(tab, FOLDER_TAB_RADIUS, colors.folder);
+    let back = Rect::from_min_max(area.min + vec2(0.0, FOLDER_BACK_TOP), area.max);
+    painter.rect_filled(back, THUMBNAIL_RADIUS, colors.folder);
+    let front = Rect::from_min_max(
+        area.min + vec2(FOLDER_FRONT_MARGIN, FOLDER_FRONT_TOP),
+        area.max - Vec2::splat(FOLDER_FRONT_MARGIN),
+    );
+    for sheet in (1..=FOLDER_SHEETS).rev() {
+        let step = FOLDER_SHEET_STEP * sheet as f32;
+        let paper = Rect::from_min_max(
+            front.min + vec2(step.x, -step.y),
+            front.max - vec2(step.x, 0.0),
+        );
+        let shade = colors
+            .folder
+            .lerp_to_gamma(colors.sheet, 1.0 / sheet as f32);
+        painter.rect_filled(paper, FOLDER_TAB_RADIUS, shade);
+    }
+    painter.rect_filled(front, THUMBNAIL_RADIUS, colors.background);
+    if let Some(preview) = preview {
+        let front_painter = painter.with_clip_rect(front);
+        preview.paint(&front_painter, front, theme, still_drawing_deadline);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::components::*;
     use crate::landing::preview::{PreviewMode, PREVIEW_FADE_IN};
-    use egui::{Event, PointerButton, Pos2, RawInput, Shape, Vec2};
+    use egui::{Event, PointerButton, Pos2, RawInput, Shape};
     use hecs::Entity;
 
     #[test]
@@ -792,7 +896,13 @@ mod tests {
             .collect();
         assert_eq!(sections.len(), 1 + expected.len());
         assert_eq!(sections[1..], expected);
+        let folders = page.matches(r#"<div class="card folder">"#).count();
+        assert_eq!(folders, EXAMPLE_CATEGORIES.len());
     }
+
+    const WINDOW_WITH_ROOM_FOR_EVERY_SECTION: Vec2 = vec2(1280.0, 2400.0);
+    const PHONE_SCREEN: Vec2 = vec2(390.0, 664.0);
+    const PHONE_WITH_ROOM_FOR_EVERY_FOLDER: Vec2 = vec2(390.0, 2400.0);
 
     fn run(
         context: &egui::Context,
@@ -808,16 +918,8 @@ mod tests {
         library: &mut Library,
         events: Vec<Event>,
     ) -> (egui::FullOutput, Option<LandingChoice>) {
-        let window_with_room_for_every_section = vec2(1280.0, 2400.0);
-        run_at(
-            context,
-            landing,
-            library,
-            events,
-            window_with_room_for_every_section,
-            0.0,
-            Theme::Dark,
-        )
+        let screen = WINDOW_WITH_ROOM_FOR_EVERY_SECTION;
+        run_at(context, landing, library, events, screen, 0.0, Theme::Dark)
     }
 
     fn run_sized(
@@ -857,19 +959,64 @@ mod tests {
         position: Pos2,
         button: PointerButton,
     ) -> (egui::FullOutput, Option<LandingChoice>) {
+        let screen = WINDOW_WITH_ROOM_FOR_EVERY_SECTION;
+        click_on(context, landing, library, position, button, screen)
+    }
+
+    fn click_on(
+        context: &egui::Context,
+        landing: &mut LandingScreen,
+        library: &mut Library,
+        position: Pos2,
+        button: PointerButton,
+        screen: Vec2,
+    ) -> (egui::FullOutput, Option<LandingChoice>) {
         let press = |pressed| Event::PointerButton {
             pos: position,
             button,
             pressed,
             modifiers: Default::default(),
         };
-        run_with(
+        let events = vec![Event::PointerMoved(position), press(true)];
+        run_at(context, landing, library, events, screen, 0.0, Theme::Dark);
+        run_at(
             context,
             landing,
             library,
-            vec![Event::PointerMoved(position), press(true)],
-        );
-        run_with(context, landing, library, vec![press(false)])
+            vec![press(false)],
+            screen,
+            0.0,
+            Theme::Dark,
+        )
+    }
+
+    fn tap_text_on_a_phone(
+        context: &egui::Context,
+        landing: &mut LandingScreen,
+        library: &mut Library,
+        output: &egui::FullOutput,
+        text: &str,
+    ) -> (egui::FullOutput, Option<LandingChoice>) {
+        let position = text_position(output, text).unwrap_or_else(|| panic!("no {text}"));
+        let screen = PHONE_WITH_ROOM_FOR_EVERY_FOLDER;
+        let primary = PointerButton::Primary;
+        click_on(
+            context,
+            landing,
+            library,
+            position + vec2(4.0, 4.0),
+            primary,
+            screen,
+        )
+    }
+
+    fn run_on_a_phone(
+        context: &egui::Context,
+        landing: &mut LandingScreen,
+        library: &mut Library,
+    ) -> egui::FullOutput {
+        let screen = PHONE_WITH_ROOM_FOR_EVERY_FOLDER;
+        run_at(context, landing, library, vec![], screen, 0.0, Theme::Dark).0
     }
 
     fn click_text(
@@ -1379,7 +1526,7 @@ mod tests {
         for card in &mut landing.saved {
             card.modified = longest_date;
         }
-        let phone = vec2(390.0, 664.0);
+        let phone = PHONE_SCREEN;
         let (output, _) = run_at(
             &context,
             &mut landing,
@@ -1532,6 +1679,74 @@ mod tests {
             .iter()
             .all(|example| text_position(&output, example.name).is_some()));
         assert!(text_position(&output, &more).is_none());
+    }
+
+    #[test]
+    fn a_phone_shows_each_category_as_one_folder_after_your_simulations() {
+        let context = egui::Context::default();
+        let mut library = Library::default();
+        let mut landing = LandingScreen::new(false);
+        let output = run_on_a_phone(&context, &mut landing, &mut library);
+        let yours = text_position(&output, YOUR_SIMULATIONS).unwrap();
+        let examples = text_position(&output, EXAMPLES).unwrap();
+        assert!(yours.y < examples.y);
+        for (category, cards) in EXAMPLE_CATEGORIES.iter().zip(&landing.examples_by_category) {
+            let folder = text_position(&output, category.name)
+                .unwrap_or_else(|| panic!("no folder for {}", category.name));
+            assert!(folder.y > examples.y);
+            assert!(text_position(&output, &simulations(cards.len())).is_some());
+            assert!(cards[0].preview.on_screen, "{}", category.name);
+            assert!(
+                cards[1..].iter().all(|card| !card.preview.on_screen),
+                "{}",
+                category.name
+            );
+        }
+        let examples_shown = EXAMPLE_CATEGORIES
+            .iter()
+            .flat_map(|category| category.examples)
+            .filter(|example| text_position(&output, example.name).is_some())
+            .count();
+        assert_eq!(examples_shown, 0);
+        assert!(text_position(&output, "See all").is_none());
+    }
+
+    #[test]
+    fn on_a_phone_every_folder_starts_within_two_screens() {
+        let context = egui::Context::default();
+        let mut library = Library::default();
+        let mut landing = LandingScreen::new(false);
+        let output = run_on_a_phone(&context, &mut landing, &mut library);
+        for category in EXAMPLE_CATEGORIES {
+            let folder = text_position(&output, category.name).unwrap();
+            assert!(folder.y < 2.0 * PHONE_SCREEN.y, "{}", category.name);
+        }
+    }
+
+    #[test]
+    fn tapping_a_folder_opens_its_category_and_back_returns_to_the_folders() {
+        let context = egui::Context::default();
+        let mut library = Library::default();
+        let mut landing = LandingScreen::new(false);
+        let category = EXAMPLE_CATEGORIES
+            .iter()
+            .find(|category| category.name == "Memory")
+            .unwrap();
+
+        let output = run_on_a_phone(&context, &mut landing, &mut library);
+        let (_, choice) =
+            tap_text_on_a_phone(&context, &mut landing, &mut library, &output, "Memory");
+        assert!(choice.is_none());
+        let output = run_on_a_phone(&context, &mut landing, &mut library);
+        assert!(category
+            .examples
+            .iter()
+            .all(|example| text_position(&output, example.name).is_some()));
+        assert!(text_position(&output, EXAMPLES).is_none());
+
+        tap_text_on_a_phone(&context, &mut landing, &mut library, &output, "Back");
+        let output = run_on_a_phone(&context, &mut landing, &mut library);
+        assert!(text_position(&output, EXAMPLES).is_some());
     }
 
     #[test]
