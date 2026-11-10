@@ -20,6 +20,7 @@ const CONNECTION_RADIUS: f32 = 0.16;
 const SYNAPSE_GAP: f32 = 2.0 * NODE_RADIUS;
 const SOMA_TERMINAL_RADIUS: f32 = 0.5 * NODE_RADIUS;
 const COMPARTMENT_TERMINAL_RADIUS: f32 = 0.3 * NODE_RADIUS;
+const CLEFT: f32 = SYNAPSE_GAP - NODE_RADIUS - SOMA_TERMINAL_RADIUS;
 const MIN_TERMINAL_SCALE: f32 = 0.4;
 
 /// The tube a connection is drawn as, from the source towards the target.
@@ -244,6 +245,13 @@ fn path_of(
     path_ending_at(world, connection, None, bend, radii, display, palette)
 }
 
+pub fn full_terminal_radius(radii: &HashMap<Entity, f32>, target: Entity) -> f32 {
+    match radii.contains_key(&target) {
+        true => COMPARTMENT_TERMINAL_RADIUS,
+        false => SOMA_TERMINAL_RADIUS,
+    }
+}
+
 fn path_ending_at(
     world: &hecs::World,
     connection: &Connection,
@@ -262,10 +270,7 @@ fn path_ending_at(
     };
     let from_compartment = from.has::<Compartment>();
     let target_radius = radii.get(&connection.to).copied();
-    let terminal_radius = match target_radius {
-        Some(_) => COMPARTMENT_TERMINAL_RADIUS,
-        None => SOMA_TERMINAL_RADIUS,
-    };
+    let terminal_radius = full_terminal_radius(radii, connection.to);
     let terminal_radius = if from_compartment {
         terminal_radius * (connection.strength as f32).sqrt().max(MIN_TERMINAL_SCALE)
     } else {
@@ -273,7 +278,7 @@ fn path_ending_at(
     };
     let trim = match (connection.directional, target_radius) {
         (false, _) => 0.0,
-        (true, Some(radius)) => radius + terminal_radius,
+        (true, Some(radius)) => radius + terminal_radius + CLEFT,
         (true, None) => SYNAPSE_GAP,
     };
     let radius = match radii.get(&connection.from) {
@@ -370,7 +375,7 @@ mod tests {
     }
 
     #[test]
-    fn an_axon_ending_on_a_compartment_touches_it() {
+    fn an_axon_ending_leaves_the_same_cleft_on_a_compartment_as_on_a_soma() {
         let mut world = hecs::World::new();
         let compartment_at = |world: &mut hecs::World, x: f32| {
             world.spawn((
@@ -382,20 +387,27 @@ mod tests {
             ))
         };
         let tip = compartment_at(&mut world, 0.0);
-        let dendrite = compartment_at(&mut world, 2.0);
-        let ending = crate::elements::spawn_cable(&mut world, tip, dendrite, true);
+        let dendrite = compartment_at(&mut world, 5.0);
+        let soma =
+            crate::elements::Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(-5.0, 0.0, 0.0));
+        let onto_dendrite = crate::elements::spawn_cable(&mut world, tip, dendrite, true);
+        let onto_soma = crate::elements::spawn_cable(&mut world, tip, soma, true);
         let radii = crate::rendering::compartment_radii(&world);
 
         let paths = connection_paths(&world, &radii, &Theme::default().palette());
 
-        let path = &paths[&ending];
-        let gap = path
-            .points
-            .last()
-            .unwrap()
-            .distance(Vec3::new(2.0, 0.0, 0.0));
-        assert!((gap - radii[&dendrite] - path.terminal_radius).abs() < 1e-4);
-        assert_eq!(path.terminal_radius, COMPARTMENT_TERMINAL_RADIUS);
+        let cleft = |ending: Entity, target: Vec3, target_radius: f32| {
+            let path = &paths[&ending];
+            path.points.last().unwrap().distance(target) - target_radius - path.terminal_radius
+        };
+        let on_dendrite = cleft(onto_dendrite, Vec3::new(5.0, 0.0, 0.0), radii[&dendrite]);
+        let on_soma = cleft(onto_soma, Vec3::new(-5.0, 0.0, 0.0), NODE_RADIUS);
+        assert!(on_soma > 0.0);
+        assert!((on_dendrite - on_soma).abs() < 1e-4);
+        assert_eq!(
+            paths[&onto_dendrite].terminal_radius,
+            COMPARTMENT_TERMINAL_RADIUS
+        );
     }
 
     #[test]
