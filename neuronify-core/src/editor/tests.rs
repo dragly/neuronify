@@ -386,9 +386,9 @@ fn an_axon_stops_growing_while_it_would_end_on_a_dendrite() {
     for position in straight(at(19.0, 4.0), at(19.0, 10.0)) {
         editor.edit(&mut world, position);
         assert!(editor.ending().is_some(), "{position}");
+        assert!(count::<Compartment>(&world) <= compartments, "{position}");
     }
-    assert_eq!(count::<Compartment>(&world), compartments);
-    assert_eq!(editor.new_ending(&world).unwrap().0, from);
+    assert_ne!(editor.new_ending(&world).unwrap().0, from);
 }
 
 #[test]
@@ -796,6 +796,88 @@ fn a_chained_axon_leaves_a_soma_held_by_its_dendrite_only_once_the_stroke_reache
     assert!(endings
         .iter()
         .any(|ending| ending.to == c && network.contains(&ending.from)));
+}
+
+fn turns_along(world: &World, ending: &Connection) -> Vec<f32> {
+    let mut turns = Vec::new();
+    let mut next = world.get::<&Position>(ending.to).unwrap().position;
+    let mut at = ending.from;
+    while let Some((_, previous)) = cable_into(world, at).filter(|_| has::<Compartment>(world, at))
+    {
+        let here = world.get::<&Position>(at).unwrap().position;
+        let before = world.get::<&Position>(previous).unwrap().position;
+        turns.push((here - before).angle_between(next - here));
+        next = here;
+        at = previous;
+    }
+    turns
+}
+
+fn ends_within_45_degrees(world: &World, ending: &Connection) -> bool {
+    turns_along(world, ending)
+        .iter()
+        .all(|&turn| turn <= SHARPEST_ENDING_TURN + 1e-3)
+}
+
+#[test]
+fn an_axon_turning_onto_a_neuron_takes_back_compartments_until_it_ends_within_45_degrees() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(4.0, 12.0));
+    let mut editor = reaching(Tool::Axon, REACH);
+    let mut path = straight(at(0.0, 0.5), at(0.0, 12.0));
+    path.extend(straight(at(0.0, 12.0), at(3.0, 12.0)));
+    drag(&mut editor, &mut world, &path);
+    let ending = single_ending(&world);
+    assert_eq!(ending.to, target);
+    let turns = turns_along(&world, &ending);
+    assert!(ends_within_45_degrees(&world, &ending), "{turns:?}");
+}
+
+#[test]
+fn an_axon_brought_back_onto_a_neuron_it_passed_rewinds_to_end_straight() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(2.3, 9.0));
+    let mut editor = reaching(Tool::Axon, REACH);
+    let mut path = straight(at(0.0, 0.5), at(0.0, 16.0));
+    path.extend(straight(at(0.3, 16.0), at(0.3, 10.2)));
+    drag(&mut editor, &mut world, &path);
+    let ending = single_ending(&world);
+    assert_eq!(ending.to, target);
+    let turns = turns_along(&world, &ending);
+    assert!(ends_within_45_degrees(&world, &ending), "{turns:?}");
+    let highest = positions_with::<Compartment>(&world)
+        .into_iter()
+        .map(|(_, position)| position.z)
+        .fold(f32::MIN, f32::max);
+    assert!(highest < 9.5, "{highest}");
+}
+
+#[test]
+fn a_tip_holding_a_fanned_out_ending_waits_for_a_straighter_approach() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let ahead = neuron(&mut world, at(0.0, 13.0));
+    let beside = neuron(&mut world, at(-3.0, 10.3));
+    let mut editor = reaching(Tool::Axon, REACH);
+    editor.set_connection_mode(ConnectionMode::FanOut);
+    for position in straight(at(0.0, 0.5), at(0.0, 11.2)) {
+        editor.edit(&mut world, position);
+    }
+    assert_eq!(hold_still(&mut editor, &mut world), Some(ahead));
+    editor.edit(&mut world, at(-1.8, 10.3));
+    assert_eq!(editor.ending(), None);
+    editor.edit(&mut world, at(-2.4, 10.3));
+    editor.edit(&mut world, at(-2.4, 10.3));
+    assert_eq!(editor.ending(), Some(beside));
+    editor.lift(&mut world);
+    let endings = axon_endings(&world);
+    assert_eq!(endings.len(), 2, "{endings:?}");
+    for to in [ahead, beside] {
+        let ending = endings.iter().find(|ending| ending.to == to).unwrap();
+        assert!(cable_network(&world, source).contains(&ending.from));
+    }
 }
 
 #[test]
