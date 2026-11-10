@@ -9,6 +9,7 @@ use crate::rendering::colors::{lit, Palette};
 use crate::rendering::gpu_types::{CylinderData, Sphere};
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::scene::Scene;
+use crate::rendering::transmitter::crossing_time;
 
 const ACTION_POTENTIAL: [(Milliseconds, Millivolts); 31] = [
     (Milliseconds(-1.0), Millivolts(0.1)),
@@ -65,7 +66,7 @@ fn depolarization(since_crest: Milliseconds) -> Millivolts {
 
 struct Signal {
     elapsed: Vec<Milliseconds>,
-    delay: Milliseconds,
+    travel: Milliseconds,
     neuron: Option<NeuronType>,
 }
 
@@ -77,6 +78,7 @@ impl Signal {
         now: Milliseconds,
     ) -> Signal {
         let delay = synapse.delay;
+        let travel = delay - crossing_time(synapse);
         let mut elapsed: Vec<Milliseconds> = synapse
             .triggers
             .iter()
@@ -85,7 +87,7 @@ impl Signal {
         let source = world.entity(connection.from).ok();
         let last = source
             .and_then(last_spike)
-            .filter(|&last| last < delay + TAIL);
+            .filter(|&last| last < travel + TAIL);
         if let Some(last) = last {
             if elapsed
                 .iter()
@@ -99,24 +101,24 @@ impl Signal {
             .and_then(|source| source.get::<&NeuronType>().map(|neuron_type| *neuron_type));
         Signal {
             elapsed,
-            delay,
+            travel,
             neuron,
         }
     }
 
     fn along(&self, elapsed: Milliseconds, since_crest: Milliseconds) -> f32 {
-        ((elapsed - since_crest) / self.delay) as f32
+        ((elapsed - since_crest) / self.travel) as f32
     }
 
     fn depolarization_at(&self, along: f32) -> Millivolts {
         self.elapsed
             .iter()
-            .map(|&elapsed| depolarization(elapsed - f64::from(along) * self.delay))
+            .map(|&elapsed| depolarization(elapsed - f64::from(along) * self.travel))
             .sum()
     }
 
     fn lit_stretch(&self) -> Option<(f32, f32)> {
-        if self.delay <= Milliseconds::ZERO {
+        if self.travel <= Milliseconds::ZERO {
             let lit = self
                 .elapsed
                 .iter()
@@ -137,8 +139,8 @@ impl Signal {
         self.elapsed
             .iter()
             .filter(|&&elapsed| {
-                self.delay > Milliseconds::ZERO
-                    && (Milliseconds::ZERO..self.delay).contains(&elapsed)
+                self.travel > Milliseconds::ZERO
+                    && (Milliseconds::ZERO..self.travel).contains(&elapsed)
             })
             .map(|&elapsed| self.along(elapsed, Milliseconds::ZERO))
     }
@@ -188,7 +190,7 @@ fn band(
     let mut stops: Vec<f32> = signal
         .elapsed
         .iter()
-        .filter(|_| signal.delay > Milliseconds::ZERO)
+        .filter(|_| signal.travel > Milliseconds::ZERO)
         .flat_map(|&elapsed| {
             ACTION_POTENTIAL
                 .iter()
@@ -272,6 +274,7 @@ mod tests {
     use crate::rendering::cylinders::compartment_radii;
     use crate::rendering::paths::connection_paths;
     use crate::rendering::Theme;
+    use crate::simulation::model::ENDING_DELAY;
 
     struct Synapse {
         world: World,
@@ -301,8 +304,11 @@ mod tests {
                 directional: true,
             },
             CurrentSynapse {
-                delay: Milliseconds(4.0),
-                triggers: triggers.into_iter().map(Milliseconds).collect(),
+                delay: Milliseconds(4.0) + ENDING_DELAY,
+                triggers: triggers
+                    .into_iter()
+                    .map(|time| Milliseconds(time) + ENDING_DELAY)
+                    .collect(),
                 ..Default::default()
             },
         ));
@@ -364,6 +370,18 @@ mod tests {
         let (position, brightness) = brightest(&scene).unwrap();
         assert!(position.distance(a_quarter_along) < 0.5 * NODE_RADIUS);
         assert!(brightness > path.start_color.max_element());
+    }
+
+    #[test]
+    fn a_spike_reaches_the_terminal_in_time_for_its_transmitter_to_cross() {
+        let firing = synapse(NeuronType::Excitatory, vec![1000.0]);
+        let (scene, path) = draw(&firing, 999.9);
+        let arriving = beads(&scene, &path);
+        assert_eq!(arriving.len(), 1);
+        assert!(arriving[0].position.distance(path.point_at(1.0)) < 0.05 * path.length());
+
+        let (scene, path) = draw(&firing, 1000.1);
+        assert!(beads(&scene, &path).is_empty());
     }
 
     #[test]

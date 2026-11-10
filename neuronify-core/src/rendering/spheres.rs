@@ -79,6 +79,13 @@ fn spines(
 }
 
 /// `radii` comes from `compartment_radii`, so the joints match the cylinders.
+pub fn soma_radius(world: &hecs::World, soma: Entity, display: &NeuronDisplay) -> f32 {
+    match display.true_proportions {
+        true => drawn_radius(soma_diameter(world, soma), display),
+        false => NODE_RADIUS,
+    }
+}
+
 pub fn collect_spheres(
     world: &hecs::World,
     radii: &HashMap<Entity, f32>,
@@ -95,10 +102,7 @@ pub fn collect_spheres(
             .map(|(entity, (neuron, state, position))| Sphere {
                 position: position.position,
                 color: soma_color(world, entity, neuron, state, &display, palette),
-                radius: match display.true_proportions {
-                    true => drawn_radius(soma_diameter(world, entity), &display),
-                    false => NODE_RADIUS,
-                },
+                radius: soma_radius(world, entity, &display),
                 _padding: Default::default(),
             }),
     );

@@ -15,7 +15,7 @@ pub struct Site {
     pub point: usize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Target {
     Conductance(usize),
     Current(usize),
