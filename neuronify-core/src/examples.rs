@@ -242,6 +242,15 @@ pub const EXAMPLE_CATEGORIES: &[ExampleCategory] = &[
             },
         ],
     },
+    ExampleCategory {
+        name: "Navigation",
+        examples: &[Example {
+            name: "Compass",
+            description: "Start a bump with a touch sensor, then raise a turn current. \
+                The bump runs round the ring and stays where it is when you turn the current off.",
+            contents: saved!("labs/compass.neuronify"),
+        }],
+    },
 ];
 
 #[cfg(test)]
