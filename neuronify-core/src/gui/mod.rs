@@ -32,6 +32,7 @@ use icons::Icon;
 use inspector::{Inspector, Placement};
 pub use loupe::{
     paint_loupe, prepare_loupe, LoupeCorner, LoupeFocus, LoupeView, Subject, LOUPE_DELAY,
+    LOUPE_SNAP,
 };
 use playback::BAR_HEIGHT;
 use rail::{Rail, POPOVER_GAP, RAIL_WIDTH, TOOL_BAR_HEIGHT, TOOL_BAR_MARGIN};

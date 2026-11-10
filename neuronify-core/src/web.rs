@@ -18,6 +18,7 @@ use web_sys::{
 const REVOKE_DELAY_MS: i32 = 10_000;
 const TICK_MS: u32 = 10;
 const THUMP_MS: u32 = 35;
+const SNAP_GAP_MS: u32 = 60;
 const SHARED_TYPE: &str = "application/octet-stream";
 
 struct PressedLink {
@@ -285,12 +286,21 @@ pub fn thump() {
     buzz(THUMP_MS);
 }
 
+pub fn snap() {
+    let pattern = js_sys::Array::of3(&TICK_MS.into(), &SNAP_GAP_MS.into(), &TICK_MS.into());
+    vibrate(|navigator| navigator.vibrate_with_pattern(&pattern));
+}
+
 fn buzz(duration: u32) {
+    vibrate(|navigator| navigator.vibrate_with_duration(duration));
+}
+
+fn vibrate(pattern: impl FnOnce(&web_sys::Navigator) -> bool) {
     let Some(navigator) = web_sys::window().map(|window| window.navigator()) else {
         return;
     };
     if js_sys::Reflect::has(&navigator, &"vibrate".into()).unwrap_or(false) {
-        navigator.vibrate_with_duration(duration);
+        pattern(&navigator);
     } else if is_ios() {
         if let Err(error) = flip_hidden_switch() {
             log::error!("Could not tick: {error:?}");

@@ -7,8 +7,12 @@ use crate::components::Seconds;
 use crate::rendering::Theme;
 
 pub const LOUPE_DELAY: Seconds = Seconds(0.15);
+pub const LOUPE_SNAP: Seconds = Seconds(0.35);
 const RADIUS: f32 = 56.0;
 const ZOOM: f32 = 1.5;
+const DRAWING_ZOOM: f32 = 1.0;
+const WAITING_RIM: f32 = 0.35;
+const SNAP_DROP: f32 = 10.0;
 const LIFTED_ZOOM: f32 = 1.0;
 const FARTHEST: f32 = 0.4;
 const LIFTED_SIZE: f32 = 8.0;
@@ -76,7 +80,7 @@ impl LoupeFocus {
         let Some(subject) = subject else {
             return LoupeFocus {
                 source: finger,
-                zoom: ZOOM,
+                zoom: DRAWING_ZOOM,
             };
         };
         let lifted = (LIFTED_SIZE / subject.size).clamp(FARTHEST, LIFTED_ZOOM);
@@ -278,13 +282,15 @@ pub struct LoupeView {
     pub attached: bool,
     pub progress: Option<f32>,
     pub flash: f32,
+    pub snap: Option<f32>,
 }
 
-fn arc(center: Pos2, radius: f32, fraction: f32) -> Vec<Pos2> {
-    let points = (ARC_POINTS as f32 * fraction).ceil().max(1.0) as usize;
+fn arc(center: Pos2, radius: f32, start: f32, end: f32) -> Vec<Pos2> {
+    let points = (ARC_POINTS as f32 * (end - start)).ceil().max(1.0) as usize;
     (0..=points)
         .map(|index| {
-            let angle = std::f32::consts::TAU * fraction * index as f32 / points as f32;
+            let turn = start + (end - start) * index as f32 / points as f32;
+            let angle = std::f32::consts::TAU * turn;
             center + radius * Vec2::new(angle.sin(), -angle.cos())
         })
         .collect()
@@ -318,14 +324,30 @@ pub fn paint_loupe(context: &Context, theme: Theme, view: LoupeView) {
             Stroke::new(THIN, chrome.text.gamma_multiply(0.6)),
         );
     }
-    let rim = match view.attached {
-        true => Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent),
-        false => Stroke::new(RIM_WIDTH, chrome.border),
+    let rim = match (view.attached, view.progress.is_some()) {
+        (true, false) => Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent),
+        (true, true) => Stroke::new(
+            ATTACHED_RIM_WIDTH,
+            chrome.accent.gamma_multiply(WAITING_RIM),
+        ),
+        (false, _) => Stroke::new(RIM_WIDTH, chrome.border),
     };
     painter.circle_stroke(center, RADIUS, rim);
     if let Some(progress) = view.progress.filter(|&progress| progress > 0.0) {
         let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent);
-        painter.add(egui::Shape::line(arc(center, RADIUS, progress), stroke));
+        painter.add(egui::Shape::line(
+            arc(center, RADIUS, 0.0, progress),
+            stroke,
+        ));
+    }
+    if let Some(snap) = view.snap.filter(|_| !view.attached) {
+        let open = (1.0 - (1.0 - snap).powi(2)) / 2.0;
+        let fallen = center + Vec2::Y * SNAP_DROP * snap * snap;
+        let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent.gamma_multiply(1.0 - snap));
+        painter.add(egui::Shape::line(
+            arc(fallen, RADIUS, open, 1.0 - open),
+            stroke,
+        ));
     }
     if view.flash > 0.0 {
         let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent.gamma_multiply(view.flash));
@@ -364,10 +386,10 @@ mod tests {
     }
 
     #[test]
-    fn drawing_magnifies_around_the_finger() {
+    fn drawing_shows_the_finger_at_its_own_size() {
         let finger = Pos2::new(100.0, 400.0);
         let focus = LoupeFocus::of(finger, None);
-        assert_eq!((focus.source, focus.zoom), (finger, ZOOM));
+        assert_eq!((focus.source, focus.zoom), (finger, DRAWING_ZOOM));
     }
 
     #[test]
@@ -406,7 +428,7 @@ mod tests {
     fn the_hold_arc_runs_clockwise_from_the_top() {
         let center = Pos2::new(100.0, 100.0);
         let ends = |fraction| {
-            let points = arc(center, 10.0, fraction);
+            let points = arc(center, 10.0, 0.0, fraction);
             (points[0], points[points.len() - 1])
         };
         let (start, quarter) = ends(0.25);
@@ -414,6 +436,15 @@ mod tests {
         assert!(quarter.distance(Pos2::new(110.0, 100.0)) < 1e-3);
         let (_, half) = ends(0.5);
         assert!(half.distance(Pos2::new(100.0, 110.0)) < 1e-3);
+    }
+
+    #[test]
+    fn a_snapped_rim_opens_at_the_top_and_keeps_the_bottom() {
+        let center = Pos2::new(100.0, 100.0);
+        let points = arc(center, 10.0, 0.25, 0.75);
+        assert!(points[0].distance(Pos2::new(110.0, 100.0)) < 1e-3);
+        assert!(points[points.len() - 1].distance(Pos2::new(90.0, 100.0)) < 1e-3);
+        assert!(points.iter().all(|point| point.y >= 100.0 - 1e-3));
     }
 
     #[test]

@@ -309,17 +309,18 @@ impl Editor {
         })
     }
 
-    pub fn lift(&mut self, world: &mut World) {
+    pub fn lift(&mut self, world: &mut World) -> Option<Entity> {
         let axon = self
             .connection_tool
             .as_ref()
             .filter(|_| self.tool != Tool::Dendrite);
+        let mut formed = None;
         if let Some(axon) = axon {
             let measuring = self.tool.meter().is_some() || Meter::of(world, axon.from).is_some();
             if !measuring {
-                if let Some(ending) = self.ending {
-                    self.form(world, ending, self.spot);
-                }
+                formed = self
+                    .ending
+                    .filter(|&ending| self.form(world, ending, self.spot));
             } else if let Some(meter) = self.shortcut.filter(|_| !self.wired) {
                 measure_where_released(world, meter, axon);
             }
@@ -328,6 +329,7 @@ impl Editor {
             self.selection = Some(held);
         }
         self.release(world);
+        formed
     }
 
     pub fn take_presses(&mut self) -> Vec<Vec3> {
@@ -851,12 +853,12 @@ impl Editor {
             .map(|connection| connection.from)
     }
 
-    fn form(&self, world: &mut World, ending: Entity, spot: Option<Spot>) {
+    fn form(&self, world: &mut World, ending: Entity, spot: Option<Spot>) -> bool {
         let Some(from) = self.source() else {
-            return;
+            return false;
         };
         if from == ending || connected(world, from, ending) {
-            return;
+            return false;
         }
         if self.axon_being_grown(world).is_some() {
             let synapse = lay_axon(world, from, ending, true, self.myelinates());
@@ -866,6 +868,7 @@ impl Editor {
         } else {
             spawn_connection(world, from, ending);
         }
+        true
     }
 
     fn attach(&mut self, world: &mut World, ending: Entity, spot: Option<Spot>) {
