@@ -301,6 +301,27 @@ fn axons_pass_over_dendrites_on_their_way_to_a_neuron() {
 }
 
 #[test]
+fn axons_do_not_end_on_other_axons() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    neuron(&mut world, at(10.0, 0.0));
+    let mut other = reaching(Tool::Axon, REACH);
+    drag(
+        &mut other,
+        &mut world,
+        &straight(at(10.0, 0.5), at(10.0, 12.0)),
+    );
+    assert!(count::<Compartment>(&world) > 4);
+    let mut editor = reaching(Tool::Axon, REACH);
+    for position in straight(at(0.0, 0.5), at(10.0, 8.0)) {
+        editor.edit(&mut world, position);
+    }
+    assert_eq!(editor.ending(), None);
+    editor.lift(&mut world);
+    assert!(axon_endings(&world).is_empty());
+}
+
+#[test]
 fn axons_do_not_end_on_their_own_dendrites() {
     let mut world = World::new();
     let source = neuron(&mut world, at(0.0, 0.0));
