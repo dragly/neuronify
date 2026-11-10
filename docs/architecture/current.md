@@ -229,8 +229,8 @@ On the web, `update` opens a file once the browser has loaded it.
 Everything opened ends in `Neuronify::open_world` with a new `Engine`.
 `bounds::bound` clamps every value to the newest version's ranges,
 so a broken file loads safely.
-The bundled examples are save files written by the programs in `neuronify-core/generators`,
-and a landing card hands over the `World` its preview has been running.
+The bundled examples are save files written by the programs in `neuronify-core/generators`.
+A landing card opens its file again, so nothing carries over from its preview.
 A note's `Link` opens another example,
 and a Neuronify 1 tutorial's next link opens the file beside it.
 

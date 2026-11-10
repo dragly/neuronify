@@ -931,9 +931,12 @@ impl visula::Simulation for Neuronify {
         }
         if let Some(landing) = &mut self.landing {
             match landing.show(context, self.theme, &mut self.library) {
-                Some(LandingChoice::Example { name, world, time }) => {
-                    self.open_world(*world, time, DEFAULT_SPEED, Autosave::copy_of(name))
-                }
+                Some(LandingChoice::Example { name, world }) => self.open_world(
+                    *world,
+                    Milliseconds::ZERO,
+                    DEFAULT_SPEED,
+                    Autosave::copy_of(name),
+                ),
                 Some(LandingChoice::Saved {
                     id,
                     world,
