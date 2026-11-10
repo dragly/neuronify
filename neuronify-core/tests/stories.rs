@@ -9,7 +9,7 @@ use neuronify_core::measurement::loudspeaker::Loudspeaker;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::visual_input::VisualInput;
 use neuronify_core::measurement::voltmeter::Voltmeter;
-use neuronify_core::serialization::load_from_bytes;
+use neuronify_core::serialization::{load, load_from_bytes, save};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
     neuron_type, AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Compartment,
@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 const FOLDERS: [&str; 2] = ["examples", "src/legacy/fixtures"];
 const SECONDS: f64 = 10.0;
 const PRESS_AT: f64 = 2.0;
+const REOPEN_AT: f64 = 2.2;
 const STEPS_PER_CALL: usize = 20;
 
 fn steps(seconds: f64) -> usize {
@@ -150,14 +151,15 @@ fn elements(world: &World) -> IndexMap<String, usize> {
         .collect()
 }
 
-fn spikes(file: &str, press: Option<Vec3>) -> Vec<usize> {
+fn spikes(file: &str, press: Option<Vec3>, reopen_at: Option<f64>) -> Vec<usize> {
     let mut world = open(file);
     let mut engine = Engine::default();
-    let neurons = in_reading_order::<LeakyNeuron>(&world);
+    let mut neurons = in_reading_order::<LeakyNeuron>(&world);
     let mut counts = vec![0; neurons.len()];
     let mut time = Default::default();
     let end = steps(SECONDS);
     let press_step = steps(PRESS_AT);
+    let reopen_step = reopen_at.map(steps);
     let mut step = 0;
     while step < end {
         if step == press_step {
@@ -165,8 +167,17 @@ fn spikes(file: &str, press: Option<Vec3>) -> Vec<usize> {
                 fire_nearby(&mut world, &mut engine, hand);
             }
         }
-        let next = [end, press_step]
+        if Some(step) == reopen_step {
+            engine.store(&mut world);
+            let saved = load(&save(&world, time, DEFAULT_SPEED).unwrap()).unwrap();
+            world = saved.world;
+            time = saved.time;
+            engine = Engine::starting_at(time);
+            neurons = in_reading_order::<LeakyNeuron>(&world);
+        }
+        let next = [Some(end), Some(press_step), reopen_step]
             .into_iter()
+            .flatten()
             .filter(|event| *event > step)
             .min()
             .unwrap();
@@ -198,7 +209,7 @@ struct Story {
 }
 
 impl Story {
-    fn of(file: &str) -> Story {
+    fn of(file: &str, reopen_at: Option<f64>) -> Story {
         let world = open(file);
         let hands = in_reading_order::<TouchSensor>(&world);
         let names: Vec<String> = in_reading_order::<LeakyNeuron>(&world)
@@ -217,7 +228,7 @@ impl Story {
         let presses = std::iter::once(None).chain(hands.iter().map(|(_, hand)| Some(*hand)));
         let counts: Vec<Vec<usize>> = std::thread::scope(|scope| {
             let runs: Vec<_> = presses
-                .map(|press| scope.spawn(move || spikes(file, press)))
+                .map(|press| scope.spawn(move || spikes(file, press, reopen_at)))
                 .collect();
             runs.into_iter()
                 .map(|run| {
@@ -327,7 +338,7 @@ fn story_path(file: &str) -> PathBuf {
 fn every_example_tells_the_story_it_told_before() {
     let mut failures = Vec::new();
     for file in example_files() {
-        let now = Story::of(&file);
+        let now = Story::of(&file, None);
         match std::fs::read_to_string(story_path(&file)) {
             Ok(text) => match toml::from_str::<Story>(&text) {
                 Ok(before) => failures.extend(at_most_three(&file, before.differences(&now))),
@@ -345,11 +356,25 @@ fn every_example_tells_the_story_it_told_before() {
 }
 
 #[test]
+fn every_example_fires_the_same_after_saving_and_reopening() {
+    let mut failures = Vec::new();
+    for file in example_files() {
+        let straight = Story::of(&file, None);
+        let reopened = Story::of(&file, Some(REOPEN_AT));
+        failures.extend(at_most_three(
+            &format!("{file} reopened at {REOPEN_AT} s"),
+            straight.differences(&reopened),
+        ));
+    }
+    assert!(failures.is_empty(), "\n{}\n", failures.join("\n"));
+}
+
+#[test]
 #[ignore]
 fn write_stories() {
     for file in example_files() {
         let path = story_path(&file);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(path, toml::to_string(&Story::of(&file)).unwrap()).unwrap();
+        std::fs::write(path, toml::to_string(&Story::of(&file, None)).unwrap()).unwrap();
     }
 }
