@@ -6,7 +6,7 @@ use super::hold_ring::Look;
 use crate::components::Seconds;
 
 const POP: Seconds = Seconds(0.25);
-const FADING: Seconds = Seconds(0.15);
+const BREAKING: Seconds = Seconds(0.3);
 const CLOSING_DELAY: Seconds = Seconds(0.1);
 const OPEN: f32 = 0.6;
 const BURST: Seconds = Seconds(0.4);
@@ -15,6 +15,7 @@ const BURST_SWELL: f32 = 0.45;
 pub const WAITING: Look = Look {
     swell: 0.0,
     opacity: 0.5,
+    gap: 0.0,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -27,7 +28,7 @@ pub enum AttachRing {
         target: Entity,
         progress: f32,
     },
-    Fading {
+    Breaking {
         target: Entity,
         look: Look,
         since: Seconds,
@@ -67,7 +68,7 @@ impl AttachRing {
                 Some(AttachRing::Shown { target, since })
             }
             (Some(target), None, _) => Some(AttachRing::Shown { target, since: now }),
-            (None, _, Some(ring)) if ring.shown().is_some() => Some(AttachRing::Fading {
+            (None, _, Some(ring)) if ring.shown().is_some() => Some(AttachRing::Breaking {
                 target: ring.target(),
                 look: ring.look(now)?,
                 since: now,
@@ -79,7 +80,7 @@ impl AttachRing {
     pub fn shown(self) -> Option<Entity> {
         match self {
             AttachRing::Shown { target, .. } | AttachRing::Closing { target, .. } => Some(target),
-            AttachRing::Fading { .. } => None,
+            AttachRing::Breaking { .. } => None,
         }
     }
 
@@ -87,7 +88,7 @@ impl AttachRing {
         match *self {
             AttachRing::Shown { target, .. }
             | AttachRing::Closing { target, .. }
-            | AttachRing::Fading { target, .. } => target,
+            | AttachRing::Breaking { target, .. } => target,
         }
     }
 
@@ -96,14 +97,20 @@ impl AttachRing {
             AttachRing::Shown { since, .. } => Some(Look {
                 swell: swell(now - since),
                 opacity: 1.0,
+                gap: 0.0,
             }),
             AttachRing::Closing { progress, .. } => Some(Look {
                 swell: closing(progress),
                 opacity: 1.0,
+                gap: 0.0,
             }),
-            AttachRing::Fading { look, since, .. } => {
-                let opacity = look.opacity * (1.0 - (now - since) / FADING) as f32;
-                (opacity > 0.0).then_some(Look { opacity, ..look })
+            AttachRing::Breaking { look, since, .. } => {
+                let progress = ((now - since) / BREAKING) as f32;
+                (progress < 1.0).then(|| Look {
+                    opacity: look.opacity * (1.0 - progress),
+                    gap: 1.0 - (1.0 - progress).powi(2),
+                    ..look
+                })
             }
         }
     }
@@ -115,6 +122,7 @@ impl AttachBurst {
         (0.0..1.0).contains(&progress).then(|| Look {
             swell: BURST_SWELL * (1.0 - (1.0 - progress).powi(3)),
             opacity: 1.0 - progress * progress,
+            gap: 0.0,
         })
     }
 }
@@ -151,21 +159,20 @@ mod tests {
     }
 
     #[test]
-    fn leaving_fades_the_ring_out() {
+    fn leaving_breaks_the_ring_open_and_fades_it_out() {
         let [target, _] = entities();
         let ring = AttachRing::next(None, Some(target), None, false, Seconds(1.0));
-        let fading = AttachRing::next(ring, None, None, false, Seconds(2.0));
-        assert_eq!(fading.unwrap().shown(), None);
-        assert!(
-            fading
-                .unwrap()
-                .look(Seconds(2.0) + 0.5 * FADING)
-                .unwrap()
-                .opacity
-                < 1.0
-        );
+        let breaking = AttachRing::next(ring, None, None, false, Seconds(2.0));
+        assert_eq!(breaking.unwrap().shown(), None);
+        let start = breaking.unwrap().look(Seconds(2.0)).unwrap();
+        let halfway = breaking
+            .unwrap()
+            .look(Seconds(2.0) + 0.5 * BREAKING)
+            .unwrap();
+        assert_eq!((start.gap, start.opacity), (0.0, 1.0));
+        assert!(halfway.gap > 0.5 && halfway.opacity < 1.0);
         assert_eq!(
-            AttachRing::next(fading, None, None, false, Seconds(2.01) + FADING),
+            AttachRing::next(breaking, None, None, false, Seconds(2.01) + BREAKING),
             None
         );
     }
@@ -188,11 +195,11 @@ mod tests {
     }
 
     #[test]
-    fn leaving_a_closing_ring_fades_it_where_it_was() {
+    fn leaving_a_closing_ring_breaks_it_where_it_was() {
         let [target, _] = entities();
         let ring = AttachRing::next(None, Some(target), Some(0.0), false, Seconds(1.0));
-        let fading = AttachRing::next(ring, None, None, false, Seconds(1.0)).unwrap();
-        let look = fading.look(Seconds(1.0) + 0.5 * FADING).unwrap();
+        let breaking = AttachRing::next(ring, None, None, false, Seconds(1.0)).unwrap();
+        let look = breaking.look(Seconds(1.0) + 0.5 * BREAKING).unwrap();
         assert_eq!(look.swell, OPEN);
         assert!(look.opacity < 1.0);
     }

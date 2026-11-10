@@ -10,7 +10,7 @@ use crate::editor::{Editor, Pan, Targets};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
     self, AttachBurst, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus,
-    LoupeView, MenuChoice, Saving, Subject, LOUPE_DELAY, WAITING,
+    LoupeView, MenuChoice, Saving, Subject, LOUPE_DELAY, LOUPE_SNAP, WAITING,
 };
 use crate::inertia::Inertia;
 use crate::landing::about::{AboutChoice, AboutScreen};
@@ -71,6 +71,7 @@ pub struct Neuronify {
     hold_ring: Option<HoldRing>,
     attach_ring: Option<AttachRing>,
     attach_burst: Option<AttachBurst>,
+    loupe_snap: Option<Seconds>,
     loupe: Option<LoupeCorner>,
     loupe_focus: Option<(LoupeFocus, Seconds)>,
 }
@@ -112,6 +113,14 @@ fn thump() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn thump() {}
+
+#[cfg(target_arch = "wasm32")]
+fn snap() {
+    crate::web::snap();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn snap() {}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn file_stem(path: &std::path::Path) -> String {
@@ -249,6 +258,7 @@ impl Neuronify {
             hold_ring: None,
             attach_ring: None,
             attach_burst: None,
+            loupe_snap: None,
             loupe: None,
             loupe_focus: None,
         };
@@ -471,10 +481,14 @@ impl Neuronify {
         let shown = self.attach_ring.and_then(AttachRing::shown);
         let entered = ending.is_some() && shown.is_none();
         let left = ending.is_none() && shown.is_some() && self.mouse.left_down;
-        if entered || left {
+        let now = input::now();
+        if entered {
             tick();
         }
-        let now = input::now();
+        if left {
+            snap();
+            self.loupe_snap = Some(now);
+        }
         let progress = self.dwell_progress(now);
         self.attach_ring = AttachRing::next(self.attach_ring, ending, progress, entered, now);
     }
@@ -492,7 +506,9 @@ impl Neuronify {
 
     fn use_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
-            self.editor.lift(&mut self.world);
+            if let Some(target) = self.editor.lift(&mut self.world) {
+                self.attached(target, input::now());
+            }
             return;
         }
         if self.mouse.moved_while_pressed() {
@@ -534,18 +550,32 @@ impl Neuronify {
         }
     }
 
+    fn attached(&mut self, target: hecs::Entity, now: Seconds) {
+        thump();
+        self.attach_ring = None;
+        self.loupe_snap = None;
+        self.attach_burst = Some(AttachBurst { target, since: now });
+    }
+
     fn loupe_rim(&self) -> (Option<f32>, f32) {
+        let now = input::now();
         match self.hold_ring {
             Some(HoldRing::Holding { held_for, .. }) => {
                 let progress = (held_for - LOUPE_DELAY) / (input::HOLD - LOUPE_DELAY);
-                (Some(progress.clamp(0.0, 1.0) as f32), 0.0)
+                return (Some(progress.clamp(0.0, 1.0) as f32), 0.0);
             }
             Some(ring @ HoldRing::Grabbed { .. }) => {
-                let flash = ring.look(input::now()).map_or(0.0, |look| look.opacity);
-                (None, flash)
+                let flash = ring.look(now).map_or(0.0, |look| look.opacity);
+                return (None, flash);
             }
-            _ => (None, 0.0),
+            _ => {}
         }
+        let progress = self.dwell_progress(now);
+        let flash = self
+            .attach_burst
+            .and_then(|burst| burst.look(now))
+            .map_or(0.0, |look| look.opacity);
+        (progress, flash)
     }
 
     fn loupe_subject(
@@ -596,6 +626,13 @@ impl Neuronify {
         let corner = LoupeCorner::next(self.loupe, finger, screen);
         self.loupe = Some(corner);
         let (progress, flash) = self.loupe_rim();
+        let snap = self
+            .loupe_snap
+            .map(|since| ((now - since) / LOUPE_SNAP) as f32)
+            .filter(|&snap| snap < 1.0);
+        if snap.is_none() {
+            self.loupe_snap = None;
+        }
         let view = LoupeView {
             corner,
             finger,
@@ -605,6 +642,7 @@ impl Neuronify {
             attached: self.editor.ending().is_some(),
             progress,
             flash,
+            snap,
         };
         gui::paint_loupe(context, self.theme, view);
     }
@@ -721,6 +759,7 @@ impl Neuronify {
         self.hold_ring = None;
         self.attach_ring = None;
         self.attach_burst = None;
+        self.loupe_snap = None;
         self.loupe = None;
         self.landing = None;
         self.frame_scene_requested = true;
@@ -880,9 +919,7 @@ impl visula::Simulation for Neuronify {
         });
         self.hold_ring = HoldRing::next(self.hold_ring, pending, grabbed, now);
         if let Some(target) = self.editor.dwell(&mut self.world, now) {
-            thump();
-            self.attach_ring = None;
-            self.attach_burst = Some(AttachBurst { target, since: now });
+            self.attached(target, now);
         }
         self.attach_burst = self.attach_burst.filter(|burst| burst.look(now).is_some());
         let progress = self.dwell_progress(now);

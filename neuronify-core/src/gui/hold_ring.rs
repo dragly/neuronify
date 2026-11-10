@@ -39,6 +39,7 @@ pub enum HoldRing {
 pub struct Look {
     pub swell: f32,
     pub opacity: f32,
+    pub gap: f32,
 }
 
 impl Look {
@@ -88,6 +89,7 @@ impl HoldRing {
             HoldRing::Holding { held_for, .. } => (held_for >= DELAY).then(|| Look {
                 swell: swell(held_for),
                 opacity: 1.0,
+                gap: 0.0,
             }),
             HoldRing::Fading {
                 held_for, since, ..
@@ -96,6 +98,7 @@ impl HoldRing {
                 (held_for >= DELAY && opacity > 0.0).then(|| Look {
                     swell: swell(held_for),
                     opacity,
+                    gap: 0.0,
                 })
             }
             HoldRing::Grabbed { since, .. } => {
@@ -103,6 +106,7 @@ impl HoldRing {
                 (opacity > 0.0).then_some(Look {
                     swell: 0.0,
                     opacity,
+                    gap: 0.0,
                 })
             }
         }
@@ -118,13 +122,24 @@ pub fn paint_hold_ring(
 ) {
     let accent = Chrome::of(theme).accent;
     let fill = accent.gamma_multiply(FILL_OPACITY * look.opacity);
-    let mut band = Mesh::default();
-    for (&inside, &outside) in inner.iter().zip(outer) {
-        band.colored_vertex(inside, fill);
-        band.colored_vertex(outside, fill);
+    let count = inner.len().min(outer.len());
+    let skip = ((count as f32 * look.gap / 2.0).round() as usize).min(count / 2);
+    let closed = skip == 0;
+    let kept: Vec<usize> = match closed {
+        true => (0..count).collect(),
+        false => (skip..=count - skip).collect(),
+    };
+    if kept.len() < 2 {
+        return;
     }
-    let corners = 2 * inner.len().min(outer.len()) as u32;
-    for corner in (0..corners).step_by(2) {
+    let mut band = Mesh::default();
+    for &index in &kept {
+        band.colored_vertex(inner[index], fill);
+        band.colored_vertex(outer[index], fill);
+    }
+    let corners = 2 * kept.len() as u32;
+    let quads = if closed { corners } else { corners - 2 };
+    for corner in (0..quads).step_by(2) {
         let [inside, outside] = [corner, corner + 1];
         let [next_inside, next_outside] = [(corner + 2) % corners, (corner + 3) % corners];
         band.add_triangle(inside, outside, next_outside);
@@ -132,13 +147,15 @@ pub fn paint_hold_ring(
     }
     let painter = context.layer_painter(LayerId::background());
     painter.add(band);
-    painter.add(Shape::closed_line(
-        outer.to_vec(),
-        Stroke::new(
-            EDGE_WIDTH,
-            accent.gamma_multiply(EDGE_OPACITY * look.opacity),
-        ),
-    ));
+    let edge: Vec<Pos2> = kept.iter().map(|&index| outer[index]).collect();
+    let stroke = Stroke::new(
+        EDGE_WIDTH,
+        accent.gamma_multiply(EDGE_OPACITY * look.opacity),
+    );
+    painter.add(match closed {
+        true => Shape::closed_line(edge, stroke),
+        false => Shape::line(edge, stroke),
+    });
 }
 
 #[cfg(test)]
