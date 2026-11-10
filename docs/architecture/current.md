@@ -1,6 +1,7 @@
 # Neuronify architecture as it is
 
 How Neuronify 2 works today, for people and agents who want to change it.
+`future.md` collects changes under consideration.
 In the diagrams, purple marks the neuron dynamics, orange the physics,
 green what runs only natively and blue what runs only on the web.
 
