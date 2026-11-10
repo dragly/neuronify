@@ -1010,27 +1010,32 @@ impl Engine {
                 dynamics.time_since_fire = self.network.generators[generator].since;
             }
         }
+        if self.conductances.is_empty() && self.currents.is_empty() {
+            return;
+        }
+        let mut pending: HashMap<Target, Vec<Milliseconds>> = HashMap::new();
+        for (target, time) in self.network.pending_all() {
+            if let Target::Conductance(_) | Target::Current(_) = target {
+                pending.entry(target).or_default().push(time);
+            }
+        }
+        let pending_for = |target| pending.get(&target).into_iter().flatten().copied();
         for &(entity, index) in &self.conductances {
             if let Ok(mut state) = world.get::<&mut SynapseState>(entity) {
                 state.open = self.network.conductances[index].open;
+                state.pending.clear();
+                state
+                    .pending
+                    .extend(pending_for(Target::Conductance(index)));
             }
         }
-        if self.currents.is_empty() {
-            return;
-        }
-        let pending = self.network.pending_all();
         for &(entity, index) in &self.currents {
             if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {
                 let state = &self.network.currents[index];
                 synapse.exponential = state.exponential;
                 synapse.linear = state.linear;
                 synapse.triggers.clear();
-                synapse.triggers.extend(
-                    pending
-                        .iter()
-                        .filter(|(target, _)| *target == Target::Current(index))
-                        .map(|&(_, time)| time),
-                );
+                synapse.triggers.extend(pending_for(Target::Current(index)));
             }
         }
     }

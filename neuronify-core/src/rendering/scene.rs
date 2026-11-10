@@ -62,8 +62,9 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette, time: Milliseconds)
         spheres: collect_spheres(world, &radii, &paths, palette),
         cylinders: collect_cylinders(world, &radii, &paths, palette),
         rings: collect_rings(world, palette),
-        transmitter: collect_transmitter(world, &paths, palette),
+        transmitter: Vec::new(),
     };
+    scene.extend(collect_transmitter(world, &paths, &radii, palette, time));
     scene
         .spheres
         .extend(collect_current_flow(world, &paths, time));
