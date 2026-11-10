@@ -1,0 +1,13 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"adaptive neuron" = 2
+"current source" = 2
+note = 2
+"spike detector" = 1
+synapse = 4
+
+[spikes]
+1 = [4]
+2 = [2]

@@ -1,0 +1,11 @@
+seconds = 10.0
+runs = ["alone", "sensor 1"]
+
+[elements]
+"burst neuron" = 1
+note = 2
+"touch sensor" = 1
+voltmeter = 1
+
+[spikes]
+1 = [0, 13]

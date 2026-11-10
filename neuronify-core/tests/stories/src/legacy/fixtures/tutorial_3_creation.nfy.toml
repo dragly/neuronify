@@ -1,0 +1,13 @@
+seconds = 10.0
+runs = ["alone"]
+
+[elements]
+"excitatory neuron" = 4
+note = 3
+synapse = 4
+
+[spikes]
+1 = [0]
+2 = [0]
+3 = [0]
+4 = [0]

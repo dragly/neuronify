@@ -1,0 +1,19 @@
+seconds = 10.0
+runs = ["alone", "sensor 1", "sensor 2"]
+
+[elements]
+compartment = 8
+"current source" = 1
+"dendrite compartment" = 32
+"excitatory neuron" = 3
+"inhibitory neuron" = 1
+link = 1
+note = 3
+synapse = 6
+"touch sensor" = 2
+
+[spikes]
+1 = [0, 1, 0]
+2 = [11, 11, 11]
+3 = [0, 0, 1]
+4 = [0, 0, 1]

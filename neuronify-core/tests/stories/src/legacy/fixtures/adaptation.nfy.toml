@@ -1,0 +1,14 @@
+seconds = 10.0
+runs = ["alone", "sensor 1"]
+
+[elements]
+"adaptive neuron" = 1
+"excitatory neuron" = 1
+note = 2
+synapse = 1
+"touch sensor" = 1
+voltmeter = 1
+
+[spikes]
+"1 Leaky" = [0, 1]
+"2 Adaptive" = [0, 1]

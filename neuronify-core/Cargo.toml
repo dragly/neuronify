@@ -89,6 +89,10 @@ png = "0.18"
 [build-dependencies]
 miniz_oxide = "0.8"
 
+[dev-dependencies]
+indexmap = { version = "2", features = ["serde"] }
+toml = "0.8"
+
 [[example]]
 name = "write_examples"
 path = "generators/write_examples.rs"
