@@ -2,6 +2,7 @@ use glam::{Vec3, Vec4};
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::MouseScrollDelta;
 
+use crate::input::midpoint;
 use crate::rendering::Bounds;
 
 const MIN_DISTANCE: f32 = 5.0;
@@ -86,15 +87,21 @@ pub fn pan(application: &mut visula::Application, offset: Vec3) {
     camera.current_transform.center = camera.target_transform.center;
 }
 
+pub fn slide(
+    application: &mut visula::Application,
+    from: PhysicalPosition<f64>,
+    to: PhysicalPosition<f64>,
+) {
+    let offset = ground_position(application, to) - ground_position(application, from);
+    pan(application, offset);
+}
+
 pub fn pinch(
     application: &mut visula::Application,
     previous: [PhysicalPosition<f64>; 2],
     current: [PhysicalPosition<f64>; 2],
 ) {
     let spread = |[a, b]: [PhysicalPosition<f64>; 2]| (a.x - b.x).hypot(a.y - b.y);
-    let midpoint = |[a, b]: [PhysicalPosition<f64>; 2]| {
-        PhysicalPosition::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
-    };
     let zoom = match (spread(previous), spread(current)) {
         (before, after) if before > 0.0 && after > 0.0 => (before / after) as f32,
         _ => 1.0,

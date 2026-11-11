@@ -34,6 +34,10 @@ fn distance(a: PhysicalPosition<f64>, b: PhysicalPosition<f64>) -> f64 {
     (a.x - b.x).hypot(a.y - b.y)
 }
 
+pub fn midpoint([a, b]: [PhysicalPosition<f64>; 2]) -> PhysicalPosition<f64> {
+    PhysicalPosition::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Mouse {
     pub left_down: bool,
@@ -110,6 +114,7 @@ pub enum TouchGesture {
         previous: [PhysicalPosition<f64>; 2],
         current: [PhysicalPosition<f64>; 2],
     },
+    PinchEnded,
     Zoom {
         anchor: PhysicalPosition<f64>,
         previous: PhysicalPosition<f64>,
@@ -194,6 +199,7 @@ impl Touches {
                 }
             }
             (TouchPhase::Ended | TouchPhase::Cancelled, Some(index)) => {
+                let pinch_ended = self.pinched && self.fingers.len() == 2;
                 self.fingers.remove(index);
                 let released = self.fingers.is_empty() && !self.pinched;
                 if self.fingers.is_empty() {
@@ -209,6 +215,7 @@ impl Touches {
                     _ => {}
                 }
                 match (released, touch.phase, self.waiting.take()) {
+                    (false, TouchPhase::Ended, _) if pinch_ended => TouchGesture::PinchEnded,
                     (false, _, _) | (true, TouchPhase::Cancelled, Some(_)) => TouchGesture::None,
                     (true, TouchPhase::Cancelled, None) => TouchGesture::Cancel,
                     (true, _, Some((start, _))) => TouchGesture::Tap(start),
@@ -401,13 +408,13 @@ mod tests {
     }
 
     #[test]
-    fn finger_left_after_a_pinch_does_nothing() {
+    fn a_pinch_ends_when_a_finger_lifts_and_the_finger_left_does_nothing() {
         let mut touches = Touches::default();
         touches.update(&touch(1, TouchPhase::Started, 10.0, 10.0), NOW, false, 1.0);
         touches.update(&touch(2, TouchPhase::Started, 30.0, 10.0), NOW, false, 1.0);
         assert_eq!(
             touches.update(&touch(1, TouchPhase::Ended, 10.0, 10.0), NOW, false, 1.0),
-            TouchGesture::None
+            TouchGesture::PinchEnded
         );
         assert_eq!(
             touches.update(&touch(2, TouchPhase::Moved, 60.0, 10.0), NOW, false, 1.0),

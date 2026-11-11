@@ -12,6 +12,7 @@ use crate::gui::{
     self, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus, LoupeView,
     MenuChoice, Saving, Subject, LOUPE_DELAY,
 };
+use crate::inertia::Inertia;
 use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
@@ -51,6 +52,8 @@ pub struct Neuronify {
     hover: Option<PhysicalPosition<f64>>,
     touch_input: bool,
     touches: Touches,
+    inertia: Inertia,
+    caught: bool,
     ghost: Option<Ghost>,
     renderer: SceneRenderer,
     frame_clock: FrameClock,
@@ -219,6 +222,8 @@ impl Neuronify {
             hover: None,
             touch_input: false,
             touches: Touches::default(),
+            inertia: Inertia::default(),
+            caught: false,
             ghost: None,
             renderer,
             frame_clock: FrameClock::default(),
@@ -249,10 +254,19 @@ impl Neuronify {
     }
 
     fn press_pointer(&mut self, application: &mut visula::Application, pressed: bool) {
-        if self.mouse.press(pressed, input::now()) {
+        if self.mouse.press(pressed, input::now()) && !self.caught {
             self.tap(application);
         }
         self.handle_tool(application);
+        if !pressed {
+            let scale_factor = application.window.scale_factor();
+            self.inertia.release(input::now(), scale_factor);
+            self.caught = false;
+        }
+    }
+
+    fn catch_glide(&mut self, application: &visula::Application) {
+        self.caught = self.inertia.press(application.window.scale_factor());
     }
 
     fn editing(&self) -> bool {
@@ -462,13 +476,18 @@ impl Neuronify {
             return;
         };
         let position = camera::ground_position(application, screen_position);
-        let requested_pan = if self.editing() {
+        let requested_pan = if self.caught {
+            self.editor.pan(position)
+        } else if self.editing() {
             self.editor.edit(&mut self.world, position)
         } else {
             self.editor.view(&mut self.world, position)
         };
         if let Some(Pan(offset)) = requested_pan {
             camera::pan(application, offset);
+        }
+        if self.editor.pressed_background() {
+            self.inertia.track(input::now(), screen_position);
         }
     }
 
@@ -813,7 +832,7 @@ impl visula::Simulation for Neuronify {
             self.move_pointer(application, position);
             self.press_pointer(application, true);
         }
-        let holds = !self.editing() || matches!(self.editor.tool, Tool::Place(_));
+        let holds = !self.caught && (!self.editing() || matches!(self.editor.tool, Tool::Place(_)));
         let now = input::now();
         let mut grabbed = false;
         if holds {
@@ -857,8 +876,12 @@ impl visula::Simulation for Neuronify {
         if let Some(landing) = &mut self.landing {
             landing.update(elapsed, physics_steps);
         }
+        if let Some((from, to)) = self.inertia.step(input::now()) {
+            camera::slide(application, from, to);
+        }
         if self.frame_scene_requested {
             self.frame_scene_requested = false;
+            self.inertia.stop();
             let pixels_per_point = application
                 .egui_renderer
                 .state
@@ -1044,7 +1067,11 @@ impl visula::Simulation for Neuronify {
                 ..
             } => {
                 self.touch_input = false;
-                self.press_pointer(application, *state == ElementState::Pressed);
+                let pressed = *state == ElementState::Pressed;
+                if pressed {
+                    self.catch_glide(application);
+                }
+                self.press_pointer(application, pressed);
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
@@ -1073,10 +1100,16 @@ impl visula::Simulation for Neuronify {
                     if !self.editor.empty_at(&self.world, position) {
                         self.touches.forget_tap();
                     }
+                    self.catch_glide(application);
                 }
-                let wait = !matches!(self.editor.tool, Tool::View | Tool::Edit | Tool::Stimulate);
+                let wait = !self.caught
+                    && !matches!(self.editor.tool, Tool::View | Tool::Edit | Tool::Stimulate);
                 let scale_factor = application.window.scale_factor();
-                match self.touches.update(touch, input::now(), wait, scale_factor) {
+                let gesture = self.touches.update(touch, input::now(), wait, scale_factor);
+                if self.caught {
+                    self.touches.forget_tap();
+                }
+                match gesture {
                     TouchGesture::Press(position) => {
                         self.move_pointer(application, position);
                         self.press_pointer(application, true);
@@ -1098,7 +1131,12 @@ impl visula::Simulation for Neuronify {
                         self.editor.release(&self.world);
                     }
                     TouchGesture::Pinch { previous, current } => {
-                        camera::pinch(application, previous, current)
+                        camera::pinch(application, previous, current);
+                        self.inertia.track(input::now(), input::midpoint(current));
+                    }
+                    TouchGesture::PinchEnded => {
+                        let scale_factor = application.window.scale_factor();
+                        self.inertia.release(input::now(), scale_factor);
                     }
                     TouchGesture::Zoom {
                         anchor,
