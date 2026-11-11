@@ -1,6 +1,6 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 use hecs::{Entity, EntityRef};
 
 use crate::components::*;
@@ -10,13 +10,18 @@ use crate::rendering::colors::{terminal_color, Palette};
 use crate::rendering::gpu_types::{CylinderData, Sphere};
 use crate::rendering::paths::{ending_path, ending_path_to, ConnectionPath};
 use crate::rendering::scene::Scene;
-use crate::rendering::shapes::shown_voltage;
-use crate::rendering::spheres::path_spheres;
+use crate::rendering::shapes::{shown_voltage, soma_color};
+use crate::rendering::spheres::{path_spheres, soma_radius};
 use crate::simulation::model::{
     dendrite_diameter, drawn_radius, soma_end_radius, INTERNODE_DIAMETER, MYELIN_G_RATIO,
 };
 
 const MIN_GROWN_LENGTH: f32 = 1e-4;
+const FILLET_SEGMENTS: usize = 8;
+const NARROWEST_FILLET: f32 = 0.15;
+const WIDEST_FILLET: f32 = 1.6;
+const FILLET_LENGTH_SCALE: Micrometres = Micrometres(400.0);
+const FILLET_REACH: f32 = 0.9;
 const SHEATH_RADIUS: f32 = 0.26;
 pub const NODE_GAP: f32 = 0.5;
 
@@ -202,6 +207,7 @@ pub fn collect_cylinders(
             });
         }
     }
+    cylinders.extend(soma_fillets(world, radii, &display, palette));
     let sheath_radius = sheath_radius(&display);
     cylinders.extend(
         sheaths(world, palette)
@@ -221,6 +227,134 @@ pub fn collect_cylinders(
         cylinders.extend(path_cylinders(path));
     }
     cylinders
+}
+
+fn fillet_profile(soma: f32, branch: f32, rounding: f32) -> Vec<Vec2> {
+    let center = Vec2::new(
+        ((soma + rounding).powi(2) - (branch + rounding).powi(2)).sqrt(),
+        branch + rounding,
+    );
+    let start = (-center.y).atan2(-center.x);
+    let end = -std::f32::consts::FRAC_PI_2;
+    (0..=FILLET_SEGMENTS)
+        .map(|k| {
+            let angle = start + (end - start) * k as f32 / FILLET_SEGMENTS as f32;
+            center + rounding * Vec2::new(angle.cos(), angle.sin())
+        })
+        .collect()
+}
+
+fn fillet_rounding(soma: f32, branch: f32, length: Micrometres, room: f32) -> Option<f32> {
+    if branch >= soma {
+        return None;
+    }
+    let grown = 1.0 - (-(length / FILLET_LENGTH_SCALE)).exp() as f32;
+    let wanted = soma * (NARROWEST_FILLET + (WIDEST_FILLET - NARROWEST_FILLET) * grown);
+    let reach = FILLET_REACH * room;
+    let most = (reach * reach - soma * soma + branch * branch) / (2.0 * (soma - branch));
+    (most > 0.0).then(|| wanted.min(most))
+}
+
+fn branch_length(
+    world: &hecs::World,
+    neighbours: &HashMap<Entity, Vec<(Entity, Micrometres)>>,
+    soma: Entity,
+    first: Entity,
+) -> Micrometres {
+    let mut seen = HashSet::from([soma, first]);
+    let mut stack = vec![first];
+    let mut length = Micrometres::ZERO;
+    while let Some(node) = stack.pop() {
+        for &(next, cable) in neighbours.get(&node).into_iter().flatten() {
+            if !world.satisfies::<&LeakyNeuron>(next) && seen.insert(next) {
+                length += cable;
+                stack.push(next);
+            }
+        }
+    }
+    length
+}
+
+fn soma_fillets(
+    world: &hecs::World,
+    radii: &HashMap<Entity, f32>,
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> Vec<CylinderData> {
+    if world.query::<&CompartmentSoma>().iter().next().is_none() {
+        return Vec::new();
+    }
+    let mut neighbours: HashMap<Entity, Vec<(Entity, Micrometres)>> = HashMap::new();
+    let mut branches = Vec::new();
+    for (connection, cable) in world
+        .query::<(&Connection, &Cable)>()
+        .iter()
+        .filter(|(connection, _)| !connection.directional)
+    {
+        for (from, to) in [
+            (connection.from, connection.to),
+            (connection.to, connection.from),
+        ] {
+            neighbours.entry(from).or_default().push((to, cable.length));
+            if world.satisfies::<&CompartmentSoma>(from) && world.satisfies::<&Compartment>(to) {
+                branches.push((from, to, cable.length, cable.diameter));
+            }
+        }
+    }
+    let mut fillets = Vec::new();
+    for (soma, first, first_length, diameter) in branches {
+        let (Ok(soma_ref), Ok(first_ref)) = (world.entity(soma), world.entity(first)) else {
+            continue;
+        };
+        let (Some(neuron), Some(state), Some(center), Some(end)) = (
+            soma_ref.get::<&LeakyNeuron>(),
+            soma_ref.get::<&NodeState>(),
+            soma_ref.get::<&Position>(),
+            first_ref.get::<&Position>(),
+        ) else {
+            continue;
+        };
+        let (center, end) = (center.position, end.position);
+        let room = center.distance(end);
+        let direction = (end - center).normalize_or_zero();
+        let soma_size = soma_radius(world, soma, display);
+        let root = soma_end_radius(diameter, display);
+        let tip = radii.get(&first).copied().unwrap_or(root);
+        let length = first_length + branch_length(world, &neighbours, soma, first);
+        let along = |x: f32| (x / room).clamp(0.0, 1.0);
+        let Some(rounding) = fillet_rounding(soma_size, root, length, room) else {
+            continue;
+        };
+        let reached = fillet_profile(soma_size, root, rounding)[FILLET_SEGMENTS].x;
+        let branch = root + (tip - root) * along(reached);
+        let Some(rounding) = fillet_rounding(soma_size, branch, length, room) else {
+            continue;
+        };
+        let profile = fillet_profile(soma_size, branch, rounding);
+        let soma_end = soma_end_color(soma_ref, first_ref, display, palette);
+        let far_end = compartment_color(first_ref, display, palette);
+        let (Some(soma_end), Some(far_end)) = (soma_end, far_end) else {
+            continue;
+        };
+        let body = soma_color(world, soma, &neuron, &state, display, palette);
+        let joined = soma_end.lerp(far_end, along(profile[FILLET_SEGMENTS].x));
+        let color = |k: usize| body.lerp(joined, k as f32 / FILLET_SEGMENTS as f32);
+        fillets.extend(
+            profile
+                .windows(2)
+                .enumerate()
+                .map(|(k, pair)| CylinderData {
+                    start: center + direction * pair[0].x,
+                    start_radius: pair[0].y,
+                    end: center + direction * pair[1].x,
+                    end_radius: pair[1].y,
+                    start_color: color(k),
+                    end_color: color(k + 1),
+                    _padding: Default::default(),
+                }),
+        );
+    }
+    fillets
 }
 
 pub fn path_cylinders(path: &ConnectionPath) -> Vec<CylinderData> {
@@ -728,6 +862,48 @@ mod tests {
         assert_eq!(pieces[1].start, Vec3::new(1.0, 0.0, 0.0));
         assert_eq!((pieces[1].start_color, pieces[1].end_color), (rest, lit));
         assert_eq!((pieces[2].start_color, pieces[2].end_color), (lit, rest));
+    }
+
+    #[test]
+    fn a_fillet_meets_the_soma_and_the_branch_without_a_crease() {
+        let profile = fillet_profile(1.0, 0.3, 0.8);
+        let (first, second) = (profile[0], profile[1]);
+        let (last, before) = (profile[FILLET_SEGMENTS], profile[FILLET_SEGMENTS - 1]);
+        assert!((first.length() - 1.0).abs() < 1e-5);
+        assert!((second - first).normalize().dot(first.normalize()).abs() < 0.2);
+        assert!((last.y - 0.3).abs() < 1e-5);
+        assert!((last - before).normalize().y.abs() < 0.2);
+        assert!(profile.windows(2).all(|pair| pair[1].y < pair[0].y));
+    }
+
+    #[test]
+    fn a_longer_branch_leaves_its_soma_from_a_wider_base() {
+        let base = |length: f64| {
+            let rounding = fillet_rounding(1.0, 0.3, Micrometres(length), 2.0).unwrap();
+            fillet_profile(1.0, 0.3, rounding)[0].y
+        };
+        assert!(base(100.0) < base(300.0) && base(300.0) < base(1000.0));
+    }
+
+    #[test]
+    fn a_fillet_ends_before_the_first_compartment() {
+        for room in [0.8, 1.5, 2.0, 4.0] {
+            let Some(rounding) = fillet_rounding(1.0, 0.3, Micrometres(1e6), room) else {
+                continue;
+            };
+            let end = fillet_profile(1.0, 0.3, rounding)[FILLET_SEGMENTS].x;
+            assert!(end <= FILLET_REACH * room + 1e-4, "{end} in {room}");
+        }
+    }
+
+    #[test]
+    fn only_a_compartment_soma_blends_into_its_dendrites_and_axon() {
+        let mut world = hecs::World::new();
+        let (soma, _, _) = neuron_with_a_dendrite_and_an_axon(&mut world, NeuronType::Excitatory);
+        world.insert_one(soma, NodeState::default()).unwrap();
+        let point = drawn(&world).len();
+        world.insert_one(soma, CompartmentSoma::default()).unwrap();
+        assert_eq!(drawn(&world).len(), point + 2 * FILLET_SEGMENTS);
     }
 
     #[test]
