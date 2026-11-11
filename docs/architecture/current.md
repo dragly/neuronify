@@ -66,6 +66,8 @@ is a sphere 20 µm across with 0.4 S/cm² sodium and 0.5 S/cm² potassium channe
 balanced to rest at the neuron's resting potential.
 From a current source it fires from about 0.75 nA and goes silent above about 4 nA in mammals,
 and from 0.5 nA to about 6.5 nA, more slowly, in squid.
+It is drawn blending into each dendrite and axon through a smooth fillet,
+wider at the base of longer branches, while a point neuron's soma stays a plain sphere.
 
 ### Rules and defaults
 
