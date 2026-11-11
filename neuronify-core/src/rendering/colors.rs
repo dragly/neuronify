@@ -1,6 +1,8 @@
 use glam::Vec3;
 
-use crate::components::{Millivolts, Nanoamperes, NeuronType};
+use hecs::Entity;
+
+use crate::components::{neuron_type, Dendrite, Millivolts, Nanoamperes, NeuronType};
 
 pub fn shown_fraction(voltage: Millivolts) -> f32 {
     ((voltage - LOWEST_SHOWN_VOLTAGE) / (HIGHEST_SHOWN_VOLTAGE - LOWEST_SHOWN_VOLTAGE))
@@ -70,10 +72,6 @@ pub fn current_color(current: Nanoamperes) -> Vec3 {
 
 pub fn orange() -> Vec3 {
     srgb(254, 100, 11)
-}
-
-pub fn green() -> Vec3 {
-    srgb(64, 160, 43)
 }
 
 pub fn frame_color() -> Vec3 {
@@ -165,6 +163,7 @@ pub struct Palette {
     pub neutral: Vec3,
     pub myelin: Vec3,
     pub selection: Vec3,
+    pub voltmeter_spike: Vec3,
     pub halo: f32,
     pub transmitter: f32,
 }
@@ -185,6 +184,7 @@ impl Theme {
                 neutral: crust(),
                 myelin: srgb(222, 214, 190),
                 selection: srgb(80, 240, 110),
+                voltmeter_spike: srgb(205, 214, 244),
                 halo: 0.6,
                 transmitter: 0.6,
             },
@@ -201,6 +201,7 @@ impl Theme {
                 neutral: srgb(140, 143, 161),
                 myelin: srgb(244, 233, 205),
                 selection: srgb(15, 85, 45),
+                voltmeter_spike: srgb(76, 79, 105),
                 halo: 1.0,
                 transmitter: 0.8,
             },
@@ -221,6 +222,14 @@ impl Palette {
         match *neuron_type {
             NeuronType::Excitatory => self.excitatory.lerp(self.excitatory_below, depth),
             NeuronType::Inhibitory => self.inhibitory.lerp(self.inhibitory_below, depth),
+        }
+    }
+
+    pub fn measured(&self, world: &hecs::World, entity: Entity) -> Vec3 {
+        let color = self.soma(&neuron_type(world, entity), 0.0);
+        match world.satisfies::<&Dendrite>(entity) {
+            true => paler(color),
+            false => color,
         }
     }
 

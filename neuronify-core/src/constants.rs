@@ -24,6 +24,7 @@ pub const SEGMENT_LENGTH: f32 = 2.0 * NODE_RADIUS;
 pub const INTERNODE_LENGTH: f32 = 2.8 * SEGMENT_LENGTH;
 pub const TERMINAL_INSET: f32 = 2.0 * NODE_RADIUS;
 pub const CONNECTION_WIDTH_PER_STRENGTH: f32 = 0.3;
+pub const CURVE_LIFT: f32 = 0.05;
 
 pub const VOLTMETER_TIME_WINDOW: Milliseconds = Milliseconds(1000.0 / 9.0);
 pub const PROBE_EVERY: u64 = 4;

@@ -61,10 +61,10 @@ pub fn top_down_shapes(
     }
 
     shapes.extend(joined_voltmeter_traces(
-        collect_voltmeter_traces(world)
+        collect_voltmeter_traces(world, palette)
             .into_iter()
             .chain(collect_spike_detectors(world, palette))
-            .chain(collect_rate_plots(world))
+            .chain(collect_rate_plots(world, palette))
             .chain(collect_visual_input_lines(world))
             .collect(),
         scale,
