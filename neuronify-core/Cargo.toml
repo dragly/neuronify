@@ -45,6 +45,7 @@ web-sys = { version = "0.3.69", features = [
     "Blob",
     "Document",
     "DomException",
+    "DomRect",
     "Element",
     "File",
     "FileList",
@@ -53,6 +54,7 @@ web-sys = { version = "0.3.69", features = [
     "HtmlAnchorElement",
     "HtmlElement",
     "HtmlInputElement",
+    "HtmlTextAreaElement",
     "IdbDatabase",
     "IdbFactory",
     "IdbObjectStore",
@@ -71,6 +73,7 @@ web-sys = { version = "0.3.69", features = [
     "StorageManager",
     "Url",
     "UrlSearchParams",
+    "VisualViewport",
     "Window",
 ] }
 chrono = { version = "0.4.38", features = ["serde"] }

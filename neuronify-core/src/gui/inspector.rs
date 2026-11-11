@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use egui::{
     pos2, style::HandleShape, vec2, Align, Align2, Context, CornerRadius, FontId, Frame, Id,
     Layout, Margin, Order, Rect, Response, RichText, ScrollArea, Sense, Shape, Slider,
-    SliderClamping, Stroke, Style, TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
+    SliderClamping, Stroke, Style, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::{Entity, World};
 
@@ -26,12 +26,14 @@ use crate::tools::Tool;
 use super::icons::{paint_icon, paint_tool, Icon};
 use super::sheet::{self, Sheet, HANDLE_HEIGHT};
 use super::style::{Chrome, MARGIN};
+use super::text_field::{covered_by_keyboard, text_field, Lines};
 use super::widgets::{heading, segmented, segmented_width, text_width, ROW_RADIUS};
 
 pub const INSPECTOR_WIDTH: f32 = 296.0;
 pub const DELETE: &str = "inspector_delete";
 pub const CLOSE: &str = "inspector_close";
 pub const LABEL: &str = "inspector_label";
+const NOTE: &str = "inspector_note";
 const PADDING: i8 = 14;
 const ROOM_BELOW: f32 = 80.0;
 const SHEET_PADDING: i8 = 16;
@@ -134,7 +136,9 @@ impl Inspector {
             self.record(world, entity);
         }
         let chrome = Chrome::of(theme);
-        let screen = context.content_rect();
+        let covered = covered_by_keyboard();
+        let mut screen = context.content_rect();
+        screen.max.y -= covered;
         let settled = !context.egui_wants_keyboard_input()
             && !context.input(|input| input.pointer.any_down());
         let mut action = None;
@@ -189,7 +193,7 @@ impl Inspector {
                     .show(context, |ui| {
                         chrome.sheet_frame(SHEET_PADDING).show(ui, |ui| {
                             ui.set_width(screen.width() - 2.0 * SHEET_PADDING as f32);
-                            ui.set_min_height(laid_out - SHEET_PADDING as f32);
+                            ui.set_min_height(laid_out + covered - SHEET_PADDING as f32);
                             dismissed = self.sheet.handle(ui, chrome, height, &detents);
                             let room =
                                 laid_out - HANDLE_HEIGHT - HEADER_BUTTON - SHEET_PADDING as f32;
@@ -631,14 +635,10 @@ fn label_field(ui: &mut Ui, chrome: &Chrome, text: &mut String) -> bool {
             .size(12.5)
             .color(chrome.subtext),
     );
-    let changed = ui
-        .add(
-            TextEdit::singleline(text)
-                .id(Id::new(LABEL))
-                .desired_width(f32::INFINITY)
-                .margin(Margin::symmetric(8, 6)),
-        )
-        .changed();
+    let changed = text_field(ui, Id::new(LABEL), text, Lines::One, |edit| {
+        edit.desired_width(f32::INFINITY)
+            .margin(Margin::symmetric(8, 6))
+    });
     description(ui, chrome, Setting::Label.description());
     ui.add_space(8.0);
     changed
@@ -1122,14 +1122,12 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     }
     if let Ok(mut annotation) = world.get::<&mut Annotation>(entity) {
         heading(ui, chrome, "Text", 0.0);
-        changed |= ui
-            .add(
-                TextEdit::multiline(&mut annotation.text)
-                    .desired_rows(4)
-                    .desired_width(f32::INFINITY)
-                    .margin(Margin::same(8)),
-            )
-            .changed();
+        let id = Id::new(NOTE);
+        changed |= text_field(ui, id, &mut annotation.text, Lines::Many, |edit| {
+            edit.desired_rows(4)
+                .desired_width(f32::INFINITY)
+                .margin(Margin::same(8))
+        });
         ui.add_space(8.0);
     }
     let ending =

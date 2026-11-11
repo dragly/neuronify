@@ -1017,6 +1017,8 @@ impl visula::Simulation for Neuronify {
     }
 
     fn gui(&mut self, application: &visula::Application, context: &egui::Context) {
+        #[cfg(target_arch = "wasm32")]
+        crate::web::settle_keyboard(context);
         context.set_theme(match self.theme {
             Theme::Dark => egui::Theme::Dark,
             Theme::Light => egui::Theme::Light,
