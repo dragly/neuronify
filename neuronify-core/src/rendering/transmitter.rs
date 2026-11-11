@@ -3,6 +3,9 @@ use std::f32::consts::TAU;
 
 use glam::Vec3;
 use hecs::{Entity, World};
+use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
+use rand::{Rng, SeedableRng};
 
 use crate::components::*;
 use crate::rendering::colors::Palette;
@@ -20,7 +23,6 @@ const WIDEST_LANDING_ANGLE: f32 = 1.2;
 const FASTEST_CROSSING: f32 = 0.45;
 const HALO_PER_PARTICLE_RADIUS: f32 = 4.0;
 const GOLDEN_FRACTION: f32 = 0.618_034;
-const PLASTIC_FRACTION: f32 = 0.754_877_7;
 
 pub fn crossing_time(synapse: &CurrentSynapse) -> Milliseconds {
     synapse.delay.clamp(Milliseconds::ZERO, ENDING_DELAY)
@@ -28,24 +30,50 @@ pub fn crossing_time(synapse: &CurrentSynapse) -> Milliseconds {
 
 struct Release {
     bound: f32,
-    crossings: Vec<f32>,
+    pending: Vec<Milliseconds>,
+    crossing: Milliseconds,
     particles: usize,
 }
 
-fn crossings(openings: &[Milliseconds], crossing: Milliseconds, now: Milliseconds) -> Vec<f32> {
-    openings
-        .iter()
-        .map(|&opening| 1.0 - ((opening - now) / crossing) as f32)
-        .filter(|&through| through >= 0.0)
-        .collect()
+impl Release {
+    fn crossings(&self, now: Milliseconds) -> Vec<(Milliseconds, f32)> {
+        self.pending
+            .iter()
+            .map(|&opening| (opening, 1.0 - ((opening - now) / self.crossing) as f32))
+            .filter(|&(_, through)| through >= 0.0)
+            .collect()
+    }
 }
 
-fn release(
-    world: &World,
-    entity: Entity,
-    connection: &Connection,
-    now: Milliseconds,
-) -> Option<Release> {
+#[derive(Default)]
+pub struct Landings(HashMap<Entity, Landing>);
+
+#[derive(Default)]
+struct Landing {
+    opened: Option<Milliseconds>,
+    pending: Vec<Milliseconds>,
+}
+
+impl Landings {
+    fn last_opened(&mut self, synapse: Entity, pending: &[Milliseconds]) -> Option<Milliseconds> {
+        if pending.is_empty() && !self.0.contains_key(&synapse) {
+            return None;
+        }
+        let landing = self.0.entry(synapse).or_default();
+        landing.opened = landing
+            .pending
+            .iter()
+            .copied()
+            .filter(|opening| !pending.contains(opening))
+            .chain(landing.opened)
+            .reduce(Milliseconds::max);
+        landing.pending.clear();
+        landing.pending.extend_from_slice(pending);
+        landing.opened
+    }
+}
+
+fn release(world: &World, entity: Entity, connection: &Connection) -> Option<Release> {
     if let Ok(synapse) = world.get::<&CurrentSynapse>(entity) {
         let bound = match synapse.alpha_function {
             true => synapse.exponential / std::f64::consts::E,
@@ -53,7 +81,8 @@ fn release(
         };
         return Some(Release {
             bound: bound.clamp(0.0, 1.0) as f32,
-            crossings: crossings(&synapse.triggers, crossing_time(&synapse), now),
+            pending: synapse.triggers.clone(),
+            crossing: crossing_time(&synapse),
             particles: PARTICLES,
         });
     }
@@ -71,7 +100,8 @@ fn release(
     };
     Some(Release {
         bound: bound.clamp(0.0, 1.0) as f32,
-        crossings: crossings(&state.pending, ending.delay, now),
+        pending: state.pending.clone(),
+        crossing: ending.delay,
         particles: (PARTICLES as f64 * connection.strength.min(1.0)).ceil() as usize,
     })
 }
@@ -92,26 +122,34 @@ struct Particle {
     crossing: f32,
 }
 
-fn puff(cleft: &Cleft, count: usize, seed: f32) -> impl Iterator<Item = Particle> + '_ {
+fn puff(cleft: &Cleft, count: usize, seed: u64) -> Vec<Particle> {
     let (side, up) = cleft.contact.any_orthonormal_pair();
     let depth = if cleft.rounded { 1.0 } else { 0.0 };
-    (0..count).map(move |index| {
-        let order = index as f32;
-        let around = TAU * (seed + order * GOLDEN_FRACTION).fract();
-        let outwards = side * around.cos() + up * around.sin();
-        let share = ((order + 0.5) / count as f32).sqrt();
-        let leaving_angle = WIDEST_LEAVING_ANGLE * share;
-        let landing_angle = WIDEST_LANDING_ANGLE * share;
-        Particle {
-            leaving: cleft.terminal
-                + cleft.terminal_radius
-                    * (outwards * leaving_angle.sin()
-                        - cleft.contact * depth * leaving_angle.cos()),
-            landing: cleft.contact * landing_angle.cos() + outwards * landing_angle.sin(),
-            crossing: FASTEST_CROSSING
-                + (1.0 - FASTEST_CROSSING) * (seed + order * PLASTIC_FRACTION).fract(),
-        }
-    })
+    let mut random = StdRng::seed_from_u64(seed);
+    let turn: f32 = random.gen();
+    let mut arrivals: Vec<usize> = (0..count).collect();
+    arrivals.shuffle(&mut random);
+    arrivals
+        .into_iter()
+        .enumerate()
+        .map(|(index, arrival)| {
+            let order = index as f32;
+            let around = TAU * (turn + order * GOLDEN_FRACTION).fract();
+            let outwards = side * around.cos() + up * around.sin();
+            let share = ((order + random.gen::<f32>()) / count as f32).sqrt();
+            let leaving_angle = WIDEST_LEAVING_ANGLE * share;
+            let landing_angle = WIDEST_LANDING_ANGLE * share;
+            Particle {
+                leaving: cleft.terminal
+                    + cleft.terminal_radius
+                        * (outwards * leaving_angle.sin()
+                            - cleft.contact * depth * leaving_angle.cos()),
+                landing: cleft.contact * landing_angle.cos() + outwards * landing_angle.sin(),
+                crossing: FASTEST_CROSSING
+                    + (1.0 - FASTEST_CROSSING) * (arrival + 1) as f32 / count as f32,
+            }
+        })
+        .collect()
 }
 
 impl Particle {
@@ -142,8 +180,8 @@ impl Particle {
     }
 }
 
-fn seed(entity: Entity) -> f32 {
-    entity.id().wrapping_mul(0x9E37_79B9) as f32 / u32::MAX as f32
+fn seed(synapse: Entity, opening: Option<Milliseconds>) -> u64 {
+    synapse.to_bits().get() ^ opening.map_or(0, |opening| opening.0.to_bits())
 }
 
 #[derive(Default)]
@@ -177,17 +215,21 @@ fn particles(
     radii: &HashMap<Entity, f32>,
     palette: &Palette,
     now: Milliseconds,
+    landings: &mut Landings,
 ) -> Particles {
     let display = NeuronDisplay::of(world);
     let mut particles = Particles::default();
+    landings.0.retain(|&synapse, _| world.contains(synapse));
     for (&entity, path) in paths.iter().filter(|(_, path)| path.directional) {
         let Ok(connection) = world.get::<&Connection>(entity) else {
             continue;
         };
-        let Some(release) = release(world, entity, &connection, now) else {
+        let Some(release) = release(world, entity, &connection) else {
             continue;
         };
-        if release.bound < FAINTEST_BOUND && release.crossings.is_empty() {
+        let opened = landings.last_opened(entity, &release.pending);
+        let crossings = release.crossings(now);
+        if release.bound < FAINTEST_BOUND && crossings.is_empty() {
             continue;
         }
         let (Some(&terminal), Ok(target)) =
@@ -213,19 +255,31 @@ fn particles(
                 .unwrap_or(-path.terminal_direction),
         };
         let (flying, landed) = (particles.flying.len(), particles.landed.len());
-        for particle in puff(&cleft, release.particles, seed(entity)) {
+        let flights: Vec<(f32, Vec<Particle>)> = crossings
+            .iter()
+            .map(|&(opening, through)| {
+                let puff = puff(&cleft, release.particles, seed(entity, Some(opening)));
+                (through, puff)
+            })
+            .collect();
+        let settled = puff(&cleft, release.particles, seed(entity, opened));
+        for (index, mut resting) in settled.iter().enumerate() {
             let mut bound = release.bound;
-            for &through in &release.crossings {
+            for (through, puff) in &flights {
+                let particle = &puff[index];
                 let progress = through / particle.crossing;
                 match progress < 1.0 {
                     true => particles
                         .flying
                         .push(particle.flying(&cleft, progress, color)),
-                    false => bound = 1.0,
+                    false => {
+                        bound = 1.0;
+                        resting = particle;
+                    }
                 }
             }
             if bound >= FAINTEST_BOUND {
-                particles.landed.push(particle.landed(&cleft, bound, color));
+                particles.landed.push(resting.landed(&cleft, bound, color));
             }
         }
         let puff = [&particles.flying[flying..], &particles.landed[landed..]].concat();
@@ -245,12 +299,13 @@ pub fn collect_transmitter(
     radii: &HashMap<Entity, f32>,
     palette: &Palette,
     now: Milliseconds,
+    landings: &mut Landings,
 ) -> Scene {
     let Particles {
         mut flying,
         landed,
         halos,
-    } = particles(world, paths, radii, palette, now);
+    } = particles(world, paths, radii, palette, now, landings);
     flying.extend(landed);
     Scene {
         spheres: flying,
@@ -272,44 +327,40 @@ mod tests {
     use crate::simulation::{step_simulation, Engine};
     use glam::Vec3;
 
-    fn released(world: &World, now: Milliseconds) -> Particles {
-        let palette = Theme::Dark.palette();
-        let radii = compartment_radii(world);
-        particles(
-            world,
-            &connection_paths(world, &radii, &palette),
-            &radii,
-            &palette,
-            now,
-        )
-    }
-
     struct Firing {
         engine: Engine,
         time: Milliseconds,
+        landings: Landings,
     }
 
     impl Firing {
         fn step(&mut self, world: &mut World) -> Particles {
             step_simulation(world, &mut self.engine, &mut self.time, 1, None);
-            released(world, self.time)
+            let palette = Theme::Dark.palette();
+            let radii = compartment_radii(world);
+            particles(
+                world,
+                &connection_paths(world, &radii, &palette),
+                &radii,
+                &palette,
+                self.time,
+                &mut self.landings,
+            )
         }
     }
 
     fn fire(world: &mut World, neuron: Entity) -> Firing {
-        let mut engine = Engine::default();
-        engine.sync(world);
-        engine.fire(world, neuron);
-        Firing {
-            engine,
-            time: Milliseconds::ZERO,
-        }
+        let mut firing = quiet();
+        firing.engine.sync(world);
+        firing.engine.fire(world, neuron);
+        firing
     }
 
     fn quiet() -> Firing {
         Firing {
             engine: Engine::default(),
             time: Milliseconds::ZERO,
+            landings: Landings::default(),
         }
     }
 
@@ -394,7 +445,8 @@ mod tests {
 
     fn flying_after(through: f32) -> Vec<Sphere> {
         let cleft = cleft();
-        puff(&cleft, PARTICLES, 0.3)
+        puff(&cleft, PARTICLES, 3)
+            .into_iter()
             .filter(|particle| through < particle.crossing)
             .map(|particle| particle.flying(&cleft, through / particle.crossing, Vec3::ONE))
             .collect()
@@ -423,7 +475,7 @@ mod tests {
         }
         assert!(flying_after(1.0).is_empty());
         let mut sideways: f32 = 0.0;
-        for particle in puff(&cleft, PARTICLES, 0.3) {
+        for particle in puff(&cleft, PARTICLES, 3) {
             let arriving = particle.flying(&cleft, 0.999, Vec3::ONE);
             let landed = particle.landed(&cleft, 1.0, Vec3::ONE);
             assert!(arriving.position.distance(landed.position) < 0.01);
@@ -434,6 +486,95 @@ mod tests {
             sideways = sideways.max(offset.length());
         }
         assert!(sideways > 0.5 * cleft.target_radius);
+    }
+
+    #[test]
+    fn particles_of_a_puff_land_apart() {
+        let cleft = cleft();
+        for seed in 0..500 {
+            for count in 1..=PARTICLES {
+                let spots: Vec<Vec3> = puff(&cleft, count, seed)
+                    .iter()
+                    .map(|particle| particle.landed(&cleft, 1.0, Vec3::ONE).position)
+                    .collect();
+                for (index, spot) in spots.iter().enumerate() {
+                    assert!(spots[index + 1..]
+                        .iter()
+                        .all(|other| spot.distance(*other) > 2.0 * cleft.particle_radius));
+                }
+            }
+        }
+    }
+
+    struct Frame {
+        flying: usize,
+        spots: Vec<Vec3>,
+    }
+
+    fn two_puffs() -> Vec<Frame> {
+        let (mut world, source, target) = synapse_from(Element::ExcitatoryNeuron);
+        let center = world.get::<&Position>(target).unwrap().position;
+        let mut firing = fire(&mut world, source);
+        (0..1000)
+            .map(|step| {
+                if step == 250 {
+                    firing.engine.fire(&world, source);
+                }
+                let particles = firing.step(&mut world);
+                Frame {
+                    flying: particles.flying.len(),
+                    spots: particles
+                        .landed
+                        .iter()
+                        .map(|particle| (particle.position - center).normalize())
+                        .collect(),
+                }
+            })
+            .collect()
+    }
+
+    fn settled(frames: &[Frame]) -> Vec<&[Frame]> {
+        frames
+            .split(|frame| frame.flying > 0)
+            .filter(|run| run.iter().any(|frame| !frame.spots.is_empty()))
+            .collect()
+    }
+
+    fn same_spots(first: &[Vec3], second: &[Vec3]) -> bool {
+        first.len() == second.len()
+            && first
+                .iter()
+                .zip(second)
+                .all(|(spot, other)| spot.distance(*other) < 1e-5)
+    }
+
+    #[test]
+    fn each_puff_lands_in_new_spots() {
+        let frames = two_puffs();
+        let runs = settled(&frames);
+        assert_eq!(runs.len(), 2);
+        let (first, second) = (&runs[0][0].spots, &runs[1][0].spots);
+        assert_eq!((first.len(), second.len()), (PARTICLES, PARTICLES));
+        assert!(second
+            .iter()
+            .all(|spot| first.iter().all(|other| spot.distance(*other) > 0.01)));
+    }
+
+    #[test]
+    fn landed_particles_stay_where_they_landed() {
+        let frames = two_puffs();
+        let runs = settled(&frames);
+        for run in &runs {
+            assert!(run
+                .iter()
+                .filter(|frame| !frame.spots.is_empty())
+                .all(|frame| same_spots(&frame.spots, &run[0].spots[..frame.spots.len()])));
+        }
+        let landed: Vec<Vec3> = runs.iter().flat_map(|run| run[0].spots.clone()).collect();
+        assert!(frames
+            .iter()
+            .flat_map(|frame| &frame.spots)
+            .all(|spot| landed.iter().any(|other| spot.distance(*other) < 1e-5)));
     }
 
     #[test]
@@ -476,7 +617,14 @@ mod tests {
         for _ in 0..1600 {
             firing.step(&mut world);
             let paths = connection_paths(&world, &radii, &palette);
-            let scene = collect_transmitter(&world, &paths, &radii, &palette, firing.time);
+            let scene = collect_transmitter(
+                &world,
+                &paths,
+                &radii,
+                &palette,
+                firing.time,
+                &mut firing.landings,
+            );
             assert_eq!(
                 scene.transmitter.len(),
                 usize::from(!scene.spheres.is_empty())
