@@ -9,6 +9,7 @@ use neuronify_core::{
 
 const STEPS_PER_CALL: u32 = 20;
 const NANOAMPERES: [f64; 9] = [0.0, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 30.0];
+const BEFORE_BLOCK: [f64; 6] = [0.0, 0.25, 0.5, 1.0, 2.0, 3.0];
 
 const NEURONS: [(&str, Element, bool); 6] = [
     ("excitatory neuron", Element::ExcitatoryNeuron, false),
@@ -28,6 +29,16 @@ const NEURONS: [(&str, Element, bool); 6] = [
 ];
 
 fn spikes_in_ten_seconds(neuron: Element, dendrites: bool, nanoamperes: f64) -> usize {
+    spike_times_in_ten_seconds(neuron, dendrites, nanoamperes)
+        .0
+        .len()
+}
+
+fn spike_times_in_ten_seconds(
+    neuron: Element,
+    dendrites: bool,
+    nanoamperes: f64,
+) -> (Vec<Milliseconds>, Milliseconds) {
     let mut world = World::new();
     let neuron = neuron.spawn(&mut world, Vec3::ZERO);
     if dendrites {
@@ -41,26 +52,32 @@ fn spikes_in_ten_seconds(neuron: Element, dendrites: bool, nanoamperes: f64) -> 
     spawn_connection(&mut world, source, neuron);
     let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
     let steps = (Seconds(10.0) * DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND).round() as u32;
-    let mut spikes = 0;
+    let mut spikes = Vec::new();
     for _ in 0..steps / STEPS_PER_CALL {
         step_simulation(&mut world, &mut engine, &mut time, STEPS_PER_CALL, None);
-        spikes += engine
-            .spikes()
-            .iter()
-            .filter(|spike| spike.entity == neuron)
-            .count();
+        spikes.extend(
+            engine
+                .spikes()
+                .iter()
+                .filter(|spike| spike.entity == neuron)
+                .map(|spike| spike.time),
+        );
     }
-    spikes
+    (spikes, time)
 }
 
 #[test]
 fn a_stronger_current_makes_every_kind_of_neuron_fire_harder() {
     for (name, neuron, dendrites) in NEURONS {
-        let spikes: Vec<usize> = NANOAMPERES
+        let currents: &[f64] = match dendrites {
+            true => &BEFORE_BLOCK,
+            false => &NANOAMPERES,
+        };
+        let spikes: Vec<usize> = currents
             .iter()
             .map(|nanoamperes| spikes_in_ten_seconds(neuron, dendrites, *nanoamperes))
             .collect();
-        let sweep = NANOAMPERES
+        let sweep = currents
             .iter()
             .zip(&spikes)
             .map(|(nanoamperes, spikes)| format!("{nanoamperes} nA: {spikes}"))
@@ -72,8 +89,25 @@ fn a_stronger_current_makes_every_kind_of_neuron_fire_harder() {
             "a {name} fires less with more current ({sweep})"
         );
         assert!(
-            spikes[NANOAMPERES.len() - 1] > spikes[3],
-            "a {name} fires no harder at 30 nA than at 1 nA ({sweep})"
+            spikes[currents.len() - 1] > spikes[3],
+            "a {name} fires no harder at {} nA than at 1 nA ({sweep})",
+            currents[currents.len() - 1]
+        );
+    }
+}
+
+#[test]
+fn a_compartmental_neuron_falls_silent_under_a_current_far_above_what_it_can_follow() {
+    let late_spikes = |neuron, nanoamperes| {
+        let (times, end) = spike_times_in_ten_seconds(neuron, true, nanoamperes);
+        times.into_iter().filter(|&time| time > end * 0.5).count()
+    };
+    for (name, neuron, _) in NEURONS.into_iter().filter(|(_, _, dendrites)| *dendrites) {
+        let following = late_spikes(neuron, 3.0);
+        let flooded = late_spikes(neuron, 30.0);
+        assert!(
+            following > 0 && flooded == 0,
+            "a {name} fires {flooded} times late at 30 nA and {following} at 3 nA"
         );
     }
 }

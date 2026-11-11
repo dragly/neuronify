@@ -4,8 +4,8 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    AlternatingCurrent, Connection, CurrentClamp, CurrentSynapse, Dendrite, Hertz, Label,
-    LeakyNeuron, Micrometres, Milliseconds, Millivolts, Nanoamperes, NeuronType, NodeState,
+    AlternatingCurrent, CompartmentSoma, Connection, CurrentClamp, CurrentSynapse, Dendrite, Hertz,
+    Label, LeakyNeuron, Micrometres, Milliseconds, Millivolts, Nanoamperes, NeuronType, NodeState,
     RegularSpikeGenerator, Seconds,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
@@ -676,6 +676,7 @@ fn a_neuron_with_dendrites_sets_its_soma_diameter_instead_of_resistance_and_capa
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
     crate::dendrites::spawn_dendrites(&mut world, neuron);
+    world.remove_one::<CompartmentSoma>(neuron).unwrap();
     let mut harness = Harness::with(true, world, Some(neuron));
     assert!(!harness.shows(Setting::Resistance.label()));
     assert!(!harness.shows(Setting::Capacitance.label()));
@@ -690,6 +691,36 @@ fn a_neuron_with_dendrites_sets_its_soma_diameter_instead_of_resistance_and_capa
         .unwrap()
         .soma_diameter;
     assert_eq!(diameter, Micrometres(100.0));
+}
+
+#[test]
+fn a_compartment_soma_sets_its_spike_threshold_instead_of_the_firing_rule() {
+    let mut world = World::new();
+    let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+    crate::dendrites::spawn_dendrites(&mut world, neuron);
+    let mut harness = Harness::with(true, world, Some(neuron));
+    for hidden in [
+        Setting::Threshold,
+        Setting::Reset,
+        Setting::RefractoryPeriod,
+        Setting::Resistance,
+        Setting::Capacitance,
+    ] {
+        assert!(!harness.shows(hidden.label()), "{}", hidden.label());
+    }
+    assert!(harness.shows(Setting::RestingPotential.label()));
+    assert!(harness.shows(Setting::SomaDiameter.label()));
+    let slider = harness
+        .text_position(Setting::SpikeThreshold.label())
+        .unwrap()
+        + vec2(0.0, 22.0);
+    harness.drag(slider, slider + vec2(400.0, 0.0));
+    let threshold = harness
+        .world
+        .get::<&CompartmentSoma>(neuron)
+        .unwrap()
+        .threshold;
+    assert_eq!(threshold, Millivolts(50.0));
 }
 
 fn type_of(world: &World, entity: Entity) -> NeuronType {

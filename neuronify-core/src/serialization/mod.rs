@@ -38,6 +38,7 @@ mod v13;
 mod v14;
 mod v15;
 mod v16;
+mod v17;
 mod v2;
 mod v3;
 mod v4;
@@ -48,7 +49,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 16;
+pub const VERSION: u32 = 17;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -70,6 +71,7 @@ const UPGRADES: [Upgrade; VERSION as usize - 1] = [
     v14::upgrade_from_v13,
     v15::upgrade_from_v14,
     v16::upgrade_from_v15,
+    v17::upgrade_from_v16,
 ];
 
 pub struct SavedWorld {
@@ -82,7 +84,7 @@ pub fn save(world: &World, time: Milliseconds, speed: f64) -> Result<Vec<u8>, St
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v16::SaveContext, &mut serializer)
+    serialize(world, &mut v17::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -174,6 +176,11 @@ fn read(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v16::deserialize(body)?, time, speed)
         }
+        17 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v17::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -264,6 +271,9 @@ mod tests {
     const LEAKY_NFY: &str = include_str!("../legacy/fixtures/leaky.nfy");
     const FIXTURE_TIME: Milliseconds = Milliseconds(2500.0);
     const FIXTURE_SPEED: f64 = 0.5;
+    const FIXTURE_SOMA: CompartmentSoma = CompartmentSoma {
+        threshold: Millivolts(-25.0),
+    };
 
     #[test]
     fn loads_legacy_file() {
@@ -614,9 +624,42 @@ mod tests {
     #[test]
     fn loads_version_16() {
         let saved = load(include_bytes!("fixtures/v16.neuronify")).unwrap();
-        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_16())
+        );
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn loads_version_17() {
+        let saved = load(include_bytes!("fixtures/v17.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        let somas: Vec<CompartmentSoma> = saved
+            .world
+            .query::<&CompartmentSoma>()
+            .iter()
+            .copied()
+            .collect();
+        assert_eq!(somas, [FIXTURE_SOMA]);
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn version_16_neurons_with_dendrites_get_a_compartment_soma() {
+        let mut world = World::new();
+        let branched = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::ZERO);
+        crate::dendrites::spawn_dendrites(&mut world, branched);
+        world.remove_one::<CompartmentSoma>(branched).unwrap();
+        let point = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::new(20.0, 0.0, 0.0));
+        v17::upgrade_from_v16(&mut world).unwrap();
+        assert_eq!(
+            world.get::<&CompartmentSoma>(branched).as_deref(),
+            Ok(&CompartmentSoma::default())
+        );
+        assert!(!world.satisfies::<&CompartmentSoma>(point));
     }
 
     #[test]
@@ -800,6 +843,7 @@ mod tests {
             .unwrap()
             .world;
         assert_eq!(count::<Dendrite>(&loaded), dendrites);
+        assert!(loaded.satisfies::<&CompartmentSoma>(soma));
     }
 
     /// Writes `fixture_world` as `fixtures/v{VERSION}.neuronify`.
@@ -817,6 +861,18 @@ mod tests {
     }
 
     fn fixture_world() -> World {
+        let mut world = fixture_world_of_version_16();
+        let neuron = world
+            .query::<(Entity, &LeakyNeuron)>()
+            .iter()
+            .next()
+            .unwrap()
+            .0;
+        world.insert_one(neuron, FIXTURE_SOMA).unwrap();
+        world
+    }
+
+    fn fixture_world_of_version_16() -> World {
         let mut world = fixture_world_of_version_15();
         let neuron = world
             .query::<(Entity, &LeakyNeuron)>()

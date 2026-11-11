@@ -31,10 +31,39 @@ pub struct ProbeSamples {
 }
 
 #[derive(Clone, Copy, Debug)]
+enum Firing {
+    Rule(usize),
+    Crossing(usize),
+}
+
+impl Firing {
+    fn rule(self) -> Option<usize> {
+        match self {
+            Firing::Rule(soma) => Some(soma),
+            Firing::Crossing(_) => None,
+        }
+    }
+
+    fn since(self, tree: &Tree) -> Milliseconds {
+        match self {
+            Firing::Rule(soma) => tree.since_spike(soma),
+            Firing::Crossing(detector) => tree.since_crossing(detector),
+        }
+    }
+
+    fn set_since(self, tree: &mut Tree, since: Milliseconds) {
+        match self {
+            Firing::Rule(soma) => tree.set_since_spike(soma, since),
+            Firing::Crossing(detector) => tree.set_since_crossing(detector, since),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 struct Place {
     tree: usize,
     point: usize,
-    soma: Option<usize>,
+    soma: Option<Firing>,
 }
 
 impl Place {
@@ -172,6 +201,15 @@ fn node_membrane(world: &World, entity: Entity, links: &[&CableLink]) -> NodeMem
         }
         return NodeMembrane::Point;
     };
+    if world.satisfies::<&CompartmentSoma>(entity) {
+        return NodeMembrane::Patch {
+            area: std::f64::consts::PI * neuron.soma_diameter * neuron.soma_diameter,
+            membrane: super::mammal::soma_membrane(
+                neuron.resting_potential,
+                Preparation::of(world).celsius(),
+            ),
+        };
+    }
     if touching().any(|link| dendritic(world, link.from) || dendritic(world, link.to)) {
         return NodeMembrane::Patch {
             area: std::f64::consts::PI * neuron.soma_diameter * neuron.soma_diameter,
@@ -268,6 +306,9 @@ impl Fingerprint {
             hash.float(neuron.refractory_period);
             hash.float(neuron.soma_diameter);
             hash.add(neuron.voltage_clamped as u64);
+        });
+        hash.components(world, |hash, soma: &CompartmentSoma| {
+            hash.float(soma.threshold)
         });
         hash.components(world, |hash, leak: &LeakCurrent| {
             hash.float(leak.resistance)
@@ -425,8 +466,8 @@ impl Engine {
         };
         let tree = self.network.tree_mut(place.tree);
         match place.soma {
-            Some(soma) => tree.fire(soma),
-            None => tree.kick(place.point, neuronify_engine::KICK_DURATION),
+            Some(Firing::Rule(soma)) => tree.fire(soma),
+            _ => tree.kick(place.point, neuronify_engine::KICK_DURATION),
         }
     }
 
@@ -443,7 +484,7 @@ impl Engine {
             let Some(place) = self.place(entity) else {
                 continue;
             };
-            if place.soma.is_some() {
+            if let Some(Firing::Rule(_)) = place.soma {
                 self.inject(entity, current);
                 self.touched.push(place.site());
                 continue;
@@ -451,7 +492,7 @@ impl Engine {
             let Some(rhythm) = pulse_interval(current) else {
                 continue;
             };
-            let rhythm = match dendritic(world, entity) {
+            let rhythm = match dendritic(world, entity) || place.soma.is_some() {
                 true => rhythm.max(Preparation::of(world).shortest_dendrite_pulse_interval()),
                 false => (rhythm / AXON_PULSE_FACTOR).max(SHORTEST_PULSE_INTERVAL),
             };
@@ -629,6 +670,10 @@ impl Engine {
         for (node, &entity) in order.iter().enumerate() {
             let point = tree.node_point(node);
             let soma = world.get::<&LeakyNeuron>(entity).ok().map(|neuron| {
+                let source = self.source(entity);
+                if let Ok(soma) = world.get::<&CompartmentSoma>(entity) {
+                    return Firing::Crossing(tree.detect(node, soma.threshold, source));
+                }
                 let spiking = Spiking {
                     threshold: neuron.threshold,
                     reset: neuron.initial_potential,
@@ -637,8 +682,7 @@ impl Engine {
                         .voltage_clamped
                         .then_some((neuron.minimum_voltage, neuron.maximum_voltage)),
                 };
-                let source = self.source(entity);
-                tree.add_soma(node, spiking, source)
+                Firing::Rule(tree.add_soma(node, spiking, source))
             });
             if soma.is_none()
                 && terminals
@@ -657,8 +701,10 @@ impl Engine {
         let mut hillocks = Vec::new();
         for link in &tree_links {
             for (soma_end, other) in [(link.from, link.to), (link.to, link.from)] {
-                let (Some(fired), false) = (places[local[&soma_end]].soma, dendritic(world, other))
-                else {
+                let (Some(fired), false) = (
+                    places[local[&soma_end]].soma.and_then(Firing::rule),
+                    dendritic(world, other),
+                ) else {
                     continue;
                 };
                 if soma(world, other) {
@@ -726,8 +772,8 @@ impl Engine {
             match world.get::<&NodeState>(entity) {
                 Ok(state) => {
                     tree.set_state(place.point, state.voltage, &state.gates, celsius);
-                    if let Some(soma) = place.soma {
-                        tree.set_since_spike(soma, state.since_spike);
+                    if let Some(firing) = place.soma {
+                        firing.set_since(tree, state.since_spike);
                     }
                 }
                 Err(_) => tree.set_state(place.point, rest, &[], celsius),
@@ -873,8 +919,10 @@ impl Engine {
                 }
                 self.currents.push((entity, index));
             } else if world.satisfies::<&ImmediateFireSynapse>(entity) {
-                let (Some(source), Some(soma)) = (self.source_of(connection.from), target.soma)
-                else {
+                let (Some(source), Some(soma)) = (
+                    self.source_of(connection.from),
+                    target.soma.and_then(Firing::rule),
+                ) else {
                     continue;
                 };
                 self.network.connect(
@@ -958,7 +1006,7 @@ impl Engine {
                 }
                 self.bursts.push((entity, index));
             }
-            if let Some(soma) = place.soma {
+            if let Some(soma) = place.soma.and_then(Firing::rule) {
                 let tree = place.tree;
                 for &time in &pending.fire {
                     self.network.schedule(time, Target::Fire { tree, soma });
@@ -974,8 +1022,8 @@ impl Engine {
                 state.voltage = tree.voltage(place.point);
                 state.gates.clear();
                 state.gates.extend(tree.gates(place.point));
-                if let Some(soma) = place.soma {
-                    state.since_spike = tree.since_spike(soma);
+                if let Some(firing) = place.soma {
+                    state.since_spike = firing.since(tree);
                 }
             }
         }
@@ -1109,7 +1157,7 @@ impl Engine {
         let somas: HashMap<(usize, usize), Entity> = self
             .nodes
             .iter()
-            .filter_map(|&(entity, place)| Some(((place.tree, place.soma?), entity)))
+            .filter_map(|&(entity, place)| Some(((place.tree, place.soma?.rule()?), entity)))
             .collect();
         let mut pending: HashMap<Entity, PendingEvents> = HashMap::new();
         for (target, time) in self.network.pending_all() {
@@ -1156,7 +1204,7 @@ impl Engine {
                 gates: tree.gates(place.point).collect(),
                 since_spike: place
                     .soma
-                    .map_or(Milliseconds::INFINITY, |soma| tree.since_spike(soma)),
+                    .map_or(Milliseconds::INFINITY, |firing| firing.since(tree)),
             };
             match world.get::<&mut NodeState>(entity) {
                 Ok(mut stored) => *stored = state,
@@ -1634,6 +1682,98 @@ mod tests {
             spikes(Micrometres(40.0)),
         );
         assert!(small > usual && usual > large, "{small} {usual} {large}");
+    }
+
+    fn drive(world: &mut World, neuron: Entity) {
+        let at = world.get::<&Position>(neuron).unwrap().position;
+        let source = Element::CurrentSource.spawn(world, at + Vec3::Z * -5.0);
+        crate::elements::spawn_connection(world, source, neuron);
+    }
+
+    fn compartmental(world: &mut World, at: Vec3) -> Entity {
+        let neuron = soma(world, at);
+        crate::dendrites::spawn_dendrites(world, neuron);
+        neuron
+    }
+
+    fn spikes_of(run: &mut Run, neuron: Entity, duration: Milliseconds) -> usize {
+        let end = run.now() + duration;
+        let mut spikes = 0;
+        while run.now() < end {
+            spikes += run
+                .step()
+                .iter()
+                .filter(|spike| spike.entity == neuron)
+                .count();
+        }
+        spikes
+    }
+
+    #[test]
+    fn a_compartment_soma_spikes_through_its_channels_and_flashes_with_each_spike() {
+        let mut world = World::new();
+        let neuron = compartmental(&mut world, Vec3::ZERO);
+        drive(&mut world, neuron);
+        let mut run = Run::new(world);
+        let (mut spikes, mut flashes, mut peak) = (0, 0, Millivolts(f64::MIN));
+        while run.now() < Milliseconds(200.0) {
+            spikes += run
+                .step()
+                .iter()
+                .filter(|spike| spike.entity == neuron)
+                .count();
+            let state = run.world.get::<&NodeState>(neuron).unwrap().clone();
+            flashes += usize::from(state.since_spike < DT);
+            peak = peak.max(state.voltage);
+        }
+        assert!(spikes >= 3, "{spikes} spikes");
+        assert_eq!(flashes, spikes);
+        assert!(
+            peak > Millivolts(0.0) && peak != neuronify_engine::SPIKE_PEAK,
+            "peak {peak:?}"
+        );
+    }
+
+    #[test]
+    fn a_compartment_soma_counts_spikes_at_its_spike_threshold() {
+        let spikes = |threshold: Millivolts| {
+            let mut world = World::new();
+            let neuron = compartmental(&mut world, Vec3::ZERO);
+            world.get::<&mut CompartmentSoma>(neuron).unwrap().threshold = threshold;
+            drive(&mut world, neuron);
+            spikes_of(&mut Run::new(world), neuron, Milliseconds(200.0))
+        };
+        assert!(spikes(Millivolts(-20.0)) >= 3);
+        assert_eq!(spikes(Millivolts(80.0)), 0);
+    }
+
+    #[test]
+    fn point_and_compartmental_neurons_fire_each_other() {
+        for (from_compartments, to_compartments) in [(true, false), (false, true)] {
+            let mut world = World::new();
+            let make = |world: &mut World, compartments: bool, at: Vec3| match compartments {
+                true => compartmental(world, at),
+                false => soma(world, at),
+            };
+            let from = make(&mut world, from_compartments, Vec3::ZERO);
+            let to = make(&mut world, to_compartments, Vec3::X * 30.0);
+            drive(&mut world, from);
+            crate::elements::spawn_connection(&mut world, from, to);
+            let fired = spikes_of(&mut Run::new(world), to, Milliseconds(300.0));
+            assert!(
+                fired > 0,
+                "compartments in the sender {from_compartments}, receiver {to_compartments}"
+            );
+        }
+    }
+
+    #[test]
+    fn tapping_a_compartment_soma_fires_it_once() {
+        let mut world = World::new();
+        let neuron = compartmental(&mut world, Vec3::ZERO);
+        let mut run = Run::new(world);
+        run.fire(neuron);
+        assert_eq!(spikes_of(&mut run, neuron, Milliseconds(100.0)), 1);
     }
 
     fn soma(world: &mut World, at: Vec3) -> Entity {

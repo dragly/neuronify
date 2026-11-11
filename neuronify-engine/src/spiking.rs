@@ -59,6 +59,7 @@ pub(crate) struct Detector {
     pub point: usize,
     pub threshold: Millivolts,
     pub before: Millivolts,
+    pub since: Milliseconds,
 }
 
 pub(crate) fn crossing(

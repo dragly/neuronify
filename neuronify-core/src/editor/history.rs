@@ -127,12 +127,13 @@ fn swap_settings<C: Component, S: Settings<C>>(
     }
 }
 
-const EDITED: [Edited; 25] = [
+const EDITED: [Edited; 26] = [
     edited::<Position>(),
     edited::<MeterSize>(),
     edited::<NoteSize>(),
     edited::<Connection>(),
     edited::<LeakyNeuron>(),
+    edited::<CompartmentSoma>(),
     edited::<CurrentClamp>(),
     edited::<RegularSpikeGenerator>(),
     edited::<PoissonGenerator>(),

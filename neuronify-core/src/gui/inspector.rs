@@ -713,6 +713,55 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
         changed |= label_field(ui, chrome, &mut label.text);
     }
     changed |= type_switch(ui, chrome, world, entity);
+    if let Ok(mut soma) = world.get::<&mut CompartmentSoma>(entity) {
+        heading(ui, chrome, "Potentials", 0.0);
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::SpikeThreshold,
+            &mut soma.threshold,
+            POTENTIALS,
+            millivolts,
+        );
+        if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
+            changed |= parameter(
+                ui,
+                chrome,
+                Setting::RestingPotential,
+                &mut neuron.resting_potential,
+                POTENTIALS,
+                millivolts,
+            );
+            heading(ui, chrome, "Membrane", 0.0);
+            changed |= soma_diameter(ui, chrome, &mut neuron);
+        }
+    } else {
+        changed |= rule_parameters(ui, chrome, world, entity);
+    }
+    if let Ok(mut adaptation) = world.get::<&mut AdaptationCurrent>(entity) {
+        heading(ui, chrome, "Adaptation", 0.0);
+        changed |= logarithmic_parameter(
+            ui,
+            chrome,
+            Setting::Adaptation,
+            &mut adaptation.adaptation,
+            ADAPTATIONS,
+            |conductance| format!("{:.1} nS", conductance.in_nanosiemens()),
+        );
+        changed |= parameter(
+            ui,
+            chrome,
+            Setting::AdaptationTimeConstant,
+            &mut adaptation.time_constant,
+            ADAPTATION_TIME_CONSTANTS,
+            milliseconds,
+        );
+    }
+    changed
+}
+
+fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
+    let mut changed = false;
     if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
         changed |= parameter(
             ui,
@@ -764,14 +813,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
     if has_dendrites(world, entity) {
         if let Ok(mut neuron) = world.get::<&mut LeakyNeuron>(entity) {
             heading(ui, chrome, "Membrane", 0.0);
-            changed |= logarithmic_parameter(
-                ui,
-                chrome,
-                Setting::SomaDiameter,
-                &mut neuron.soma_diameter,
-                SOMA_DIAMETERS,
-                |diameter| format!("{:.0} \u{b5}m", diameter.0),
-            );
+            changed |= soma_diameter(ui, chrome, &mut neuron);
         }
     } else if let (Ok(mut neuron), Ok(mut leak)) = (
         world.get::<&mut LeakyNeuron>(entity),
@@ -804,26 +846,18 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
         description(ui, chrome, Setting::TimeConstant.description());
         ui.add_space(8.0);
     }
-    if let Ok(mut adaptation) = world.get::<&mut AdaptationCurrent>(entity) {
-        heading(ui, chrome, "Adaptation", 0.0);
-        changed |= logarithmic_parameter(
-            ui,
-            chrome,
-            Setting::Adaptation,
-            &mut adaptation.adaptation,
-            ADAPTATIONS,
-            |conductance| format!("{:.1} nS", conductance.in_nanosiemens()),
-        );
-        changed |= parameter(
-            ui,
-            chrome,
-            Setting::AdaptationTimeConstant,
-            &mut adaptation.time_constant,
-            ADAPTATION_TIME_CONSTANTS,
-            milliseconds,
-        );
-    }
     changed
+}
+
+fn soma_diameter(ui: &mut Ui, chrome: &Chrome, neuron: &mut LeakyNeuron) -> bool {
+    logarithmic_parameter(
+        ui,
+        chrome,
+        Setting::SomaDiameter,
+        &mut neuron.soma_diameter,
+        SOMA_DIAMETERS,
+        |diameter| format!("{:.0} \u{b5}m", diameter.0),
+    )
 }
 
 fn visual_input_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput) -> bool {

@@ -18,7 +18,7 @@ flowchart TB
   sources["Current sources<br/>steady or alternating"]
   subgraph cell ["one neuron, one tree"]
     direction TB
-    dend["Dendrites<br/>channels"] <-->|cable| soma["Soma<br/>integrate-and-fire"]
+    dend["Dendrites<br/>channels"] <-->|cable| soma["Soma<br/>integrate-and-fire<br/>or channels"]
     soma <-->|cable| axon["Axon<br/>Hodgkin-Huxley"]
   end
   syn -->|current| soma
@@ -37,7 +37,8 @@ point:    C dV/dt = g_L (E_L - V) + Σ g_max m^p h^q (E - V)
                     + Σ g_axial (V_next - V) + I_inject + g_syn (E_syn - V)
 gate:     x ← x∞ + (x - x∞) e^(-dt/τx), with x∞ and τx looked up by V
 soma:     past threshold, clamped to a 1 ms spike up to +30 mV,
-          then held at reset until the refractory period ends
+          then held at reset until the refractory period ends,
+          unless it is a compartment soma, which spikes through its channels
 synapse:  g ← g e^(-dt/τ), and g += w a delay after each spike
 ```
 
@@ -50,21 +51,30 @@ The menu picks the channels (`Preparation`) and the `Temperature` per simulation
 | Default temperature | 16.3 °C | 37 °C |
 | Axons | 0.15 µm, Hodgkin-Huxley squid channels | 0.4 µm, cortical sodium and potassium channels |
 | Dendrites | the squid channels, about half as fast | cortical sodium and potassium, A-type potassium and HCN channels |
+| Compartment somas | cortical sodium and potassium | cortical sodium and potassium |
 
 Myelinated axons alternate nearly leak-free internodes of 280 µm
 with 1 µm nodes of Ranvier, and other cables are 100 µm long.
 The d_lambda rule splits every cable into an odd number of segments
 (0.3 of the length constant at 100 Hz).
 Dendrites taper with their distance from the nearest soma when they are drawn.
-A soma is a point with the neuron's capacitance and leak (0.2 nF and 100 MΩ),
-or a passive sphere 20 µm across if it has dendrites.
+A soma comes in two kinds, fixed when the neuron is made.
+A point neuron's soma is a point with the neuron's capacitance and leak (0.2 nF and 100 MΩ),
+or a passive sphere 20 µm across if dendrites are drawn onto it.
+A compartmental neuron's soma (`CompartmentSoma`, added by `spawn_dendrites`)
+is a sphere 20 µm across with 0.4 S/cm² sodium and 0.5 S/cm² potassium channels,
+balanced to rest at the neuron's resting potential.
+From a current source it fires from about 0.75 nA and goes silent above about 4 nA in mammals,
+and from 0.5 nA to about 6.5 nA, more slowly, in squid.
 
 ### Rules and defaults
 
 Most of these defaults can be changed in the inspector:
 
-- Soma: threshold −55 mV, reset −80 mV, refractory period 2 ms, clamp 1000 µS.
-- Axon start: its first compartment above −20 mV fires the soma.
+- Point neuron soma: threshold −55 mV, reset −80 mV, refractory period 2 ms, clamp 1000 µS.
+- Compartment soma: a spike counts when the voltage climbs past −20 mV,
+  and the next one only after it has fallen back below.
+- Axon start: its first compartment above −20 mV fires a point neuron's soma.
 - Axon ending: opens 0.5 ms after the axon's last compartment passes −20 mV,
   with 0.0055 µS times its strength (0 to 2), times 8 on a soma,
   or on a dendrite times the size of the cables there (about twice that for mammals),
@@ -81,7 +91,8 @@ Most of these defaults can be changed in the inspector:
 - Adaptation: 0.01 µS towards rest per spike, decaying with 500 ms.
 - Burst: a 1.2 nA boost after a spike, draining linearly.
 - Touch: a press fires what is under it once (`fire_nearby`).
-  Holding injects 0.3 nA into a soma, or 0.25 ms pulses into a compartment
+  Holding injects 0.3 nA into a point neuron's soma, or 0.25 ms pulses
+  into a compartment or a compartment soma
   at about the rate a default integrate-and-fire neuron would fire.
 
 ### Where the models break with modelling principles
@@ -89,8 +100,12 @@ Most of these defaults can be changed in the inspector:
 These choices improve the experience and flow of the app,
 and the aim is still to make the models more realistic:
 
-- Soma: spikes by a rule, a scripted shape held by a strong clamp,
+- Point neuron soma: spikes by a rule, a scripted shape held by a strong clamp,
   rather than through channels.
+- Compartment soma: its sodium density is closer to an axon initial segment than a soma,
+  since there is no initial segment and a soma with soma-like densities doesn't fire.
+  The squid preparation gives it cortical channels too,
+  because squid channels on a soma this small don't fire repeatedly.
 - Axon start and endings: rules of thumb (−20 mV, a fixed delay),
   with ending scales picked rather than derived.
 - Static connections and touch sensors: inject a current or fire directly,
@@ -303,6 +318,7 @@ takes a new module `vN` with an upgrade
 | 14 | Adds `ConnectionView`, `Selected` and `RowOrder`. |
 | 15 | Gives every quantity a unit and counts time in milliseconds. |
 | 16 | Adds `PendingEvents` and the soma diameter, clamps loaded values to `bounds`, and measures edge field angles like picture and orientation angles. |
+| 17 | Adds `CompartmentSoma`, given on upgrade to neurons that have dendrites. |
 
 ## How the camera works
 

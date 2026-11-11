@@ -21,6 +21,8 @@ const POTASSIUM_REVERSAL: Millivolts = Millivolts(-90.0);
 const HCN_REVERSAL: Millivolts = Millivolts(-45.0);
 const AXON_SODIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.2);
 const AXON_POTASSIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.06);
+const SOMA_SODIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.4);
+const SOMA_POTASSIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.5);
 const DENDRITE_SODIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.03);
 const DENDRITE_POTASSIUM: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.009);
 const DENDRITE_A_TYPE: SiemensPerSquareCentimetre = SiemensPerSquareCentimetre(0.02);
@@ -53,6 +55,17 @@ pub fn axon_membrane() -> Membrane {
         channels: vec![sodium(AXON_SODIUM), potassium(AXON_POTASSIUM)],
     }
     .resting_at(RESTING_POTENTIAL, CELSIUS)
+}
+
+pub fn soma_membrane(resting_potential: Millivolts, celsius: Celsius) -> Membrane {
+    Membrane {
+        capacitance: MicrofaradsPerSquareCentimetre(1.0),
+        axial_resistivity: AXIAL_RESISTIVITY,
+        leak: 1.0 / MEMBRANE_RESISTANCE,
+        leak_reversal: resting_potential,
+        channels: vec![sodium(SOMA_SODIUM), potassium(SOMA_POTASSIUM)],
+    }
+    .resting_at(resting_potential, celsius)
 }
 
 pub fn dendrite_membrane() -> Membrane {
