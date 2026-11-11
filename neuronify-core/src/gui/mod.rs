@@ -10,6 +10,7 @@ mod sheet;
 mod style;
 #[cfg(test)]
 mod tests;
+mod text_field;
 mod widgets;
 
 use egui::{

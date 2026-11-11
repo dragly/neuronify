@@ -1,28 +1,57 @@
 //! Files in the browser: loading one named in the page URL, as in
 //! `index.html?file=examples/tutorial/2_leaks.neuronify`, loading one the user picks,
 //! and downloading or sharing a save.
-//! Also hides the loading screen of `index.html` once there is something to show.
+//! Also hides the loading screen of `index.html` once there is something to show,
+//! and types into egui text fields from a hidden text area so phones show their keyboard,
+//! measuring how much of the page the keyboard covers.
 //!
 //! Fetching and reading are asynchronous and visula's event loop never returns on the web,
 //! so the result is left here for `Neuronify::update` to pick up.
 
 use std::cell::{Cell, RefCell};
+
+use egui::text::{CCursor, CCursorRange};
+use egui::text_edit::{TextEditOutput, TextEditState};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     AddEventListenerOptions, Document, DomException, File, FilePropertyBag, HtmlAnchorElement,
-    HtmlElement, HtmlInputElement, Response, ShareData, Url,
+    HtmlElement, HtmlInputElement, HtmlTextAreaElement, Response, ShareData, Url,
 };
 
 const REVOKE_DELAY_MS: i32 = 10_000;
 const TICK_MS: u32 = 10;
 const SHARED_TYPE: &str = "application/octet-stream";
+const EMBEDDED_KEYBOARD: f32 = 0.5;
+const KEYBOARD_STYLE: &str = "position: absolute; left: 0; top: 0; opacity: 0; \
+    pointer-events: none; border: 0; padding: 0; margin: 0; resize: none; overflow: hidden; \
+    font-size: 16px;";
 
 struct PressedLink {
     url: String,
     context: egui::Context,
     pass: u64,
+}
+
+struct TouchedField {
+    id: egui::Id,
+    multiline: bool,
+    size: egui::Vec2,
+    context: egui::Context,
+    pass: u64,
+}
+
+struct Keyboard {
+    area: HtmlTextAreaElement,
+    field: Option<egui::Id>,
+    typed: Option<Typed>,
+}
+
+#[derive(PartialEq)]
+struct Typed {
+    value: String,
+    selection: (u32, u32),
 }
 
 pub struct LoadedFile {
@@ -40,6 +69,10 @@ thread_local! {
     static PRESSED_LINK: RefCell<Option<PressedLink>> = const { RefCell::new(None) };
     static OPENED_ON_POINTER_UP: RefCell<Option<String>> = const { RefCell::new(None) };
     static LISTENING_FOR_LINK_RELEASE: Cell<bool> = const { Cell::new(false) };
+    static TOUCHED_FIELD: RefCell<Option<TouchedField>> = const { RefCell::new(None) };
+    static LISTENING_FOR_FIELD_RELEASE: Cell<bool> = const { Cell::new(false) };
+    static KEYBOARD: RefCell<Option<Keyboard>> = const { RefCell::new(None) };
+    static COVERED_BY_KEYBOARD: Cell<f32> = const { Cell::new(0.0) };
 }
 
 /// Starts fetching the file named by the `file` query parameter.
@@ -231,7 +264,7 @@ fn listen_for_link_release() {
     if LISTENING_FOR_LINK_RELEASE.with(|listening| listening.replace(true)) {
         return;
     }
-    let on_pointer_up = Closure::once_into_js(|| {
+    let listening = once_on_pointer_up(|| {
         LISTENING_FOR_LINK_RELEASE.with(|listening| listening.set(false));
         let pressed = PRESSED_LINK.with(|pressed| pressed.borrow_mut().take());
         let released = pressed.filter(|link| link.context.cumulative_pass_nr() == link.pass + 1);
@@ -240,19 +273,278 @@ fn listen_for_link_release() {
         }
         OPENED_ON_POINTER_UP.with(|opened| *opened.borrow_mut() = released.map(|link| link.url));
     });
+    if let Err(error) = listening {
+        LISTENING_FOR_LINK_RELEASE.with(|listening| listening.set(false));
+        log::error!("Could not listen for the link's release: {error:?}");
+    }
+}
+
+fn once_on_pointer_up(on_pointer_up: impl FnOnce() + 'static) -> Result<(), JsValue> {
+    let on_pointer_up = Closure::once_into_js(on_pointer_up);
     let once = AddEventListenerOptions::new();
     once.set_once(true);
-    let listening = web_sys::window().map(|window| {
-        window.add_event_listener_with_callback_and_add_event_listener_options(
+    web_sys::window()
+        .ok_or("no global window")?
+        .add_event_listener_with_callback_and_add_event_listener_options(
             "pointerup",
             on_pointer_up.unchecked_ref(),
             &once,
         )
-    });
-    if let Some(Err(error)) = listening {
-        LISTENING_FOR_LINK_RELEASE.with(|listening| listening.set(false));
-        log::error!("Could not listen for the link's release: {error:?}");
+}
+
+pub fn take_typed(
+    context: &egui::Context,
+    id: egui::Id,
+    text: &mut String,
+    multiline: bool,
+) -> bool {
+    KEYBOARD.with_borrow_mut(|keyboard| {
+        let Some(keyboard) = keyboard.as_mut().filter(|keyboard| keyboard.types_into(id)) else {
+            return false;
+        };
+        let Some(last) = &keyboard.typed else {
+            return false;
+        };
+        let now = keyboard.read();
+        if now == *last {
+            if *text != last.value {
+                keyboard.typed = None;
+            }
+            return false;
+        }
+        let finished = !multiline && now.value.contains('\n');
+        let value = match finished {
+            true => now.value.replace('\n', ""),
+            false => now.value.clone(),
+        };
+        let changed = *text != value;
+        *text = value;
+        if finished {
+            context.memory_mut(|memory| memory.surrender_focus(id));
+            keyboard.release();
+            return changed;
+        }
+        let (start, end) = now.selection;
+        let mut state = TextEditState::load(context, id).unwrap_or_default();
+        state.cursor.set_char_range(Some(CCursorRange::two(
+            CCursor::new(chars_in(text, start)),
+            CCursor::new(chars_in(text, end)),
+        )));
+        state.store(context, id);
+        keyboard.typed = Some(now);
+        changed
+    })
+}
+
+pub fn follow_text_field(ui: &egui::Ui, output: &TextEditOutput, text: &str, multiline: bool) {
+    let response = &output.response;
+    let context = ui.ctx();
+    if response.is_pointer_button_down_on() && context.input(|input| input.any_touches()) {
+        TOUCHED_FIELD.set(Some(TouchedField {
+            id: response.id,
+            multiline,
+            size: response.rect.size() * context.zoom_factor(),
+            context: context.clone(),
+            pass: context.cumulative_pass_nr(),
+        }));
+        listen_for_field_release();
     }
+    let Some(range) = output.cursor_range.filter(|_| response.has_focus()) else {
+        return;
+    };
+    let typing = KEYBOARD.with_borrow_mut(|keyboard| {
+        let Some(keyboard) = keyboard
+            .as_mut()
+            .filter(|keyboard| keyboard.types_into(response.id))
+        else {
+            return false;
+        };
+        let [start, end] = range
+            .sorted_cursors()
+            .map(|cursor| utf16_length(text, cursor.index));
+        match &keyboard.typed {
+            Some(typed) if typed.value == text && typed.selection == (start, end) => {}
+            Some(typed) if typed.value == text => keyboard.select(start, end),
+            _ => keyboard.write(text, start, end),
+        }
+        true
+    });
+    if typing {
+        let cursor = output
+            .galley
+            .pos_from_cursor(range.primary)
+            .translate(output.galley_pos.to_vec2());
+        ui.scroll_to_rect(cursor.expand2(egui::vec2(0.0, cursor.height())), None);
+    }
+}
+
+pub fn settle_keyboard(context: &egui::Context) {
+    let covered = KEYBOARD.with_borrow_mut(|keyboard| {
+        let Some(keyboard) = keyboard.as_mut().filter(|keyboard| keyboard.focused()) else {
+            return 0.0;
+        };
+        if context.memory(|memory| memory.focused()) != keyboard.field {
+            keyboard.release();
+            return 0.0;
+        }
+        context.input_mut(|input| input.focused = true);
+        hidden_by_keyboard(context)
+    });
+    COVERED_BY_KEYBOARD.set(covered);
+}
+
+pub fn covered_by_keyboard() -> f32 {
+    COVERED_BY_KEYBOARD.get()
+}
+
+fn hidden_by_keyboard(context: &egui::Context) -> f32 {
+    let Some(window) = web_sys::window() else {
+        return 0.0;
+    };
+    let below = below_visual_viewport(&window) / context.zoom_factor();
+    let embedded = window.top().ok().flatten().is_some_and(|top| top != window);
+    if embedded && below <= 0.0 {
+        context.content_rect().height() * EMBEDDED_KEYBOARD
+    } else {
+        below
+    }
+}
+
+fn below_visual_viewport(window: &web_sys::Window) -> f32 {
+    let page = window
+        .document()
+        .and_then(|document| document.document_element());
+    let (Some(viewport), Some(page)) = (window.visual_viewport(), page) else {
+        return 0.0;
+    };
+    let shown = viewport.offset_top() + viewport.height();
+    (page.get_bounding_client_rect().bottom() - shown).max(0.0) as f32
+}
+
+fn listen_for_field_release() {
+    if LISTENING_FOR_FIELD_RELEASE.replace(true) {
+        return;
+    }
+    let listening = once_on_pointer_up(|| {
+        LISTENING_FOR_FIELD_RELEASE.set(false);
+        let touched = TOUCHED_FIELD
+            .take()
+            .filter(|field| field.context.cumulative_pass_nr() == field.pass + 1);
+        if let Some(field) = touched {
+            show_keyboard(&field);
+        }
+    });
+    if let Err(error) = listening {
+        LISTENING_FOR_FIELD_RELEASE.set(false);
+        log::error!("Could not listen for the text field's release: {error:?}");
+    }
+}
+
+fn show_keyboard(field: &TouchedField) {
+    KEYBOARD.with_borrow_mut(|keyboard| {
+        if keyboard.is_none() {
+            *keyboard = Keyboard::attach()
+                .inspect_err(|error| log::error!("Could not add a text area: {error:?}"))
+                .ok();
+        }
+        let Some(keyboard) = keyboard else {
+            return;
+        };
+        if let Err(error) = keyboard.focus(field) {
+            log::error!("Could not show the keyboard: {error:?}");
+        }
+        field
+            .context
+            .memory_mut(|memory| memory.request_focus(field.id));
+    });
+}
+
+impl Keyboard {
+    fn attach() -> Result<Self, JsValue> {
+        let document = document()?;
+        let area: HtmlTextAreaElement = document.create_element("textarea")?.dyn_into()?;
+        document.body().ok_or("no body")?.append_child(&area)?;
+        Ok(Self {
+            area,
+            field: None,
+            typed: None,
+        })
+    }
+
+    fn focus(&mut self, field: &TouchedField) -> Result<(), JsValue> {
+        let size = field.size;
+        self.area.set_attribute(
+            "style",
+            &format!(
+                "{KEYBOARD_STYLE} width: {}px; height: {}px;",
+                size.x, size.y
+            ),
+        )?;
+        let enter = if field.multiline { "enter" } else { "done" };
+        self.area.set_attribute("enterkeyhint", enter)?;
+        self.area.set_value("");
+        self.field = Some(field.id);
+        self.typed = None;
+        self.area.focus()
+    }
+
+    fn focused(&self) -> bool {
+        let area: &web_sys::Element = self.area.as_ref();
+        document()
+            .ok()
+            .and_then(|document| document.active_element())
+            .is_some_and(|active| active == *area)
+    }
+
+    fn types_into(&self, id: egui::Id) -> bool {
+        self.field == Some(id) && self.focused()
+    }
+
+    fn read(&self) -> Typed {
+        let start = self.area.selection_start().ok().flatten().unwrap_or(0);
+        let end = self.area.selection_end().ok().flatten().unwrap_or(start);
+        Typed {
+            value: self.area.value(),
+            selection: (start, end),
+        }
+    }
+
+    fn write(&mut self, text: &str, start: u32, end: u32) {
+        self.area.set_value(text);
+        self.select(start, end);
+    }
+
+    fn select(&mut self, start: u32, end: u32) {
+        if let Err(error) = self.area.set_selection_range(start, end) {
+            log::error!("Could not move the text area's cursor: {error:?}");
+        }
+        self.typed = Some(self.read());
+    }
+
+    fn release(&mut self) {
+        self.field = None;
+        self.typed = None;
+        if let Err(error) = self.area.blur() {
+            log::error!("Could not hide the keyboard: {error:?}");
+        }
+    }
+}
+
+fn chars_in(text: &str, utf16_units: u32) -> usize {
+    let mut units = 0;
+    text.chars()
+        .take_while(|character| {
+            units += character.len_utf16() as u32;
+            units <= utf16_units
+        })
+        .count()
+}
+
+fn utf16_length(text: &str, chars: usize) -> u32 {
+    text.chars()
+        .take(chars)
+        .map(|character| character.len_utf16() as u32)
+        .sum()
 }
 
 fn open_in_new_tab(url: &str) {
