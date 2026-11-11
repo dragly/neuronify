@@ -454,6 +454,10 @@ impl Editor {
             self.stimulate(world, position);
             return None;
         }
+        self.pan(position)
+    }
+
+    pub fn pan(&mut self, position: Vec3) -> Option<Pan> {
         match self.move_origin {
             Some(origin) => Some(Pan(position - origin)),
             None => {

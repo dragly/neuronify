@@ -317,6 +317,8 @@ flowchart TB
   touches -->|"press, drag"| editor["Editor, in<br/>ground coordinates"]
   touches -->|"pinch, zoom, scroll"| camera["camera.rs"]
   editor -->|"Pan"| camera
+  touches -->|"let go"| inertia["Inertia"]
+  inertia -->|"slide"| camera
   camera --> controller[("visula controller<br/>current, target")]
   controller -->|"ground_position"| editor
 ```
@@ -325,6 +327,7 @@ flowchart TB
 | --- | --- | --- |
 | drag the background | `pan` | keeps the grabbed ground point under the pointer |
 | pinch | `pinch` | zooms by the change in spread and follows the midpoint |
+| let go of a pan or pinch | `slide` | glides on, see below |
 | double tap and drag | `drag_zoom` | halves or doubles the distance per 150 points dragged |
 | scroll | `scroll` | changes the distance by 10 % per line |
 | open a circuit | `frame` | fits the circuit into the area the panels leave free, at a distance of 50 to 200 |
@@ -335,6 +338,15 @@ The distance stays between 5 and 200, and the view never rotates.
 The editor returns a `Pan` for a drag that starts on the background with the Edit tool,
 or anywhere in view mode except on a touch sensor.
 The loupe doesn't move the camera; it magnifies the rendered frame around the finger.
+
+`Inertia` (in `inertia.rs`) records where the pointer, or the midpoint of a pinch, was while it panned.
+On letting go, it takes the average velocity over the last 50 ms, counting the moment of letting go,
+so a finger that paused before lifting leaves the view still.
+The glide then loses speed exponentially with a time constant of 0.196 s,
+so it carries the view as far as its speed would in 0.196 s, as Apple Maps does,
+and stops when less than half a pixel would remain.
+A press that lands while the glide moves faster than 50 points per second stops it and does nothing else,
+except panning if it drags.
 
 ## Where the code is
 
@@ -426,7 +438,7 @@ and on each redraw it calls `update`, renders, and calls `gui` last.
    steps the simulation (unless paused), plays what the loudspeakers heard,
    and steps the physics,
 9. steps the visible landing previews,
-10. frames a newly opened circuit,
+10. glides the camera after a pan or pinch, or frames a newly opened circuit instead,
 11. moves the ghost, prepares the loupe and hands the `World` to `SceneRenderer::update`.
 
 `LandingScreen::show` and `Gui::show` return what was picked for `app` to carry out,

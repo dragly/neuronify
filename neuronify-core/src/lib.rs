@@ -9,6 +9,7 @@ pub mod elements;
 pub mod examples;
 pub mod frame_clock;
 pub mod gui;
+pub mod inertia;
 pub mod input;
 pub mod landing;
 pub mod legacy;
