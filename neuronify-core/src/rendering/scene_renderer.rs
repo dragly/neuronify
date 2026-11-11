@@ -29,6 +29,7 @@ use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spike_detector::collect_spike_detectors;
+use crate::rendering::transmitter::Landings;
 use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::voltmeter::collect_voltmeter_traces;
 
@@ -55,6 +56,7 @@ pub struct SceneRenderer {
     meter_background_buffer: InstanceBuffer<MeterBackgroundData>,
     halos: MeshPipeline,
     halo_buffer: InstanceBuffer<HaloData>,
+    landings: Landings,
     spheres: Spheres,
     sphere_buffer: InstanceBuffer<Sphere>,
     cylinders: Cylinders,
@@ -202,6 +204,7 @@ impl SceneRenderer {
             meter_background_buffer,
             halos,
             halo_buffer,
+            landings: Landings::default(),
             spheres,
             sphere_buffer,
             cylinders,
@@ -258,7 +261,8 @@ impl SceneRenderer {
         let palette = theme.palette();
         let radii = compartment_radii(world);
         let paths = shown_paths(world, &radii, &palette);
-        let mut scene = collect_scene_along(world, &radii, &paths, &palette, time);
+        let mut scene =
+            collect_scene_along(world, &radii, &paths, &palette, time, &mut self.landings);
         let axon = match (marks.bead, marks.ending) {
             (Some(bead), _) => bead_ending(world, &bead, &palette),
             (None, Some((from, to))) => growing_ending(world, from, to, &palette),

@@ -12,7 +12,7 @@ use crate::rendering::paths::{connection_paths, ConnectionPath};
 use crate::rendering::shapes::{collect_rings, collect_shapes};
 use crate::rendering::signals::collect_signals;
 use crate::rendering::spheres::collect_spheres;
-use crate::rendering::transmitter::collect_transmitter;
+use crate::rendering::transmitter::{collect_transmitter, Landings};
 use crate::rendering::visual_input::collect_visual_input_tiles;
 
 /// The shapes of the 3D view. The example previews draw the solid ones from above.
@@ -58,7 +58,14 @@ impl Scene {
 pub fn collect_scene(world: &hecs::World, palette: &Palette, time: Milliseconds) -> Scene {
     let radii = compartment_radii(world);
     let paths = shown_paths(world, &radii, palette);
-    collect_scene_along(world, &radii, &paths, palette, time)
+    collect_scene_along(
+        world,
+        &radii,
+        &paths,
+        palette,
+        time,
+        &mut Landings::default(),
+    )
 }
 
 pub fn collect_scene_along(
@@ -67,6 +74,7 @@ pub fn collect_scene_along(
     paths: &BTreeMap<Entity, ConnectionPath>,
     palette: &Palette,
     time: Milliseconds,
+    landings: &mut Landings,
 ) -> Scene {
     let mut scene = Scene {
         spheres: collect_spheres(world, radii, paths, palette),
@@ -74,7 +82,9 @@ pub fn collect_scene_along(
         rings: collect_rings(world, palette),
         transmitter: Vec::new(),
     };
-    scene.extend(collect_transmitter(world, paths, radii, palette, time));
+    scene.extend(collect_transmitter(
+        world, paths, radii, palette, time, landings,
+    ));
     scene
         .spheres
         .extend(collect_current_flow(world, paths, time));
