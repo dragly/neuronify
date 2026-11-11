@@ -353,13 +353,23 @@ impl Tree {
         self.somas[soma].forced = true;
     }
 
-    pub fn detect(&mut self, node: usize, threshold: Millivolts, source: usize) {
+    pub fn detect(&mut self, node: usize, threshold: Millivolts, source: usize) -> usize {
         self.detectors.push(Detector {
             source,
             point: self.node_points[node],
             threshold,
             before: Millivolts::ZERO,
+            since: Milliseconds::INFINITY,
         });
+        self.detectors.len() - 1
+    }
+
+    pub fn since_crossing(&self, detector: usize) -> Milliseconds {
+        self.detectors[detector].since
+    }
+
+    pub fn set_since_crossing(&mut self, detector: usize, since: Milliseconds) {
+        self.detectors[detector].since = since;
     }
 
     pub fn kick(&mut self, point: usize, duration: Milliseconds) {
@@ -478,10 +488,12 @@ impl Tree {
                 *voltage = voltage.max(low.min(high)).min(high.max(low));
             }
         }
-        for detector in &self.detectors {
+        for detector in &mut self.detectors {
+            detector.since += dt;
             let after = self.voltage[detector.point];
             if detector.before < detector.threshold {
                 if let Some(fraction) = crossing(detector.threshold, detector.before, after) {
+                    detector.since = (1.0 - fraction) * dt;
                     self.crossings.push(Crossing {
                         source: detector.source,
                         fraction,
@@ -802,6 +814,34 @@ mod tests {
         assert!(spikes(&trace) >= 2);
         let peak = trace.iter().cloned().fold(f64::MIN, f64::max);
         assert!((30.0..50.0).contains(&peak), "peak {peak}");
+    }
+
+    #[test]
+    fn a_detector_counts_each_spike_once_and_times_the_last_one() {
+        let area = SquareMicrometres(PI * 31.83 * 31.83);
+        let mut morphology = Morphology::default();
+        morphology.node(NodeMembrane::Patch {
+            area,
+            membrane: Membrane::squid(),
+        });
+        let tables = Tables::new(DT, Celsius(6.3));
+        let mut tree = build(&morphology, 0.1, -65.0, CELSIUS);
+        let detector = tree.detect(0, Millivolts(-20.0), 0);
+        assert_eq!(tree.since_crossing(detector), Milliseconds::INFINITY);
+        let current = Nanoamperes(10.0 * area.0 * 1e-5);
+        let steps = (Milliseconds(50.0) / tables.dt()) as usize;
+        let mut trace = Vec::new();
+        let mut crossings = Vec::new();
+        for step in 0..steps {
+            tree.inject(tree.node_point(0), current);
+            tree.step(&tables);
+            trace.push(tree.node_voltage(0).0);
+            crossings.extend(tree.crossings().map(|crossing| (step, crossing.fraction)));
+        }
+        assert_eq!(crossings.len(), spikes(&trace));
+        let (step, fraction) = *crossings.last().unwrap();
+        let expected = (steps - step) as f64 - fraction;
+        assert!((tree.since_crossing(detector) / tables.dt() - expected).abs() < 1e-9);
     }
 
     #[test]

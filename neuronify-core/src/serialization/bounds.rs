@@ -86,6 +86,13 @@ pub fn bound(world: &mut World) {
     for neuron in world.query_mut::<&mut LeakyNeuron>() {
         bound_neuron(neuron);
     }
+    for soma in world.query_mut::<&mut CompartmentSoma>() {
+        within(
+            &mut soma.threshold,
+            POTENTIALS,
+            CompartmentSoma::default().threshold,
+        );
+    }
     for state in world.query_mut::<&mut NodeState>() {
         within(&mut state.voltage, VOLTAGES, RESTING_POTENTIAL);
         bound_gates(&mut state.gates);
@@ -442,6 +449,15 @@ mod tests {
         world.spawn((Temperature {
             celsius: Celsius(1000.0),
         },));
+        let branched = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(0.0, 0.0, 20.0));
+        world
+            .insert_one(
+                branched,
+                CompartmentSoma {
+                    threshold: Millivolts(f64::NAN),
+                },
+            )
+            .unwrap();
 
         let loaded = load(&saved(&world)).unwrap().world;
 
@@ -463,6 +479,10 @@ mod tests {
             VoltmeterRange::default()
         );
         assert_eq!(Temperature::of(&loaded).celsius, *SQUID_TEMPERATURES.end());
+        assert_eq!(
+            *loaded.get::<&CompartmentSoma>(branched).unwrap(),
+            CompartmentSoma::default()
+        );
     }
 
     #[test]

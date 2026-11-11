@@ -92,6 +92,9 @@ pub fn spawn_dendrites(world: &mut hecs::World, soma: Entity) {
     ) else {
         return;
     };
+    if !world.satisfies::<&CompartmentSoma>(soma) {
+        let _ = world.insert_one(soma, CompartmentSoma::default());
+    }
     // The shape follows from the entity id, so that each neuron looks different
     let golden_ratio = (1.0 + 5.0_f32.sqrt()) / 2.0;
     let seed = soma.id() as f32 * golden_ratio;

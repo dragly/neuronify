@@ -4,6 +4,7 @@ pub enum Setting {
     Type,
     RefractoryPeriod,
     Threshold,
+    SpikeThreshold,
     Reset,
     RestingPotential,
     Resistance,
@@ -55,6 +56,7 @@ impl Setting {
             Setting::Type => "Type",
             Setting::RefractoryPeriod => "Refractory period",
             Setting::Threshold => "Threshold",
+            Setting::SpikeThreshold => "Spike threshold",
             Setting::Reset => "Reset",
             Setting::RestingPotential => "Resting potential",
             Setting::Resistance => "Resistance",
@@ -109,6 +111,10 @@ impl Setting {
             }
             Setting::RefractoryPeriod => "How long the neuron stays silent after each spike.",
             Setting::Threshold => "The neuron fires when its voltage climbs above this.",
+            Setting::SpikeThreshold => {
+                "Its connections count a spike when the voltage climbs above this, \
+                 and the next one only after it has fallen back below."
+            }
             Setting::Reset => "The voltage the neuron drops to right after it fires.",
             Setting::RestingPotential => "The voltage the neuron settles at when left alone.",
             Setting::Resistance => {

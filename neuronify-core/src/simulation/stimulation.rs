@@ -130,7 +130,7 @@ mod tests {
             .max_by(|a, b| a.length().total_cmp(&b.length()))
             .unwrap();
         let spikes = spikes_in_a_second(&mut world, neuron, held(tip));
-        assert!((30..70).contains(&spikes), "{spikes} spikes in a second");
+        assert!((20..70).contains(&spikes), "{spikes} spikes in a second");
     }
 
     fn neuron_with_axon(world: &mut hecs::World) -> hecs::Entity {

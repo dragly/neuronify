@@ -82,6 +82,19 @@ impl Default for LeakyNeuron {
     }
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+pub struct CompartmentSoma {
+    pub threshold: Millivolts,
+}
+
+impl Default for CompartmentSoma {
+    fn default() -> Self {
+        CompartmentSoma {
+            threshold: Millivolts(-20.0),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct NodeState {
     pub voltage: Millivolts,

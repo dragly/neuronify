@@ -10,7 +10,6 @@ use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::{ComponentError, Entity, World};
 
 schema!(
-    save,
     Position,
     LeakyNeuron,
     NodeState,
