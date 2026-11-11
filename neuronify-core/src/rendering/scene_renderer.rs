@@ -285,9 +285,9 @@ impl SceneRenderer {
             .wire_router
             .collect(world, &palette, crate::input::now());
         let mut connections = connection_being_drawn(marks.drawn_connection, &palette);
-        connections.extend(collect_voltmeter_traces(world));
+        connections.extend(collect_voltmeter_traces(world, &palette));
         connections.extend(collect_spike_detectors(world, &palette));
-        connections.extend(collect_rate_plots(world));
+        connections.extend(collect_rate_plots(world, &palette));
         connections.extend(collect_visual_input_lines(world));
 
         self.sphere_buffer

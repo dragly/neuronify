@@ -50,11 +50,7 @@ pub fn collect_spike_detectors(world: &hecs::World, palette: &Palette) -> Vec<Co
             let Ok(train) = world.get::<&SpikeTrain>(*wire) else {
                 continue;
             };
-            let color = if neuron_type(world, *neuron) == NeuronType::Inhibitory {
-                palette.inhibitory
-            } else {
-                palette.excitatory
-            };
+            let color = palette.measured(world, *neuron);
             for &time in &train.times {
                 let right = ((time - start) / spike_detector.time_range) as f32;
                 if !(0.0..=1.0).contains(&right) {

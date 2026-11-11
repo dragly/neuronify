@@ -3,7 +3,7 @@ use crate::constants::*;
 use crate::measurement::voltmeter::{
     measured, Corner, Frame, VoltageSeries, Voltmeter, VoltmeterRange,
 };
-use crate::rendering::colors;
+use crate::rendering::colors::{self, Palette};
 use crate::rendering::gpu_types::ConnectionData;
 use hecs::Entity;
 
@@ -30,7 +30,7 @@ fn line(position_a: glam::Vec3, position_b: glam::Vec3, color: glam::Vec3) -> Co
     }
 }
 
-pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
+pub fn collect_voltmeter_traces(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
     let mut result = Vec::new();
     for (voltmeter, (position, size, range)) in world
         .query::<(Entity, (&Position, &MeterSize, Option<&VoltmeterRange>))>()
@@ -54,7 +54,7 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
         }
         let range = range.cloned().unwrap_or_default();
         let measured = measured(world, voltmeter);
-        for (index, (wire, _)) in measured.iter().enumerate() {
+        for (index, (wire, neuron)) in measured.iter().enumerate() {
             let row = frame.row(index, measured.len());
             if index > 0 {
                 result.push(line(
@@ -67,7 +67,15 @@ pub fn collect_voltmeter_traces(world: &hecs::World) -> Vec<ConnectionData> {
                 continue;
             };
             let (low, high) = (range.minimum, range.maximum);
-            result.extend(trace(&row, &series, low, high));
+            let color = palette.measured(world, *neuron);
+            result.extend(trace(
+                &row,
+                &series,
+                low,
+                high,
+                color,
+                palette.voltmeter_spike,
+            ));
         }
     }
     result
@@ -78,6 +86,8 @@ fn trace(
     series: &VoltageSeries,
     low: Millivolts,
     high: Millivolts,
+    color: glam::Vec3,
+    spike_color: glam::Vec3,
 ) -> Vec<ConnectionData> {
     let mut result = Vec::new();
     let Some(latest_time) = series.measurements.last().map(|m| m.time) else {
@@ -94,17 +104,20 @@ fn trace(
         row.point(
             ((time - start_time) / VOLTMETER_TIME_WINDOW) as f32,
             ((voltage - low) / span).clamp(0.0, 1.0) as f32,
-        )
+        ) + glam::Vec3::Y * CURVE_LIFT
     };
-    let color = colors::green();
+    for spike_time in visible_tail(series.spike_times.iter().copied(), |&time| is_visible(time)) {
+        let right = ((spike_time - start_time) / VOLTMETER_TIME_WINDOW) as f32;
+        result.push(line(
+            row.point(right, 1.0),
+            row.point(right, 0.0),
+            spike_color,
+        ));
+    }
     for pair in visible.windows(2) {
         let (t0, v0) = pair[0];
         let (t1, v1) = pair[1];
         result.push(line(at(t0, v0), at(t1, v1), color));
-    }
-    for spike_time in visible_tail(series.spike_times.iter().copied(), |&time| is_visible(time)) {
-        let right = ((spike_time - start_time) / VOLTMETER_TIME_WINDOW) as f32;
-        result.push(line(row.point(right, 1.0), row.point(right, 0.0), color));
     }
     result
 }
@@ -116,10 +129,17 @@ mod tests {
     const SAMPLE: f64 = 1e-4;
     const LOW: Millivolts = Millivolts(-100.0);
     const HIGH: Millivolts = Millivolts(50.0);
+    const TRACE: Vec3 = Vec3::new(0.2, 0.4, 0.9);
+    const SPIKE: Vec3 = Vec3::new(0.6, 0.65, 0.9);
     use crate::elements::{spawn_voltmeter, spawn_voltmeter_wire};
     use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement};
+    use crate::rendering::colors::{paler, Theme};
     use glam::Vec3;
     use hecs::World;
+
+    fn drawn(series: &VoltageSeries) -> Vec<ConnectionData> {
+        trace(&row(), series, LOW, HIGH, TRACE, SPIKE)
+    }
 
     fn trace_from_full_copy(
         row: &Frame,
@@ -140,33 +160,25 @@ mod tests {
             row.point(
                 ((time - start_time) / VOLTMETER_TIME_WINDOW) as f32,
                 ((voltage - low) / (high - low)).clamp(0.0, 1.0) as f32,
-            )
+            ) + Vec3::Y * CURVE_LIFT
         };
         let visible: Vec<_> = measurements
             .iter()
             .filter(|(time, _)| *time >= start_time)
             .collect();
-        let mut result: Vec<ConnectionData> = visible
-            .windows(2)
-            .map(|pair| {
-                line(
-                    at(pair[0].0, pair[0].1),
-                    at(pair[1].0, pair[1].1),
-                    colors::green(),
-                )
-            })
-            .collect();
+        let mut result = Vec::new();
         for &spike_time in &series.spike_times {
             if spike_time < start_time || spike_time > latest_time {
                 continue;
             }
             let right = ((spike_time - start_time) / VOLTMETER_TIME_WINDOW) as f32;
-            result.push(line(
-                row.point(right, 1.0),
-                row.point(right, 0.0),
-                colors::green(),
-            ));
+            result.push(line(row.point(right, 1.0), row.point(right, 0.0), SPIKE));
         }
+        result.extend(
+            visible
+                .windows(2)
+                .map(|pair| line(at(pair[0].0, pair[0].1), at(pair[1].0, pair[1].1), TRACE)),
+        );
         result
     }
 
@@ -207,7 +219,7 @@ mod tests {
             || (0..5000).map(|i| (i as f64 * SAMPLE, -70.0 + (i as f64 * 0.01).sin()));
         let spikes: Vec<f64> = (0..5000).step_by(37).map(|i| i as f64 * SAMPLE).collect();
         let full = series(more_samples_than_capacity(), spikes);
-        let drawn = trace(&row(), &full, LOW, HIGH);
+        let drawn = drawn(&full);
         assert!(drawn.len() > 1000);
         assert_eq!(
             bytes(&drawn),
@@ -226,8 +238,8 @@ mod tests {
             [vec![4.95, 4.99], new_spikes.clone()].concat(),
         );
         let fresh = series(recorded_after_loading_at_0(), new_spikes);
-        let expected = trace(&row(), &fresh, LOW, HIGH);
-        assert_eq!(bytes(&trace(&row(), &loaded, LOW, HIGH)), bytes(&expected));
+        let expected = drawn(&fresh);
+        assert_eq!(bytes(&drawn(&loaded)), bytes(&expected));
         assert_ne!(
             bytes(&trace_from_full_copy(&row(), &loaded, LOW, HIGH)),
             bytes(&expected)
@@ -255,13 +267,14 @@ mod tests {
             let rising = (0..10).map(|i| (i as f64 * SAMPLE, -100.0 + i as f64 * 150.0 / 9.0));
             *world.get::<&mut VoltageSeries>(wire).unwrap() = series(rising, vec![]);
         }
-        let traces = collect_voltmeter_traces(&world);
+        let palette = Theme::default().palette();
+        let traces = collect_voltmeter_traces(&world, &palette);
         let separators = 2;
         let segments = 9;
         assert_eq!(traces.len(), 4 + separators + 3 * segments);
         let rising: Vec<ConnectionData> = traces
             .into_iter()
-            .filter(|line| line.start_color == colors::green())
+            .filter(|line| line.start_color == palette.excitatory)
             .collect();
         for (index, row_trace) in rising.chunks(segments).enumerate() {
             let row = frame.row(index, 3);
@@ -292,7 +305,7 @@ mod tests {
             vec![],
         );
         let frame = Frame::of(&world, voltmeter).unwrap();
-        let traces = collect_voltmeter_traces(&world);
+        let traces = collect_voltmeter_traces(&world, &Theme::default().palette());
         let [bottom, middle] = [traces[4].position_a, traces[4].position_b];
         let top = traces[5].position_b;
         assert!((bottom.x - frame.bottom_left.x).abs() < 1e-4);
@@ -316,10 +329,66 @@ mod tests {
             [(0.0, -80.0), (SAMPLE, -60.0), (2.0 * SAMPLE, 0.0)].into_iter(),
             vec![],
         );
-        let traces = collect_voltmeter_traces(&world);
+        let traces = collect_voltmeter_traces(&world, &Theme::default().palette());
         assert!(traces.len() > 4);
         assert!(traces
             .iter()
             .all(|line| line.position_a.is_finite() && line.position_b.is_finite()));
+    }
+
+    #[test]
+    fn each_trace_takes_the_colour_of_its_neuron_and_spikes_the_spike_colour() {
+        let mut world = World::new();
+        let inhibitory = world.spawn((
+            Position {
+                position: Vec3::new(0.0, 0.0, 0.0),
+            },
+            NeuronType::Inhibitory,
+        ));
+        let dendrite = world.spawn((
+            Position {
+                position: Vec3::new(-5.0, 0.0, 0.0),
+            },
+            NeuronType::Excitatory,
+            Dendrite,
+        ));
+        let voltmeter = spawn_voltmeter(&mut world, inhibitory, Vec3::new(5.0, 0.0, 10.0));
+        spawn_voltmeter_wire(&mut world, dendrite, voltmeter);
+        for (wire, _) in measured(&world, voltmeter) {
+            *world.get::<&mut VoltageSeries>(wire).unwrap() =
+                series([(0.0, -70.0), (SAMPLE, -60.0)].into_iter(), vec![SAMPLE]);
+        }
+        let palette = Theme::Dark.palette();
+        let line_colors: Vec<Vec3> = collect_voltmeter_traces(&world, &palette)[4..]
+            .iter()
+            .map(|line| line.start_color)
+            .collect();
+        assert_eq!(
+            line_colors,
+            [
+                palette.voltmeter_spike,
+                palette.inhibitory,
+                colors::frame_color(),
+                palette.voltmeter_spike,
+                paler(palette.excitatory),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_curve_lies_over_the_spike_lines() {
+        let spiking = series(
+            [(0.0, -70.0), (SAMPLE, 40.0), (2.0 * SAMPLE, -70.0)].into_iter(),
+            vec![SAMPLE],
+        );
+        let lines = drawn(&spiking);
+        let (spikes, curve): (Vec<&ConnectionData>, Vec<_>) =
+            lines.iter().partition(|line| line.start_color == SPIKE);
+        assert_eq!((spikes.len(), curve.len()), (1, 2));
+        let spike_height = spikes[0].position_a.y;
+        assert!(curve
+            .iter()
+            .all(|line| line.position_a.y > spike_height && line.position_b.y > spike_height));
+        assert_eq!(lines.last().unwrap().start_color, TRACE);
     }
 }
