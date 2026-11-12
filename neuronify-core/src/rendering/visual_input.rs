@@ -25,6 +25,7 @@ const LIGHT_ON_FIELD: f32 = 0.9;
 const BAR_GAP: f32 = 0.6;
 const BAR_STRENGTH: f32 = 1.2;
 const FRAME_STRENGTH: f32 = 0.3;
+const FRAME_LIFT: f32 = 2.0 * TILE_HEIGHT;
 
 pub struct TileShape {
     power: f32,
@@ -205,7 +206,7 @@ fn frame_lines(frame: &Frame, color: Vec3, lines: &mut Vec<ConnectionData>) {
         Corner::BottomRight,
         Corner::BottomLeft,
     ]
-    .map(|corner| frame.corner(corner));
+    .map(|corner| frame.corner(corner) + Vec3::Y * FRAME_LIFT);
     for (index, &corner) in corners.iter().enumerate() {
         lines.push(line(
             corner,
@@ -384,6 +385,42 @@ mod tests {
     #[test]
     fn a_superellipse_of_power_two_is_a_circle() {
         assert!((superellipse_area(2.0) - std::f32::consts::PI).abs() < 1e-3);
+    }
+
+    #[test]
+    fn the_tiles_never_cover_the_frame() {
+        let mut world = World::new();
+        world.spawn((
+            Position {
+                position: Vec3::ZERO,
+            },
+            VisualInput::default(),
+        ));
+        world.spawn((
+            Position {
+                position: Vec3::new(0.0, 0.0, 10.0),
+            },
+            ReceptiveFieldCell::default(),
+            GeneratorDynamics::default(),
+        ));
+        let palette = Theme::Dark.palette();
+        let top = collect_visual_input_tiles(&world)
+            .iter()
+            .map(|tile| tile.position.y)
+            .chain(
+                collect_field_tiles(&world, &palette)
+                    .iter()
+                    .map(|tile| tile.position.y),
+            )
+            .fold(f32::MIN, f32::max);
+        let frames: Vec<_> = collect_visual_input_lines(&world, &palette)
+            .into_iter()
+            .filter(|line| line.strength == FRAME_STRENGTH)
+            .collect();
+        assert_eq!(frames.len(), 8);
+        for line in frames {
+            assert!(line.position_a.y > top && line.position_b.y > top);
+        }
     }
 
     #[test]
