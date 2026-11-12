@@ -1505,6 +1505,36 @@ fn the_add_sheet_closes_when_pulled_down() {
 }
 
 #[test]
+fn the_tool_bar_stays_on_top_of_the_add_sheet() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    let add = harness.text_position("Add").unwrap();
+    harness.click(add);
+    assert!(harness.shows("Random spikes"));
+    harness.click(add);
+    assert!(!harness.shows("Random spikes"));
+
+    harness.click(add);
+    harness.click_text("Erase");
+    assert_eq!(harness.editor.tool, Tool::Erase);
+    assert!(!harness.shows("Random spikes"));
+}
+
+#[test]
+fn the_end_of_the_add_sheet_scrolls_clear_of_the_tool_bar() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    harness.click_text("Add");
+    harness.scroll_to_the_end_at(pos2(PHONE.x / 2.0, PHONE.y / 2.0));
+    let bar = harness
+        .context
+        .memory(|memory| memory.area_rect(Id::new("tool_bar")))
+        .unwrap();
+    let last = harness.text_rect("Note").unwrap();
+    assert!(last.bottom() < bar.top(), "{last:?} {bar:?}");
+    harness.click(last.center());
+    assert_eq!(harness.editor.tool, Tool::Place(Element::Note));
+}
+
+#[test]
 fn done_stops_editing_on_phones() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::phone(true, world, Some(neuron));
