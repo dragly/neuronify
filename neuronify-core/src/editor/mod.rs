@@ -325,11 +325,43 @@ impl Editor {
                 measure_where_released(world, meter, axon);
             }
         }
+        if self.ending.is_none() {
+            self.reach_release(world);
+        }
         if let Some(held) = self.held {
             self.selection = Some(held);
         }
         self.release(world);
         formed
+    }
+
+    fn reach_release(&self, world: &mut World) {
+        let stroke = self.axon_being_grown(world).or(self.dendrite_being_grown());
+        let Some((tip, _, release)) = stroke else {
+            return;
+        };
+        let new = self
+            .recording
+            .as_ref()
+            .is_some_and(|recording| recording.is_new(tip));
+        let Some((cable, parent)) = cable_into(world, tip).filter(|_| new) else {
+            return;
+        };
+        let Ok(start) = world.get::<&Position>(parent).map(|p| p.position) else {
+            return;
+        };
+        let length = start.distance(release) as f64 * MICROMETRES_PER_UNIT;
+        let Ok(mut cable) = world.get::<&mut Cable>(cable) else {
+            return;
+        };
+        if length <= cable.length {
+            return;
+        }
+        cable.length = length;
+        drop(cable);
+        if let Ok(mut tip) = world.get::<&mut Position>(tip) {
+            tip.position = release;
+        }
     }
 
     pub fn take_presses(&mut self) -> Vec<Vec3> {
