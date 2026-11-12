@@ -7,6 +7,7 @@ use crate::camera;
 use crate::components::{Link, Milliseconds, Seconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
+use crate::elements::Element;
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
     self, AttachBurst, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus,
@@ -374,6 +375,14 @@ impl Neuronify {
             .editor
             .painting()
             .filter(|_| self.editing() && self.mouse.moved_while_pressed());
+        if painting.is_none() {
+            if let Some((element, anchor)) = self.hover_anchor(application) {
+                self.ghost
+                    .get_or_insert_with(|| Ghost::new(element, anchor))
+                    .follow(element, anchor, false, elapsed.0 as f32);
+                return;
+            }
+        }
         let (Some(element), Some(pointer)) = (painting, self.mouse.position) else {
             self.ghost = None;
             return;
@@ -384,6 +393,24 @@ impl Neuronify {
         self.ghost
             .get_or_insert_with(|| Ghost::new(element, anchor))
             .follow(element, anchor, self.touch_input, elapsed.0 as f32);
+    }
+
+    fn hover_anchor(&self, application: &visula::Application) -> Option<(Element, Vec3)> {
+        if self.touch_input || self.mouse.left_down {
+            return None;
+        }
+        let Tool::Place(element) = self.editor.tool else {
+            return None;
+        };
+        let hover = self
+            .hover
+            .filter(|&hover| element.is_neuron() && !gui_takes_press(application, hover))?;
+        let ground = camera::ground_position(application, hover);
+        if !self.editor.empty_at(&self.world, ground) {
+            return None;
+        }
+        let anchor = camera::position_at_height(application, hover, GHOST_HEIGHT);
+        Some((element, anchor))
     }
 
     fn paint_hitboxes(&self, application: &visula::Application, context: &egui::Context) {
