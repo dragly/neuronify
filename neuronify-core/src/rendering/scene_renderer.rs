@@ -29,7 +29,7 @@ use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spike_detector::collect_spike_detectors;
-use crate::rendering::tips::collect_tip;
+use crate::rendering::tips::{collect_dangling, collect_tip};
 use crate::rendering::transmitter::Landings;
 use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::voltmeter::collect_voltmeter_traces;
@@ -37,6 +37,7 @@ use crate::rendering::voltmeter::collect_voltmeter_traces;
 pub struct EditorMarks<'a> {
     pub drawn_connection: &'a [Vec3],
     pub waiting: Option<(Vec3, Vec3)>,
+    pub dangling: Option<(Entity, &'a [Vec3])>,
     pub axon: Option<(Entity, Vec3, Vec3)>,
     pub ending: Option<(Entity, Entity)>,
     pub bead: Option<Bead>,
@@ -267,6 +268,9 @@ impl SceneRenderer {
         let mut scene =
             collect_scene_along(world, &radii, &paths, &palette, time, &mut self.landings);
         scene.extend(collect_tip(world, &palette, marks.selection, marks.pulled));
+        if let Some((from, points)) = marks.dangling {
+            scene.extend(collect_dangling(world, &palette, from, points));
+        }
         let axon = match (marks.bead, marks.ending) {
             (Some(bead), _) => bead_ending(world, &bead, &palette),
             (None, Some((from, to))) => growing_ending(world, from, to, &palette),

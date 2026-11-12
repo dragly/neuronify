@@ -378,8 +378,12 @@ pub fn file_error(context: &Context, error: &mut Option<FileError>) {
     }
 }
 
-pub fn connection_hint(context: &Context, theme: Theme, tip: Pos2, shown: f32) {
+pub fn connection_hint(context: &Context, theme: Theme, tip: Pos2, shown: f32, neuron: bool) {
     let chrome = Chrome::of(theme);
+    let text = match neuron {
+        true => "Drag from a neuron to connect",
+        false => "Drag to connect",
+    };
     egui::Area::new(Id::new("connection_hint"))
         .order(Order::Tooltip)
         .interactable(false)
@@ -388,9 +392,7 @@ pub fn connection_hint(context: &Context, theme: Theme, tip: Pos2, shown: f32) {
         .show(context, |ui| {
             ui.multiply_opacity(shown);
             chrome.panel_frame(HINT_PADDING).show(ui, |ui| {
-                ui.add(
-                    egui::Label::new(RichText::new("Drag to connect").color(chrome.text)).extend(),
-                );
+                ui.add(egui::Label::new(RichText::new(text).color(chrome.text)).extend());
             });
         });
 }
