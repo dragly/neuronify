@@ -1093,6 +1093,107 @@ fn dendrites_end_where_they_are_let_go_even_on_another_neuron() {
     assert_eq!(compartment_tree(&world, soma).len(), 6);
 }
 
+fn farthest_compartment(world: &World) -> Vec3 {
+    positions_with::<Compartment>(world)
+        .into_iter()
+        .map(|(_, position)| position)
+        .max_by(|a, b| a.length().total_cmp(&b.length()))
+        .unwrap()
+}
+
+fn stroke_at_speed(tool: Tool, step: f32) -> (World, Editor, Vec3) {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let path: Vec<Vec3> = (0..=(30.0 / step) as usize)
+        .map(|event| at(0.0, 0.6 + event as f32 * step))
+        .collect();
+    let mut editor = editor(tool);
+    drag(&mut editor, &mut world, &path);
+    (world, editor, path[path.len() - 1])
+}
+
+#[test]
+fn strokes_end_and_settle_where_they_are_let_go() {
+    for tool in [Tool::Dendrite, Tool::Axon, Tool::MyelinatedAxon] {
+        for step in [0.2, 0.8] {
+            let (mut world, _, release) = stroke_at_speed(tool, step);
+            assert_eq!(farthest_compartment(&world), release, "{tool:?}");
+
+            step_physics(&mut world, 1500, &HashSet::new());
+            let settled = farthest_compartment(&world);
+            assert!(
+                settled.distance(release) < 0.05,
+                "{tool:?} at {step} per event settled at {settled}, let go at {release}"
+            );
+        }
+    }
+}
+
+#[test]
+fn only_the_last_segment_of_a_stroke_stretches_to_where_it_is_let_go() {
+    for (tool, spacing) in [
+        (Tool::Dendrite, SEGMENT_LENGTH),
+        (Tool::Axon, SEGMENT_LENGTH),
+        (Tool::MyelinatedAxon, INTERNODE_LENGTH),
+    ] {
+        let (world, _, _) = stroke_at_speed(tool, 0.2);
+        let mut lengths: Vec<f32> = world
+            .query::<&Cable>()
+            .iter()
+            .map(|cable| (cable.length / MICROMETRES_PER_UNIT) as f32)
+            .collect();
+        lengths.sort_by(f32::total_cmp);
+        let last = lengths.pop().unwrap();
+        assert!(lengths.iter().all(|&length| length == spacing), "{tool:?}");
+        assert!(last > spacing && last < 2.0 * spacing, "{tool:?}: {last}");
+    }
+}
+
+#[test]
+fn letting_go_within_the_last_segment_keeps_its_length() {
+    let mut world = World::new();
+    neuron(&mut world, at(0.0, 0.0));
+    let mut path = straight(at(0.0, 0.5), at(0.0, 12.0));
+    path.push(at(0.0, 11.0));
+    drag(&mut editor(Tool::Dendrite), &mut world, &path);
+
+    assert_eq!(farthest_compartment(&world), at(0.0, 12.0));
+}
+
+#[test]
+fn undo_and_redo_keep_where_a_stroke_was_let_go() {
+    for tool in [Tool::Dendrite, Tool::Axon, Tool::MyelinatedAxon] {
+        let (mut world, mut editor, release) = stroke_at_speed(tool, 0.8);
+        let before = count::<Cable>(&world);
+
+        editor.undo(&mut world);
+        assert_eq!(count::<Compartment>(&world), 0, "{tool:?}");
+        editor.redo(&mut world);
+        assert_eq!(count::<Cable>(&world), before, "{tool:?}");
+        assert_eq!(farthest_compartment(&world), release, "{tool:?}");
+    }
+}
+
+#[test]
+fn tapping_beside_a_dendrite_tip_leaves_it_in_place() {
+    let mut world = World::new();
+    let soma = neuron(&mut world, at(0.0, 0.0));
+    drag(
+        &mut editor(Tool::Dendrite),
+        &mut world,
+        &straight(at(0.0, 0.5), at(0.0, 7.0)),
+    );
+    let tip = farthest_compartment(&world);
+    drag(
+        &mut editor(Tool::Dendrite),
+        &mut world,
+        &[tip + at(1.0, 0.0)],
+    );
+
+    assert_eq!(compartment_tree(&world, soma).len(), 3);
+    assert_eq!(farthest_compartment(&world), tip);
+}
+
 #[test]
 fn a_fast_dendrite_stroke_lays_evenly_spaced_compartments() {
     let mut world = World::new();
