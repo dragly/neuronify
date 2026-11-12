@@ -603,7 +603,7 @@ mod tests {
                 (preview.end, preview.end_color, preview.end_radius),
                 (laid.end, laid.end_color, laid.end_radius)
             );
-            let spheres = collect_spheres(&world, &radii, &paths, &palette);
+            let spheres = collect_spheres(&world, &radii, &paths, &palette, &[]);
             let joint = spheres
                 .iter()
                 .find(|sphere| sphere.position == tip)
@@ -736,7 +736,7 @@ mod tests {
         assert!(real[&dendrite[0]] < shown[&dendrite[0]] / 5.0);
         let palette = Theme::Light.palette();
         let paths = connection_paths(&world, &real, &palette);
-        let somas: Vec<f32> = collect_spheres(&world, &real, &paths, &palette)
+        let somas: Vec<f32> = collect_spheres(&world, &real, &paths, &palette, &[])
             .into_iter()
             .filter(|sphere| sphere.position == Vec3::ZERO)
             .map(|sphere| sphere.radius)
@@ -752,7 +752,7 @@ mod tests {
             neuron_with_a_dendrite_and_an_axon(&mut world, neuron_type);
             let radii = compartment_radii(&world);
             let paths = connection_paths(&world, &radii, &palette);
-            collect_spheres(&world, &radii, &paths, &palette).len()
+            collect_spheres(&world, &radii, &paths, &palette, &[]).len()
         };
         assert_eq!(
             spheres(NeuronType::Excitatory),
@@ -806,7 +806,7 @@ mod tests {
         assert_eq!(sheath.end, Vec3::new(0.0, 0.0, 8.0 - NODE_GAP));
         assert!(sheath.start_radius > radii[&second]);
         assert!(sheath.end_color.max_element() > sheath.start_color.max_element());
-        let caps = collect_spheres(&world, &radii, &paths, &palette)
+        let caps = collect_spheres(&world, &radii, &paths, &palette, &[])
             .into_iter()
             .filter(|sphere| sphere.radius == sheath_radius(&display))
             .count();

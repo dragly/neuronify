@@ -1,8 +1,9 @@
 use std::f32::consts::TAU;
 
 use glam::Vec3;
+use hecs::Entity;
 
-use crate::components::NeuronType;
+use crate::components::{NeuronType, Seconds};
 use crate::constants::NODE_RADIUS;
 use crate::elements::Element;
 use crate::rendering::colors::Palette;
@@ -19,9 +20,10 @@ const STEP_SECONDS: f32 = 1.0 / 240.0;
 const MAX_FRAME_SECONDS: f32 = 0.1;
 const SWAY: f32 = 0.25 * NODE_RADIUS;
 const SWAYS_PER_SECOND: f32 = 0.5;
-const APPEAR_SECONDS: f32 = 0.15;
 const FADE: f32 = 0.55;
 const MIST: f32 = 0.5;
+const APPEAR_SECONDS: f32 = 0.15;
+pub const LANDING: Seconds = Seconds(0.22);
 
 pub fn offset_points(touch: bool) -> f64 {
     if touch {
@@ -42,6 +44,7 @@ pub struct Ghost {
     velocity: Vec3,
     looseness: f32,
     age: f32,
+    way: f32,
 }
 
 impl Ghost {
@@ -52,11 +55,13 @@ impl Ghost {
             velocity: Vec3::ZERO,
             looseness: TOUCH_LOOSENESS,
             age: 0.0,
+            way: 0.0,
         }
     }
 
-    pub fn follow(&mut self, element: Element, anchor: Vec3, touch: bool, seconds: f32) {
+    pub fn follow(&mut self, element: Element, anchor: Vec3, way: f32, touch: bool, seconds: f32) {
         self.element = element;
+        self.way = way;
         self.looseness = if touch {
             TOUCH_LOOSENESS
         } else {
@@ -75,7 +80,7 @@ impl Ghost {
 
     pub fn sphere(&self, palette: &Palette) -> Option<Sphere> {
         let shown = (self.age / APPEAR_SECONDS).clamp(0.0, 1.0);
-        if shown == 0.0 {
+        if shown == 0.0 || self.way <= 0.0 {
             return None;
         }
         let phase = self.age * TAU * SWAYS_PER_SECOND;
@@ -87,9 +92,40 @@ impl Ghost {
         Some(Sphere {
             position: self.position + sway,
             color: palette.soma(&neuron_type, 0.0).lerp(mist(palette), FADE),
-            radius: NODE_RADIUS * (1.0 - (1.0 - shown).powi(3)),
+            radius: NODE_RADIUS * (1.0 - (1.0 - shown).powi(3)) * self.way,
             _padding: Default::default(),
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LandingGhost {
+    pub neuron: Entity,
+    from: Sphere,
+    since: Seconds,
+}
+
+impl LandingGhost {
+    pub fn new(neuron: Entity, from: Sphere, now: Seconds) -> LandingGhost {
+        LandingGhost {
+            neuron,
+            from,
+            since: now,
+        }
+    }
+
+    pub fn progress(&self, now: Seconds) -> f32 {
+        ((now - self.since) / LANDING).clamp(0.0, 1.0) as f32
+    }
+
+    pub fn sphere(&self, soma: Sphere, now: Seconds) -> Sphere {
+        let fall = self.progress(now).powi(2);
+        Sphere {
+            position: self.from.position.lerp(soma.position, fall),
+            color: self.from.color.lerp(soma.color, fall),
+            radius: self.from.radius + (soma.radius - self.from.radius) * fall,
+            _padding: Default::default(),
+        }
     }
 }
 
@@ -106,6 +142,7 @@ mod tests {
             ghost.follow(
                 ghost.element,
                 anchor(frame as f32 * FRAME_SECONDS),
+                1.0,
                 false,
                 FRAME_SECONDS,
             );
@@ -113,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn a_ghost_grows_in_when_painting_starts() {
+    fn a_ghost_grows_in_when_it_appears() {
         let palette = Theme::Light.palette();
         let mut ghost = Ghost::new(Element::ExcitatoryNeuron, Vec3::ZERO);
         assert!(ghost.sphere(&palette).is_none());
@@ -122,6 +159,46 @@ mod tests {
         assert!(radius > 0.0 && radius < NODE_RADIUS);
         follow_for(&mut ghost, 0.5, |_| Vec3::ZERO);
         assert_eq!(ghost.sphere(&palette).unwrap().radius, NODE_RADIUS);
+    }
+
+    #[test]
+    fn a_ghost_grows_with_the_way_to_the_next_neuron() {
+        let palette = Theme::Light.palette();
+        let mut ghost = Ghost::new(Element::ExcitatoryNeuron, Vec3::ZERO);
+        follow_for(&mut ghost, 0.5, |_| Vec3::ZERO);
+        let mut radius_at = |way| {
+            ghost.follow(ghost.element, Vec3::ZERO, way, true, FRAME_SECONDS);
+            ghost.sphere(&palette).map(|sphere| sphere.radius)
+        };
+        assert_eq!(radius_at(0.0), None);
+        assert_eq!(radius_at(0.25), Some(0.25 * NODE_RADIUS));
+        assert_eq!(radius_at(1.0), Some(NODE_RADIUS));
+    }
+
+    #[test]
+    fn a_landing_ghost_falls_onto_the_soma_and_takes_its_look() {
+        let palette = Theme::Light.palette();
+        let mut ghost = Ghost::new(Element::ExcitatoryNeuron, Vec3::ZERO);
+        let above = Vec3::new(0.0, GHOST_HEIGHT, -3.0);
+        follow_for(&mut ghost, 3.0, |_| above);
+        let from = ghost.sphere(&palette).unwrap();
+        let soma = Sphere {
+            position: Vec3::ZERO,
+            color: palette.excitatory,
+            radius: 1.2 * NODE_RADIUS,
+            _padding: Default::default(),
+        };
+        let landing = LandingGhost::new(Entity::DANGLING, from, Seconds(10.0));
+        let start = landing.sphere(soma, Seconds(10.0));
+        assert_eq!((start.position, start.radius), (from.position, from.radius));
+        let halfway = landing.sphere(soma, Seconds(10.0) + LANDING * 0.5);
+        let fallen = from.position.distance(halfway.position);
+        assert!(fallen > 0.0 && fallen < 0.5 * from.position.distance(soma.position));
+        let landed = landing.sphere(soma, Seconds(10.0) + LANDING);
+        assert_eq!(landed.position, soma.position);
+        assert_eq!(landed.radius, soma.radius);
+        assert!(landed.color.distance(soma.color) < 1e-6);
+        assert_eq!(landing.progress(Seconds(10.0) + LANDING * 2.0), 1.0);
     }
 
     #[test]

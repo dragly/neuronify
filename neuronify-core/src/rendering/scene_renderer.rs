@@ -16,7 +16,7 @@ use crate::rendering::cylinders::{
 };
 use crate::rendering::floor::create_floor;
 use crate::rendering::gauges::GaugeRenderer;
-use crate::rendering::ghost::Ghost;
+use crate::rendering::ghost::{Ghost, LandingGhost};
 use crate::rendering::gpu_types::{
     ArcData, ConnectionData, CylinderData, HaloData, MeterBackgroundData, Sphere, TorusData,
 };
@@ -28,6 +28,7 @@ use crate::rendering::notes::NoteRenderer;
 use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
+use crate::rendering::spheres::soma_sphere;
 use crate::rendering::spike_detector::collect_spike_detectors;
 use crate::rendering::tips::{collect_dangling, collect_tip};
 use crate::rendering::transmitter::Landings;
@@ -43,6 +44,7 @@ pub struct EditorMarks<'a> {
     pub bead: Option<Bead>,
     pub dendrite: Option<(Entity, Vec3, Vec3)>,
     pub ghost: Option<Ghost>,
+    pub landing_ghosts: &'a [LandingGhost],
     pub selection: Option<Entity>,
     pub candidate: Option<Entity>,
     pub eraser: Option<Vec3>,
@@ -265,8 +267,20 @@ impl SceneRenderer {
         let palette = theme.palette();
         let radii = compartment_radii(world);
         let paths = shown_paths(world, &radii, &palette);
-        let mut scene =
-            collect_scene_along(world, &radii, &paths, &palette, time, &mut self.landings);
+        let landing_somas: Vec<Entity> = marks
+            .landing_ghosts
+            .iter()
+            .map(|ghost| ghost.neuron)
+            .collect();
+        let mut scene = collect_scene_along(
+            world,
+            &radii,
+            &paths,
+            &palette,
+            time,
+            &mut self.landings,
+            &landing_somas,
+        );
         scene.extend(collect_tip(world, &palette, marks.selection, marks.pulled));
         if let Some((from, points)) = marks.dangling {
             scene.extend(collect_dangling(world, &palette, from, points));
@@ -287,6 +301,13 @@ impl SceneRenderer {
         scene
             .spheres
             .extend(marks.ghost.and_then(|ghost| ghost.sphere(&palette)));
+        let now = crate::input::now();
+        scene
+            .spheres
+            .extend(marks.landing_ghosts.iter().filter_map(|ghost| {
+                let soma = soma_sphere(world, ghost.neuron, &palette)?;
+                Some(ghost.sphere(soma, now))
+            }));
         for marked in marks.selection.into_iter().chain(marks.candidate) {
             scene.extend(collect_selection(world, marked, &palette));
         }

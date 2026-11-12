@@ -57,6 +57,12 @@ const HINTED_NEURONS: usize = 3;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pan(pub Vec3);
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlacedNeuron {
+    pub neuron: Entity,
+    pub painted: bool,
+}
+
 #[derive(Clone, Copy, Debug)]
 struct Dwell {
     anchor: Vec3,
@@ -96,6 +102,7 @@ pub struct Editor {
     shortcut: Option<Meter>,
     wired: bool,
     presses: Vec<Vec3>,
+    placed_neuron: Option<PlacedNeuron>,
     ending: Option<Entity>,
     drawn: HashSet<Entity>,
     spot: Option<Spot>,
@@ -405,6 +412,10 @@ impl Editor {
 
     pub fn take_presses(&mut self) -> Vec<Vec3> {
         std::mem::take(&mut self.presses)
+    }
+
+    pub fn take_placed_neuron(&mut self) -> Option<PlacedNeuron> {
+        self.placed_neuron.take()
     }
 
     pub fn take_edited(&mut self) -> bool {
@@ -862,22 +873,37 @@ impl Editor {
         }
     }
 
-    fn crowds_previous(&self, world: &World, element: Element, position: Vec3) -> bool {
-        match self.previous_creation {
-            Some(previous) if element.is_neuron() && self.compartments => {
-                dendrites_would_overlap(world, previous, position)
-            }
-            _ => self.too_near_previous(world, position, MIN_CREATION_DISTANCE_DEFAULT),
+    pub fn way_to_next(&self, world: &World, position: Vec3) -> Option<f32> {
+        let element = self.painting()?;
+        self.spread(world, element, position)
+    }
+
+    fn spread(&self, world: &World, element: Element, position: Vec3) -> Option<f32> {
+        let previous = self.previous_creation?;
+        if element.is_neuron() && self.compartments {
+            return dendrite_spread(world, previous, position);
         }
+        let at = world.get::<&Position>(previous).ok()?.position;
+        Some(at.distance(position) / MIN_CREATION_DISTANCE_DEFAULT)
+    }
+
+    fn crowds_previous(&self, world: &World, element: Element, position: Vec3) -> bool {
+        self.spread(world, element, position)
+            .is_some_and(|spread| spread < 1.0)
     }
 
     fn place(&mut self, world: &mut World, element: Element, position: Vec3) {
         if self.crowds_previous(world, element, position) {
             return;
         }
+        let painted = self.painting().is_some();
         let entity = element.spawn(world, position);
         if element.is_neuron() {
             self.placed = Some(entity);
+            self.placed_neuron = Some(PlacedNeuron {
+                neuron: entity,
+                painted,
+            });
         }
         if element.is_neuron() && self.compartments {
             spawn_dendrites(world, entity);
@@ -1297,10 +1323,8 @@ fn alone(world: &World) -> bool {
     elements.iter().nth(1).is_none()
 }
 
-fn dendrites_would_overlap(world: &World, neuron: Entity, position: Vec3) -> bool {
-    let Ok(soma) = world.get::<&Position>(neuron).map(|soma| soma.position) else {
-        return false;
-    };
+fn dendrite_spread(world: &World, neuron: Entity, position: Vec3) -> Option<f32> {
+    let soma = world.get::<&Position>(neuron).ok()?.position;
     let tree: Vec<Vec3> = compartment_tree(world, neuron)
         .into_iter()
         .filter_map(|dendrite| world.get::<&Position>(dendrite).ok().map(|p| p.position))
@@ -1309,7 +1333,7 @@ fn dendrites_would_overlap(world: &World, neuron: Entity, position: Vec3) -> boo
     let high = tree.iter().fold(soma, |high, &position| high.max(position));
     let footprint = high - low + Vec3::splat(DENDRITE_GAP);
     let offset = (position - soma).abs();
-    offset.x < footprint.x && offset.z < footprint.z
+    Some((offset.x / footprint.x).max(offset.z / footprint.z))
 }
 
 fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
