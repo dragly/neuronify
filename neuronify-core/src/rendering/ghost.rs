@@ -12,10 +12,16 @@ use crate::rendering::gpu_types::Sphere;
 pub const GHOST_HEIGHT: f32 = NODE_RADIUS;
 const TOUCH_OFFSET_POINTS: f64 = 64.0;
 const MOUSE_OFFSET_POINTS: f64 = 20.0;
-const TOUCH_LOOSENESS: f32 = 1.0;
-const MOUSE_LOOSENESS: f32 = 0.5;
-const STIFFNESS: f32 = 120.0;
-const DAMPING: f32 = 7.0;
+const TOUCH: Feel = Feel {
+    looseness: 1.0,
+    stiffness: 120.0,
+    damping: 7.0,
+};
+const MOUSE: Feel = Feel {
+    looseness: 0.5,
+    stiffness: 200.0,
+    damping: 16.0,
+};
 const STEP_SECONDS: f32 = 1.0 / 240.0;
 const MAX_FRAME_SECONDS: f32 = 0.1;
 const SWAY: f32 = 0.25 * NODE_RADIUS;
@@ -38,11 +44,18 @@ fn mist(palette: &Palette) -> Vec3 {
 }
 
 #[derive(Clone, Copy, Debug)]
+struct Feel {
+    looseness: f32,
+    stiffness: f32,
+    damping: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Ghost {
     element: Element,
     position: Vec3,
     velocity: Vec3,
-    looseness: f32,
+    feel: Feel,
     age: f32,
     way: f32,
 }
@@ -53,7 +66,7 @@ impl Ghost {
             element,
             position: anchor,
             velocity: Vec3::ZERO,
-            looseness: TOUCH_LOOSENESS,
+            feel: TOUCH,
             age: 0.0,
             way: 0.0,
         }
@@ -62,16 +75,13 @@ impl Ghost {
     pub fn follow(&mut self, element: Element, anchor: Vec3, way: f32, touch: bool, seconds: f32) {
         self.element = element;
         self.way = way;
-        self.looseness = if touch {
-            TOUCH_LOOSENESS
-        } else {
-            MOUSE_LOOSENESS
-        };
+        self.feel = if touch { TOUCH } else { MOUSE };
         self.age += seconds;
         let mut remaining = seconds.min(MAX_FRAME_SECONDS);
         while remaining > 0.0 {
             let step = remaining.min(STEP_SECONDS);
-            let pull = STIFFNESS * (anchor - self.position) - DAMPING * self.velocity;
+            let pull =
+                self.feel.stiffness * (anchor - self.position) - self.feel.damping * self.velocity;
             self.velocity += pull * step;
             self.position += self.velocity * step;
             remaining -= step;
@@ -84,7 +94,7 @@ impl Ghost {
             return None;
         }
         let phase = self.age * TAU * SWAYS_PER_SECOND;
-        let sway = Vec3::new(phase.sin(), 0.0, (1.3 * phase).sin()) * SWAY * self.looseness;
+        let sway = Vec3::new(phase.sin(), 0.0, (1.3 * phase).sin()) * SWAY * self.feel.looseness;
         let neuron_type = match self.element {
             Element::InhibitoryNeuron => NeuronType::Inhibitory,
             _ => NeuronType::Excitatory,
@@ -208,7 +218,7 @@ mod tests {
         let mut ghost = Ghost::new(Element::ExcitatoryNeuron, Vec3::ZERO);
         follow_for(&mut ghost, 3.0, |_| anchor);
         let position = ghost.sphere(&palette).unwrap().position;
-        assert!(position.distance(anchor) <= SWAY * MOUSE_LOOSENESS * 1.5);
+        assert!(position.distance(anchor) <= SWAY * MOUSE.looseness * 1.5);
     }
 
     #[test]
@@ -218,6 +228,20 @@ mod tests {
         follow_for(&mut ghost, 1.0, |time| Vec3::Z * speed * time);
         let lag = speed - ghost.position.z;
         assert!(lag > 0.3 * NODE_RADIUS && lag < NODE_RADIUS, "{lag}");
+    }
+
+    #[test]
+    fn a_ghost_barely_swings_past_a_mouse_that_stops() {
+        let speed = 10.0 * NODE_RADIUS;
+        let stop = 0.5 * speed;
+        let mut ghost = Ghost::new(Element::ExcitatoryNeuron, Vec3::ZERO);
+        follow_for(&mut ghost, 0.5, |time| Vec3::Z * speed * time);
+        let mut farthest: f32 = 0.0;
+        for _ in 0..60 {
+            follow_for(&mut ghost, FRAME_SECONDS, |_| Vec3::Z * stop);
+            farthest = farthest.max(ghost.position.z - stop);
+        }
+        assert!(farthest < 0.25 * NODE_RADIUS, "{farthest}");
     }
 
     #[test]
