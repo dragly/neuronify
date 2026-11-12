@@ -65,6 +65,7 @@ pub fn collect_scene(world: &hecs::World, palette: &Palette, time: Milliseconds)
         palette,
         time,
         &mut Landings::default(),
+        &[],
     )
 }
 
@@ -75,9 +76,10 @@ pub fn collect_scene_along(
     palette: &Palette,
     time: Milliseconds,
     landings: &mut Landings,
+    hidden: &[Entity],
 ) -> Scene {
     let mut scene = Scene {
-        spheres: collect_spheres(world, radii, paths, palette),
+        spheres: collect_spheres(world, radii, paths, palette, hidden),
         cylinders: collect_cylinders(world, radii, paths, palette),
         rings: collect_rings(world, palette),
         transmitter: Vec::new(),

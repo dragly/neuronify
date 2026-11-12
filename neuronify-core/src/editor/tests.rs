@@ -1359,6 +1359,46 @@ fn painting_neurons_lasts_until_release() {
 }
 
 #[test]
+fn the_way_to_the_next_painted_neuron_fills_until_it_is_placed_and_reported() {
+    for compartments in [false, true] {
+        let mut world = World::new();
+        let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+        editor.compartments = compartments;
+        assert_eq!(editor.way_to_next(&world, at(0.0, 0.0)), None);
+        editor.edit(&mut world, at(0.0, 0.0));
+        let pressed = editor.take_placed_neuron();
+        assert_eq!(pressed.map(|placed| placed.painted), Some(false));
+        let mut previous = 0.0;
+        for step in 1..=200 {
+            let position = at(0.5, 0.3) * step as f32;
+            let way = editor.way_to_next(&world, position).unwrap();
+            let neurons = count::<LeakyNeuron>(&world);
+            editor.move_held();
+            editor.edit(&mut world, position);
+            let placed = count::<LeakyNeuron>(&world) > neurons;
+            assert_eq!(placed, way >= 1.0, "{compartments} {step}: {way}");
+            let painted = editor.take_placed_neuron();
+            assert!(painted.is_none_or(|placed| placed.painted));
+            let painted_at =
+                painted.map(|placed| world.get::<&Position>(placed.neuron).unwrap().position);
+            assert_eq!(
+                painted_at,
+                placed.then_some(position),
+                "{compartments} {step}"
+            );
+            match placed {
+                true => assert_eq!(editor.way_to_next(&world, position), Some(0.0)),
+                false => assert!(way > previous, "{compartments} {step}: {way}"),
+            }
+            previous = editor.way_to_next(&world, position).unwrap();
+        }
+        assert!(count::<LeakyNeuron>(&world) >= 3, "{compartments}");
+        editor.release(&world);
+        assert_eq!(editor.way_to_next(&world, at(0.0, 0.0)), None);
+    }
+}
+
+#[test]
 fn holding_after_placing_stops_painting() {
     let mut world = World::new();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));

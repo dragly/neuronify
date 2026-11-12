@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use egui::{Context, Id, LayerId, Order, Pos2, Rect, Stroke, Vec2};
+use egui::{Context, Id, LayerId, Order, Painter, Pos2, Rect, Stroke, Vec2};
 use egui_wgpu::{CallbackResources, CallbackTrait, ScreenDescriptor};
 
 use super::style::{Chrome, MARGIN};
@@ -9,6 +9,7 @@ use crate::rendering::Theme;
 pub const LOUPE_DELAY: Seconds = Seconds(0.15);
 pub const LOUPE_SNAP: Seconds = Seconds(0.35);
 const RADIUS: f32 = 56.0;
+const CURSOR_RING_RADIUS: f32 = 12.0;
 const ZOOM: f32 = 1.5;
 const DRAWING_ZOOM: f32 = 1.0;
 const WAITING_RIM: f32 = 0.35;
@@ -324,34 +325,66 @@ pub fn paint_loupe(context: &Context, theme: Theme, view: LoupeView) {
             Stroke::new(THIN, chrome.text.gamma_multiply(0.6)),
         );
     }
-    let rim = match (view.attached, view.progress.is_some()) {
-        (true, false) => Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent),
-        (true, true) => Stroke::new(
-            ATTACHED_RIM_WIDTH,
-            chrome.accent.gamma_multiply(WAITING_RIM),
-        ),
-        (false, _) => Stroke::new(RIM_WIDTH, chrome.border),
+    let rim = Rim {
+        center,
+        radius: RADIUS,
+        attached: view.attached,
+        progress: view.progress,
+        flash: view.flash,
+        snap: view.snap,
     };
-    painter.circle_stroke(center, RADIUS, rim);
-    if let Some(progress) = view.progress.filter(|&progress| progress > 0.0) {
-        let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent);
-        painter.add(egui::Shape::line(
-            arc(center, RADIUS, 0.0, progress),
-            stroke,
-        ));
-    }
-    if let Some(snap) = view.snap.filter(|_| !view.attached) {
-        let open = (1.0 - (1.0 - snap).powi(2)) / 2.0;
-        let fallen = center + Vec2::Y * SNAP_DROP * snap * snap;
-        let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent.gamma_multiply(1.0 - snap));
-        painter.add(egui::Shape::line(
-            arc(fallen, RADIUS, open, 1.0 - open),
-            stroke,
-        ));
-    }
-    if view.flash > 0.0 {
-        let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent.gamma_multiply(view.flash));
-        painter.circle_stroke(center, RADIUS, stroke);
+    rim.paint(&painter, chrome);
+}
+
+pub fn paint_cursor_ring(context: &Context, theme: Theme, center: Pos2, progress: f32, flash: f32) {
+    let painter = context.layer_painter(LayerId::new(Order::Foreground, Id::new("cursor ring")));
+    let rim = Rim {
+        center,
+        radius: CURSOR_RING_RADIUS,
+        attached: false,
+        progress: Some(progress),
+        flash,
+        snap: None,
+    };
+    rim.paint(&painter, Chrome::of(theme));
+}
+
+struct Rim {
+    center: Pos2,
+    radius: f32,
+    attached: bool,
+    progress: Option<f32>,
+    flash: f32,
+    snap: Option<f32>,
+}
+
+impl Rim {
+    fn paint(&self, painter: &Painter, chrome: &Chrome) {
+        let rim = match (self.attached, self.progress.is_some()) {
+            (true, false) => Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent),
+            (true, true) => Stroke::new(
+                ATTACHED_RIM_WIDTH,
+                chrome.accent.gamma_multiply(WAITING_RIM),
+            ),
+            (false, _) => Stroke::new(RIM_WIDTH, chrome.border),
+        };
+        painter.circle_stroke(self.center, self.radius, rim);
+        if let Some(progress) = self.progress.filter(|&progress| progress > 0.0) {
+            let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent);
+            let line = arc(self.center, self.radius, 0.0, progress);
+            painter.add(egui::Shape::line(line, stroke));
+        }
+        if let Some(snap) = self.snap.filter(|_| !self.attached) {
+            let open = (1.0 - (1.0 - snap).powi(2)) / 2.0;
+            let fallen = self.center + Vec2::Y * SNAP_DROP * snap * snap;
+            let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent.gamma_multiply(1.0 - snap));
+            let line = arc(fallen, self.radius, open, 1.0 - open);
+            painter.add(egui::Shape::line(line, stroke));
+        }
+        if self.flash > 0.0 {
+            let stroke = Stroke::new(ATTACHED_RIM_WIDTH, chrome.accent.gamma_multiply(self.flash));
+            painter.circle_stroke(self.center, self.radius, stroke);
+        }
     }
 }
 

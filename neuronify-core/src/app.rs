@@ -6,7 +6,7 @@ use crate::audio::{schedule, Speakers};
 use crate::camera;
 use crate::components::{Link, Milliseconds, NeuronType, Seconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
-use crate::editor::{Editor, Pan, Targets};
+use crate::editor::{Editor, Pan, PlacedNeuron, Targets};
 use crate::elements::{Element, Meter};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
@@ -19,7 +19,7 @@ use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
 use crate::rendering::ghost::{self, GHOST_HEIGHT};
-use crate::rendering::{canvas_bounds, EditorMarks, Ghost, SceneRenderer, Theme};
+use crate::rendering::{canvas_bounds, EditorMarks, Ghost, LandingGhost, SceneRenderer, Theme};
 use crate::serialization::SavedWorld;
 use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
@@ -56,6 +56,7 @@ pub struct Neuronify {
     inertia: Inertia,
     caught: bool,
     ghost: Option<Ghost>,
+    landing_ghosts: Vec<LandingGhost>,
     renderer: SceneRenderer,
     frame_clock: FrameClock,
     simulation_clock: StepClock,
@@ -244,6 +245,7 @@ impl Neuronify {
             inertia: Inertia::default(),
             caught: false,
             ghost: None,
+            landing_ghosts: Vec::new(),
             renderer,
             frame_clock: FrameClock::default(),
             simulation_clock: StepClock::default(),
@@ -379,7 +381,7 @@ impl Neuronify {
             if let Some((element, anchor)) = self.hover_anchor(application) {
                 self.ghost
                     .get_or_insert_with(|| Ghost::new(element, anchor))
-                    .follow(element, anchor, false, elapsed.0 as f32);
+                    .follow(element, anchor, 1.0, false, elapsed.0 as f32);
                 return;
             }
         }
@@ -390,9 +392,33 @@ impl Neuronify {
         let offset = ghost::offset_points(self.touch_input) * application.window.scale_factor();
         let above = PhysicalPosition::new(pointer.x, pointer.y - offset);
         let anchor = camera::position_at_height(application, above, GHOST_HEIGHT);
+        let way = self.way_to_next(application).unwrap_or(0.0);
         self.ghost
             .get_or_insert_with(|| Ghost::new(element, anchor))
-            .follow(element, anchor, self.touch_input, elapsed.0 as f32);
+            .follow(element, anchor, way, self.touch_input, elapsed.0 as f32);
+    }
+
+    fn land_placed(&mut self) {
+        let now = input::now();
+        self.landing_ghosts
+            .retain(|landing| landing.progress(now) < 1.0);
+        let Some(PlacedNeuron { neuron, painted }) = self.editor.take_placed_neuron() else {
+            return;
+        };
+        if painted {
+            tick();
+        }
+        let from = self
+            .ghost
+            .and_then(|ghost| ghost.sphere(&self.theme.palette()));
+        self.landing_ghosts
+            .extend(from.map(|from| LandingGhost::new(neuron, from, now)));
+    }
+
+    fn landing_flash(&self) -> f32 {
+        let now = input::now();
+        let latest = self.landing_ghosts.last();
+        latest.map_or(0.0, |landing| 1.0 - landing.progress(now))
     }
 
     fn hover_anchor(&self, application: &visula::Application) -> Option<(Element, Vec3)> {
@@ -584,7 +610,7 @@ impl Neuronify {
         self.attach_burst = Some(AttachBurst { target, since: now });
     }
 
-    fn loupe_rim(&self) -> (Option<f32>, f32) {
+    fn loupe_rim(&self, application: &visula::Application) -> (Option<f32>, f32) {
         let now = input::now();
         match self.hold_ring {
             Some(HoldRing::Holding { held_for, .. }) => {
@@ -597,12 +623,20 @@ impl Neuronify {
             }
             _ => {}
         }
-        let progress = self.dwell_progress(now);
+        let progress = self
+            .dwell_progress(now)
+            .or_else(|| self.way_to_next(application));
         let flash = self
             .attach_burst
             .and_then(|burst| burst.look(now))
             .map_or(0.0, |look| look.opacity);
-        (progress, flash)
+        (progress, flash.max(self.landing_flash()))
+    }
+
+    fn way_to_next(&self, application: &visula::Application) -> Option<f32> {
+        let position = camera::ground_position(application, self.mouse.position?);
+        let way = self.editor.way_to_next(&self.world, position)?;
+        Some(way.clamp(0.0, 1.0))
     }
 
     fn loupe_subject(
@@ -652,7 +686,7 @@ impl Neuronify {
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size / pixels_per_point);
         let corner = LoupeCorner::next(self.loupe, finger, screen);
         self.loupe = Some(corner);
-        let (progress, flash) = self.loupe_rim();
+        let (progress, flash) = self.loupe_rim(application);
         let snap = self
             .loupe_snap
             .map(|since| ((now - since) / LOUPE_SNAP) as f32)
@@ -672,6 +706,18 @@ impl Neuronify {
             snap,
         };
         gui::paint_loupe(context, self.theme, view);
+    }
+
+    fn paint_cursor_ring(&self, application: &visula::Application, context: &egui::Context) {
+        let pointer = self
+            .mouse
+            .position
+            .filter(|_| !self.touch_input && self.mouse.moved_while_pressed());
+        let (Some(pointer), Some(way)) = (pointer, self.way_to_next(application)) else {
+            return;
+        };
+        let center = egui::pos2(pointer.x as f32, pointer.y as f32) / context.pixels_per_point();
+        gui::paint_cursor_ring(context, self.theme, center, way, self.landing_flash());
     }
 
     fn saved(&mut self) -> Result<Vec<u8>, String> {
@@ -784,6 +830,7 @@ impl Neuronify {
         self.editor.forget_world();
         self.gui.forget_world();
         self.ghost = None;
+        self.landing_ghosts.clear();
         self.hold_ring = None;
         self.attach_ring = None;
         self.attach_burst = None;
@@ -1002,6 +1049,7 @@ impl visula::Simulation for Neuronify {
             camera::frame(application, canvas_bounds(&self.world), free);
         }
 
+        self.land_placed();
         self.dangle_ghost(application, elapsed);
         self.prepare_loupe(application);
         let cable = self.editor.cable_being_drawn(&self.world);
@@ -1034,6 +1082,7 @@ impl visula::Simulation for Neuronify {
                 bead: self.editor.bead(&self.world),
                 dendrite: self.editor.dendrite_being_grown(),
                 ghost: self.ghost,
+                landing_ghosts: &self.landing_ghosts,
                 selection: self.editor.selection,
                 candidate: self
                     .loupe_candidate()
@@ -1142,6 +1191,7 @@ impl visula::Simulation for Neuronify {
         }
         self.paint_rings(application, context);
         self.paint_loupe(application, context);
+        self.paint_cursor_ring(application, context);
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {

@@ -32,7 +32,7 @@ pub use connections::{arc_points, collect_meter_wires, connection_being_drawn};
 pub use cylinders::{collect_cylinders, compartment_radii, growing_axon, growing_dendrite};
 pub use floor::create_floor;
 pub use gauges::GaugeRenderer;
-pub use ghost::Ghost;
+pub use ghost::{Ghost, LandingGhost};
 pub use gpu_types::{
     ArcData, ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere, TorusData,
 };

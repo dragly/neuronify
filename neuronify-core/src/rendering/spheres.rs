@@ -86,11 +86,43 @@ pub fn soma_radius(world: &hecs::World, soma: Entity, display: &NeuronDisplay) -
     }
 }
 
+fn soma_look(
+    world: &hecs::World,
+    soma: Entity,
+    (neuron, state, position): (&LeakyNeuron, &NodeState, &Position),
+    display: &NeuronDisplay,
+    palette: &Palette,
+) -> Sphere {
+    Sphere {
+        position: position.position,
+        color: soma_color(world, soma, neuron, state, display, palette),
+        radius: soma_radius(world, soma, display),
+        _padding: Default::default(),
+    }
+}
+
+pub fn soma_sphere(world: &hecs::World, neuron: Entity, palette: &Palette) -> Option<Sphere> {
+    let entity = world.entity(neuron).ok()?;
+    let parts = (
+        &*entity.get::<&LeakyNeuron>()?,
+        &*entity.get::<&NodeState>()?,
+        &*entity.get::<&Position>()?,
+    );
+    Some(soma_look(
+        world,
+        neuron,
+        parts,
+        &NeuronDisplay::of(world),
+        palette,
+    ))
+}
+
 pub fn collect_spheres(
     world: &hecs::World,
     radii: &HashMap<Entity, f32>,
     paths: &BTreeMap<Entity, ConnectionPath>,
     palette: &Palette,
+    hidden: &[Entity],
 ) -> Vec<Sphere> {
     let mut spheres = Vec::new();
     let display = NeuronDisplay::of(world);
@@ -99,12 +131,8 @@ pub fn collect_spheres(
         world
             .query::<(Entity, (&LeakyNeuron, &NodeState, &Position))>()
             .iter()
-            .map(|(entity, (neuron, state, position))| Sphere {
-                position: position.position,
-                color: soma_color(world, entity, neuron, state, &display, palette),
-                radius: soma_radius(world, entity, &display),
-                _padding: Default::default(),
-            }),
+            .filter(|(entity, _)| !hidden.contains(entity))
+            .map(|(entity, parts)| soma_look(world, entity, parts, &display, palette)),
     );
 
     // Touch sensors and current sources are flat pads, see `collect_shapes`
