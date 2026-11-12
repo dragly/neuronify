@@ -782,6 +782,7 @@ impl Neuronify {
         self.running = true;
         self.editor.tool = Tool::View;
         self.editor.forget_world();
+        self.gui.forget_world();
         self.ghost = None;
         self.hold_ring = None;
         self.attach_ring = None;

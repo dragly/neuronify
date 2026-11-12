@@ -1818,3 +1818,90 @@ fn no_text_in_the_inspector_is_covered_by_other_text_or_controls() {
         }
     }
 }
+
+const ADD_CALLOUT: &str = "Press Add for neurons and more";
+const NEURON_CALLOUT: &str = "Pick a neuron to start";
+const HEADING: &str = "Nothing here yet";
+
+#[test]
+fn an_empty_scene_points_at_add_on_phones_until_something_is_chosen() {
+    let mut harness = Harness::phone(false, World::new(), None);
+    let add = harness.text_rect("Add").unwrap();
+    let callout = harness.text_rect(ADD_CALLOUT).unwrap();
+    assert!(callout.bottom() < add.top(), "{callout:?} {add:?}");
+    assert!(harness.shows(HEADING));
+
+    harness.click(add.center());
+    assert!(!harness.shows(ADD_CALLOUT));
+    assert!(!harness.shows(HEADING));
+    harness.click(add.center());
+    assert!(harness.shows(ADD_CALLOUT));
+
+    harness.editor.tool = Tool::Place(Element::ExcitatoryNeuron);
+    harness.frame(vec![]);
+    assert!(!harness.shows(ADD_CALLOUT));
+    assert!(!harness.shows(HEADING));
+}
+
+#[test]
+fn an_empty_scene_points_beside_the_add_tools_on_desktop() {
+    let mut harness = Harness::new(false);
+    let callout = harness.text_rect(NEURON_CALLOUT).unwrap();
+    let neurons = harness.text_rect("Neurons").unwrap();
+    assert!(callout.left() > neurons.right());
+    assert!((neurons.top() - 40.0..neurons.bottom()).contains(&callout.center().y));
+    assert!(harness.shows(HEADING));
+
+    harness.click(neurons.center());
+    assert!(!harness.shows(NEURON_CALLOUT));
+    assert!(harness.shows(HEADING));
+}
+
+#[test]
+fn a_scene_with_anything_in_it_shows_no_invitation() {
+    for phone in [false, true] {
+        let mut harness = match phone {
+            false => Harness::new(false),
+            true => Harness::phone(false, World::new(), None),
+        };
+        assert!(harness.shows(HEADING));
+        harness.world = one_neuron().0;
+        harness.frame(vec![]);
+        assert!(!harness.shows(ADD_CALLOUT) && !harness.shows(NEURON_CALLOUT));
+        assert!(!harness.shows(HEADING));
+    }
+}
+
+fn suggestions_shown(harness: &Harness) -> Vec<&'static str> {
+    empty_scene::SUGGESTIONS
+        .into_iter()
+        .filter(|suggestion| harness.shows(suggestion))
+        .collect()
+}
+
+#[test]
+fn an_empty_scene_keeps_its_suggestion_while_it_stays_empty() {
+    let mut harness = Harness::new(false);
+    let shown = suggestions_shown(&harness);
+    assert_eq!(shown.len(), 1);
+
+    harness.editor.tool = Tool::Place(Element::ExcitatoryNeuron);
+    harness.frame(vec![]);
+    assert!(suggestions_shown(&harness).is_empty());
+    harness.editor.tool = Tool::View;
+    harness.frame(vec![]);
+    assert_eq!(suggestions_shown(&harness), shown);
+}
+
+#[test]
+fn a_scene_that_empties_again_suggests_something_new() {
+    let mut empty_scene = EmptyScene::default();
+    let full = one_neuron().0;
+    let suggested: std::collections::HashSet<_> = (0..50)
+        .filter_map(|_| {
+            empty_scene.invitation(&full, Tool::View);
+            empty_scene.invitation(&World::new(), Tool::View)
+        })
+        .collect();
+    assert!(suggested.len() > 1);
+}

@@ -8,6 +8,7 @@ use crate::rendering::Bounds;
 const MIN_DISTANCE: f32 = 5.0;
 const MAX_DISTANCE: f32 = 200.0;
 const DEFAULT_DISTANCE: f32 = 50.0;
+const EMPTY_SCENE_DISTANCE: f32 = 2.0 * DEFAULT_DISTANCE;
 const FIELD_OF_VIEW_DEGREES: f32 = 40.0;
 const TILT_DEGREES: f32 = 6.7;
 const FRAMING_MARGIN: f32 = 1.15;
@@ -161,7 +162,7 @@ pub fn frame(application: &mut visula::Application, bounds: Option<Bounds>, free
                 / 2.0;
             (bounds.center().with_y(0.0), fit)
         }
-        None => (Vec3::ZERO, DEFAULT_DISTANCE),
+        None => (Vec3::ZERO, EMPTY_SCENE_DISTANCE),
     };
     let camera = &mut application.camera_controller;
     camera.target_transform.center = center;
