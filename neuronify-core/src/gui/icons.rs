@@ -639,7 +639,8 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                     2.6 * scale,
                 ));
             } else {
-                painter.add(Shape::closed_line(ring, stroke(2.6, generator)));
+                let closed = ring[..ring.len() - 1].to_vec();
+                painter.add(Shape::closed_line(closed, stroke(2.6, generator)));
             }
         }
         Tool::Voltmeter => {
