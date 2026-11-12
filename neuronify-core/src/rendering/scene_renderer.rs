@@ -29,6 +29,7 @@ use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spike_detector::collect_spike_detectors;
+use crate::rendering::tips::collect_tip;
 use crate::rendering::transmitter::Landings;
 use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::voltmeter::collect_voltmeter_traces;
@@ -44,6 +45,7 @@ pub struct EditorMarks<'a> {
     pub selection: Option<Entity>,
     pub candidate: Option<Entity>,
     pub eraser: Option<Vec3>,
+    pub pulled: Option<Entity>,
 }
 
 const SHADOW_EXTENT_PER_CAMERA_DISTANCE: f32 = 2.0;
@@ -264,6 +266,7 @@ impl SceneRenderer {
         let paths = shown_paths(world, &radii, &palette);
         let mut scene =
             collect_scene_along(world, &radii, &paths, &palette, time, &mut self.landings);
+        scene.extend(collect_tip(world, &palette, marks.selection, marks.pulled));
         let axon = match (marks.bead, marks.ending) {
             (Some(bead), _) => bead_ending(world, &bead, &palette),
             (None, Some((from, to))) => growing_ending(world, from, to, &palette),

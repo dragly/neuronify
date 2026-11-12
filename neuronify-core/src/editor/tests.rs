@@ -3625,3 +3625,101 @@ fn a_pressed_touch_sensor_offers_no_connection() {
     editor.release(&world);
     assert_eq!(editor.connection_hint(&world, Seconds(11.0)), None);
 }
+
+#[test]
+fn pulling_a_tip_while_editing_connects_instead_of_moving() {
+    let mut world = World::new();
+    let from = neuron(&mut world, at(0.0, 0.0));
+    let to = neuron(&mut world, at(0.0, 8.0));
+    let mut editor = editor(Tool::Edit);
+    editor.selection = Some(from);
+
+    editor.edit(&mut world, at(0.0, 2.6));
+    assert_eq!(editor.hold_candidate(&world, at(0.0, 2.6)), None);
+    drag(&mut editor, &mut world, &[at(0.0, 5.0), at(0.0, 7.5)]);
+    assert!(connected(&world, from, to));
+    assert_eq!(position(&world, from), at(0.0, 0.0));
+}
+
+#[test]
+fn an_unselected_neuron_has_no_tip_to_pull() {
+    let mut world = World::new();
+    let from = neuron(&mut world, at(0.0, 0.0));
+    let to = neuron(&mut world, at(0.0, 8.0));
+    for tool in [Tool::Edit, Tool::View] {
+        let mut editor = editor(tool);
+        let path = [at(0.0, 2.6), at(0.0, 5.0), at(0.0, 7.5)];
+        if tool == Tool::View {
+            for &position in &path {
+                editor.view(&mut world, position);
+            }
+            editor.lift(&mut world);
+        } else {
+            drag(&mut editor, &mut world, &path);
+        }
+        assert!(!connected(&world, from, to), "{tool:?}");
+        assert_eq!(position(&world, from), at(0.0, 0.0), "{tool:?}");
+    }
+}
+
+#[test]
+fn a_tip_is_drawn_from_while_it_is_pulled() {
+    let mut world = World::new();
+    let from = neuron(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Edit);
+    editor.selection = Some(from);
+    editor.edit(&mut world, at(0.0, 2.6));
+    editor.edit(&mut world, at(0.0, 5.0));
+    assert_eq!(editor.pulled_tip(), Some(from));
+    assert_eq!(
+        editor.connection_being_drawn(&world),
+        Some((at(0.0, 0.0), at(0.0, 5.0)))
+    );
+    editor.release(&world);
+    assert_eq!(editor.pulled_tip(), None);
+}
+
+#[test]
+fn the_add_and_connect_tools_pull_a_tip_too() {
+    for tool in [
+        Tool::Place(Element::ExcitatoryNeuron),
+        Tool::StaticConnection,
+    ] {
+        let mut world = World::new();
+        let from = neuron(&mut world, at(0.0, 0.0));
+        let to = neuron(&mut world, at(0.0, 8.0));
+        let mut editor = editor(tool);
+        editor.selection = Some(from);
+        drag(
+            &mut editor,
+            &mut world,
+            &[at(0.0, 2.6), at(0.0, 5.0), at(0.0, 7.5)],
+        );
+        assert!(connected(&world, from, to), "{tool:?}");
+        assert_eq!(count::<LeakyNeuron>(&world), 2, "{tool:?}");
+    }
+}
+
+#[test]
+fn a_selected_neuron_offers_its_tip_for_another_connection() {
+    let mut world = World::new();
+    let from = neuron(&mut world, at(0.0, 0.0));
+    let first = neuron(&mut world, at(0.0, 8.0));
+    let second = neuron(&mut world, at(8.0, 0.0));
+    spawn_connection(&mut world, from, first);
+    spawn_connection(&mut world, second, first);
+    let mut editor = editor(Tool::Edit);
+    let knob = at(0.0, -2.6);
+    drag(&mut editor, &mut world, &[knob, at(0.0, -5.0)]);
+    assert_eq!(position(&world, from), at(0.0, 0.0));
+    assert!(!connected(&world, from, second));
+
+    editor.selection = Some(from);
+    drag(
+        &mut editor,
+        &mut world,
+        &[knob, at(4.0, -1.0), at(7.5, 0.0)],
+    );
+    assert!(connected(&world, from, second));
+    assert!(connected(&world, from, first));
+}

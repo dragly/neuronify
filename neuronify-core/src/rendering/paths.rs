@@ -8,6 +8,7 @@ use crate::constants::*;
 use crate::measurement::is_meter;
 use crate::rendering::colors::*;
 use crate::rendering::shapes::{shown_voltage, voltage_fraction};
+use crate::tips::Tip;
 
 /// Spacing between the joints along a connection, the same as between compartments.
 const JOINT_SPACING: f32 = 2.0 * NODE_RADIUS;
@@ -234,6 +235,36 @@ fn glided_end(world: &hecs::World, connection: Entity, end: Vec3) -> Option<Vec3
     Some(gliding.from.lerp(end, 1.0 - left * left * left))
 }
 
+pub fn tip_path(world: &hecs::World, tip: &Tip, palette: &Palette) -> Option<ConnectionPath> {
+    dangling_path(world, tip.from, &[tip.root, tip.knob], palette)
+}
+
+pub fn dangling_path(
+    world: &hecs::World,
+    from: Entity,
+    points: &[Vec3],
+    palette: &Palette,
+) -> Option<ConnectionPath> {
+    let [.., before, end] = points else {
+        return None;
+    };
+    let source = world.entity(from).ok()?;
+    let display = NeuronDisplay::of(world);
+    let (start_color, end_color) = connection_colors(source, source, &display, palette);
+    Some(ConnectionPath {
+        points: points.to_vec(),
+        radius: CONNECTION_RADIUS,
+        start_color,
+        end_color,
+        directional: true,
+        inhibitory: source
+            .get::<&NeuronType>()
+            .is_some_and(|neuron_type| *neuron_type == NeuronType::Inhibitory),
+        terminal_radius: SOMA_TERMINAL_RADIUS,
+        terminal_direction: (*end - *before).normalize_or_zero(),
+    })
+}
+
 fn path_of(
     world: &hecs::World,
     connection: &Connection,
@@ -441,5 +472,42 @@ mod tests {
     fn a_connection_shorter_than_the_gap_has_no_tube() {
         let points = bent_line(Vec3::ZERO, Vec3::X, 0.0, SYNAPSE_GAP);
         assert_eq!(points, vec![Vec3::ZERO]);
+    }
+
+    #[test]
+    fn a_dangling_connection_is_drawn_like_the_connection_it_becomes() {
+        let mut world = hecs::World::new();
+        let palette = crate::rendering::Theme::Light.palette();
+        for element in [
+            crate::elements::Element::ExcitatoryNeuron,
+            crate::elements::Element::InhibitoryNeuron,
+            crate::elements::Element::TouchSensor,
+        ] {
+            let from = element.spawn(&mut world, Vec3::ZERO);
+            let to = crate::elements::Element::ExcitatoryNeuron
+                .spawn(&mut world, Vec3::new(0.0, 0.0, 10.0));
+            crate::elements::spawn_connection(&mut world, from, to);
+            let radii = crate::rendering::compartment_radii(&world);
+            let made = connection_paths(&world, &radii, &palette)
+                .into_values()
+                .next()
+                .unwrap();
+            let points = [
+                Vec3::ZERO,
+                Vec3::new(0.3, 0.0, 3.0),
+                Vec3::new(0.3, 0.0, 6.0),
+            ];
+            let dangling = dangling_path(&world, from, &points, &palette).unwrap();
+            assert_eq!(dangling.radius, made.radius, "{element:?}");
+            assert_eq!(dangling.start_color, made.start_color, "{element:?}");
+            assert_eq!(dangling.inhibitory, made.inhibitory, "{element:?}");
+            assert_eq!(
+                dangling.terminal_radius, made.terminal_radius,
+                "{element:?}"
+            );
+            assert!(dangling.directional, "{element:?}");
+            assert_eq!(dangling.terminal_direction, Vec3::Z, "{element:?}");
+            world.clear();
+        }
     }
 }
