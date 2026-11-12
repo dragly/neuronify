@@ -3594,3 +3594,34 @@ fn axons_ending_along_one_branch_leave_it_where_it_was() {
         assert!(moved < 0.2, "{moved}");
     }
 }
+
+#[test]
+fn pressing_a_touch_sensor_while_adding_fires_it_and_dragging_still_connects() {
+    let mut world = World::new();
+    let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 10.0));
+    for tool in [
+        Tool::Place(Element::TouchSensor),
+        Tool::Place(Element::ExcitatoryNeuron),
+    ] {
+        let mut editor = editor(tool);
+        editor.edit(&mut world, at(0.5, 0.0));
+        assert_eq!(editor.take_presses(), vec![at(0.0, 0.0)], "{tool:?}");
+        editor.release(&world);
+    }
+    let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
+    drag(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 9.5)]);
+    assert!(connected(&world, sensor, target));
+    assert_eq!(count::<TouchSensor>(&world), 1);
+}
+
+#[test]
+fn a_pressed_touch_sensor_offers_no_connection() {
+    let mut world = World::new();
+    Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Place(Element::TouchSensor));
+    editor.edit(&mut world, at(0.5, 0.0));
+    editor.offer_connection(Seconds(10.0));
+    editor.release(&world);
+    assert_eq!(editor.connection_hint(&world, Seconds(11.0)), None);
+}

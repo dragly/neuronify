@@ -71,6 +71,7 @@ pub struct Editor {
     pub selection: Option<Entity>,
     pub touch_reach: f32,
     connection_mode: ConnectionMode,
+    pressed_sensor: bool,
     connection_tool: Option<ConnectionTool>,
     offer: Option<ConnectionOffer>,
     stimulation_tool: Option<StimulationTool>,
@@ -251,7 +252,7 @@ impl Editor {
         let Some(connection) = &self.connection_tool else {
             return;
         };
-        if self.shortcut.is_some() {
+        if self.shortcut.is_some() || self.pressed_sensor {
             return;
         }
         if self.pressed == Some(connection.from) {
@@ -396,6 +397,7 @@ impl Editor {
         self.resizing = None;
         self.shortcut = None;
         self.wired = false;
+        self.pressed_sensor = false;
         self.ending = None;
         self.spot = None;
         self.attached.clear();
@@ -760,7 +762,8 @@ impl Editor {
             .as_ref()
             .map(|connection| connection.from)
             .or(under);
-        if self.pressed.is_some() {
+        if let Some(pressed) = self.pressed {
+            self.press_sensor(world, pressed);
             self.previous_creation = connection.as_ref().map(|connection| connection.from);
             self.connection_tool = connection;
             return;
@@ -772,6 +775,16 @@ impl Editor {
                 end: position,
                 from,
             });
+        }
+    }
+
+    fn press_sensor(&mut self, world: &World, entity: Entity) {
+        if !has::<TouchSensor>(world, entity) {
+            return;
+        }
+        if let Ok(sensor) = world.get::<&Position>(entity) {
+            self.presses.push(sensor.position);
+            self.pressed_sensor = true;
         }
     }
 
