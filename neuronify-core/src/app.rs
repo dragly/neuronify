@@ -1031,6 +1031,7 @@ impl visula::Simulation for Neuronify {
                     .loupe_candidate()
                     .filter(|&candidate| Some(candidate) != self.editor.selection),
                 eraser: self.eraser(application),
+                pulled: self.editor.pulled_tip(),
             },
         );
     }

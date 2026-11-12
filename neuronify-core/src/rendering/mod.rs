@@ -21,6 +21,7 @@ pub mod shapes;
 pub mod signals;
 pub mod spheres;
 pub mod spike_detector;
+pub mod tips;
 pub mod transmitter;
 pub mod visual_input;
 pub mod voltmeter;

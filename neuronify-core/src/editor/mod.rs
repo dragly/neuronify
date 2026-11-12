@@ -17,6 +17,7 @@ use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};
+use crate::tips::tip_at;
 use crate::tools::{
     ConnectionHint, ConnectionMode, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool,
     Tool,
@@ -72,6 +73,7 @@ pub struct Editor {
     pub touch_reach: f32,
     connection_mode: ConnectionMode,
     pressed_sensor: bool,
+    pulling: bool,
     connection_tool: Option<ConnectionTool>,
     offer: Option<ConnectionOffer>,
     stimulation_tool: Option<StimulationTool>,
@@ -109,6 +111,7 @@ impl Editor {
     pub fn connection_being_drawn(&self, world: &World) -> Option<(Vec3, Vec3)> {
         let connection = self.connection_tool.as_ref()?;
         let drawn = match self.tool {
+            _ if self.pulling => true,
             Tool::StaticConnection => true,
             Tool::Place(_) => !self.grows_axon(world, connection.from),
             tool => tool.meter().is_some(),
@@ -398,6 +401,7 @@ impl Editor {
         self.shortcut = None;
         self.wired = false;
         self.pressed_sensor = false;
+        self.pulling = false;
         self.ending = None;
         self.spot = None;
         self.attached.clear();
@@ -531,11 +535,19 @@ impl Editor {
 
     pub fn edit(&mut self, world: &mut World, position: Vec3) -> Option<Pan> {
         self.settle();
+        let pressed = self.recording.is_none();
         let mut recording = self
             .recording
             .take()
             .unwrap_or_else(|| Recording::start(world));
-        let pan = self.use_tool(world, &mut recording, position);
+        let pan = if self.pulling {
+            self.extend_connection(world, position);
+            None
+        } else if pressed && self.tool == Tool::Edit && self.pull_tip(world, position) {
+            None
+        } else {
+            self.use_tool(world, &mut recording, position)
+        };
         self.hold_drawing(world, &recording);
         self.recording = Some(recording);
         pan
@@ -593,6 +605,29 @@ impl Editor {
                 None
             }
         }
+    }
+
+    fn pull_tip(&mut self, world: &World, position: Vec3) -> bool {
+        let Some(tip) = self.tip_at(world, position) else {
+            return false;
+        };
+        self.connection_tool = Some(tip);
+        self.pulling = true;
+        true
+    }
+
+    fn tip_at(&self, world: &World, position: Vec3) -> Option<ConnectionTool> {
+        tip_at(world, self.selection, position, self.touch_reach).map(|tip| ConnectionTool {
+            start: tip.center,
+            end: position,
+            from: tip.from,
+        })
+    }
+
+    pub fn pulled_tip(&self) -> Option<Entity> {
+        let connection = self.connection_tool.as_ref()?;
+        let fresh = self.pulling || self.previous_creation == Some(connection.from);
+        fresh.then_some(connection.from)
     }
 
     fn stimulate(&mut self, _world: &mut World, position: Vec3) {
@@ -657,7 +692,7 @@ impl Editor {
     }
 
     pub fn hold_candidate(&self, world: &World, position: Vec3) -> Option<(Entity, Vec3)> {
-        if self.stimulation_tool.is_some() {
+        if self.stimulation_tool.is_some() || self.pulling {
             return None;
         }
         let pressed = self.pressed.and_then(|pressed| {
@@ -750,8 +785,9 @@ impl Editor {
         } else {
             sources(world)
         };
-        let connection =
-            start_connection(candidates, position).or_else(|| self.pull_offer(world, position));
+        let connection = start_connection(candidates, position)
+            .or_else(|| self.pull_offer(world, position))
+            .or_else(|| self.tip_at(world, position));
         self.offer = None;
         let compartments = positions_with::<Compartment>(world);
         let under = Targets::new(world)
@@ -860,13 +896,15 @@ impl Editor {
         if self.connection_tool.is_some() {
             self.extend_connection(world, position);
         } else {
-            self.connection_tool = start_connection(sources(world), position).or_else(|| {
-                meter_at(world, position).map(|(meter, start)| ConnectionTool {
-                    start,
-                    end: position,
-                    from: meter,
-                })
-            });
+            self.connection_tool = start_connection(sources(world), position)
+                .or_else(|| self.tip_at(world, position))
+                .or_else(|| {
+                    meter_at(world, position).map(|(meter, start)| ConnectionTool {
+                        start,
+                        end: position,
+                        from: meter,
+                    })
+                });
         }
     }
 
