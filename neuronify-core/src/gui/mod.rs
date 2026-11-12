@@ -1,4 +1,5 @@
 mod attach_ring;
+mod empty_scene;
 mod hitboxes;
 mod hold_ring;
 pub(crate) mod icons;
@@ -27,6 +28,7 @@ use crate::links;
 use crate::rendering::Theme;
 use crate::tools::Tool;
 pub use attach_ring::{dwell_progress, AttachBurst, AttachRing, WAITING};
+use empty_scene::EmptyScene;
 pub use hitboxes::{paint_hitboxes, reach_slider};
 pub use hold_ring::{paint_hold_ring, HoldRing, Look};
 use icons::Icon;
@@ -89,9 +91,14 @@ pub struct Gui {
     inspector: Inspector,
     menu_open: bool,
     playback_open: bool,
+    empty_scene: EmptyScene,
 }
 
 impl Gui {
+    pub fn forget_world(&mut self) {
+        self.empty_scene.forget();
+    }
+
     pub fn rail_shown(&self) -> bool {
         self.rail.is_shown()
     }
@@ -129,6 +136,16 @@ impl Gui {
         let rail = self
             .rail
             .show(context, theme, self.menu_open, controls.editor);
+        if let Some(invitation) = self
+            .empty_scene
+            .invitation(controls.world, controls.editor.tool)
+        {
+            let canvas = canvas_area(context.content_rect(), self.rail.is_shown());
+            empty_scene::message(context, theme, canvas, invitation);
+            if let Some(add) = rail.add.filter(|_| !self.rail.is_open() && !self.menu_open) {
+                empty_scene::callout(context, theme, add, false);
+            }
+        }
         let menu_button = rail.menu.map(|menu| {
             let position = pos2(
                 rail.rect.right() + POPOVER_GAP,
@@ -220,8 +237,19 @@ impl Gui {
                 |ui| history_buttons(ui, chrome, controls.editor, controls.world),
             );
         }
-        self.rail
+        let add = self
+            .rail
             .bar(context, theme, controls.editor, &mut self.playback_open);
+        let invitation = self
+            .empty_scene
+            .invitation(controls.world, controls.editor.tool);
+        if let Some(invitation) = invitation.filter(|_| !self.rail.is_open()) {
+            let canvas = canvas_area(context.content_rect(), false);
+            empty_scene::message(context, theme, canvas, invitation);
+            if let Some(add) = add.filter(|_| !self.playback_open && !self.menu_open) {
+                empty_scene::callout(context, theme, add, true);
+            }
+        }
         if self.playback_open {
             playback::bar(
                 context,

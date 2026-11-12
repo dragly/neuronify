@@ -111,6 +111,7 @@ const SECTIONS: [&[(Slot, Key)]; 2] = [
 pub struct RailResponse {
     pub rect: Rect,
     pub menu: Option<Response>,
+    pub add: Option<Rect>,
 }
 
 #[derive(Default)]
@@ -125,6 +126,10 @@ pub struct Rail {
 }
 
 impl Rail {
+    pub fn is_open(&self) -> bool {
+        self.flyout.is_some() || self.adding
+    }
+
     pub fn is_shown(&self) -> bool {
         !self.hidden
     }
@@ -234,6 +239,7 @@ impl Rail {
             return RailResponse {
                 rect: shown.rect,
                 menu: None,
+                add: None,
             };
         }
         let height = context.content_rect().height() - 2.0 * MARGIN;
@@ -241,6 +247,7 @@ impl Rail {
         let mut toggled = None;
         let mut anchors = Vec::new();
         let mut stroke_anchor = None;
+        let mut folded_add = None;
         let inner = egui::Area::new(Id::new("rail"))
             .anchor(Align2::LEFT_TOP, [MARGIN, MARGIN])
             .show(context, |ui| {
@@ -276,6 +283,7 @@ impl Rail {
                                             let response =
                                                 add_button(ui, chrome, theme, editor, false);
                                             stroke_anchor = Some(response.rect);
+                                            folded_add = Some(response.rect);
                                             if response.clicked() {
                                                 self.folded = false;
                                             }
@@ -402,9 +410,16 @@ impl Rail {
             ),
             None => self.stroke_open = false,
         }
+        let adding = SECTIONS[ADD_SECTION];
+        let add = anchors
+            .iter()
+            .find(|(slot, _)| adding.iter().any(|(candidate, _)| candidate == slot))
+            .map(|(_, rect)| *rect)
+            .or(folded_add);
         RailResponse {
             rect: rail,
             menu: Some(inner.inner),
+            add,
         }
     }
 
@@ -536,7 +551,7 @@ impl Rail {
         theme: Theme,
         editor: &mut Editor,
         playback_open: &mut bool,
-    ) {
+    ) -> Option<Rect> {
         let chrome = Chrome::of(theme);
         let width = context.content_rect().width() - 2.0 * TOOL_BAR_MARGIN;
         let mut add = None;
@@ -664,6 +679,7 @@ impl Rail {
                 self.adding = false;
             }
         }
+        add
     }
 
     fn add_sheet(
