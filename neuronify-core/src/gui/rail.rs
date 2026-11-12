@@ -540,7 +540,13 @@ impl Rail {
         let chrome = Chrome::of(theme);
         let width = context.content_rect().width() - 2.0 * TOOL_BAR_MARGIN;
         let mut add = None;
-        egui::Area::new(Id::new("tool_bar"))
+        let order = if self.adding {
+            Order::Foreground
+        } else {
+            Order::Middle
+        };
+        let bar = egui::Area::new(Id::new("tool_bar"))
+            .order(order)
             .anchor(Align2::CENTER_BOTTOM, [0.0, -TOOL_BAR_MARGIN])
             .show(context, |ui| {
                 chrome
@@ -644,11 +650,14 @@ impl Rail {
             None => self.stroke_open = false,
         }
         if self.adding {
-            let sheet = self.add_sheet(context, theme, editor);
+            let bar_rect = bar.response.rect;
+            let sheet = self.add_sheet(context, theme, editor, bar_rect.top());
+            context.move_to_top(bar.response.layer_id);
             let pressed_elsewhere = context.input(|input| {
                 input.pointer.any_pressed()
                     && input.pointer.interact_pos().is_some_and(|position| {
-                        !sheet.contains(position) && !add.is_some_and(|add| add.contains(position))
+                        let on_sheet = sheet.contains(position) && !bar_rect.contains(position);
+                        !on_sheet && !add.is_some_and(|add| add.contains(position))
                     })
             });
             if pressed_elsewhere {
@@ -657,10 +666,17 @@ impl Rail {
         }
     }
 
-    fn add_sheet(&mut self, context: &Context, theme: Theme, editor: &mut Editor) -> Rect {
+    fn add_sheet(
+        &mut self,
+        context: &Context,
+        theme: Theme,
+        editor: &mut Editor,
+        bar_top: f32,
+    ) -> Rect {
         let chrome = Chrome::of(theme);
         let width = context.content_rect().width();
         let padding = 16;
+        let below = context.content_rect().bottom() - bar_top + POPOVER_GAP - padding as f32;
         let id = Id::new("add_sheet");
         let detents =
             [context.content_rect().height() * SHEET_HEIGHT + HANDLE_HEIGHT + padding as f32];
@@ -677,7 +693,7 @@ impl Rail {
                     if self.sheet.handle(ui, chrome, height, &detents) {
                         self.adding = false;
                     }
-                    let room = laid_out - HANDLE_HEIGHT - padding as f32;
+                    let room = laid_out - HANDLE_HEIGHT - padding as f32 - below;
                     ScrollArea::vertical()
                         .max_height(room)
                         .min_scrolled_height(room)
@@ -738,6 +754,7 @@ impl Rail {
                                 }
                             }
                         });
+                    ui.add_space(below);
                 });
             })
             .response
