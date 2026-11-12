@@ -221,6 +221,7 @@ pub struct ConnectionOffer {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConnectionHint {
+    pub from: Entity,
     pub string: Vec<Vec3>,
     pub label: Vec3,
     pub shown: f32,

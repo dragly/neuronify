@@ -17,7 +17,7 @@ use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};
-use crate::tips::tip_at;
+use crate::tips::{onward, tip_at};
 use crate::tools::{
     ConnectionHint, ConnectionMode, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool,
     Tool,
@@ -45,13 +45,14 @@ const CORNER_REACH: f32 = 1.0;
 const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
 const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
-const HINT_DURATION: Seconds = Seconds(2.0);
+const HINT_DURATION: Seconds = Seconds(3.0);
 const HINT_FADE: Seconds = Seconds(0.25);
 const HINT_LENGTH: f32 = 4.0 * NODE_RADIUS;
 const HINT_SWAY: f32 = NODE_RADIUS;
 const HINT_SEGMENTS: usize = 8;
 const HINT_WIGGLES_PER_SECOND: f32 = 0.7;
 const HINT_WIGGLE_LAG: f32 = 1.5;
+const HINTED_NEURONS: usize = 3;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pan(pub Vec3);
@@ -74,6 +75,9 @@ pub struct Editor {
     connection_mode: ConnectionMode,
     pressed_sensor: bool,
     pulling: bool,
+    placed: Option<Entity>,
+    connected: HashSet<Entity>,
+    connected_earlier: usize,
     connection_tool: Option<ConnectionTool>,
     offer: Option<ConnectionOffer>,
     stimulation_tool: Option<StimulationTool>,
@@ -122,6 +126,13 @@ impl Editor {
             .map_or(connection.end, |ending| ending.position);
         let clear_of_source = connection.start.distance(end) > TERMINAL_INSET;
         (drawn && clear_of_source).then_some((connection.start, end))
+    }
+
+    pub fn cable_being_drawn(&self, world: &World) -> Option<(Entity, Vec3, Vec3)> {
+        let (start, end) = self.connection_being_drawn(world)?;
+        let from = self.connection_tool.as_ref()?.from;
+        let wire = self.tool.meter().is_some() || Meter::of(world, from).is_some();
+        (!wire).then_some((from, start, end))
     }
 
     pub fn axon_being_grown(&self, world: &World) -> Option<(Entity, Vec3, Vec3)> {
@@ -251,18 +262,43 @@ impl Editor {
         painting.then_some(element)
     }
 
-    pub fn offer_connection(&mut self, now: Seconds) {
-        let Some(connection) = &self.connection_tool else {
-            return;
-        };
+    pub fn offer_connection(&mut self, world: &World, now: Seconds) {
         if self.shortcut.is_some() || self.pressed_sensor {
             return;
         }
-        if self.pressed == Some(connection.from) {
-            self.offer = Some(ConnectionOffer {
-                from: connection.from,
-                since: now,
-            });
+        let pressed = self
+            .connection_tool
+            .as_ref()
+            .map(|connection| connection.from)
+            .filter(|&from| self.pressed == Some(from));
+        let learned = self.connected_earlier + self.connected.len() >= HINTED_NEURONS;
+        let quiet = learned || alone(world);
+        let offered = pressed
+            .or(self.placed)
+            .filter(|&from| !quiet || !world.satisfies::<&NeuronType>(from));
+        if let Some(from) = offered {
+            self.offer = Some(ConnectionOffer { from, since: now });
+        }
+    }
+
+    fn note_connected(&mut self, world: &World, recording: &Recording) {
+        for entity in recording.spawned(world) {
+            let Ok(connection) = world.get::<&Connection>(entity) else {
+                continue;
+            };
+            let wire = [connection.from, connection.to]
+                .into_iter()
+                .any(|end| Meter::of(world, end).is_some());
+            if !connection.directional || wire {
+                continue;
+            }
+            let cable = world.satisfies::<&Cable>(entity);
+            let ends = [(!cable).then_some(connection.from), Some(connection.to)];
+            self.connected.extend(
+                ends.into_iter()
+                    .flatten()
+                    .filter(|&end| world.satisfies::<&NeuronType>(end)),
+            );
         }
     }
 
@@ -275,23 +311,22 @@ impl Editor {
         if !matches!(self.tool, Tool::Place(_)) && self.tool.meter().is_none() {
             return None;
         }
-        let (_, start) = self.offered_source(world)?;
+        let (from, start) = self.offered_source(world)?;
         let shown = (age.min(HINT_DURATION - age) / HINT_FADE).clamp(0.0, 1.0) as f32;
         let grown = 1.0 - (1.0 - shown).powi(3);
         let wiggle = age.0 as f32 * TAU * HINT_WIGGLES_PER_SECOND;
-        let mut string: Vec<Vec3> = (0..=HINT_SEGMENTS)
+        let onward = onward(world, from);
+        let across = Vec3::Y.cross(onward);
+        let string = (0..=HINT_SEGMENTS)
             .map(|index| {
                 let along = index as f32 / HINT_SEGMENTS as f32;
-                let phase = wiggle - HINT_WIGGLE_LAG * along;
-                let sway = Vec3::new(phase.sin(), 0.0, (1.3 * phase).sin());
-                start + (Vec3::Y * HINT_LENGTH * along + sway * HINT_SWAY * along * along) * grown
+                let sway = (wiggle - HINT_WIGGLE_LAG * along).sin() * HINT_SWAY * along * along;
+                start + (onward * HINT_LENGTH * along + across * sway) * grown
             })
             .collect();
-        let bead = string[HINT_SEGMENTS];
-        let pull = (bead - string[HINT_SEGMENTS - 1]).normalize_or_zero();
-        string.push(bead + pull * TERMINAL_INSET);
-        let above = Vec3::Y * HINT_LENGTH + Vec3::X * (HINT_SWAY + NODE_RADIUS);
+        let above = onward * HINT_LENGTH + Vec3::X * (HINT_SWAY + NODE_RADIUS);
         Some(ConnectionHint {
+            from,
             string,
             label: start + above * grown,
             shown,
@@ -402,6 +437,7 @@ impl Editor {
         self.wired = false;
         self.pressed_sensor = false;
         self.pulling = false;
+        self.placed = None;
         self.ending = None;
         self.spot = None;
         self.attached.clear();
@@ -409,6 +445,7 @@ impl Editor {
         self.soma_ahead = None;
         self.drawn.clear();
         if let Some(recording) = self.recording.take() {
+            self.note_connected(world, &recording);
             self.edited |= self.history.record(recording, world);
         }
     }
@@ -426,6 +463,7 @@ impl Editor {
         *self = Editor {
             tool: self.tool,
             compartments: self.compartments,
+            connected_earlier: self.connected_earlier + self.connected.len(),
             ..Default::default()
         };
     }
@@ -838,6 +876,9 @@ impl Editor {
             return;
         }
         let entity = element.spawn(world, position);
+        if element.is_neuron() {
+            self.placed = Some(entity);
+        }
         if element.is_neuron() && self.compartments {
             spawn_dendrites(world, entity);
         }
@@ -1249,6 +1290,11 @@ impl Editor {
             }
         }
     }
+}
+
+fn alone(world: &World) -> bool {
+    let mut elements = world.query::<&Position>().without::<&Compartment>();
+    elements.iter().nth(1).is_none()
 }
 
 fn dendrites_would_overlap(world: &World, neuron: Entity, position: Vec3) -> bool {

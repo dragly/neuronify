@@ -4,10 +4,10 @@ use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
-use crate::components::{Link, Milliseconds, Seconds};
+use crate::components::{Link, Milliseconds, NeuronType, Seconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, Targets};
-use crate::elements::Element;
+use crate::elements::{Element, Meter};
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
     self, AttachBurst, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus,
@@ -300,7 +300,7 @@ impl Neuronify {
             if self.editor.tap_while_editing() {
                 self.tapped_background = true;
             } else {
-                self.editor.offer_connection(input::now());
+                self.editor.offer_connection(&self.world, input::now());
             }
         } else if let Some(position) = self.mouse.position {
             let position = camera::ground_position(application, position);
@@ -1004,12 +1004,16 @@ impl visula::Simulation for Neuronify {
 
         self.dangle_ghost(application, elapsed);
         self.prepare_loupe(application);
-        let drawn_connection = match self.editor.connection_being_drawn(&self.world) {
-            Some((start, end)) => vec![start, end],
-            None => self
-                .connection_hint()
-                .map(|hint| hint.string)
-                .unwrap_or_default(),
+        let cable = self.editor.cable_being_drawn(&self.world);
+        let wire = self.editor.connection_being_drawn(&self.world);
+        let hint = self.connection_hint();
+        let (dangling, drawn_connection) = match (cable, wire, hint) {
+            (Some((from, start, end)), _, _) => (Some((from, vec![start, end])), Vec::new()),
+            (None, Some((start, end)), _) => (None, vec![start, end]),
+            (None, None, Some(hint)) if Meter::of(&self.world, hint.from).is_none() => {
+                (Some((hint.from, hint.string)), Vec::new())
+            }
+            (None, None, hint) => (None, hint.map(|hint| hint.string).unwrap_or_default()),
         };
         self.renderer.update(
             application,
@@ -1022,6 +1026,9 @@ impl visula::Simulation for Neuronify {
                     .editor
                     .axon_waiting(&self.world)
                     .map(|(_, start, end)| (start, end)),
+                dangling: dangling
+                    .as_ref()
+                    .map(|(from, points)| (*from, points.as_slice())),
                 axon: self.editor.axon_being_grown(&self.world),
                 ending: self.editor.new_ending(&self.world),
                 bead: self.editor.bead(&self.world),
@@ -1126,7 +1133,8 @@ impl visula::Simulation for Neuronify {
                 tip.x as f32 / pixels_per_point,
                 tip.y as f32 / pixels_per_point,
             );
-            gui::connection_hint(context, self.theme, tip, hint.shown);
+            let neuron = self.world.satisfies::<&NeuronType>(hint.from);
+            gui::connection_hint(context, self.theme, tip, hint.shown, neuron);
         }
         if self.hitboxes {
             gui::reach_slider(context, &mut self.touch_reach);
