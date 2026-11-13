@@ -8,6 +8,7 @@ mod loupe;
 mod playback;
 mod rail;
 mod sheet;
+mod stimulate_pulse;
 mod style;
 #[cfg(test)]
 mod tests;
@@ -21,7 +22,8 @@ use egui::{
 use hecs::{Entity, World};
 
 use crate::components::{
-    Celsius, ConnectionView, Hertz, Milliseconds, NeuronDisplay, Preparation, Setting, Temperature,
+    Celsius, ConnectionView, Hertz, Milliseconds, NeuronDisplay, Preparation, Seconds, Setting,
+    Temperature,
 };
 use crate::editor::Editor;
 use crate::links;
@@ -53,6 +55,7 @@ const COMPACT_WIDTH: f32 = 640.0;
 const COMPACT_HEIGHT: f32 = 560.0;
 const HINT_GAP: f32 = 20.0;
 const HINT_PADDING: i8 = 8;
+const FIRE_HINT: &str = "Pick Stimulate, then press the neuron";
 const UNDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Z);
 const REDO: KeyboardShortcut =
     KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::Z);
@@ -83,6 +86,7 @@ pub struct Controls<'a> {
     pub speed: &'a mut f64,
     pub fps: Hertz,
     pub saving: Saving,
+    pub stimulate_pulse: Option<Seconds>,
 }
 
 #[derive(Default)]
@@ -148,6 +152,12 @@ impl Gui {
             empty_scene::message(context, theme, canvas, invitation);
             if let Some(add) = rail.add.filter(|_| !self.rail.is_open() && !self.menu_open) {
                 empty_scene::callout(context, theme, add, false);
+            }
+        }
+        let quiet = !self.rail.is_open() && !self.menu_open;
+        if let (Some(age), Some(stimulate)) = (controls.stimulate_pulse, rail.stimulate) {
+            if quiet {
+                stimulate_pulse::paint(context, theme, stimulate, age);
             }
         }
         let menu_button = rail.menu.map(|menu| {
@@ -241,13 +251,20 @@ impl Gui {
                 |ui| history_buttons(ui, chrome, controls.editor, controls.world),
             );
         }
-        let add = self.rail.bar(
+        let bar = self.rail.bar(
             context,
             theme,
             controls.editor,
             controls.world,
             &mut self.playback_open,
         );
+        let add = bar.add;
+        let quiet = !self.rail.is_open() && !self.playback_open && !self.menu_open;
+        if let (Some(age), Some(stimulate)) = (controls.stimulate_pulse, bar.stimulate) {
+            if quiet {
+                stimulate_pulse::paint(context, theme, stimulate, age);
+            }
+        }
         let invitation = self
             .empty_scene
             .invitation(controls.world, controls.editor.tool);
@@ -384,6 +401,22 @@ pub fn file_error(context: &Context, error: &mut Option<FileError>) {
     if !open {
         *error = None;
     }
+}
+
+pub fn fire_hint(context: &Context, theme: Theme, tip: Pos2, shown: f32) {
+    let chrome = Chrome::of(theme);
+    egui::Area::new(Id::new("fire_hint"))
+        .order(Order::Tooltip)
+        .interactable(false)
+        .pivot(Align2::CENTER_BOTTOM)
+        .fixed_pos(tip - vec2(0.0, HINT_GAP))
+        .show(context, |ui| {
+            ui.multiply_opacity(shown);
+            chrome.panel_frame(HINT_PADDING).show(ui, |ui| {
+                let text = RichText::new(FIRE_HINT).color(chrome.text);
+                ui.add(egui::Label::new(text).extend());
+            });
+        });
 }
 
 pub fn connection_hint(context: &Context, theme: Theme, tip: Pos2, shown: f32, neuron: bool) {

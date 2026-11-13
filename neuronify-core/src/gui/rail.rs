@@ -113,6 +113,12 @@ pub struct RailResponse {
     pub rect: Rect,
     pub menu: Option<Response>,
     pub add: Option<Rect>,
+    pub stimulate: Option<Rect>,
+}
+
+pub struct BarResponse {
+    pub add: Option<Rect>,
+    pub stimulate: Option<Rect>,
 }
 
 #[derive(Default)]
@@ -239,6 +245,7 @@ impl Rail {
                 rect: shown.rect,
                 menu: None,
                 add: None,
+                stimulate: None,
             };
         }
         let height = context.content_rect().height() - 2.0 * MARGIN;
@@ -416,10 +423,15 @@ impl Rail {
             .find(|(slot, _)| adding.iter().any(|(candidate, _)| candidate == slot))
             .map(|(_, rect)| *rect)
             .or(folded_add);
+        let stimulate = anchors
+            .iter()
+            .find(|(slot, _)| *slot == STIMULATION)
+            .map(|(_, rect)| *rect);
         RailResponse {
             rect: rail,
             menu: Some(inner.inner),
             add,
+            stimulate,
         }
     }
 
@@ -553,10 +565,11 @@ impl Rail {
         editor: &mut Editor,
         world: &mut World,
         playback_open: &mut bool,
-    ) -> Option<Rect> {
+    ) -> BarResponse {
         let chrome = Chrome::of(theme);
         let width = context.content_rect().width() - 2.0 * TOOL_BAR_MARGIN;
         let mut add = None;
+        let mut stimulate = None;
         let order = if self.adding {
             Order::Foreground
         } else {
@@ -585,6 +598,9 @@ impl Rail {
                                         tool_item(ui, chrome, theme, tool, tool.name(), on)
                                     })
                                     .inner;
+                                if tool == Tool::Stimulate {
+                                    stimulate = Some(response.rect);
+                                }
                                 if response.clicked() {
                                     self.press(editor, tool);
                                     if self.flyout == Some(STIMULATION) {
@@ -682,7 +698,7 @@ impl Rail {
                 self.adding = false;
             }
         }
-        add
+        BarResponse { add, stimulate }
     }
 
     fn add_sheet(
