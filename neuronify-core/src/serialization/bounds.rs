@@ -1,14 +1,15 @@
+use std::collections::VecDeque;
 use std::f64::consts::TAU;
 use std::ops::RangeInclusive;
 
 use glam::Vec3;
-use hecs::World;
+use hecs::{Entity, World};
 
 use crate::components::*;
-use crate::constants::{RESTING_POTENTIAL, VOLTMETER_MEASUREMENTS};
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
+use crate::constants::{DT, RESTING_POTENTIAL, VOLTMETER_MEASUREMENTS};
+use crate::measurement::firing_rate::{RatePlot, RateSeries, RATE_HISTORY, RATE_SAMPLE_INTERVAL};
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::{shown_range, SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::{ReceptiveField, ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::{VoltageSeries, VoltmeterRange};
 
@@ -228,6 +229,12 @@ pub fn bound(world: &mut World) {
         series
             .samples
             .retain(|(time, rate)| time.is_finite() && rate.is_finite());
+        keep_recent(
+            &mut series.samples,
+            |&(time, _)| time,
+            RATE_HISTORY,
+            (RATE_HISTORY / RATE_SAMPLE_INTERVAL) as usize + 1,
+        );
     }
     for detector in world.query_mut::<&mut SpikeDetector>() {
         let default = SpikeDetector::default();
@@ -236,8 +243,29 @@ pub fn bound(world: &mut World) {
             detector.time = Milliseconds::ZERO;
         }
     }
-    for train in world.query_mut::<&mut SpikeTrain>() {
+    let trains: Vec<(Entity, Option<Milliseconds>)> = world
+        .query::<(Entity, Option<&Connection>)>()
+        .with::<&SpikeTrain>()
+        .iter()
+        .map(|(wire, connection)| {
+            let range = connection.and_then(|connection| shown_range(world, connection.to));
+            (wire, range)
+        })
+        .collect();
+    for (wire, range) in trains {
+        let Ok(mut train) = world.get::<&mut SpikeTrain>(wire) else {
+            continue;
+        };
         train.times.retain(|time| time.is_finite());
+        match range {
+            Some(range) => keep_recent(
+                &mut train.times,
+                |&time| time,
+                range,
+                (range / DT) as usize + 1,
+            ),
+            None => train.times.clear(),
+        }
     }
     for input in world.query_mut::<&mut VisualInput>() {
         bound_visual_input(input);
@@ -356,6 +384,20 @@ fn within<Q: Quantity>(value: &mut Q, range: RangeInclusive<Q>, fallback: Q) {
     }
 }
 
+fn keep_recent<T>(
+    samples: &mut VecDeque<T>,
+    time: impl Fn(&T) -> Milliseconds,
+    span: Milliseconds,
+    most: usize,
+) {
+    let Some(newest) = samples.iter().map(&time).reduce(Milliseconds::max) else {
+        return;
+    };
+    samples.retain(|sample| time(sample) >= newest - span);
+    let surplus = samples.len().saturating_sub(most);
+    samples.drain(..surplus);
+}
+
 fn without_negative_zero(value: f64) -> f64 {
     value + 0.0
 }
@@ -398,7 +440,7 @@ mod tests {
 
     use super::*;
     use crate::constants::DEFAULT_SPEED;
-    use crate::elements::{spawn_voltmeter, Element};
+    use crate::elements::{spawn_rate_plot, spawn_spike_detector, spawn_voltmeter, Element};
     use crate::measurement::voltmeter::{measured, RollingWindow, VoltageMeasurement};
     use crate::serialization::{load, read, save, Meta};
 
@@ -509,6 +551,51 @@ mod tests {
             *loaded.get::<&CompartmentSoma>(branched).unwrap(),
             CompartmentSoma::default()
         );
+    }
+
+    #[test]
+    fn a_long_rate_history_keeps_the_second_the_plot_shows() {
+        let mut world = World::new();
+        let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        let plot = spawn_rate_plot(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
+        let samples = (0..100_000).map(|step| (Milliseconds(step as f64), Hertz(10.0)));
+        world.get::<&mut RateSeries>(plot).unwrap().samples = samples.collect();
+
+        let loaded = load(&saved(&world)).unwrap().world;
+
+        let series = loaded.get::<&RateSeries>(plot).unwrap();
+        let newest = Milliseconds(99_999.0);
+        assert_eq!(series.samples.back().unwrap().0, newest);
+        assert!(series.samples.len() <= 1001);
+        assert!(series
+            .samples
+            .iter()
+            .all(|&(time, _)| time >= newest - RATE_HISTORY));
+    }
+
+    #[test]
+    fn a_long_spike_train_keeps_the_spikes_its_meter_shows() {
+        let mut world = World::new();
+        let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
+        let detector = spawn_spike_detector(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
+        let range = world.get::<&SpikeDetector>(detector).unwrap().time_range;
+        let wire = world
+            .query::<(Entity, &Connection)>()
+            .with::<&SpikeTrain>()
+            .iter()
+            .find(|(_, connection)| connection.to == detector)
+            .map(|(wire, _)| wire)
+            .unwrap();
+        let spikes = (0..100_000).map(|spike| Milliseconds(spike as f64 / 10.0));
+        world.get::<&mut SpikeTrain>(wire).unwrap().times = spikes.collect();
+
+        let loaded = load(&saved(&world)).unwrap().world;
+
+        let train = loaded.get::<&SpikeTrain>(wire).unwrap();
+        let newest = Milliseconds(9_999.9);
+        assert_eq!(*train.times.back().unwrap(), newest);
+        assert!(train.times.iter().all(|&time| time >= newest - range));
+        assert!(train.times.len() <= (range / DT) as usize + 1);
     }
 
     #[test]

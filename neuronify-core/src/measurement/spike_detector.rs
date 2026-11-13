@@ -44,6 +44,13 @@ pub struct SpikeTrain {
     pub times: VecDeque<Milliseconds>,
 }
 
+pub fn shown_range(world: &World, meter: Entity) -> Option<Milliseconds> {
+    match world.get::<&SpikeDetector>(meter) {
+        Ok(detector) => Some(detector.time_range),
+        Err(_) => world.get::<&RatePlot>(meter).ok().map(|plot| plot.window),
+    }
+}
+
 pub fn record_spikes(world: &mut World, spikes: &[Spike], time: Milliseconds) {
     for detector in world.query_mut::<&mut SpikeDetector>() {
         detector.time = time;
@@ -53,10 +60,7 @@ pub fn record_spikes(world: &mut World, spikes: &[Spike], time: Milliseconds) {
         .with::<&SpikeTrain>()
         .iter()
         .filter_map(|(wire, connection)| {
-            let range = match world.get::<&SpikeDetector>(connection.to) {
-                Ok(detector) => detector.time_range,
-                Err(_) => world.get::<&RatePlot>(connection.to).ok()?.window,
-            };
+            let range = shown_range(world, connection.to)?;
             Some((wire, connection.from, range))
         })
         .collect();
