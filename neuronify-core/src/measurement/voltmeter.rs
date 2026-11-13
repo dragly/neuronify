@@ -10,6 +10,8 @@ use crate::constants::VOLTMETER_MEASUREMENTS;
 use crate::measurement::spike_detector::RowOrder;
 use crate::simulation::Engine;
 
+const SMALLEST_GROWTH: usize = 16;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RollingWindow<T> {
     data: VecDeque<T>,
@@ -19,7 +21,7 @@ pub struct RollingWindow<T> {
 impl<T> RollingWindow<T> {
     pub fn new(max_capacity: usize) -> Self {
         Self {
-            data: VecDeque::with_capacity(max_capacity),
+            data: VecDeque::new(),
             max_capacity,
         }
     }
@@ -29,6 +31,11 @@ impl<T> RollingWindow<T> {
             self.data.pop_front();
         }
         if self.data.len() < self.max_capacity {
+            if self.data.len() == self.data.capacity() {
+                let growth = self.data.len().max(SMALLEST_GROWTH);
+                self.data
+                    .reserve_exact(growth.min(self.max_capacity - self.data.len()));
+            }
             self.data.push_back(value);
         }
     }
@@ -302,6 +309,22 @@ impl Frame {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_rolling_window_takes_memory_as_it_fills_and_never_beyond_its_capacity() {
+        let mut window = RollingWindow::new(VOLTMETER_MEASUREMENTS);
+        assert_eq!(window.data.capacity(), 0);
+        for sample in 0..VOLTMETER_MEASUREMENTS {
+            window.push(sample);
+            assert!(window.data.capacity() <= VOLTMETER_MEASUREMENTS);
+            assert!(window.data.capacity() <= 2 * window.len().max(16));
+        }
+        for sample in 0..VOLTMETER_MEASUREMENTS {
+            window.push(sample);
+        }
+        assert_eq!(window.len(), VOLTMETER_MEASUREMENTS);
+        assert_eq!(window.data.capacity(), VOLTMETER_MEASUREMENTS);
+    }
 
     fn frame() -> Frame {
         Frame::new(
