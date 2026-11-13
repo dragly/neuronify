@@ -1275,6 +1275,67 @@ mod tests {
         assert_eq!(count::<Cable>(&new), count::<Membrane>(&new));
     }
 
+    #[test]
+    fn version_11_dendrites_taper_away_from_their_soma() {
+        let mut world = World::new();
+        let soma = world.spawn((
+            Position {
+                position: glam::Vec3::ZERO,
+            },
+            v11::LeakyNeuron {
+                capacitance: 1e-9,
+                resting_potential: -0.065,
+                threshold: -0.05,
+                initial_potential: -0.065,
+                voltage_clamped: true,
+                minimum_voltage: -0.09,
+                maximum_voltage: 0.06,
+            },
+        ));
+        let mut from = soma;
+        for step in 1..=6 {
+            let to = world.spawn((
+                Position {
+                    position: glam::Vec3::new(2.0 * step as f32, 0.0, 0.0),
+                },
+                v11::Compartment {
+                    voltage: -0.065,
+                    m: 0.05,
+                    h: 0.6,
+                    n: 0.32,
+                    inhibition: 0.0,
+                    capacitance: 1e-12,
+                    injected_current: 0.0,
+                    fire_impulse: 0.0,
+                },
+                Dendrite,
+            ));
+            world.spawn((
+                Connection {
+                    from,
+                    to,
+                    strength: 1.0,
+                    directional: false,
+                },
+                v11::CompartmentCurrent { capacitance: 1e-12 },
+            ));
+            from = to;
+        }
+        for upgrade in &UPGRADES[10..] {
+            upgrade(&mut world).unwrap();
+        }
+        let mut diameters = Vec::new();
+        for (connection, cable) in world.query::<(&Connection, &Cable)>().iter() {
+            let ends = [connection.from, connection.to]
+                .map(|end| world.get::<&Position>(end).ok().map(|end| end.position));
+            let tapered = crate::simulation::model::dendrite_diameter(&world, ends);
+            assert_eq!(cable.diameter, tapered);
+            diameters.push(cable.diameter);
+        }
+        assert_eq!(diameters.len(), 6);
+        assert!(diameters.iter().any(|&diameter| diameter != diameters[0]));
+    }
+
     fn composition(world: &World) -> BTreeMap<Vec<TypeId>, u32> {
         world
             .archetypes()

@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use hecs::{CommandBuffer, Entity, World};
+use hecs::{CommandBuffer, Component, Entity, World};
 use neuronify_engine::units::{
     Celsius, MicrofaradsPerSquareCentimetre, Micrometres, Microsiemens, Milliseconds, Millivolts,
     Nanoamperes, OhmCentimetres, OhmSquareCentimetres, SiemensPerSquareCentimetre,
@@ -288,19 +288,26 @@ fn dendritic(world: &World, entity: Entity) -> bool {
     world.satisfies::<&Dendrite>(entity)
 }
 
-fn soma_distance(world: &World, at: glam::Vec3) -> f32 {
+fn soma_distance<Soma: Component>(world: &World, at: glam::Vec3) -> f32 {
     world
         .query::<&Position>()
-        .with::<&LeakyNeuron>()
+        .with::<&Soma>()
         .iter()
         .map(|soma| soma.position.distance(at))
         .fold(f32::MAX, f32::min)
 }
 
 pub fn dendrite_diameter(world: &World, ends: [Option<glam::Vec3>; 2]) -> Micrometres {
+    dendrite_diameter_among::<LeakyNeuron>(world, ends)
+}
+
+fn dendrite_diameter_among<Soma: Component>(
+    world: &World,
+    ends: [Option<glam::Vec3>; 2],
+) -> Micrometres {
     let [start, end] = ends.map(|end| {
         end.map_or(ROOT_DRAWN_RADIUS, |at| {
-            dendrite_drawn_radius(soma_distance(world, at))
+            dendrite_drawn_radius(soma_distance::<Soma>(world, at))
         })
     });
     diameter_of_drawn_radius((start + end) / 2.0)
@@ -329,6 +336,15 @@ pub fn cable_between(
     to: Entity,
     myelinated: bool,
 ) -> (Cable, Membrane) {
+    cable_between_somas::<LeakyNeuron>(world, from, to, myelinated)
+}
+
+pub fn cable_between_somas<Soma: Component>(
+    world: &World,
+    from: Entity,
+    to: Entity,
+    myelinated: bool,
+) -> (Cable, Membrane) {
     let preparation = Preparation::of(world);
     let role = role(world, from, to, myelinated);
     let length = SEGMENT_LENGTH as f64 * MICROMETRES_PER_UNIT;
@@ -339,7 +355,10 @@ pub fn cable_between(
         },
         Role::Dendrite => Cable {
             length,
-            diameter: dendrite_diameter(world, [from, to].map(|end| position(world, end))),
+            diameter: dendrite_diameter_among::<Soma>(
+                world,
+                [from, to].map(|end| position(world, end)),
+            ),
         },
         Role::Axon => Cable {
             length,
