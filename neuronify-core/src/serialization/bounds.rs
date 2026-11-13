@@ -348,10 +348,16 @@ fn within<Q: Quantity>(value: &mut Q, range: RangeInclusive<Q>, fallback: Q) {
     if value.value().is_nan() {
         *value = fallback;
     } else {
-        *value.value_mut() = value
-            .value()
-            .clamp(range.start().value(), range.end().value());
+        *value.value_mut() = without_negative_zero(
+            value
+                .value()
+                .clamp(range.start().value(), range.end().value()),
+        );
     }
+}
+
+fn without_negative_zero(value: f64) -> f64 {
+    value + 0.0
 }
 
 fn bounded_f32(value: f32, range: RangeInclusive<f32>, fallback: f32) -> f32 {
@@ -503,6 +509,22 @@ mod tests {
             *loaded.get::<&CompartmentSoma>(branched).unwrap(),
             CompartmentSoma::default()
         );
+    }
+
+    #[test]
+    fn a_negative_zero_loads_as_zero() {
+        let mut world = World::new();
+        let neuron = Element::AdaptiveNeuron.spawn(&mut world, Vec3::ZERO);
+        world
+            .get::<&mut AdaptationCurrent>(neuron)
+            .unwrap()
+            .time_constant = Milliseconds(-0.0);
+        let loaded = load(&saved(&world)).unwrap().world;
+        let time_constant = loaded
+            .get::<&AdaptationCurrent>(neuron)
+            .unwrap()
+            .time_constant;
+        assert!(time_constant.0 == 0.0 && time_constant.0.is_sign_positive());
     }
 
     #[test]
