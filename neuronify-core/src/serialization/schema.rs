@@ -102,6 +102,19 @@ macro_rules! schema {
             }
         }
 
+        impl $crate::serialization::column::Columns for LoadContext {
+            fn components_with_data(&self) -> usize {
+                self.components
+                    .iter()
+                    .filter(|component| match component {
+                        $(
+                            ComponentId::$names => ::std::mem::size_of::<$names>() > 0,
+                        )*
+                    })
+                    .count()
+            }
+        }
+
         pub fn deserialize(bytes: &[u8]) -> Result<::hecs::World, String> {
             let mut context = LoadContext { components: vec![] };
             $crate::serialization::column::deserialize(&mut context, bytes)

@@ -3,10 +3,15 @@ use std::collections::HashSet;
 use std::fmt;
 
 use hecs::serialize::column::DeserializeContext;
-use hecs::{ColumnBatch, ColumnBatchBuilder, ColumnBatchType, Entity, World};
+use hecs::{ColumnBatch, ColumnBatchType, Entity, World};
 use serde::de::{self, DeserializeSeed, Deserializer, SeqAccess, Visitor};
 
 pub const MAXIMUM_ENTITY_ID: u32 = 1 << 20;
+const SMALLEST_HANDLE: usize = 5;
+
+pub trait Columns: DeserializeContext {
+    fn components_with_data(&self) -> usize;
+}
 
 thread_local! {
     static REJECTION: Cell<Option<&'static str>> = const { Cell::new(None) };
@@ -17,7 +22,7 @@ pub fn reject<E: de::Error>(reason: &'static str) -> E {
     E::custom(reason)
 }
 
-pub fn deserialize<C: DeserializeContext>(context: &mut C, bytes: &[u8]) -> Result<World, String> {
+pub fn deserialize<C: Columns>(context: &mut C, bytes: &[u8]) -> Result<World, String> {
     REJECTION.set(None);
     let mut deserializer = postcard::Deserializer::from_bytes(bytes);
     let world = (&mut deserializer).deserialize_seq(WorldVisitor {
@@ -38,7 +43,7 @@ struct WorldVisitor<'a, C> {
     seen: HashSet<u32>,
 }
 
-impl<'de, C: DeserializeContext> Visitor<'de> for WorldVisitor<'_, C> {
+impl<'de, C: Columns> Visitor<'de> for WorldVisitor<'_, C> {
     type Value = World;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -94,7 +99,7 @@ struct Archetype<'a, C> {
     handles: &'a mut Vec<Entity>,
 }
 
-impl<'de, C: DeserializeContext> DeserializeSeed<'de> for Archetype<'_, C> {
+impl<'de, C: Columns> DeserializeSeed<'de> for Archetype<'_, C> {
     type Value = ColumnBatch;
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<ColumnBatch, D::Error> {
@@ -102,7 +107,7 @@ impl<'de, C: DeserializeContext> DeserializeSeed<'de> for Archetype<'_, C> {
     }
 }
 
-impl<'de, C: DeserializeContext> Visitor<'de> for Archetype<'_, C> {
+impl<'de, C: Columns> Visitor<'de> for Archetype<'_, C> {
     type Value = ColumnBatch;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -123,19 +128,16 @@ impl<'de, C: DeserializeContext> Visitor<'de> for Archetype<'_, C> {
                 count: component_count,
             })?
             .ok_or_else(|| missing(2))?;
-        let mut batch = ty.into_batch(entity_count);
         seq.next_element_seed(Components {
             context: self.context,
             entity_count,
             component_count,
+            room: self.room,
             seen: self.seen,
             handles: self.handles,
-            out: &mut batch,
+            ty,
         })?
-        .ok_or_else(|| missing(3))?;
-        batch
-            .build()
-            .map_err(|_| reject("an archetype is incomplete"))
+        .ok_or_else(|| missing(3))
     }
 }
 
@@ -171,15 +173,16 @@ struct Components<'a, C> {
     context: &'a mut C,
     entity_count: u32,
     component_count: u32,
+    room: &'a mut usize,
     seen: &'a mut HashSet<u32>,
     handles: &'a mut Vec<Entity>,
-    out: &'a mut ColumnBatchBuilder,
+    ty: ColumnBatchType,
 }
 
-impl<'de, C: DeserializeContext> DeserializeSeed<'de> for Components<'_, C> {
-    type Value = ();
+impl<'de, C: Columns> DeserializeSeed<'de> for Components<'_, C> {
+    type Value = ColumnBatch;
 
-    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<(), D::Error> {
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<ColumnBatch, D::Error> {
         let parts = (self.component_count as usize)
             .checked_add(1)
             .ok_or_else(|| reject("an archetype has too many components"))?;
@@ -187,8 +190,8 @@ impl<'de, C: DeserializeContext> DeserializeSeed<'de> for Components<'_, C> {
     }
 }
 
-impl<'de, C: DeserializeContext> Visitor<'de> for Components<'_, C> {
-    type Value = ();
+impl<'de, C: Columns> Visitor<'de> for Components<'_, C> {
+    type Value = ColumnBatch;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -198,15 +201,24 @@ impl<'de, C: DeserializeContext> Visitor<'de> for Components<'_, C> {
         )
     }
 
-    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<(), A::Error> {
+    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<ColumnBatch, A::Error> {
         seq.next_element_seed(Entities {
             count: self.entity_count,
             seen: self.seen,
             out: self.handles,
         })?
         .ok_or_else(|| de::Error::invalid_length(0, &"the entities of an archetype"))?;
+        let per_entity = SMALLEST_HANDLE - 1 + self.context.components_with_data();
+        *self.room = (self.entity_count as usize)
+            .checked_mul(per_entity)
+            .and_then(|needed| self.room.checked_sub(needed))
+            .ok_or_else(|| reject("it lists more entities than it holds"))?;
+        let mut batch = self.ty.into_batch(self.entity_count);
         self.context
-            .deserialize_components(self.entity_count, seq, self.out)
+            .deserialize_components(self.entity_count, seq, &mut batch)?;
+        batch
+            .build()
+            .map_err(|_| reject("an archetype is incomplete"))
     }
 }
 
