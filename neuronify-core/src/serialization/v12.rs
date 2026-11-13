@@ -5,7 +5,7 @@ use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use crate::simulation::model::cable_between;
+use crate::simulation::model::cable_between_somas;
 use hecs::{Component, ComponentError, Entity, World};
 
 use super::v16::VisualInput;
@@ -178,8 +178,12 @@ pub fn upgrade_from_v11(world: &mut World) -> Result<(), ComponentError> {
                 (ConductanceSynapse::default(), SynapseState::default()),
             )?;
         } else {
-            let (cable, membrane) =
-                cable_between(world, connection.from, connection.to, myelinated);
+            let (cable, membrane) = cable_between_somas::<LeakyNeuron>(
+                world,
+                connection.from,
+                connection.to,
+                myelinated,
+            );
             world.insert(link, (cable, membrane))?;
         }
     }
