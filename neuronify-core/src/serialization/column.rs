@@ -46,7 +46,7 @@ impl<'de, C: DeserializeContext> Visitor<'de> for WorldVisitor<'_, C> {
     }
 
     fn visit_seq<A: SeqAccess<'de>>(mut self, mut seq: A) -> Result<World, A::Error> {
-        let mut world = World::new();
+        let mut archetypes = Vec::new();
         let mut handles = Vec::new();
         while let Some(batch) = seq.next_element_seed(Archetype {
             context: &mut *self.context,
@@ -54,8 +54,34 @@ impl<'de, C: DeserializeContext> Visitor<'de> for WorldVisitor<'_, C> {
             seen: &mut self.seen,
             handles: &mut handles,
         })? {
+            archetypes.push((std::mem::take(&mut handles), batch));
+        }
+        let highest = archetypes
+            .iter()
+            .flat_map(|(handles, _)| handles.iter().map(|handle| handle.id() as usize + 1))
+            .max()
+            .unwrap_or(0);
+        let mut by_id: Vec<Option<Entity>> = vec![None; highest];
+        for &handle in archetypes.iter().flat_map(|(handles, _)| handles) {
+            by_id[handle.id() as usize] = Some(handle);
+        }
+        let mut world = World::new();
+        let mut fillers = Vec::new();
+        for (id, handle) in by_id.into_iter().enumerate() {
+            let handle = handle.or_else(|| {
+                let filler = Entity::from_bits(1 << 32 | id as u64)?;
+                fillers.push(filler);
+                Some(filler)
+            });
+            if let Some(handle) = handle {
+                world.spawn_at(handle, ());
+            }
+        }
+        for (handles, batch) in archetypes {
             world.spawn_column_batch_at(&handles, batch);
-            handles.clear();
+        }
+        for filler in fillers {
+            let _ = world.despawn(filler);
         }
         Ok(world)
     }
