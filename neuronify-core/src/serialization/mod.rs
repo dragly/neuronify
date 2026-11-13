@@ -398,6 +398,9 @@ pub fn load_from_bytes(bytes: &[u8]) -> Result<SavedWorld, String> {
 fn load_legacy(bytes: &[u8]) -> Result<SavedWorld, String> {
     let contents = std::str::from_utf8(bytes).map_err(|e| format!("File is not UTF-8: {e}"))?;
     let simulation = crate::legacy::parse_legacy_nfy(contents)?;
+    if simulation.nodes.len() + simulation.edges.len() > column::MAXIMUM_ENTITY_ID as usize {
+        return Err("The file holds more elements than a simulation can have".into());
+    }
     let mut world = World::new();
     crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
     bounds::bound(&mut world);
@@ -494,6 +497,16 @@ mod tests {
         assert_eq!(loaded_time(f64::INFINITY), 0.0);
         assert_eq!(loaded_time(-5.0), 0.0);
         assert_eq!(loaded_time(7.5), 7.5);
+    }
+
+    #[test]
+    fn rejects_neuronify_1_files_with_more_elements_than_a_simulation_can_hold() {
+        let elements = column::MAXIMUM_ENTITY_ID as usize + 1;
+        let json = format!(
+            r#"{{"fileFormatVersion":4,"nodes":[{}],"edges":[]}}"#,
+            vec!["{}"; elements].join(",")
+        );
+        assert!(load_from_bytes(json.as_bytes()).is_err_and(|e| e.contains("more elements")));
     }
 
     #[test]
