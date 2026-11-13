@@ -100,6 +100,7 @@ impl Harness {
                 speed,
                 fps: Hertz(60.0),
                 saving: *saving,
+                stimulate_pulse: None,
             };
             if let Some(picked) = gui.show(ui.ctx(), controls) {
                 *choice = Some(picked);

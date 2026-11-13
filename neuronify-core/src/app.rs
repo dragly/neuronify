@@ -4,10 +4,11 @@ use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
-use crate::components::{Link, Milliseconds, NeuronType, Seconds};
+use crate::components::{Link, Milliseconds, NeuronType, Position, Seconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, PlacedNeuron, Targets};
 use crate::elements::{Element, Meter};
+use crate::fire_hint::FireHint;
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
     self, AttachBurst, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus,
@@ -35,6 +36,7 @@ use hecs::Entity;
 const SAVED_NAME: &str = "circuit.neuronify";
 const HITBOX_TILE: f32 = 32.0;
 const RING_POINTS: usize = 96;
+const FIRE_HINT_LIFT: f32 = 18.0;
 
 pub struct Neuronify {
     tapped_background: bool,
@@ -57,6 +59,7 @@ pub struct Neuronify {
     caught: bool,
     ghost: Option<Ghost>,
     landing_ghosts: Vec<LandingGhost>,
+    fire_hint: FireHint,
     renderer: SceneRenderer,
     frame_clock: FrameClock,
     simulation_clock: StepClock,
@@ -246,6 +249,7 @@ impl Neuronify {
             caught: false,
             ghost: None,
             landing_ghosts: Vec::new(),
+            fire_hint: FireHint::default(),
             renderer,
             frame_clock: FrameClock::default(),
             simulation_clock: StepClock::default(),
@@ -288,6 +292,18 @@ impl Neuronify {
         }
     }
 
+    fn answer_tap(&mut self, application: &visula::Application) -> bool {
+        let Some(position) = self.mouse.position else {
+            return false;
+        };
+        let position = camera::ground_position(application, position);
+        let Some((tapped, _)) = Targets::new(&self.world).at(position) else {
+            return false;
+        };
+        self.fire_hint
+            .tap(&self.world, tapped, self.editor.tool, input::now())
+    }
+
     fn catch_glide(&mut self, application: &visula::Application) {
         self.caught = self.inertia.press(application.window.scale_factor());
     }
@@ -297,11 +313,12 @@ impl Neuronify {
     }
 
     fn tap(&mut self, application: &visula::Application) {
+        let answered = self.answer_tap(application);
         if self.editing() {
             self.editor.snap_back(&mut self.world);
             if self.editor.tap_while_editing() {
                 self.tapped_background = true;
-            } else {
+            } else if !answered {
                 self.editor.offer_connection(&self.world, input::now());
             }
         } else if let Some(position) = self.mouse.position {
@@ -522,6 +539,22 @@ impl Neuronify {
             outline.into_iter().map(to_screen).collect::<Vec<_>>()
         });
         gui::paint_hold_ring(context, self.theme, &inner, &outer, &look);
+    }
+
+    fn paint_fire_hint(&self, application: &visula::Application, context: &egui::Context) {
+        let Some((tapped, shown)) = self.fire_hint.answer(&self.world, input::now()) else {
+            return;
+        };
+        let Ok(position) = self.world.get::<&Position>(tapped).map(|at| at.position) else {
+            return;
+        };
+        let center = camera::screen_position(application, position);
+        let pixels_per_point = context.pixels_per_point();
+        let tip = egui::pos2(
+            center.x as f32 / pixels_per_point,
+            center.y as f32 / pixels_per_point - FIRE_HINT_LIFT,
+        );
+        gui::fire_hint(context, self.theme, tip, shown);
     }
 
     fn connection_hint(&mut self) -> Option<ConnectionHint> {
@@ -829,6 +862,7 @@ impl Neuronify {
         self.editor.tool = Tool::View;
         self.editor.forget_world();
         self.gui.forget_world();
+        self.fire_hint.forget_world();
         self.ghost = None;
         self.landing_ghosts.clear();
         self.hold_ring = None;
@@ -1051,6 +1085,7 @@ impl visula::Simulation for Neuronify {
 
         self.land_placed();
         self.dangle_ghost(application, elapsed);
+        self.fire_hint.update(&self.world, input::now());
         self.prepare_loupe(application);
         let cable = self.editor.cable_being_drawn(&self.world);
         let wire = self.editor.connection_being_drawn(&self.world);
@@ -1150,6 +1185,7 @@ impl visula::Simulation for Neuronify {
         gui::file_error(context, &mut self.file_error);
         let drawing = self.shows_loupe();
         let speed = self.speed;
+        let stimulate_pulse = self.fire_hint.pulse(self.editor.tool, input::now());
         let controls = gui::Controls {
             editor: &mut self.editor,
             world: &mut self.world,
@@ -1159,6 +1195,7 @@ impl visula::Simulation for Neuronify {
             speed: &mut self.speed,
             fps: self.frame_clock.fps(),
             saving: self.saving,
+            stimulate_pulse,
         };
         let chosen = match drawing {
             true => None,
@@ -1185,6 +1222,7 @@ impl visula::Simulation for Neuronify {
             let neuron = self.world.satisfies::<&NeuronType>(hint.from);
             gui::connection_hint(context, self.theme, tip, hint.shown, neuron);
         }
+        self.paint_fire_hint(application, context);
         if self.hitboxes {
             gui::reach_slider(context, &mut self.touch_reach);
             self.paint_hitboxes(application, context);
