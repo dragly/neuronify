@@ -3969,3 +3969,19 @@ fn a_receptive_field_is_picked_anywhere_on_its_square() {
     editor.tap(&world, at(1.6, -1.6));
     assert_eq!(editor.selection, Some(cell));
 }
+
+#[test]
+fn tapping_a_pictures_arrow_turns_it_around_and_undo_turns_it_back() {
+    use crate::measurement::visual_input::{direction_badge, VisualInput};
+    let mut world = World::new();
+    let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let speed = |world: &World| world.get::<&VisualInput>(picture).unwrap().speed;
+    let forward = speed(&world);
+    let mut editor = editor(Tool::View);
+    assert!(!editor.reverse_picture_at(&mut world, at(0.0, 0.0)));
+    assert_eq!(speed(&world), forward);
+    assert!(editor.reverse_picture_at(&mut world, direction_badge(at(0.0, 0.0))));
+    assert_eq!(speed(&world), -forward);
+    editor.undo(&mut world);
+    assert_eq!(speed(&world), forward);
+}

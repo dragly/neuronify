@@ -15,7 +15,9 @@ use crate::rendering::shapes::{collect_rings, collect_shapes};
 use crate::rendering::signals::collect_signals;
 use crate::rendering::spheres::collect_spheres;
 use crate::rendering::transmitter::{collect_transmitter, Landings};
-use crate::rendering::visual_input::{collect_field_tiles, collect_visual_input_tiles};
+use crate::rendering::visual_input::{
+    collect_direction_badges, collect_field_tiles, collect_visual_input_tiles,
+};
 
 /// The shapes of the 3D view. The example previews draw the solid ones from above.
 #[derive(Default)]
@@ -101,6 +103,7 @@ pub fn collect_scene_along(
     scene.extend(collect_signals(world, paths, palette, time));
     scene.extend(collect_shapes(world, palette));
     scene.extend(collect_connection_rings(world, palette));
+    scene.extend(collect_direction_badges(world));
     scene
 }
 
