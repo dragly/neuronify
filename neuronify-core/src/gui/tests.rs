@@ -435,7 +435,7 @@ fn stroke_button(harness: &mut Harness) -> Option<Rect> {
 }
 
 #[test]
-fn the_stroke_button_beside_the_rail_picks_a_stroke_until_another_tool_is_picked() {
+fn the_stroke_button_beside_the_rail_picks_a_stroke_that_stays_for_other_tools() {
     let mut harness = Harness::new(true);
     assert_eq!(stroke_button(&mut harness), None);
     harness.click_text("Connect");
@@ -444,17 +444,28 @@ fn the_stroke_button_beside_the_rail_picks_a_stroke_until_another_tool_is_picked
     let connect = harness.text_rect("Connect").unwrap();
     assert!(button.left() > connect.right());
     assert!(button.y_range().contains(connect.top()));
-    assert_eq!(harness.editor.connection_mode(), ConnectionMode::Chain);
+    assert_eq!(
+        harness.editor.connection_mode(&harness.world),
+        ConnectionMode::Chain
+    );
+    harness.editor.take_settings_changed();
     harness.click_button(STROKE_ID);
     assert!(harness.shows("Connect to a single neuron"));
     harness.click_text("Single");
-    assert_eq!(harness.editor.connection_mode(), ConnectionMode::One);
+    assert_eq!(
+        harness.editor.connection_mode(&harness.world),
+        ConnectionMode::One
+    );
+    assert!(harness.editor.take_settings_changed());
     assert!(!harness.shows("Connect to a single neuron"));
     harness.click_text("Erase");
     assert_eq!(stroke_button(&mut harness), None);
     harness.press(Modifiers::NONE, Key::C);
     assert_eq!(harness.editor.tool, Tool::Axon);
-    assert_eq!(harness.editor.connection_mode(), ConnectionMode::Chain);
+    assert_eq!(
+        harness.editor.connection_mode(&harness.world),
+        ConnectionMode::One
+    );
 }
 
 #[test]
@@ -483,7 +494,10 @@ fn phones_pick_the_stroke_from_a_button_above_add() {
     assert!((button.center().x - add.center().x).abs() < 1.0);
     harness.click_button(STROKE_ID);
     harness.click_text("Spread");
-    assert_eq!(harness.editor.connection_mode(), ConnectionMode::FanOut);
+    assert_eq!(
+        harness.editor.connection_mode(&harness.world),
+        ConnectionMode::FanOut
+    );
     harness.click_text("Add");
     assert_eq!(stroke_button(&mut harness), None);
 }

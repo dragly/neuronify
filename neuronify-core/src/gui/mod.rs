@@ -133,9 +133,13 @@ impl Gui {
                 |ui| history_buttons(ui, chrome, controls.editor, controls.world),
             );
         }
-        let rail = self
-            .rail
-            .show(context, theme, self.menu_open, controls.editor);
+        let rail = self.rail.show(
+            context,
+            theme,
+            self.menu_open,
+            controls.editor,
+            controls.world,
+        );
         if let Some(invitation) = self
             .empty_scene
             .invitation(controls.world, controls.editor.tool)
@@ -237,9 +241,13 @@ impl Gui {
                 |ui| history_buttons(ui, chrome, controls.editor, controls.world),
             );
         }
-        let add = self
-            .rail
-            .bar(context, theme, controls.editor, &mut self.playback_open);
+        let add = self.rail.bar(
+            context,
+            theme,
+            controls.editor,
+            controls.world,
+            &mut self.playback_open,
+        );
         let invitation = self
             .empty_scene
             .invitation(controls.world, controls.editor.tool);

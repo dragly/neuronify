@@ -78,7 +78,6 @@ pub struct Editor {
     pub stimulation: Stimulation,
     pub selection: Option<Entity>,
     pub touch_reach: f32,
-    connection_mode: ConnectionMode,
     pressed_sensor: bool,
     pulling: bool,
     placed: Option<Entity>,
@@ -165,15 +164,18 @@ impl Editor {
         (self.tool == Tool::Dendrite).then_some((connection.from, connection.start, connection.end))
     }
 
-    pub fn connection_mode(&self) -> ConnectionMode {
+    pub fn connection_mode(&self, world: &World) -> ConnectionMode {
         match self.tool.connects() {
-            true => self.connection_mode,
+            true => ConnectionMode::of(world),
             false => ConnectionMode::One,
         }
     }
 
-    pub fn set_connection_mode(&mut self, mode: ConnectionMode) {
-        self.connection_mode = mode;
+    pub fn set_connection_mode(&mut self, world: &mut World, mode: ConnectionMode) {
+        if mode != ConnectionMode::of(world) {
+            mode.set_in(world);
+            self.settings_changed = true;
+        }
     }
 
     pub fn ending(&self) -> Option<Entity> {
@@ -185,14 +187,14 @@ impl Editor {
             .connection_tool
             .as_ref()
             .map(|connection| connection.end);
-        let Some(pointer) = pointer.filter(|_| self.connection_mode() != ConnectionMode::One)
+        let Some(pointer) = pointer.filter(|_| self.connection_mode(world) != ConnectionMode::One)
         else {
             self.dwell = None;
             return None;
         };
         let neuron = self.ending_neuron(world);
         let slack = DWELL_SLACK * self.touch_reach;
-        let needed = self.connection_mode().dwell();
+        let needed = self.connection_mode(world).dwell();
         if self
             .dwell
             .is_none_or(|dwell| dwell.anchor.distance(pointer) > slack)
@@ -220,7 +222,7 @@ impl Editor {
     }
 
     pub fn dwelling(&self, world: &World, now: Seconds) -> Option<Seconds> {
-        if self.connection_mode() == ConnectionMode::One {
+        if self.connection_mode(world) == ConnectionMode::One {
             return None;
         }
         let neuron = self.ending_neuron(world)?;
@@ -1027,7 +1029,7 @@ impl Editor {
             return;
         };
         self.attached.insert(soma);
-        if self.connection_mode() != ConnectionMode::Chain {
+        if self.connection_mode(world) != ConnectionMode::Chain {
             return;
         }
         self.soma_ahead = (ending != soma).then_some(soma);
