@@ -39,6 +39,7 @@ mod v14;
 mod v15;
 mod v16;
 mod v17;
+mod v18;
 mod v2;
 mod v3;
 mod v4;
@@ -49,7 +50,7 @@ mod v8;
 mod v9;
 
 /// The version that `save` writes.
-pub const VERSION: u32 = 17;
+pub const VERSION: u32 = 18;
 
 const MAGIC: &[u8] = b"neuronify";
 
@@ -72,6 +73,7 @@ const UPGRADES: [Upgrade; VERSION as usize - 1] = [
     v15::upgrade_from_v14,
     v16::upgrade_from_v15,
     v17::upgrade_from_v16,
+    v18::upgrade_from_v17,
 ];
 
 pub struct SavedWorld {
@@ -84,7 +86,7 @@ pub fn save(world: &World, time: Milliseconds, speed: f64) -> Result<Vec<u8>, St
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v17::SaveContext, &mut serializer)
+    serialize(world, &mut v18::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let body = serializer
         .output
@@ -181,6 +183,11 @@ fn read(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v17::deserialize(body)?, time, speed)
         }
+        18 => {
+            let (time, body) = split_f64(body, "simulation time")?;
+            let (speed, body) = split_f64(body, "simulation speed")?;
+            (v18::deserialize(body)?, time, speed)
+        }
         _ => {
             return Err(format!(
                 "The save file has version {version}, \
@@ -264,6 +271,7 @@ mod tests {
     use crate::measurement::spike_detector::SpikeDetector;
     use crate::measurement::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
     use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
+    use crate::tools::ConnectionMode;
     use hecs::Entity;
     use std::any::TypeId;
     use std::collections::BTreeMap;
@@ -274,6 +282,7 @@ mod tests {
     const FIXTURE_SOMA: CompartmentSoma = CompartmentSoma {
         threshold: Millivolts(-25.0),
     };
+    const FIXTURE_STROKE: ConnectionMode = ConnectionMode::One;
 
     #[test]
     fn loads_legacy_file() {
@@ -635,7 +644,10 @@ mod tests {
     #[test]
     fn loads_version_17() {
         let saved = load(include_bytes!("fixtures/v17.neuronify")).unwrap();
-        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(
+            composition(&saved.world),
+            composition(&fixture_world_of_version_17())
+        );
         let somas: Vec<CompartmentSoma> = saved
             .world
             .query::<&CompartmentSoma>()
@@ -643,6 +655,15 @@ mod tests {
             .copied()
             .collect();
         assert_eq!(somas, [FIXTURE_SOMA]);
+        assert_eq!(saved.time, FIXTURE_TIME);
+        assert_eq!(saved.speed, FIXTURE_SPEED);
+    }
+
+    #[test]
+    fn loads_version_18() {
+        let saved = load(include_bytes!("fixtures/v18.neuronify")).unwrap();
+        assert_eq!(composition(&saved.world), composition(&fixture_world()));
+        assert_eq!(ConnectionMode::of(&saved.world), FIXTURE_STROKE);
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
     }
@@ -750,6 +771,31 @@ mod tests {
             assert_eq!(count::<ConnectionView>(&loaded), 1);
             assert_eq!(ConnectionView::of(&loaded), view);
         }
+    }
+
+    #[test]
+    fn keeps_the_stroke() {
+        let mut world = World::new();
+        for stroke in [
+            ConnectionMode::One,
+            ConnectionMode::Chain,
+            ConnectionMode::FanOut,
+        ] {
+            stroke.set_in(&mut world);
+            let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
+                .unwrap()
+                .world;
+            assert_eq!(count::<ConnectionMode>(&loaded), 1);
+            assert_eq!(ConnectionMode::of(&loaded), stroke);
+        }
+    }
+
+    #[test]
+    fn connects_in_a_chain_in_files_without_a_stroke() {
+        let world = load(include_bytes!("fixtures/v17.neuronify"))
+            .unwrap()
+            .world;
+        assert_eq!(ConnectionMode::of(&world), ConnectionMode::Chain);
     }
 
     #[test]
@@ -861,6 +907,12 @@ mod tests {
     }
 
     fn fixture_world() -> World {
+        let mut world = fixture_world_of_version_17();
+        FIXTURE_STROKE.set_in(&mut world);
+        world
+    }
+
+    fn fixture_world_of_version_17() -> World {
         let mut world = fixture_world_of_version_16();
         let neuron = world
             .query::<(Entity, &LeakyNeuron)>()

@@ -7,6 +7,7 @@ use egui::{
     Order, Painter, Pos2, Rect, Response, ScrollArea, Sense, Shape, Stroke, StrokeKind, Ui, Vec2,
     WidgetInfo, WidgetType,
 };
+use hecs::World;
 
 use crate::components::Nanoamperes;
 use crate::editor::Editor;
@@ -156,9 +157,6 @@ impl Rail {
         if tool == Tool::View {
             editor.selection = None;
         }
-        if editor.tool != tool {
-            editor.set_connection_mode(ConnectionMode::default());
-        }
         editor.tool = tool;
         self.recent.retain(|recent| *recent != tool);
         self.recent.push(tool);
@@ -226,6 +224,7 @@ impl Rail {
         theme: Theme,
         menu_open: bool,
         editor: &mut Editor,
+        world: &mut World,
     ) -> RailResponse {
         let chrome = Chrome::of(theme);
         if self.hidden {
@@ -394,6 +393,7 @@ impl Rail {
                 context,
                 chrome,
                 editor,
+                world,
                 (
                     Align2::LEFT_CENTER,
                     pos2(rail.right() + POPOVER_GAP, anchor.center().y),
@@ -479,6 +479,7 @@ impl Rail {
         context: &Context,
         chrome: &Chrome,
         editor: &mut Editor,
+        world: &mut World,
         (pivot, position): (Align2, Pos2),
         menu_at: impl FnOnce(Rect) -> (Align2, Pos2),
     ) {
@@ -486,7 +487,7 @@ impl Rail {
             self.stroke_open = false;
             return;
         }
-        let mode = editor.connection_mode();
+        let mode = editor.connection_mode(world);
         let open = self.stroke_open;
         let button = egui::Area::new(Id::new("stroke_button"))
             .pivot(pivot)
@@ -530,7 +531,7 @@ impl Rail {
                     .inner
             });
         if let Some(picked) = menu.inner {
-            editor.set_connection_mode(picked);
+            editor.set_connection_mode(world, picked);
         }
         let pressed_elsewhere = context.input(|input| {
             input.pointer.any_pressed()
@@ -550,6 +551,7 @@ impl Rail {
         context: &Context,
         theme: Theme,
         editor: &mut Editor,
+        world: &mut World,
         playback_open: &mut bool,
     ) -> Option<Rect> {
         let chrome = Chrome::of(theme);
@@ -649,6 +651,7 @@ impl Rail {
                     context,
                     chrome,
                     editor,
+                    world,
                     (Align2::CENTER_BOTTOM, pos2(add.center().x, bottom)),
                     |button| {
                         let width = FLYOUT_WIDTH + 2.0 * FLYOUT_PADDING as f32;

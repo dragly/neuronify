@@ -481,7 +481,7 @@ fn an_axon_that_leaves_a_soma_grows_on_from_its_own_tip_and_ends_where_released(
 }
 
 fn hold_still(editor: &mut Editor, world: &mut World) -> Option<Entity> {
-    let dwell = editor.connection_mode().dwell();
+    let dwell = editor.connection_mode(world).dwell();
     editor.dwell(world, Seconds(0.0));
     editor.dwell(world, dwell)
 }
@@ -517,7 +517,7 @@ const PAST_THE_MIDDLE: [Vec3; 5] = [
 fn connect_past_the_middle(mode: ConnectionMode, pauses: &[Vec3]) -> (World, [Entity; 4]) {
     let (mut world, row) = neurons_in_a_row();
     let mut editor = editor(Tool::StaticConnection);
-    editor.set_connection_mode(mode);
+    editor.set_connection_mode(&mut world, mode);
     drag_pausing(&mut editor, &mut world, &PAST_THE_MIDDLE, pauses);
     (world, row)
 }
@@ -554,7 +554,7 @@ fn passing_a_neuron_without_holding_still_leaves_it_alone() {
 fn holding_still_on_a_neuron_attaches_it_once_the_dwell_is_over() {
     let (mut world, [a, b, _, _]) = neurons_in_a_row();
     let mut editor = editor(Tool::StaticConnection);
-    editor.set_connection_mode(ConnectionMode::FanOut);
+    editor.set_connection_mode(&mut world, ConnectionMode::FanOut);
     editor.edit(&mut world, at(0.0, 0.5));
     editor.edit(&mut world, at(0.3, 10.5));
     assert_eq!(editor.dwell(&mut world, Seconds(0.0)), None);
@@ -570,7 +570,7 @@ fn holding_still_on_a_neuron_attaches_it_once_the_dwell_is_over() {
 fn holding_still_waits_for_the_release_when_connecting_one_neuron() {
     let (mut world, [a, b, _, _]) = neurons_in_a_row();
     let mut editor = editor(Tool::StaticConnection);
-    editor.set_connection_mode(ConnectionMode::One);
+    editor.set_connection_mode(&mut world, ConnectionMode::One);
     editor.edit(&mut world, at(0.0, 0.5));
     editor.edit(&mut world, at(0.3, 10.5));
     assert_eq!(hold_still(&mut editor, &mut world), None);
@@ -584,7 +584,7 @@ fn holding_still_waits_for_the_release_when_connecting_one_neuron() {
 fn moving_on_a_neuron_starts_the_dwell_over() {
     let (mut world, [_, b, _, _]) = neurons_in_a_row();
     let mut editor = reaching(Tool::StaticConnection, 1.0);
-    editor.set_connection_mode(ConnectionMode::Chain);
+    editor.set_connection_mode(&mut world, ConnectionMode::Chain);
     editor.edit(&mut world, at(0.0, 0.5));
     editor.edit(&mut world, at(0.3, 10.5));
     editor.dwell(&mut world, Seconds(0.0));
@@ -604,7 +604,7 @@ fn moving_on_a_neuron_starts_the_dwell_over() {
 fn holding_still_in_a_chain_takes_twice_as_long_as_fanning_out() {
     let (mut world, [_, b, _, _]) = neurons_in_a_row();
     let mut editor = editor(Tool::StaticConnection);
-    editor.set_connection_mode(ConnectionMode::Chain);
+    editor.set_connection_mode(&mut world, ConnectionMode::Chain);
     editor.edit(&mut world, at(0.0, 0.5));
     editor.edit(&mut world, at(0.3, 10.5));
     editor.dwell(&mut world, Seconds(0.0));
@@ -618,7 +618,7 @@ fn after_an_attach_the_stroke_moves_before_the_next_neuron_can_attach() {
     let [a, b, c] =
         [at(0.0, 0.0), at(0.0, 10.0), at(2.5, 10.0)].map(|position| neuron(&mut world, position));
     let mut editor = reaching(Tool::StaticConnection, 1.0);
-    editor.set_connection_mode(ConnectionMode::FanOut);
+    editor.set_connection_mode(&mut world, ConnectionMode::FanOut);
     editor.edit(&mut world, at(0.0, 0.5));
     editor.edit(&mut world, at(1.0, 10.0));
     assert_eq!(hold_still(&mut editor, &mut world), Some(b));
@@ -638,9 +638,10 @@ fn after_an_attach_the_stroke_moves_before_the_next_neuron_can_attach() {
 #[test]
 fn only_tools_that_connect_follow_the_connection_mode() {
     let follows = |tool: Tool| {
+        let mut world = World::new();
         let mut editor = editor(tool);
-        editor.set_connection_mode(ConnectionMode::Chain);
-        editor.connection_mode() == ConnectionMode::Chain
+        editor.set_connection_mode(&mut world, ConnectionMode::FanOut);
+        editor.connection_mode(&world) == ConnectionMode::FanOut
     };
     for tool in [
         Tool::StaticConnection,
@@ -665,7 +666,7 @@ fn only_tools_that_connect_follow_the_connection_mode() {
 fn placing_neurons_chains_the_neurons_held_on_the_way() {
     let (mut world, [a, b, c, _]) = neurons_in_a_row();
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
-    editor.set_connection_mode(ConnectionMode::Chain);
+    editor.set_connection_mode(&mut world, ConnectionMode::Chain);
     drag_pausing(
         &mut editor,
         &mut world,
@@ -681,7 +682,7 @@ fn axon_around_the_middle(mode: ConnectionMode) -> (World, [Entity; 3]) {
     let row =
         [at(0.0, 0.0), at(0.0, 20.0), at(0.0, 40.0)].map(|position| neuron(&mut world, position));
     let mut editor = reaching(Tool::Axon, REACH);
-    editor.set_connection_mode(mode);
+    editor.set_connection_mode(&mut world, mode);
     let mut path = straight(at(0.0, 0.5), at(0.0, 18.0));
     path.extend(straight(at(0.0, 18.0), at(8.0, 22.0)));
     path.extend(straight(at(8.0, 22.0), at(0.0, 38.0)));
@@ -713,7 +714,7 @@ fn a_fanned_out_axon_ends_on_every_soma_it_held() {
 #[test]
 fn fanning_out_attaches_to_each_neuron_once() {
     let (mut world, mut editor, tree, beside) = axon_beside_a_dendrite();
-    editor.set_connection_mode(ConnectionMode::FanOut);
+    editor.set_connection_mode(&mut world, ConnectionMode::FanOut);
     editor.edit(&mut world, beside);
     assert!(editor.ending().is_some_and(|ending| tree.contains(&ending)));
     let attached = hold_still(&mut editor, &mut world);
@@ -736,7 +737,7 @@ fn a_chain_can_close_a_ring_back_to_its_first_neuron() {
     let [a, b, c] =
         [at(0.0, 0.0), at(0.0, 10.0), at(8.0, 5.0)].map(|position| neuron(&mut world, position));
     let mut editor = editor(Tool::StaticConnection);
-    editor.set_connection_mode(ConnectionMode::Chain);
+    editor.set_connection_mode(&mut world, ConnectionMode::Chain);
     drag_pausing(
         &mut editor,
         &mut world,
@@ -770,7 +771,7 @@ fn chained_onto_a_dendrite() -> (World, Editor, [Entity; 3], HashSet<Entity>) {
     lay_dendrite(&mut world, b, &steps);
     let dendrite = cable_network(&world, b);
     let mut editor = reaching(Tool::Axon, REACH);
-    editor.set_connection_mode(ConnectionMode::Chain);
+    editor.set_connection_mode(&mut world, ConnectionMode::Chain);
     edit_along(
         &mut editor,
         &mut world,
@@ -883,7 +884,7 @@ fn a_tip_holding_a_fanned_out_ending_waits_for_a_straighter_approach() {
     let ahead = neuron(&mut world, at(0.0, 13.0));
     let beside = neuron(&mut world, at(-3.0, 10.3));
     let mut editor = reaching(Tool::Axon, REACH);
-    editor.set_connection_mode(ConnectionMode::FanOut);
+    editor.set_connection_mode(&mut world, ConnectionMode::FanOut);
     for position in straight(at(0.0, 0.5), at(0.0, 11.2)) {
         editor.edit(&mut world, position);
     }

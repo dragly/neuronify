@@ -8,7 +8,6 @@ use crate::simulation::model::has_dendrites;
 use hecs::{ComponentError, Entity, World};
 
 schema!(
-    save,
     Position,
     LeakyNeuron,
     NodeState,

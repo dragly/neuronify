@@ -2,7 +2,7 @@ use glam::Vec3;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
-use crate::components::{Nanoamperes, Seconds};
+use crate::components::{Nanoamperes, Seconds, Setting};
 use crate::constants::STIMULATION_CURRENT;
 use crate::elements::{Element, Meter};
 use crate::input::DWELL;
@@ -139,13 +139,15 @@ impl Tool {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub enum ConnectionMode {
     One,
     #[default]
     Chain,
     FanOut,
 }
+
+impl Setting for ConnectionMode {}
 
 impl ConnectionMode {
     pub fn dwell(self) -> Seconds {

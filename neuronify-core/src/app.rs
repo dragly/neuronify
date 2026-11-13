@@ -547,7 +547,7 @@ impl Neuronify {
     }
 
     fn dwell_progress(&self, now: Seconds) -> Option<f32> {
-        let dwell = self.editor.connection_mode().dwell();
+        let dwell = self.editor.connection_mode(&self.world).dwell();
         let held_for = self.editor.dwelling(&self.world, now)?;
         Some(gui::dwell_progress(held_for, dwell))
     }
