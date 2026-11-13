@@ -356,7 +356,11 @@ impl Neuronify {
             }
         } else if let Some(position) = self.mouse.position {
             let position = camera::ground_position(application, position);
-            if self.editor.touch().is_none() && self.editor.empty_at(&self.world, position) {
+            if self.editor.touch().is_none()
+                && self.editor.reverse_picture_at(&mut self.world, position)
+            {
+                tick();
+            } else if self.editor.touch().is_none() && self.editor.empty_at(&self.world, position) {
                 self.tapped_background = true;
             } else {
                 self.editor.tap(&self.world, position);

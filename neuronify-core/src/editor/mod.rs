@@ -13,8 +13,8 @@ use crate::elements::{
 };
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::{
-    edge_toward, framed_size, receptive_field_frame, spawn_picture_wire, visual_input_frame,
-    watched_picture, ReceptiveFieldCell, VisualInput,
+    direction_badge_at, edge_toward, framed_size, receptive_field_frame, spawn_picture_wire,
+    visual_input_frame, watched_picture, ReceptiveFieldCell, VisualInput,
 };
 use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::bounds::note_corners;
@@ -738,6 +738,22 @@ impl Editor {
             Some(entity) => self.select_entity(entity),
             None => self.selection = None,
         }
+    }
+
+    pub fn reverse_picture_at(&mut self, world: &mut World, position: Vec3) -> bool {
+        let Some(picture) = direction_badge_at(world, position) else {
+            return false;
+        };
+        self.settle();
+        let before = Snapshot::of(world, picture, Vec::new());
+        if let Ok(mut input) = world.get::<&mut VisualInput>(picture) {
+            input.reverse();
+        }
+        if let Some(before) = before {
+            self.history.record_snapshot(before);
+        }
+        self.edited = true;
+        true
     }
 
     pub fn empty_at(&self, world: &World, position: Vec3) -> bool {

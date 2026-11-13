@@ -5,8 +5,8 @@ use hecs::{Entity, World};
 use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
-use crate::components::{Connection, Deletable};
-use crate::measurement::voltmeter::Frame;
+use crate::components::{Connection, Deletable, Position};
+use crate::measurement::voltmeter::{Corner, Frame};
 
 pub const RESOLUTION: usize = 20;
 pub const VISUAL_INPUT_SIZE: f32 = 8.0;
@@ -14,6 +14,8 @@ pub const RECEPTIVE_FIELD_SIZE: f32 = 4.0;
 const FIELD_GAP: f32 = 1.5;
 pub const FRAME_INTERVAL: Milliseconds = Milliseconds(1.0);
 pub const DEFAULT_PICTURE_SPEED: Hertz = Hertz(10.0);
+pub const DIRECTION_BADGE_RADIUS: f32 = 1.0;
+const DIRECTION_BADGE_REACH: f32 = 0.4;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Pattern {
@@ -169,9 +171,32 @@ impl Default for VisualInput {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Motion {
+    Along(Vec3),
+    Clockwise,
+    Counterclockwise,
+}
+
 impl VisualInput {
     pub fn reverse(&mut self) {
         self.speed = -self.speed;
+    }
+
+    pub fn motion(&self) -> Option<Motion> {
+        if self.speed.0 == 0.0 {
+            return None;
+        }
+        let forward = self.speed.0 > 0.0;
+        Some(match self.pattern {
+            Pattern::Bar | Pattern::Grating => {
+                let (sin, cos) = self.pattern_angle.sin_cos();
+                let along = Vec3::Z * cos as f32 - Vec3::X * sin as f32;
+                Motion::Along(if forward { along } else { -along })
+            }
+            Pattern::Dot if forward => Motion::Clockwise,
+            Pattern::Dot => Motion::Counterclockwise,
+        })
     }
 
     pub fn picture(&self) -> Vec<f64> {
@@ -260,6 +285,24 @@ pub fn edge_toward(center: Vec3, toward: Vec3, size: f32) -> Option<Vec3> {
 
 pub fn beside_the_picture(center: Vec3) -> Vec3 {
     center + Vec3::Z * (VISUAL_INPUT_SIZE + RECEPTIVE_FIELD_SIZE + 2.0 * FIELD_GAP) * 0.5
+}
+
+pub fn direction_badge(center: Vec3) -> Vec3 {
+    visual_input_frame(center).corner(Corner::TopRight)
+}
+
+pub fn direction_badge_at(world: &World, position: Vec3) -> Option<Entity> {
+    world
+        .query::<(Entity, &Position, &VisualInput)>()
+        .iter()
+        .filter(|(_, _, input)| input.motion().is_some())
+        .map(|(picture, center, _)| {
+            let badge = direction_badge(center.position);
+            (picture, badge.with_y(0.0).distance(position.with_y(0.0)))
+        })
+        .filter(|&(_, distance)| distance < DIRECTION_BADGE_RADIUS + DIRECTION_BADGE_REACH)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(picture, _)| picture)
 }
 
 pub fn is_picture_wire(world: &World, connection: &Connection) -> bool {
@@ -553,5 +596,76 @@ mod tests {
         let beside = stopped_at(0.1);
         assert!(crossing > 20, "{crossing}");
         assert!(crossing > 10 * beside.max(1), "{crossing} {beside}");
+    }
+
+    fn lit_center(input: &VisualInput, phase: f64) -> Vec3 {
+        let picture = VisualInput {
+            phase,
+            ..input.clone()
+        }
+        .picture();
+        let lit: Vec<Vec3> = picture
+            .iter()
+            .enumerate()
+            .filter(|(_, &brightness)| brightness > 0.99)
+            .map(|(index, _)| {
+                crate::rendering::visual_input::tile_position(
+                    Vec3::ZERO,
+                    index % RESOLUTION,
+                    index / RESOLUTION,
+                )
+                .with_y(0.0)
+            })
+            .collect();
+        lit.iter().sum::<Vec3>() / lit.len() as f32
+    }
+
+    #[test]
+    fn the_arrow_points_the_way_the_drawn_picture_moves() {
+        for pattern in [Pattern::Bar, Pattern::Dot] {
+            for angle in [0.0, 0.7] {
+                for speed in [Hertz(3.0), Hertz(-3.0)] {
+                    let input = VisualInput {
+                        pattern,
+                        pattern_angle: angle,
+                        speed,
+                        phase: 0.0,
+                    };
+                    let phase = 0.3;
+                    let step = 0.05 * speed.0.signum();
+                    let here = lit_center(&input, phase);
+                    let moved = lit_center(&input, phase + step) - here;
+                    let case = format!("{pattern:?} {angle} {speed:?} {moved}");
+                    match input.motion().unwrap() {
+                        Motion::Along(direction) => {
+                            assert!(moved.normalize().dot(direction) > 0.95, "{case}")
+                        }
+                        Motion::Clockwise | Motion::Counterclockwise => {
+                            let turn = here.cross(moved).y;
+                            let clockwise = input.motion() == Some(Motion::Clockwise);
+                            assert_eq!(turn < 0.0, clockwise, "{case}");
+                        }
+                    }
+                }
+            }
+        }
+        let still = VisualInput {
+            speed: Hertz(0.0),
+            ..Default::default()
+        };
+        assert_eq!(still.motion(), None);
+    }
+
+    #[test]
+    fn the_badge_on_the_top_right_corner_is_found_and_still_pictures_have_none() {
+        let mut world = World::new();
+        let center = Vec3::new(2.0, 0.0, -3.0);
+        let picture = world.spawn((Position { position: center }, VisualInput::default()));
+        let badge = direction_badge(center);
+        assert!(badge.x > center.x && badge.z > center.z);
+        assert_eq!(direction_badge_at(&world, badge), Some(picture));
+        assert_eq!(direction_badge_at(&world, center), None);
+        world.get::<&mut VisualInput>(picture).unwrap().speed = Hertz(0.0);
+        assert_eq!(direction_badge_at(&world, badge), None);
     }
 }

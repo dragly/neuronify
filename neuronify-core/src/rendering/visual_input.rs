@@ -1,3 +1,5 @@
+use std::f32::consts::{FRAC_PI_2, PI};
+
 use glam::Vec3;
 use hecs::Entity;
 use visula::{
@@ -7,14 +9,16 @@ use visula_derive::Delegate;
 
 use crate::components::*;
 use crate::measurement::visual_input::{
-    grid, receptive_field_frame, visual_input_frame, watched_picture, ReceptiveFieldCell,
-    VisualInput, RECEPTIVE_FIELD_SIZE, RESOLUTION, VISUAL_INPUT_SIZE,
+    direction_badge, grid, receptive_field_frame, visual_input_frame, watched_picture, Motion,
+    ReceptiveFieldCell, VisualInput, DIRECTION_BADGE_RADIUS, RECEPTIVE_FIELD_SIZE, RESOLUTION,
+    VISUAL_INPUT_SIZE,
 };
 use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::colors::*;
-use crate::rendering::gpu_types::{ConnectionData, TileData};
+use crate::rendering::gpu_types::{ConnectionData, CylinderData, TileData};
 use crate::rendering::lighting::SHADING;
-use crate::rendering::shapes::generator_color;
+use crate::rendering::scene::Scene;
+use crate::rendering::shapes::{generator_color, glyph_color};
 
 const TILE_HEIGHT: f32 = 0.05;
 const TILE_FILL: f32 = 0.42;
@@ -26,6 +30,14 @@ const BAR_GAP: f32 = 0.6;
 const BAR_STRENGTH: f32 = 1.2;
 const FRAME_STRENGTH: f32 = 0.3;
 const FRAME_LIFT: f32 = 2.0 * TILE_HEIGHT;
+const BADGE_THICKNESS: f32 = 0.15;
+const GLYPH_LIFT: f32 = 0.04;
+const ARROW_HALF_LENGTH: f32 = 0.55;
+const ARROW_HEAD: f32 = 0.3;
+const ARROW_THICKNESS: f32 = 0.12;
+const TURN_RADIUS: f32 = 0.45;
+const TURN_SWEEP: f32 = 1.5 * PI;
+const TURN_STEPS: usize = 12;
 
 pub struct TileShape {
     power: f32,
@@ -240,6 +252,62 @@ fn match_bar(frame: &Frame, response: f64, lines: &mut Vec<ConnectionData>) {
             color,
         ));
     }
+}
+
+pub fn collect_direction_badges(world: &hecs::World) -> Scene {
+    let mut scene = Scene::default();
+    for (input, position) in world.query::<(&VisualInput, &Position)>().iter() {
+        let Some(motion) = input.motion() else {
+            continue;
+        };
+        let base = direction_badge(position.position) + Vec3::Y * FRAME_LIFT;
+        scene.cylinders.push(CylinderData {
+            start: base,
+            start_radius: DIRECTION_BADGE_RADIUS,
+            end: base + Vec3::Y * BADGE_THICKNESS,
+            end_radius: DIRECTION_BADGE_RADIUS,
+            start_color: orange(),
+            end_color: orange(),
+            _padding: Default::default(),
+        });
+        let glyph = base + Vec3::Y * (BADGE_THICKNESS + GLYPH_LIFT);
+        let points = arrow(glyph, motion);
+        let [.., before, tip] = points[..] else {
+            continue;
+        };
+        let forward = (tip - before).normalize_or_zero();
+        let side = Vec3::Y.cross(forward);
+        scene.stroke(&points, ARROW_THICKNESS, glyph_color());
+        scene.stroke(
+            &[
+                tip + (side - forward) * ARROW_HEAD,
+                tip,
+                tip - (side + forward) * ARROW_HEAD,
+            ],
+            ARROW_THICKNESS,
+            glyph_color(),
+        );
+    }
+    scene
+}
+
+fn arrow(center: Vec3, motion: Motion) -> Vec<Vec3> {
+    let turn = match motion {
+        Motion::Along(direction) => {
+            return vec![
+                center - direction * ARROW_HALF_LENGTH,
+                center + direction * ARROW_HALF_LENGTH,
+            ]
+        }
+        Motion::Clockwise => -TURN_SWEEP,
+        Motion::Counterclockwise => TURN_SWEEP,
+    };
+    (0..=TURN_STEPS)
+        .map(|step| {
+            let angle = FRAC_PI_2 + turn * step as f32 / TURN_STEPS as f32;
+            center + (Vec3::Z * angle.cos() + Vec3::X * angle.sin()) * TURN_RADIUS
+        })
+        .collect()
 }
 
 pub fn collect_visual_input_lines(world: &hecs::World, palette: &Palette) -> Vec<ConnectionData> {
@@ -476,5 +544,23 @@ mod tests {
                     < 1e-4
             );
         }
+    }
+
+    #[test]
+    fn the_badge_arrow_points_the_way_the_picture_moves_and_turns_with_it() {
+        let mut world = World::new();
+        let center = Vec3::new(1.0, 0.0, 2.0);
+        let picture = world.spawn((Position { position: center }, VisualInput::default()));
+        let tip_offset = |world: &World| {
+            let scene = collect_direction_badges(world);
+            let badge = scene.cylinders[0].start.with_y(0.0);
+            let tip = scene.cylinders[1].end.with_y(0.0);
+            tip - badge
+        };
+        assert!(tip_offset(&world).z > 0.4);
+        world.get::<&mut VisualInput>(picture).unwrap().reverse();
+        assert!(tip_offset(&world).z < -0.4);
+        world.get::<&mut VisualInput>(picture).unwrap().speed = Hertz(0.0);
+        assert!(collect_direction_badges(&world).cylinders.is_empty());
     }
 }
