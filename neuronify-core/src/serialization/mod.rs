@@ -749,6 +749,26 @@ mod tests {
     }
 
     #[test]
+    fn loads_entities_listed_from_the_highest_id_down_quickly() {
+        let descending: Vec<u32> = (1..=5000).map(|n| column::MAXIMUM_ENTITY_ID - n).collect();
+        let bytes = with_body(&[
+            positions(&descending[..2500]),
+            positions(&descending[2500..]),
+        ]);
+        let started = std::time::Instant::now();
+        let saved = load(&bytes).unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        let mut ids: Vec<u32> = saved
+            .world
+            .query::<(Entity, &Position)>()
+            .iter()
+            .map(|(entity, _)| entity.id())
+            .collect();
+        ids.sort_unstable_by(|a, b| b.cmp(a));
+        assert_eq!(ids, descending);
+    }
+
+    #[test]
     fn rejects_an_entity_that_appears_twice_in_an_archetype() {
         let repeated = with_body(&[positions(&[0, 0])]);
         assert!(load(&repeated).is_err_and(|e| e.contains("appears twice")));
