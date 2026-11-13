@@ -138,8 +138,9 @@ fn positive_or<T: Quantity>(value: T, fallback: T) -> T {
     }
 }
 
-fn non_negative_or<T: Quantity>(value: T, fallback: T) -> T {
+fn non_negative_or<T: Quantity>(mut value: T, fallback: T) -> T {
     if value.value().is_finite() && value.value() >= 0.0 {
+        *value.value_mut() = value.value().abs();
         value
     } else {
         fallback
@@ -1682,6 +1683,7 @@ mod tests {
         let recovering = spikes(Some(Milliseconds::ZERO));
         assert!(recovering > spikes(Some(AdaptationCurrent::default().time_constant)));
         assert!(recovering.abs_diff(spikes(None)) <= 1);
+        assert_eq!(spikes(Some(Milliseconds(-0.0))), recovering);
     }
 
     #[test]
