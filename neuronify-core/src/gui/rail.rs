@@ -157,7 +157,7 @@ impl Rail {
             editor.selection = None;
         }
         if editor.tool != tool {
-            editor.set_connection_mode(ConnectionMode::One);
+            editor.set_connection_mode(ConnectionMode::default());
         }
         editor.tool = tool;
         self.recent.retain(|recent| *recent != tool);
@@ -1102,7 +1102,7 @@ fn stroke_button(ui: &mut Ui, chrome: &Chrome, mode: ConnectionMode, open: bool)
     let radius = STROKE_BUTTON / 2.0;
     let painter = ui.painter();
     chrome.paint_floating(painter, rect, radius as u8, fill);
-    let chosen = mode != ConnectionMode::One;
+    let chosen = mode != ConnectionMode::default();
     if chosen {
         painter.circle_stroke(
             rect.center(),
