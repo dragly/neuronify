@@ -444,16 +444,17 @@ fn the_stroke_button_beside_the_rail_picks_a_stroke_until_another_tool_is_picked
     let connect = harness.text_rect("Connect").unwrap();
     assert!(button.left() > connect.right());
     assert!(button.y_range().contains(connect.top()));
-    harness.click_button(STROKE_ID);
-    assert!(harness.shows("Connect in a chain by pausing briefly on each neuron"));
-    harness.click_text("Chain");
     assert_eq!(harness.editor.connection_mode(), ConnectionMode::Chain);
-    assert!(!harness.shows("Connect in a chain by pausing briefly on each neuron"));
+    harness.click_button(STROKE_ID);
+    assert!(harness.shows("Connect to a single neuron"));
+    harness.click_text("Single");
+    assert_eq!(harness.editor.connection_mode(), ConnectionMode::One);
+    assert!(!harness.shows("Connect to a single neuron"));
     harness.click_text("Erase");
     assert_eq!(stroke_button(&mut harness), None);
     harness.press(Modifiers::NONE, Key::C);
     assert_eq!(harness.editor.tool, Tool::Axon);
-    assert_eq!(harness.editor.connection_mode(), ConnectionMode::One);
+    assert_eq!(harness.editor.connection_mode(), ConnectionMode::Chain);
 }
 
 #[test]

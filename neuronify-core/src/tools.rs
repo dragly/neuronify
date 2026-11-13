@@ -141,8 +141,8 @@ impl Tool {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ConnectionMode {
-    #[default]
     One,
+    #[default]
     Chain,
     FanOut,
 }

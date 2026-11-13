@@ -570,6 +570,7 @@ fn holding_still_on_a_neuron_attaches_it_once_the_dwell_is_over() {
 fn holding_still_waits_for_the_release_when_connecting_one_neuron() {
     let (mut world, [a, b, _, _]) = neurons_in_a_row();
     let mut editor = editor(Tool::StaticConnection);
+    editor.set_connection_mode(ConnectionMode::One);
     editor.edit(&mut world, at(0.0, 0.5));
     editor.edit(&mut world, at(0.3, 10.5));
     assert_eq!(hold_still(&mut editor, &mut world), None);
