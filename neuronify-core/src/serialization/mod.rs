@@ -789,6 +789,18 @@ mod tests {
     }
 
     #[test]
+    fn rejects_entities_whose_components_the_file_cannot_hold_before_making_room_for_them() {
+        let listed = 1000;
+        let mut archetype = varint(listed as u64);
+        archetype.extend([1, 0]);
+        for id in 0..listed {
+            archetype.extend(entity(id));
+        }
+        let crafted = with_body(&[archetype]);
+        assert!(load(&crafted).is_err_and(|e| e.contains("more entities than it holds")));
+    }
+
+    #[test]
     fn rejects_entity_ids_beyond_the_largest_world() {
         let far = with_body(&[positions(&[column::MAXIMUM_ENTITY_ID])]);
         assert!(load(&far).is_err_and(|e| e.contains("too large")));
