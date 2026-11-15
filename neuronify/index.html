@@ -19,6 +19,11 @@
         --placeholder: rgba(76, 79, 105, 0.13);
         --scene: #f2f5fc;
         --accent: #1e66f5;
+        --panel: #ffffff;
+        --border: #d0d5e0;
+        --shadow: rgba(0, 0, 0, 0.16);
+        --text: #4c4f69;
+        --subtext: #5c5f77;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -27,6 +32,11 @@
           --placeholder: rgba(205, 214, 244, 0.1);
           --scene: #383a51;
           --accent: #89b4fa;
+          --panel: #1e1e2e;
+          --border: #45475a;
+          --shadow: rgba(0, 0, 0, 0.38);
+          --text: #cdd6f4;
+          --subtext: #a6adc8;
         }
       }
       html,
@@ -54,16 +64,68 @@
         opacity: 0;
         pointer-events: none;
       }
-      #progress {
+      .center {
         position: absolute;
-        top: 0;
-        left: 0;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .panel {
+        width: min(100%, 340px);
+        box-sizing: border-box;
+        padding: 14px 16px 12px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--panel);
+        box-shadow: 0 6px 20px var(--shadow);
+      }
+      .plot {
+        position: relative;
+        height: 70px;
+        overflow: hidden;
+      }
+      .window,
+      .inner {
+        position: absolute;
+        inset: 0;
+        transition: transform 240ms linear;
+        will-change: transform;
+      }
+      .window {
+        overflow: hidden;
+        transform: translateX(-100%);
+      }
+      .inner {
+        transform: translateX(100%);
+      }
+      .inner svg {
+        display: block;
         width: 100%;
-        height: 3px;
-        background: var(--accent);
-        transform: scaleX(0);
-        transform-origin: left;
-        transition: transform 200ms ease-out;
+        height: 100%;
+        overflow: visible;
+      }
+      .inner path {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 2;
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+      }
+      .status {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-top: 10px;
+        padding-top: 9px;
+        border-top: 1px solid var(--border);
+        color: var(--subtext);
+        font: 300 13px Ubuntu, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      #percent {
+        color: var(--text);
+        font: 12.5px Hack, ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+        font-variant-numeric: tabular-nums;
       }
       .page {
         width: min(100% - 32px, 1100px);
@@ -73,7 +135,6 @@
       .bar {
         border-radius: 4px;
         background: var(--placeholder);
-        animation: pulse 1.2s ease-in-out infinite alternate;
       }
       .title {
         width: 147px;
@@ -128,7 +189,6 @@
         top: 50%;
         transform: translate(-50%, -50%);
         background: var(--placeholder);
-        animation: pulse 1.2s ease-in-out infinite alternate;
       }
       .plus::before {
         width: 16.875%;
@@ -174,7 +234,6 @@
         aspect-ratio: 4 / 3;
         background: var(--placeholder);
         clip-path: polygon(0 0, 40% 0, 40% 7%, 100% 7%, 100% 100%, 0 100%);
-        animation: pulse 1.2s ease-in-out infinite alternate;
       }
       @media (min-width: 664px) {
         .folded {
@@ -210,30 +269,10 @@
       .scene .page {
         display: none;
       }
-      .scene #loading::after {
-        content: "";
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 24px;
-        height: 24px;
-        margin: -12px;
-        border-radius: 50%;
-        background: var(--placeholder);
-        animation: pulse 1.2s ease-in-out infinite alternate;
-      }
-      @keyframes pulse {
-        to {
-          opacity: 0.4;
-        }
-      }
       @media (prefers-reduced-motion: reduce) {
-        .bar,
-        .folder .thumbnail,
-        .plus::before,
-        .plus::after,
-        .scene #loading::after {
-          animation: none;
+        .window,
+        .inner {
+          transition: none;
         }
       }
     </style>
@@ -241,7 +280,6 @@
   <body>
     <canvas id="glcanvas"></canvas>
     <div id="loading" role="status" aria-label="Loading" ontransitionend="if (event.target === this) this.remove()">
-      <div id="progress"></div>
       <div class="page">
         <div class="bar title"></div>
         <div class="bar subtitle"></div>
@@ -326,6 +364,14 @@
           <div class="cards">
             <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 58px"></div><div class="bar line"></div><div class="bar line"></div><div class="bar line narrow"></div></div>
           </div>
+        </div>
+      </div>
+      <div class="center" aria-hidden="true">
+        <div class="panel">
+          <div class="plot">
+            <div class="window"><div class="inner" id="trace"></div></div>
+          </div>
+          <div class="status"><span>Loading</span><span id="percent">0 %</span></div>
         </div>
       </div>
     </div>
