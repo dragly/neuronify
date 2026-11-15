@@ -14,3 +14,8 @@ no_spa = true
 [watch]
 # Rebuild on changes to the core library too, not only this crate
 watch = [".", "../neuronify-core"]
+
+[[hooks]]
+stage = "post_build"
+command = "sh"
+command_arguments = ["correct-wasm-size.sh"]
