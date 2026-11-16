@@ -1,12 +1,31 @@
 //! Save files (`.neuronify`) and scenarios.
 //!
-//! A save file starts with `MAGIC` and its version as a little-endian `u32`,
-//! followed by the simulation time as a little-endian `f64` (from version 5,
+//! A save file starts with `MAGIC` and a little-endian `u32`.
+//! Files from before the container hold a single world, and the `u32` is its version.
+//! From `CONTAINER_VERSION` on, the `u32` is the version of the container,
+//! followed by the length of its index as a little-endian `u32`,
+//! the index (postcard: the kind, version and length of each part)
+//! and the parts in the order of the index.
+//! The meta part comes first, so a Neuronify that cannot read the world
+//! can still show the name and description from the first few bytes.
+//!
+//! Everything the simulation needs belongs in the world part.
+//! Readers skip parts they don't know, or know only in an older version,
+//! and leave them out when they save,
+//! so add a part only for information an older Neuronify can do without.
+//! If the simulation needs a new part, add a world version as well,
+//! so that an older Neuronify refuses to open the file.
+//! Meta keeps its fields: put new information in a new part.
+//! Change the container version only if the index itself changes,
+//! since a Neuronify that does not know it can show nothing from the file.
+//!
+//! A world of version N holds what a single-world file of version N holds after its version:
+//! the simulation time as a little-endian `f64` (from version 5,
 //! in seconds until version 14 and in milliseconds from version 15),
 //! the simulation speed as a little-endian `f64` (from version 6)
 //! and the world in the hecs column format.
 //!
-//! Each version has a module with the components it can hold.
+//! Each world version has a module with the components it can hold.
 //! postcard writes a component id as its position in that list,
 //! so a list must not change once files have been saved with it.
 //! To change the list, or the fields of a component, add a version:
@@ -22,14 +41,17 @@
 
 use hecs::{serialize::column::serialize, ComponentError, World};
 use postcard::ser_flavors::Flavor;
+use serde::{Deserialize, Serialize};
 
 use crate::components::{Milliseconds, Seconds};
 use crate::constants::{DEFAULT_SPEED, SPEEDS};
+use container::Part;
 
 #[macro_use]
 mod schema;
 pub mod bounds;
 mod column;
+mod container;
 mod v1;
 mod v10;
 mod v11;
@@ -49,14 +71,24 @@ mod v7;
 mod v8;
 mod v9;
 
-/// The version that `save` writes.
-pub const VERSION: u32 = 18;
+/// The world version that `save` writes.
+pub const WORLD_VERSION: u32 = 18;
+
+pub const CONTAINER_VERSION: u32 = 19;
+
+pub const LONGEST_DESCRIPTION: usize = 500;
 
 const MAGIC: &[u8] = b"neuronify";
+const META: &str = "meta";
+const META_VERSION: u32 = 1;
+const LONGEST_META: usize = 64 * 1024;
+const LONGEST_APP: usize = 40;
+const WORLD: &str = "world";
+const TOO_NEW: &str = "The save file was made with a newer Neuronify";
 
 type Upgrade = fn(&mut World) -> Result<(), ComponentError>;
 
-const UPGRADES: [Upgrade; VERSION as usize - 1] = [
+const UPGRADES: [Upgrade; WORLD_VERSION as usize - 1] = [
     v2::upgrade_from_v1,
     v3::upgrade_from_v2,
     v4::upgrade_from_v3,
@@ -82,21 +114,55 @@ pub struct SavedWorld {
     pub speed: f64,
 }
 
-pub fn save(world: &World, time: Milliseconds, speed: f64) -> Result<Vec<u8>, String> {
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Meta {
+    pub name: String,
+    pub description: String,
+    pub app: String,
+}
+
+enum Contents<'a> {
+    World { version: u32, body: &'a [u8] },
+    Parts(Vec<Part<'a>>),
+}
+
+enum Unreadable {
+    TooNew,
+    Damaged(String),
+}
+
+pub fn save(world: &World, time: Milliseconds, speed: f64, meta: &Meta) -> Result<Vec<u8>, String> {
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
     serialize(world, &mut v18::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
-    let body = serializer
+    let columns = serializer
         .output
         .finalize()
         .map_err(|e| format!("Could not save: {e}"))?;
+    let mut body = time.0.to_le_bytes().to_vec();
+    body.extend_from_slice(&speed.to_le_bytes());
+    body.extend_from_slice(&columns);
+    let meta = postcard::to_stdvec(meta).map_err(|e| format!("Could not save: {e}"))?;
+    write_parts(&[
+        Part {
+            kind: META,
+            version: META_VERSION,
+            bytes: &meta,
+        },
+        Part {
+            kind: WORLD,
+            version: WORLD_VERSION,
+            bytes: &body,
+        },
+    ])
+}
+
+fn write_parts(parts: &[Part]) -> Result<Vec<u8>, String> {
     let mut bytes = MAGIC.to_vec();
-    bytes.extend_from_slice(&VERSION.to_le_bytes());
-    bytes.extend_from_slice(&time.0.to_le_bytes());
-    bytes.extend_from_slice(&speed.to_le_bytes());
-    bytes.extend_from_slice(&body);
+    bytes.extend_from_slice(&CONTAINER_VERSION.to_le_bytes());
+    bytes.extend(container::write(parts)?);
     Ok(bytes)
 }
 
@@ -107,13 +173,90 @@ pub fn load(bytes: &[u8]) -> Result<SavedWorld, String> {
     Ok(saved)
 }
 
-fn read(bytes: &[u8]) -> Result<SavedWorld, String> {
+pub fn meta(bytes: &[u8]) -> Option<Meta> {
+    let Ok(Contents::Parts(parts)) = contents(bytes) else {
+        return None;
+    };
+    let part = parts
+        .iter()
+        .find(|part| part.kind == META && part.version == META_VERSION)
+        .filter(|part| part.bytes.len() <= LONGEST_META)?;
+    let meta: Meta = postcard::from_bytes(part.bytes).ok()?;
+    Some(Meta {
+        description: meta.description.chars().take(LONGEST_DESCRIPTION).collect(),
+        app: meta.app.chars().take(LONGEST_APP).collect(),
+        ..meta
+    })
+}
+
+pub fn is_too_new(bytes: &[u8]) -> bool {
+    match contents(bytes) {
+        Ok(Contents::World { .. }) | Err(Unreadable::Damaged(_)) => false,
+        Ok(Contents::Parts(parts)) => {
+            world_of(&parts).is_some_and(|world| world.version > WORLD_VERSION)
+        }
+        Err(Unreadable::TooNew) => true,
+    }
+}
+
+pub fn with_details(bytes: &[u8], name: &str, description: &str) -> Option<Vec<u8>> {
+    let meta = Meta {
+        name: name.to_owned(),
+        description: description.to_owned(),
+        app: meta(bytes).map(|meta| meta.app).unwrap_or_default(),
+    };
+    let meta = postcard::to_stdvec(&meta).ok()?;
+    let meta = Part {
+        kind: META,
+        version: META_VERSION,
+        bytes: &meta,
+    };
+    let others = match contents(bytes).ok()? {
+        Contents::World { version, body } => vec![Part {
+            kind: WORLD,
+            version,
+            bytes: body,
+        }],
+        Contents::Parts(parts) => parts.into_iter().filter(|part| part.kind != META).collect(),
+    };
+    write_parts(&[vec![meta], others].concat()).ok()
+}
+
+fn contents(bytes: &[u8]) -> Result<Contents<'_>, Unreadable> {
+    let damaged = |problem: &str| Unreadable::Damaged(problem.to_owned());
     let (version, body) = bytes
         .strip_prefix(MAGIC)
-        .ok_or("This is not a Neuronify save file")?
+        .ok_or_else(|| damaged("This is not a Neuronify save file"))?
         .split_first_chunk()
-        .ok_or("The save file ends before its version")?;
-    let version = u32::from_le_bytes(*version);
+        .ok_or_else(|| damaged("The save file ends before its version"))?;
+    match u32::from_le_bytes(*version) {
+        0 => Err(damaged("The save file has version 0")),
+        version @ 1..CONTAINER_VERSION => Ok(Contents::World { version, body }),
+        CONTAINER_VERSION => container::read(body)
+            .map(Contents::Parts)
+            .map_err(Unreadable::Damaged),
+        _ => Err(Unreadable::TooNew),
+    }
+}
+
+fn world_of<'a>(parts: &[Part<'a>]) -> Option<Part<'a>> {
+    parts.iter().find(|part| part.kind == WORLD).copied()
+}
+
+fn read(bytes: &[u8]) -> Result<SavedWorld, String> {
+    let (version, body) = match contents(bytes) {
+        Ok(Contents::World { version, body }) => (version, body),
+        Ok(Contents::Parts(parts)) => {
+            let world = world_of(&parts).ok_or("The save file holds no simulation")?;
+            (world.version, world.bytes)
+        }
+        Err(Unreadable::TooNew) => return Err(TOO_NEW.to_owned()),
+        Err(Unreadable::Damaged(problem)) => return Err(problem),
+    };
+    read_world(version, body)
+}
+
+fn read_world(version: u32, body: &[u8]) -> Result<SavedWorld, String> {
     let (mut world, time, speed) = match version {
         1 => (v1::deserialize(body)?, 0.0, DEFAULT_SPEED),
         2 => (v2::deserialize(body)?, 0.0, DEFAULT_SPEED),
@@ -188,14 +331,10 @@ fn read(bytes: &[u8]) -> Result<SavedWorld, String> {
             let (speed, body) = split_f64(body, "simulation speed")?;
             (v18::deserialize(body)?, time, speed)
         }
-        _ => {
-            return Err(format!(
-                "The save file has version {version}, \
-                 but this Neuronify reads versions 1 to {VERSION}"
-            ))
-        }
+        0 => return Err("The simulation in the save file has version 0".to_owned()),
+        _ => return Err(TOO_NEW.to_owned()),
     };
-    for (from, upgrade) in (1..VERSION).zip(UPGRADES) {
+    for (from, upgrade) in (1..WORLD_VERSION).zip(UPGRADES) {
         if from >= version {
             upgrade(&mut world).map_err(|error| {
                 format!("Could not upgrade the save file from version {from}: {error}")
@@ -293,7 +432,13 @@ mod tests {
     #[test]
     fn loads_save_file() {
         let original = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
-        let bytes = save(&original, Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
+        let bytes = save(
+            &original,
+            Milliseconds::ZERO,
+            DEFAULT_SPEED,
+            &Meta::default(),
+        )
+        .unwrap();
         assert!(bytes.starts_with(MAGIC));
 
         let loaded = load_from_bytes(&bytes).unwrap().world;
@@ -304,21 +449,22 @@ mod tests {
     fn keeps_the_simulation_time() {
         let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
         let time = Milliseconds(12.5);
-        let loaded = load(&save(&world, time, DEFAULT_SPEED).unwrap()).unwrap();
+        let loaded = load(&save(&world, time, DEFAULT_SPEED, &Meta::default()).unwrap()).unwrap();
         assert_eq!(loaded.time, time);
     }
 
     #[test]
     fn keeps_the_simulation_speed() {
         let world = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
-        let loaded = load(&save(&world, Milliseconds::ZERO, 0.5).unwrap()).unwrap();
+        let loaded =
+            load(&save(&world, Milliseconds::ZERO, 0.5, &Meta::default()).unwrap()).unwrap();
         assert_eq!(loaded.speed, 0.5);
     }
 
     #[test]
     fn snaps_the_speed_to_one_the_playback_bar_offers() {
         let loaded_speed = |speed| {
-            load(&save(&World::new(), Milliseconds::ZERO, speed).unwrap())
+            load(&save(&World::new(), Milliseconds::ZERO, speed, &Meta::default()).unwrap())
                 .unwrap()
                 .speed
         };
@@ -334,7 +480,7 @@ mod tests {
     #[test]
     fn starts_at_zero_when_the_saved_time_is_not_a_time() {
         let loaded_time = |time| {
-            let bytes = save(&World::new(), Milliseconds(time), 2.0).unwrap();
+            let bytes = save(&World::new(), Milliseconds(time), 2.0, &Meta::default()).unwrap();
             load(&bytes).unwrap().time.0
         };
         assert_eq!(loaded_time(f64::NAN), 0.0);
@@ -348,11 +494,189 @@ mod tests {
         assert!(load_from_bytes(b"<!DOCTYPE html><html></html>").is_err());
     }
 
+    fn meta_part(meta: &Meta) -> Vec<u8> {
+        postcard::to_stdvec(meta).unwrap()
+    }
+
+    fn parts_of(bytes: &[u8]) -> Vec<Part<'_>> {
+        match contents(bytes) {
+            Ok(Contents::Parts(parts)) => parts,
+            _ => panic!("not a container"),
+        }
+    }
+
+    fn details() -> Meta {
+        Meta {
+            name: "Leaky".to_owned(),
+            description: "A neuron that leaks.".to_owned(),
+            app: "2.3.0".to_owned(),
+        }
+    }
+
     #[test]
-    fn rejects_newer_versions() {
+    fn keeps_the_name_and_description() {
+        let bytes = save(&World::new(), Milliseconds::ZERO, DEFAULT_SPEED, &details()).unwrap();
+        assert_eq!(meta(&bytes), Some(details()));
+        assert!(!is_too_new(&bytes));
+    }
+
+    #[test]
+    fn writes_meta_before_the_world() {
+        let bytes = save(&World::new(), Milliseconds::ZERO, DEFAULT_SPEED, &details()).unwrap();
+        let kinds: Vec<&str> = parts_of(&bytes).iter().map(|part| part.kind).collect();
+        assert_eq!(kinds, [META, WORLD]);
+    }
+
+    #[test]
+    fn files_from_before_the_container_have_no_meta() {
+        assert_eq!(meta(include_bytes!("fixtures/v18.neuronify")), None);
+    }
+
+    #[test]
+    fn a_newer_world_is_too_new_to_load_but_shows_its_meta() {
+        let meta_bytes = meta_part(&details());
+        let bytes = write_parts(&[
+            Part {
+                kind: META,
+                version: META_VERSION,
+                bytes: &meta_bytes,
+            },
+            Part {
+                kind: WORLD,
+                version: WORLD_VERSION + 1,
+                bytes: &[1, 2, 3],
+            },
+        ])
+        .unwrap();
+        assert!(load(&bytes).is_err_and(|e| e == TOO_NEW));
+        assert!(is_too_new(&bytes));
+        assert_eq!(meta(&bytes), Some(details()));
+    }
+
+    #[test]
+    fn a_newer_container_is_too_new_and_shows_nothing() {
         let mut bytes = MAGIC.to_vec();
-        bytes.extend_from_slice(&(VERSION + 1).to_le_bytes());
-        assert!(load(&bytes).is_err_and(|e| e.contains("reads versions 1 to")));
+        bytes.extend_from_slice(&(CONTAINER_VERSION + 1).to_le_bytes());
+        bytes.extend_from_slice(&[0; 32]);
+        assert!(load(&bytes).is_err_and(|e| e == TOO_NEW));
+        assert!(is_too_new(&bytes));
+        assert_eq!(meta(&bytes), None);
+        assert_eq!(with_details(&bytes, "Renamed", ""), None);
+    }
+
+    #[test]
+    fn damaged_files_are_not_too_new() {
+        let mut bytes = save(&World::new(), Milliseconds::ZERO, DEFAULT_SPEED, &details()).unwrap();
+        bytes.pop();
+        assert!(load(&bytes).is_err());
+        assert!(!is_too_new(&bytes));
+        assert!(!is_too_new(b"neuronify\0\0\0\0"));
+        assert!(!is_too_new(b"<!DOCTYPE html>"));
+    }
+
+    #[test]
+    fn skips_parts_it_does_not_know() {
+        let saved = save(&World::new(), Milliseconds(5.0), DEFAULT_SPEED, &details()).unwrap();
+        let parts = parts_of(&saved);
+        let thumbnail = Part {
+            kind: "thumbnail",
+            version: 1,
+            bytes: &[7; 64],
+        };
+        let newer_meta = Part {
+            kind: META,
+            version: META_VERSION + 1,
+            bytes: &[9; 8],
+        };
+        let world = world_of(&parts).unwrap();
+        let bytes = write_parts(&[newer_meta, thumbnail, world]).unwrap();
+        assert_eq!(load(&bytes).unwrap().time, Milliseconds(5.0));
+        assert_eq!(meta(&bytes), None);
+    }
+
+    #[test]
+    fn rejects_a_container_without_a_world() {
+        let meta_bytes = meta_part(&details());
+        let bytes = write_parts(&[Part {
+            kind: META,
+            version: META_VERSION,
+            bytes: &meta_bytes,
+        }])
+        .unwrap();
+        assert!(load(&bytes).is_err_and(|e| e.contains("no simulation")));
+    }
+
+    #[test]
+    fn rejects_version_0() {
+        assert!(load(b"neuronify\0\0\0\0").is_err_and(|e| e.contains("version 0")));
+        let bytes = write_parts(&[Part {
+            kind: WORLD,
+            version: 0,
+            bytes: &[],
+        }])
+        .unwrap();
+        assert!(load(&bytes).is_err_and(|e| e.contains("version 0")));
+    }
+
+    #[test]
+    fn bounds_the_description_and_the_app() {
+        let long = Meta {
+            name: "Leaky".to_owned(),
+            description: "a".repeat(10 * LONGEST_DESCRIPTION),
+            app: "9".repeat(10 * LONGEST_APP),
+        };
+        let bytes = save(&World::new(), Milliseconds::ZERO, DEFAULT_SPEED, &long).unwrap();
+        let meta = meta(&bytes).unwrap();
+        assert_eq!(meta.description.len(), LONGEST_DESCRIPTION);
+        assert_eq!(meta.app.len(), LONGEST_APP);
+    }
+
+    #[test]
+    fn new_details_keep_the_world_the_app_and_unknown_parts() {
+        let meta_bytes = meta_part(&details());
+        let thumbnail = Part {
+            kind: "thumbnail",
+            version: 3,
+            bytes: &[7; 16],
+        };
+        let world = Part {
+            kind: WORLD,
+            version: WORLD_VERSION + 1,
+            bytes: &[1, 2, 3],
+        };
+        let meta_part = Part {
+            kind: META,
+            version: META_VERSION,
+            bytes: &meta_bytes,
+        };
+        let bytes = write_parts(&[meta_part, thumbnail, world]).unwrap();
+        let renamed = with_details(&bytes, "Renamed", "Described.").unwrap();
+        assert_eq!(
+            meta(&renamed),
+            Some(Meta {
+                name: "Renamed".to_owned(),
+                description: "Described.".to_owned(),
+                app: "2.3.0".to_owned(),
+            })
+        );
+        assert_eq!(parts_of(&renamed)[1..], [thumbnail, world]);
+        assert!(is_too_new(&renamed));
+    }
+
+    #[test]
+    fn new_details_put_files_from_before_the_container_in_one() {
+        for original in [
+            &include_bytes!("fixtures/v1.neuronify")[..],
+            include_bytes!("fixtures/v14.neuronify"),
+            include_bytes!("fixtures/v18.neuronify"),
+        ] {
+            let renamed = with_details(original, "Renamed", "Described.").unwrap();
+            let meta = meta(&renamed).unwrap();
+            assert_eq!((meta.name.as_str(), meta.app.as_str()), ("Renamed", ""));
+            let (before, after) = (load(original).unwrap(), load(&renamed).unwrap());
+            assert_eq!(composition(&after.world), composition(&before.world));
+            assert_eq!((after.time, after.speed), (before.time, before.speed));
+        }
     }
 
     #[test]
@@ -387,13 +711,18 @@ mod tests {
     }
 
     fn with_body(archetypes: &[Vec<u8>]) -> Vec<u8> {
-        let mut bytes = save(&World::new(), Milliseconds::ZERO, DEFAULT_SPEED).unwrap();
-        bytes.pop();
-        bytes.extend(varint(archetypes.len() as u64));
+        let mut body = Milliseconds::ZERO.0.to_le_bytes().to_vec();
+        body.extend_from_slice(&DEFAULT_SPEED.to_le_bytes());
+        body.extend(varint(archetypes.len() as u64));
         for archetype in archetypes {
-            bytes.extend(archetype);
+            body.extend(archetype);
         }
-        bytes
+        write_parts(&[Part {
+            kind: WORLD,
+            version: WORLD_VERSION,
+            bytes: &body,
+        }])
+        .unwrap()
     }
 
     fn positions(entities: &[u32]) -> Vec<u8> {
@@ -528,9 +857,10 @@ mod tests {
             true_proportions: true,
         };
         display.set_in(&mut world);
-        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
-            .unwrap()
-            .world;
+        let loaded =
+            load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap())
+                .unwrap()
+                .world;
         assert_eq!(NeuronDisplay::of(&loaded), display);
     }
 
@@ -750,9 +1080,10 @@ mod tests {
     fn keeps_the_channels() {
         let mut world = World::new();
         crate::simulation::model::prepare(&mut world, Preparation::Mammal);
-        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
-            .unwrap()
-            .world;
+        let loaded =
+            load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap())
+                .unwrap()
+                .world;
         assert_eq!(Preparation::of(&loaded), Preparation::Mammal);
     }
 
@@ -765,9 +1096,10 @@ mod tests {
             ConnectionView::None,
         ] {
             view.set_in(&mut world);
-            let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
-                .unwrap()
-                .world;
+            let loaded =
+                load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap())
+                    .unwrap()
+                    .world;
             assert_eq!(count::<ConnectionView>(&loaded), 1);
             assert_eq!(ConnectionView::of(&loaded), view);
         }
@@ -782,9 +1114,10 @@ mod tests {
             ConnectionMode::FanOut,
         ] {
             stroke.set_in(&mut world);
-            let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
-                .unwrap()
-                .world;
+            let loaded =
+                load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap())
+                    .unwrap()
+                    .world;
             assert_eq!(count::<ConnectionMode>(&loaded), 1);
             assert_eq!(ConnectionMode::of(&loaded), stroke);
         }
@@ -808,9 +1141,10 @@ mod tests {
         });
         Selected::set(&mut world, Some(first));
         Selected::set(&mut world, Some(second));
-        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
-            .unwrap()
-            .world;
+        let loaded =
+            load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap())
+                .unwrap()
+                .world;
         assert_eq!(count::<Selected>(&loaded), 1);
         assert_eq!(Selected::entity(&loaded), Some(second));
     }
@@ -885,25 +1219,73 @@ mod tests {
         let dendrites = count::<Dendrite>(&world);
         assert!(dendrites > 0);
 
-        let loaded = load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap())
-            .unwrap()
-            .world;
+        let loaded =
+            load(&save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap())
+                .unwrap()
+                .world;
         assert_eq!(count::<Dendrite>(&loaded), dendrites);
         assert!(loaded.satisfies::<&CompartmentSoma>(soma));
     }
 
-    /// Writes `fixture_world` as `fixtures/v{VERSION}.neuronify`.
+    /// Writes `fixture_world` as `fixtures/v{WORLD_VERSION}.neuronify`.
     /// Run it when adding a version, so that version keeps loading:
     /// `cargo test -p neuronify-core write_fixture -- --ignored`
     #[test]
     #[ignore]
     fn write_fixture() {
         let path = format!(
-            "{}/src/serialization/fixtures/v{VERSION}.neuronify",
+            "{}/src/serialization/fixtures/v{WORLD_VERSION}.neuronify",
             env!("CARGO_MANIFEST_DIR")
         );
-        let bytes = save(&fixture_world(), FIXTURE_TIME, FIXTURE_SPEED).unwrap();
+        let bytes = save(
+            &fixture_world(),
+            FIXTURE_TIME,
+            FIXTURE_SPEED,
+            &Meta::default(),
+        )
+        .unwrap();
         std::fs::write(path, bytes).unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn write_files_from_a_newer_neuronify() {
+        let folder = format!("{}/tests/save_files", env!("CARGO_MANIFEST_DIR"));
+        std::fs::create_dir_all(&folder).unwrap();
+        let newer = Meta {
+            name: "Grid cells".to_owned(),
+            description: "Cells that fire in a grid of places as the animal explores.".to_owned(),
+            app: "9.0.0".to_owned(),
+        };
+        let meta = meta_part(&newer);
+        let meta = Part {
+            kind: META,
+            version: META_VERSION,
+            bytes: &meta,
+        };
+        let thumbnail = Part {
+            kind: "thumbnail",
+            version: 1,
+            bytes: &[0x80; 48],
+        };
+        let newer_world = Part {
+            kind: WORLD,
+            version: u32::MAX,
+            bytes: &[0x55; 24],
+        };
+        let leaky = load_from_bytes(LEAKY_NFY.as_bytes()).unwrap().world;
+        let saved = save(&leaky, FIXTURE_TIME, FIXTURE_SPEED, &newer).unwrap();
+        let world = world_of(&parts_of(&saved)).unwrap();
+        for (file, parts) in [
+            ("from_a_newer_neuronify", [meta, thumbnail, newer_world]),
+            (
+                "with_a_part_from_a_newer_neuronify",
+                [meta, thumbnail, world],
+            ),
+        ] {
+            let bytes = write_parts(&parts).unwrap();
+            std::fs::write(format!("{folder}/{file}.neuronify"), bytes).unwrap();
+        }
     }
 
     fn fixture_world() -> World {

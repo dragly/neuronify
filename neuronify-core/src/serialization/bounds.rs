@@ -387,10 +387,10 @@ mod tests {
     use crate::constants::DEFAULT_SPEED;
     use crate::elements::{spawn_voltmeter, Element};
     use crate::measurement::voltmeter::{measured, RollingWindow, VoltageMeasurement};
-    use crate::serialization::{load, read, save};
+    use crate::serialization::{load, read, save, Meta};
 
     fn saved(world: &World) -> Vec<u8> {
-        save(world, Milliseconds::ZERO, DEFAULT_SPEED).unwrap()
+        save(world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap()
     }
 
     fn files_in(folder: &Path, extension: &str) -> Vec<std::path::PathBuf> {

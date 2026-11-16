@@ -9,7 +9,7 @@ use neuronify_core::measurement::loudspeaker::Loudspeaker;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::visual_input::VisualInput;
 use neuronify_core::measurement::voltmeter::Voltmeter;
-use neuronify_core::serialization::{load, load_from_bytes, save};
+use neuronify_core::serialization::{load, load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
     neuron_type, AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Compartment,
@@ -169,7 +169,8 @@ fn spikes(file: &str, press: Option<Vec3>, reopen_at: Option<f64>) -> Vec<usize>
         }
         if Some(step) == reopen_step {
             engine.store(&mut world);
-            let saved = load(&save(&world, time, DEFAULT_SPEED).unwrap()).unwrap();
+            let saved =
+                load(&save(&world, time, DEFAULT_SPEED, &Meta::default()).unwrap()).unwrap();
             world = saved.world;
             time = saved.time;
             engine = Engine::starting_at(time);

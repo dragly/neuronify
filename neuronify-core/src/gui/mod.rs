@@ -12,7 +12,7 @@ mod stimulate_pulse;
 mod style;
 #[cfg(test)]
 mod tests;
-mod text_field;
+pub(crate) mod text_field;
 mod widgets;
 
 use egui::{

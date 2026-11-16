@@ -42,8 +42,13 @@ fn main() {
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/labs");
     std::fs::create_dir_all(folder).expect("the labs folder should be writable");
     for (file, world, speed) in labs() {
-        let bytes = neuronify_core::serialization::save(&world, Milliseconds::ZERO, speed)
-            .expect("the lab should save");
+        let bytes = neuronify_core::serialization::save(
+            &world,
+            Milliseconds::ZERO,
+            speed,
+            &neuronify_core::serialization::Meta::default(),
+        )
+        .expect("the lab should save");
         std::fs::write(format!("{folder}/{file}"), bytes)
             .expect("the labs folder should be writable");
         println!("Wrote {file}");

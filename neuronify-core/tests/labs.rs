@@ -11,7 +11,7 @@ use neuronify_core::constants::DT;
 use neuronify_core::editor::Editor;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::voltmeter::measured;
-use neuronify_core::serialization::{load_from_bytes, save};
+use neuronify_core::serialization::{load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::{
     neuron_type, Connection, ConnectionView, CurrentClamp, Hertz, Label, Milliseconds, Nanoamperes,
@@ -347,7 +347,7 @@ fn the_bundled_lab_files_match_their_generators() {
     for (file, world, speed) in write_labs::labs() {
         let path = format!("{}/examples/labs/{file}", env!("CARGO_MANIFEST_DIR"));
         let bundled = std::fs::read(path).unwrap();
-        let written = save(&world, Milliseconds::ZERO, speed).unwrap();
+        let written = save(&world, Milliseconds::ZERO, speed, &Meta::default()).unwrap();
         assert_eq!(bundled, written, "{file} is out of date");
     }
 }

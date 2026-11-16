@@ -6,6 +6,7 @@ mod folder;
 use chrono::{DateTime, Utc};
 
 use crate::components::Seconds;
+use crate::serialization::{self, Meta, LONGEST_DESCRIPTION};
 
 #[cfg(target_arch = "wasm32")]
 use browser::Store;
@@ -20,6 +21,7 @@ const LONGEST_NAME: usize = 50;
 pub struct SavedSimulation {
     pub id: String,
     pub name: String,
+    pub description: String,
     pub modified: DateTime<Utc>,
     pub bytes: Vec<u8>,
 }
@@ -43,12 +45,15 @@ impl Library {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn in_folder(store: Store) -> Library {
+    fn in_folder(mut store: Store) -> Library {
+        let read = store.read_all();
         let mut library = Library {
-            simulations: store.read_all(),
             store: Some(store),
             ..Default::default()
         };
+        for simulation in read {
+            library.add_read(simulation);
+        }
         library.sort();
         library
     }
@@ -66,7 +71,7 @@ impl Library {
         if let Some(loaded) = self.store.as_mut().and_then(Store::take_loaded) {
             for simulation in loaded {
                 if self.get(&simulation.id).is_none() {
-                    self.simulations.push(simulation);
+                    self.add_read(simulation);
                 }
             }
             self.changed();
@@ -91,11 +96,12 @@ impl Library {
         self.revision
     }
 
-    pub fn create(&mut self, name: &str, bytes: Vec<u8>) -> String {
+    pub fn create(&mut self, name: &str, description: &str, bytes: Vec<u8>) -> String {
         let id = new_id();
         self.save(SavedSimulation {
             id: id.clone(),
             name: name.to_owned(),
+            description: description.to_owned(),
             modified: Utc::now(),
             bytes,
         });
@@ -106,18 +112,24 @@ impl Library {
         let index = match self.simulations.iter().position(|s| s.id == simulation.id) {
             Some(index) => {
                 let saved = &mut self.simulations[index];
-                saved.bytes = simulation.bytes;
+                saved.bytes = with_details(simulation.bytes, &saved.name, &saved.description);
                 saved.modified = simulation.modified;
                 index
             }
             None => {
                 let name = self.unique_name(&simulation.name, None);
-                self.simulations
-                    .push(SavedSimulation { name, ..simulation });
+                let description = bounded_description(&simulation.description);
+                let bytes = with_details(simulation.bytes, &name, &description);
+                self.simulations.push(SavedSimulation {
+                    name,
+                    description,
+                    bytes,
+                    ..simulation
+                });
                 self.simulations.len() - 1
             }
         };
-        if let Some(store) = &self.store {
+        if let Some(store) = &mut self.store {
             if let Err(problem) = store.write(&self.simulations[index]) {
                 self.problems.push(problem);
             }
@@ -136,18 +148,26 @@ impl Library {
         }
     }
 
-    pub fn rename(&mut self, id: &str, name: &str) {
-        if name.trim().is_empty() {
-            return;
-        }
-        let name = self.unique_name(name, Some(id));
-        let Some(simulation) = self.simulations.iter_mut().find(|s| s.id == id) else {
+    pub fn edit_details(&mut self, id: &str, name: &str, description: &str) {
+        let Some(index) = self.simulations.iter().position(|s| s.id == id) else {
             return;
         };
-        let old_name = std::mem::replace(&mut simulation.name, name);
-        if let Some(store) = &self.store {
-            if let Err(problem) = store.rename(&old_name, simulation) {
-                simulation.name = old_name;
+        let name = match name.trim() {
+            "" => self.simulations[index].name.clone(),
+            name => self.unique_name(name, Some(id)),
+        };
+        let description = bounded_description(description);
+        let simulation = &mut self.simulations[index];
+        if simulation.name == name && simulation.description == description {
+            return;
+        }
+        let old = simulation.clone();
+        simulation.bytes = with_details(std::mem::take(&mut simulation.bytes), &name, &description);
+        simulation.name = name;
+        simulation.description = description;
+        if let Some(store) = &mut self.store {
+            if let Err(problem) = store.rename(&old.name, simulation) {
+                *simulation = old;
                 self.problems.push(problem);
             }
         }
@@ -159,10 +179,27 @@ impl Library {
             return;
         };
         let simulation = self.simulations.remove(index);
-        if let Some(store) = &self.store {
+        if let Some(store) = &mut self.store {
             store.delete(&simulation);
         }
         self.changed();
+    }
+
+    fn add_read(&mut self, simulation: SavedSimulation) {
+        let simulation = match serialization::meta(&simulation.bytes) {
+            Some(meta) => SavedSimulation {
+                name: match meta.name.trim() {
+                    "" => simulation.name,
+                    _ => meta.name,
+                },
+                description: bounded_description(&meta.description),
+                ..simulation
+            },
+            None => simulation,
+        };
+        let name = self.unique_name(&simulation.name, None);
+        self.simulations
+            .push(SavedSimulation { name, ..simulation });
     }
 
     fn changed(&mut self) {
@@ -202,6 +239,20 @@ impl Library {
     }
 }
 
+fn with_details(bytes: Vec<u8>, name: &str, description: &str) -> Vec<u8> {
+    serialization::with_details(&bytes, name, description).unwrap_or(bytes)
+}
+
+fn bounded_description(description: &str) -> String {
+    description
+        .trim()
+        .chars()
+        .take(LONGEST_DESCRIPTION)
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
 fn new_id() -> String {
     format!("{:016x}", rand::random::<u64>())
 }
@@ -209,25 +260,42 @@ fn new_id() -> String {
 pub struct Autosave {
     id: String,
     name: String,
+    description: String,
     last_edit: Option<Seconds>,
 }
 
 impl Autosave {
-    pub fn copy_of(name: &str) -> Autosave {
+    pub fn copy_of(name: &str, description: &str) -> Autosave {
         Autosave {
             id: new_id(),
             name: name.to_owned(),
+            description: description.to_owned(),
             last_edit: None,
         }
     }
 
     pub fn saved(library: &Library, id: String) -> Autosave {
+        let (name, description) = match library.get(&id) {
+            Some(simulation) => (simulation.name.clone(), simulation.description.clone()),
+            None => (UNTITLED.to_owned(), String::new()),
+        };
         Autosave {
-            name: library
-                .get(&id)
-                .map_or(UNTITLED.to_owned(), |simulation| simulation.name.clone()),
             id,
+            name,
+            description,
             last_edit: None,
+        }
+    }
+
+    pub fn meta(&self, library: &Library, app: &str) -> Meta {
+        let (name, description) = match library.get(&self.id) {
+            Some(simulation) => (&simulation.name, &simulation.description),
+            None => (&self.name, &self.description),
+        };
+        Meta {
+            name: name.clone(),
+            description: description.clone(),
+            app: app.to_owned(),
         }
     }
 
@@ -262,6 +330,7 @@ impl Autosave {
         SavedSimulation {
             id: self.id.clone(),
             name: self.name.clone(),
+            description: self.description.clone(),
             modified: Utc::now(),
             bytes,
         }
@@ -275,9 +344,9 @@ mod tests {
     #[test]
     fn names_stay_unique_regardless_of_case() {
         let mut library = Library::default();
-        let first = library.create("Leaky", vec![]);
-        let second = library.create("leaky", vec![]);
-        let third = library.create("Leaky", vec![]);
+        let first = library.create("Leaky", "", vec![]);
+        let second = library.create("leaky", "", vec![]);
+        let third = library.create("Leaky", "", vec![]);
         let names: Vec<&str> = [&first, &second, &third]
             .map(|id| library.get(id).unwrap().name.as_str())
             .to_vec();
@@ -287,21 +356,21 @@ mod tests {
     #[test]
     fn renaming_keeps_names_unique_and_ignores_blank_names() {
         let mut library = Library::default();
-        library.create("Leaky", vec![]);
-        let other = library.create("Circuit", vec![]);
-        library.rename(&other, "Leaky");
+        library.create("Leaky", "", vec![]);
+        let other = library.create("Circuit", "", vec![]);
+        library.edit_details(&other, "Leaky", "");
         assert_eq!(library.get(&other).unwrap().name, "Leaky 2");
-        library.rename(&other, "  ");
+        library.edit_details(&other, "  ", "");
         assert_eq!(library.get(&other).unwrap().name, "Leaky 2");
-        library.rename(&other, "Leaky 2");
+        library.edit_details(&other, "Leaky 2", "");
         assert_eq!(library.get(&other).unwrap().name, "Leaky 2");
     }
 
     #[test]
     fn newest_first() {
         let mut library = Library::default();
-        let older = library.create("Older", vec![]);
-        let newer = library.create("Newer", vec![]);
+        let older = library.create("Older", "", vec![]);
+        let newer = library.create("Newer", "", vec![]);
         for simulation in &mut library.simulations {
             simulation.modified = DateTime::UNIX_EPOCH;
             if simulation.id == newer {
@@ -320,9 +389,9 @@ mod tests {
     #[test]
     fn every_change_bumps_the_revision() {
         let mut library = Library::default();
-        let id = library.create("Leaky", vec![]);
+        let id = library.create("Leaky", "", vec![]);
         Autosave::saved(&library, id.clone()).save(&mut library, vec![1]);
-        library.rename(&id, "Renamed");
+        library.edit_details(&id, "Renamed", "");
         library.delete(&id);
         assert_eq!(library.revision(), 4);
         assert!(library.simulations().is_empty());
@@ -331,10 +400,11 @@ mod tests {
     #[test]
     fn saving_updates_a_known_simulation_or_adds_it_under_a_unique_name() {
         let mut library = Library::default();
-        let id = library.create("Leaky", vec![1]);
+        let id = library.create("Leaky", "", vec![1]);
         let simulation = |id: &str, bytes: Vec<u8>| SavedSimulation {
             id: id.to_owned(),
             name: "Leaky".to_owned(),
+            description: String::new(),
             modified: Utc::now(),
             bytes,
         };
@@ -351,7 +421,7 @@ mod tests {
     #[test]
     fn a_copy_is_saved_on_its_first_edit_and_updated_after_that() {
         let mut library = Library::default();
-        let mut autosave = Autosave::copy_of("Leaky");
+        let mut autosave = Autosave::copy_of("Leaky", "");
         assert!(!autosave.is_due(Seconds(10.0)));
 
         autosave.edited(Seconds(1.0));
@@ -371,7 +441,7 @@ mod tests {
     #[test]
     fn a_copy_is_in_the_library_only_once_it_has_been_saved() {
         let mut library = Library::default();
-        let mut copy = Autosave::copy_of("Leaky");
+        let mut copy = Autosave::copy_of("Leaky", "");
         assert!(!copy.is_in(&library));
 
         copy.edited(Seconds(0.0));
@@ -383,7 +453,7 @@ mod tests {
     #[test]
     fn a_deleted_simulation_comes_back_when_edited_again() {
         let mut library = Library::default();
-        let id = library.create("Leaky", vec![1]);
+        let id = library.create("Leaky", "", vec![1]);
         let mut autosave = Autosave::saved(&library, id.clone());
         library.delete(&id);
 
@@ -393,6 +463,150 @@ mod tests {
         assert_eq!(
             (restored.name.as_str(), &restored.bytes[..]),
             ("Leaky", &[2][..])
+        );
+    }
+
+    fn file(name: &str, description: &str) -> Vec<u8> {
+        let meta = Meta {
+            name: name.to_owned(),
+            description: description.to_owned(),
+            app: "2.0.0".to_owned(),
+        };
+        serialization::save(
+            &hecs::World::new(),
+            crate::components::Milliseconds::ZERO,
+            crate::constants::DEFAULT_SPEED,
+            &meta,
+        )
+        .unwrap()
+    }
+
+    fn read(name: &str, bytes: Vec<u8>) -> SavedSimulation {
+        SavedSimulation {
+            id: new_id(),
+            name: name.to_owned(),
+            description: String::new(),
+            modified: Utc::now(),
+            bytes,
+        }
+    }
+
+    fn details(bytes: &[u8]) -> (String, String) {
+        let meta = serialization::meta(bytes).unwrap();
+        (meta.name, meta.description)
+    }
+
+    #[test]
+    fn the_name_and_description_in_a_file_win_over_the_name_it_was_stored_under() {
+        let mut library = Library::default();
+        library.add_read(read("leaky (1)", file("Leaky", "Leaks.")));
+        library.add_read(read("Old file", vec![1, 2, 3]));
+        library.add_read(read("Example copy", file(" ", "Has no name.")));
+        let details: Vec<(&str, &str)> = library
+            .simulations()
+            .iter()
+            .map(|s| (s.name.as_str(), s.description.as_str()))
+            .collect();
+        assert_eq!(
+            details,
+            [
+                ("Leaky", "Leaks."),
+                ("Old file", ""),
+                ("Example copy", "Has no name.")
+            ]
+        );
+    }
+
+    #[test]
+    fn two_files_with_the_same_name_are_told_apart() {
+        let mut library = Library::default();
+        library.add_read(read("a", file("Leaky", "")));
+        library.add_read(read("b", file("Leaky", "")));
+        let names: Vec<&str> = library
+            .simulations()
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+        assert_eq!(names, ["Leaky", "Leaky 2"]);
+    }
+
+    #[test]
+    fn saving_writes_the_name_the_library_gave_into_the_file() {
+        let mut library = Library::default();
+        library.create("Leaky", "", file("Leaky", ""));
+        let second = library.create("Leaky", "Leaks.", file("Leaky", "Leaks."));
+        let saved = library.get(&second).unwrap();
+        assert_eq!(saved.name, "Leaky 2");
+        assert_eq!(
+            details(&saved.bytes),
+            ("Leaky 2".to_owned(), "Leaks.".to_owned())
+        );
+        assert_eq!(serialization::meta(&saved.bytes).unwrap().app, "2.0.0");
+    }
+
+    #[test]
+    fn editing_the_details_rewrites_the_file() {
+        let mut library = Library::default();
+        let id = library.create("Leaky", "", file("Leaky", ""));
+        library.edit_details(&id, "Renamed", "  Leaks slowly.  ");
+        let edited = library.get(&id).unwrap();
+        assert_eq!(edited.description, "Leaks slowly.");
+        assert_eq!(
+            details(&edited.bytes),
+            ("Renamed".to_owned(), "Leaks slowly.".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_blank_name_keeps_the_name_but_takes_the_description() {
+        let mut library = Library::default();
+        let id = library.create("Leaky", "", file("Leaky", ""));
+        library.edit_details(&id, " ", "Leaks.");
+        let edited = library.get(&id).unwrap();
+        assert_eq!(
+            (edited.name.as_str(), edited.description.as_str()),
+            ("Leaky", "Leaks.")
+        );
+    }
+
+    #[test]
+    fn descriptions_are_bounded() {
+        let mut library = Library::default();
+        let id = library.create("Leaky", "", file("Leaky", ""));
+        library.edit_details(&id, "Leaky", &"a".repeat(2 * LONGEST_DESCRIPTION));
+        assert_eq!(
+            library.get(&id).unwrap().description.len(),
+            LONGEST_DESCRIPTION
+        );
+    }
+
+    #[test]
+    fn autosaves_keep_the_details_given_in_the_library() {
+        let mut library = Library::default();
+        let mut autosave = Autosave::copy_of("1. Spikes", "Press the touch sensor.");
+        autosave.edited(Seconds(0.0));
+        autosave.save(&mut library, file("1. Spikes", "Press the touch sensor."));
+        let id = autosave.id.clone();
+        assert_eq!(
+            library.get(&id).unwrap().description,
+            "Press the touch sensor."
+        );
+
+        library.edit_details(&id, "My spikes", "Mine now.");
+        let meta = autosave.meta(&library, "2.1.0");
+        assert_eq!(
+            (
+                meta.name.as_str(),
+                meta.description.as_str(),
+                meta.app.as_str()
+            ),
+            ("My spikes", "Mine now.", "2.1.0")
+        );
+        autosave.edited(Seconds(1.0));
+        autosave.save(&mut library, file("1. Spikes", "Press the touch sensor."));
+        assert_eq!(
+            details(&library.get(&id).unwrap().bytes),
+            ("My spikes".to_owned(), "Mine now.".to_owned())
         );
     }
 }

@@ -614,13 +614,6 @@ fn flip_hidden_switch() -> Result<(), JsValue> {
     Ok(())
 }
 
-pub fn prompt(message: &str, default: &str) -> Option<String> {
-    web_sys::window()?
-        .prompt_with_message_and_default(message, default)
-        .ok()
-        .flatten()
-}
-
 fn file(bytes: &[u8], name: &str) -> Result<File, JsValue> {
     let parts = js_sys::Array::of1(&js_sys::Uint8Array::from(bytes));
     let options = FilePropertyBag::new();

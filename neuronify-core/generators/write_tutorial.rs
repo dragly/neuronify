@@ -54,8 +54,13 @@ fn main() {
         let path = directory.join(file);
         std::fs::write(
             &path,
-            serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED)
-                .expect("the canvas should save"),
+            serialization::save(
+                &world,
+                Milliseconds::ZERO,
+                DEFAULT_SPEED,
+                &serialization::Meta::default(),
+            )
+            .expect("the canvas should save"),
         )
         .expect("the tutorial folder should be writable");
         println!("Wrote {}", path.display());
