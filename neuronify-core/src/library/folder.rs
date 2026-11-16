@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
@@ -9,6 +10,7 @@ const ESCAPED: &[char] = &['<', '>', ':', '"', '/', '\\', '|', '?', '*', '%'];
 
 pub struct Store {
     directory: PathBuf,
+    files: HashMap<String, PathBuf>,
 }
 
 #[cfg(target_os = "windows")]
@@ -36,44 +38,74 @@ impl Store {
     }
 
     pub fn new(directory: PathBuf) -> Store {
-        Store { directory }
+        Store {
+            directory,
+            files: HashMap::new(),
+        }
     }
 
-    pub fn read_all(&self) -> Vec<SavedSimulation> {
+    pub fn read_all(&mut self) -> Vec<SavedSimulation> {
         let Ok(entries) = std::fs::read_dir(&self.directory) else {
             return Vec::new();
         };
-        entries
+        let read: Vec<(PathBuf, SavedSimulation)> = entries
             .filter_map(|entry| {
                 let path = entry.ok()?.path();
                 let name = name_of(path.file_name()?.to_str()?)?;
                 read(&path, name)
                     .map_err(|e| log::error!("Could not read {}: {e}", path.display()))
                     .ok()
+                    .map(|simulation| (path, simulation))
+            })
+            .collect();
+        read.into_iter()
+            .map(|(path, simulation)| {
+                self.files.insert(simulation.id.clone(), path);
+                simulation
             })
             .collect()
     }
 
-    pub fn write(&self, simulation: &SavedSimulation) -> Result<(), String> {
-        let path = self.path(&simulation.name);
+    pub fn write(&mut self, simulation: &SavedSimulation) -> Result<(), String> {
+        let path = match self.files.get(&simulation.id) {
+            Some(path) => path.clone(),
+            None => self.free_path(&simulation.name, &simulation.id),
+        };
         std::fs::create_dir_all(&self.directory)
             .and_then(|()| std::fs::write(&path, &simulation.bytes))
-            .map_err(|error| format!("Could not write {}: {error}", path.display()))
+            .map_err(|error| format!("Could not write {}: {error}", path.display()))?;
+        self.files.insert(simulation.id.clone(), path);
+        Ok(())
     }
 
-    pub fn rename(&self, old_name: &str, simulation: &SavedSimulation) -> Result<(), String> {
-        let (from, to) = (self.path(old_name), self.path(&simulation.name));
+    pub fn rename(&mut self, old_name: &str, simulation: &SavedSimulation) -> Result<(), String> {
+        let from = match self.files.get(&simulation.id) {
+            Some(path) => path.clone(),
+            None => self.path(old_name),
+        };
+        let wanted = self.path(&simulation.name);
+        let to = if self.is_free(&wanted, &simulation.id) || is_same_file(&wanted, &from) {
+            wanted
+        } else {
+            self.free_path(&simulation.name, &simulation.id)
+        };
         std::fs::rename(&from, &to).map_err(|error| {
             format!(
                 "Could not rename {} to {}: {error}",
                 from.display(),
                 to.display()
             )
-        })
+        })?;
+        self.files.insert(simulation.id.clone(), to.clone());
+        std::fs::write(&to, &simulation.bytes)
+            .map_err(|error| format!("Could not write {}: {error}", to.display()))
     }
 
-    pub fn delete(&self, simulation: &SavedSimulation) {
-        let path = self.path(&simulation.name);
+    pub fn delete(&mut self, simulation: &SavedSimulation) {
+        let path = match self.files.remove(&simulation.id) {
+            Some(path) => path,
+            None => self.path(&simulation.name),
+        };
         if let Err(error) = std::fs::remove_file(&path) {
             log::error!("Could not delete {}: {error}", path.display());
         }
@@ -82,6 +114,38 @@ impl Store {
     fn path(&self, name: &str) -> PathBuf {
         self.directory.join(file_name(name))
     }
+
+    fn free_path(&self, name: &str, id: &str) -> PathBuf {
+        (1..)
+            .map(|number| match number {
+                1 => self.path(name),
+                _ => self.path(&format!("{name} {number}")),
+            })
+            .find(|path| self.is_free(path, id))
+            .unwrap_or_else(|| self.path(name))
+    }
+
+    fn is_free(&self, path: &Path, id: &str) -> bool {
+        let lowercase = path.to_string_lossy().to_lowercase();
+        !path.exists()
+            && !self.files.iter().any(|(owner, owned)| {
+                owner != id && owned.to_string_lossy().to_lowercase() == lowercase
+            })
+    }
+}
+
+#[cfg(unix)]
+fn is_same_file(a: &Path, b: &Path) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    match (std::fs::metadata(a), std::fs::metadata(b)) {
+        (Ok(a), Ok(b)) => (a.dev(), a.ino()) == (b.dev(), b.ino()),
+        _ => false,
+    }
+}
+
+#[cfg(not(unix))]
+fn is_same_file(a: &Path, b: &Path) -> bool {
+    a.to_string_lossy().to_lowercase() == b.to_string_lossy().to_lowercase()
 }
 
 fn read(path: &Path, name: String) -> std::io::Result<SavedSimulation> {
@@ -89,6 +153,7 @@ fn read(path: &Path, name: String) -> std::io::Result<SavedSimulation> {
     Ok(SavedSimulation {
         id: format!("{:016x}", rand::random::<u64>()),
         name,
+        description: String::new(),
         modified: DateTime::<Utc>::from(modified),
         bytes: std::fs::read(path)?,
     })
@@ -203,7 +268,7 @@ mod tests {
     #[test]
     fn the_longest_name_still_makes_a_file_name_most_file_systems_allow() {
         let mut library = Library::default();
-        let id = library.create(&"\u{1F9E0}".repeat(300), Vec::new());
+        let id = library.create(&"\u{1F9E0}".repeat(300), "", Vec::new());
         let name = &library.get(&id).unwrap().name;
         assert!(file_name(&format!("{name} 999")).len() <= 255);
     }
@@ -212,10 +277,10 @@ mod tests {
     fn a_failed_rename_keeps_the_old_name_and_says_why() {
         let directory = TemporaryDirectory::new("rename");
         let mut library = Library::in_folder(Store::new(directory.0.clone()));
-        let id = library.create("Leaky", vec![1]);
+        let id = library.create("Leaky", "", vec![1]);
         std::fs::remove_file(directory.0.join(file_name("Leaky"))).unwrap();
 
-        library.rename(&id, "Renamed");
+        library.edit_details(&id, "Renamed", "");
 
         assert_eq!(library.get(&id).unwrap().name, "Leaky");
         assert!(library
@@ -229,7 +294,7 @@ mod tests {
         std::fs::write(&directory.0, b"not a folder").unwrap();
         let mut library = Library::in_folder(Store::new(directory.0.clone()));
 
-        library.create("Leaky", vec![1]);
+        library.create("Leaky", "", vec![1]);
 
         assert!(library
             .take_problem()
@@ -240,11 +305,11 @@ mod tests {
     fn simulations_survive_a_restart() {
         let directory = TemporaryDirectory::new("restart");
         let mut library = Library::in_folder(Store::new(directory.0.clone()));
-        let kept = library.create("Tutorial 1: Intro", vec![1, 2, 3]);
-        let renamed = library.create("Leaky", vec![4]);
-        let deleted = library.create("Burst", vec![5]);
+        let kept = library.create("Tutorial 1: Intro", "", vec![1, 2, 3]);
+        let renamed = library.create("Leaky", "", vec![4]);
+        let deleted = library.create("Burst", "", vec![5]);
         Autosave::saved(&library, kept).save(&mut library, vec![6, 7]);
-        library.rename(&renamed, "Renamed");
+        library.edit_details(&renamed, "Renamed", "");
         library.delete(&deleted);
 
         let reopened = Library::in_folder(Store::new(directory.0.clone()));
@@ -257,6 +322,92 @@ mod tests {
         assert_eq!(
             saved,
             [("Renamed", &[4][..]), ("Tutorial 1: Intro", &[6, 7][..])]
+        );
+    }
+
+    fn file(name: &str) -> Vec<u8> {
+        let meta = crate::serialization::Meta {
+            name: name.to_owned(),
+            ..Default::default()
+        };
+        crate::serialization::save(
+            &hecs::World::new(),
+            crate::components::Milliseconds::ZERO,
+            crate::constants::DEFAULT_SPEED,
+            &meta,
+        )
+        .unwrap()
+    }
+
+    fn files_in(directory: &Path) -> Vec<String> {
+        let mut files: Vec<String> = std::fs::read_dir(directory)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        files.sort();
+        files
+    }
+
+    #[test]
+    fn a_file_renamed_by_hand_keeps_its_name_and_its_file() {
+        let directory = TemporaryDirectory::new("by-hand");
+        let mut library = Library::in_folder(Store::new(directory.0.clone()));
+        library.create("Leaky", "", file("Leaky"));
+        std::fs::rename(
+            directory.0.join("Leaky.neuronify"),
+            directory.0.join("Mine.neuronify"),
+        )
+        .unwrap();
+
+        let mut reopened = Library::in_folder(Store::new(directory.0.clone()));
+        let simulation = reopened.simulations()[0].clone();
+        assert_eq!(simulation.name, "Leaky");
+        Autosave::saved(&reopened, simulation.id).save(&mut reopened, file("Leaky"));
+
+        assert_eq!(files_in(&directory.0), ["Mine.neuronify"]);
+    }
+
+    #[test]
+    fn simulations_never_overwrite_a_file_they_did_not_write() {
+        let directory = TemporaryDirectory::new("overwrite");
+        std::fs::create_dir_all(&directory.0).unwrap();
+        std::fs::write(directory.0.join("Other.neuronify"), file("Leaky")).unwrap();
+        let mut library = Library::in_folder(Store::new(directory.0.clone()));
+
+        library.create("Other", "", file("Other"));
+        let renamed = library.create("Burst", "", file("Burst"));
+        library.edit_details(&renamed, "other ", "");
+
+        assert_eq!(
+            files_in(&directory.0),
+            [
+                "Other 2.neuronify",
+                "Other.neuronify",
+                "other 2 2.neuronify"
+            ]
+        );
+        let reopened = Library::in_folder(Store::new(directory.0.clone()));
+        let mut names: Vec<&str> = reopened
+            .simulations()
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["Leaky", "Other", "other 2"]);
+    }
+
+    #[test]
+    fn changing_only_the_case_of_a_name_renames_the_file() {
+        let directory = TemporaryDirectory::new("case");
+        let mut library = Library::in_folder(Store::new(directory.0.clone()));
+        let id = library.create("Leaky", "", file("Leaky"));
+        library.edit_details(&id, "leaky", "Leaks.");
+        assert_eq!(files_in(&directory.0), ["leaky.neuronify"]);
+        let reopened = Library::in_folder(Store::new(directory.0.clone()));
+        let simulation = &reopened.simulations()[0];
+        assert_eq!(
+            (simulation.name.as_str(), simulation.description.as_str()),
+            ("leaky", "Leaks.")
         );
     }
 }

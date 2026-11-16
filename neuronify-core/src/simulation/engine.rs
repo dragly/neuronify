@@ -2010,7 +2010,13 @@ mod tests {
             .iter()
             .any(|&node| unbroken.voltage(node) > Millivolts::ZERO));
         unbroken.engine.store(&mut unbroken.world);
-        let bytes = crate::serialization::save(&unbroken.world, unbroken.time, 1.0).unwrap();
+        let bytes = crate::serialization::save(
+            &unbroken.world,
+            unbroken.time,
+            1.0,
+            &crate::serialization::Meta::default(),
+        )
+        .unwrap();
         let saved = crate::serialization::load(&bytes).unwrap();
         let mut loaded = Run {
             world: saved.world,
@@ -2068,7 +2074,13 @@ mod tests {
             assert!(unbroken.now() < Milliseconds(500.0));
         }
         unbroken.engine.store(&mut unbroken.world);
-        let bytes = crate::serialization::save(&unbroken.world, unbroken.time, 1.0).unwrap();
+        let bytes = crate::serialization::save(
+            &unbroken.world,
+            unbroken.time,
+            1.0,
+            &crate::serialization::Meta::default(),
+        )
+        .unwrap();
         let saved = crate::serialization::load(&bytes).unwrap();
         let mut loaded = Run {
             world: saved.world,

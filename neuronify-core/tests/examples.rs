@@ -587,6 +587,7 @@ fn the_bundled_example_files_match_their_generators() {
             &world,
             Milliseconds::ZERO,
             neuronify_core::constants::DEFAULT_SPEED,
+            &neuronify_core::serialization::Meta::default(),
         )
         .unwrap();
         assert_eq!(bundled, written, "{file} is out of date");

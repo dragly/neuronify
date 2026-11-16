@@ -809,8 +809,13 @@ pub fn examples() -> Vec<(&'static str, World)> {
 fn main() {
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/examples");
     for (file, world) in examples() {
-        let bytes = neuronify_core::serialization::save(&world, Milliseconds::ZERO, DEFAULT_SPEED)
-            .expect("the example should save");
+        let bytes = neuronify_core::serialization::save(
+            &world,
+            Milliseconds::ZERO,
+            DEFAULT_SPEED,
+            &neuronify_core::serialization::Meta::default(),
+        )
+        .expect("the example should save");
         std::fs::write(format!("{folder}/{file}"), bytes)
             .expect("the examples folder should be writable");
         println!("Wrote {file}");

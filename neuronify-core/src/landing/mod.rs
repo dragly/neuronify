@@ -109,6 +109,7 @@ pub enum LandingChoice {
     },
     Example {
         name: &'static str,
+        description: &'static str,
         world: Box<World>,
     },
     BackToSimulation,
@@ -164,18 +165,41 @@ struct ExampleCard {
 struct SavedCard {
     id: String,
     name: String,
+    description: String,
     modified: DateTime<Utc>,
-    preview: Result<Preview, String>,
+    preview: Result<Preview, Unopenable>,
+}
+
+enum Unopenable {
+    TooNew { app: String },
+    Damaged(String),
 }
 
 impl SavedCard {
     fn new(simulation: &SavedSimulation) -> SavedCard {
+        let bytes = &simulation.bytes;
+        let preview = match crate::serialization::load(bytes) {
+            Ok(saved) => Ok(Preview::new(saved.world, saved.time)),
+            Err(_) if crate::serialization::is_too_new(bytes) => Err(Unopenable::TooNew {
+                app: crate::serialization::meta(bytes)
+                    .map(|meta| meta.app)
+                    .unwrap_or_default(),
+            }),
+            Err(error) => Err(Unopenable::Damaged(error)),
+        };
         SavedCard {
             id: simulation.id.clone(),
             name: simulation.name.clone(),
+            description: simulation.description.clone(),
             modified: simulation.modified,
-            preview: crate::serialization::load(&simulation.bytes)
-                .map(|saved| Preview::new(saved.world, saved.time)),
+            preview,
+        }
+    }
+
+    fn made_with(&self) -> Option<String> {
+        match &self.preview {
+            Err(Unopenable::TooNew { app }) => Some(app.clone()),
+            _ => None,
         }
     }
 }
@@ -300,6 +324,10 @@ impl LandingScreen {
             }
             Picked::Card(Card::NewSimulation) => Some(LandingChoice::NewSimulation),
             Picked::Card(Card::Saved(index)) => {
+                if let Err(Unopenable::TooNew { app }) = &self.saved[index].preview {
+                    self.dialogs.too_new(app);
+                    return None;
+                }
                 let id = self.saved[index].id.clone();
                 let simulation = library.get(&id)?;
                 let saved = crate::serialization::load(&simulation.bytes).ok()?;
@@ -318,6 +346,7 @@ impl LandingScreen {
                     .ok()?;
                 Some(LandingChoice::Example {
                     name: example.name,
+                    description: example.description,
                     world: Box::new(world),
                 })
             }
@@ -342,6 +371,7 @@ impl LandingScreen {
                 match unchanged {
                     Some(index) => SavedCard {
                         name: simulation.name.clone(),
+                        description: simulation.description.clone(),
                         ..previous.swap_remove(index)
                     },
                     None => SavedCard::new(simulation),
@@ -485,14 +515,18 @@ impl LandingScreen {
             ),
             Card::Saved(index) => {
                 let card = &self.saved[index];
-                let description = match &card.preview {
-                    Ok(_) => edited(
-                        card.modified.with_timezone(&Local).naive_local(),
-                        Local::now().date_naive(),
+                let (description, description_rows) = match &card.preview {
+                    Err(Unopenable::Damaged(error)) => (error.clone(), 1),
+                    _ if !card.description.is_empty() => (card.description.clone(), rows),
+                    _ => (
+                        edited(
+                            card.modified.with_timezone(&Local).naive_local(),
+                            Local::now().date_naive(),
+                        ),
+                        1,
                     ),
-                    Err(error) => error.clone(),
                 };
-                (card.name.clone(), description, 1)
+                (card.name.clone(), description, description_rows)
             }
             Card::Example { category, index } => {
                 let example = self.examples_by_category[category][index].example;
@@ -563,6 +597,10 @@ impl LandingScreen {
                 for (&card, [name, description]) in row.iter().zip(texts) {
                     let (rect, response) = ui.allocate_exact_size(card_size, Sense::click());
                     let on_screen = ui.is_rect_visible(rect);
+                    let made_with = match card {
+                        Card::Saved(index) => self.saved[index].made_with(),
+                        _ => None,
+                    };
                     let previewed = match card {
                         Card::More { section, .. } => self.cards(section)[CARDS_PER_SECTION - 1],
                         Card::Folder { category } => Card::Example { category, index: 0 },
@@ -625,6 +663,12 @@ impl LandingScreen {
                             theme,
                             &mut self.still_drawing_deadline,
                         ),
+                        (_, None) if made_with.is_some() => paint_too_new(
+                            &thumbnail_painter,
+                            thumbnail,
+                            made_with.as_deref().unwrap_or_default(),
+                            colors.subtext,
+                        ),
                         (_, None) => {}
                     }
                     let name_position = pos2(
@@ -656,7 +700,7 @@ impl LandingScreen {
         match action {
             Some(CardAction::Rename(index)) => {
                 let card = &self.saved[index];
-                self.dialogs.rename(&card.id, &card.name);
+                self.dialogs.rename(&card.id, &card.name, &card.description);
             }
             Some(CardAction::Delete(index)) => {
                 let card = &self.saved[index];
@@ -790,6 +834,29 @@ fn edited(modified: NaiveDateTime, today: NaiveDate) -> String {
     } else {
         modified.format("%-d %B %Y").to_string()
     }
+}
+
+fn needs_newer_neuronify(app: &str) -> String {
+    match app {
+        "" => "Needs a newer Neuronify".to_owned(),
+        app => format!("Needs a newer Neuronify (at least {app})"),
+    }
+}
+
+fn paint_too_new(painter: &Painter, area: Rect, app: &str, color: Color32) {
+    let mut job = LayoutJob::simple(
+        needs_newer_neuronify(app),
+        FontId::proportional(13.5),
+        color,
+        area.width() - 2.0 * CARD_PADDING,
+    );
+    job.halign = Align::Center;
+    let text = painter.layout_job(job);
+    painter.galley(
+        pos2(area.center().x, area.center().y - text.size().y / 2.0),
+        text,
+        color,
+    );
 }
 
 fn paint_plus(painter: &Painter, area: Rect, color: Color32) {
@@ -1038,8 +1105,14 @@ mod tests {
         let mut library = Library::default();
         for name in names {
             let time = Milliseconds(1000.0);
-            let bytes = crate::serialization::save(&saved_example(), time, SAVED_SPEED).unwrap();
-            library.create(name, bytes);
+            let bytes = crate::serialization::save(
+                &saved_example(),
+                time,
+                SAVED_SPEED,
+                &crate::serialization::Meta::default(),
+            )
+            .unwrap();
+            library.create(name, "", bytes);
         }
         library
     }
@@ -1177,7 +1250,8 @@ mod tests {
     }
 
     fn as_saved(world: &World, time: Milliseconds, speed: f64) -> Vec<u8> {
-        crate::serialization::save(world, time, speed).unwrap()
+        crate::serialization::save(world, time, speed, &crate::serialization::Meta::default())
+            .unwrap()
     }
 
     #[test]
@@ -1201,7 +1275,7 @@ mod tests {
         );
         let (_, choice) = run(&context, &mut landing, vec![click(false)]);
 
-        let Some(LandingChoice::Example { name, world }) = choice else {
+        let Some(LandingChoice::Example { name, world, .. }) = choice else {
             panic!("clicking the card did not open an example");
         };
         assert_eq!(world.query::<(Entity, &LeakyNeuron)>().iter().count(), 2);
@@ -1408,9 +1482,11 @@ mod tests {
         assert_eq!(opened, id);
         assert_eq!(time, Milliseconds(1000.0));
         assert_eq!(speed, SAVED_SPEED);
+        let saved = &library.simulations()[0];
+        let opened = as_saved(&world, time, speed);
         assert_eq!(
-            as_saved(&world, time, speed),
-            library.simulations()[0].bytes,
+            crate::serialization::with_details(&opened, &saved.name, &saved.description),
+            Some(saved.bytes.clone()),
             "the simulation did not open as it was saved"
         );
     }
@@ -1422,7 +1498,7 @@ mod tests {
         let mut landing = LandingScreen::new(false);
         run_with(&context, &mut landing, &mut library, vec![]);
         let id = library.simulations()[0].id.clone();
-        library.rename(&id, "Renamed");
+        library.edit_details(&id, "Renamed", "");
         let other = library.simulations()[1].id.clone();
         library.delete(&other);
         let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
@@ -1530,6 +1606,121 @@ mod tests {
         run_with(&context, &mut landing, &mut library, vec![enter]);
         assert_eq!(library.simulations()[0].name, "Mine too");
         assert!(!landing.dialogs.is_open());
+    }
+
+    fn texts(output: &egui::FullOutput) -> Vec<String> {
+        output
+            .shapes
+            .iter()
+            .filter_map(|clipped| match &clipped.shape {
+                Shape::Text(shape) => Some(shape.galley.text().to_owned()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn describing_from_the_card_menu_shows_the_description_instead_of_the_date() {
+        let context = egui::Context::default();
+        let mut library = library_with(&["Mine"]);
+        let mut landing = LandingScreen::new(false);
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        assert!(texts(&output)
+            .iter()
+            .any(|text| text.starts_with("Today at")));
+        let primary = PointerButton::Primary;
+        let secondary = PointerButton::Secondary;
+        click_text(
+            &context,
+            &mut landing,
+            &mut library,
+            &output,
+            "Mine",
+            secondary,
+        );
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        click_text(
+            &context,
+            &mut landing,
+            &mut library,
+            &output,
+            "Rename…",
+            primary,
+        );
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        let label = text_position(&output, "Description").expect("no description field");
+        click(
+            &context,
+            &mut landing,
+            &mut library,
+            label + vec2(10.0, 35.0),
+            primary,
+        );
+        let typed = vec![Event::Text("Leaks slowly.".to_owned())];
+        run_with(&context, &mut landing, &mut library, typed);
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        click_text(
+            &context,
+            &mut landing,
+            &mut library,
+            &output,
+            "Save",
+            primary,
+        );
+
+        let saved = &library.simulations()[0];
+        assert_eq!(
+            (saved.name.as_str(), saved.description.as_str()),
+            ("Mine", "Leaks slowly.")
+        );
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        assert!(text_position(&output, "Leaks slowly.").is_some());
+        assert!(!texts(&output)
+            .iter()
+            .any(|text| text.starts_with("Today at")));
+    }
+
+    #[test]
+    fn a_file_too_new_to_name_its_neuronify_still_says_it_needs_a_newer_one() {
+        let context = egui::Context::default();
+        let mut library = Library::default();
+        let mut future = b"neuronify".to_vec();
+        future.extend_from_slice(&(crate::serialization::CONTAINER_VERSION + 1).to_le_bytes());
+        library.create("Future", "", future);
+        let mut landing = LandingScreen::new(false);
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        assert!(text_position(&output, "Future").is_some());
+        assert!(text_position(&output, "Needs a newer Neuronify").is_some());
+    }
+
+    #[test]
+    fn a_simulation_from_a_newer_neuronify_shows_its_details_and_explains_why_it_does_not_open() {
+        let context = egui::Context::default();
+        let mut library = Library::default();
+        let newer = include_bytes!("../../tests/save_files/from_a_newer_neuronify.neuronify");
+        let meta = crate::serialization::meta(newer).unwrap();
+        library.create(&meta.name, &meta.description, newer.to_vec());
+        let mut landing = LandingScreen::new(false);
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        assert!(text_position(&output, "Grid cells").is_some());
+        assert!(text_position(&output, &meta.description).is_some());
+        assert!(text_position(&output, "Needs a newer Neuronify (at least 9.0.0)").is_some());
+
+        let (_, choice) = click_text(
+            &context,
+            &mut landing,
+            &mut library,
+            &output,
+            "Grid cells",
+            PointerButton::Primary,
+        );
+        assert!(choice.is_none());
+        run_with(&context, &mut landing, &mut library, vec![]);
+        let (output, _) = run_with(&context, &mut landing, &mut library, vec![]);
+        assert!(texts(&output)
+            .iter()
+            .any(|text| text.contains("Neuronify 9.0.0")));
+        assert!(landing.dialogs.is_open());
     }
 
     #[test]

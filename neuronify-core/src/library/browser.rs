@@ -325,6 +325,7 @@ fn simulation(record: &JsValue) -> Result<SavedSimulation, JsValue> {
     Ok(SavedSimulation {
         id: text("id")?,
         name: text("name")?,
+        description: String::new(),
         modified: DateTime::from_timestamp_millis(milliseconds as i64).unwrap_or_default(),
         bytes: field("bytes")?.dyn_into::<Uint8Array>()?.to_vec(),
     })

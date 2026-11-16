@@ -21,7 +21,7 @@ use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
 use crate::rendering::ghost::{self, GHOST_HEIGHT};
 use crate::rendering::{canvas_bounds, EditorMarks, Ghost, LandingGhost, SceneRenderer, Theme};
-use crate::serialization::SavedWorld;
+use crate::serialization::{Meta, SavedWorld};
 use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
 use visula::winit::event::{ElementState, Event, MouseButton, TouchPhase, WindowEvent};
@@ -140,20 +140,53 @@ type Origin = std::path::PathBuf;
 type Origin = String;
 
 #[cfg(not(target_arch = "wasm32"))]
-fn read_file(path: &std::path::Path) -> Result<SavedWorld, String> {
-    std::fs::read(path)
-        .map_err(|error| format!("Could not read {}: {error}", path.display()))
-        .and_then(|bytes| crate::serialization::load_from_bytes(&bytes))
+fn suggested_file_name(name: &str) -> String {
+    let stem: String = name
+        .chars()
+        .map(|character| match character {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '-',
+            character if character.is_control() => '-',
+            character => character,
+        })
+        .collect();
+    format!("{stem}.neuronify")
+}
+
+fn details(bytes: &[u8], file_name: &str) -> (String, String) {
+    match crate::serialization::meta(bytes) {
+        Some(meta) if !meta.name.trim().is_empty() => (meta.name, meta.description),
+        Some(meta) => (file_name.to_owned(), meta.description),
+        None => (file_name.to_owned(), String::new()),
+    }
+}
+
+struct ReadFile {
+    name: String,
+    description: String,
+    saved: SavedWorld,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn file_from_command_line() -> Option<Result<(Origin, String, SavedWorld), String>> {
+fn read_file(path: &std::path::Path) -> Result<ReadFile, String> {
+    let bytes = std::fs::read(path)
+        .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
+    let saved = crate::serialization::load_from_bytes(&bytes)?;
+    let (name, description) = details(&bytes, &file_stem(path));
+    Ok(ReadFile {
+        name,
+        description,
+        saved,
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn file_from_command_line() -> Option<Result<(Origin, ReadFile), String>> {
     let path = std::path::PathBuf::from(std::env::args_os().nth(1)?);
-    Some(read_file(&path).map(|saved| (path.clone(), file_stem(&path), saved)))
+    Some(read_file(&path).map(|file| (path, file)))
 }
 
 #[cfg(target_arch = "wasm32")]
-fn file_from_command_line() -> Option<Result<(Origin, String, SavedWorld), String>> {
+fn file_from_command_line() -> Option<Result<(Origin, ReadFile), String>> {
     None
 }
 
@@ -259,7 +292,7 @@ impl Neuronify {
             saving: saving(),
             speakers: Speakers::default(),
             library: Library::open(),
-            autosave: Autosave::copy_of(UNTITLED),
+            autosave: Autosave::copy_of(UNTITLED, ""),
             hitboxes: debug_view().as_deref() == Some("hitboxes"),
             touch_reach: input::TOUCH_REACH,
             hold_ring: None,
@@ -270,7 +303,7 @@ impl Neuronify {
             loupe_focus: None,
         };
         match opened {
-            Some(Ok((origin, name, saved))) => neuronify.open_saved(origin, &name, saved),
+            Some(Ok((origin, file))) => neuronify.open_saved(origin, file),
             Some(Err(error)) => {
                 log::error!("{error}");
                 neuronify.file_error = Some(FileError::load(error));
@@ -348,7 +381,7 @@ impl Neuronify {
         };
         match example.spawn() {
             Ok(world) => {
-                let autosave = Autosave::copy_of(example.name);
+                let autosave = Autosave::copy_of(example.name, example.description);
                 self.open_world(world, Milliseconds::ZERO, DEFAULT_SPEED, autosave)
             }
             Err(error) => self.file_error = Some(FileError::load(error)),
@@ -754,20 +787,30 @@ impl Neuronify {
     }
 
     fn saved(&mut self) -> Result<Vec<u8>, String> {
+        let meta = self.autosave.meta(&self.library, self.version);
+        self.saved_as(&meta)
+    }
+
+    fn saved_as(&mut self, meta: &Meta) -> Result<Vec<u8>, String> {
         self.engine.store(&mut self.world);
-        crate::serialization::save(&self.world, self.time, self.speed)
+        crate::serialization::save(&self.world, self.time, self.speed, meta)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     fn save(&mut self) {
+        let meta = self.autosave.meta(&self.library, self.version);
         let Some(path) = rfd::FileDialog::new()
             .add_filter("Neuronify", &["neuronify"])
-            .set_file_name(format!("{UNTITLED}.neuronify"))
+            .set_file_name(suggested_file_name(&meta.name))
             .save_file()
         else {
             return;
         };
-        let written = self.saved().and_then(|bytes| {
+        let meta = Meta {
+            name: file_stem(&path),
+            ..meta
+        };
+        let written = self.saved_as(&meta).and_then(|bytes| {
             std::fs::write(&path, bytes)
                 .map_err(|error| format!("Could not write {}: {error}", path.display()))
         });
@@ -891,12 +934,12 @@ impl Neuronify {
         }
     }
 
-    fn open_saved(&mut self, origin: Origin, name: &str, saved: SavedWorld) {
+    fn open_saved(&mut self, origin: Origin, file: ReadFile) {
         self.open_world(
-            saved.world,
-            saved.time,
-            saved.speed,
-            Autosave::copy_of(name),
+            file.saved.world,
+            file.saved.time,
+            file.saved.speed,
+            Autosave::copy_of(&file.name, &file.description),
         );
         self.origin = Some(origin);
     }
@@ -911,10 +954,7 @@ impl Neuronify {
             return false;
         };
         match read_file(&path) {
-            Ok(saved) => {
-                let name = file_stem(&path);
-                self.open_saved(path, &name, saved)
-            }
+            Ok(file) => self.open_saved(path, file),
             Err(error) => self.file_error = Some(FileError::load(error)),
         }
         true
@@ -935,14 +975,20 @@ impl Neuronify {
         }
     }
 
-    fn open_file(&mut self, name: &str, bytes: &[u8], import: bool) -> Result<(), String> {
+    fn open_file(&mut self, file_name: &str, bytes: &[u8], import: bool) -> Result<(), String> {
         let saved = crate::serialization::load_from_bytes(bytes)?;
+        let (name, description) = details(bytes, file_name);
         let autosave = if import {
-            let bytes = crate::serialization::save(&saved.world, saved.time, saved.speed)?;
-            let id = self.library.create(name, bytes);
+            let meta = Meta {
+                name,
+                description,
+                app: self.version.to_owned(),
+            };
+            let bytes = crate::serialization::save(&saved.world, saved.time, saved.speed, &meta)?;
+            let id = self.library.create(&meta.name, &meta.description, bytes);
             Autosave::saved(&self.library, id)
         } else {
-            Autosave::copy_of(name)
+            Autosave::copy_of(&name, &description)
         };
         self.open_world(saved.world, saved.time, saved.speed, autosave);
         Ok(())
@@ -1152,11 +1198,15 @@ impl visula::Simulation for Neuronify {
         }
         if let Some(landing) = &mut self.landing {
             match landing.show(context, self.theme, &mut self.library) {
-                Some(LandingChoice::Example { name, world }) => self.open_world(
+                Some(LandingChoice::Example {
+                    name,
+                    description,
+                    world,
+                }) => self.open_world(
                     *world,
                     Milliseconds::ZERO,
                     DEFAULT_SPEED,
-                    Autosave::copy_of(name),
+                    Autosave::copy_of(name, description),
                 ),
                 Some(LandingChoice::Saved {
                     id,
@@ -1168,7 +1218,7 @@ impl visula::Simulation for Neuronify {
                     self.open_world(*world, time, speed, autosave)
                 }
                 Some(LandingChoice::NewSimulation) => {
-                    let autosave = Autosave::copy_of(UNTITLED);
+                    let autosave = Autosave::copy_of(UNTITLED, "");
                     self.open_world(
                         hecs::World::new(),
                         Milliseconds::ZERO,

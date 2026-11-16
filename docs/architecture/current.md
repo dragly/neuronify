@@ -233,7 +233,7 @@ flowchart TB
   bytes["load_from_bytes"] -->|"save file"| load["serialization::load"]
   bytes -->|"otherwise"| legacy["Neuronify 1 file:<br/>parse and convert"]
   stored["Library and<br/>examples"] --> load
-  load --> upgrade["upgrade one version<br/>at a time, up to 16"]
+  load --> upgrade["upgrade the world one<br/>version at a time"]
   upgrade --> bound["clamp to bounds"]
   legacy --> bound
   classDef native fill:#40a02b22,stroke:#40a02b,stroke-width:2px
@@ -246,6 +246,9 @@ On the web, `update` opens a file once the browser has loaded it.
 Everything opened ends in `Neuronify::open_world` with a new `Engine`.
 `bounds::bound` clamps every value to the newest version's ranges,
 so a broken file loads safely.
+A file from a newer Neuronify does not load,
+but `serialization::meta` still reads its name and description,
+so its card in Your simulations shows them and says that it needs a newer Neuronify.
 The bundled examples are save files written by the programs in `neuronify-core/generators`.
 A landing card opens its file again, so nothing carries over from its preview.
 A note's `Link` opens another example,
@@ -253,7 +256,7 @@ and a Neuronify 1 tutorial's next link opens the file beside it.
 
 ### Saving
 
-Both ways go through `Engine::store` and `serialization::save(world, time, speed)`:
+Both ways go through `Engine::store` and `serialization::save(world, time, speed, meta)`:
 
 ```mermaid
 flowchart TB
@@ -278,6 +281,11 @@ On the web, each edit also writes a backup to local storage,
 which `Library::poll` saves into the library on the next start.
 A file opened through the dialog joins the library at once,
 and an example or `?file=` only once it is edited.
+The library writes its name and description for a simulation into the file on every save,
+and when it reads the files again, the name in a file wins over the file name or the IndexedDB record.
+On native, it remembers which file each simulation came from,
+so a file renamed by hand keeps its name in the app,
+and it never writes over a file it did not write.
 Failed reads and writes show in a window or the log instead of closing the app.
 
 ### The file format
@@ -287,20 +295,37 @@ Besides the settings, it holds the voltages and gates of every point,
 pending spikes and events, generator timers, the random state, velocities,
 the selection, and what each meter shows (about 111 ms for a voltmeter).
 It leaves out `FiringRate`, `Gliding` and what the loudspeakers have heard,
-and `serialization/v16.rs` lists what it keeps:
+and `serialization/v18.rs` lists what it keeps:
 
 | Bytes | Content |
 | --- | --- |
 | 9 | `neuronify` |
-| 4 | version, `u32` LE |
+| 4 | container version, `u32` LE (19) |
+| 4 | index length, `u32` LE |
+| index | the kind, version and length of each part, through postcard |
+| rest | the parts in the order of the index |
+
+The meta part comes first and holds the name, the description
+and the version of the Neuronify that wrote the file,
+so a Neuronify that cannot read the world can still show them.
+The world part holds what files before the container held after their version:
+
+| Bytes | Content |
+| --- | --- |
 | 8 | time, `f64` LE (from version 5, in milliseconds from version 15) |
 | 8 | speed, `f64` LE (from version 6) |
 | rest | the `World` in hecs' column format, through postcard |
 
+Before the container, the `u32` after `neuronify` was the world's version (1 to 18),
+and those files still load.
+Readers skip parts they don't know and leave them out when they save,
+so a new part only holds what an older Neuronify can do without,
+and anything the simulation needs goes into the world.
+
 postcard writes a component as its position in the version's `schema!` list,
 so a list is fixed once files exist.
 Changing the list, a component's fields or a range in `bounds`
-takes a new module `vN` with an upgrade
+takes a new world version: a module `vN` with an upgrade
 (the steps are in the doc comment of `serialization/mod.rs`):
 
 | Version | Change |
@@ -321,6 +346,7 @@ takes a new module `vN` with an upgrade
 | 15 | Gives every quantity a unit and counts time in milliseconds. |
 | 16 | Adds `PendingEvents` and the soma diameter, clamps loaded values to `bounds`, and measures edge field angles like picture and orientation angles. |
 | 17 | Adds `CompartmentSoma`, given on upgrade to neurons that have dendrites. |
+| 18 | Adds `ConnectionMode`, the stroke chosen for the simulation. |
 
 ## How the camera works
 

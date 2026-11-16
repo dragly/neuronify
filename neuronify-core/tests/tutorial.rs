@@ -654,6 +654,7 @@ fn the_bundled_tutorial_files_match_their_generator() {
             &world,
             Milliseconds::ZERO,
             neuronify_core::DEFAULT_SPEED,
+            &neuronify_core::serialization::Meta::default(),
         )
         .unwrap();
         assert_eq!(bundled, written, "{file} is out of date");
