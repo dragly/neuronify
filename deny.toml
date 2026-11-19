@@ -14,4 +14,6 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant comes through zbus in the native file dialog; unmaintained, no known issue" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names comes through zbus in the native file dialog; unmaintained, no known issue" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive comes through zbus in the native file dialog; unmaintained, no known issue" },
+    { id = "RUSTSEC-2026-0542", reason = "humantime comes through env_logger in visula; unmaintained, no known issue" },
+    { id = "RUSTSEC-2026-0543", reason = "chrono dates the saved simulations and comes through visula; unmaintained, no known issue" },
 ]
