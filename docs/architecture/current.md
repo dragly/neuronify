@@ -77,7 +77,8 @@ Most of these defaults can be changed in the inspector:
 - Compartment soma: a spike counts when the voltage climbs past −20 mV,
   and the next one only after it has fallen back below.
 - Axon start: its first compartment above −20 mV fires a point neuron's soma.
-- Axon ending: opens 0.5 ms after the axon's last compartment passes −20 mV,
+- Axon ending: opens once the axon's last compartment has passed −20 mV
+  and the synaptic delay has gone by (1.5 ms in squid, 0.5 ms in mammals),
   with 0.0055 µS times its strength (0 to 2), times 8 on a soma,
   or on a dendrite times the size of the cables there (about twice that for mammals),
   and 40 times more if inhibitory.
@@ -88,8 +89,8 @@ Most of these defaults can be changed in the inspector:
 - Current source: 2 nA, or a sine of 0.3 nA at 50 Hz.
 - Generators: regular ones fire at the exact moment within a step,
   and Poisson ones use a seeded generator whose state is saved.
-  A visual input is Poisson, at a rate set by how well a moving picture
-  matches its receptive field.
+  A receptive field is Poisson, at a rate set by how well the moving picture
+  wired to it matches the field, and one picture can feed several fields.
 - Adaptation: 0.01 µS towards rest per spike, decaying with 500 ms.
 - Burst: a 1.2 nA boost after a spike, draining linearly.
 - Touch: a press fires what is under it once (`fire_nearby`).
@@ -108,7 +109,7 @@ and the aim is still to make the models more realistic:
   since there is no initial segment and a soma with soma-like densities doesn't fire.
   The squid preparation gives it cortical channels too,
   because squid channels on a soma this small don't fire repeatedly.
-- Axon start and endings: rules of thumb (−20 mV, a fixed delay),
+- Axon start and endings: rules of thumb (−20 mV, a delay per preparation),
   with ending scales picked rather than derived.
 - Static connections and touch sensors: inject a current or fire directly,
   as in Neuronify 1, rather than opening a conductance.
@@ -295,7 +296,7 @@ Besides the settings, it holds the voltages and gates of every point,
 pending spikes and events, generator timers, the random state, velocities,
 the selection, and what each meter shows (about 111 ms for a voltmeter).
 It leaves out `FiringRate`, `Gliding` and what the loudspeakers have heard,
-and `serialization/v18.rs` lists what it keeps:
+and `serialization/v19.rs` lists what it keeps:
 
 | Bytes | Content |
 | --- | --- |
@@ -347,6 +348,7 @@ takes a new world version: a module `vN` with an upgrade
 | 16 | Adds `PendingEvents` and the soma diameter, clamps loaded values to `bounds`, and measures edge field angles like picture and orientation angles. |
 | 17 | Adds `CompartmentSoma`, given on upgrade to neurons that have dendrites. |
 | 18 | Adds `ConnectionMode`, the stroke chosen for the simulation. |
+| 19 | Splits each visual input into a picture (`VisualInput`) and a receptive field (`ReceptiveFieldCell`) wired to it, and adds `ConnectionDirection`, which connections a selected neuron's rings show. |
 
 ## How the camera works
 
@@ -418,8 +420,8 @@ flowchart TB
 | Layer | Modules |
 | --- | --- |
 | Shell | `app` (owns the `World`, `Engine`, time, speed, library and autosave), `web`, `frame_clock`, `audio`, `window` |
-| Screens | `input`, `camera`, `gui` (rail, inspector, menu, phone sheets, rings and loupe), `settings`, `landing` (with About), `third_party`, `links` |
-| Editing | `editor` (with `targets`, `attach`, `drag` and `history`), `tools`, `elements`, `dendrites` |
+| Screens | `input`, `camera`, `inertia`, `gui` (rail, inspector, menu, phone sheets, rings, loupe, empty-scene hints and text fields), `fire_hint`, `settings`, `landing` (with About), `third_party`, `links` |
+| Editing | `editor` (with `targets`, `attach`, `drag` and `history`), `tools`, `tips`, `elements`, `dendrites` |
 | Simulation | `simulation` (`engine`, `model`, `mammal`, `stimulation`, `firing_rate`, `spatial`) |
 | Rendering | `rendering` (`World` to `Scene`, drawn by `SceneRenderer`) |
 | Files | `serialization` (with `bounds`), `legacy`, `examples`, `library` |
@@ -429,7 +431,9 @@ Editing and Rendering also read the clock in `input`,
 and a few modules reach past the arrows:
 
 - `rendering`: `elements` for the ghost, `editor` for `Bead` and the glide time,
+  `tips` for the tip on a selected neuron,
   and `simulation::model` for radii and ending scales.
+- `serialization`: `tools` for `ConnectionMode`, which files keep from version 18.
 - `measurement`: the engine's spikes and probes.
 - `simulation::model`: temperature ranges from `serialization::bounds`,
   while `serialization` uses `simulation::model` to upgrade version 11 files.
@@ -445,17 +449,18 @@ The main components:
 
 | Entity | Components |
 | --- | --- |
-| Neuron | `LeakyNeuron`, `NodeState`, `LeakCurrent`, `NeuronType`, `Label`, maybe `AdaptationCurrent` or `BurstCurrent` |
+| Neuron | `LeakyNeuron`, `NodeState`, `LeakCurrent`, `NeuronType`, `Label`, maybe `AdaptationCurrent` or `BurstCurrent`, and `CompartmentSoma` if compartmental |
 | Compartment | `Compartment`, `NodeState`, `NeuronType`, `SpatialDynamics`, maybe `Dendrite` |
 | Cable | `Cable`, `Membrane`, maybe `Myelin`, and `CableState` once it has run |
 | Axon ending | `ConductanceSynapse`, `SynapseState` |
 | Static connection | `CurrentSynapse`, or `ImmediateFireSynapse` from a touch sensor |
-| Spike input | `GeneratorDynamics` and `TouchSensor`, `RegularSpikeGenerator`, `PoissonGenerator` or `VisualInput` |
+| Spike input | `GeneratorDynamics` and `TouchSensor`, `RegularSpikeGenerator`, `PoissonGenerator` or `ReceptiveFieldCell` |
+| Picture | `VisualInput`, wired to its receptive fields by a `Connection` without a kind |
 | Current source | `CurrentClamp`, maybe `AlternatingCurrent` |
 | Meter | `Voltmeter`, `SpikeDetector`, `RatePlot` or `Loudspeaker`, with their settings |
 | Meter wire | `VoltageSeries` or `SpikeTrain` |
 | Note | `Annotation`, `NoteSize`, maybe `Link` |
-| Settings | `NeuronDisplay`, `ConnectionView`, `Temperature`, `Preparation`, `Randomness`, each on its own entity (the `Setting` trait) |
+| Settings | `NeuronDisplay`, `ConnectionView`, `ConnectionDirection`, `ConnectionMode`, `Temperature`, `Preparation`, `Randomness`, each on its own entity (the `Setting` trait) |
 
 A new component may have to go in several places:
 
@@ -476,14 +481,17 @@ and on each redraw it calls `update`, renders, and calls `gui` last.
 3. polls the library and autosaves edits that are due,
 4. clears the selection after a tap on the background, once a double tap is ruled out,
 5. delivers a touch press held back for a possible second finger,
-6. grabs what a hold picks, and moves the hold and attach rings,
+6. grabs what a hold picks, attaches a stroke that has paused long enough on a neuron
+   (to chain or fan out), and moves the hold and attach rings,
 7. fires what a press touched,
 8. unless the landing screen or About covers the circuit,
    steps the simulation (unless paused), plays what the loudspeakers heard,
    and steps the physics,
 9. steps the visible landing previews,
 10. glides the camera after a pan or pinch, or frames a newly opened circuit instead,
-11. moves the ghost, prepares the loupe and hands the `World` to `SceneRenderer::update`.
+11. lands the ghost on each neuron just placed, swings the ghost under the pointer,
+    times the hint that points at Stimulate when connected neurons stay silent,
+    prepares the loupe and hands the `World` to `SceneRenderer::update`.
 
 `LandingScreen::show` and `Gui::show` return what was picked for `app` to carry out,
 so a choice shows from the next frame.
@@ -496,7 +504,8 @@ The engine has its own tests.
 `neuronify-core/tests` runs the bundled examples, labs and tutorial headlessly:
 `stories.rs` checks that each file still tells the story recorded in `tests/stories`
 and fires the same after saving and reopening,
-and `laws.rs` checks that a stronger current makes every kind of neuron fire harder.
+`laws.rs` that a stronger current makes every kind of neuron fire harder,
+and `save_files.rs` that a file from a newer Neuronify shows its name but doesn't open.
 `app`, `camera` and `SceneRenderer` have none.
 
 ## Keeping this up to date
@@ -515,5 +524,6 @@ for f in $(git ls-files 'neuronify-core/src/*.rs' | grep -v tests.rs); do
 done
 ```
 
-The rest was read by hand from `main` at 1e7f7887 and may miss details.
-`git log 1e7f7887.. -- neuronify-core/src neuronify-engine/src` shows what has changed since.
+The rest was read by hand from `main` at 1e7f7887, checked against the changes up to c524a45c,
+and may miss details.
+`git log c524a45c.. -- neuronify-core/src neuronify-engine/src` shows what has changed since.
