@@ -484,7 +484,7 @@ and on each redraw it calls `update`, renders, and calls `gui` last.
 6. grabs what a hold picks, attaches a stroke that has paused long enough on a neuron
    (to chain or fan out), and moves the hold and attach rings,
 7. fires what a press touched,
-8. unless the landing screen or About covers the circuit,
+8. unless the landing screen, About or the share sheet covers the circuit,
    steps the simulation (unless paused), plays what the loudspeakers heard,
    and steps the physics,
 9. steps the visible landing previews,
