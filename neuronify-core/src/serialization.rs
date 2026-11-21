@@ -425,7 +425,7 @@ mod tests {
     use std::any::TypeId;
     use std::collections::BTreeMap;
 
-    const LEAKY_NFY: &str = include_str!("../legacy/fixtures/leaky.nfy");
+    const LEAKY_NFY: &str = include_str!("legacy/fixtures/leaky.nfy");
     const FIXTURE_TIME: Milliseconds = Milliseconds(2500.0);
     const FIXTURE_SPEED: f64 = 0.5;
     const FIXTURE_SOMA: CompartmentSoma = CompartmentSoma {
@@ -549,7 +549,10 @@ mod tests {
 
     #[test]
     fn files_from_before_the_container_have_no_meta() {
-        assert_eq!(meta(include_bytes!("fixtures/v18.neuronify")), None);
+        assert_eq!(
+            meta(include_bytes!("serialization/fixtures/v18.neuronify")),
+            None
+        );
     }
 
     #[test]
@@ -686,9 +689,9 @@ mod tests {
     #[test]
     fn new_details_put_files_from_before_the_container_in_one() {
         for original in [
-            &include_bytes!("fixtures/v1.neuronify")[..],
-            include_bytes!("fixtures/v14.neuronify"),
-            include_bytes!("fixtures/v18.neuronify"),
+            &include_bytes!("serialization/fixtures/v1.neuronify")[..],
+            include_bytes!("serialization/fixtures/v14.neuronify"),
+            include_bytes!("serialization/fixtures/v18.neuronify"),
         ] {
             let renamed = with_details(original, "Renamed", "Described.").unwrap();
             let meta = meta(&renamed).unwrap();
@@ -833,7 +836,7 @@ mod tests {
     fn loads_version_1() {
         // Version 1 turned the link to the next tutorial into an empty note
         assert_fixture(
-            &load(include_bytes!("fixtures/v1.neuronify")).unwrap(),
+            &load(include_bytes!("serialization/fixtures/v1.neuronify")).unwrap(),
             30,
             0,
         );
@@ -842,7 +845,7 @@ mod tests {
     #[test]
     fn loads_version_2() {
         assert_fixture(
-            &load(include_bytes!("fixtures/v2.neuronify")).unwrap(),
+            &load(include_bytes!("serialization/fixtures/v2.neuronify")).unwrap(),
             29,
             0,
         );
@@ -851,7 +854,7 @@ mod tests {
     #[test]
     fn loads_version_3() {
         assert_fixture(
-            &load(include_bytes!("fixtures/v3.neuronify")).unwrap(),
+            &load(include_bytes!("serialization/fixtures/v3.neuronify")).unwrap(),
             29,
             0,
         );
@@ -860,7 +863,7 @@ mod tests {
     #[test]
     fn loads_version_4() {
         assert_fixture(
-            &load(include_bytes!("fixtures/v4.neuronify")).unwrap(),
+            &load(include_bytes!("serialization/fixtures/v4.neuronify")).unwrap(),
             29,
             1,
         );
@@ -868,7 +871,7 @@ mod tests {
 
     #[test]
     fn loads_version_5() {
-        let saved = load(include_bytes!("fixtures/v5.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v5.neuronify")).unwrap();
         assert_fixture(&saved, 29, 1);
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, DEFAULT_SPEED);
@@ -876,7 +879,7 @@ mod tests {
 
     #[test]
     fn loads_version_6() {
-        let saved = load(include_bytes!("fixtures/v6.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v6.neuronify")).unwrap();
         assert_fixture(&saved, 29, 1);
         assert_eq!(saved.time, FIXTURE_TIME);
         assert_eq!(saved.speed, FIXTURE_SPEED);
@@ -884,7 +887,7 @@ mod tests {
 
     #[test]
     fn loads_version_7() {
-        let saved = load(include_bytes!("fixtures/v7.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v7.neuronify")).unwrap();
         assert_fixture(&saved, 30, 1);
         assert_eq!(count::<Link>(&saved.world), 1);
         assert_eq!(saved.time, FIXTURE_TIME);
@@ -893,7 +896,7 @@ mod tests {
 
     #[test]
     fn loads_version_8() {
-        let saved = load(include_bytes!("fixtures/v8.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v8.neuronify")).unwrap();
         assert_fixture(&saved, 30, 1);
         assert_eq!(count::<Link>(&saved.world), 1);
         assert_eq!(saved.time, FIXTURE_TIME);
@@ -918,7 +921,9 @@ mod tests {
 
     #[test]
     fn shows_voltage_but_not_firing_rates_in_files_without_a_neuron_display() {
-        let world = load(include_bytes!("fixtures/v7.neuronify")).unwrap().world;
+        let world = load(include_bytes!("serialization/fixtures/v7.neuronify"))
+            .unwrap()
+            .world;
         let display = NeuronDisplay::of(&world);
         assert!(display.voltage);
         assert!(!display.firing_rate);
@@ -926,7 +931,7 @@ mod tests {
 
     #[test]
     fn loads_version_9() {
-        let saved = load(include_bytes!("fixtures/v9.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v9.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_9())
@@ -940,7 +945,7 @@ mod tests {
 
     #[test]
     fn loads_version_10() {
-        let saved = load(include_bytes!("fixtures/v10.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v10.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_13())
@@ -954,7 +959,7 @@ mod tests {
 
     #[test]
     fn loads_version_11() {
-        let saved = load(include_bytes!("fixtures/v11.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v11.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_13())
@@ -965,7 +970,7 @@ mod tests {
 
     #[test]
     fn loads_version_12() {
-        let saved = load(include_bytes!("fixtures/v12.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v12.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_13())
@@ -976,7 +981,7 @@ mod tests {
 
     #[test]
     fn loads_version_13() {
-        let saved = load(include_bytes!("fixtures/v13.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v13.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_13())
@@ -987,7 +992,7 @@ mod tests {
 
     #[test]
     fn loads_version_14() {
-        let saved = load(include_bytes!("fixtures/v14.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v14.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_15())
@@ -1003,7 +1008,7 @@ mod tests {
 
     #[test]
     fn loads_version_15() {
-        let saved = load(include_bytes!("fixtures/v15.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v15.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_15())
@@ -1014,7 +1019,7 @@ mod tests {
 
     #[test]
     fn loads_version_16() {
-        let saved = load(include_bytes!("fixtures/v16.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v16.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_16())
@@ -1025,7 +1030,7 @@ mod tests {
 
     #[test]
     fn loads_version_17() {
-        let saved = load(include_bytes!("fixtures/v17.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v17.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_17())
@@ -1043,7 +1048,7 @@ mod tests {
 
     #[test]
     fn loads_version_18() {
-        let saved = load(include_bytes!("fixtures/v18.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v18.neuronify")).unwrap();
         assert_eq!(
             composition(&saved.world),
             composition(&fixture_world_of_version_18())
@@ -1070,7 +1075,7 @@ mod tests {
 
     #[test]
     fn version_15_neurons_keep_their_values_and_the_soma_they_were_simulated_with() {
-        let bytes = include_bytes!("fixtures/v15.neuronify");
+        let bytes = include_bytes!("serialization/fixtures/v15.neuronify");
         let old = v15::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
         let mut checked = 0;
@@ -1090,7 +1095,7 @@ mod tests {
         use crate::measurement::visual_input::{
             watched_picture, ReceptiveField, ReceptiveFieldCell,
         };
-        let bytes = include_bytes!("fixtures/v15.neuronify");
+        let bytes = include_bytes!("serialization/fixtures/v15.neuronify");
         let old = v15::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
         let mut checked = 0;
@@ -1119,7 +1124,7 @@ mod tests {
 
     #[test]
     fn version_14_counts_meter_times_in_milliseconds() {
-        let bytes = include_bytes!("fixtures/v14.neuronify");
+        let bytes = include_bytes!("serialization/fixtures/v14.neuronify");
         let old = v14::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
         let in_milliseconds = |seconds: Milliseconds| Seconds(seconds.0).to_milliseconds();
@@ -1140,7 +1145,7 @@ mod tests {
 
     #[test]
     fn loads_version_19() {
-        let saved = load(include_bytes!("fixtures/v19.neuronify")).unwrap();
+        let saved = load(include_bytes!("serialization/fixtures/v19.neuronify")).unwrap();
         assert_eq!(composition(&saved.world), composition(&fixture_world()));
         assert_eq!(ConnectionView::of(&saved.world), ConnectionView::Rings);
         assert_eq!(
@@ -1154,7 +1159,7 @@ mod tests {
     #[test]
     fn upgrading_version_18_splits_each_visual_input_into_a_picture_and_a_wired_field() {
         use crate::measurement::visual_input::{watched_picture, ReceptiveFieldCell};
-        let world = load(include_bytes!("fixtures/v18.neuronify"))
+        let world = load(include_bytes!("serialization/fixtures/v18.neuronify"))
             .unwrap()
             .world;
         assert_eq!(count::<VisualInput>(&world), 2);
@@ -1231,7 +1236,7 @@ mod tests {
 
     #[test]
     fn connects_in_a_chain_in_files_without_a_stroke() {
-        let world = load(include_bytes!("fixtures/v17.neuronify"))
+        let world = load(include_bytes!("serialization/fixtures/v17.neuronify"))
             .unwrap()
             .world;
         assert_eq!(ConnectionMode::of(&world), ConnectionMode::Chain);
@@ -1275,7 +1280,7 @@ mod tests {
 
     #[test]
     fn shows_all_connections_in_files_without_a_connection_view() {
-        let world = load(include_bytes!("fixtures/v13.neuronify"))
+        let world = load(include_bytes!("serialization/fixtures/v13.neuronify"))
             .unwrap()
             .world;
         assert_eq!(ConnectionView::of(&world), ConnectionView::All);
@@ -1283,7 +1288,7 @@ mod tests {
 
     #[test]
     fn version_11_upgrades_to_engine_units_and_cables_with_membranes() {
-        let bytes = include_bytes!("fixtures/v11.neuronify");
+        let bytes = include_bytes!("serialization/fixtures/v11.neuronify");
         let old = v11::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
         for (entity, neuron) in old.query::<(Entity, &v11::LeakyNeuron)>().iter() {
@@ -1551,19 +1556,19 @@ mod tests {
     /// spawned the way the editor tools spawn them.
     fn fixture_world_of_version_9() -> World {
         let examples = [
-            include_str!("../legacy/fixtures/adaptation.nfy"),
-            include_str!("../legacy/fixtures/burst.nfy"),
-            include_str!("../legacy/fixtures/disinhibition.nfy"),
-            include_str!("../legacy/fixtures/frPlot.nfy"),
-            include_str!("../legacy/fixtures/generators.nfy"),
-            include_str!("../legacy/fixtures/if_response.nfy"),
-            include_str!("../legacy/fixtures/inhibitory.nfy"),
-            include_str!("../legacy/fixtures/input_summation.nfy"),
-            include_str!("../legacy/fixtures/lateral_inhibition.nfy"),
-            include_str!("../legacy/fixtures/leaky.nfy"),
-            include_str!("../legacy/fixtures/tutorial_1_intro.nfy"),
-            include_str!("../legacy/fixtures/two_neuron_oscillator.nfy"),
-            include_str!("../legacy/fixtures/visualInput.nfy"),
+            include_str!("legacy/fixtures/adaptation.nfy"),
+            include_str!("legacy/fixtures/burst.nfy"),
+            include_str!("legacy/fixtures/disinhibition.nfy"),
+            include_str!("legacy/fixtures/frPlot.nfy"),
+            include_str!("legacy/fixtures/generators.nfy"),
+            include_str!("legacy/fixtures/if_response.nfy"),
+            include_str!("legacy/fixtures/inhibitory.nfy"),
+            include_str!("legacy/fixtures/input_summation.nfy"),
+            include_str!("legacy/fixtures/lateral_inhibition.nfy"),
+            include_str!("legacy/fixtures/leaky.nfy"),
+            include_str!("legacy/fixtures/tutorial_1_intro.nfy"),
+            include_str!("legacy/fixtures/two_neuron_oscillator.nfy"),
+            include_str!("legacy/fixtures/visualInput.nfy"),
         ];
         let mut world = World::new();
         for example in examples {
