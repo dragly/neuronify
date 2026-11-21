@@ -9,8 +9,8 @@ use super::{
     NEURON_COST, SETTLE_PASSES,
 };
 use crate::components::*;
+use crate::measurement::frame::Frame;
 use crate::measurement::visual_input::{edge_toward, framed_size, is_picture_wire};
-use crate::measurement::voltmeter::Frame;
 
 const SHAPES: [Shape; 3] = [
     Shape::StraightFirst,

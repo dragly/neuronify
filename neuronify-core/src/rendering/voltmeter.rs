@@ -1,8 +1,7 @@
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::voltmeter::{
-    measured, Corner, Frame, VoltageSeries, Voltmeter, VoltmeterRange,
-};
+use crate::measurement::frame::{measured, Corner, Frame};
+use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use crate::rendering::colors::{self, Palette};
 use crate::rendering::gpu_types::ConnectionData;
 use hecs::Entity;

@@ -5,7 +5,7 @@ use visula::{
 };
 
 use crate::components::*;
-use crate::measurement::voltmeter::Frame;
+use crate::measurement::frame::Frame;
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::MeterBackgroundData;
 use hecs::Entity;
@@ -65,7 +65,7 @@ pub fn collect_meter_backgrounds(world: &hecs::World) -> Vec<MeterBackgroundData
 mod tests {
     use super::*;
     use crate::elements::{spawn_spike_detector, spawn_voltmeter, Element};
-    use crate::measurement::voltmeter::Corner;
+    use crate::measurement::frame::Corner;
     use crate::rendering::colors::Theme;
     use glam::Vec3Swizzles;
     use hecs::World;

@@ -417,9 +417,10 @@ mod tests {
     use crate::components::*;
     use crate::elements::{spawn_cable, spawn_compartment, spawn_internode, Element};
     use crate::measurement::firing_rate::RatePlot;
+    use crate::measurement::frame::measured;
     use crate::measurement::spike_detector::SpikeDetector;
     use crate::measurement::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
-    use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
+    use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
     use crate::tools::ConnectionMode;
     use hecs::Entity;
     use std::any::TypeId;

@@ -9,11 +9,11 @@ use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::constants::DT;
 use neuronify_core::editor::Editor;
+use neuronify_core::measurement::frame::measured;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::visual_input::{
     direction_badge, watched_picture, ReceptiveFieldCell, VisualInput,
 };
-use neuronify_core::measurement::voltmeter::measured;
 use neuronify_core::rendering::halos::collect_halos;
 use neuronify_core::rendering::{canvas_bounds, Theme};
 use neuronify_core::serialization::{load_from_bytes, save, Meta};

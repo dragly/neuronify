@@ -1,4 +1,5 @@
 pub mod firing_rate;
+pub mod frame;
 pub mod loudspeaker;
 pub mod spike_detector;
 pub mod visual_input;

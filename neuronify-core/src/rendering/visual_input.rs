@@ -8,12 +8,12 @@ use visula::{
 use visula_derive::Delegate;
 
 use crate::components::*;
+use crate::measurement::frame::{Corner, Frame};
 use crate::measurement::visual_input::{
     direction_badge, grid, receptive_field_frame, visual_input_frame, watched_picture, Motion,
     ReceptiveFieldCell, VisualInput, DIRECTION_BADGE_RADIUS, RECEPTIVE_FIELD_SIZE, RESOLUTION,
     VISUAL_INPUT_SIZE,
 };
-use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{ConnectionData, CylinderData, TileData};
 use crate::rendering::lighting::SHADING;

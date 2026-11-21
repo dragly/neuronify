@@ -8,9 +8,10 @@ use crate::elements::{
     spawn_loudspeaker_wire, spawn_rate_plot_wire, spawn_spike_detector_wire, spawn_voltmeter_wire,
 };
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
+use crate::measurement::frame::RowOrder;
 use crate::measurement::is_meter;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
-use crate::measurement::spike_detector::{RowOrder, SpikeDetector};
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::visual_input::{
     beside_the_picture, spawn_picture_wire, ReceptiveField, ReceptiveFieldCell, VisualInput,
 };
