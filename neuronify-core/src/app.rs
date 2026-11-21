@@ -104,6 +104,16 @@ fn debug_view() -> Option<String> {
 }
 
 #[cfg(target_arch = "wasm32")]
+fn sharing() -> bool {
+    crate::web::sharing()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn sharing() -> bool {
+    false
+}
+
+#[cfg(target_arch = "wasm32")]
 fn tick() {
     crate::web::tick();
 }
@@ -1087,7 +1097,7 @@ impl visula::Simulation for Neuronify {
         for position in self.editor.take_presses() {
             simulation::fire_nearby(&mut self.world, &mut self.engine, position);
         }
-        let shown = self.landing.is_none() && self.about.is_none();
+        let shown = self.landing.is_none() && self.about.is_none() && !sharing();
         if self.running && shown {
             let start = self.time;
             simulation::step_simulation(

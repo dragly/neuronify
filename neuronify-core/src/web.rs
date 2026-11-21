@@ -75,6 +75,7 @@ thread_local! {
     static LISTENING_FOR_FIELD_RELEASE: Cell<bool> = const { Cell::new(false) };
     static KEYBOARD: RefCell<Option<Keyboard>> = const { RefCell::new(None) };
     static COVERED_BY_KEYBOARD: Cell<f32> = const { Cell::new(0.0) };
+    static SHARING: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Starts fetching the file named by the `file` query parameter.
@@ -230,8 +231,11 @@ pub fn is_ios() -> bool {
 pub fn share(bytes: &[u8], name: &str) -> Result<(), JsValue> {
     let navigator = web_sys::window().ok_or("no global window")?.navigator();
     let shared = navigator.share_with_data(&share_data(&file(bytes, name)?));
+    SHARING.set(true);
     wasm_bindgen_futures::spawn_local(async move {
-        if let Err(error) = JsFuture::from(shared).await {
+        let result = JsFuture::from(shared).await;
+        SHARING.set(false);
+        if let Err(error) = result {
             let cancelled = error
                 .dyn_ref::<DomException>()
                 .is_some_and(|error| error.name() == "AbortError");
@@ -241,6 +245,10 @@ pub fn share(bytes: &[u8], name: &str) -> Result<(), JsValue> {
         }
     });
     Ok(())
+}
+
+pub fn sharing() -> bool {
+    SHARING.get()
 }
 
 pub fn open_on_pointer_up(response: &egui::Response, url: &str) {
