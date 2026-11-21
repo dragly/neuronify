@@ -327,7 +327,7 @@ postcard writes a component as its position in the version's `schema!` list,
 so a list is fixed once files exist.
 Changing the list, a component's fields or a range in `bounds`
 takes a new world version: a module `vN` with an upgrade
-(the steps are in the doc comment of `serialization/mod.rs`):
+(the steps are in the doc comment of `serialization.rs`):
 
 | Version | Change |
 | --- | --- |
