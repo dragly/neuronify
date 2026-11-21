@@ -6,11 +6,12 @@ use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::frame::RowOrder;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::visual_input::{Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::{
     RollingWindow, VoltageMeasurement, VoltageSeries, Voltmeter, VoltmeterRange,
 };
+use crate::measurement::SpikeTrain;
 use crate::tools::ConnectionMode;
 
 schema!(

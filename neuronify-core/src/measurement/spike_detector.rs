@@ -1,12 +1,45 @@
-use std::collections::VecDeque;
+pub mod drawing;
+pub mod gui;
 
-use hecs::{Entity, World};
+use std::ops::RangeInclusive;
+
+use glam::Vec3;
+use hecs::World;
 use neuronify_engine::units::Milliseconds;
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
-use crate::measurement::firing_rate::RatePlot;
-use crate::simulation::Spike;
+use crate::edited::{edited, edited_settings, Settings};
+use crate::measurement::frame::RowOrder;
+use crate::measurement::About;
+use crate::serialization::bounds::within;
+
+pub const TIME_RANGES: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1e6);
+
+pub const ABOUT: About = About {
+    name: "Spike detector",
+    description: "Press a neuron to draw a tick each time it fires. \
+                  Connect more neurons to give each a row.",
+    size: Some(MeterSize {
+        width: 8.0,
+        height: 6.0,
+    }),
+    offset: Vec3::X,
+    edited: &[
+        edited_settings::<SpikeDetector, TimeRange>(),
+        edited::<RowOrder>(),
+    ],
+};
+
+pub fn bound(world: &mut World) {
+    for detector in world.query_mut::<&mut SpikeDetector>() {
+        let default = SpikeDetector::default();
+        within(&mut detector.time_range, TIME_RANGES, default.time_range);
+        if !detector.time.is_finite() {
+            detector.time = Milliseconds::ZERO;
+        }
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SpikeDetector {
@@ -23,54 +56,21 @@ impl Default for SpikeDetector {
     }
 }
 
-impl SpikeDetector {
-    pub fn size() -> MeterSize {
-        MeterSize {
-            width: 8.0,
-            height: 6.0,
-        }
+struct TimeRange(Milliseconds);
+
+impl Settings<SpikeDetector> for TimeRange {
+    fn of(detector: &SpikeDetector) -> Self {
+        TimeRange(detector.time_range)
+    }
+
+    fn swap(&mut self, detector: &mut SpikeDetector) {
+        std::mem::swap(&mut self.0, &mut detector.time_range);
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct SpikeTrain {
-    pub times: VecDeque<Milliseconds>,
-}
-
-pub fn shown_range(world: &World, meter: Entity) -> Option<Milliseconds> {
-    match world.get::<&SpikeDetector>(meter) {
-        Ok(detector) => Some(detector.time_range),
-        Err(_) => world.get::<&RatePlot>(meter).ok().map(|plot| plot.window),
-    }
-}
-
-pub fn record_spikes(world: &mut World, spikes: &[Spike], time: Milliseconds) {
+pub fn advance(world: &mut World, time: Milliseconds) {
     for detector in world.query_mut::<&mut SpikeDetector>() {
         detector.time = time;
-    }
-    let wires: Vec<(Entity, Entity, Milliseconds)> = world
-        .query::<(Entity, &Connection)>()
-        .with::<&SpikeTrain>()
-        .iter()
-        .filter_map(|(wire, connection)| {
-            let range = shown_range(world, connection.to)?;
-            Some((wire, connection.from, range))
-        })
-        .collect();
-    for (wire, from, range) in wires {
-        let Ok(mut train) = world.get::<&mut SpikeTrain>(wire) else {
-            continue;
-        };
-        for spike in spikes.iter().filter(|spike| spike.entity == from) {
-            train.times.push_back(spike.time);
-        }
-        while train
-            .times
-            .front()
-            .is_some_and(|&spike| spike < time - range)
-        {
-            train.times.pop_front();
-        }
     }
 }
 
@@ -78,8 +78,10 @@ pub fn record_spikes(world: &mut World, spikes: &[Spike], time: Milliseconds) {
 mod tests {
     use super::*;
     use crate::constants::DT;
-    use crate::elements::spawn_spike_detector;
+    use crate::measurement::{record, Meter, SpikeTrain};
+    use crate::simulation::Spike;
     use glam::Vec3;
+    use hecs::Entity;
 
     fn spikes(world: &World, wire: Entity) -> Vec<Milliseconds> {
         world
@@ -95,20 +97,22 @@ mod tests {
     fn records_spikes_of_wired_neurons_within_the_time_range() {
         let mut world = World::new();
         let [wired, unwired] = [(); 2].map(|_| world.spawn((NodeState::default(),)));
-        let detector = spawn_spike_detector(&mut world, wired, Vec3::ZERO);
+        let detector = Meter::SpikeDetector.spawn_measuring(&mut world, wired, Vec3::ZERO);
         let wire = crate::measurement::frame::measured(&world, detector)[0].0;
         let fired = Milliseconds(1000.0);
         let spikes_at = |time| [wired, unwired].map(|entity| Spike { entity, time });
-        record_spikes(&mut world, &spikes_at(fired), fired);
+        record(&mut world, &spikes_at(fired), &[], fired, DT);
         assert_eq!(spikes(&world, wire), [fired]);
         assert_eq!(world.get::<&SpikeDetector>(detector).unwrap().time, fired);
 
-        record_spikes(&mut world, &[], Milliseconds(1050.0));
+        record(&mut world, &[], &[], Milliseconds(1050.0), DT);
         assert_eq!(spikes(&world, wire), [fired]);
-        record_spikes(
+        record(
             &mut world,
             &[],
+            &[],
             fired + SpikeDetector::default().time_range + DT,
+            DT,
         );
         assert!(spikes(&world, wire).is_empty());
     }

@@ -16,10 +16,7 @@ use hecs::{Entity, World};
 use neuronify_engine::units::Milliseconds;
 
 use crate::constants::*;
-use crate::measurement::firing_rate::record_rates;
-use crate::measurement::loudspeaker::listen;
-use crate::measurement::spike_detector::record_spikes;
-use crate::measurement::voltmeter::record_voltages;
+use crate::measurement;
 
 pub fn step_simulation(
     world: &mut World,
@@ -35,12 +32,9 @@ pub fn step_simulation(
     engine.run(steps);
     *time = engine.time();
     engine.reflect(world);
-    let spikes = engine.spikes();
-    update_firing_rates(world, spikes, duration, *time);
-    record_spikes(world, spikes, *time);
-    record_rates(world, *time);
-    listen(world, spikes, *time, duration);
-    record_voltages(world, engine);
+    update_firing_rates(world, engine.spikes(), duration, *time);
+    let probes = engine.samples();
+    measurement::record(world, engine.spikes(), &probes, *time, duration);
 }
 
 pub fn step_physics(world: &mut World, steps: u32, held: &HashSet<Entity>) {

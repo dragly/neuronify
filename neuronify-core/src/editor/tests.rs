@@ -1,8 +1,9 @@
 use super::*;
-use crate::elements::{spawn_synapse, spawn_voltmeter};
+use crate::elements::spawn_synapse;
 use crate::input::DWELL;
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
+use crate::measurement::Meter;
 use crate::simulation::{fire_nearby, step_physics, step_simulation, Engine};
 use std::collections::HashMap;
 
@@ -654,7 +655,7 @@ fn only_tools_that_connect_follow_the_connection_mode() {
     }
     for tool in [
         Tool::Dendrite,
-        Tool::Voltmeter,
+        Tool::Meter(Meter::Voltmeter),
         Tool::Place(Element::Note),
         Tool::Edit,
     ] {
@@ -1703,7 +1704,7 @@ fn neurons_stop_offering_a_connection_once_three_were_connected_this_session() {
 
 #[test]
 fn meter_wires_do_not_count_as_connected_neurons() {
-    let mut editor = editor(Tool::Voltmeter);
+    let mut editor = editor(Tool::Meter(Meter::Voltmeter));
     let mut world = World::new();
     for x in [0.0, 10.0, 20.0] {
         neuron(&mut world, at(x, 0.0));
@@ -1729,7 +1730,7 @@ fn tapping_a_meter_with_a_meter_tool_offers_a_wire_to_pull_onto_a_neuron() {
     let mut world = World::new();
     let target = neuron(&mut world, at(10.0, 10.0));
     let speaker = Meter::Loudspeaker.spawn(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Loudspeaker);
+    let mut editor = editor(Tool::Meter(Meter::Loudspeaker));
     editor.edit(&mut world, at(0.3, 0.0));
     editor.offer_connection(&world, Seconds(10.0));
     editor.lift(&mut world);
@@ -1747,7 +1748,7 @@ fn placing_a_meter_or_tapping_a_neuron_with_a_meter_tool_offers_no_wire() {
     for press in [at(20.0, 20.0), at(0.3, 0.0)] {
         let mut world = World::new();
         neuron(&mut world, at(0.0, 0.0));
-        let mut editor = editor(Tool::Voltmeter);
+        let mut editor = editor(Tool::Meter(Meter::Voltmeter));
         editor.edit(&mut world, press);
         editor.offer_connection(&world, Seconds(10.0));
         editor.lift(&mut world);
@@ -1879,7 +1880,7 @@ fn erasing_the_selection_takes_its_dendrites_and_connections_but_leaves_its_volt
         .0;
     let b = neuron(&mut world, at(0.0, 10.0));
     spawn_synapse(&mut world, a, b);
-    let voltmeter = spawn_voltmeter(&mut world, a, at(1.0, 0.0));
+    let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, a, at(1.0, 0.0));
 
     editor.selection = Some(a);
     editor.erase_selection(&mut world);
@@ -1895,7 +1896,7 @@ fn erasing_the_selection_takes_its_dendrites_and_connections_but_leaves_its_volt
 fn tapping_a_neuron_with_a_meter_tool_places_a_meter_beside_it_measuring_it() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Voltmeter);
+    let mut editor = editor(Tool::Meter(Meter::Voltmeter));
     drag(&mut editor, &mut world, &[at(0.5, 0.0)]);
     let (voltmeter, position) = world
         .query::<(Entity, &Position)>()
@@ -1911,10 +1912,10 @@ fn tapping_a_neuron_with_a_meter_tool_places_a_meter_beside_it_measuring_it() {
 #[test]
 fn a_meter_tool_places_an_empty_meter_centered_where_it_is_pressed() {
     for tool in [
-        Tool::Voltmeter,
-        Tool::SpikeDetector,
-        Tool::RatePlot,
-        Tool::Loudspeaker,
+        Tool::Meter(Meter::Voltmeter),
+        Tool::Meter(Meter::SpikeDetector),
+        Tool::Meter(Meter::RatePlot),
+        Tool::Meter(Meter::Loudspeaker),
     ] {
         let mut world = World::new();
         neuron(&mut world, at(0.0, 0.0));
@@ -1943,7 +1944,7 @@ fn editor_meters(world: &World) -> Vec<(Entity, Meter)> {
 
 #[test]
 fn dragging_from_a_meter_to_a_neuron_measures_it_once_per_drag() {
-    for tool in [Tool::Loudspeaker, Tool::StaticConnection] {
+    for tool in [Tool::Meter(Meter::Loudspeaker), Tool::StaticConnection] {
         let mut world = World::new();
         let first = neuron(&mut world, at(0.0, 0.0));
         let second = neuron(&mut world, at(0.0, -10.0));
@@ -1977,7 +1978,7 @@ fn dragging_from_a_neuron_onto_a_meter_with_a_meter_tool_measures_it_without_a_n
     let target = neuron(&mut world, at(0.0, 0.0));
     let voltmeter = Meter::Voltmeter.spawn(&mut world, at(0.0, 10.0));
     let inside = Frame::of(&world, voltmeter).unwrap().point(0.5, 0.5);
-    let mut editor = editor(Tool::SpikeDetector);
+    let mut editor = editor(Tool::Meter(Meter::SpikeDetector));
     drag(
         &mut editor,
         &mut world,
@@ -1991,7 +1992,7 @@ fn dragging_from_a_neuron_onto_a_meter_with_a_meter_tool_measures_it_without_a_n
 fn dragging_from_a_neuron_to_an_empty_spot_places_the_meter_there() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::RatePlot);
+    let mut editor = editor(Tool::Meter(Meter::RatePlot));
     drag(
         &mut editor,
         &mut world,
@@ -2009,7 +2010,7 @@ fn dragging_from_a_neuron_to_an_empty_spot_places_the_meter_there() {
 fn placing_a_meter_and_dragging_on_to_a_neuron_measures_it() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Voltmeter);
+    let mut editor = editor(Tool::Meter(Meter::Voltmeter));
     drag(
         &mut editor,
         &mut world,
@@ -2117,7 +2118,7 @@ fn a_tap_that_nudged_an_element_puts_it_back_and_leaves_nothing_to_undo() {
 fn voltmeters_are_dragged_by_their_frame_and_resized_by_their_corners() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let voltmeter = spawn_voltmeter(&mut world, target, at(10.0, 5.0));
+    let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, target, at(10.0, 5.0));
     let mut editor = editor(Tool::Edit);
 
     drag(&mut editor, &mut world, &[at(12.0, 13.0), at(13.0, 15.0)]);
@@ -2716,7 +2717,7 @@ fn compressing_keeps_branches_and_measured_compartments() {
     let (branching, measured) = (grown[3], grown[8]);
     let branching_at = position(&world, branching);
     grow_axon(&mut world, branching_at, branching_at + at(10.0, 0.0));
-    spawn_voltmeter(&mut world, measured, at(10.0, 10.0));
+    Meter::Voltmeter.spawn_measuring(&mut world, measured, at(10.0, 10.0));
 
     drag_in_steps(&mut world, at(0.0, 0.0), at(0.0, 8.0));
 
@@ -2941,7 +2942,7 @@ fn undo_brings_back_what_was_erased() {
         .0;
     let b = neuron(&mut world, at(0.0, 10.0));
     spawn_synapse(&mut world, a, b);
-    let voltmeter = spawn_voltmeter(&mut world, a, at(-10.0, 0.0));
+    let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, a, at(-10.0, 0.0));
     let before = entities(&world);
 
     editor.tool = Tool::Erase;
@@ -3016,7 +3017,7 @@ fn undo_and_redo_step_through_every_kind_of_edit() {
         (Tool::Axon, &[at(0.0, 20.5), at(20.0, 20.0)]),
         (Tool::Dendrite, &[at(0.0, -0.5), at(-2.0, -9.0)]),
         (Tool::Edit, &[at(0.0, 0.5), at(-5.0, 3.5)]),
-        (Tool::Voltmeter, &[at(-4.5, 3.0)]),
+        (Tool::Meter(Meter::Voltmeter), &[at(-4.5, 3.0)]),
         (Tool::Erase, &[at(0.0, 20.0)]),
     ];
     for (tool, path) in edits {
@@ -3084,7 +3085,7 @@ fn a_new_edit_clears_what_could_be_redone() {
 fn undoing_a_voltmeter_resize_and_move_keeps_its_trace() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 0.0));
-    let voltmeter = spawn_voltmeter(&mut world, target, at(10.0, 5.0));
+    let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, target, at(10.0, 5.0));
     let mut editor = editor(Tool::Edit);
     drag(&mut editor, &mut world, &[at(12.0, 13.0), at(13.0, 15.0)]);
     drag(&mut editor, &mut world, &[at(10.0, 9.0), at(11.0, 9.0)]);
@@ -3444,7 +3445,7 @@ fn connecting_a_neuron_onto_a_voltmeter_adds_its_plot_once() {
     let mut world = World::new();
     let first = neuron(&mut world, at(0.0, 0.0));
     let second = neuron(&mut world, at(0.0, -10.0));
-    let voltmeter = spawn_voltmeter(&mut world, first, at(0.0, 5.0));
+    let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, first, at(0.0, 5.0));
     let inside = Frame::of(&world, voltmeter).unwrap().point(0.5, 0.5);
     let mut editor = editor(Tool::StaticConnection);
     for _ in 0..2 {
@@ -3463,8 +3464,8 @@ fn erasing_measured_neurons_keeps_the_voltmeter() {
     let mut world = World::new();
     let first = neuron(&mut world, at(0.0, 0.0));
     let second = neuron(&mut world, at(0.0, -10.0));
-    let voltmeter = spawn_voltmeter(&mut world, first, at(0.0, 5.0));
-    crate::elements::spawn_voltmeter_wire(&mut world, second, voltmeter);
+    let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, first, at(0.0, 5.0));
+    Meter::Voltmeter.wire(&mut world, second, voltmeter);
     let mut editor = editor(Tool::Edit);
     editor.selection = Some(first);
     editor.erase_selection(&mut world);
@@ -3483,7 +3484,7 @@ fn a_spike_detector_gets_a_row_for_each_neuron_connected_onto_it() {
     let first = neuron(&mut world, at(0.0, 0.0));
     let second = neuron(&mut world, at(0.0, -10.0));
     let compartment = spawn_compartment(&mut world, at(0.0, -20.0), NeuronType::Excitatory);
-    let mut editor = editor(Tool::SpikeDetector);
+    let mut editor = editor(Tool::Meter(Meter::SpikeDetector));
     drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
     let (detector, _) = world
         .query::<(Entity, &SpikeDetector)>()
@@ -3508,7 +3509,7 @@ fn a_rate_plot_averages_the_neurons_connected_onto_it() {
     let mut world = World::new();
     let first = neuron(&mut world, at(0.0, 0.0));
     let second = neuron(&mut world, at(0.0, -10.0));
-    let mut editor = editor(Tool::RatePlot);
+    let mut editor = editor(Tool::Meter(Meter::RatePlot));
     drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
     let (plot, _) = world
         .query::<(Entity, &crate::measurement::firing_rate::RatePlot)>()
@@ -3530,7 +3531,7 @@ fn a_loudspeaker_listens_to_each_neuron_connected_onto_it() {
     let mut world = World::new();
     let first = neuron(&mut world, at(0.0, 0.0));
     let second = neuron(&mut world, at(0.0, -10.0));
-    let mut editor = editor(Tool::Loudspeaker);
+    let mut editor = editor(Tool::Meter(Meter::Loudspeaker));
     drag(&mut editor, &mut world, &[at(0.3, 0.0)]);
     let (speaker, position) = world
         .query::<(Entity, &Position)>()

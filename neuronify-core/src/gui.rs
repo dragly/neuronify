@@ -3,17 +3,17 @@ mod empty_scene;
 mod hitboxes;
 mod hold_ring;
 pub(crate) mod icons;
-mod inspector;
+pub(crate) mod inspector;
 mod loupe;
 mod playback;
 mod rail;
 mod sheet;
 mod stimulate_pulse;
-mod style;
+pub(crate) mod style;
 #[cfg(test)]
 mod tests;
 pub(crate) mod text_field;
-mod widgets;
+pub(crate) mod widgets;
 
 use egui::{
     pos2, vec2, Align, Align2, Color32, Context, Id, Key, KeyboardShortcut, Layout, Modifiers,

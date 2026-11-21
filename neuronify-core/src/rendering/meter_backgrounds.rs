@@ -64,8 +64,9 @@ pub fn collect_meter_backgrounds(world: &hecs::World) -> Vec<MeterBackgroundData
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_spike_detector, spawn_voltmeter, Element};
+    use crate::elements::Element;
     use crate::measurement::frame::Corner;
+    use crate::measurement::Meter;
     use crate::rendering::colors::Theme;
     use glam::Vec3Swizzles;
     use hecs::World;
@@ -74,8 +75,10 @@ mod tests {
     fn every_meter_gets_a_background_just_under_its_frame() {
         let mut world = World::new();
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::new(0.0, 0.0, 10.0));
-        let detector = spawn_spike_detector(&mut world, neuron, Vec3::new(-10.0, 0.0, 0.0));
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::new(0.0, 0.0, 10.0));
+        let detector =
+            Meter::SpikeDetector.spawn_measuring(&mut world, neuron, Vec3::new(-10.0, 0.0, 0.0));
         let backgrounds = collect_meter_backgrounds(&world);
         assert_eq!(backgrounds.len(), 2);
         for meter in [voltmeter, detector] {

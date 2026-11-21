@@ -4,8 +4,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::components::{Nanoamperes, Seconds, Setting};
 use crate::constants::STIMULATION_CURRENT;
-use crate::elements::{Element, Meter};
+use crate::elements::Element;
 use crate::input::DWELL;
+use crate::measurement::Meter;
+
+const METER_TOOLS: [Tool; Meter::ALL.len()] = {
+    let mut tools = [Tool::View; Meter::ALL.len()];
+    let mut index = 0;
+    while index < tools.len() {
+        tools[index] = Tool::Meter(Meter::ALL[index]);
+        index += 1;
+    }
+    tools
+};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Tool {
@@ -13,10 +24,7 @@ pub enum Tool {
     View,
     Edit,
     Place(Element),
-    Voltmeter,
-    SpikeDetector,
-    RatePlot,
-    Loudspeaker,
+    Meter(Meter),
     StaticConnection,
     Axon,
     MyelinatedAxon,
@@ -44,10 +52,7 @@ impl Tool {
             Tool::Place(Element::VisualInput) => "Visual input",
             Tool::Place(Element::ReceptiveField) => "Receptive field",
             Tool::Place(Element::Note) => "Note",
-            Tool::Voltmeter => "Voltmeter",
-            Tool::SpikeDetector => "Spike detector",
-            Tool::RatePlot => "Firing rate plot",
-            Tool::Loudspeaker => "Loudspeaker",
+            Tool::Meter(meter) => meter.about().name,
             Tool::StaticConnection => "Connection",
             Tool::Axon => "Axon",
             Tool::MyelinatedAxon => "Myelinated axon",
@@ -89,25 +94,13 @@ impl Tool {
                 "Watches part of a picture and fires when the picture matches it. \
                  Connect a visual input to it."
             }
-            Tool::Loudspeaker => {
-                "Press a neuron to hear a sound each time it fires. \
-                 Connect more neurons to hear them too."
-            }
-            Tool::RatePlot => {
-                "Press a neuron to plot how often it fires. \
-                 Connect more neurons to plot their average."
-            }
-            Tool::SpikeDetector => {
-                "Press a neuron to draw a tick each time it fires. \
-                 Connect more neurons to give each a row."
-            }
+            Tool::Meter(meter) => meter.about().description,
             Tool::Place(Element::TouchSensor) => "Fires a spike each time you press it.",
             Tool::Place(Element::RegularSpikeGenerator) => "Sends spikes at a steady beat.",
             Tool::Place(Element::PoissonGenerator) => {
                 "Sends spikes at random moments, at a set average rate."
             }
             Tool::Place(Element::Note) => "Write a note on the canvas.",
-            Tool::Voltmeter => "Press a neuron to plot its voltage over time.",
             Tool::StaticConnection => {
                 "Drag from a neuron or an input to the neuron it should reach."
             }
@@ -127,10 +120,7 @@ impl Tool {
 
     pub fn meter(self) -> Option<Meter> {
         match self {
-            Tool::Voltmeter => Some(Meter::Voltmeter),
-            Tool::SpikeDetector => Some(Meter::SpikeDetector),
-            Tool::RatePlot => Some(Meter::RatePlot),
-            Tool::Loudspeaker => Some(Meter::Loudspeaker),
+            Tool::Meter(meter) => Some(meter),
             _ => None,
         }
     }
@@ -204,12 +194,7 @@ impl ToolGroup {
                 Tool::MyelinatedAxon,
                 Tool::Dendrite,
             ],
-            ToolGroup::Meters => &[
-                Tool::Voltmeter,
-                Tool::SpikeDetector,
-                Tool::RatePlot,
-                Tool::Loudspeaker,
-            ],
+            ToolGroup::Meters => &METER_TOOLS,
         }
     }
 }

@@ -252,7 +252,8 @@ fn sender_color(world: &World, sender: Entity, palette: &Palette) -> Vec3 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_spike_detector, spawn_synapse, Element};
+    use crate::elements::{spawn_synapse, Element};
+    use crate::measurement::Meter;
     use crate::rendering::colors::Theme;
     use crate::rendering::connections::collect_meter_wires;
     use crate::rendering::selection::collect_selection;
@@ -445,7 +446,7 @@ mod tests {
         let Circuit {
             mut world, cell, ..
         } = circuit();
-        let detector = spawn_spike_detector(&mut world, cell, Vec3::X * 10.0);
+        let detector = Meter::SpikeDetector.spawn_measuring(&mut world, cell, Vec3::X * 10.0);
         let wire = world
             .query::<(Entity, &Connection)>()
             .iter()

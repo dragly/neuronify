@@ -9,7 +9,8 @@ use crate::components::{
     RegularSpikeGenerator, Seconds,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
-use crate::elements::{spawn_cable, spawn_compartment, Element, Meter};
+use crate::elements::{spawn_cable, spawn_compartment, Element};
+use crate::measurement::Meter;
 use crate::settings::Setting;
 use crate::tools::{ConnectionMode, Tool};
 use rail::STROKE_ID;
@@ -478,7 +479,7 @@ fn placing_neurons_and_inputs_offers_the_stroke_but_dendrites_do_not() {
         (Tool::StaticConnection, true),
         (Tool::Dendrite, false),
         (Tool::Place(Element::Note), false),
-        (Tool::Voltmeter, false),
+        (Tool::Meter(Meter::Voltmeter), false),
     ] {
         harness.editor.tool = tool;
         assert_eq!(stroke_button(&mut harness).is_some(), offered, "{tool:?}");
@@ -925,7 +926,7 @@ fn a_selected_synapse_shows_its_settings_and_undoes_them() {
 fn a_voltmeter_sets_the_voltages_at_the_top_and_bottom_of_its_plots() {
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-    let voltmeter = crate::elements::spawn_voltmeter(&mut world, neuron, Vec3::Z * 3.0);
+    let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(voltmeter));
     for setting in [Setting::HighestVoltage, Setting::LowestVoltage] {
         assert!(harness.shows(setting.label()), "{setting:?}");
@@ -1060,7 +1061,7 @@ fn the_sliders_of_an_alternating_current_source_are_logarithmic() {
 fn a_spike_detector_sets_its_time_range() {
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-    let detector = crate::elements::spawn_spike_detector(&mut world, neuron, Vec3::Z * 3.0);
+    let detector = Meter::SpikeDetector.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(detector));
     assert!(harness.shows("Spike detector"));
     assert!(harness.shows(Setting::TimeRange.description()));
@@ -1083,7 +1084,7 @@ fn a_spike_detector_orders_its_rows_by_height_or_connection() {
     use crate::measurement::frame::RowOrder;
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-    let detector = crate::elements::spawn_spike_detector(&mut world, neuron, Vec3::Z * 3.0);
+    let detector = Meter::SpikeDetector.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(detector));
     assert!(harness.shows(Setting::RowOrder.description()));
     let order = |harness: &Harness| *harness.world.get::<&RowOrder>(detector).unwrap();
@@ -1098,7 +1099,7 @@ fn a_spike_detector_orders_its_rows_by_height_or_connection() {
 fn a_rate_plot_sets_its_window_smoothing_and_range() {
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-    let plot = crate::elements::spawn_rate_plot(&mut world, neuron, Vec3::Z * 3.0);
+    let plot = Meter::RatePlot.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(plot));
     assert!(harness.shows("Firing rate plot"));
     for setting in [
@@ -1125,7 +1126,7 @@ fn a_loudspeaker_picks_its_sound_volume_and_mute() {
     use crate::measurement::loudspeaker::{Loudspeaker, Sound};
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-    let speaker = crate::elements::spawn_loudspeaker(&mut world, neuron, Vec3::Z * 3.0);
+    let speaker = Meter::Loudspeaker.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(speaker));
     for setting in [Setting::Sound, Setting::Volume, Setting::Mute] {
         assert!(harness.shows(setting.label()), "{setting:?}");
