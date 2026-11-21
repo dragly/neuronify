@@ -1697,7 +1697,7 @@ mod tests {
     fn a_simulation_from_a_newer_neuronify_shows_its_details_and_explains_why_it_does_not_open() {
         let context = egui::Context::default();
         let mut library = Library::default();
-        let newer = include_bytes!("../../tests/save_files/from_a_newer_neuronify.neuronify");
+        let newer = include_bytes!("../tests/save_files/from_a_newer_neuronify.neuronify");
         let meta = crate::serialization::meta(newer).unwrap();
         library.create(&meta.name, &meta.description, newer.to_vec());
         let mut landing = LandingScreen::new(false);
