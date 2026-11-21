@@ -1,15 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use hecs::{Component, Entity, EntityBuilder, EntityRef, World};
+use hecs::{Entity, EntityBuilder, EntityRef, World};
 use neuronify_engine::units::{Microsiemens, Milliseconds, Nanoamperes};
 
 use crate::components::*;
-use crate::measurement::firing_rate::RatePlot;
-use crate::measurement::frame::RowOrder;
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::SpikeDetector;
+use crate::edited::{edited, edited_settings, Edited, Settings};
 use crate::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
-use crate::measurement::voltmeter::VoltmeterRange;
+use crate::measurement::Meter;
 
 enum State {
     Absent,
@@ -18,25 +15,6 @@ enum State {
 }
 
 type Change = Vec<(Entity, State)>;
-
-struct Edited {
-    copy: fn(EntityRef, &mut EntityBuilder),
-    swap: fn(&World, Entity, &mut EntityBuilder),
-    restore: fn(&mut EntityBuilder, &mut EntityBuilder),
-}
-
-const fn edited<T: Component + Clone>() -> Edited {
-    Edited {
-        copy: copy::<T>,
-        swap: swap::<T>,
-        restore: restore::<T>,
-    }
-}
-
-trait Settings<C: Component>: Component {
-    fn of(component: &C) -> Self;
-    fn swap(&mut self, component: &mut C);
-}
 
 struct Adaptation {
     adaptation: Microsiemens,
@@ -54,18 +32,6 @@ impl Settings<AdaptationCurrent> for Adaptation {
     fn swap(&mut self, current: &mut AdaptationCurrent) {
         std::mem::swap(&mut self.adaptation, &mut current.adaptation);
         std::mem::swap(&mut self.time_constant, &mut current.time_constant);
-    }
-}
-
-struct TimeRange(Milliseconds);
-
-impl Settings<SpikeDetector> for TimeRange {
-    fn of(detector: &SpikeDetector) -> Self {
-        TimeRange(detector.time_range)
-    }
-
-    fn swap(&mut self, detector: &mut SpikeDetector) {
-        std::mem::swap(&mut self.0, &mut detector.time_range);
     }
 }
 
@@ -91,44 +57,7 @@ impl Settings<CurrentSynapse> for Synapse {
     }
 }
 
-const fn edited_settings<C: Component, S: Settings<C>>() -> Edited {
-    Edited {
-        copy: copy_settings::<C, S>,
-        swap: swap_settings::<C, S>,
-        restore: restore_settings::<C, S>,
-    }
-}
-
-fn restore_settings<C: Component, S: Settings<C>>(
-    whole: &mut EntityBuilder,
-    edited: &mut EntityBuilder,
-) {
-    if let (Some(recorded), Some(component)) =
-        (edited.get_mut::<&mut S>(), whole.get_mut::<&mut C>())
-    {
-        recorded.swap(component);
-    }
-}
-
-fn copy_settings<C: Component, S: Settings<C>>(entity: EntityRef, edited: &mut EntityBuilder) {
-    if let Some(component) = entity.get::<&C>() {
-        edited.add(S::of(&component));
-    }
-}
-
-fn swap_settings<C: Component, S: Settings<C>>(
-    world: &World,
-    entity: Entity,
-    edited: &mut EntityBuilder,
-) {
-    if let (Some(recorded), Ok(mut current)) =
-        (edited.get_mut::<&mut S>(), world.get::<&mut C>(entity))
-    {
-        recorded.swap(&mut current);
-    }
-}
-
-const EDITED: [Edited; 27] = [
+const EDITED: [Edited; 22] = [
     edited::<Position>(),
     edited::<MeterSize>(),
     edited::<NoteSize>(),
@@ -143,13 +72,8 @@ const EDITED: [Edited; 27] = [
     edited::<LeakCurrent>(),
     edited_settings::<AdaptationCurrent, Adaptation>(),
     edited_settings::<CurrentSynapse, Synapse>(),
-    edited::<VoltmeterRange>(),
     edited::<Label>(),
     edited::<AlternatingCurrent>(),
-    edited_settings::<SpikeDetector, TimeRange>(),
-    edited::<RowOrder>(),
-    edited::<RatePlot>(),
-    edited::<Loudspeaker>(),
     edited::<VisualInput>(),
     edited::<Cable>(),
     edited::<Membrane>(),
@@ -158,32 +82,20 @@ const EDITED: [Edited; 27] = [
     edited::<ReceptiveFieldCell>(),
 ];
 
+fn edited_components() -> impl Iterator<Item = &'static Edited> {
+    EDITED.iter().chain(
+        Meter::ALL
+            .into_iter()
+            .flat_map(|meter| meter.about().edited),
+    )
+}
+
 fn copy_edited(entity: EntityRef) -> EntityBuilder {
     let mut edited = EntityBuilder::new();
-    for component in &EDITED {
+    for component in edited_components() {
         (component.copy)(entity, &mut edited);
     }
     edited
-}
-
-fn copy<T: Component + Clone>(entity: EntityRef, edited: &mut EntityBuilder) {
-    if let Some(component) = entity.get::<&T>() {
-        edited.add((*component).clone());
-    }
-}
-
-fn restore<T: Component + Clone>(whole: &mut EntityBuilder, edited: &mut EntityBuilder) {
-    if let Some(recorded) = edited.get::<&T>() {
-        whole.add(recorded.clone());
-    }
-}
-
-fn swap<T: Component>(world: &World, entity: Entity, edited: &mut EntityBuilder) {
-    if let (Some(recorded), Ok(mut current)) =
-        (edited.get_mut::<&mut T>(), world.get::<&mut T>(entity))
-    {
-        std::mem::swap(recorded, &mut *current);
-    }
 }
 
 fn take(world: &mut World, entity: Entity) -> Option<EntityBuilder> {
@@ -223,7 +135,7 @@ impl Recording {
             return;
         }
         if let Some(State::Edited(mut edited)) = self.before.remove(&entity) {
-            for component in &EDITED {
+            for component in edited_components() {
                 (component.restore)(&mut components, &mut edited);
             }
         }
@@ -337,7 +249,7 @@ impl History {
                     }
                 }
                 State::Edited(mut edited) => {
-                    for component in &EDITED {
+                    for component in edited_components() {
                         (component.swap)(world, entity, &mut edited);
                     }
                     inverse.push((entity, State::Edited(edited)));

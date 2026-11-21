@@ -13,13 +13,8 @@ use crate::constants::MAX_ENDING_STRENGTH;
 use crate::dendrites::compartment_tree;
 use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::frame::measured;
-use crate::measurement::frame::RowOrder;
-use crate::measurement::loudspeaker::{Loudspeaker, Sound};
-use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::visual_input::{Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+use crate::measurement::Meter;
 use crate::rendering::Theme;
 use crate::settings::Setting;
 use crate::simulation::model::has_dendrites;
@@ -65,17 +60,11 @@ const ADAPTATIONS: (RangeInclusive<Microsiemens>, Microsiemens) =
     (Microsiemens(0.0)..=Microsiemens(0.1), Microsiemens(0.0001));
 const ADAPTATION_TIME_CONSTANTS: RangeInclusive<Milliseconds> =
     Milliseconds(0.0)..=Milliseconds(600.0);
-const PLOTTED_VOLTAGES: RangeInclusive<Millivolts> = Millivolts(-250.0)..=Millivolts(250.0);
-const PLOTTED_VOLTAGE_GAP: Millivolts = Millivolts(1.0);
-const RATE_WINDOWS: RangeInclusive<Milliseconds> = Milliseconds(10.0)..=Milliseconds(1000.0);
-const PLOTTED_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(2500.0);
-const PLOTTED_RATE_GAP: Hertz = Hertz(1.0);
 const HALF_TURN: RangeInclusive<f64> = 0.0..=std::f64::consts::PI;
 const PICTURE_SPEEDS: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(50.0), Hertz(0.1));
 const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
 const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
 const SENSITIVITIES: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(10_000.0), Hertz(10.0));
-const TIME_RANGES: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1000.0);
 const SYNAPSE_CURRENTS: RangeInclusive<Nanoamperes> = Nanoamperes(0.0)..=Nanoamperes(10.0);
 const SYNAPSE_TIME_CONSTANTS: RangeInclusive<Milliseconds> = Milliseconds(0.1)..=Milliseconds(6.0);
 const DELAYS: RangeInclusive<Milliseconds> = Milliseconds(0.0)..=Milliseconds(30.0);
@@ -86,7 +75,6 @@ const ALTERNATING_FREQUENCIES: (RangeInclusive<Hertz>, Hertz) =
 const CURRENTS: (RangeInclusive<Nanoamperes>, Nanoamperes) =
     (Nanoamperes(0.0)..=Nanoamperes(30.0), Nanoamperes(0.01));
 const SPIKE_RATES: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(1000.0), Hertz(1.0));
-const VOLUMES: RangeInclusive<f64> = 0.0..=1.0;
 const STRENGTHS: RangeInclusive<f64> = 0.0..=MAX_ENDING_STRENGTH;
 
 enum Action {
@@ -243,18 +231,15 @@ impl Inspector {
     }
 
     fn live(&self, ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) {
-        let rate = world
-            .get::<&RateSeries>(entity)
-            .ok()
-            .and_then(|series| series.samples.back().map(|&(_, rate)| rate));
-        if let Some(rate) = rate {
+        let readout = Meter::of(world, entity).and_then(|meter| meter.readout(world, entity));
+        if let Some((label, value)) = readout {
             Frame::new()
                 .fill(chrome.raised)
                 .corner_radius(ROW_RADIUS + 2)
                 .inner_margin(Margin::same(10))
                 .show(ui, |ui| {
                     ui.set_width(ui.available_width());
-                    reading(ui, chrome, "Firing rate", format!("{:.1} Hz", rate.0), 17.0);
+                    reading(ui, chrome, label, value, 17.0);
                 });
             ui.add_space(12.0);
             return;
@@ -267,15 +252,6 @@ impl Inspector {
             (millivolts(state.voltage), Some(neuron.threshold))
         } else if let (true, Ok(state)) = (compartment, world.get::<&NodeState>(entity)) {
             (millivolts(state.voltage), None)
-        } else if world.get::<&Voltmeter>(entity).is_ok() {
-            let first = measured(world, entity).first().map(|&(wire, _)| wire);
-            let Some(reading) = first.and_then(|wire| {
-                let series = world.get::<&VoltageSeries>(wire).ok()?;
-                Some(millivolts(series.measurements.last()?.voltage))
-            }) else {
-                return;
-            };
-            (reading, None)
         } else {
             return;
         };
@@ -340,14 +316,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::Place(Element::VisualInput)
     } else if world.get::<&ReceptiveFieldCell>(entity).is_ok() {
         Tool::Place(Element::ReceptiveField)
-    } else if world.get::<&Voltmeter>(entity).is_ok() {
-        Tool::Voltmeter
-    } else if world.get::<&SpikeDetector>(entity).is_ok() {
-        Tool::SpikeDetector
-    } else if world.get::<&RatePlot>(entity).is_ok() {
-        Tool::RatePlot
-    } else if world.get::<&Loudspeaker>(entity).is_ok() {
-        Tool::Loudspeaker
+    } else if let Some(meter) = Meter::of(world, entity) {
+        Tool::Meter(meter)
     } else if world.get::<&Link>(entity).is_ok() {
         return Some((Tool::Place(Element::Note), "Link"));
     } else if world.get::<&Annotation>(entity).is_ok() {
@@ -510,7 +480,7 @@ fn sparkline(
     ));
 }
 
-fn milliseconds(duration: Milliseconds) -> String {
+pub(crate) fn milliseconds(duration: Milliseconds) -> String {
     format!("{:.1} ms", duration.0)
 }
 
@@ -522,11 +492,11 @@ fn picoamperes(current: Nanoamperes) -> String {
     format!("{:.0} pA", current.in_picoamperes())
 }
 
-fn millivolts(voltage: Millivolts) -> String {
+pub(crate) fn millivolts(voltage: Millivolts) -> String {
     format!("{:.1} mV", voltage.0).replace('-', "\u{2212}")
 }
 
-fn hertz(rate: Hertz) -> String {
+pub(crate) fn hertz(rate: Hertz) -> String {
     format!("{:.0} Hz", rate.0)
 }
 
@@ -534,7 +504,7 @@ fn values<Q: Quantity>(range: RangeInclusive<Q>) -> RangeInclusive<f64> {
     range.start().value()..=range.end().value()
 }
 
-pub(super) fn parameter<Q: Quantity>(
+pub(crate) fn parameter<Q: Quantity>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,
@@ -658,7 +628,7 @@ fn label_field(ui: &mut Ui, chrome: &Chrome, text: &mut String) -> bool {
     changed
 }
 
-pub(super) fn choice<T: PartialEq + Copy>(
+pub(crate) fn choice<T: PartialEq + Copy>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,
@@ -986,123 +956,14 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     if world.get::<&LeakyNeuron>(entity).is_ok() {
         changed |= neuron_parameters(ui, chrome, world, entity);
     }
-    if let Ok(mut range) = world.get::<&mut VoltmeterRange>(entity) {
-        heading(ui, chrome, "Parameters", 0.0);
-        let shown = |voltage: Millivolts| format!("{:.0} mV", voltage.0).replace('-', "\u{2212}");
-        let highest = parameter(
-            ui,
-            chrome,
-            Setting::HighestVoltage,
-            &mut range.maximum,
-            PLOTTED_VOLTAGES,
-            shown,
-        );
-        if highest {
-            range.maximum = range.maximum.max(range.minimum + PLOTTED_VOLTAGE_GAP);
-        }
-        let lowest = parameter(
-            ui,
-            chrome,
-            Setting::LowestVoltage,
-            &mut range.minimum,
-            PLOTTED_VOLTAGES,
-            shown,
-        );
-        if lowest {
-            range.minimum = range.minimum.min(range.maximum - PLOTTED_VOLTAGE_GAP);
-        }
-        changed |= highest || lowest;
-    }
-    if let Ok(mut detector) = world.get::<&mut SpikeDetector>(entity) {
-        heading(ui, chrome, "Parameters", 0.0);
-        changed |= parameter(
-            ui,
-            chrome,
-            Setting::TimeRange,
-            &mut detector.time_range,
-            TIME_RANGES,
-            milliseconds,
-        );
-    }
-    if let Ok(mut order) = world.get::<&mut RowOrder>(entity) {
-        changed |= choice(
-            ui,
-            chrome,
-            Setting::RowOrder,
-            &mut *order,
-            &[
-                (RowOrder::Height, "Height"),
-                (RowOrder::Connection, "Connection"),
-            ],
-        );
-    }
-    if let Ok(mut plot) = world.get::<&mut RatePlot>(entity) {
-        heading(ui, chrome, "Parameters", 0.0);
-        changed |= parameter(
-            ui,
-            chrome,
-            Setting::Window,
-            &mut plot.window,
-            RATE_WINDOWS,
-            milliseconds,
-        );
-        changed |= parameter(
-            ui,
-            chrome,
-            Setting::KernelWidth,
-            &mut plot.kernel_width,
-            RATE_WINDOWS,
-            milliseconds,
-        );
-        let highest = parameter(
-            ui,
-            chrome,
-            Setting::HighestRate,
-            &mut plot.maximum,
-            PLOTTED_RATES,
-            hertz,
-        );
-        if highest {
-            plot.maximum = plot.maximum.max(plot.minimum + PLOTTED_RATE_GAP);
-        }
-        let lowest = parameter(
-            ui,
-            chrome,
-            Setting::LowestRate,
-            &mut plot.minimum,
-            PLOTTED_RATES,
-            hertz,
-        );
-        if lowest {
-            plot.minimum = plot.minimum.min(plot.maximum - PLOTTED_RATE_GAP);
-        }
-        changed |= highest || lowest;
+    if let Some(meter) = Meter::of(world, entity) {
+        changed |= meter.parameters(ui, chrome, world, entity);
     }
     if let Ok(mut input) = world.get::<&mut VisualInput>(entity) {
         changed |= picture_parameters(ui, chrome, &mut input);
     }
     if let Ok(mut field) = world.get::<&mut ReceptiveFieldCell>(entity) {
         changed |= field_parameters(ui, chrome, &mut field);
-    }
-    if let Ok(mut speaker) = world.get::<&mut Loudspeaker>(entity) {
-        heading(ui, chrome, "Parameters", 0.0);
-        let sounds = Sound::ALL.map(|sound| (sound, sound.name()));
-        changed |= choice(ui, chrome, Setting::Sound, &mut speaker.sound, &sounds);
-        changed |= parameter(
-            ui,
-            chrome,
-            Setting::Volume,
-            &mut speaker.volume,
-            VOLUMES,
-            |volume| format!("{:.0} %", volume * 100.0),
-        );
-        changed |= choice(
-            ui,
-            chrome,
-            Setting::Mute,
-            &mut speaker.muted,
-            &[(true, "On"), (false, "Off")],
-        );
     }
     if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
@@ -1246,15 +1107,11 @@ mod tests {
             ADAPTATION_TIME_CONSTANTS,
             bounds::ADAPTATION_TIME_CONSTANTS
         ));
-        assert!(inside(PLOTTED_VOLTAGES, bounds::PLOTTED_VOLTAGES));
-        assert!(inside(RATE_WINDOWS, bounds::RATE_WINDOWS));
-        assert!(inside(PLOTTED_RATES, bounds::PLOTTED_RATES));
         assert!(inside(HALF_TURN, bounds::ANGLES));
         assert!(inside(PICTURE_SPEEDS.0, bounds::PICTURE_SPEEDS));
         assert!(inside(PICTURE_PHASES, bounds::PICTURE_PHASES));
         assert!(inside(OFFSETS, bounds::OFFSETS));
         assert!(inside(SENSITIVITIES.0, bounds::SENSITIVITIES));
-        assert!(inside(TIME_RANGES, bounds::TIME_RANGES));
         assert!(inside(SYNAPSE_CURRENTS, bounds::SYNAPSE_CURRENTS));
         assert!(inside(
             SYNAPSE_TIME_CONSTANTS,
@@ -1268,7 +1125,6 @@ mod tests {
         ));
         assert!(inside(CURRENTS.0, bounds::CURRENTS));
         assert!(inside(SPIKE_RATES.0, bounds::SPIKE_RATES));
-        assert!(inside(VOLUMES, bounds::VOLUMES));
         assert!(inside(STRENGTHS, bounds::STRENGTHS));
     }
 }

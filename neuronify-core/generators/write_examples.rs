@@ -3,14 +3,12 @@ use hecs::{Entity, World};
 
 use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::dendrites::{compartment_tree, spawn_dendrites};
-use neuronify_core::elements::{
-    spawn_cable, spawn_compartment, spawn_loudspeaker, spawn_rate_plot, spawn_spike_detector,
-    spawn_spike_detector_wire, spawn_synapse, spawn_voltmeter, Element,
-};
+use neuronify_core::elements::{spawn_cable, spawn_compartment, spawn_synapse, Element};
 use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::visual_input::{
     spawn_picture_wire, Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput,
 };
+use neuronify_core::measurement::Meter;
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::{
@@ -131,7 +129,7 @@ impl Sheet {
     }
 
     fn rate_plot(&mut self, target: Entity, left: f32, up: f32, maximum: Hertz) {
-        let plot = spawn_rate_plot(&mut self.world, target, Sheet::at(left, up));
+        let plot = Meter::RatePlot.spawn_measuring(&mut self.world, target, Sheet::at(left, up));
         self.world
             .get::<&mut RatePlot>(plot)
             .expect("rate plots spawn with a RatePlot")
@@ -146,9 +144,10 @@ impl Sheet {
     }
 
     fn spike_detector(&mut self, targets: &[Entity], left: f32, up: f32, width: f32, height: f32) {
-        let detector = spawn_spike_detector(&mut self.world, targets[0], Sheet::at(left, up));
+        let detector =
+            Meter::SpikeDetector.spawn_measuring(&mut self.world, targets[0], Sheet::at(left, up));
         for &target in &targets[1..] {
-            spawn_spike_detector_wire(&mut self.world, target, detector);
+            Meter::SpikeDetector.wire(&mut self.world, target, detector);
         }
         *self
             .world
@@ -195,7 +194,8 @@ impl Sheet {
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, width: f32, height: f32) {
-        let voltmeter = spawn_voltmeter(&mut self.world, target, Sheet::at(left, up));
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut self.world, target, Sheet::at(left, up));
         *self
             .world
             .get::<&mut MeterSize>(voltmeter)
@@ -259,8 +259,8 @@ pub fn listening_to_a_neuron() -> World {
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
     label(&mut world, neuron, "Cortex");
     synapse(&mut world, field, neuron, Nanoamperes(1.5));
-    spawn_loudspeaker(&mut world, neuron, at(3.0, 4.0));
-    spawn_spike_detector(&mut world, neuron, at(-5.0, 3.0));
+    Meter::Loudspeaker.spawn_measuring(&mut world, neuron, at(3.0, 4.0));
+    Meter::SpikeDetector.spawn_measuring(&mut world, neuron, at(-5.0, 3.0));
     note(
         &mut world,
         at(9.0, -1.0),
@@ -306,8 +306,8 @@ pub fn adaptive_inhibition() -> World {
     synapse(&mut world, drive, adaptive, Nanoamperes(6.0));
     synapse(&mut world, adaptive, output, Nanoamperes(4.0));
     synapse(&mut world, noise, output, Nanoamperes(2.0));
-    spawn_voltmeter(&mut world, output, at(-2.0, 5.0));
-    let plot = spawn_rate_plot(&mut world, output, at(-9.0, 5.0));
+    Meter::Voltmeter.spawn_measuring(&mut world, output, at(-2.0, 5.0));
+    let plot = Meter::RatePlot.spawn_measuring(&mut world, output, at(-9.0, 5.0));
     *world
         .get::<&mut RatePlot>(plot)
         .expect("rate plots spawn with a RatePlot") = RatePlot {

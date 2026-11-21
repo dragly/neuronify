@@ -4,8 +4,9 @@ use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::dendrites::{compartment_tree, spawn_dendrites};
 use neuronify_core::elements::{
-    spawn_cable, spawn_compartment, spawn_internode, spawn_synapse, spawn_voltmeter, Element,
+    spawn_cable, spawn_compartment, spawn_internode, spawn_synapse, Element,
 };
+use neuronify_core::measurement::Meter;
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::serialization;
 use neuronify_core::{
@@ -203,7 +204,8 @@ impl Canvas {
     }
 
     fn voltmeter(&mut self, target: Entity, left: f32, up: f32, size: MeterSize) {
-        let voltmeter = spawn_voltmeter(&mut self.world, target, Canvas::at(left, up));
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut self.world, target, Canvas::at(left, up));
         *self
             .world
             .get::<&mut MeterSize>(voltmeter)

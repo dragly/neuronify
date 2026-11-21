@@ -11,7 +11,6 @@ use hecs::Entity;
 
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::ReceptiveFieldCell;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::{CylinderData, TorusData};
@@ -19,17 +18,17 @@ use crate::rendering::scene::Scene;
 use neuronify_engine::SPIKE_DURATION;
 
 /// How long a soma or generator keeps glowing after it fires.
-const FLASH_DURATION: Milliseconds = Milliseconds(4.0);
+pub const FLASH_DURATION: Milliseconds = Milliseconds(4.0);
 /// Up and right on the screen with the default camera.
-const SCREEN_UP: Vec3 = Vec3::X;
-const SCREEN_RIGHT: Vec3 = Vec3::Z;
+pub const SCREEN_UP: Vec3 = Vec3::X;
+pub const SCREEN_RIGHT: Vec3 = Vec3::Z;
 /// Where the arrow of a current source without a target points.
 const UNCONNECTED_ARROW: Vec3 = SCREEN_UP;
 pub const PAD_RADIUS: f32 = 1.25 * NODE_RADIUS;
 pub const GENERATOR_RING_RADIUS: f32 = 1.6 * NODE_RADIUS;
 pub const GENERATOR_RING_THICKNESS: f32 = 0.15 * NODE_RADIUS;
 const PAD_HALF_HEIGHT: f32 = 0.2;
-const GLYPH_HEIGHT: f32 = PAD_HALF_HEIGHT + 0.04;
+pub const GLYPH_HEIGHT: f32 = PAD_HALF_HEIGHT + 0.04;
 
 struct Digit {
     width: f32,
@@ -66,9 +65,9 @@ const FINGERTIP_STEPS: usize = 8;
 const WAVE_STEPS: usize = 16;
 
 /// How much brighter than white a flash starts, so that only flashes bloom.
-const FLASH_BRIGHTNESS: f32 = 3.0;
+pub const FLASH_BRIGHTNESS: f32 = 3.0;
 
-fn flash(time_since_fire: Milliseconds) -> f32 {
+pub fn flash(time_since_fire: Milliseconds) -> f32 {
     let remaining = (1.0 - time_since_fire / FLASH_DURATION).max(0.0) as f32;
     remaining * remaining
 }
@@ -152,7 +151,7 @@ pub fn hand_outline() -> Vec<Vec2> {
     points.iter().map(|&point| point - center).collect()
 }
 
-fn pad(scene: &mut Scene, center: Vec3, color: Vec3) {
+pub fn pad(scene: &mut Scene, center: Vec3, color: Vec3) {
     scene.cylinders.push(CylinderData {
         start: center - Vec3::Y * PAD_HALF_HEIGHT,
         start_radius: PAD_RADIUS,
@@ -240,7 +239,7 @@ pub fn collect_shapes(world: &hecs::World, palette: &Palette) -> Scene {
             color,
         );
     }
-    collect_loudspeakers(world, palette, &mut shapes);
+    crate::measurement::drawing::shapes(world, palette, &mut shapes);
     shapes
 }
 
@@ -266,29 +265,6 @@ pub fn speaker_waves() -> Vec<Vec<(f32, f32)>> {
                 .collect()
         })
         .to_vec()
-}
-
-fn collect_loudspeakers(world: &hecs::World, palette: &Palette, shapes: &mut Scene) {
-    for (speaker, position) in world.query::<(&Loudspeaker, &Position)>().iter() {
-        let center = position.position;
-        let color = speaker_color().lerp(
-            palette.flash * FLASH_BRIGHTNESS,
-            flash(speaker.time_since_heard),
-        );
-        pad(shapes, center, color);
-        let point = |&(x, y): &(f32, f32)| {
-            center
-                + Vec3::Y * GLYPH_HEIGHT
-                + (SCREEN_RIGHT * x + SCREEN_UP * y) * 0.85 * NODE_RADIUS
-        };
-        let mut cone: Vec<Vec3> = speaker_outline().iter().map(point).collect();
-        cone.push(cone[0]);
-        shapes.stroke(&cone, 0.07 * NODE_RADIUS, glyph_color());
-        for wave in speaker_waves() {
-            let wave: Vec<Vec3> = wave.iter().map(point).collect();
-            shapes.stroke(&wave, 0.07 * NODE_RADIUS, glyph_color());
-        }
-    }
 }
 
 /// The rings around spike generators, which flash with the generator.
@@ -486,48 +462,6 @@ mod tests {
         };
         assert!(pad_brightness(0.0) < pad_brightness(0.3));
         assert_eq!(pad_brightness(0.3), pad_brightness(-0.3));
-    }
-
-    #[test]
-    fn a_loudspeaker_flashes_when_it_plays() {
-        let mut world = hecs::World::new();
-        let neuron = world.spawn((Position { position: Vec3::X },));
-        let speaker = crate::elements::spawn_loudspeaker(&mut world, neuron, Vec3::ZERO);
-        let palette = Theme::Dark.palette();
-        let pad_color =
-            |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
-        assert_eq!(pad_color(&world), speaker_color());
-        world
-            .get::<&mut Loudspeaker>(speaker)
-            .unwrap()
-            .time_since_heard = Milliseconds::ZERO;
-        assert_ne!(pad_color(&world), speaker_color());
-    }
-
-    #[test]
-    fn a_loudspeaker_flash_is_over_a_few_milliseconds_after_it_plays() {
-        use crate::measurement::loudspeaker::listen;
-        let mut world = hecs::World::new();
-        let neuron = world.spawn((Position { position: Vec3::X },));
-        crate::elements::spawn_loudspeaker(&mut world, neuron, Vec3::ZERO);
-        let palette = Theme::Dark.palette();
-        let pad_color =
-            |world: &hecs::World| collect_shapes(world, &palette).cylinders[0].start_color;
-        let heard = Milliseconds(1000.0);
-        let spike = crate::Spike {
-            entity: neuron,
-            time: heard,
-        };
-
-        listen(&mut world, &[spike], heard, Milliseconds::ZERO);
-        assert_ne!(pad_color(&world), speaker_color());
-        listen(
-            &mut world,
-            &[],
-            heard + 2.0 * FLASH_DURATION,
-            2.0 * FLASH_DURATION,
-        );
-        assert_eq!(pad_color(&world), speaker_color());
     }
 
     #[test]

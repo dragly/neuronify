@@ -1,11 +1,37 @@
+pub mod drawing;
+pub mod gui;
+
+use std::ops::RangeInclusive;
+
+use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_engine::units::Milliseconds;
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
+use crate::edited::edited;
+use crate::measurement::About;
+use crate::serialization::bounds::within;
 use crate::simulation::Spike;
 
+pub const VOLUMES: RangeInclusive<f64> = 0.0..=1.0;
+
 const MAXIMUM_HEARD: usize = 64;
+
+pub const ABOUT: About = About {
+    name: "Loudspeaker",
+    description: "Press a neuron to hear a sound each time it fires. \
+                  Connect more neurons to hear them too.",
+    size: None,
+    offset: Vec3::new(3.0, 0.0, 0.0),
+    edited: &[edited::<Loudspeaker>()],
+};
+
+pub fn bound(world: &mut World) {
+    for speaker in world.query_mut::<&mut Loudspeaker>() {
+        within(&mut speaker.volume, VOLUMES, Loudspeaker::default().volume);
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Sound {
@@ -116,7 +142,7 @@ pub fn take_heard(world: &mut World) -> Vec<(Sound, f32, Milliseconds)> {
 mod tests {
     use super::*;
     use crate::constants::DT;
-    use crate::elements::spawn_loudspeaker;
+    use crate::measurement::Meter;
     use glam::Vec3;
 
     const SECOND: Milliseconds = Milliseconds(1000.0);
@@ -129,7 +155,7 @@ mod tests {
     fn a_loudspeaker_hears_each_spike_of_its_neurons_unless_muted() {
         let mut world = World::new();
         let [wired, unwired] = [(); 2].map(|_| world.spawn((NodeState::default(),)));
-        let speaker = spawn_loudspeaker(&mut world, wired, Vec3::ZERO);
+        let speaker = Meter::Loudspeaker.spawn_measuring(&mut world, wired, Vec3::ZERO);
         world.get::<&mut Loudspeaker>(speaker).unwrap().sound = Sound::Pop;
         listen(
             &mut world,

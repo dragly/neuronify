@@ -130,8 +130,8 @@ mod tests {
     const HIGH: Millivolts = Millivolts(50.0);
     const TRACE: Vec3 = Vec3::new(0.2, 0.4, 0.9);
     const SPIKE: Vec3 = Vec3::new(0.6, 0.65, 0.9);
-    use crate::elements::{spawn_voltmeter, spawn_voltmeter_wire};
     use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement};
+    use crate::measurement::Meter;
     use crate::rendering::colors::{paler, Theme};
     use glam::Vec3;
     use hecs::World;
@@ -256,9 +256,9 @@ mod tests {
                 NodeState::default(),
             ))
         });
-        let voltmeter = spawn_voltmeter(&mut world, neurons[0], Vec3::ZERO);
+        let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, neurons[0], Vec3::ZERO);
         for &neuron in &neurons[1..] {
-            spawn_voltmeter_wire(&mut world, neuron, voltmeter);
+            Meter::Voltmeter.wire(&mut world, neuron, voltmeter);
         }
         let frame = Frame::of(&world, voltmeter).unwrap();
         for (index, (wire, neuron)) in measured(&world, voltmeter).into_iter().enumerate() {
@@ -293,7 +293,7 @@ mod tests {
         let neuron = world.spawn((Position {
             position: Vec3::new(-10.0, 0.0, 0.0),
         },));
-        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::ZERO);
+        let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::ZERO);
         *world.get::<&mut VoltmeterRange>(voltmeter).unwrap() = VoltmeterRange {
             minimum: Millivolts(-80.0),
             maximum: Millivolts(-40.0),
@@ -318,7 +318,7 @@ mod tests {
         let neuron = world.spawn((Position {
             position: Vec3::new(-10.0, 0.0, 0.0),
         },));
-        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::ZERO);
+        let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::ZERO);
         *world.get::<&mut VoltmeterRange>(voltmeter).unwrap() = VoltmeterRange {
             minimum: Millivolts(-60.0),
             maximum: Millivolts(-60.0),
@@ -351,8 +351,9 @@ mod tests {
             NeuronType::Excitatory,
             Dendrite,
         ));
-        let voltmeter = spawn_voltmeter(&mut world, inhibitory, Vec3::new(5.0, 0.0, 10.0));
-        spawn_voltmeter_wire(&mut world, dendrite, voltmeter);
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut world, inhibitory, Vec3::new(5.0, 0.0, 10.0));
+        Meter::Voltmeter.wire(&mut world, dendrite, voltmeter);
         for (wire, _) in measured(&world, voltmeter) {
             *world.get::<&mut VoltageSeries>(wire).unwrap() =
                 series([(0.0, -70.0), (SAMPLE, -60.0)].into_iter(), vec![SAMPLE]);

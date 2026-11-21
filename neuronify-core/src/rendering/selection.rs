@@ -133,7 +133,8 @@ pub fn element_radius(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_compartment, spawn_voltmeter, Element};
+    use crate::elements::{spawn_compartment, Element};
+    use crate::measurement::Meter;
     use crate::rendering::bounds::circuit_bounds;
     use crate::rendering::colors::Theme;
 
@@ -205,7 +206,8 @@ mod tests {
     fn voltmeters_and_notes_get_a_rectangle_with_handles() {
         let mut world = World::new();
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::new(10.0, 0.0, 5.0));
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::new(10.0, 0.0, 5.0));
         let note = Element::Note.spawn(&mut world, Vec3::new(-10.0, 0.0, 0.0));
         for entity in [voltmeter, note] {
             let [min, max] = rectangle(&world, entity).unwrap();

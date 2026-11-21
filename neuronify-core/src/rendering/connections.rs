@@ -1056,7 +1056,6 @@ pub fn axon_waiting(start: Vec3, end: Vec3, palette: &Palette) -> Option<Connect
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_spike_detector, spawn_spike_detector_wire, spawn_voltmeter};
     use crate::rendering::colors::Theme;
     use hecs::World;
 
@@ -1437,9 +1436,17 @@ mod tests {
                 NodeState::default(),
             ))
         });
-        let detector = spawn_spike_detector(&mut world, neurons[0], Vec3::X * 10.0);
-        spawn_spike_detector_wire(&mut world, neurons[1], detector);
-        spawn_voltmeter(&mut world, neurons[1], Vec3::X * 20.0);
+        let detector = crate::measurement::Meter::SpikeDetector.spawn_measuring(
+            &mut world,
+            neurons[0],
+            Vec3::X * 10.0,
+        );
+        crate::measurement::Meter::SpikeDetector.wire(&mut world, neurons[1], detector);
+        crate::measurement::Meter::Voltmeter.spawn_measuring(
+            &mut world,
+            neurons[1],
+            Vec3::X * 20.0,
+        );
         let starts = neurons.map(|neuron| world.get::<&Position>(neuron).unwrap().position);
         let mut wires = |view: ConnectionView, selected| {
             view.set_in(&mut world);

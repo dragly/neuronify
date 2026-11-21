@@ -2,11 +2,12 @@ use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::frame::RowOrder;
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::visual_input::{
     beside_the_picture, spawn_picture_wire, ReceptiveFieldCell, VisualInput,
 };
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+use crate::measurement::SpikeTrain;
 use crate::tools::ConnectionMode;
 use hecs::{ComponentError, Entity, World};
 

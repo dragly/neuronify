@@ -4,8 +4,9 @@ use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::frame::RowOrder;
 use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+use crate::measurement::SpikeTrain;
 use hecs::{ComponentError, Entity, World};
 
 schema!(
