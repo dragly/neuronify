@@ -11,12 +11,12 @@ use crate::elements::{
     spawn_axon_cable, spawn_cable, spawn_compartment, spawn_connection, spawn_dendrite_compartment,
     Element, Meter,
 };
+use crate::measurement::frame::{measured, Corner, Frame};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::{
     direction_badge_at, edge_toward, framed_size, receptive_field_frame, spawn_picture_wire,
     visual_input_frame, watched_picture, ReceptiveFieldCell, VisualInput,
 };
-use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};

@@ -1,7 +1,7 @@
 use glam::Vec3;
 
 use crate::components::*;
-use crate::measurement::voltmeter::{Corner, Frame};
+use crate::measurement::frame::{Corner, Frame};
 use crate::rendering::colors::Theme;
 use crate::rendering::connections::{arc_points, collect_meter_wires};
 use crate::rendering::scene::collect_scene;

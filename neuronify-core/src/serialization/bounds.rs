@@ -441,7 +441,8 @@ mod tests {
     use super::*;
     use crate::constants::DEFAULT_SPEED;
     use crate::elements::{spawn_rate_plot, spawn_spike_detector, spawn_voltmeter, Element};
-    use crate::measurement::voltmeter::{measured, RollingWindow, VoltageMeasurement};
+    use crate::measurement::frame::measured;
+    use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement};
     use crate::serialization::{load, read, save, Meta};
 
     fn saved(world: &World) -> Vec<u8> {

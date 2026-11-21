@@ -5,11 +5,11 @@ use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::constants::{COMPARTMENT_SPHERE_SCALE, ERASE_RADIUS, NODE_RADIUS};
+use crate::measurement::frame::{Corner, Frame};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::{
     receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
 };
-use crate::measurement::voltmeter::{Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::colors::Palette;
 use crate::rendering::connection_rings::ringed_selection;

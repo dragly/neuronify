@@ -5,8 +5,8 @@ use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
+use crate::measurement::frame::measured;
 use crate::measurement::spike_detector::SpikeTrain;
-use crate::measurement::voltmeter::measured;
 
 pub const RATE_SAMPLE_INTERVAL: Milliseconds = Milliseconds(1.0);
 pub const RATE_HISTORY: Milliseconds = Milliseconds(1000.0);

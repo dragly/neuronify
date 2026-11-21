@@ -1,8 +1,8 @@
 use glam::Vec3;
 
 use crate::components::*;
+use crate::measurement::frame::{measured, Corner, Frame};
 use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::ConnectionData;
 use hecs::Entity;

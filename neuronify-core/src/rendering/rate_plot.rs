@@ -3,7 +3,7 @@ use glam::Vec3;
 use crate::components::*;
 use crate::constants::CURVE_LIFT;
 use crate::measurement::firing_rate::{RatePlot, RateSeries, RATE_HISTORY};
-use crate::measurement::voltmeter::{measured, Corner, Frame};
+use crate::measurement::frame::{measured, Corner, Frame};
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::ConnectionData;
 use hecs::Entity;

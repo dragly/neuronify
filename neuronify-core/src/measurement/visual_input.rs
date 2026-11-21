@@ -6,7 +6,7 @@ use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
 use crate::components::{Connection, Deletable, Position};
-use crate::measurement::voltmeter::{Corner, Frame};
+use crate::measurement::frame::{Corner, Frame};
 
 pub const RESOLUTION: usize = 20;
 pub const VISUAL_INPUT_SIZE: f32 = 8.0;
