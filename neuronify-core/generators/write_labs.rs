@@ -4,7 +4,8 @@ use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::elements::{spawn_spike_detector, spawn_spike_detector_wire, Element};
-use neuronify_core::measurement::spike_detector::{RowOrder, SpikeDetector};
+use neuronify_core::measurement::frame::RowOrder;
+use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::visual_input::{
     spawn_picture_wire, Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput,
 };

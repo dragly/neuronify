@@ -5,7 +5,7 @@ use hecs::{Entity, World};
 
 use crate::components::*;
 use crate::constants::SELECTION_RANGE;
-use crate::measurement::voltmeter::{Corner, Frame};
+use crate::measurement::frame::{Corner, Frame};
 use crate::rendering::bounds::note_corners;
 use crate::rendering::cylinders::sheath_radius;
 use crate::rendering::{compartment_radii, element_radius};

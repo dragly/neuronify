@@ -32,13 +32,6 @@ impl SpikeDetector {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub enum RowOrder {
-    #[default]
-    Height,
-    Connection,
-}
-
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct SpikeTrain {
     pub times: VecDeque<Milliseconds>,
@@ -103,7 +96,7 @@ mod tests {
         let mut world = World::new();
         let [wired, unwired] = [(); 2].map(|_| world.spawn((NodeState::default(),)));
         let detector = spawn_spike_detector(&mut world, wired, Vec3::ZERO);
-        let wire = crate::measurement::voltmeter::measured(&world, detector)[0].0;
+        let wire = crate::measurement::frame::measured(&world, detector)[0].0;
         let fired = Milliseconds(1000.0);
         let spikes_at = |time| [wired, unwired].map(|entity| Spike { entity, time });
         record_spikes(&mut world, &spikes_at(fired), fired);

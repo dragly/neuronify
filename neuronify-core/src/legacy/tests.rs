@@ -585,7 +585,7 @@ fn a_voltmeter_measures_every_neuron_wired_to_it_from_the_highest_down() {
     let mut world = hecs::World::new();
     let entities = spawn_legacy_simulation(&mut world, &sim);
     let measured = |voltmeter: usize| -> Vec<hecs::Entity> {
-        crate::measurement::voltmeter::measured(&world, entities[voltmeter])
+        crate::measurement::frame::measured(&world, entities[voltmeter])
             .into_iter()
             .map(|(_, neuron)| neuron)
             .collect()
@@ -614,8 +614,8 @@ fn a_voltmeter_keeps_its_range_and_sits_where_neuronify_1_drew_it() {
         (range.minimum, range.maximum),
         (Millivolts(-200.0), Millivolts(20.0))
     );
-    let frame = crate::measurement::voltmeter::Frame::of(&world, entities[0]).unwrap();
-    let top_left = frame.corner(crate::measurement::voltmeter::Corner::TopLeft);
+    let frame = crate::measurement::frame::Frame::of(&world, entities[0]).unwrap();
+    let top_left = frame.corner(crate::measurement::frame::Corner::TopLeft);
     assert!(top_left.abs_diff_eq(glam::Vec3::ZERO, 1e-5), "{top_left}");
 }
 
@@ -687,7 +687,7 @@ fn spike_detectors_keep_their_rows_time_range_and_size() {
         .unwrap()
         .time_range;
     assert_eq!(time_range, Seconds(0.101).to_milliseconds());
-    let rows: Vec<hecs::Entity> = crate::measurement::voltmeter::measured(&world, detector)
+    let rows: Vec<hecs::Entity> = crate::measurement::frame::measured(&world, detector)
         .into_iter()
         .map(|(_, neuron)| neuron)
         .collect();
@@ -716,7 +716,7 @@ fn rate_plots_keep_their_window_smoothing_and_range() {
                 Hertz(50.0)
             )
         );
-        assert!(!crate::measurement::voltmeter::measured(&world, plot).is_empty());
+        assert!(!crate::measurement::frame::measured(&world, plot).is_empty());
     }
 }
 
@@ -735,7 +735,7 @@ fn loudspeakers_play_the_closest_sound_for_each_neuron_wired_to_them() {
         .unwrap()
         .clone();
     assert_eq!(speaker.sound, crate::measurement::loudspeaker::Sound::Drop);
-    let wired: Vec<hecs::Entity> = crate::measurement::voltmeter::measured(&world, entities[0])
+    let wired: Vec<hecs::Entity> = crate::measurement::frame::measured(&world, entities[0])
         .into_iter()
         .map(|(_, neuron)| neuron)
         .collect();

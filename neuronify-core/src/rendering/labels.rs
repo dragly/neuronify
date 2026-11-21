@@ -9,11 +9,11 @@ use visula::{
 use crate::components::{Cable, Connection, Label, MeterSize, NoteSize, Position};
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS};
 use crate::measurement::firing_rate::RatePlot;
+use crate::measurement::frame::{measured, Corner, Frame};
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::{
     receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
 };
-use crate::measurement::voltmeter::{measured, Corner, Frame};
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::connection_rings::ring_edges;
 use crate::rendering::gpu_types::ArcData;

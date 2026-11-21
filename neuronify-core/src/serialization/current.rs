@@ -4,8 +4,9 @@ use neuronify_engine::{ChannelId, Density};
 use super::v19 as copies;
 use crate::components::*;
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
+use crate::measurement::frame::RowOrder;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
-use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
 use crate::measurement::visual_input::{Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::{
     RollingWindow, VoltageMeasurement, VoltageSeries, Voltmeter, VoltmeterRange,

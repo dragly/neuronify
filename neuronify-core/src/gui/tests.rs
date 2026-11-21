@@ -1080,7 +1080,7 @@ fn a_spike_detector_sets_its_time_range() {
 
 #[test]
 fn a_spike_detector_orders_its_rows_by_height_or_connection() {
-    use crate::measurement::spike_detector::RowOrder;
+    use crate::measurement::frame::RowOrder;
     let mut world = World::new();
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
     let detector = crate::elements::spawn_spike_detector(&mut world, neuron, Vec3::Z * 3.0);
