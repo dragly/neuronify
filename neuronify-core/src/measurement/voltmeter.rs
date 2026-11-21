@@ -1,11 +1,45 @@
-use std::collections::VecDeque;
+pub mod drawing;
+pub mod gui;
 
+use std::collections::VecDeque;
+use std::ops::RangeInclusive;
+
+use glam::Vec3;
 use hecs::World;
 use neuronify_engine::units::{Milliseconds, Millivolts};
 use serde::{Deserialize, Serialize};
 
+use crate::components::MeterSize;
 use crate::constants::VOLTMETER_MEASUREMENTS;
-use crate::simulation::Engine;
+use crate::edited::edited;
+use crate::measurement::About;
+use crate::serialization::bounds::within;
+use crate::simulation::engine::ProbeSamples;
+use crate::simulation::Spike;
+
+pub const PLOTTED_VOLTAGES: RangeInclusive<Millivolts> = Millivolts(-1000.0)..=Millivolts(1000.0);
+
+pub const ABOUT: About = About {
+    name: "Voltmeter",
+    description: "Press a neuron to plot its voltage over time.",
+    size: Some(MeterSize::DEFAULT),
+    offset: Vec3::X,
+    edited: &[edited::<VoltmeterRange>()],
+};
+
+pub fn bound(world: &mut World) {
+    for range in world.query_mut::<&mut VoltmeterRange>() {
+        let default = VoltmeterRange::default();
+        within(&mut range.minimum, PLOTTED_VOLTAGES, default.minimum);
+        within(&mut range.maximum, PLOTTED_VOLTAGES, default.maximum);
+        if range.minimum >= range.maximum {
+            *range = default;
+        }
+    }
+    for series in world.query_mut::<&mut VoltageSeries>() {
+        series.bound(VOLTMETER_MEASUREMENTS);
+    }
+}
 
 const SMALLEST_GROWTH: usize = 16;
 
@@ -129,14 +163,12 @@ impl Default for VoltmeterRange {
     }
 }
 
-pub fn record_voltages(world: &mut World, engine: &mut Engine) {
-    let samples = engine.samples();
-    let spikes = engine.spikes();
-    for probe in samples {
+pub fn record_voltages(world: &mut World, spikes: &[Spike], probes: &[ProbeSamples]) {
+    for probe in probes {
         let Ok(mut series) = world.get::<&mut VoltageSeries>(probe.wire) else {
             continue;
         };
-        for (time, voltage) in probe.samples {
+        for &(time, voltage) in &probe.samples {
             series
                 .measurements
                 .push(VoltageMeasurement { voltage, time });
@@ -229,14 +261,16 @@ mod tests {
     #[test]
     fn a_firing_neuron_keeps_only_the_voltages_and_spikes_its_plot_shows() {
         use crate::constants::VOLTMETER_TIME_WINDOW;
-        use crate::elements::{spawn_connection, spawn_voltmeter, Element};
+        use crate::elements::{spawn_connection, Element};
+        use crate::measurement::Meter;
         use crate::simulation::run_headless;
 
         let mut world = hecs::World::new();
         let source = Element::CurrentSource.spawn(&mut world, Vec3::ZERO);
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(0.0, 0.0, 5.0));
         spawn_connection(&mut world, source, neuron);
-        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::new(10.0, 0.0, 5.0));
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::new(10.0, 0.0, 5.0));
         let spikes = run_headless(&mut world, Milliseconds(1000.0));
         assert!(spikes.len() > 20, "{}", spikes.len());
 

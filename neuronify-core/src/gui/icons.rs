@@ -6,10 +6,10 @@ use glam::Vec3;
 
 use crate::elements::Element;
 use crate::rendering::colors::{
-    adaptation_gauge_color, blue, burst_gauge_color, orange, paler, rate_color, speaker_color,
-    terminal_color, yellow,
+    adaptation_gauge_color, blue, burst_gauge_color, orange, paler, rate_color, terminal_color,
+    yellow,
 };
-use crate::rendering::shapes::{hand_outline, speaker_outline, speaker_waves};
+use crate::rendering::shapes::hand_outline;
 use crate::rendering::Theme;
 use crate::tools::{ConnectionMode, Tool};
 
@@ -19,8 +19,8 @@ const GRID: f32 = 24.0;
 const GLYPH_GRID: f32 = 32.0;
 const STROKE: f32 = 1.8;
 const SPHERE_STEPS: usize = 40;
-const SINE_STEPS: usize = 24;
-const CREAM: Color32 = Color32::from_rgb(255, 244, 214);
+pub(crate) const SINE_STEPS: usize = 24;
+pub(crate) const CREAM: Color32 = Color32::from_rgb(255, 244, 214);
 const MORPHOLOGY_GRID: Vec2 = vec2(64.0, 32.0);
 const SOMA_SHARE: f32 = 0.62;
 const PYRAMIDAL_SOMA: (f32, f32) = (16.0, 19.0);
@@ -384,7 +384,7 @@ pub fn paint_connection_mode(painter: &Painter, mode: ConnectionMode, rect: Rect
     }
 }
 
-fn linear(color: Vec3) -> Color32 {
+pub(crate) fn linear(color: Vec3) -> Color32 {
     egui::Rgba::from_rgb(color.x, color.y, color.z).into()
 }
 
@@ -542,6 +542,33 @@ fn paint_compartmental(
     paint_glyph(painter, Tool::Place(element), glyph, theme, color);
 }
 
+pub struct Glyph<'a> {
+    pub painter: &'a Painter,
+    pub chrome: &'a Chrome,
+    pub scale: f32,
+    origin: Pos2,
+}
+
+impl Glyph<'_> {
+    pub fn at(&self, x: f32, y: f32) -> Pos2 {
+        self.origin + vec2(x, y) * self.scale
+    }
+
+    pub fn stroke(&self, width: f32, color: Color32) -> Stroke {
+        Stroke::new(width * self.scale, color)
+    }
+
+    pub fn frame(&self) {
+        self.painter.rect(
+            Rect::from_min_max(self.at(4.0, 7.0), self.at(28.0, 25.0)),
+            3.0 * self.scale,
+            self.chrome.raised,
+            self.stroke(1.5, self.chrome.subtext),
+            StrokeKind::Inside,
+        );
+    }
+}
+
 fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: Color32) {
     let icon = match tool {
         Tool::View => Some(Icon::Eye),
@@ -663,84 +690,12 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 painter.add(Shape::closed_line(closed, stroke(2.6, generator)));
             }
         }
-        Tool::Voltmeter => {
-            painter.rect(
-                Rect::from_min_max(at(4.0, 7.0), at(28.0, 25.0)),
-                3.0 * scale,
-                chrome.raised,
-                stroke(1.5, chrome.subtext),
-                StrokeKind::Inside,
-            );
-            painter.add(Shape::line(
-                [
-                    (7.0, 19.0),
-                    (11.0, 19.0),
-                    (13.0, 11.0),
-                    (15.0, 22.5),
-                    (17.0, 16.0),
-                    (25.0, 16.0),
-                ]
-                .map(|(x, y)| at(x, y))
-                .to_vec(),
-                stroke(1.8, chrome.accent),
-            ));
-        }
-        Tool::SpikeDetector => {
-            painter.rect(
-                Rect::from_min_max(at(4.0, 7.0), at(28.0, 25.0)),
-                3.0 * scale,
-                chrome.raised,
-                stroke(1.5, chrome.subtext),
-                StrokeKind::Inside,
-            );
-            for (row, ticks) in [
-                (11.5, [8.5, 13.5, 21.5]),
-                (16.0, [10.5, 17.5, 23.5]),
-                (20.5, [7.5, 15.0, 19.5]),
-            ] {
-                for tick in ticks {
-                    painter.line_segment(
-                        [at(tick, row - 1.8), at(tick, row + 1.8)],
-                        stroke(1.6, chrome.accent),
-                    );
-                }
-            }
-        }
-        Tool::RatePlot => {
-            painter.rect(
-                Rect::from_min_max(at(4.0, 7.0), at(28.0, 25.0)),
-                3.0 * scale,
-                chrome.raised,
-                stroke(1.5, chrome.subtext),
-                StrokeKind::Inside,
-            );
-            let curve: Vec<Pos2> = (0..=SINE_STEPS)
-                .map(|step| {
-                    let x = step as f32 / SINE_STEPS as f32;
-                    let rise = 1.0 / (1.0 + (-12.0 * (x - 0.45)).exp());
-                    at(
-                        7.0 + 18.0 * x,
-                        21.5 - 10.0 * rise + 2.0 * (x * TAU).sin() * rise,
-                    )
-                })
-                .collect();
-            painter.add(Shape::line(curve, stroke(1.8, chrome.accent)));
-        }
-        Tool::Loudspeaker => {
-            painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(speaker_color()));
-            let cone = speaker_outline()
-                .iter()
-                .map(|&(x, y)| at(16.0 + 9.0 * x, 16.0 - 9.0 * y))
-                .collect();
-            painter.add(Shape::closed_line(cone, stroke(1.6, CREAM)));
-            for wave in speaker_waves() {
-                let points = wave
-                    .iter()
-                    .map(|&(x, y)| at(16.0 + 9.0 * x, 16.0 - 9.0 * y))
-                    .collect();
-                painter.add(Shape::line(points, stroke(1.6, CREAM)));
-            }
-        }
+        Tool::Meter(meter) => meter.icon(&Glyph {
+            painter,
+            chrome,
+            scale,
+            origin,
+        }),
         Tool::StaticConnection => {
             let curve: Vec<Pos2> = (0..=SPHERE_STEPS)
                 .map(|step| {

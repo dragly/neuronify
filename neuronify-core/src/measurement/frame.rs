@@ -173,6 +173,7 @@ impl Frame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::measurement::Meter;
 
     fn frame() -> Frame {
         Frame::new(
@@ -194,9 +195,9 @@ mod tests {
         let high = neuron_at(&mut world, 5.0);
         let middle = neuron_at(&mut world, 0.0);
         let voltmeter =
-            crate::elements::spawn_voltmeter(&mut world, low, Vec3::new(0.0, 0.0, 10.0));
-        crate::elements::spawn_voltmeter_wire(&mut world, high, voltmeter);
-        crate::elements::spawn_voltmeter_wire(&mut world, middle, voltmeter);
+            Meter::Voltmeter.spawn_measuring(&mut world, low, Vec3::new(0.0, 0.0, 10.0));
+        Meter::Voltmeter.wire(&mut world, high, voltmeter);
+        Meter::Voltmeter.wire(&mut world, middle, voltmeter);
         let rows = |world: &hecs::World| -> Vec<Entity> {
             measured(world, voltmeter)
                 .into_iter()
@@ -215,13 +216,10 @@ mod tests {
         let neurons = [-5.0, 5.0, 0.0].map(|up| {
             crate::elements::Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(up, 0.0, 0.0))
         });
-        let detector = crate::elements::spawn_spike_detector(
-            &mut world,
-            neurons[0],
-            Vec3::new(0.0, 0.0, 10.0),
-        );
+        let detector =
+            Meter::SpikeDetector.spawn_measuring(&mut world, neurons[0], Vec3::new(0.0, 0.0, 10.0));
         for &neuron in &neurons[1..] {
-            crate::elements::spawn_spike_detector_wire(&mut world, neuron, detector);
+            Meter::SpikeDetector.wire(&mut world, neuron, detector);
         }
         let rows = |world: &hecs::World| -> Vec<Entity> {
             measured(world, detector)

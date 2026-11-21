@@ -2,7 +2,8 @@ use glam::Vec3;
 
 use crate::components::*;
 use crate::measurement::frame::{measured, Corner, Frame};
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
+use crate::measurement::spike_detector::SpikeDetector;
+use crate::measurement::SpikeTrain;
 use crate::rendering::colors::*;
 use crate::rendering::gpu_types::ConnectionData;
 use hecs::Entity;
@@ -70,7 +71,7 @@ pub fn collect_spike_detectors(world: &hecs::World, palette: &Palette) -> Vec<Co
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_spike_detector, spawn_spike_detector_wire};
+    use crate::measurement::Meter;
     use hecs::World;
 
     #[test]
@@ -78,8 +79,8 @@ mod tests {
         let mut world = World::new();
         let excitatory = world.spawn((NodeState::default(), NeuronType::Excitatory));
         let inhibitory = world.spawn((NodeState::default(), NeuronType::Inhibitory));
-        let detector = spawn_spike_detector(&mut world, excitatory, Vec3::ZERO);
-        spawn_spike_detector_wire(&mut world, inhibitory, detector);
+        let detector = Meter::SpikeDetector.spawn_measuring(&mut world, excitatory, Vec3::ZERO);
+        Meter::SpikeDetector.wire(&mut world, inhibitory, detector);
         *world.get::<&mut SpikeDetector>(detector).unwrap() = SpikeDetector {
             time_range: Milliseconds(100.0),
             time: Milliseconds(1000.0),

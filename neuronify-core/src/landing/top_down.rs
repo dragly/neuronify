@@ -6,8 +6,7 @@ use crate::components::Milliseconds;
 use crate::constants::CONNECTION_WIDTH_PER_STRENGTH;
 use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::{
-    arc_points, collect_meter_wires, collect_rate_plots, collect_scene, collect_spike_detectors,
-    collect_voltmeter_traces, Bounds, ConnectionData, CylinderData, Palette,
+    arc_points, collect_meter_wires, collect_scene, Bounds, ConnectionData, CylinderData, Palette,
 };
 
 const THUMBNAIL_MIN_CANVAS_EXTENT: f32 = 20.0;
@@ -77,10 +76,8 @@ pub fn top_down_shapes(
     }
 
     shapes.extend(joined_voltmeter_traces(
-        collect_voltmeter_traces(world, palette)
+        crate::measurement::drawing::lines(world, palette)
             .into_iter()
-            .chain(collect_spike_detectors(world, palette))
-            .chain(collect_rate_plots(world, palette))
             .chain(collect_visual_input_lines(world, palette))
             .collect(),
         scale,

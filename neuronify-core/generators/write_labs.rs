@@ -3,12 +3,13 @@ use std::f32::consts::TAU;
 use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::constants::DEFAULT_SPEED;
-use neuronify_core::elements::{spawn_spike_detector, spawn_spike_detector_wire, Element};
+use neuronify_core::elements::Element;
 use neuronify_core::measurement::frame::RowOrder;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::visual_input::{
     spawn_picture_wire, Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput,
 };
+use neuronify_core::measurement::Meter;
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::{
     Annotation, Connection, ConnectionView, CurrentClamp, CurrentSynapse, Deletable, Hertz, Label,
@@ -219,7 +220,7 @@ fn ring_detector(world: &mut World, ring: &[Entity], outermost: f32) {
         0.0,
         -SPIKE_DETECTOR_SIZE.width * 0.5,
     );
-    let detector = spawn_spike_detector(world, ring[0], position);
+    let detector = Meter::SpikeDetector.spawn_measuring(world, ring[0], position);
     world
         .get::<&mut SpikeDetector>(detector)
         .expect("spike detectors spawn with a SpikeDetector")
@@ -231,7 +232,7 @@ fn ring_detector(world: &mut World, ring: &[Entity], outermost: f32) {
         .get::<&mut RowOrder>(detector)
         .expect("spike detectors spawn with a RowOrder") = RowOrder::Connection;
     for &cell in &ring[1..] {
-        spawn_spike_detector_wire(world, cell, detector);
+        Meter::SpikeDetector.wire(world, cell, detector);
     }
 }
 
@@ -800,13 +801,13 @@ fn direction_selectivity() -> World {
         rightward.push(right);
     }
     let detector_row = sheet.row(DETECTOR_HEIGHT) - DETECTOR_HEIGHT / 2.0;
-    let detector = spawn_spike_detector(
+    let detector = Meter::SpikeDetector.spawn_measuring(
         &mut sheet.world,
         receptors[0],
         Sheet::at((SHEET_WIDTH - DETECTOR_WIDTH) / 2.0, detector_row),
     );
     for &cell in receptors[1..].iter().chain(&rightward).chain([&output]) {
-        spawn_spike_detector_wire(&mut sheet.world, cell, detector);
+        Meter::SpikeDetector.wire(&mut sheet.world, cell, detector);
     }
     *sheet
         .world

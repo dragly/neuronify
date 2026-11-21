@@ -1,17 +1,12 @@
-use std::collections::VecDeque;
 use std::f64::consts::TAU;
 use std::ops::RangeInclusive;
 
 use glam::Vec3;
-use hecs::{Entity, World};
+use hecs::World;
 
 use crate::components::*;
-use crate::constants::{DT, RESTING_POTENTIAL, VOLTMETER_MEASUREMENTS};
-use crate::measurement::firing_rate::{RatePlot, RateSeries, RATE_HISTORY, RATE_SAMPLE_INTERVAL};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{shown_range, SpikeDetector, SpikeTrain};
+use crate::constants::RESTING_POTENTIAL;
 use crate::measurement::visual_input::{ReceptiveField, ReceptiveFieldCell, VisualInput};
-use crate::measurement::voltmeter::{VoltageSeries, VoltmeterRange};
 
 pub const POSITIONS: RangeInclusive<f32> = -1e6..=1e6;
 pub const MOTIONS: RangeInclusive<f32> = -1e6..=1e6;
@@ -54,16 +49,11 @@ pub const CONDUCTANCE_DENSITIES: RangeInclusive<SiemensPerSquareCentimetre> =
     SiemensPerSquareCentimetre(0.0)..=SiemensPerSquareCentimetre(10.0);
 pub const SQUID_TEMPERATURES: RangeInclusive<Celsius> = Celsius(0.0)..=Celsius(35.0);
 pub const MAMMAL_TEMPERATURES: RangeInclusive<Celsius> = Celsius(20.0)..=Celsius(42.0);
-pub const PLOTTED_VOLTAGES: RangeInclusive<Millivolts> = Millivolts(-1000.0)..=Millivolts(1000.0);
-pub const RATE_WINDOWS: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1e6);
-pub const PLOTTED_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1e6);
-pub const TIME_RANGES: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1e6);
 pub const SENSITIVITIES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1e6);
 pub const PICTURE_SPEEDS: RangeInclusive<Hertz> = Hertz(-1000.0)..=Hertz(1000.0);
 pub const ANGLES: RangeInclusive<f64> = 0.0..=TAU;
 pub const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
 pub const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
-pub const VOLUMES: RangeInclusive<f64> = 0.0..=1.0;
 
 pub fn bound(world: &mut World) {
     let preparation = Preparation::of(world);
@@ -75,7 +65,7 @@ pub fn bound(world: &mut World) {
         dynamics.acceleration = bounded_vector(dynamics.acceleration, MOTIONS);
     }
     for size in world.query_mut::<&mut MeterSize>() {
-        let default = MeterSize::default();
+        let default = MeterSize::DEFAULT;
         size.width = bounded_f32(size.width, FRAME_SIZES, default.width);
         size.height = bounded_f32(size.height, FRAME_SIZES, default.height);
     }
@@ -204,78 +194,13 @@ pub fn bound(world: &mut World) {
             preparation.celsius(),
         );
     }
-    for range in world.query_mut::<&mut VoltmeterRange>() {
-        let default = VoltmeterRange::default();
-        within(&mut range.minimum, PLOTTED_VOLTAGES, default.minimum);
-        within(&mut range.maximum, PLOTTED_VOLTAGES, default.maximum);
-        if range.minimum >= range.maximum {
-            *range = default;
-        }
-    }
-    for series in world.query_mut::<&mut VoltageSeries>() {
-        series.bound(VOLTMETER_MEASUREMENTS);
-    }
-    for plot in world.query_mut::<&mut RatePlot>() {
-        let default = RatePlot::default();
-        within(&mut plot.window, RATE_WINDOWS, default.window);
-        within(&mut plot.kernel_width, RATE_WINDOWS, default.kernel_width);
-        within(&mut plot.minimum, PLOTTED_RATES, default.minimum);
-        within(&mut plot.maximum, PLOTTED_RATES, default.maximum);
-        if plot.minimum >= plot.maximum {
-            (plot.minimum, plot.maximum) = (default.minimum, default.maximum);
-        }
-    }
-    for series in world.query_mut::<&mut RateSeries>() {
-        series
-            .samples
-            .retain(|(time, rate)| time.is_finite() && rate.is_finite());
-        keep_recent(
-            &mut series.samples,
-            |&(time, _)| time,
-            RATE_HISTORY,
-            (RATE_HISTORY / RATE_SAMPLE_INTERVAL) as usize + 1,
-        );
-    }
-    for detector in world.query_mut::<&mut SpikeDetector>() {
-        let default = SpikeDetector::default();
-        within(&mut detector.time_range, TIME_RANGES, default.time_range);
-        if !detector.time.is_finite() {
-            detector.time = Milliseconds::ZERO;
-        }
-    }
-    let trains: Vec<(Entity, Option<Milliseconds>)> = world
-        .query::<(Entity, Option<&Connection>)>()
-        .with::<&SpikeTrain>()
-        .iter()
-        .map(|(wire, connection)| {
-            let range = connection.and_then(|connection| shown_range(world, connection.to));
-            (wire, range)
-        })
-        .collect();
-    for (wire, range) in trains {
-        let Ok(mut train) = world.get::<&mut SpikeTrain>(wire) else {
-            continue;
-        };
-        train.times.retain(|time| time.is_finite());
-        match range {
-            Some(range) => keep_recent(
-                &mut train.times,
-                |&time| time,
-                range,
-                (range / DT) as usize + 1,
-            ),
-            None => train.times.clear(),
-        }
-    }
     for input in world.query_mut::<&mut VisualInput>() {
         bound_visual_input(input);
     }
     for cell in world.query_mut::<&mut ReceptiveFieldCell>() {
         bound_receptive_field(cell);
     }
-    for speaker in world.query_mut::<&mut Loudspeaker>() {
-        within(&mut speaker.volume, VOLUMES, Loudspeaker::default().volume);
-    }
+    crate::measurement::bound(world);
 }
 
 fn bound_neuron(neuron: &mut LeakyNeuron) {
@@ -372,7 +297,7 @@ fn bound_gates(gates: &mut [f64]) {
     }
 }
 
-fn within<Q: Quantity>(value: &mut Q, range: RangeInclusive<Q>, fallback: Q) {
+pub fn within<Q: Quantity>(value: &mut Q, range: RangeInclusive<Q>, fallback: Q) {
     if value.value().is_nan() {
         *value = fallback;
     } else {
@@ -382,20 +307,6 @@ fn within<Q: Quantity>(value: &mut Q, range: RangeInclusive<Q>, fallback: Q) {
                 .clamp(range.start().value(), range.end().value()),
         );
     }
-}
-
-fn keep_recent<T>(
-    samples: &mut VecDeque<T>,
-    time: impl Fn(&T) -> Milliseconds,
-    span: Milliseconds,
-    most: usize,
-) {
-    let Some(newest) = samples.iter().map(&time).reduce(Milliseconds::max) else {
-        return;
-    };
-    samples.retain(|sample| time(sample) >= newest - span);
-    let surplus = samples.len().saturating_sub(most);
-    samples.drain(..surplus);
 }
 
 fn without_negative_zero(value: f64) -> f64 {
@@ -440,10 +351,18 @@ mod tests {
 
     use super::*;
     use crate::constants::DEFAULT_SPEED;
-    use crate::elements::{spawn_rate_plot, spawn_spike_detector, spawn_voltmeter, Element};
+    use crate::constants::{DT, VOLTMETER_MEASUREMENTS};
+    use crate::elements::Element;
+    use crate::measurement::firing_rate::{RateSeries, RATE_HISTORY};
     use crate::measurement::frame::measured;
-    use crate::measurement::voltmeter::{RollingWindow, VoltageMeasurement};
+    use crate::measurement::spike_detector::SpikeDetector;
+    use crate::measurement::voltmeter::{
+        RollingWindow, VoltageMeasurement, VoltageSeries, VoltmeterRange,
+    };
+    use crate::measurement::Meter;
+    use crate::measurement::SpikeTrain;
     use crate::serialization::{load, read, save, Meta};
+    use hecs::Entity;
 
     fn saved(world: &World) -> Vec<u8> {
         save(world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap()
@@ -510,7 +429,8 @@ mod tests {
             (leaky.minimum_voltage, leaky.maximum_voltage) = (Millivolts(40.0), Millivolts(-40.0));
         }
         world.get::<&mut Position>(neuron).unwrap().position = Vec3::new(f32::NAN, 1.0, 1e30);
-        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
         *world.get::<&mut VoltmeterRange>(voltmeter).unwrap() = VoltmeterRange {
             minimum: Millivolts(-60.0),
             maximum: Millivolts(-60.0),
@@ -558,7 +478,7 @@ mod tests {
     fn a_long_rate_history_keeps_the_second_the_plot_shows() {
         let mut world = World::new();
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-        let plot = spawn_rate_plot(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
+        let plot = Meter::RatePlot.spawn_measuring(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
         let samples = (0..100_000).map(|step| (Milliseconds(step as f64), Hertz(10.0)));
         world.get::<&mut RateSeries>(plot).unwrap().samples = samples.collect();
 
@@ -578,7 +498,8 @@ mod tests {
     fn a_long_spike_train_keeps_the_spikes_its_meter_shows() {
         let mut world = World::new();
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-        let detector = spawn_spike_detector(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
+        let detector =
+            Meter::SpikeDetector.spawn_measuring(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
         let range = world.get::<&SpikeDetector>(detector).unwrap().time_range;
         let wire = world
             .query::<(Entity, &Connection)>()
@@ -619,7 +540,8 @@ mod tests {
     fn a_long_history_keeps_its_newest_voltages_and_the_spikes_among_them() {
         let mut world = World::new();
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
-        let voltmeter = spawn_voltmeter(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
+        let voltmeter =
+            Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::new(10.0, 0.0, 0.0));
         let (wire, _) = measured(&world, voltmeter)[0];
         let spacing = Milliseconds(0.1);
         let samples = 5 * VOLTMETER_MEASUREMENTS;

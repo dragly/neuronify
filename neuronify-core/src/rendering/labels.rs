@@ -600,7 +600,8 @@ fn lay_out(
 mod tests {
     use super::*;
     use crate::components::{ConnectionView, Selected, Setting};
-    use crate::elements::{spawn_synapse, spawn_voltmeter, spawn_voltmeter_wire, Element, Meter};
+    use crate::elements::{spawn_synapse, Element};
+    use crate::measurement::Meter;
     use crate::rendering::colors::Theme;
     use crate::rendering::scene::shown_paths;
     use crate::rendering::{collect_meter_wires, compartment_radii};
@@ -797,9 +798,9 @@ mod tests {
         let a = labelled(&mut world, Vec3::ZERO, "A");
         let b = labelled(&mut world, Vec3::Z * 5.0, "B");
         let unlabelled = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::Z * 10.0);
-        let voltmeter = spawn_voltmeter(&mut world, a, Vec3::X * 10.0);
-        spawn_voltmeter_wire(&mut world, b, voltmeter);
-        spawn_voltmeter_wire(&mut world, unlabelled, voltmeter);
+        let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, a, Vec3::X * 10.0);
+        Meter::Voltmeter.wire(&mut world, b, voltmeter);
+        Meter::Voltmeter.wire(&mut world, unlabelled, voltmeter);
         let frame = Frame::of(&world, voltmeter).unwrap();
 
         let mut titles: Vec<_> = placed(&world)
@@ -848,7 +849,7 @@ mod tests {
             ]
         );
 
-        spawn_voltmeter_wire(&mut world, neuron, voltmeter);
+        Meter::Voltmeter.wire(&mut world, neuron, voltmeter);
         Meter::Loudspeaker.wire(&mut world, neuron, speaker);
         assert!(hints(&world).is_empty());
     }

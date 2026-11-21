@@ -1,12 +1,58 @@
-use std::collections::VecDeque;
+pub mod drawing;
+pub mod gui;
 
+use std::collections::VecDeque;
+use std::ops::RangeInclusive;
+
+use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
+use crate::edited::edited;
 use crate::measurement::frame::measured;
-use crate::measurement::spike_detector::SpikeTrain;
+use crate::measurement::{keep_recent, About, SpikeTrain};
+use crate::serialization::bounds::within;
+
+pub const RATE_WINDOWS: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1e6);
+pub const PLOTTED_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1e6);
+
+pub const ABOUT: About = About {
+    name: "Firing rate plot",
+    description: "Press a neuron to plot how often it fires. \
+                  Connect more neurons to plot their average.",
+    size: Some(MeterSize {
+        width: 8.0,
+        height: 5.0,
+    }),
+    offset: Vec3::X,
+    edited: &[edited::<RatePlot>()],
+};
+
+pub fn bound(world: &mut World) {
+    for plot in world.query_mut::<&mut RatePlot>() {
+        let default = RatePlot::default();
+        within(&mut plot.window, RATE_WINDOWS, default.window);
+        within(&mut plot.kernel_width, RATE_WINDOWS, default.kernel_width);
+        within(&mut plot.minimum, PLOTTED_RATES, default.minimum);
+        within(&mut plot.maximum, PLOTTED_RATES, default.maximum);
+        if plot.minimum >= plot.maximum {
+            (plot.minimum, plot.maximum) = (default.minimum, default.maximum);
+        }
+    }
+    for series in world.query_mut::<&mut RateSeries>() {
+        series
+            .samples
+            .retain(|(time, rate)| time.is_finite() && rate.is_finite());
+        keep_recent(
+            &mut series.samples,
+            |&(time, _)| time,
+            RATE_HISTORY,
+            (RATE_HISTORY / RATE_SAMPLE_INTERVAL) as usize + 1,
+        );
+    }
+}
 
 pub const RATE_SAMPLE_INTERVAL: Milliseconds = Milliseconds(1.0);
 pub const RATE_HISTORY: Milliseconds = Milliseconds(1000.0);
@@ -26,15 +72,6 @@ impl Default for RatePlot {
             kernel_width: Milliseconds(200.0),
             minimum: Hertz(0.0),
             maximum: Hertz(100.0),
-        }
-    }
-}
-
-impl RatePlot {
-    pub fn size() -> MeterSize {
-        MeterSize {
-            width: 8.0,
-            height: 5.0,
         }
     }
 }
@@ -167,7 +204,8 @@ mod tests {
 
     #[test]
     fn a_rate_plot_follows_the_rate_of_the_neurons_wired_to_it() {
-        use crate::elements::{spawn_rate_plot, Element};
+        use crate::elements::Element;
+        use crate::measurement::Meter;
         use crate::simulation::{step_simulation, Engine};
         let mut world = World::new();
         let source = Element::RegularSpikeGenerator.spawn(&mut world, glam::Vec3::ZERO);
@@ -177,7 +215,7 @@ mod tests {
             .frequency = Hertz(40.0);
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::Z * 5.0);
         crate::elements::spawn_synapse(&mut world, source, neuron);
-        let plot = spawn_rate_plot(&mut world, neuron, glam::Vec3::X * 5.0);
+        let plot = Meter::RatePlot.spawn_measuring(&mut world, neuron, glam::Vec3::X * 5.0);
         let (mut engine, mut time) = (Engine::default(), Milliseconds::ZERO);
         let mut spikes = 0;
         while time < Milliseconds(3000.0) {

@@ -76,14 +76,14 @@ pub fn collect_rate_plots(world: &hecs::World, palette: &Palette) -> Vec<Connect
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_rate_plot, spawn_rate_plot_wire};
+    use crate::measurement::Meter;
     use hecs::World;
 
     #[test]
     fn the_curve_spans_the_last_second_from_the_lowest_to_the_highest_rate() {
         let mut world = World::new();
         let neuron = world.spawn((NodeState::default(),));
-        let plot = spawn_rate_plot(&mut world, neuron, Vec3::ZERO);
+        let plot = Meter::RatePlot.spawn_measuring(&mut world, neuron, Vec3::ZERO);
         world.get::<&mut RateSeries>(plot).unwrap().samples =
             [(4000.0, 0.0), (4500.0, 50.0), (5000.0, 100.0)]
                 .into_iter()
@@ -103,10 +103,10 @@ mod tests {
         let mut world = World::new();
         let excitatory = world.spawn((NodeState::default(), NeuronType::Excitatory));
         let inhibitory = world.spawn((NodeState::default(), NeuronType::Inhibitory));
-        let plot = spawn_rate_plot(&mut world, excitatory, Vec3::ZERO);
+        let plot = Meter::RatePlot.spawn_measuring(&mut world, excitatory, Vec3::ZERO);
         let palette = Theme::Dark.palette();
         assert_eq!(curve_color(&world, plot, &palette), palette.excitatory);
-        spawn_rate_plot_wire(&mut world, inhibitory, plot);
+        Meter::RatePlot.wire(&mut world, inhibitory, plot);
         assert_eq!(
             curve_color(&world, plot, &palette),
             (palette.excitatory + palette.inhibitory) / 2.0

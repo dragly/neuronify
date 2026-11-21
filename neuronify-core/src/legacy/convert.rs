@@ -4,9 +4,6 @@ use glam::Vec3;
 use hecs::{DynamicBundle, Entity, EntityBuilder, World};
 
 use crate::components::*;
-use crate::elements::{
-    spawn_loudspeaker_wire, spawn_rate_plot_wire, spawn_spike_detector_wire, spawn_voltmeter_wire,
-};
 use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::frame::RowOrder;
 use crate::measurement::is_meter;
@@ -16,6 +13,7 @@ use crate::measurement::visual_input::{
     beside_the_picture, spawn_picture_wire, ReceptiveField, ReceptiveFieldCell, VisualInput,
 };
 use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
+use crate::measurement::Meter;
 use crate::{Connection, Deletable, NeuronType, Position};
 
 const MILLI: f64 = 1e3;
@@ -258,13 +256,13 @@ fn element(node: &LegacyNode) -> EntityBuilder {
 
 fn wire_meter(world: &mut World, meter: Entity, neuron: Entity) {
     if world.get::<&SpikeDetector>(meter).is_ok() {
-        spawn_spike_detector_wire(world, neuron, meter);
+        Meter::SpikeDetector.wire(world, neuron, meter);
     } else if world.get::<&RatePlot>(meter).is_ok() {
-        spawn_rate_plot_wire(world, neuron, meter);
+        Meter::RatePlot.wire(world, neuron, meter);
     } else if world.get::<&Loudspeaker>(meter).is_ok() {
-        spawn_loudspeaker_wire(world, neuron, meter);
+        Meter::Loudspeaker.wire(world, neuron, meter);
     } else {
-        spawn_voltmeter_wire(world, neuron, meter);
+        Meter::Voltmeter.wire(world, neuron, meter);
     }
 }
 

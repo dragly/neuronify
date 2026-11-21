@@ -7,7 +7,7 @@ use crate::camera;
 use crate::components::{Link, Milliseconds, NeuronType, Position, Seconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, PlacedNeuron, Targets};
-use crate::elements::{Element, Meter};
+use crate::elements::Element;
 use crate::fire_hint::FireHint;
 use crate::frame_clock::{FrameClock, StepClock};
 use crate::gui::{
@@ -19,6 +19,7 @@ use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
+use crate::measurement::Meter;
 use crate::rendering::ghost::{self, GHOST_HEIGHT};
 use crate::rendering::{canvas_bounds, EditorMarks, Ghost, LandingGhost, SceneRenderer, Theme};
 use crate::serialization::{Meta, SavedWorld};

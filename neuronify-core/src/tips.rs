@@ -133,7 +133,8 @@ pub fn tip_at(world: &World, selected: Option<Entity>, position: Vec3, reach: f3
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::elements::{spawn_connection, Element, Meter};
+    use crate::elements::{spawn_connection, Element};
+    use crate::measurement::Meter;
 
     fn at(x: f32, z: f32) -> Vec3 {
         Vec3::new(x, 0.0, z)

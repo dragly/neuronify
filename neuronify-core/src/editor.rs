@@ -9,14 +9,14 @@ use crate::constants::*;
 use crate::dendrites::{compartment_tree, spawn_dendrites};
 use crate::elements::{
     spawn_axon_cable, spawn_cable, spawn_compartment, spawn_connection, spawn_dendrite_compartment,
-    Element, Meter,
+    Element,
 };
 use crate::measurement::frame::{measured, Corner, Frame};
-use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::{
     direction_badge_at, edge_toward, framed_size, receptive_field_frame, spawn_picture_wire,
     visual_input_frame, watched_picture, ReceptiveFieldCell, VisualInput,
 };
+use crate::measurement::Meter;
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};
@@ -45,7 +45,6 @@ const STAYING_REACH: f32 = 1.5;
 const SHARPEST_BEND: f32 = std::f32::consts::FRAC_PI_4;
 const SHARPEST_ENDING_TURN: f32 = std::f32::consts::FRAC_PI_4;
 const CORNER_REACH: f32 = 1.0;
-const SPEAKER_OFFSET: Vec3 = Vec3::new(3.0, 0.0, 0.0);
 const CONNECTION_SELECTION_RANGE: f32 = 0.6 * NODE_RADIUS;
 const DENDRITE_GAP: f32 = 2.0 * SEGMENT_LENGTH;
 const HINT_DURATION: Seconds = Seconds(3.0);
@@ -636,9 +635,7 @@ impl Editor {
             Tool::View => return self.view(world, position),
             Tool::Edit => return self.select(world, recording, position),
             Tool::Place(element) => self.add(world, recording, element, position),
-            Tool::Voltmeter | Tool::SpikeDetector | Tool::RatePlot | Tool::Loudspeaker => {
-                self.measure(world, position)
-            }
+            Tool::Meter(_) => self.measure(world, position),
             Tool::StaticConnection => self.connect(world, position),
             Tool::Axon | Tool::MyelinatedAxon => self.grow_axon(world, recording, position),
             Tool::Dendrite => self.grow_dendrite(world, recording, position),
@@ -1564,11 +1561,14 @@ fn meter_at(world: &World, position: Vec3) -> Option<(Entity, Vec3)> {
         .find(|&(meter, _, frame)| frame.contains(position) && Meter::of(world, meter).is_some())
         .map(|(meter, _, _)| (meter, position));
     framed.or_else(|| {
-        nearest_within(
-            positions_with::<Loudspeaker>(world),
-            position,
-            CONNECTION_REACH,
-        )
+        let unframed: Vec<(Entity, Vec3)> = world
+            .query::<(Entity, &Position)>()
+            .without::<&MeterSize>()
+            .iter()
+            .filter(|&(entity, _)| Meter::of(world, entity).is_some())
+            .map(|(entity, position)| (entity, position.position))
+            .collect();
+        nearest_within(unframed, position, CONNECTION_REACH)
     })
 }
 
@@ -1625,17 +1625,13 @@ fn measure_with_meter_at(world: &mut World, source: Entity, position: Vec3) -> b
 }
 
 fn spawn_meter_centered(world: &mut World, meter: Meter, position: Vec3) -> Entity {
-    let width = meter.size().map_or(0.0, |size| size.width);
+    let width = meter.about().size.map_or(0.0, |size| size.width);
     meter.spawn(world, position - Vec3::Z * width * 0.5)
 }
 
 fn measure_where_released(world: &mut World, meter: Meter, wire: &ConnectionTool) {
     let placed = if wire.end.distance(wire.start) < CONNECTION_REACH {
-        let offset = match meter {
-            Meter::Loudspeaker => SPEAKER_OFFSET,
-            _ => Vec3::X,
-        };
-        meter.spawn(world, wire.start + offset)
+        meter.spawn(world, wire.start + meter.about().offset)
     } else if Targets::new(world).at(wire.end).is_none() {
         spawn_meter_centered(world, meter, wire.end)
     } else {

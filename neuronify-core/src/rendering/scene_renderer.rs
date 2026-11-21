@@ -27,17 +27,14 @@ use crate::rendering::labels::{Drawn, LabelRenderer};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::meter_backgrounds::{collect_meter_backgrounds, create_meter_backgrounds};
 use crate::rendering::notes::NoteRenderer;
-use crate::rendering::rate_plot::collect_rate_plots;
 use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spheres::soma_sphere;
-use crate::rendering::spike_detector::collect_spike_detectors;
 use crate::rendering::tips::{collect_dangling, collect_tip};
 use crate::rendering::transmitter::Landings;
 use crate::rendering::visual_input::{
     collect_visual_input_lines, create_tiles, FIELD_SQUIRCLES, PICTURE_DOTS,
 };
-use crate::rendering::voltmeter::collect_voltmeter_traces;
 
 pub struct EditorMarks<'a> {
     pub drawn_connection: &'a [Vec3],
@@ -348,9 +345,7 @@ impl SceneRenderer {
                 .waiting
                 .and_then(|(start, end)| axon_waiting(start, end, &palette)),
         );
-        connections.extend(collect_voltmeter_traces(world, &palette));
-        connections.extend(collect_spike_detectors(world, &palette));
-        connections.extend(collect_rate_plots(world, &palette));
+        connections.extend(crate::measurement::drawing::lines(world, &palette));
         connections.extend(collect_visual_input_lines(world, &palette));
 
         self.sphere_buffer

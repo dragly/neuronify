@@ -271,19 +271,17 @@ pub struct PendingEvents {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TouchSensor;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct MeterSize {
     pub width: f32,
     pub height: f32,
 }
 
-impl Default for MeterSize {
-    fn default() -> Self {
-        Self {
-            width: 8.0,
-            height: 4.0,
-        }
-    }
+impl MeterSize {
+    pub const DEFAULT: MeterSize = MeterSize {
+        width: 8.0,
+        height: 4.0,
+    };
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
