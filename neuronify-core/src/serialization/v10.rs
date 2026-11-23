@@ -2,12 +2,13 @@ use super::v11::{
     AdaptationCurrent, Compartment, CompartmentCurrent, CurrentSynapse, GeneratorDynamics,
     ImmediateFireSynapse, LeakCurrent, LeakyDynamics, LeakyNeuron, NeuronDisplay,
 };
+use super::v19::{
+    AlternatingCurrent, Annotation, BurstCurrent, Connection, CurrentClamp, Deletable, Dendrite,
+    Label, Link, Loudspeaker, MeterSize, Myelin, NeuronType, NoteSize, PoissonGenerator, Position,
+    RatePlot, RateSeries, RegularSpikeGenerator, Selectable, SpatialDynamics, SpikeDetector,
+    SpikeTrain, StaticConnectionSource, TouchSensor, VoltageSeries, Voltmeter, VoltmeterRange,
+};
 use super::v9::VisualInput;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
 use hecs::{ComponentError, World};
 
 schema!(

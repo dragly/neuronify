@@ -1,10 +1,15 @@
 use super::v15::LeakyNeuron;
 use super::v16::VisualInput;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+use super::v19::{
+    AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Cable, CableState,
+    Compartment, ConductanceSynapse, Connection, ConnectionView, CurrentClamp, CurrentSynapse,
+    Deletable, Dendrite, GeneratorDynamics, ImmediateFireSynapse, Label, LeakCurrent, Link,
+    Loudspeaker, Membrane, MeterSize, Myelin, NeuronDisplay, NeuronType, NodeState, NoteSize,
+    PoissonGenerator, Position, Preparation, Randomness, RatePlot, RateSeries,
+    RegularSpikeGenerator, RowOrder, Selectable, Selected, SpatialDynamics, SpikeDetector,
+    SpikeTrain, StaticConnectionSource, SynapseState, Temperature, TouchSensor, VoltageSeries,
+    Voltmeter, VoltmeterRange,
+};
 use hecs::{ComponentError, Entity, World};
 
 schema!(

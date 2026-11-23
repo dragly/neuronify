@@ -1,11 +1,12 @@
 use super::v16::VisualInput;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::DEFAULT_PICTURE_SPEED;
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+use super::v19::{
+    AlternatingCurrent, Annotation, BurstCurrent, Connection, CurrentClamp, Deletable, Dendrite,
+    Label, Link, Loudspeaker, MeterSize, Myelin, NeuronType, NoteSize, PoissonGenerator, Position,
+    RatePlot, RateSeries, RegularSpikeGenerator, Selectable, SpatialDynamics, SpikeDetector,
+    SpikeTrain, StaticConnectionSource, TouchSensor, VoltageSeries, Voltmeter, VoltmeterRange,
+};
 use hecs::{ComponentError, Entity, World};
+use neuronify_engine::units::Hertz;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -149,7 +150,7 @@ pub fn upgrade_from_v10(world: &mut World) -> Result<(), ComponentError> {
                 _show_field: old.show_field,
                 pattern: old.pattern,
                 pattern_angle: old.pattern_angle,
-                speed: DEFAULT_PICTURE_SPEED,
+                speed: Hertz(10.0),
                 phase: 0.0,
             },
         )?;

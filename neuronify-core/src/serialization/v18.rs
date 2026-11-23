@@ -1,10 +1,14 @@
 use super::v16::VisualInput;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use crate::tools::ConnectionMode;
+use super::v19::{
+    AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Cable, CableState,
+    Compartment, CompartmentSoma, ConductanceSynapse, Connection, ConnectionMode, ConnectionView,
+    CurrentClamp, CurrentSynapse, Deletable, Dendrite, GeneratorDynamics, ImmediateFireSynapse,
+    Label, LeakCurrent, LeakyNeuron, Link, Loudspeaker, Membrane, MeterSize, Myelin, NeuronDisplay,
+    NeuronType, NodeState, NoteSize, PendingEvents, PoissonGenerator, Position, Preparation,
+    Randomness, RatePlot, RateSeries, RegularSpikeGenerator, RowOrder, Selectable, Selected,
+    SpatialDynamics, SpikeDetector, SpikeTrain, StaticConnectionSource, SynapseState, Temperature,
+    TouchSensor, VoltageSeries, Voltmeter, VoltmeterRange,
+};
 use hecs::{ComponentError, World};
 
 schema!(

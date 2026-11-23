@@ -28,13 +28,23 @@
 //! Each world version has a module with the components it can hold.
 //! postcard writes a component id as its position in that list,
 //! so a list must not change once files have been saved with it.
+//! `current` reads and writes the newest version with the app's own components.
+//! Older versions read into their own copies of the components,
+//! or another version's copy where the fields are the same,
+//! and never use the app's components, functions or defaults,
+//! so nothing outside these modules changes how an old file loads.
+//! Their upgrades end in the newest version's copies,
+//! which `current::from_copies` turns into the app's components.
+//! A test saves every component and reads it back through those copies,
+//! so it fails when an app component stops saving in the newest format.
 //! To change the list, or the fields of a component, add a version:
-//! copy the newest module to `v{N+1}`, make the change there,
+//! write `v{N+1}` with copies of the components that change,
+//! `pub use` of the previous version's copies for the rest and its list (for tests only),
 //! write `upgrade_from_v{N}` to turn a version N world into a version N+1 world
 //! and add it to `UPGRADES`,
+//! read version N with its own list (no longer for tests only),
+//! change the list in `current` and point its `copies` at the new module,
 //! and save a fixture with the `write_fixture` test.
-//! If the fields of a component change,
-//! the older modules need a copy of the old struct for the upgrade to convert.
 //! Loading clamps every value to the ranges in `bounds`, which belong to the newest version.
 //! To change a range, add a version too,
 //! and let its upgrade move values from the old range into the new one where it can.
@@ -52,6 +62,7 @@ mod schema;
 pub mod bounds;
 mod column;
 mod container;
+mod current;
 mod v1;
 mod v10;
 mod v11;
@@ -137,7 +148,7 @@ pub fn save(world: &World, time: Milliseconds, speed: f64, meta: &Meta) -> Resul
     let mut serializer = postcard::Serializer {
         output: postcard::ser_flavors::StdVec::new(),
     };
-    serialize(world, &mut v19::SaveContext, &mut serializer)
+    serialize(world, &mut current::SaveContext, &mut serializer)
         .map_err(|e| format!("Could not save: {e}"))?;
     let columns = serializer
         .output
@@ -336,7 +347,7 @@ fn read_world(version: u32, body: &[u8]) -> Result<SavedWorld, String> {
         19 => {
             let (time, body) = split_f64(body, "simulation time")?;
             let (speed, body) = split_f64(body, "simulation speed")?;
-            (v19::deserialize(body)?, time, speed)
+            (current::deserialize(body)?, time, speed)
         }
         0 => return Err("The simulation in the save file has version 0".to_owned()),
         _ => return Err(TOO_NEW.to_owned()),
@@ -347,6 +358,10 @@ fn read_world(version: u32, body: &[u8]) -> Result<SavedWorld, String> {
                 format!("Could not upgrade the save file from version {from}: {error}")
             })?;
         }
+    }
+    if version < WORLD_VERSION {
+        world = current::from_copies(&world)
+            .map_err(|error| format!("Could not upgrade the save file: {error}"))?;
     }
     let time = match version {
         ..15 => Seconds(time).to_milliseconds(),
@@ -417,13 +432,14 @@ mod tests {
     use crate::components::*;
     use crate::elements::{spawn_cable, spawn_compartment, spawn_internode, Element};
     use crate::measurement::firing_rate::RatePlot;
+    use crate::measurement::loudspeaker::{Loudspeaker, Sound};
     use crate::measurement::spike_detector::SpikeDetector;
     use crate::measurement::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
     use crate::measurement::voltmeter::{measured, VoltageSeries, Voltmeter, VoltmeterRange};
     use crate::tools::ConnectionMode;
     use hecs::Entity;
     use std::any::TypeId;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, HashSet};
 
     const LEAKY_NFY: &str = include_str!("legacy/fixtures/leaky.nfy");
     const FIXTURE_TIME: Milliseconds = Milliseconds(2500.0);
@@ -1065,7 +1081,9 @@ mod tests {
         crate::dendrites::spawn_dendrites(&mut world, branched);
         world.remove_one::<CompartmentSoma>(branched).unwrap();
         let point = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::new(20.0, 0.0, 0.0));
-        v17::upgrade_from_v16(&mut world).unwrap();
+        let mut copied = copies_of(&world);
+        v17::upgrade_from_v16(&mut copied).unwrap();
+        let world = current::from_copies(&copied).unwrap();
         assert_eq!(
             world.get::<&CompartmentSoma>(branched).as_deref(),
             Ok(&CompartmentSoma::default())
@@ -1092,15 +1110,13 @@ mod tests {
 
     #[test]
     fn version_15_edge_fields_keep_the_side_they_face() {
-        use crate::measurement::visual_input::{
-            watched_picture, ReceptiveField, ReceptiveFieldCell,
-        };
+        use crate::measurement::visual_input::{watched_picture, ReceptiveFieldCell};
         let bytes = include_bytes!("serialization/fixtures/v15.neuronify");
         let old = v15::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
         let mut checked = 0;
         for (entity, input) in old.query::<(Entity, &v16::VisualInput)>().iter() {
-            let ReceptiveField::Edge { angle } = input.field else {
+            let v19::ReceptiveField::Edge { angle } = input.field else {
                 continue;
             };
             let upgraded = new
@@ -1129,12 +1145,12 @@ mod tests {
         let new = load(bytes).unwrap().world;
         let in_milliseconds = |seconds: Milliseconds| Seconds(seconds.0).to_milliseconds();
         let mut checked = 0;
-        for (entity, detector) in old.query::<(Entity, &SpikeDetector)>().iter() {
+        for (entity, detector) in old.query::<(Entity, &v19::SpikeDetector)>().iter() {
             let upgraded = new.get::<&SpikeDetector>(entity).unwrap();
             assert_eq!(upgraded.time_range, in_milliseconds(detector.time_range));
             checked += 1;
         }
-        for (entity, plot) in old.query::<(Entity, &RatePlot)>().iter() {
+        for (entity, plot) in old.query::<(Entity, &v19::RatePlot)>().iter() {
             let upgraded = new.get::<&RatePlot>(entity).unwrap();
             assert_eq!(upgraded.window, in_milliseconds(plot.window));
             assert_eq!(upgraded.kernel_width, in_milliseconds(plot.kernel_width));
@@ -1329,7 +1345,7 @@ mod tests {
     fn version_11_dendrites_taper_away_from_their_soma() {
         let mut world = World::new();
         let soma = world.spawn((
-            Position {
+            v19::Position {
                 position: glam::Vec3::ZERO,
             },
             v11::LeakyNeuron {
@@ -1345,7 +1361,7 @@ mod tests {
         let mut from = soma;
         for step in 1..=6 {
             let to = world.spawn((
-                Position {
+                v19::Position {
                     position: glam::Vec3::new(2.0 * step as f32, 0.0, 0.0),
                 },
                 v11::Compartment {
@@ -1358,10 +1374,10 @@ mod tests {
                     injected_current: 0.0,
                     fire_impulse: 0.0,
                 },
-                Dendrite,
+                v19::Dendrite,
             ));
             world.spawn((
-                Connection {
+                v19::Connection {
                     from,
                     to,
                     strength: 1.0,
@@ -1374,6 +1390,7 @@ mod tests {
         for upgrade in &UPGRADES[10..] {
             upgrade(&mut world).unwrap();
         }
+        let world = current::from_copies(&world).unwrap();
         let mut diameters = Vec::new();
         for (connection, cable) in world.query::<(&Connection, &Cable)>().iter() {
             let ends = [connection.from, connection.to]
@@ -1419,6 +1436,69 @@ mod tests {
 
     /// Writes `fixture_world` as `fixtures/v{WORLD_VERSION}.neuronify`.
     /// Run it when adding a version, so that version keeps loading:
+    fn copies_of(world: &World) -> World {
+        let bytes = save(world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()).unwrap();
+        let Ok(Contents::Parts(parts)) = contents(&bytes) else {
+            panic!("a saved world reads back as parts");
+        };
+        let body = world_of(&parts).unwrap().bytes;
+        let (_, body) = split_f64(body, "simulation time").unwrap();
+        let (_, body) = split_f64(body, "simulation speed").unwrap();
+        v19::deserialize(body).unwrap()
+    }
+
+    #[test]
+    fn the_app_components_still_save_in_the_newest_format() {
+        let mut world = fixture_world();
+        world.spawn((
+            Position {
+                position: glam::Vec3::new(4.0, 0.0, -3.0),
+            },
+            Dendrite,
+            Loudspeaker {
+                sound: Sound::Tone,
+                volume: 0.4,
+                muted: true,
+                ..Loudspeaker::default()
+            },
+            CableState {
+                voltage: vec![Millivolts(-61.0), Millivolts(-58.5)],
+                gates: vec![0.1, 0.7, 0.3],
+            },
+            ConductanceSynapse {
+                conductance: Microsiemens(0.008),
+                delay: Milliseconds(2.5),
+            },
+            SynapseState {
+                open: Microsiemens(0.002),
+                pending: vec![Milliseconds(0.4)],
+            },
+        ));
+        NeuronDisplay {
+            voltage: true,
+            firing_rate: false,
+            true_proportions: true,
+        }
+        .set_in(&mut world);
+        Temperature {
+            celsius: Celsius(30.0),
+        }
+        .set_in(&mut world);
+        Randomness { state: 42 }.set_in(&mut world);
+        Preparation::Mammal.set_in(&mut world);
+        let copied = copies_of(&world);
+        let saved: HashSet<TypeId> = copied
+            .archetypes()
+            .flat_map(|archetype| archetype.component_types())
+            .collect();
+        assert_eq!(saved.len(), current::ComponentId::ALL.len());
+        let again = current::from_copies(&copied).unwrap();
+        assert_eq!(
+            save(&again, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default()),
+            save(&world, Milliseconds::ZERO, DEFAULT_SPEED, &Meta::default())
+        );
+    }
+
     /// `cargo test -p neuronify-core write_fixture -- --ignored`
     #[test]
     #[ignore]
