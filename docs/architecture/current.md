@@ -234,8 +234,9 @@ flowchart TB
   bytes["load_from_bytes"] -->|"save file"| load["serialization::load"]
   bytes -->|"otherwise"| legacy["Neuronify 1 file:<br/>parse and convert"]
   stored["Library and<br/>examples"] --> load
-  load --> upgrade["upgrade the world one<br/>version at a time"]
-  upgrade --> bound["clamp to bounds"]
+  load -->|"older version"| upgrade["upgrade one version at a<br/>time, then copy into<br/>the app's components"]
+  load -->|"newest version"| bound["clamp to bounds"]
+  upgrade --> bound
   legacy --> bound
   classDef native fill:#40a02b22,stroke:#40a02b,stroke-width:2px
   classDef web fill:#1e66f522,stroke:#1e66f5,stroke-width:2px
@@ -296,7 +297,7 @@ Besides the settings, it holds the voltages and gates of every point,
 pending spikes and events, generator timers, the random state, velocities,
 the selection, and what each meter shows (about 111 ms for a voltmeter).
 It leaves out `FiringRate`, `Gliding` and what the loudspeakers have heard,
-and `serialization/v19.rs` lists what it keeps:
+and `serialization/current.rs` lists what it keeps:
 
 | Bytes | Content |
 | --- | --- |
@@ -327,7 +328,16 @@ postcard writes a component as its position in the version's `schema!` list,
 so a list is fixed once files exist.
 Changing the list, a component's fields or a range in `bounds`
 takes a new world version: a module `vN` with an upgrade
-(the steps are in the doc comment of `serialization.rs`):
+(the steps are in the doc comment of `serialization.rs`).
+The newest version reads and writes the app's own components, through `serialization/current.rs`.
+Older versions read into their own copies of the components,
+or another version's copy where the fields are the same,
+and their upgrades spell out the values they fill in instead of calling app code,
+so a change elsewhere cannot change how an old file loads.
+The upgrades end in the newest version's copies in `serialization/v19.rs`,
+which `current::from_copies` turns into the app's components, with one arm for each.
+A test saves every component and reads it back through those copies,
+so it fails when an app component stops saving in the newest format:
 
 | Version | Change |
 | --- | --- |
@@ -435,8 +445,7 @@ and a few modules reach past the arrows:
   and `simulation::model` for radii and ending scales.
 - `serialization`: `tools` for `ConnectionMode`, which files keep from version 18.
 - `measurement`: the engine's spikes and probes.
-- `simulation::model`: temperature ranges from `serialization::bounds`,
-  while `serialization` uses `simulation::model` to upgrade version 11 files.
+- `simulation::model`: temperature ranges from `serialization::bounds`.
 - `legacy::convert`: `elements`.
 - `landing` and `links`: `web`, and `landing` also `frame_clock`.
 
@@ -468,7 +477,7 @@ A new component may have to go in several places:
   which spawn what the editor places and what `.nfy` files contain.
 - `EDITED` in `editor/history.rs`, if an edit can change it, or undo misses the change.
 - `Fingerprint::of`, if the engine builds from it, or the network won't rebuild.
-- A new save version, if files should keep it.
+- A new save version and its arm in `serialization/current.rs`, if files should keep it.
 
 ### A frame
 

@@ -1,10 +1,16 @@
 use super::v16::VisualInput;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+use super::v19::{
+    AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Cable, CableState,
+    Compartment, ConductanceSynapse, Connection, ConnectionView, CurrentClamp, CurrentSynapse,
+    Deletable, Dendrite, GeneratorDynamics, ImmediateFireSynapse, Label, LeakCurrent, Link,
+    Loudspeaker, Membrane, MeterSize, Myelin, NeuronDisplay, NeuronType, NodeState, NoteSize,
+    PoissonGenerator, Position, Preparation, Randomness, RatePlot, RateSeries,
+    RegularSpikeGenerator, RowOrder, Selectable, Selected, SpatialDynamics, SpikeDetector,
+    SpikeTrain, StaticConnectionSource, SynapseState, Temperature, TouchSensor, VoltageSeries,
+    Voltmeter, VoltmeterRange,
+};
 use hecs::{ComponentError, World};
+use neuronify_engine::units::{Milliseconds, Millivolts, Nanofarads, Seconds};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -73,7 +79,7 @@ schema!(
 
 pub fn upgrade_from_v14(world: &mut World) -> Result<(), ComponentError> {
     for series in world.query_mut::<&mut VoltageSeries>() {
-        for measurement in series.measurements.iter_mut() {
+        for measurement in series.measurements.data.iter_mut() {
             measurement.time = from_seconds(measurement.time);
         }
         for time in &mut series.spike_times {

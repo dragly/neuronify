@@ -1,13 +1,18 @@
 use std::f64::consts::{FRAC_PI_2, TAU};
 
 use super::v15;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::visual_input::{Pattern, ReceptiveField};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+use super::v19::{
+    AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Cable, CableState,
+    Compartment, ConductanceSynapse, Connection, ConnectionView, CurrentClamp, CurrentSynapse,
+    Deletable, Dendrite, GeneratorDynamics, ImmediateFireSynapse, Label, LeakCurrent, LeakyNeuron,
+    Link, Loudspeaker, Membrane, MeterSize, Myelin, NeuronDisplay, NeuronType, NodeState, NoteSize,
+    Pattern, PendingEvents, PoissonGenerator, Position, Preparation, Randomness, RatePlot,
+    RateSeries, ReceptiveField, RegularSpikeGenerator, RowOrder, Selectable, Selected,
+    SpatialDynamics, SpikeDetector, SpikeTrain, StaticConnectionSource, SynapseState, Temperature,
+    TouchSensor, VoltageSeries, Voltmeter, VoltmeterRange,
+};
 use hecs::{ComponentError, Entity, World};
+use neuronify_engine::units::Hertz;
 use serde::Deserialize;
 
 #[derive(Deserialize)]

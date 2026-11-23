@@ -26,6 +26,10 @@ impl<T> RollingWindow<T> {
         }
     }
 
+    pub fn from_parts(data: VecDeque<T>, max_capacity: usize) -> Self {
+        Self { data, max_capacity }
+    }
+
     pub fn push(&mut self, value: T) {
         while !self.data.is_empty() && self.data.len() >= self.max_capacity {
             self.data.pop_front();
