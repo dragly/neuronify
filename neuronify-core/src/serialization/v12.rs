@@ -1,14 +1,22 @@
 use super::v11;
 use super::v15::LeakyNeuron;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{SpikeDetector, SpikeTrain};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use crate::simulation::model::cable_between_somas;
 use hecs::{Component, ComponentError, Entity, World};
 
 use super::v16::VisualInput;
+use super::v19::{
+    AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Cable, CableState, ChannelId,
+    Compartment, ConductanceSynapse, Connection, CurrentClamp, CurrentSynapse, Deletable, Dendrite,
+    Density, GeneratorDynamics, ImmediateFireSynapse, Label, LeakCurrent, Link, Loudspeaker,
+    Membrane, MeterSize, Myelin, NeuronDisplay, NeuronType, NodeState, NoteSize, PoissonGenerator,
+    Position, Randomness, RatePlot, RateSeries, RegularSpikeGenerator, Selectable, SpatialDynamics,
+    SpikeDetector, SpikeTrain, StaticConnectionSource, SynapseState, Temperature, TouchSensor,
+    VoltageSeries, Voltmeter, VoltmeterRange,
+};
+use glam::Vec3;
+use neuronify_engine::units::{
+    Megaohms, MicrofaradsPerSquareCentimetre, Micrometres, Microsiemens, Milliseconds, Millivolts,
+    Nanoamperes, Nanofarads, OhmCentimetres, SiemensPerSquareCentimetre,
+};
 
 schema!(
     Position,
@@ -95,7 +103,7 @@ pub fn upgrade_from_v11(world: &mut World) -> Result<(), ComponentError> {
         let old = world.remove_one::<v11::LeakyNeuron>(neuron)?;
         let dynamics = world.remove_one::<v11::LeakyDynamics>(neuron).ok();
         let refractory_period = dynamics.as_ref().map_or(
-            crate::components::LeakyNeuron::default().refractory_period,
+            super::v19::LeakyNeuron::default().refractory_period,
             |dynamics| Milliseconds(dynamics.refractory_period * MILLI),
         );
         let state = NodeState {
@@ -178,14 +186,107 @@ pub fn upgrade_from_v11(world: &mut World) -> Result<(), ComponentError> {
                 (ConductanceSynapse::default(), SynapseState::default()),
             )?;
         } else {
-            let (cable, membrane) = cable_between_somas::<LeakyNeuron>(
-                world,
-                connection.from,
-                connection.to,
-                myelinated,
-            );
+            let (cable, membrane) =
+                cable_between_somas(world, connection.from, connection.to, myelinated);
             world.insert(link, (cable, membrane))?;
         }
     }
     Ok(())
+}
+
+fn cable_between_somas(
+    world: &World,
+    from: Entity,
+    to: Entity,
+    myelinated: bool,
+) -> (Cable, Membrane) {
+    let dendritic = |end: Entity| world.satisfies::<&Dendrite>(end);
+    if myelinated {
+        let cable = Cable {
+            length: Micrometres((2.8_f32 * 2.0) as f64 * 50.0),
+            diameter: Micrometres(1.0),
+        };
+        (cable, myelin_membrane())
+    } else if dendritic(from) || dendritic(to) {
+        let [start, end] = [from, to].map(|end| {
+            world
+                .get::<&Position>(end)
+                .map_or(0.30, |end| drawn_radius(soma_distance(world, end.position)))
+        });
+        let cable = Cable {
+            length: Micrometres(100.0),
+            diameter: Micrometres(((start + end) / 2.0 / 0.173).powi(2) as f64),
+        };
+        (cable, dendrite_membrane())
+    } else {
+        let cable = Cable {
+            length: Micrometres(100.0),
+            diameter: Micrometres(0.15),
+        };
+        (cable, axon_membrane())
+    }
+}
+
+fn soma_distance(world: &World, at: Vec3) -> f32 {
+    world
+        .query::<&Position>()
+        .with::<&LeakyNeuron>()
+        .iter()
+        .map(|soma| soma.position.distance(at))
+        .fold(f32::MAX, f32::min)
+}
+
+fn drawn_radius(soma_distance: f32) -> f32 {
+    (0.30 * 0.85_f32.powf(soma_distance / 3.0)).max(0.16)
+}
+
+fn axon_membrane() -> Membrane {
+    Membrane {
+        capacitance: MicrofaradsPerSquareCentimetre(1.0),
+        axial_resistivity: OhmCentimetres(35.4),
+        leak: SiemensPerSquareCentimetre(0.0003),
+        leak_reversal: Millivolts(-54.3),
+        channels: sodium_and_potassium(
+            [ChannelId::SquidSodium, ChannelId::SquidPotassium],
+            [0.12, 0.036],
+        ),
+    }
+}
+
+fn dendrite_membrane() -> Membrane {
+    Membrane {
+        capacitance: MicrofaradsPerSquareCentimetre(1.0),
+        axial_resistivity: OhmCentimetres(250.0),
+        leak: SiemensPerSquareCentimetre(1.0 / 20_000.0),
+        leak_reversal: Millivolts(-70.0),
+        channels: sodium_and_potassium(
+            [ChannelId::SlowSodium, ChannelId::SlowPotassium],
+            [0.06, 0.018],
+        ),
+    }
+}
+
+fn myelin_membrane() -> Membrane {
+    Membrane {
+        capacitance: MicrofaradsPerSquareCentimetre(0.02),
+        axial_resistivity: OhmCentimetres(35.4),
+        leak: SiemensPerSquareCentimetre(1e-6),
+        leak_reversal: Millivolts(-65.0),
+        channels: Vec::new(),
+    }
+}
+
+fn sodium_and_potassium([sodium, potassium]: [ChannelId; 2], [gna, gk]: [f64; 2]) -> Vec<Density> {
+    vec![
+        Density {
+            channel: sodium,
+            conductance: SiemensPerSquareCentimetre(gna),
+            reversal: Millivolts(50.0),
+        },
+        Density {
+            channel: potassium,
+            conductance: SiemensPerSquareCentimetre(gk),
+            reversal: Millivolts(-77.0),
+        },
+    ]
 }

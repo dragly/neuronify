@@ -4,8 +4,11 @@ use super::v11::{
     AdaptationCurrent, Compartment, CompartmentCurrent, CurrentSynapse, GeneratorDynamics,
     ImmediateFireSynapse, LeakCurrent, LeakyDynamics, LeakyNeuron,
 };
-use crate::components::*;
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
+use super::v19::{
+    Annotation, Connection, CurrentClamp, Deletable, MeterSize, NeuronType, PoissonGenerator,
+    Position, RegularSpikeGenerator, Selectable, SpatialDynamics, StaticConnectionSource,
+    TouchSensor, VoltageSeries, Voltmeter,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

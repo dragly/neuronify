@@ -1,9 +1,14 @@
 /// Defines the component ids of one save file version and a `deserialize` that reads it.
-/// With `save` first, it also defines the `SaveContext` that writes it.
+/// With `save` first, it also defines the `SaveContext` that writes it
+/// and `ComponentId::ALL`, which `current` goes through to turn the newest copies into the app's components.
 /// Only the current version has one.
 macro_rules! schema {
     (save, $($names:ident,)*) => {
         schema!($($names,)*);
+
+        impl ComponentId {
+            pub const ALL: &[ComponentId] = &[$(ComponentId::$names),*];
+        }
 
         pub struct SaveContext;
 
@@ -39,7 +44,7 @@ macro_rules! schema {
     };
     ($($names:ident,)*) => {
         #[derive(::serde::Deserialize, ::serde::Serialize, PartialEq)]
-        enum ComponentId {
+        pub enum ComponentId {
             $($names),*
         }
 

@@ -1,10 +1,14 @@
 use super::v16::VisualInput;
-use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::loudspeaker::Loudspeaker;
-use crate::measurement::spike_detector::{RowOrder, SpikeDetector, SpikeTrain};
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
-use crate::simulation::model::has_dendrites;
+use super::v19::{
+    AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Cable, CableState,
+    Compartment, CompartmentSoma, ConductanceSynapse, Connection, ConnectionView, CurrentClamp,
+    CurrentSynapse, Deletable, Dendrite, GeneratorDynamics, ImmediateFireSynapse, Label,
+    LeakCurrent, LeakyNeuron, Link, Loudspeaker, Membrane, MeterSize, Myelin, NeuronDisplay,
+    NeuronType, NodeState, NoteSize, PendingEvents, PoissonGenerator, Position, Preparation,
+    Randomness, RatePlot, RateSeries, RegularSpikeGenerator, RowOrder, Selectable, Selected,
+    SpatialDynamics, SpikeDetector, SpikeTrain, StaticConnectionSource, SynapseState, Temperature,
+    TouchSensor, VoltageSeries, Voltmeter, VoltmeterRange,
+};
 use hecs::{ComponentError, Entity, World};
 
 schema!(
@@ -72,4 +76,14 @@ pub fn upgrade_from_v16(world: &mut World) -> Result<(), ComponentError> {
         world.insert_one(neuron, CompartmentSoma::default())?;
     }
     Ok(())
+}
+
+fn has_dendrites(world: &World, soma: Entity) -> bool {
+    let dendritic = |end: Entity| world.satisfies::<&Dendrite>(end);
+    world
+        .query::<&Connection>()
+        .with::<&Cable>()
+        .iter()
+        .filter(|cable| cable.from == soma || cable.to == soma)
+        .any(|cable| dendritic(cable.from) || dendritic(cable.to))
 }

@@ -5,8 +5,11 @@ use super::v11::{
     AdaptationCurrent, Compartment, CompartmentCurrent, CurrentSynapse, GeneratorDynamics,
     ImmediateFireSynapse, LeakCurrent, LeakyDynamics, LeakyNeuron,
 };
-use crate::components::*;
-use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
+use super::v19::{
+    Annotation, Connection, CurrentClamp, Deletable, MeterSize, NeuronType, NoteSize,
+    PoissonGenerator, Position, RegularSpikeGenerator, Selectable, SpatialDynamics,
+    StaticConnectionSource, TouchSensor, VoltageSeries, Voltmeter,
+};
 use hecs::{ComponentError, Entity, World};
 
 schema!(
