@@ -10,7 +10,6 @@ use neuronify_engine::units::{Hertz, Milliseconds};
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
-use crate::edited::edited;
 use crate::measurement::frame::measured;
 use crate::measurement::{keep_recent, About, SpikeTrain};
 use crate::serialization::bounds::within;
@@ -27,7 +26,6 @@ pub const ABOUT: About = About {
         height: 5.0,
     }),
     offset: Vec3::X,
-    edited: &[edited::<RatePlot>()],
 };
 
 pub fn bound(world: &mut World) {
