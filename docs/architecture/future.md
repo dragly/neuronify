@@ -9,7 +9,7 @@ A change leaves this file once it is decided against, or done and described ther
 Most element kinds are a set of components that each layer recognizes on its own,
 by checking which components an entity has.
 So a new kind touches many files, and several of them hold lists the compiler doesn't check:
-`EDITED` for undo, `Fingerprint::of`, the inspector's checks, `bounds` and the spawn functions.
+`copy_edited` for undo, `Fingerprint::of`, the inspector's checks, `bounds` and the spawn functions.
 Adding the spike detector touched 35 files of app code, the loudspeaker 23,
 and letting one visual input feed several receptive fields 40.
 

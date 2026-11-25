@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::components::MeterSize;
 use crate::constants::VOLTMETER_MEASUREMENTS;
-use crate::edited::edited;
 use crate::measurement::About;
 use crate::serialization::bounds::within;
 use crate::simulation::engine::ProbeSamples;
@@ -24,7 +23,6 @@ pub const ABOUT: About = About {
     description: "Press a neuron to plot its voltage over time.",
     size: Some(MeterSize::DEFAULT),
     offset: Vec3::X,
-    edited: &[edited::<VoltmeterRange>()],
 };
 
 pub fn bound(world: &mut World) {

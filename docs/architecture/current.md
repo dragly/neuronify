@@ -435,10 +435,10 @@ flowchart TB
 | Simulation | `simulation` (`engine`, `model`, `mammal`, `stimulation`, `firing_rate`, `spatial`) |
 | Rendering | `rendering` (`World` to `Scene`, drawn by `SceneRenderer`) |
 | Files | `serialization` (with `bounds`), `legacy`, `examples`, `library` |
-| Model | `components`, `constants`, `edited` (what undo keeps of a component), `measurement` (the meters and the visual input) |
+| Model | `components`, `constants`, `measurement` (the meters and the visual input) |
 
 Each meter keeps all of it in `measurement`, one layer per file,
-as in `voltmeter.rs` for Model (`ABOUT` with its name, size and what undo keeps,
+as in `voltmeter.rs` for Model (`ABOUT` with its name and size,
 then components, recording and bounds),
 `voltmeter/gui.rs` for Screens (icon, inspector rows and readout)
 and `voltmeter/drawing.rs` for Rendering.
@@ -485,8 +485,9 @@ A new component may have to go in several places:
 
 - `elements` and `legacy::convert`,
   which spawn what the editor places and what `.nfy` files contain.
-- `EDITED` in `editor/history.rs`, or `edited` in a meter's `ABOUT`, if an edit can change it,
-  or undo misses the change.
+- `copy_edited` in `editor/history.rs`, if an edit can change it,
+  or undo misses the change,
+  and `keep_simulated` too if the simulation also changes it.
 - `Fingerprint::of`, if the engine builds from it, or the network won't rebuild.
 - A new save version and its arm in `serialization/current.rs`, if files should keep it.
 

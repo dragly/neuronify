@@ -1,12 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
-use hecs::{Entity, EntityBuilder, EntityRef, World};
-use neuronify_engine::units::{Microsiemens, Milliseconds, Nanoamperes};
+use hecs::{Component, Entity, EntityBuilder, EntityRef, World};
 
 use crate::components::*;
-use crate::edited::{edited, edited_settings, Edited, Settings};
+use crate::measurement::firing_rate::RatePlot;
+use crate::measurement::frame::RowOrder;
+use crate::measurement::loudspeaker::Loudspeaker;
+use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
-use crate::measurement::Meter;
+use crate::measurement::voltmeter::VoltmeterRange;
 
 enum State {
     Absent,
@@ -16,86 +18,83 @@ enum State {
 
 type Change = Vec<(Entity, State)>;
 
-struct Adaptation {
-    adaptation: Microsiemens,
-    time_constant: Milliseconds,
-}
-
-impl Settings<AdaptationCurrent> for Adaptation {
-    fn of(current: &AdaptationCurrent) -> Self {
-        Adaptation {
-            adaptation: current.adaptation,
-            time_constant: current.time_constant,
-        }
-    }
-
-    fn swap(&mut self, current: &mut AdaptationCurrent) {
-        std::mem::swap(&mut self.adaptation, &mut current.adaptation);
-        std::mem::swap(&mut self.time_constant, &mut current.time_constant);
-    }
-}
-
-struct Synapse {
-    maximum_current: Nanoamperes,
-    tau: Milliseconds,
-    delay: Milliseconds,
-}
-
-impl Settings<CurrentSynapse> for Synapse {
-    fn of(synapse: &CurrentSynapse) -> Self {
-        Synapse {
-            maximum_current: synapse.maximum_current,
-            tau: synapse.tau,
-            delay: synapse.delay,
-        }
-    }
-
-    fn swap(&mut self, synapse: &mut CurrentSynapse) {
-        std::mem::swap(&mut self.maximum_current, &mut synapse.maximum_current);
-        std::mem::swap(&mut self.tau, &mut synapse.tau);
-        std::mem::swap(&mut self.delay, &mut synapse.delay);
-    }
-}
-
-const EDITED: [Edited; 22] = [
-    edited::<Position>(),
-    edited::<MeterSize>(),
-    edited::<NoteSize>(),
-    edited::<Connection>(),
-    edited::<LeakyNeuron>(),
-    edited::<CompartmentSoma>(),
-    edited::<CurrentClamp>(),
-    edited::<RegularSpikeGenerator>(),
-    edited::<PoissonGenerator>(),
-    edited::<Annotation>(),
-    edited::<NeuronType>(),
-    edited::<LeakCurrent>(),
-    edited_settings::<AdaptationCurrent, Adaptation>(),
-    edited_settings::<CurrentSynapse, Synapse>(),
-    edited::<Label>(),
-    edited::<AlternatingCurrent>(),
-    edited::<VisualInput>(),
-    edited::<Cable>(),
-    edited::<Membrane>(),
-    edited::<Preparation>(),
-    edited::<Temperature>(),
-    edited::<ReceptiveFieldCell>(),
-];
-
-fn edited_components() -> impl Iterator<Item = &'static Edited> {
-    EDITED.iter().chain(
-        Meter::ALL
-            .into_iter()
-            .flat_map(|meter| meter.about().edited),
-    )
-}
-
 fn copy_edited(entity: EntityRef) -> EntityBuilder {
     let mut edited = EntityBuilder::new();
-    for component in edited_components() {
-        (component.copy)(entity, &mut edited);
-    }
+    copy::<Position>(entity, &mut edited);
+    copy::<MeterSize>(entity, &mut edited);
+    copy::<NoteSize>(entity, &mut edited);
+    copy::<Connection>(entity, &mut edited);
+    copy::<LeakyNeuron>(entity, &mut edited);
+    copy::<CompartmentSoma>(entity, &mut edited);
+    copy::<CurrentClamp>(entity, &mut edited);
+    copy::<RegularSpikeGenerator>(entity, &mut edited);
+    copy::<PoissonGenerator>(entity, &mut edited);
+    copy::<Annotation>(entity, &mut edited);
+    copy::<NeuronType>(entity, &mut edited);
+    copy::<LeakCurrent>(entity, &mut edited);
+    copy::<AdaptationCurrent>(entity, &mut edited);
+    copy::<CurrentSynapse>(entity, &mut edited);
+    copy::<Label>(entity, &mut edited);
+    copy::<AlternatingCurrent>(entity, &mut edited);
+    copy::<VisualInput>(entity, &mut edited);
+    copy::<Cable>(entity, &mut edited);
+    copy::<Membrane>(entity, &mut edited);
+    copy::<Preparation>(entity, &mut edited);
+    copy::<Temperature>(entity, &mut edited);
+    copy::<ReceptiveFieldCell>(entity, &mut edited);
+    copy::<VoltmeterRange>(entity, &mut edited);
+    copy::<SpikeDetector>(entity, &mut edited);
+    copy::<RowOrder>(entity, &mut edited);
+    copy::<RatePlot>(entity, &mut edited);
+    copy::<Loudspeaker>(entity, &mut edited);
     edited
+}
+
+fn copy<T: Component + Clone>(entity: EntityRef, edited: &mut EntityBuilder) {
+    if let Some(component) = entity.get::<&T>() {
+        edited.add((*component).clone());
+    }
+}
+
+fn put_back(world: &mut World, entity: Entity, mut edited: EntityBuilder) {
+    let Ok(now) = world.entity(entity) else {
+        return;
+    };
+    keep_simulated(now, &mut edited);
+    let _ = world.insert(entity, edited.build());
+}
+
+fn keep_simulated(now: EntityRef, edited: &mut EntityBuilder) {
+    if let (Some(now), Some(set)) = (
+        now.get::<&AdaptationCurrent>(),
+        edited.get_mut::<&mut AdaptationCurrent>(),
+    ) {
+        *set = AdaptationCurrent {
+            adaptation: set.adaptation,
+            time_constant: set.time_constant,
+            ..(*now).clone()
+        };
+    }
+    if let (Some(now), Some(set)) = (
+        now.get::<&CurrentSynapse>(),
+        edited.get_mut::<&mut CurrentSynapse>(),
+    ) {
+        *set = CurrentSynapse {
+            maximum_current: set.maximum_current,
+            tau: set.tau,
+            delay: set.delay,
+            ..(*now).clone()
+        };
+    }
+    if let (Some(now), Some(set)) = (
+        now.get::<&SpikeDetector>(),
+        edited.get_mut::<&mut SpikeDetector>(),
+    ) {
+        *set = SpikeDetector {
+            time_range: set.time_range,
+            ..(*now).clone()
+        };
+    }
 }
 
 fn take(world: &mut World, entity: Entity) -> Option<EntityBuilder> {
@@ -128,18 +127,18 @@ impl Recording {
     }
 
     pub fn take(&mut self, world: &mut World, entity: Entity) {
-        let Some(mut components) = take(world, entity) else {
+        if !world.contains(entity) {
+            return;
+        }
+        if let Some(State::Edited(edited)) = self.before.remove(&entity) {
+            put_back(world, entity, edited);
+        }
+        let Some(components) = take(world, entity) else {
             return;
         };
-        if !self.alive.contains(&entity) {
-            return;
+        if self.alive.contains(&entity) {
+            self.before.insert(entity, State::Whole(components));
         }
-        if let Some(State::Edited(mut edited)) = self.before.remove(&entity) {
-            for component in edited_components() {
-                (component.restore)(&mut components, &mut edited);
-            }
-        }
-        self.before.insert(entity, State::Whole(components));
     }
 
     pub fn is_new(&self, entity: Entity) -> bool {
@@ -248,11 +247,12 @@ impl History {
                         inverse.push((entity, State::Whole(components)));
                     }
                 }
-                State::Edited(mut edited) => {
-                    for component in edited_components() {
-                        (component.swap)(world, entity, &mut edited);
+                State::Edited(edited) => {
+                    if let Ok(now) = world.entity(entity) {
+                        let undone = copy_edited(now);
+                        put_back(world, entity, edited);
+                        inverse.push((entity, State::Edited(undone)));
                     }
-                    inverse.push((entity, State::Edited(edited)));
                 }
                 State::Whole(components) => respawning.push((entity, components)),
             }

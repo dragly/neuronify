@@ -16,7 +16,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::components::{Compartment, Connection, Deletable, LeakyNeuron, MeterSize, Position};
 use crate::constants::DT;
-use crate::edited::Edited;
 use crate::simulation::engine::ProbeSamples;
 use crate::simulation::Spike;
 use firing_rate::{RatePlot, RateSeries};
@@ -38,7 +37,6 @@ pub struct About {
     pub description: &'static str,
     pub size: Option<MeterSize>,
     pub offset: Vec3,
-    pub edited: &'static [Edited],
 }
 
 impl Meter {

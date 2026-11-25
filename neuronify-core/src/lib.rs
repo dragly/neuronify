@@ -4,7 +4,6 @@ pub mod camera;
 pub mod components;
 pub mod constants;
 pub mod dendrites;
-pub mod edited;
 pub mod editor;
 pub mod elements;
 pub mod examples;

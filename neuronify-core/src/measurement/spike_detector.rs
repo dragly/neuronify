@@ -9,8 +9,6 @@ use neuronify_engine::units::Milliseconds;
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
-use crate::edited::{edited, edited_settings, Settings};
-use crate::measurement::frame::RowOrder;
 use crate::measurement::About;
 use crate::serialization::bounds::within;
 
@@ -25,10 +23,6 @@ pub const ABOUT: About = About {
         height: 6.0,
     }),
     offset: Vec3::X,
-    edited: &[
-        edited_settings::<SpikeDetector, TimeRange>(),
-        edited::<RowOrder>(),
-    ],
 };
 
 pub fn bound(world: &mut World) {
@@ -53,18 +47,6 @@ impl Default for SpikeDetector {
             time_range: Milliseconds(100.0),
             time: Milliseconds::ZERO,
         }
-    }
-}
-
-struct TimeRange(Milliseconds);
-
-impl Settings<SpikeDetector> for TimeRange {
-    fn of(detector: &SpikeDetector) -> Self {
-        TimeRange(detector.time_range)
-    }
-
-    fn swap(&mut self, detector: &mut SpikeDetector) {
-        std::mem::swap(&mut self.0, &mut detector.time_range);
     }
 }
 

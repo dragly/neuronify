@@ -9,7 +9,6 @@ use neuronify_engine::units::Milliseconds;
 use serde::{Deserialize, Serialize};
 
 use crate::components::*;
-use crate::edited::edited;
 use crate::measurement::About;
 use crate::serialization::bounds::within;
 use crate::simulation::Spike;
@@ -24,7 +23,6 @@ pub const ABOUT: About = About {
                   Connect more neurons to hear them too.",
     size: None,
     offset: Vec3::new(3.0, 0.0, 0.0),
-    edited: &[edited::<Loudspeaker>()],
 };
 
 pub fn bound(world: &mut World) {
