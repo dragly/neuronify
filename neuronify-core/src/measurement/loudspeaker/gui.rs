@@ -4,13 +4,13 @@ use egui::{Shape, Ui};
 use hecs::{Entity, World};
 
 use super::{Loudspeaker, Sound};
+use super::{MUTE, SOUND, VOLUME};
 use crate::gui::icons::{linear, Glyph, CREAM};
 use crate::gui::inspector::{choice, parameter};
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
 use crate::rendering::colors::speaker_color;
 use crate::rendering::shapes::{speaker_outline, speaker_waves};
-use crate::settings::Setting;
 
 const VOLUMES: RangeInclusive<f64> = 0.0..=1.0;
 
@@ -44,19 +44,14 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     };
     heading(ui, chrome, "Parameters", 0.0);
     let sounds = Sound::ALL.map(|sound| (sound, sound.name()));
-    let mut changed = choice(ui, chrome, Setting::Sound, &mut speaker.sound, &sounds);
-    changed |= parameter(
-        ui,
-        chrome,
-        Setting::Volume,
-        &mut speaker.volume,
-        VOLUMES,
-        |volume| format!("{:.0} %", volume * 100.0),
-    );
+    let mut changed = choice(ui, chrome, SOUND, &mut speaker.sound, &sounds);
+    changed |= parameter(ui, chrome, VOLUME, &mut speaker.volume, VOLUMES, |volume| {
+        format!("{:.0} %", volume * 100.0)
+    });
     changed |= choice(
         ui,
         chrome,
-        Setting::Mute,
+        MUTE,
         &mut speaker.muted,
         &[(true, "On"), (false, "Off")],
     );

@@ -6,11 +6,11 @@ use hecs::{Entity, World};
 use neuronify_engine::units::{Hertz, Milliseconds};
 
 use super::{RatePlot, RateSeries};
+use super::{HIGHEST_RATE, KERNEL_WIDTH, LOWEST_RATE, WINDOW};
 use crate::gui::icons::{Glyph, SINE_STEPS};
 use crate::gui::inspector::{hertz, milliseconds, parameter};
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
-use crate::settings::Setting;
 
 const RATE_WINDOWS: RangeInclusive<Milliseconds> = Milliseconds(10.0)..=Milliseconds(1000.0);
 const PLOTTED_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(2500.0);
@@ -41,7 +41,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let mut changed = parameter(
         ui,
         chrome,
-        Setting::Window,
+        WINDOW,
         &mut plot.window,
         RATE_WINDOWS,
         milliseconds,
@@ -49,7 +49,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     changed |= parameter(
         ui,
         chrome,
-        Setting::KernelWidth,
+        KERNEL_WIDTH,
         &mut plot.kernel_width,
         RATE_WINDOWS,
         milliseconds,
@@ -57,7 +57,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let highest = parameter(
         ui,
         chrome,
-        Setting::HighestRate,
+        HIGHEST_RATE,
         &mut plot.maximum,
         PLOTTED_RATES,
         hertz,
@@ -68,7 +68,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let lowest = parameter(
         ui,
         chrome,
-        Setting::LowestRate,
+        LOWEST_RATE,
         &mut plot.minimum,
         PLOTTED_RATES,
         hertz,

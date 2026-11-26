@@ -5,12 +5,12 @@ use hecs::{Entity, World};
 use neuronify_engine::units::Millivolts;
 
 use super::{VoltageSeries, VoltmeterRange};
+use super::{HIGHEST_VOLTAGE, LOWEST_VOLTAGE};
 use crate::gui::icons::Glyph;
 use crate::gui::inspector::{millivolts, parameter};
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
 use crate::measurement::frame::measured;
-use crate::settings::Setting;
 
 const PLOTTED_VOLTAGES: RangeInclusive<Millivolts> = Millivolts(-250.0)..=Millivolts(250.0);
 const PLOTTED_VOLTAGE_GAP: Millivolts = Millivolts(1.0);
@@ -41,7 +41,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let highest = parameter(
         ui,
         chrome,
-        Setting::HighestVoltage,
+        HIGHEST_VOLTAGE,
         &mut range.maximum,
         PLOTTED_VOLTAGES,
         shown,
@@ -52,7 +52,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let lowest = parameter(
         ui,
         chrome,
-        Setting::LowestVoltage,
+        LOWEST_VOLTAGE,
         &mut range.minimum,
         PLOTTED_VOLTAGES,
         shown,

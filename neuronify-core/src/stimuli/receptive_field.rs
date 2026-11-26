@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::components::Connection;
 use crate::serialization::bounds::{turned, within};
+use crate::settings::Setting;
 use crate::simulation::engine::Engine;
 use crate::stimuli::visual_input::{
     grid, is_picture_wire, VisualInput, FRAME_INTERVAL, RESOLUTION, VISUAL_INPUT_SIZE,
@@ -27,6 +28,36 @@ pub const ABOUT: About = About {
     description: "Watches part of a picture and fires when the picture matches it. \
                   Connect a visual input to it.",
     size: Some(RECEPTIVE_FIELD_SIZE),
+};
+
+pub const FIELD: Setting = Setting {
+    label: "Receptive field",
+    description: "The pattern of light that makes it fire.",
+};
+
+pub const FIELD_ANGLE: Setting = Setting {
+    label: "Field angle",
+    description: "Which way the stripes of the field are turned.",
+};
+
+pub const FIELD_SIDEWAYS: Setting = Setting {
+    label: "Field sideways",
+    description: "Where the field sits, from left to right.",
+};
+
+pub const FIELD_UP_DOWN: Setting = Setting {
+    label: "Field up or down",
+    description: "Where the field sits, from bottom to top.",
+};
+
+pub const OFF_CENTER: Setting = Setting {
+    label: "Off center",
+    description: "Fire for darkness in the center instead of light.",
+};
+
+pub const SENSITIVITY: Setting = Setting {
+    label: "Sensitivity",
+    description: "How often it fires when the picture matches the field perfectly.",
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]

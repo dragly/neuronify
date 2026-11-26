@@ -832,7 +832,7 @@ fn stimulation_settings(ui: &mut Ui, chrome: &Chrome, editor: &mut Editor) {
             logarithmic_parameter(
                 ui,
                 chrome,
-                Setting::TouchCurrent,
+                Setting::TOUCH_CURRENT,
                 &mut editor.stimulation.current,
                 TOUCH_CURRENTS,
                 |current| format!("{:.0} pA", current.in_picoamperes()),

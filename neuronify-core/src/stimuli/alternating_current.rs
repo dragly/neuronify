@@ -8,6 +8,7 @@ use neuronify_engine::units::{Hertz, Kilohertz, Milliseconds, Nanoamperes, Picoc
 use serde::{Deserialize, Serialize};
 
 use crate::serialization::bounds::within;
+use crate::settings::Setting;
 use crate::stimuli::About;
 
 pub const AMPLITUDES: RangeInclusive<Nanoamperes> = Nanoamperes(0.0)..=Nanoamperes(10_000.0);
@@ -17,6 +18,16 @@ pub const ABOUT: About = About {
     name: "Alternating current",
     description: "Injects a current that swings up and down like a wave.",
     size: None,
+};
+
+pub const AMPLITUDE: Setting = Setting {
+    label: "Amplitude",
+    description: "How far the current swings up and down.",
+};
+
+pub const FREQUENCY: Setting = Setting {
+    label: "Frequency",
+    description: "How many times a second the current swings.",
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

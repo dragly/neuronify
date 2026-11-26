@@ -22,16 +22,13 @@ and `app` and `audio` for the sound the loudspeaker makes.
 A new meter needs its file and folder, a variant in `Meter` and `Meter::ALL`,
 and an arm in each of the 16 matches in `measurement.rs`, `measurement/gui.rs` and `measurement/drawing.rs`.
 
-Still outside the meters' folders:
+Still outside the meters' folders, and staying there,
+since they follow formats from outside (Neuronify 1 files and older saves) or the engine's layout:
 
-- the names and descriptions of their settings, in the one `Setting` table in `settings.rs`,
 - what Neuronify 1 files become, in `legacy::convert`,
   which starts each meter from `Meter::builder` and wires it through `Meter::of`,
 - the voltmeter probes and `Fingerprint::of` in `simulation::engine`,
 - the save schema, which still takes a new version for a new meter.
-
-The last three stay where they are,
-since they follow formats from outside (Neuronify 1 files and older saves) or the engine's layout.
 
 The stimuli are done the same way (`Element::Stimulus` wraps a `Stimulus` for the rail and the editor).
 A stimulus still appears outside `stimuli` in the undo list, `legacy::convert`, the current save version
@@ -51,9 +48,7 @@ so it would help to store the kind, which takes a save version.
 Open questions:
 
 - whether bounds belong to the model instead of `serialization`,
-  since the meters now use `within` from there,
-- whether the `Setting` texts should move into the kinds
-  or stay in one table, where all the wording can be read in one place.
+  since the meters, stimuli and notes now use `within` and its neighbours from there.
 
 ## Untangle `update`
 
