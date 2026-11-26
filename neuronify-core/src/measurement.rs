@@ -4,7 +4,6 @@ pub mod frame;
 pub mod gui;
 pub mod loudspeaker;
 pub mod spike_detector;
-pub mod visual_input;
 pub mod voltmeter;
 
 use std::collections::VecDeque;

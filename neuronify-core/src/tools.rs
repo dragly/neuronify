@@ -7,12 +7,23 @@ use crate::constants::STIMULATION_CURRENT;
 use crate::elements::Element;
 use crate::input::DWELL;
 use crate::measurement::Meter;
+use crate::stimuli::Stimulus;
 
 const METER_TOOLS: [Tool; Meter::ALL.len()] = {
     let mut tools = [Tool::View; Meter::ALL.len()];
     let mut index = 0;
     while index < tools.len() {
         tools[index] = Tool::Meter(Meter::ALL[index]);
+        index += 1;
+    }
+    tools
+};
+
+const STIMULUS_TOOLS: [Tool; Stimulus::ALL.len()] = {
+    let mut tools = [Tool::View; Stimulus::ALL.len()];
+    let mut index = 0;
+    while index < tools.len() {
+        tools[index] = Tool::Place(Element::Stimulus(Stimulus::ALL[index]));
         index += 1;
     }
     tools
@@ -44,13 +55,7 @@ impl Tool {
             Tool::Place(Element::InhibitoryNeuron) => "Inhibitory neuron",
             Tool::Place(Element::AdaptiveNeuron) => "Adaptive neuron",
             Tool::Place(Element::BurstNeuron) => "Bursting neuron",
-            Tool::Place(Element::CurrentSource) => "Current source",
-            Tool::Place(Element::AlternatingCurrentSource) => "Alternating current",
-            Tool::Place(Element::TouchSensor) => "Touch sensor",
-            Tool::Place(Element::RegularSpikeGenerator) => "Regular spikes",
-            Tool::Place(Element::PoissonGenerator) => "Random spikes",
-            Tool::Place(Element::VisualInput) => "Visual input",
-            Tool::Place(Element::ReceptiveField) => "Receptive field",
+            Tool::Place(Element::Stimulus(stimulus)) => stimulus.about().name,
             Tool::Place(Element::Note) => "Note",
             Tool::Meter(meter) => meter.about().name,
             Tool::StaticConnection => "Connection",
@@ -81,25 +86,8 @@ impl Tool {
             Tool::Place(Element::BurstNeuron) => {
                 "Once it fires after a rest, it keeps firing for a short burst."
             }
-            Tool::Place(Element::CurrentSource) => {
-                "Feeds a steady current into the neurons it connects to."
-            }
-            Tool::Place(Element::AlternatingCurrentSource) => {
-                "Injects a current that swings up and down like a wave."
-            }
-            Tool::Place(Element::VisualInput) => {
-                "Shows a moving picture. Connect it to receptive fields to let them see it."
-            }
-            Tool::Place(Element::ReceptiveField) => {
-                "Watches part of a picture and fires when the picture matches it. \
-                 Connect a visual input to it."
-            }
+            Tool::Place(Element::Stimulus(stimulus)) => stimulus.about().description,
             Tool::Meter(meter) => meter.about().description,
-            Tool::Place(Element::TouchSensor) => "Fires a spike each time you press it.",
-            Tool::Place(Element::RegularSpikeGenerator) => "Sends spikes at a steady beat.",
-            Tool::Place(Element::PoissonGenerator) => {
-                "Sends spikes at random moments, at a set average rate."
-            }
             Tool::Place(Element::Note) => "Write a note on the canvas.",
             Tool::StaticConnection => {
                 "Drag from a neuron or an input to the neuron it should reach."
@@ -128,7 +116,7 @@ impl Tool {
     pub fn connects(self) -> bool {
         match self {
             Tool::StaticConnection | Tool::Axon | Tool::MyelinatedAxon => true,
-            Tool::Place(element) => element.is_neuron() || element.is_input(),
+            Tool::Place(element) => element.is_neuron() || element.is_stimulus(),
             _ => false,
         }
     }
@@ -156,7 +144,7 @@ impl ConnectionMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolGroup {
     Neurons,
-    Inputs,
+    Stimuli,
     Connections,
     Meters,
 }
@@ -165,7 +153,7 @@ impl ToolGroup {
     pub fn label(self) -> &'static str {
         match self {
             ToolGroup::Neurons => "Neurons",
-            ToolGroup::Inputs => "Inputs",
+            ToolGroup::Stimuli => "Inputs",
             ToolGroup::Connections => "Connect",
             ToolGroup::Meters => "Measure",
         }
@@ -179,15 +167,7 @@ impl ToolGroup {
                 Tool::Place(Element::AdaptiveNeuron),
                 Tool::Place(Element::BurstNeuron),
             ],
-            ToolGroup::Inputs => &[
-                Tool::Place(Element::CurrentSource),
-                Tool::Place(Element::AlternatingCurrentSource),
-                Tool::Place(Element::TouchSensor),
-                Tool::Place(Element::RegularSpikeGenerator),
-                Tool::Place(Element::PoissonGenerator),
-                Tool::Place(Element::VisualInput),
-                Tool::Place(Element::ReceptiveField),
-            ],
+            ToolGroup::Stimuli => &STIMULUS_TOOLS,
             ToolGroup::Connections => &[
                 Tool::StaticConnection,
                 Tool::Axon,

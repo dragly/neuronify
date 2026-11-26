@@ -5,17 +5,18 @@ use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::dendrites::{compartment_tree, spawn_dendrites};
 use neuronify_core::elements::{spawn_cable, spawn_compartment, spawn_synapse, Element};
 use neuronify_core::measurement::firing_rate::RatePlot;
-use neuronify_core::measurement::visual_input::{
-    spawn_picture_wire, Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput,
-};
 use neuronify_core::measurement::Meter;
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::simulation::model::prepare;
+use neuronify_core::stimuli::poisson_generator::PoissonGenerator;
+use neuronify_core::stimuli::receptive_field::{ReceptiveField, ReceptiveFieldCell};
+use neuronify_core::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use neuronify_core::stimuli::visual_input::{spawn_picture_wire, Pattern, VisualInput};
+use neuronify_core::stimuli::{CurrentClamp, Stimulus};
 use neuronify_core::{
-    AdaptationCurrent, Annotation, Connection, CurrentClamp, CurrentSynapse, Hertz, Label,
-    LeakyNeuron, MeterSize, Microsiemens, Milliseconds, Millivolts, Nanoamperes, NeuronDisplay,
-    NeuronType, NodeState, NoteSize, PoissonGenerator, Position, Preparation,
-    RegularSpikeGenerator, Setting, SEGMENT_LENGTH,
+    AdaptationCurrent, Annotation, Connection, CurrentSynapse, Hertz, Label, LeakyNeuron,
+    MeterSize, Microsiemens, Milliseconds, Millivolts, Nanoamperes, NeuronDisplay, NeuronType,
+    NodeState, NoteSize, Position, Preparation, Setting, SEGMENT_LENGTH,
 };
 
 const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(6.0);
@@ -112,7 +113,7 @@ impl Sheet {
     }
 
     fn current(&mut self, to: Entity, current: Nanoamperes, right: f32, up: f32) -> Entity {
-        let source = self.add(Element::CurrentSource, right, up);
+        let source = self.add(Element::Stimulus(Stimulus::CurrentSource), right, up);
         self.world
             .get::<&mut CurrentClamp>(source)
             .expect("current sources spawn with a CurrentClamp")
@@ -235,7 +236,7 @@ fn synapse(world: &mut World, from: Entity, to: Entity, maximum_current: Nanoamp
 
 pub fn listening_to_a_neuron() -> World {
     let mut world = World::new();
-    let picture = Element::VisualInput.spawn(&mut world, at(0.0, -9.0));
+    let picture = Stimulus::VisualInput.spawn(&mut world, at(0.0, -9.0));
     *world
         .get::<&mut VisualInput>(picture)
         .expect("visual inputs spawn with a VisualInput") = VisualInput {
@@ -243,7 +244,7 @@ pub fn listening_to_a_neuron() -> World {
         phase: 0.75,
         ..Default::default()
     };
-    let field = Element::ReceptiveField.spawn(&mut world, at(-7.5, -9.0));
+    let field = Stimulus::ReceptiveField.spawn(&mut world, at(-7.5, -9.0));
     *world
         .get::<&mut ReceptiveFieldCell>(field)
         .expect("receptive fields spawn with a ReceptiveFieldCell") = ReceptiveFieldCell {
@@ -275,7 +276,7 @@ pub fn listening_to_a_neuron() -> World {
 
 pub fn adaptive_inhibition() -> World {
     let mut world = World::new();
-    let drive = Element::RegularSpikeGenerator.spawn(&mut world, at(0.0, -11.0));
+    let drive = Stimulus::RegularSpikeGenerator.spawn(&mut world, at(0.0, -11.0));
     world
         .get::<&mut RegularSpikeGenerator>(drive)
         .expect("regular generators spawn with a RegularSpikeGenerator")
@@ -294,7 +295,7 @@ pub fn adaptive_inhibition() -> World {
         ..Default::default()
     };
     label(&mut world, adaptive, "Adaptive");
-    let noise = Element::PoissonGenerator.spawn(&mut world, at(-6.0, -6.0));
+    let noise = Stimulus::PoissonGenerator.spawn(&mut world, at(-6.0, -6.0));
     *world
         .get::<&mut NeuronType>(noise)
         .expect("neurons and generators spawn with a NeuronType") = NeuronType::Inhibitory;
@@ -335,7 +336,7 @@ pub fn adaptation() -> World {
          Press the touch sensor a few times in a row and watch it start to skip.",
     );
     let up = sheet.row(5.0);
-    let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+    let sensor = sheet.add(Element::Stimulus(Stimulus::TouchSensor), 1.5, up);
     let regular = sheet.add(Element::ExcitatoryNeuron, 6.5, up);
     let adaptive = sheet.add(Element::AdaptiveNeuron, 11.5, up);
     sheet.label(adaptive, "Adaptive");
@@ -356,7 +357,7 @@ pub fn bursting() -> World {
          Press the touch sensor once.",
     );
     let up = sheet.row(5.0);
-    let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+    let sensor = sheet.add(Element::Stimulus(Stimulus::TouchSensor), 1.5, up);
     let bursting = sheet.add(Element::BurstNeuron, 7.0, up);
     sheet.label(bursting, "Bursting");
     sheet.connect(sensor, bursting);
@@ -435,7 +436,7 @@ pub fn body_temperature() -> World {
     let branch = sheet.branch_near(receiver, 12.0, up);
     let meeting = sheet.position(branch);
     let sender = sheet.add(Element::ExcitatoryNeuron, 4.5, meeting.x);
-    let sensor = sheet.add(Element::TouchSensor, 1.0, meeting.x);
+    let sensor = sheet.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, meeting.x);
     sheet.connect(sensor, sender);
     let axon = sheet.axon(sender, branch);
     let below = sheet.row(5.0);
@@ -466,7 +467,7 @@ pub fn summation() -> World {
     sheet.label(output, "Output");
     for offset in [4.5, 0.0, -4.5] {
         let up = middle + offset;
-        let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+        let sensor = sheet.add(Element::Stimulus(Stimulus::TouchSensor), 1.5, up);
         let input = sheet.add(Element::ExcitatoryNeuron, 6.5, up);
         sheet.connect(sensor, input);
         sheet.synapse(input, output, Nanoamperes(1.4));
@@ -488,7 +489,7 @@ pub fn reverberation() -> World {
          Press the touch sensor to send a spike around the loop.",
     );
     let middle = sheet.row(10.0);
-    let sensor = sheet.add(Element::TouchSensor, 1.5, middle);
+    let sensor = sheet.add(Element::Stimulus(Stimulus::TouchSensor), 1.5, middle);
     let adaptive = sheet.add(Element::AdaptiveNeuron, 6.0, middle);
     sheet.label(adaptive, "Adaptive");
     let top = sheet.add(Element::ExcitatoryNeuron, 10.0, middle + 4.0);
@@ -579,7 +580,7 @@ pub fn disinhibition() -> World {
          but the inhibitory neuron next to it holds it back like a brake.",
     );
     let up = sheet.row(8.0) + 1.5;
-    let sensor = sheet.add(Element::TouchSensor, 1.5, up);
+    let sensor = sheet.add(Element::Stimulus(Stimulus::TouchSensor), 1.5, up);
     let release = sheet.add(Element::BurstNeuron, 5.5, up);
     let brake = sheet.add(Element::InhibitoryNeuron, 10.0, up);
     let output = sheet.add(Element::ExcitatoryNeuron, 14.5, up);
@@ -698,7 +699,7 @@ pub fn receptive_fields() -> World {
          The colors on a field light up where the dot falls on it.",
     );
     let up = sheet.row(11.0);
-    let picture = sheet.add(Element::VisualInput, 4.5, up);
+    let picture = sheet.add(Element::Stimulus(Stimulus::VisualInput), 4.5, up);
     *sheet
         .world
         .get::<&mut VisualInput>(picture)
@@ -708,7 +709,11 @@ pub fn receptive_fields() -> World {
     };
     let mut neurons = Vec::new();
     for (spot, offset) in [(0.25, 2.8), (-0.25, -2.8)] {
-        let field = sheet.add(Element::ReceptiveField, 12.5, up + offset);
+        let field = sheet.add(
+            Element::Stimulus(Stimulus::ReceptiveField),
+            12.5,
+            up + offset,
+        );
         *sheet
             .world
             .get::<&mut ReceptiveFieldCell>(field)

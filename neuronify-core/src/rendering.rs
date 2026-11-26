@@ -20,9 +20,9 @@ pub mod selection;
 pub mod shapes;
 pub mod signals;
 pub mod spheres;
+pub mod tiles;
 pub mod tips;
 pub mod transmitter;
-pub mod visual_input;
 
 pub use bounds::{canvas_bounds, circuit_bounds, Bounds};
 pub use colors::{srgb, srgb_component, Palette, Theme};

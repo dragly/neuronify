@@ -10,7 +10,8 @@ use super::{
 };
 use crate::components::*;
 use crate::measurement::frame::Frame;
-use crate::measurement::visual_input::{edge_toward, framed_size, is_picture_wire};
+use crate::stimuli::visual_input::is_picture_wire;
+use crate::stimuli::{edge_toward, framed_size};
 
 const SHAPES: [Shape; 3] = [
     Shape::StraightFirst,
@@ -442,16 +443,16 @@ fn settle(options: &[Vec<Vec<Vec3>>], own: &[Vec<f32>]) -> Vec<usize> {
 
 #[cfg(test)]
 mod tests {
+    use crate::stimuli::Stimulus;
     use std::collections::HashMap;
 
     use glam::Vec2;
 
     use super::*;
-    use crate::elements::Element;
-    use crate::measurement::visual_input::spawn_picture_wire;
     use crate::rendering::paths::connection_paths;
     use crate::rendering::scene::shown_paths;
     use crate::rendering::{collect_meter_wires, Theme};
+    use crate::stimuli::visual_input::spawn_picture_wire;
 
     fn at(x: f32, z: f32) -> Vec3 {
         Vec3::new(x, 0.0, z)
@@ -461,7 +462,7 @@ mod tests {
         fields
             .iter()
             .map(|&position| {
-                let field = Element::ReceptiveField.spawn(world, position);
+                let field = Stimulus::ReceptiveField.spawn(world, position);
                 (spawn_picture_wire(world, picture, field), field)
             })
             .collect()
@@ -494,7 +495,7 @@ mod tests {
     #[test]
     fn a_field_beside_the_picture_is_wired_straight_across_between_the_facing_sides() {
         let mut world = World::new();
-        let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+        let picture = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
         let wires = wired(&mut world, picture, &[at(2.8, 10.0), at(-2.8, 10.0)]);
         let corners = picture_wire_corners(&world);
         for ((wire, _), height) in wires.iter().zip([2.8, -2.8]) {
@@ -505,7 +506,7 @@ mod tests {
     #[test]
     fn fields_in_a_row_below_the_picture_are_wired_without_crossings_or_passing_over_a_field() {
         let mut world = World::new();
-        let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+        let picture = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
         let row: Vec<Vec3> = (-2..=2).map(|k| at(-7.2, 5.0 * k as f32)).collect();
         let wires = wired(&mut world, picture, &row);
         let corners = picture_wire_corners(&world);
@@ -554,7 +555,7 @@ mod tests {
     #[test]
     fn a_picture_wire_is_drawn_as_a_wire_and_picked_along_its_route() {
         let mut world = World::new();
-        let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+        let picture = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
         let [(wire, _)] = wired(&mut world, picture, &[at(-20.0, 12.0)])[..] else {
             unreachable!()
         };

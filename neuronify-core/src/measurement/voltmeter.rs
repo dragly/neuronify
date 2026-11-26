@@ -182,6 +182,7 @@ pub fn record_voltages(world: &mut World, spikes: &[Spike], probes: &[ProbeSampl
 mod tests {
     use super::*;
     use crate::measurement::frame::measured;
+    use crate::stimuli::Stimulus;
     use glam::Vec3;
 
     #[test]
@@ -264,7 +265,7 @@ mod tests {
         use crate::simulation::run_headless;
 
         let mut world = hecs::World::new();
-        let source = Element::CurrentSource.spawn(&mut world, Vec3::ZERO);
+        let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::ZERO);
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::new(0.0, 0.0, 5.0));
         spawn_connection(&mut world, source, neuron);
         let voltmeter =

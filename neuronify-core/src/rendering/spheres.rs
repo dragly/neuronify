@@ -5,12 +5,11 @@ use hecs::Entity;
 
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::visual_input::ReceptiveFieldCell;
 use crate::rendering::colors::*;
 use crate::rendering::cylinders::{sheath_radius, sheaths};
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
-use crate::rendering::shapes::{generator_color, shown_voltage, soma_color};
+use crate::rendering::shapes::{shown_voltage, soma_color};
 use crate::simulation::model::{drawn_radius, soma_diameter};
 
 pub const SPINES_PER_CABLE: usize = 4;
@@ -133,20 +132,6 @@ pub fn collect_spheres(
             .iter()
             .filter(|(entity, _)| !hidden.contains(entity))
             .map(|(entity, parts)| soma_look(world, entity, parts, &display, palette)),
-    );
-
-    // Touch sensors and current sources are flat pads, see `collect_shapes`
-    spheres.extend(
-        world
-            .query::<(&Position, &GeneratorDynamics, Option<&NeuronType>)>()
-            .without::<hecs::Or<&TouchSensor, &ReceptiveFieldCell>>()
-            .iter()
-            .map(|(position, dynamics, neuron_type)| Sphere {
-                position: position.position,
-                color: generator_color(dynamics, neuron_type.copied().unwrap_or_default(), palette),
-                radius: NODE_RADIUS,
-                _padding: Default::default(),
-            }),
     );
 
     spheres.extend(

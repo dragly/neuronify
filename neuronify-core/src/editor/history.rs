@@ -7,8 +7,13 @@ use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::frame::RowOrder;
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::SpikeDetector;
-use crate::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::VoltmeterRange;
+use crate::stimuli::alternating_current::AlternatingCurrent;
+use crate::stimuli::poisson_generator::PoissonGenerator;
+use crate::stimuli::receptive_field::ReceptiveFieldCell;
+use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use crate::stimuli::visual_input::VisualInput;
+use crate::stimuli::CurrentClamp;
 
 enum State {
     Absent,

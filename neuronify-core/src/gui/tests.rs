@@ -4,14 +4,16 @@ use hecs::Entity;
 
 use super::*;
 use crate::components::{
-    AlternatingCurrent, CompartmentSoma, Connection, CurrentClamp, CurrentSynapse, Dendrite, Hertz,
-    Label, LeakyNeuron, Micrometres, Milliseconds, Millivolts, Nanoamperes, NeuronType, NodeState,
-    RegularSpikeGenerator, Seconds,
+    CompartmentSoma, Connection, CurrentSynapse, Dendrite, Hertz, Label, LeakyNeuron, Micrometres,
+    Milliseconds, Millivolts, Nanoamperes, NeuronType, NodeState, Seconds,
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
 use crate::elements::{spawn_cable, spawn_compartment, Element};
 use crate::measurement::Meter;
 use crate::settings::Setting;
+use crate::stimuli::alternating_current::AlternatingCurrent;
+use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use crate::stimuli::{CurrentClamp, Stimulus};
 use crate::tools::{ConnectionMode, Tool};
 use rail::STROKE_ID;
 
@@ -475,7 +477,7 @@ fn placing_neurons_and_inputs_offers_the_stroke_but_dendrites_do_not() {
     let mut harness = Harness::new(true);
     for (tool, offered) in [
         (Tool::Place(Element::ExcitatoryNeuron), true),
-        (Tool::Place(Element::TouchSensor), true),
+        (Tool::Place(Element::Stimulus(Stimulus::TouchSensor)), true),
         (Tool::StaticConnection, true),
         (Tool::Dendrite, false),
         (Tool::Place(Element::Note), false),
@@ -678,7 +680,7 @@ fn the_inspector_leaves_values_beyond_a_slider_alone() {
 #[test]
 fn spike_generators_reach_a_thousand_spikes_a_second() {
     let mut world = World::new();
-    let generator = Element::RegularSpikeGenerator.spawn(&mut world, Vec3::ZERO);
+    let generator = Stimulus::RegularSpikeGenerator.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(generator));
     let slider = harness.text_position(Setting::Frequency.label()).unwrap() + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
@@ -693,7 +695,7 @@ fn spike_generators_reach_a_thousand_spikes_a_second() {
 #[test]
 fn current_sources_reach_thirty_nanoamperes() {
     let mut world = World::new();
-    let source = Element::CurrentSource.spawn(&mut world, Vec3::ZERO);
+    let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(source));
     let slider = harness.text_position(Setting::Current.label()).unwrap() + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
@@ -795,10 +797,10 @@ fn switching_a_compartmental_neuron_switches_its_dendrites() {
 #[test]
 fn spike_generators_switch_type_but_touch_sensors_and_current_sources_do_not() {
     for (element, switches) in [
-        (Element::RegularSpikeGenerator, true),
-        (Element::PoissonGenerator, true),
-        (Element::TouchSensor, false),
-        (Element::CurrentSource, false),
+        (Element::Stimulus(Stimulus::RegularSpikeGenerator), true),
+        (Element::Stimulus(Stimulus::PoissonGenerator), true),
+        (Element::Stimulus(Stimulus::TouchSensor), false),
+        (Element::Stimulus(Stimulus::CurrentSource), false),
     ] {
         let mut world = World::new();
         let entity = element.spawn(&mut world, Vec3::ZERO);
@@ -1035,7 +1037,7 @@ fn undo_in_a_note_never_brings_back_the_text_of_another_note() {
 #[test]
 fn an_alternating_current_source_sets_its_amplitude_and_frequency() {
     let mut world = World::new();
-    let source = Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+    let source = Stimulus::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
     let harness = Harness::with(true, world, Some(source));
     assert!(harness.shows("Alternating current"));
     for setting in [Setting::Amplitude, Setting::AlternatingFrequency] {
@@ -1048,7 +1050,7 @@ fn an_alternating_current_source_sets_its_amplitude_and_frequency() {
 #[test]
 fn the_sliders_of_an_alternating_current_source_are_logarithmic() {
     let mut world = World::new();
-    let source = Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+    let source = Stimulus::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(source));
     harness.press_the_middle_of_slider(Setting::Amplitude.label(), "300 pA");
     harness.press_the_middle_of_slider(Setting::AlternatingFrequency.label(), "50 Hz");
@@ -1147,9 +1149,9 @@ fn a_loudspeaker_picks_its_sound_volume_and_mute() {
 
 #[test]
 fn a_visual_input_picks_its_picture() {
-    use crate::measurement::visual_input::{Pattern, VisualInput};
+    use crate::stimuli::visual_input::{Pattern, VisualInput};
     let mut world = World::new();
-    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let input = Stimulus::VisualInput.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(input));
     assert!(harness.shows("Visual input"));
     for setting in [
@@ -1171,9 +1173,9 @@ fn a_visual_input_picks_its_picture() {
 
 #[test]
 fn the_reverse_button_turns_the_picture_around_and_undo_turns_it_back() {
-    use crate::measurement::visual_input::VisualInput;
+    use crate::stimuli::visual_input::VisualInput;
     let mut world = World::new();
-    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let input = Stimulus::VisualInput.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(false, world, Some(input));
     assert!(harness.shows(Setting::Reverse.description()));
     let speed = |harness: &Harness| harness.world.get::<&VisualInput>(input).unwrap().speed;
@@ -1188,7 +1190,7 @@ fn the_reverse_button_turns_the_picture_around_and_undo_turns_it_back() {
 #[test]
 fn on_phones_reverse_shows_in_the_peeking_sheet() {
     let mut world = World::new();
-    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let input = Stimulus::VisualInput.spawn(&mut world, Vec3::ZERO);
     let harness = Harness::phone(false, world, Some(input));
     let reverse = harness
         .context
@@ -1199,9 +1201,9 @@ fn on_phones_reverse_shows_in_the_peeking_sheet() {
 
 #[test]
 fn a_receptive_field_picks_its_field_and_sensitivity() {
-    use crate::measurement::visual_input::{ReceptiveField, ReceptiveFieldCell};
+    use crate::stimuli::receptive_field::{ReceptiveField, ReceptiveFieldCell};
     let mut world = World::new();
-    let cell = Element::ReceptiveField.spawn(&mut world, Vec3::ZERO);
+    let cell = Stimulus::ReceptiveField.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(cell));
     assert!(harness.shows("Receptive field"));
     for setting in [
@@ -1534,7 +1536,10 @@ fn the_add_sheet_starts_editing_with_what_to_place() {
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Add");
     harness.click_text("Random spikes");
-    assert_eq!(harness.editor.tool, Tool::Place(Element::PoissonGenerator));
+    assert_eq!(
+        harness.editor.tool,
+        Tool::Place(Element::Stimulus(Stimulus::PoissonGenerator))
+    );
     assert!(harness.editing());
     assert!(!harness.shows("Random spikes"));
 }
@@ -1828,9 +1833,9 @@ fn the_canvas_area_on_phones_leaves_out_the_bars() {
 
 #[test]
 fn a_visual_input_stops_at_zero_speed_and_takes_a_phase_set_by_hand() {
-    use crate::measurement::visual_input::VisualInput;
+    use crate::stimuli::visual_input::VisualInput;
     let mut world = World::new();
-    let input = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+    let input = Stimulus::VisualInput.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(input));
     let speed = harness
         .text_position(Setting::PictureSpeed.label())
@@ -1854,13 +1859,13 @@ fn no_text_in_the_inspector_is_covered_by_other_text_or_controls() {
         |world| Element::InhibitoryNeuron.spawn(world, Vec3::ZERO),
         |world| Element::AdaptiveNeuron.spawn(world, Vec3::ZERO),
         |world| Element::BurstNeuron.spawn(world, Vec3::ZERO),
-        |world| Element::CurrentSource.spawn(world, Vec3::ZERO),
-        |world| Element::AlternatingCurrentSource.spawn(world, Vec3::ZERO),
-        |world| Element::TouchSensor.spawn(world, Vec3::ZERO),
-        |world| Element::RegularSpikeGenerator.spawn(world, Vec3::ZERO),
-        |world| Element::PoissonGenerator.spawn(world, Vec3::ZERO),
-        |world| Element::VisualInput.spawn(world, Vec3::ZERO),
-        |world| Element::ReceptiveField.spawn(world, Vec3::ZERO),
+        |world| Stimulus::CurrentSource.spawn(world, Vec3::ZERO),
+        |world| Stimulus::AlternatingCurrentSource.spawn(world, Vec3::ZERO),
+        |world| Stimulus::TouchSensor.spawn(world, Vec3::ZERO),
+        |world| Stimulus::RegularSpikeGenerator.spawn(world, Vec3::ZERO),
+        |world| Stimulus::PoissonGenerator.spawn(world, Vec3::ZERO),
+        |world| Stimulus::VisualInput.spawn(world, Vec3::ZERO),
+        |world| Stimulus::ReceptiveField.spawn(world, Vec3::ZERO),
         |world| Element::Note.spawn(world, Vec3::ZERO),
         |world| Meter::Voltmeter.spawn(world, Vec3::ZERO),
         |world| Meter::SpikeDetector.spawn(world, Vec3::ZERO),

@@ -2,8 +2,8 @@ use glam::Vec3;
 use hecs::{Entity, EntityBuilder, World};
 
 use crate::components::*;
-use crate::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
 use crate::simulation::model::cable_between;
+use crate::stimuli::Stimulus;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Element {
@@ -11,13 +11,7 @@ pub enum Element {
     InhibitoryNeuron,
     AdaptiveNeuron,
     BurstNeuron,
-    CurrentSource,
-    AlternatingCurrentSource,
-    TouchSensor,
-    RegularSpikeGenerator,
-    PoissonGenerator,
-    VisualInput,
-    ReceptiveField,
+    Stimulus(Stimulus),
     Note,
 }
 
@@ -32,17 +26,8 @@ impl Element {
         )
     }
 
-    pub fn is_input(self) -> bool {
-        matches!(
-            self,
-            Element::CurrentSource
-                | Element::AlternatingCurrentSource
-                | Element::TouchSensor
-                | Element::RegularSpikeGenerator
-                | Element::PoissonGenerator
-                | Element::VisualInput
-                | Element::ReceptiveField
-        )
+    pub fn is_stimulus(self) -> bool {
+        matches!(self, Element::Stimulus(_))
     }
 
     pub fn spawn(self, world: &mut World, position: Vec3) -> Entity {
@@ -64,45 +49,7 @@ impl Element {
                     .add(BurstCurrent::default())
                     .build(),
             ),
-            Element::CurrentSource => {
-                world.spawn((position, CurrentClamp::default(), Deletable {}))
-            }
-            Element::AlternatingCurrentSource => world.spawn((
-                position,
-                CurrentClamp {
-                    current_output: Nanoamperes::ZERO,
-                },
-                AlternatingCurrent::default(),
-                Deletable {},
-            )),
-            Element::TouchSensor => world.spawn((
-                position,
-                TouchSensor,
-                GeneratorDynamics::default(),
-                Deletable {},
-            )),
-            Element::RegularSpikeGenerator => world.spawn((
-                position,
-                RegularSpikeGenerator::default(),
-                GeneratorDynamics::default(),
-                NeuronType::Excitatory,
-                Deletable {},
-            )),
-            Element::PoissonGenerator => world.spawn((
-                position,
-                PoissonGenerator::default(),
-                GeneratorDynamics::default(),
-                NeuronType::Excitatory,
-                Deletable {},
-            )),
-            Element::VisualInput => world.spawn((position, VisualInput::default(), Deletable {})),
-            Element::ReceptiveField => world.spawn((
-                position,
-                ReceptiveFieldCell::default(),
-                GeneratorDynamics::default(),
-                NeuronType::Excitatory,
-                Deletable {},
-            )),
+            Element::Stimulus(stimulus) => stimulus.spawn(world, position.position),
             Element::Note => world.spawn((
                 position,
                 Annotation {
@@ -180,12 +127,20 @@ pub fn spawn_connection(world: &mut World, from: Entity, to: Entity) -> Entity {
         strength: 1.0,
         directional: true,
     };
-    if world.get::<&CurrentClamp>(from).is_ok() {
-        world.spawn((connection, Deletable {}))
-    } else if world.get::<&TouchSensor>(from).is_ok() {
-        world.spawn((connection, Deletable {}, ImmediateFireSynapse))
-    } else {
-        spawn_synapse(world, from, to)
+    match Stimulus::of(world, from) {
+        Some(Stimulus::CurrentSource | Stimulus::AlternatingCurrentSource) => {
+            world.spawn((connection, Deletable {}))
+        }
+        Some(Stimulus::TouchSensor) => {
+            world.spawn((connection, Deletable {}, ImmediateFireSynapse))
+        }
+        Some(
+            Stimulus::RegularSpikeGenerator
+            | Stimulus::PoissonGenerator
+            | Stimulus::VisualInput
+            | Stimulus::ReceptiveField,
+        )
+        | None => spawn_synapse(world, from, to),
     }
 }
 

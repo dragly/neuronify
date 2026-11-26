@@ -12,14 +12,16 @@ use crate::elements::{
     Element,
 };
 use crate::measurement::frame::{measured, Corner, Frame};
-use crate::measurement::visual_input::{
-    direction_badge_at, edge_toward, framed_size, receptive_field_frame, spawn_picture_wire,
-    visual_input_frame, watched_picture, ReceptiveFieldCell, VisualInput,
-};
 use crate::measurement::Meter;
 use crate::rendering::bounds::note_corners;
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};
+use crate::stimuli::receptive_field::{watched_picture, ReceptiveFieldCell, RECEPTIVE_FIELD_SIZE};
+use crate::stimuli::touch_sensor::TouchSensor;
+use crate::stimuli::visual_input::{
+    direction_badge_at, spawn_picture_wire, VisualInput, VISUAL_INPUT_SIZE,
+};
+use crate::stimuli::{edge_toward, framed_size, CurrentClamp, GeneratorDynamics, Stimulus};
 use crate::tips::{tip_at, way_out};
 use crate::tools::{
     ConnectionHint, ConnectionMode, ConnectionOffer, ConnectionTool, Stimulation, StimulationTool,
@@ -879,7 +881,7 @@ impl Editor {
             return;
         }
         self.place(world, element, position);
-        if element.is_input() {
+        if element.is_stimulus() {
             self.connection_tool = self.previous_creation.map(|from| ConnectionTool {
                 start: position,
                 end: position,
@@ -1397,25 +1399,15 @@ fn meter_frames(world: &World) -> Vec<(Entity, Vec3, Frame)> {
             (meter, meter_position.position, frame)
         })
         .collect::<Vec<_>>();
-    let visual_inputs = world
+    let stimuli = world
         .query::<(Entity, &Position)>()
-        .with::<&VisualInput>()
         .iter()
-        .map(|(input, center)| (input, center.position, visual_input_frame(center.position)))
-        .collect::<Vec<_>>();
-    let fields = world
-        .query::<(Entity, &Position)>()
-        .with::<&ReceptiveFieldCell>()
-        .iter()
-        .map(|(cell, center)| {
-            (
-                cell,
-                center.position,
-                receptive_field_frame(center.position),
-            )
+        .filter_map(|(entity, center)| {
+            let frame = Stimulus::of(world, entity)?.frame(center.position)?;
+            Some((entity, center.position, frame))
         })
         .collect::<Vec<_>>();
-    [meters, visual_inputs, fields].concat()
+    [meters, stimuli].concat()
 }
 
 fn picture_at(world: &World, position: Vec3) -> Option<Entity> {
@@ -1423,7 +1415,7 @@ fn picture_at(world: &World, position: Vec3) -> Option<Entity> {
         .query::<(Entity, &Position)>()
         .with::<&VisualInput>()
         .iter()
-        .find(|(_, center)| visual_input_frame(center.position).contains(position))
+        .find(|(_, center)| Frame::square(center.position, VISUAL_INPUT_SIZE).contains(position))
         .map(|(picture, _)| picture)
 }
 
@@ -1432,7 +1424,7 @@ fn receptive_field_at(world: &World, position: Vec3) -> Option<Entity> {
         .query::<(Entity, &Position)>()
         .with::<&ReceptiveFieldCell>()
         .iter()
-        .find(|(_, center)| receptive_field_frame(center.position).contains(position))
+        .find(|(_, center)| Frame::square(center.position, RECEPTIVE_FIELD_SIZE).contains(position))
         .map(|(cell, _)| cell)
 }
 

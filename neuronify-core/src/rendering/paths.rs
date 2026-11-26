@@ -6,10 +6,10 @@ use hecs::{Entity, EntityRef};
 use crate::components::*;
 use crate::constants::*;
 use crate::measurement::is_meter;
-use crate::measurement::visual_input::{edge_toward, framed_size};
 use crate::rendering::colors::*;
 use crate::rendering::connections::picture_wire_points;
 use crate::rendering::shapes::{shown_voltage, voltage_fraction};
+use crate::stimuli::{edge_toward, framed_size, CurrentClamp, GeneratorDynamics};
 use crate::tips::Tip;
 
 /// Spacing between the joints along a connection, the same as between compartments.
@@ -512,7 +512,7 @@ mod tests {
         for element in [
             crate::elements::Element::ExcitatoryNeuron,
             crate::elements::Element::InhibitoryNeuron,
-            crate::elements::Element::TouchSensor,
+            crate::elements::Element::Stimulus(crate::stimuli::Stimulus::TouchSensor),
         ] {
             let from = element.spawn(&mut world, Vec3::ZERO);
             let to = crate::elements::Element::ExcitatoryNeuron

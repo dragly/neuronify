@@ -5,6 +5,7 @@ use neuronify_engine::units::Nanoamperes;
 use super::Engine;
 use crate::components::*;
 use crate::constants::*;
+use crate::stimuli::touch_sensor::TouchSensor;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Touch {
@@ -65,6 +66,7 @@ mod tests {
     use crate::dendrites::spawn_dendrites;
     use crate::elements::{spawn_cable, spawn_compartment, Element};
     use crate::simulation::{step_simulation, Engine};
+    use crate::stimuli::GeneratorDynamics;
 
     fn held(position: Vec3) -> Touch {
         Touch {

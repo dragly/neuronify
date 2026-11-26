@@ -6,15 +6,15 @@ use neuronify_core::constants::DEFAULT_SPEED;
 use neuronify_core::elements::Element;
 use neuronify_core::measurement::frame::RowOrder;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
-use neuronify_core::measurement::visual_input::{
-    spawn_picture_wire, Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput,
-};
 use neuronify_core::measurement::Meter;
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::stimuli::poisson_generator::PoissonGenerator;
+use neuronify_core::stimuli::receptive_field::{ReceptiveField, ReceptiveFieldCell};
+use neuronify_core::stimuli::visual_input::{spawn_picture_wire, Pattern, VisualInput};
+use neuronify_core::stimuli::{CurrentClamp, Stimulus};
 use neuronify_core::{
-    Annotation, Connection, ConnectionView, CurrentClamp, CurrentSynapse, Deletable, Hertz, Label,
-    MeterSize, Milliseconds, Nanoamperes, NeuronDisplay, NeuronType, NoteSize, PoissonGenerator,
-    Selected, Setting,
+    Annotation, Connection, ConnectionView, CurrentSynapse, Deletable, Hertz, Label, MeterSize,
+    Milliseconds, Nanoamperes, NeuronDisplay, NeuronType, NoteSize, Selected, Setting,
 };
 
 const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(2.0);
@@ -172,7 +172,7 @@ fn current_source(
     cells: &[Entity],
     strength: f64,
 ) -> Entity {
-    let source = Element::CurrentSource.spawn(world, position);
+    let source = Stimulus::CurrentSource.spawn(world, position);
     world
         .get::<&mut CurrentClamp>(source)
         .expect("current sources spawn with a CurrentClamp")
@@ -195,7 +195,7 @@ fn current_source(
 fn cue_sensors(world: &mut World, ring: &[Entity], radius: f32) {
     for (i, &cell) in ring.iter().enumerate() {
         let position = clockwise_from_top(radius, i as f32 / ring.len() as f32);
-        let sensor = Element::TouchSensor.spawn(world, position);
+        let sensor = Stimulus::TouchSensor.spawn(world, position);
         world.spawn((
             Connection {
                 from: sensor,
@@ -304,7 +304,7 @@ fn ring_attractor(input: RingInput) -> World {
             for (i, &excitatory) in ring.iter().enumerate() {
                 let position =
                     clockwise_from_top(NOISE_RADIUS, (i as f32 + 0.5) / EXCITATORY as f32);
-                let generator = Element::PoissonGenerator.spawn(&mut world, position);
+                let generator = Stimulus::PoissonGenerator.spawn(&mut world, position);
                 world
                     .get::<&mut PoissonGenerator>(generator)
                     .expect("Poisson generators spawn with a PoissonGenerator")
@@ -588,7 +588,11 @@ fn hopfield(letters: &[char]) -> World {
         for column in 0..GRID {
             let (right, up) = place(row, column);
             cells.push(sheet.neuron(NeuronType::Excitatory, right, up, ""));
-            pads.push(sheet.add(Element::TouchSensor, right - 2.1, up - 2.1));
+            pads.push(sheet.add(
+                Element::Stimulus(Stimulus::TouchSensor),
+                right - 2.1,
+                up - 2.1,
+            ));
         }
     }
     let partner_top = sheet.row(GRID as f32 * PARTNER_SPACING + 1.0) - 1.0;
@@ -642,7 +646,11 @@ fn hopfield(letters: &[char]) -> World {
         }
     }
     let reset_row = sheet.row(4.0) - 2.0;
-    let reset_pad = sheet.add(Element::TouchSensor, SHEET_WIDTH / 2.0 - 3.0, reset_row);
+    let reset_pad = sheet.add(
+        Element::Stimulus(Stimulus::TouchSensor),
+        SHEET_WIDTH / 2.0 - 3.0,
+        reset_row,
+    );
     let reset = sheet.neuron(
         NeuronType::Inhibitory,
         SHEET_WIDTH / 2.0 + 1.0,
@@ -727,7 +735,11 @@ fn direction_selectivity() -> World {
          Five receptive fields, A to E, each drive the receptor neuron below them.",
     );
     let picture_row = sheet.row(PICTURE_SIZE) - PICTURE_SIZE / 2.0;
-    let picture = sheet.add(Element::VisualInput, SHEET_WIDTH / 2.0, picture_row);
+    let picture = sheet.add(
+        Element::Stimulus(Stimulus::VisualInput),
+        SHEET_WIDTH / 2.0,
+        picture_row,
+    );
     *sheet
         .world
         .get::<&mut VisualInput>(picture)
@@ -747,7 +759,11 @@ fn direction_selectivity() -> World {
     let mut receptors = Vec::new();
     let mut partners = Vec::new();
     for (index, name) in RECEPTORS.into_iter().enumerate() {
-        let field = sheet.add(Element::ReceptiveField, column(index), field_row);
+        let field = sheet.add(
+            Element::Stimulus(Stimulus::ReceptiveField),
+            column(index),
+            field_row,
+        );
         *sheet
             .world
             .get::<&mut ReceptiveFieldCell>(field)

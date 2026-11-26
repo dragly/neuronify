@@ -6,9 +6,6 @@ use hecs::{Entity, World};
 use crate::components::*;
 use crate::constants::{COMPARTMENT_SPHERE_SCALE, ERASE_RADIUS, NODE_RADIUS};
 use crate::measurement::frame::{Corner, Frame};
-use crate::measurement::visual_input::{
-    receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
-};
 use crate::measurement::Meter;
 use crate::rendering::bounds::note_corners;
 use crate::rendering::colors::Palette;
@@ -18,7 +15,7 @@ use crate::rendering::gauges::gauge_reach;
 use crate::rendering::gpu_types::{Sphere, TorusData};
 use crate::rendering::paths::{connection_paths, ConnectionPath};
 use crate::rendering::scene::Scene;
-use crate::rendering::shapes::{GENERATOR_RING_RADIUS, GENERATOR_RING_THICKNESS, PAD_RADIUS};
+use crate::stimuli::Stimulus;
 
 const GAP: f32 = 0.35 * NODE_RADIUS;
 const THICKNESS: f32 = 0.07 * NODE_RADIUS;
@@ -92,13 +89,7 @@ pub fn eraser_outline(center: Vec3, palette: &Palette) -> TorusData {
 fn rectangle(world: &World, entity: Entity) -> Option<[Vec3; 2]> {
     let framed = Frame::of(world, entity).or_else(|| {
         let center = world.get::<&Position>(entity).ok()?.position;
-        if world.satisfies::<&VisualInput>(entity) {
-            Some(visual_input_frame(center))
-        } else if world.satisfies::<&ReceptiveFieldCell>(entity) {
-            Some(receptive_field_frame(center))
-        } else {
-            None
-        }
+        Stimulus::of(world, entity)?.frame(center)
     });
     if let Some(frame) = framed {
         return Some([
@@ -116,12 +107,10 @@ pub fn element_radius(
     entity: Entity,
     compartment_radii: &HashMap<Entity, f32>,
 ) -> f32 {
-    if let Some(radius) = Meter::of(world, entity).and_then(Meter::radius) {
+    if let Some(stimulus) = Stimulus::of(world, entity) {
+        stimulus.radius()
+    } else if let Some(radius) = Meter::of(world, entity).and_then(Meter::radius) {
         radius
-    } else if world.satisfies::<hecs::Or<&TouchSensor, &CurrentClamp>>(entity) {
-        PAD_RADIUS
-    } else if world.get::<&GeneratorDynamics>(entity).is_ok() {
-        GENERATOR_RING_RADIUS + GENERATOR_RING_THICKNESS
     } else if world.get::<&Compartment>(entity).is_ok() {
         compartment_radii
             .get(&entity)
@@ -189,10 +178,10 @@ mod tests {
             Element::InhibitoryNeuron,
             Element::AdaptiveNeuron,
             Element::BurstNeuron,
-            Element::CurrentSource,
-            Element::TouchSensor,
-            Element::RegularSpikeGenerator,
-            Element::PoissonGenerator,
+            Element::Stimulus(Stimulus::CurrentSource),
+            Element::Stimulus(Stimulus::TouchSensor),
+            Element::Stimulus(Stimulus::RegularSpikeGenerator),
+            Element::Stimulus(Stimulus::PoissonGenerator),
         ] {
             let mut world = World::new();
             let entity = element.spawn(&mut world, Vec3::new(3.0, 0.0, 4.0));

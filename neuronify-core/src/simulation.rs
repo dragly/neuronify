@@ -28,7 +28,7 @@ pub fn step_simulation(
     engine.sync(world);
     engine.touch(world, touched(world, touch));
     let duration = steps as f64 * DT;
-    engine::visual_inputs(world, engine, *time, duration);
+    crate::stimuli::advance(world, engine, *time, duration);
     engine.run(steps);
     *time = engine.time();
     engine.reflect(world);

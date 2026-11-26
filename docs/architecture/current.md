@@ -143,7 +143,8 @@ and `store` the rest (pending events, synapse state, the random state).
 
 ### A step
 
-Each frame, `step_simulation` syncs, applies the touch, sets the visual input rates
+Each frame, `step_simulation` syncs, applies the touch,
+moves the pictures and sets the receptive field rates (`stimuli::advance`),
 and runs a number of 0.025 ms steps, each like this:
 
 ```mermaid
@@ -326,7 +327,7 @@ and anything the simulation needs goes into the world.
 
 postcard writes a component as its position in the version's `schema!` list,
 so a list is fixed once files exist.
-Changing the list, a component's fields or a range in `bounds` (or a meter's module)
+Changing the list, a component's fields or a range in `bounds` (or a meter's or stimulus's module)
 takes a new world version: a module `vN` with an upgrade
 (the steps are in the doc comment of `serialization.rs`).
 The newest version reads and writes the app's own components, through `serialization/current.rs`.
@@ -435,7 +436,7 @@ flowchart TB
 | Simulation | `simulation` (`engine`, `model`, `mammal`, `stimulation`, `firing_rate`, `spatial`) |
 | Rendering | `rendering` (`World` to `Scene`, drawn by `SceneRenderer`) |
 | Files | `serialization` (with `bounds`), `legacy`, `examples`, `library` |
-| Model | `components`, `constants`, `measurement` (the meters and the visual input) |
+| Model | `components`, `constants`, `measurement` (the meters), `stimuli` |
 
 Each meter keeps all of it in `measurement`, one layer per file,
 as in `voltmeter.rs` for Model (`ABOUT` with its name and size,
@@ -448,6 +449,15 @@ and recording, bounds and drawing go through `Meter::ALL` in its order.
 The compiler points at each match, but not at a meter left out of `Meter::ALL`.
 Such a meter is missing from the rail, so it shows the first time anyone tries to place it.
 
+The stimuli follow the same shape in `stimuli`, with `Stimulus` and `Stimulus::ALL`
+(current source, alternating current, touch sensor, regular and random spikes,
+visual input and receptive field), one file and folder per stimulus.
+`stimuli.rs` also holds what several stimuli share:
+`CurrentClamp` for both current sources, `GeneratorDynamics` for everything that fires,
+the square frame of the picture and the receptive field, and their bounds.
+A regular or random spike generator has no `drawing.rs`,
+since both are drawn as a soma inside a ring by `stimuli/drawing.rs`.
+
 Editing and Rendering also read the clock in `input`,
 and a few modules reach past the arrows:
 
@@ -456,14 +466,15 @@ and a few modules reach past the arrows:
   and `simulation::model` for radii and ending scales.
 - `serialization`: `tools` for `ConnectionMode`, which files keep from version 18.
 - `measurement`: the engine's spikes and probes, and `within` from `serialization::bounds`.
+- `stimuli`: the engine, to set receptive field rates,
+  and `within`, `turned` and `elapsed` from `serialization::bounds`.
 - `simulation::model`: temperature ranges from `serialization::bounds`.
-- `legacy::convert`: `elements`.
 - `landing` and `links`: `web`, and `landing` also `frame_clock`.
 
 ### Components
 
-Each element is an entity with `Position`, `Deletable` and a bundle from `elements.rs`,
-or for a meter from `Meter::spawn`.
+Each element is an entity with `Position`, `Deletable` and a bundle
+from `elements.rs`, `Stimulus::builder` or `Meter::builder`.
 A connection is an entity with a `Connection` (`from`, `to`, `strength`, `directional`)
 and a component for its kind.
 The main components:
@@ -485,7 +496,7 @@ The main components:
 
 A new component may have to go in several places:
 
-- `elements` and `legacy::convert`,
+- `elements`, `Stimulus::builder` or `Meter::builder`, and `legacy::convert`,
   which spawn what the editor places and what `.nfy` files contain.
 - `copy_edited` in `editor/history.rs`, if an edit can change it,
   or undo misses the change,

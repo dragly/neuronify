@@ -7,11 +7,17 @@ use crate::measurement::firing_rate::{RatePlot, RateSeries};
 use crate::measurement::frame::RowOrder;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
-use crate::measurement::visual_input::{Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput};
 use crate::measurement::voltmeter::{
     RollingWindow, VoltageMeasurement, VoltageSeries, Voltmeter, VoltmeterRange,
 };
 use crate::measurement::SpikeTrain;
+use crate::stimuli::alternating_current::AlternatingCurrent;
+use crate::stimuli::poisson_generator::PoissonGenerator;
+use crate::stimuli::receptive_field::{ReceptiveField, ReceptiveFieldCell};
+use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use crate::stimuli::touch_sensor::TouchSensor;
+use crate::stimuli::visual_input::{Pattern, VisualInput};
+use crate::stimuli::{CurrentClamp, GeneratorDynamics};
 use crate::tools::ConnectionMode;
 
 schema!(

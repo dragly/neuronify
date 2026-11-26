@@ -3,12 +3,10 @@ use std::f32::consts::TAU;
 use glam::Vec3;
 use hecs::{Entity, World};
 
-use crate::components::{
-    Cable, Connection, CurrentClamp, GeneratorDynamics, LeakyNeuron, Position,
-};
+use crate::components::{Cable, Connection, LeakyNeuron, Position};
 use crate::constants::NODE_RADIUS;
 use crate::measurement::is_meter;
-use crate::measurement::visual_input::framed_size;
+use crate::stimuli::{framed_size, CurrentClamp, GeneratorDynamics};
 
 pub const TIP_LENGTH: f32 = 2.6 * NODE_RADIUS;
 const GRAB_REACH: f32 = 1.2 * NODE_RADIUS;
@@ -135,6 +133,7 @@ mod tests {
     use super::*;
     use crate::elements::{spawn_connection, Element};
     use crate::measurement::Meter;
+    use crate::stimuli::Stimulus;
 
     fn at(x: f32, z: f32) -> Vec3 {
         Vec3::new(x, 0.0, z)
@@ -147,7 +146,7 @@ mod tests {
     #[test]
     fn a_source_with_nowhere_to_send_its_spikes_has_a_tip_pointing_on() {
         let mut world = World::new();
-        let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, -8.0));
+        let sensor = Stimulus::TouchSensor.spawn(&mut world, at(0.0, -8.0));
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
         spawn_connection(&mut world, sensor, neuron);
         let onward = tip(&world, neuron).unwrap();
@@ -157,10 +156,10 @@ mod tests {
 
     #[test]
     fn a_receptive_field_tip_leaves_the_middle_of_the_side_facing_away_from_its_connections() {
-        use crate::measurement::visual_input::RECEPTIVE_FIELD_SIZE;
+        use crate::stimuli::receptive_field::RECEPTIVE_FIELD_SIZE;
         for (neighbour, side) in [(at(0.0, 10.0), -Vec3::Z), (at(6.0, -8.0), Vec3::Z)] {
             let mut world = World::new();
-            let field = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+            let field = Stimulus::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
             let neuron = Element::ExcitatoryNeuron.spawn(&mut world, neighbour);
             spawn_connection(&mut world, field, neuron);
             let tip = tip(&world, field).unwrap();
@@ -210,7 +209,7 @@ mod tests {
     #[test]
     fn a_connected_source_shows_its_tip_on_its_free_side() {
         let mut world = World::new();
-        let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, -8.0));
+        let sensor = Stimulus::TouchSensor.spawn(&mut world, at(0.0, -8.0));
         let middle = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 0.0));
         let last = Element::ExcitatoryNeuron.spawn(&mut world, at(0.0, 8.0));
         spawn_connection(&mut world, sensor, middle);

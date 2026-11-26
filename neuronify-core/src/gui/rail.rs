@@ -102,7 +102,7 @@ const SECTIONS: [&[(Slot, Key)]; 2] = [
     ],
     &[
         (Slot::Group(ToolGroup::Neurons), Key::N),
-        (Slot::Group(ToolGroup::Inputs), Key::I),
+        (Slot::Group(ToolGroup::Stimuli), Key::I),
         (Slot::Group(ToolGroup::Connections), Key::C),
         (Slot::Group(ToolGroup::Meters), Key::M),
         (Slot::Tool(Tool::Place(Element::Note)), Key::T),
@@ -471,7 +471,7 @@ impl Rail {
                             &mut editor.compartments,
                             ROW_INSET,
                         ),
-                        ToolGroup::Inputs => hint(ui, chrome, INPUT_HINT, ROW_INSET),
+                        ToolGroup::Stimuli => hint(ui, chrome, INPUT_HINT, ROW_INSET),
                         ToolGroup::Connections | ToolGroup::Meters => {}
                     }
                     for &tool in group.tools() {
@@ -735,7 +735,7 @@ impl Rail {
                         .show(ui, |ui| {
                             let groups = [
                                 ToolGroup::Neurons,
-                                ToolGroup::Inputs,
+                                ToolGroup::Stimuli,
                                 ToolGroup::Connections,
                             ]
                             .map(|group| (Some(group), group.label(), group.tools()));
@@ -759,7 +759,7 @@ impl Rail {
                                         &mut editor.compartments,
                                         0.0,
                                     ),
-                                    Some(ToolGroup::Inputs) => hint(ui, chrome, INPUT_HINT, 0.0),
+                                    Some(ToolGroup::Stimuli) => hint(ui, chrome, INPUT_HINT, 0.0),
                                     _ => {}
                                 }
                                 for row in tools.chunks(TILES_PER_ROW) {

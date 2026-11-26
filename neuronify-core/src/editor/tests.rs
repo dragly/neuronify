@@ -5,6 +5,7 @@ use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::measurement::Meter;
 use crate::simulation::{fire_nearby, step_physics, step_simulation, Engine};
+use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
 use std::collections::HashMap;
 
 fn at(x: f32, z: f32) -> Vec3 {
@@ -138,7 +139,7 @@ fn dragging_a_new_note_moves_it() {
 #[test]
 fn only_neurons_grow_dendrites() {
     let mut world = World::new();
-    let mut editor = editor(Tool::Place(Element::CurrentSource));
+    let mut editor = editor(Tool::Place(Element::Stimulus(Stimulus::CurrentSource)));
     editor.compartments = true;
     drag(&mut editor, &mut world, &[at(0.0, 0.0)]);
     assert_eq!(count::<Dendrite>(&world), 0);
@@ -151,7 +152,7 @@ fn only_neurons_grow_dendrites() {
 #[test]
 fn with_compartments_an_inhibitory_generator_connects_with_a_synapse() {
     let mut world = World::new();
-    let generator = Element::RegularSpikeGenerator.spawn(&mut world, at(0.0, 0.0));
+    let generator = Stimulus::RegularSpikeGenerator.spawn(&mut world, at(0.0, 0.0));
     world.insert_one(generator, NeuronType::Inhibitory).unwrap();
     let target = neuron(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::StaticConnection);
@@ -649,7 +650,7 @@ fn only_tools_that_connect_follow_the_connection_mode() {
         Tool::Axon,
         Tool::MyelinatedAxon,
         Tool::Place(Element::ExcitatoryNeuron),
-        Tool::Place(Element::TouchSensor),
+        Tool::Place(Element::Stimulus(Stimulus::TouchSensor)),
     ] {
         assert!(follows(tool), "{tool:?}");
     }
@@ -1417,7 +1418,7 @@ fn pulling_a_connection_or_placing_an_input_is_not_painting() {
     let mut pulling = editor(Tool::Place(Element::ExcitatoryNeuron));
     pulling.edit(&mut world, at(0.0, 0.5));
     assert_eq!(pulling.painting(), None);
-    let mut placing = editor(Tool::Place(Element::CurrentSource));
+    let mut placing = editor(Tool::Place(Element::Stimulus(Stimulus::CurrentSource)));
     placing.edit(&mut world, at(10.0, 10.0));
     assert_eq!(placing.painting(), None);
 }
@@ -1457,7 +1458,7 @@ fn a_plain_connection_is_not_a_growing_axon() {
 fn inputs_connect_to_the_neuron_they_are_pulled_to() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 10.0));
-    let mut editor = editor(Tool::Place(Element::CurrentSource));
+    let mut editor = editor(Tool::Place(Element::Stimulus(Stimulus::CurrentSource)));
     let path: Vec<Vec3> = (0..=20).map(|step| at(0.0, step as f32 * 0.5)).collect();
     drag(&mut editor, &mut world, &path);
     let sources = positions_with::<CurrentClamp>(&world);
@@ -1532,7 +1533,9 @@ fn with_point_neurons_pressing_near_a_dendrite_adds_nothing() {
 fn with_compartments_inputs_still_connect_directly() {
     let mut world = World::new();
     let target = neuron(&mut world, at(0.0, 10.0));
-    let mut editor = editor(Tool::Place(Element::RegularSpikeGenerator));
+    let mut editor = editor(Tool::Place(Element::Stimulus(
+        Stimulus::RegularSpikeGenerator,
+    )));
     editor.compartments = true;
     let path: Vec<Vec3> = (0..=20).map(|step| at(0.0, step as f32 * 0.5)).collect();
     drag(&mut editor, &mut world, &path);
@@ -1605,7 +1608,7 @@ fn tapping_an_element_while_adding_does_nothing() {
 
 fn offer_from_neuron(world: &mut World) -> (Entity, Editor) {
     let a = neuron(world, at(0.0, 0.0));
-    Element::TouchSensor.spawn(world, at(-20.0, -20.0));
+    Stimulus::TouchSensor.spawn(world, at(-20.0, -20.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(world, at(0.5, 0.0));
     editor.offer_connection(world, Seconds(10.0));
@@ -1637,7 +1640,7 @@ fn tapping_a_neuron_while_adding_offers_a_connection_for_three_seconds() {
 #[test]
 fn placing_a_neuron_offers_a_connection_from_it_right_away() {
     let mut world = World::new();
-    Element::TouchSensor.spawn(&mut world, at(-20.0, -20.0));
+    Stimulus::TouchSensor.spawn(&mut world, at(-20.0, -20.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(&mut world, at(0.0, 0.0));
     editor.offer_connection(&world, Seconds(10.0));
@@ -1677,7 +1680,7 @@ fn a_lone_neuron_offers_no_connection_until_something_else_is_added() {
             let offered = offered_after_tapping(&mut editor, &mut world, tap);
             assert!(!offered, "{compartments} {tap}");
         }
-        Element::TouchSensor.spawn(&mut world, at(-20.0, -20.0));
+        Stimulus::TouchSensor.spawn(&mut world, at(-20.0, -20.0));
         let offered = offered_after_tapping(&mut editor, &mut world, at(0.5, 0.0));
         assert!(offered, "{compartments}");
     }
@@ -1718,7 +1721,7 @@ fn meter_wires_do_not_count_as_connected_neurons() {
 #[test]
 fn placing_an_input_offers_no_connection() {
     let mut world = World::new();
-    let mut editor = editor(Tool::Place(Element::CurrentSource));
+    let mut editor = editor(Tool::Place(Element::Stimulus(Stimulus::CurrentSource)));
     editor.edit(&mut world, at(0.0, 0.0));
     editor.offer_connection(&world, Seconds(10.0));
     editor.release(&world);
@@ -1800,7 +1803,7 @@ fn holding_an_element_while_adding_moves_it() {
 #[test]
 fn holding_after_placing_moves_the_new_element() {
     let mut world = World::new();
-    let mut editor = editor(Tool::Place(Element::CurrentSource));
+    let mut editor = editor(Tool::Place(Element::Stimulus(Stimulus::CurrentSource)));
     editor.edit(&mut world, at(0.0, 0.0));
     assert!(editor.hold(&world, at(0.0, 0.0), false));
     drag(&mut editor, &mut world, &[at(3.0, 4.0), at(6.0, 8.0)]);
@@ -2083,8 +2086,8 @@ fn the_editor_knows_whether_a_press_landed_on_the_background() {
 #[test]
 fn a_visual_input_pressed_near_its_corner_moves() {
     let mut world = World::new();
-    let input = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
-    let near_corner = visual_input_frame(at(0.0, 0.0)).point(0.95, 0.95);
+    let input = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let near_corner = Frame::square(at(0.0, 0.0), VISUAL_INPUT_SIZE).point(0.95, 0.95);
     let mut editor = editor(Tool::Edit);
 
     drag(
@@ -2203,7 +2206,7 @@ fn stimulating_pushes_with_the_chosen_current() {
 #[test]
 fn viewers_touch_sensors_and_pan_everywhere_else() {
     let mut world = World::new();
-    Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
 
     assert_eq!(editor.view(&mut world, at(0.5, 0.0)), None);
@@ -2225,7 +2228,7 @@ fn viewers_touch_sensors_and_pan_everywhere_else() {
 #[test]
 fn touch_sensors_fire_once_per_press() {
     let mut world = World::new();
-    let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let sensor = Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Stimulate);
     let fired = |world: &mut World, editor: &mut Editor| {
         editor.edit(world, at(0.5, 0.0));
@@ -2263,7 +2266,7 @@ fn viewers_select_with_a_tap() {
 fn touching_a_sensor_leaves_the_selection_alone() {
     let mut world = World::new();
     let target = neuron(&mut world, at(10.0, 0.0));
-    Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
     editor.selection = Some(target);
 
@@ -3273,7 +3276,7 @@ fn a_hold_reaches_a_lone_neuron_from_a_finger_width_away() {
 #[test]
 fn a_hold_reaches_from_the_edge_of_what_is_drawn() {
     let mut world = World::new();
-    let pad = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let pad = Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let editor = reaching(Tool::View, 0.5);
     let targets = Targets::new(&world);
     let held = |position| {
@@ -3395,7 +3398,7 @@ fn the_outline_of_a_note_is_its_rectangle_with_rounded_corners() {
 #[test]
 fn a_stimulated_touch_sensor_offers_nothing_to_hold() {
     let mut world = World::new();
-    Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let mut editor = reaching(Tool::View, 1.0);
     editor.view(&mut world, at(0.0, 0.0));
     assert_eq!(editor.hold_candidate(&world, at(0.0, 0.0)), None);
@@ -3432,7 +3435,7 @@ fn adding_beside_a_neuron_still_adds_instead_of_reaching_it() {
 #[test]
 fn current_sources_connect_without_a_synapse() {
     let mut world = World::new();
-    let source = Element::CurrentSource.spawn(&mut world, at(0.0, 0.0));
+    let source = Stimulus::CurrentSource.spawn(&mut world, at(0.0, 0.0));
     let target = neuron(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::StaticConnection);
     drag(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 9.5)]);
@@ -3553,7 +3556,7 @@ fn a_loudspeaker_listens_to_each_neuron_connected_onto_it() {
 #[test]
 fn a_visual_input_is_picked_anywhere_on_its_picture() {
     let mut world = World::new();
-    let input = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let input = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
     editor.tap(&world, at(3.0, 3.0));
     assert_eq!(editor.selection, Some(input));
@@ -3564,7 +3567,7 @@ fn a_visual_input_is_picked_anywhere_on_its_picture() {
 #[test]
 fn a_touch_sensor_makes_its_neuron_fire_right_away() {
     let mut world = World::new();
-    let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let sensor = Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let target = neuron(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::StaticConnection);
     drag(&mut editor, &mut world, &[at(0.0, 0.5), at(0.0, 9.5)]);
@@ -3737,10 +3740,10 @@ fn axons_ending_along_one_branch_leave_it_where_it_was() {
 #[test]
 fn pressing_a_touch_sensor_while_adding_fires_it_and_dragging_still_connects() {
     let mut world = World::new();
-    let sensor = Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let sensor = Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
     let target = neuron(&mut world, at(0.0, 10.0));
     for tool in [
-        Tool::Place(Element::TouchSensor),
+        Tool::Place(Element::Stimulus(Stimulus::TouchSensor)),
         Tool::Place(Element::ExcitatoryNeuron),
     ] {
         let mut editor = editor(tool);
@@ -3757,8 +3760,8 @@ fn pressing_a_touch_sensor_while_adding_fires_it_and_dragging_still_connects() {
 #[test]
 fn a_pressed_touch_sensor_offers_no_connection() {
     let mut world = World::new();
-    Element::TouchSensor.spawn(&mut world, at(0.0, 0.0));
-    let mut editor = editor(Tool::Place(Element::TouchSensor));
+    Stimulus::TouchSensor.spawn(&mut world, at(0.0, 0.0));
+    let mut editor = editor(Tool::Place(Element::Stimulus(Stimulus::TouchSensor)));
     editor.edit(&mut world, at(0.5, 0.0));
     editor.offer_connection(&world, Seconds(10.0));
     editor.release(&world);
@@ -3820,9 +3823,9 @@ fn a_tip_is_drawn_from_while_it_is_pulled() {
 
 #[test]
 fn a_receptive_field_tip_is_drawn_from_its_frame_and_hidden_inside_it() {
-    use crate::measurement::visual_input::RECEPTIVE_FIELD_SIZE;
+    use crate::stimuli::receptive_field::RECEPTIVE_FIELD_SIZE;
     let mut world = World::new();
-    let field = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+    let field = Stimulus::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
     editor.selection = Some(field);
     let tip = crate::tips::tip(&world, field).unwrap();
@@ -3837,9 +3840,9 @@ fn a_receptive_field_tip_is_drawn_from_its_frame_and_hidden_inside_it() {
 
 #[test]
 fn tapping_a_receptive_field_while_adding_offers_a_connection_from_its_frame() {
-    use crate::measurement::visual_input::RECEPTIVE_FIELD_SIZE;
+    use crate::stimuli::receptive_field::RECEPTIVE_FIELD_SIZE;
     let mut world = World::new();
-    let field = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+    let field = Stimulus::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
     neuron(&mut world, at(0.0, -20.0));
     let mut editor = editor(Tool::Place(Element::ExcitatoryNeuron));
     editor.edit(&mut world, at(0.5, 0.0));
@@ -3898,10 +3901,10 @@ fn a_selected_neuron_offers_its_tip_for_another_connection() {
 
 #[test]
 fn a_connection_drawn_from_anywhere_on_a_picture_wires_it_to_a_receptive_field() {
-    use crate::measurement::visual_input::watched_picture;
+    use crate::stimuli::receptive_field::watched_picture;
     let mut world = World::new();
-    let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
-    let cell = Element::ReceptiveField.spawn(&mut world, at(0.0, 10.0));
+    let picture = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let cell = Stimulus::ReceptiveField.spawn(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::StaticConnection);
     drag(
         &mut editor,
@@ -3917,11 +3920,11 @@ fn a_connection_drawn_from_anywhere_on_a_picture_wires_it_to_a_receptive_field()
 
 #[test]
 fn a_picture_wire_is_erased_where_it_is_drawn() {
-    use crate::measurement::visual_input::watched_picture;
+    use crate::stimuli::receptive_field::watched_picture;
     let mut world = World::new();
-    let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
-    let cell = Element::ReceptiveField.spawn(&mut world, at(-20.0, 12.0));
-    crate::measurement::visual_input::spawn_picture_wire(&mut world, picture, cell);
+    let picture = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let cell = Stimulus::ReceptiveField.spawn(&mut world, at(-20.0, 12.0));
+    crate::stimuli::visual_input::spawn_picture_wire(&mut world, picture, cell);
     let paths = connection_paths(
         &world,
         &compartment_radii(&world),
@@ -3939,11 +3942,11 @@ fn a_picture_wire_is_erased_where_it_is_drawn() {
 
 #[test]
 fn a_receptive_field_keeps_the_picture_it_already_watches() {
-    use crate::measurement::visual_input::watched_picture;
+    use crate::stimuli::receptive_field::watched_picture;
     let mut world = World::new();
-    let first = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
-    let second = Element::VisualInput.spawn(&mut world, at(0.0, 20.0));
-    let cell = Element::ReceptiveField.spawn(&mut world, at(0.0, 10.0));
+    let first = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let second = Stimulus::VisualInput.spawn(&mut world, at(0.0, 20.0));
+    let cell = Stimulus::ReceptiveField.spawn(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::StaticConnection);
     drag(&mut editor, &mut world, &[at(0.0, 0.0), at(0.0, 10.0)]);
     drag(&mut editor, &mut world, &[at(0.0, 20.0), at(0.0, 10.0)]);
@@ -3955,7 +3958,7 @@ fn a_receptive_field_keeps_the_picture_it_already_watches() {
 #[test]
 fn a_picture_connects_only_to_receptive_fields() {
     let mut world = World::new();
-    Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
     neuron(&mut world, at(0.0, 10.0));
     let mut editor = editor(Tool::StaticConnection);
     drag(&mut editor, &mut world, &[at(0.0, 0.0), at(0.0, 10.0)]);
@@ -3965,7 +3968,7 @@ fn a_picture_connects_only_to_receptive_fields() {
 #[test]
 fn a_receptive_field_is_picked_anywhere_on_its_square() {
     let mut world = World::new();
-    let cell = Element::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
+    let cell = Stimulus::ReceptiveField.spawn(&mut world, at(0.0, 0.0));
     let mut editor = editor(Tool::Edit);
     editor.tap(&world, at(1.6, -1.6));
     assert_eq!(editor.selection, Some(cell));
@@ -3973,9 +3976,9 @@ fn a_receptive_field_is_picked_anywhere_on_its_square() {
 
 #[test]
 fn tapping_a_pictures_arrow_turns_it_around_and_undo_turns_it_back() {
-    use crate::measurement::visual_input::{direction_badge, VisualInput};
+    use crate::stimuli::visual_input::{direction_badge, VisualInput};
     let mut world = World::new();
-    let picture = Element::VisualInput.spawn(&mut world, at(0.0, 0.0));
+    let picture = Stimulus::VisualInput.spawn(&mut world, at(0.0, 0.0));
     let speed = |world: &World| world.get::<&VisualInput>(picture).unwrap().speed;
     let forward = speed(&world);
     let mut editor = editor(Tool::View);

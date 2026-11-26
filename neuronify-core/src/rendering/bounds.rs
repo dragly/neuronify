@@ -97,6 +97,7 @@ pub fn note_corners(center: Vec3, size: &NoteSize) -> [Vec3; 2] {
 mod tests {
     use super::*;
     use crate::rendering::shapes::PAD_RADIUS;
+    use crate::stimuli::CurrentClamp;
 
     fn world_with_clamp_and_voltmeter() -> hecs::World {
         let mut world = hecs::World::new();

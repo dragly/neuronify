@@ -3,8 +3,9 @@ use hecs::World;
 use neuronify_core::dendrites::spawn_dendrites;
 use neuronify_core::elements::{spawn_connection, Element};
 use neuronify_core::simulation::{step_simulation, Engine};
+use neuronify_core::stimuli::{CurrentClamp, Stimulus};
 use neuronify_core::{
-    CurrentClamp, Milliseconds, Nanoamperes, Seconds, DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND,
+    Milliseconds, Nanoamperes, Seconds, DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND,
 };
 
 const STEPS_PER_CALL: u32 = 20;
@@ -44,7 +45,7 @@ fn spike_times_in_ten_seconds(
     if dendrites {
         spawn_dendrites(&mut world, neuron);
     }
-    let source = Element::CurrentSource.spawn(&mut world, Vec3::new(0.0, 0.0, -4.0));
+    let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::new(0.0, 0.0, -4.0));
     world
         .get::<&mut CurrentClamp>(source)
         .unwrap()

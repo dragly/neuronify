@@ -6,7 +6,6 @@ use hecs::World;
 
 use crate::components::*;
 use crate::constants::RESTING_POTENTIAL;
-use crate::measurement::visual_input::{ReceptiveField, ReceptiveFieldCell, VisualInput};
 
 pub const POSITIONS: RangeInclusive<f32> = -1e6..=1e6;
 pub const MOTIONS: RangeInclusive<f32> = -1e6..=1e6;
@@ -26,9 +25,6 @@ pub const CONDUCTANCES: RangeInclusive<Microsiemens> = Microsiemens(0.0)..=Micro
 pub const BURST_CURRENTS: RangeInclusive<Nanoamperes> = Nanoamperes(0.0)..=Nanoamperes(1000.0);
 pub const BURST_DRAINS: RangeInclusive<NanoamperesPerMillisecond> =
     NanoamperesPerMillisecond(0.0)..=NanoamperesPerMillisecond(1000.0);
-pub const CURRENTS: RangeInclusive<Nanoamperes> = Nanoamperes(-10_000.0)..=Nanoamperes(10_000.0);
-pub const AMPLITUDES: RangeInclusive<Nanoamperes> = Nanoamperes(0.0)..=Nanoamperes(10_000.0);
-pub const ALTERNATING_FREQUENCIES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(10_000.0);
 pub const SYNAPSE_CURRENTS: RangeInclusive<Nanoamperes> =
     Nanoamperes(-1000.0)..=Nanoamperes(1000.0);
 pub const SYNAPSE_TIME_CONSTANTS: RangeInclusive<Milliseconds> =
@@ -37,7 +33,6 @@ pub const SYNAPSE_CONDUCTANCES: RangeInclusive<Microsiemens> =
     Microsiemens(0.0)..=Microsiemens(1000.0);
 pub const DELAYS: RangeInclusive<Milliseconds> = Milliseconds(0.0)..=Milliseconds(100_000.0);
 pub const SYNAPSE_STATES: RangeInclusive<f64> = -1e9..=1e9;
-pub const SPIKE_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(100_000.0);
 pub const STRENGTHS: RangeInclusive<f64> = 0.0..=100.0;
 pub const CABLE_LENGTHS: RangeInclusive<Micrometres> = Micrometres(0.01)..=Micrometres(1e6);
 pub const CABLE_DIAMETERS: RangeInclusive<Micrometres> = Micrometres(0.01)..=Micrometres(10_000.0);
@@ -49,11 +44,7 @@ pub const CONDUCTANCE_DENSITIES: RangeInclusive<SiemensPerSquareCentimetre> =
     SiemensPerSquareCentimetre(0.0)..=SiemensPerSquareCentimetre(10.0);
 pub const SQUID_TEMPERATURES: RangeInclusive<Celsius> = Celsius(0.0)..=Celsius(35.0);
 pub const MAMMAL_TEMPERATURES: RangeInclusive<Celsius> = Celsius(20.0)..=Celsius(42.0);
-pub const SENSITIVITIES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1e6);
-pub const PICTURE_SPEEDS: RangeInclusive<Hertz> = Hertz(-1000.0)..=Hertz(1000.0);
 pub const ANGLES: RangeInclusive<f64> = 0.0..=TAU;
-pub const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
-pub const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
 
 pub fn bound(world: &mut World) {
     let preparation = Preparation::of(world);
@@ -119,19 +110,6 @@ pub fn bound(world: &mut World) {
         within(&mut burst.drain, BURST_DRAINS, default.drain);
         within(&mut burst.boost, BURST_CURRENTS, Nanoamperes::ZERO);
     }
-    for clamp in world.query_mut::<&mut CurrentClamp>() {
-        let default = CurrentClamp::default();
-        within(&mut clamp.current_output, CURRENTS, default.current_output);
-    }
-    for alternating in world.query_mut::<&mut AlternatingCurrent>() {
-        let default = AlternatingCurrent::default();
-        within(&mut alternating.amplitude, AMPLITUDES, default.amplitude);
-        within(
-            &mut alternating.frequency,
-            ALTERNATING_FREQUENCIES,
-            default.frequency,
-        );
-    }
     for synapse in world.query_mut::<&mut CurrentSynapse>() {
         let default = CurrentSynapse::default();
         within(&mut synapse.tau, SYNAPSE_TIME_CONSTANTS, default.tau);
@@ -162,17 +140,6 @@ pub fn bound(world: &mut World) {
             list.retain(|time| time.is_finite());
         }
     }
-    for generator in world.query_mut::<&mut RegularSpikeGenerator>() {
-        let default = RegularSpikeGenerator::default();
-        within(&mut generator.frequency, SPIKE_RATES, default.frequency);
-    }
-    for generator in world.query_mut::<&mut PoissonGenerator>() {
-        let default = PoissonGenerator::default();
-        within(&mut generator.rate, SPIKE_RATES, default.rate);
-    }
-    for dynamics in world.query_mut::<&mut GeneratorDynamics>() {
-        dynamics.time_since_fire = elapsed(dynamics.time_since_fire);
-    }
     for connection in world.query_mut::<&mut Connection>() {
         within(&mut connection.strength, STRENGTHS, 1.0);
     }
@@ -194,12 +161,7 @@ pub fn bound(world: &mut World) {
             preparation.celsius(),
         );
     }
-    for input in world.query_mut::<&mut VisualInput>() {
-        bound_visual_input(input);
-    }
-    for cell in world.query_mut::<&mut ReceptiveFieldCell>() {
-        bound_receptive_field(cell);
-    }
+    crate::stimuli::bound(world);
     crate::measurement::bound(world);
 }
 
@@ -267,30 +229,6 @@ fn bound_membrane(membrane: &mut Membrane) {
     }
 }
 
-fn bound_visual_input(input: &mut VisualInput) {
-    let default = VisualInput::default();
-    within(&mut input.speed, PICTURE_SPEEDS, default.speed);
-    within(&mut input.phase, PICTURE_PHASES, default.phase);
-    input.pattern_angle = turned(input.pattern_angle);
-}
-
-fn bound_receptive_field(cell: &mut ReceptiveFieldCell) {
-    let default = ReceptiveFieldCell::default();
-    within(&mut cell.sensitivity, SENSITIVITIES, default.sensitivity);
-    match &mut cell.field {
-        ReceptiveField::Orientation { angle, x, y } => {
-            *angle = turned(*angle);
-            within(x, OFFSETS, 0.0);
-            within(y, OFFSETS, 0.0);
-        }
-        ReceptiveField::CenterSurround { x, y, .. } => {
-            within(x, OFFSETS, 0.0);
-            within(y, OFFSETS, 0.0);
-        }
-        ReceptiveField::Edge { angle } => *angle = turned(*angle),
-    }
-}
-
 fn bound_gates(gates: &mut [f64]) {
     for gate in gates {
         within(gate, GATES, 0.0);
@@ -329,7 +267,7 @@ fn bounded_vector(vector: Vec3, range: RangeInclusive<f32>) -> Vec3 {
     )
 }
 
-fn elapsed(time: Milliseconds) -> Milliseconds {
+pub fn elapsed(time: Milliseconds) -> Milliseconds {
     if time.0.is_nan() {
         Milliseconds::INFINITY
     } else {
@@ -337,7 +275,7 @@ fn elapsed(time: Milliseconds) -> Milliseconds {
     }
 }
 
-fn turned(angle: f64) -> f64 {
+pub fn turned(angle: f64) -> f64 {
     if angle.is_finite() {
         angle.rem_euclid(*ANGLES.end())
     } else {
@@ -347,6 +285,8 @@ fn turned(angle: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::stimuli::visual_input::VisualInput;
+    use crate::stimuli::Stimulus;
     use std::path::Path;
 
     use super::*;
@@ -407,7 +347,7 @@ mod tests {
     #[test]
     fn a_reversed_picture_still_moves_backwards_after_loading() {
         let mut world = World::new();
-        let picture = Element::VisualInput.spawn(&mut world, Vec3::ZERO);
+        let picture = Stimulus::VisualInput.spawn(&mut world, Vec3::ZERO);
         world.get::<&mut VisualInput>(picture).unwrap().reverse();
         let speed = world.get::<&VisualInput>(picture).unwrap().speed;
         assert!(speed < Hertz::ZERO);

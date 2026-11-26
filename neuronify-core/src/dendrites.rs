@@ -240,6 +240,7 @@ mod tests {
     use super::*;
     use crate::elements::spawn_compartment;
     use crate::simulation::{fire_nearby, step_simulation, Engine};
+    use crate::stimuli::CurrentClamp;
 
     fn neuron_at(world: &mut hecs::World, neuron_type: NeuronType) -> Entity {
         world.spawn((
