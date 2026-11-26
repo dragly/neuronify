@@ -91,7 +91,7 @@ impl Tool {
             Tool::Meter(meter) => meter.about().description,
             Tool::Place(Element::Note) => note::DESCRIPTION,
             Tool::StaticConnection => {
-                "Drag from a neuron or an input to the neuron it should reach."
+                "Drag from a neuron or a stimulus to the neuron it should reach."
             }
             Tool::Axon => "Drag from a neuron to grow an axon to another neuron or its dendrites.",
             Tool::MyelinatedAxon => {
@@ -154,7 +154,7 @@ impl ToolGroup {
     pub fn label(self) -> &'static str {
         match self {
             ToolGroup::Neurons => "Neurons",
-            ToolGroup::Stimuli => "Inputs",
+            ToolGroup::Stimuli => "Stimuli",
             ToolGroup::Connections => "Connect",
             ToolGroup::Meters => "Measure",
         }
