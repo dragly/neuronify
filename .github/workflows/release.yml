@@ -17,7 +17,9 @@ jobs:
           dist: package/neuronify
       - name: Package
         working-directory: package
-        run: zip -r ../neuronify-web.zip neuronify
+        run: |
+          cp ../LICENSE ../README.md neuronify/
+          zip -r ../neuronify-web.zip neuronify
       - uses: actions/upload-artifact@v7
         with:
           name: neuronify-web
