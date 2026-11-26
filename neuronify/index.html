@@ -19,6 +19,8 @@
         --placeholder: rgba(76, 79, 105, 0.13);
         --scene: #f2f5fc;
         --accent: #1e66f5;
+        --stack-middle: #f2f4f8;
+        --stack-back: #f9fafc;
         --panel: #ffffff;
         --border: #d0d5e0;
         --shadow: rgba(0, 0, 0, 0.16);
@@ -32,6 +34,8 @@
           --placeholder: rgba(205, 214, 244, 0.1);
           --scene: #383a51;
           --accent: #89b4fa;
+          --stack-middle: #242535;
+          --stack-back: #2b2b3d;
           --panel: #1e1e2e;
           --border: #45475a;
           --shadow: rgba(0, 0, 0, 0.38);
@@ -230,6 +234,33 @@
       .topics > .heading:first-child {
         margin-top: 50.5px;
       }
+      .more .thumbnail {
+        background: none;
+      }
+      .more .thumbnail::before,
+      .more .thumbnail > div,
+      .more .thumbnail::after {
+        content: "";
+        position: absolute;
+        width: 74%;
+        height: 74%;
+        border-radius: 6px;
+      }
+      .more .thumbnail::before {
+        left: 20%;
+        top: 6%;
+        background: var(--stack-back);
+      }
+      .more .thumbnail > div {
+        left: 13%;
+        top: 13%;
+        background: var(--stack-middle);
+      }
+      .more .thumbnail::after {
+        left: 6%;
+        top: 20%;
+        background: var(--background);
+      }
       .folder .thumbnail {
         aspect-ratio: 4 / 3;
         background: var(--placeholder);
@@ -325,7 +356,7 @@
             <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 112px"></div><div class="bar line"></div><div class="bar line"></div></div>
             <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 122px"></div><div class="bar line"></div><div class="bar line"></div></div>
             <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 144px"></div><div class="bar line"></div><div class="bar line"></div></div>
-            <div class="card"><div class="thumbnail"></div><div class="bar name" style="width: 142px"></div><div class="bar line"></div><div class="bar line"></div></div>
+            <div class="card more"><div class="thumbnail"><div></div></div><div class="bar name" style="width: 46px"></div><div class="bar line" style="width: 35px"></div></div>
           </div>
           <div class="heading"><div class="bar" style="width: 75px"></div></div>
           <div class="cards">

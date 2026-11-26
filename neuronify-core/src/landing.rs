@@ -944,19 +944,26 @@ mod tests {
             "/../neuronify/index.html"
         ))
         .unwrap();
-        let sections: Vec<usize> = page
+        let sections: Vec<(usize, usize)> = page
             .split(r#"<div class="cards">"#)
             .skip(1)
             .map(|section| {
                 let end = section
                     .find(r#"<div class="heading">"#)
                     .unwrap_or(section.len());
-                section[..end].matches(r#"<div class="card">"#).count()
+                let section = &section[..end];
+                (
+                    section.matches(r#"<div class="card">"#).count(),
+                    section.matches(r#"<div class="card more">"#).count(),
+                )
             })
             .collect();
-        let expected: Vec<usize> = EXAMPLE_CATEGORIES
+        let expected: Vec<(usize, usize)> = EXAMPLE_CATEGORIES
             .iter()
-            .map(|category| category.examples.len().min(CARDS_PER_SECTION))
+            .map(|category| match category.examples.len() {
+                count if count > CARDS_PER_SECTION => (CARDS_PER_SECTION - 1, 1),
+                count => (count, 0),
+            })
             .collect();
         assert_eq!(sections.len(), 1 + expected.len());
         assert_eq!(sections[1..], expected);
