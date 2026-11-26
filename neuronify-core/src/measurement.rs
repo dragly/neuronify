@@ -10,7 +10,7 @@ pub mod voltmeter;
 use std::collections::VecDeque;
 
 use glam::Vec3;
-use hecs::{Entity, EntityBuilder, Or, World};
+use hecs::{Component, Entity, EntityBuilder, Or, World};
 use neuronify_engine::units::Milliseconds;
 use serde::{Deserialize, Serialize};
 
@@ -48,11 +48,12 @@ impl Meter {
     ];
 
     pub fn of(world: &World, entity: Entity) -> Option<Meter> {
+        let entity = world.entity(entity).ok()?;
         Meter::ALL.into_iter().find(|meter| match meter {
-            Meter::Voltmeter => world.satisfies::<&Voltmeter>(entity),
-            Meter::SpikeDetector => world.satisfies::<&SpikeDetector>(entity),
-            Meter::RatePlot => world.satisfies::<&RatePlot>(entity),
-            Meter::Loudspeaker => world.satisfies::<&Loudspeaker>(entity),
+            Meter::Voltmeter => entity.has::<Voltmeter>(),
+            Meter::SpikeDetector => entity.has::<SpikeDetector>(),
+            Meter::RatePlot => entity.has::<RatePlot>(),
+            Meter::Loudspeaker => entity.has::<Loudspeaker>(),
         })
     }
 
@@ -74,7 +75,7 @@ impl Meter {
         }
     }
 
-    pub fn spawn(self, world: &mut World, position: Vec3) -> Entity {
+    pub fn builder(self, position: Vec3) -> EntityBuilder {
         let mut meter = EntityBuilder::new();
         meter.add_bundle((Position { position }, Deletable {}));
         if let Some(size) = self.about().size {
@@ -88,7 +89,11 @@ impl Meter {
             Meter::RatePlot => meter.add_bundle((RatePlot::default(), RateSeries::default())),
             Meter::Loudspeaker => meter.add(Loudspeaker::default()),
         };
-        world.spawn(meter.build())
+        meter
+    }
+
+    pub fn spawn(self, world: &mut World, position: Vec3) -> Entity {
+        world.spawn(self.builder(position).build())
     }
 
     pub fn wire(self, world: &mut World, target: Entity, meter: Entity) -> Entity {
@@ -123,6 +128,24 @@ impl Meter {
 
 pub fn is_meter(world: &World, entity: Entity) -> bool {
     Meter::of(world, entity).is_some()
+}
+
+pub fn meters(world: &World) -> Vec<(Entity, Meter)> {
+    let mut meters = Vec::new();
+    for meter in Meter::ALL {
+        let entities = match meter {
+            Meter::Voltmeter => with::<Voltmeter>(world),
+            Meter::SpikeDetector => with::<SpikeDetector>(world),
+            Meter::RatePlot => with::<RatePlot>(world),
+            Meter::Loudspeaker => with::<Loudspeaker>(world),
+        };
+        meters.extend(entities.into_iter().map(|entity| (entity, meter)));
+    }
+    meters
+}
+
+fn with<T: Component>(world: &World) -> Vec<Entity> {
+    world.query::<Entity>().with::<&T>().iter().collect()
 }
 
 pub fn record(

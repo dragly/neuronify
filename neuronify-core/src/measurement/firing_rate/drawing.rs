@@ -22,6 +22,16 @@ fn line(position_a: Vec3, position_b: Vec3, color: Vec3) -> ConnectionData {
     }
 }
 
+pub fn titles(world: &hecs::World, plot: Entity, frame: &Frame) -> Vec<(String, Vec3)> {
+    let Ok(plot) = world.get::<&RatePlot>(plot) else {
+        return Vec::new();
+    };
+    vec![(
+        format!("{:.0} Hz", plot.maximum.0),
+        frame.corner(Corner::TopLeft),
+    )]
+}
+
 fn curve_color(world: &hecs::World, plot: Entity, palette: &Palette) -> Vec3 {
     let colors: Vec<Vec3> = measured(world, plot)
         .into_iter()

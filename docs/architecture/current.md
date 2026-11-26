@@ -445,6 +445,8 @@ and `voltmeter/drawing.rs` for Rendering.
 `Meter` reaches them with one `match` for each thing a meter does,
 in `measurement.rs`, `measurement/gui.rs` and `measurement/drawing.rs`,
 and recording, bounds and drawing go through `Meter::ALL` in its order.
+The compiler points at each match, but not at a meter left out of `Meter::ALL`.
+Such a meter is missing from the rail, so it shows the first time anyone tries to place it.
 
 Editing and Rendering also read the clock in `input`,
 and a few modules reach past the arrows:
