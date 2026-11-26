@@ -6,14 +6,15 @@ use visula::{
     Expression, GlyphDelegate, GlyphVertex, Glyphs,
 };
 
-use crate::components::{Cable, Connection, Label, MeterSize, NoteSize, Position};
+use crate::components::{Cable, Connection, Label, MeterSize, Position};
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS};
 use crate::measurement::frame::{measured, Frame};
 use crate::measurement::meters;
+use crate::note::drawing::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
+use crate::note::NoteSize;
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::connection_rings::ring_edges;
 use crate::rendering::gpu_types::ArcData;
-use crate::rendering::notes::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::selection::element_radius;
 use crate::stimuli::Stimulus;

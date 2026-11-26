@@ -8,6 +8,7 @@ use glam::Vec3;
 use hecs::{Entity, World};
 use neuronify_core::constants::{DEFAULT_SPEED, DT, SIMULATION_STEPS_PER_SECOND};
 use neuronify_core::measurement::voltmeter::VoltageSeries;
+use neuronify_core::note::NoteSize;
 use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
@@ -15,8 +16,8 @@ use neuronify_core::stimuli::touch_sensor::TouchSensor;
 use neuronify_core::stimuli::visual_input::VisualInput;
 use neuronify_core::stimuli::CurrentClamp;
 use neuronify_core::{
-    Celsius, Connection, Label, LeakyNeuron, Milliseconds, Millivolts, Nanoamperes, NoteSize,
-    Position, Preparation, Seconds, Setting, Temperature, NODE_RADIUS,
+    Celsius, Connection, Label, LeakyNeuron, Milliseconds, Millivolts, Nanoamperes, Position,
+    Preparation, Seconds, Setting, Temperature, NODE_RADIUS,
 };
 
 const PHONE_WIDTH: f32 = 27.0;

@@ -1,6 +1,9 @@
 use super::convert::spawn_legacy_simulation;
 use super::*;
 use crate::components::*;
+use crate::note::Annotation;
+use crate::note::Link;
+use crate::note::NoteSize;
 use crate::simulation::{step_simulation, Engine};
 use crate::stimuli::alternating_current::AlternatingCurrent;
 use crate::stimuli::poisson_generator::PoissonGenerator;

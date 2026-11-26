@@ -436,7 +436,7 @@ flowchart TB
 | Simulation | `simulation` (`engine`, `model`, `mammal`, `stimulation`, `firing_rate`, `spatial`) |
 | Rendering | `rendering` (`World` to `Scene`, drawn by `SceneRenderer`) |
 | Files | `serialization` (with `bounds`), `legacy`, `examples`, `library` |
-| Model | `components`, `constants`, `measurement` (the meters), `stimuli` |
+| Model | `components`, `constants`, `measurement` (the meters), `stimuli`, `note` |
 
 Each meter keeps all of it in `measurement`, one layer per file,
 as in `voltmeter.rs` for Model (`ABOUT` with its name and size,
@@ -458,6 +458,11 @@ the square frame of the picture and the receptive field, and their bounds.
 A regular or random spike generator has no `drawing.rs`,
 since both are drawn as a soma inside a ring by `stimuli/drawing.rs`.
 
+A note is a single kind, so `note.rs` holds its name, components, bounds and `note::builder`
+without an enum, `note/gui.rs` its icon and text field,
+and `note/drawing.rs` the `NoteRenderer`, which keeps its own pipelines and glyph atlas.
+Labels use its font and the plane it lays text on.
+
 Editing and Rendering also read the clock in `input`,
 and a few modules reach past the arrows:
 
@@ -474,7 +479,7 @@ and a few modules reach past the arrows:
 ### Components
 
 Each element is an entity with `Position`, `Deletable` and a bundle
-from `elements.rs`, `Stimulus::builder` or `Meter::builder`.
+from `elements.rs`, `Stimulus::builder`, `Meter::builder` or `note::builder`.
 A connection is an entity with a `Connection` (`from`, `to`, `strength`, `directional`)
 and a component for its kind.
 The main components:
@@ -496,7 +501,7 @@ The main components:
 
 A new component may have to go in several places:
 
-- `elements`, `Stimulus::builder` or `Meter::builder`, and `legacy::convert`,
+- `elements`, `Stimulus::builder`, `Meter::builder` or `note::builder`, and `legacy::convert`,
   which spawn what the editor places and what `.nfy` files contain.
 - `copy_edited` in `editor/history.rs`, if an edit can change it,
   or undo misses the change,

@@ -8,6 +8,7 @@ use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::loudspeaker::Loudspeaker;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::voltmeter::Voltmeter;
+use neuronify_core::note::{Annotation, Link};
 use neuronify_core::serialization::{load, load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
 use neuronify_core::stimuli::alternating_current::AlternatingCurrent;
@@ -18,9 +19,9 @@ use neuronify_core::stimuli::touch_sensor::TouchSensor;
 use neuronify_core::stimuli::visual_input::VisualInput;
 use neuronify_core::stimuli::CurrentClamp;
 use neuronify_core::{
-    neuron_type, AdaptationCurrent, Annotation, BurstCurrent, Compartment, ConductanceSynapse,
-    CurrentSynapse, Dendrite, Label, LeakyNeuron, Link, NeuronType, Position, Seconds,
-    DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND,
+    neuron_type, AdaptationCurrent, BurstCurrent, Compartment, ConductanceSynapse, CurrentSynapse,
+    Dendrite, Label, LeakyNeuron, NeuronType, Position, Seconds, DEFAULT_SPEED,
+    SIMULATION_STEPS_PER_SECOND,
 };
 use serde::{Deserialize, Serialize};
 

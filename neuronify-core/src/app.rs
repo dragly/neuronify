@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
-use crate::components::{Link, Milliseconds, NeuronType, Position, Seconds};
+use crate::components::{Milliseconds, NeuronType, Position, Seconds};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
 use crate::editor::{Editor, Pan, PlacedNeuron, Targets};
 use crate::elements::Element;
@@ -20,6 +20,7 @@ use crate::landing::{LandingChoice, LandingScreen};
 use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
 use crate::measurement::Meter;
+use crate::note::Link;
 use crate::rendering::ghost::{self, GHOST_HEIGHT};
 use crate::rendering::{canvas_bounds, EditorMarks, Ghost, LandingGhost, SceneRenderer, Theme};
 use crate::serialization::{Meta, SavedWorld};

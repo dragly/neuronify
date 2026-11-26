@@ -7,6 +7,7 @@ use crate::constants::STIMULATION_CURRENT;
 use crate::elements::Element;
 use crate::input::DWELL;
 use crate::measurement::Meter;
+use crate::note;
 use crate::stimuli::Stimulus;
 
 const METER_TOOLS: [Tool; Meter::ALL.len()] = {
@@ -56,7 +57,7 @@ impl Tool {
             Tool::Place(Element::AdaptiveNeuron) => "Adaptive neuron",
             Tool::Place(Element::BurstNeuron) => "Bursting neuron",
             Tool::Place(Element::Stimulus(stimulus)) => stimulus.about().name,
-            Tool::Place(Element::Note) => "Note",
+            Tool::Place(Element::Note) => note::NAME,
             Tool::Meter(meter) => meter.about().name,
             Tool::StaticConnection => "Connection",
             Tool::Axon => "Axon",
@@ -88,7 +89,7 @@ impl Tool {
             }
             Tool::Place(Element::Stimulus(stimulus)) => stimulus.about().description,
             Tool::Meter(meter) => meter.about().description,
-            Tool::Place(Element::Note) => "Write a note on the canvas.",
+            Tool::Place(Element::Note) => note::DESCRIPTION,
             Tool::StaticConnection => {
                 "Drag from a neuron or an input to the neuron it should reach."
             }

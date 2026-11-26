@@ -6,7 +6,8 @@ use neuronify_core::dendrites::{compartment_tree, spawn_dendrites};
 use neuronify_core::elements::{spawn_cable, spawn_compartment, spawn_synapse, Element};
 use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::Meter;
-use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::note::drawing::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::note::{Annotation, NoteSize};
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::stimuli::poisson_generator::PoissonGenerator;
 use neuronify_core::stimuli::receptive_field::{ReceptiveField, ReceptiveFieldCell};
@@ -14,9 +15,9 @@ use neuronify_core::stimuli::regular_spike_generator::RegularSpikeGenerator;
 use neuronify_core::stimuli::visual_input::{spawn_picture_wire, Pattern, VisualInput};
 use neuronify_core::stimuli::{CurrentClamp, Stimulus};
 use neuronify_core::{
-    AdaptationCurrent, Annotation, Connection, CurrentSynapse, Hertz, Label, LeakyNeuron,
-    MeterSize, Microsiemens, Milliseconds, Millivolts, Nanoamperes, NeuronDisplay, NeuronType,
-    NodeState, NoteSize, Position, Preparation, Setting, SEGMENT_LENGTH,
+    AdaptationCurrent, Connection, CurrentSynapse, Hertz, Label, LeakyNeuron, MeterSize,
+    Microsiemens, Milliseconds, Millivolts, Nanoamperes, NeuronDisplay, NeuronType, NodeState,
+    Position, Preparation, Setting, SEGMENT_LENGTH,
 };
 
 const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(6.0);

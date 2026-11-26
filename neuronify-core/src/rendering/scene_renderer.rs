@@ -10,6 +10,7 @@ use visula::{
 use crate::components::Milliseconds;
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS, TERMINAL_INSET};
 use crate::editor::Bead;
+use crate::note::drawing::NoteRenderer;
 use crate::rendering::colors::{terminal_color, Theme};
 use crate::rendering::connections::{axon_waiting, connection_being_drawn, WireRouter};
 use crate::rendering::cylinders::{
@@ -26,7 +27,6 @@ use crate::rendering::halos::{collect_halos, create_halos};
 use crate::rendering::labels::{Drawn, LabelRenderer};
 use crate::rendering::lighting::{configure_lighting, set_theme_lighting, shaded};
 use crate::rendering::meter_backgrounds::{collect_meter_backgrounds, create_meter_backgrounds};
-use crate::rendering::notes::NoteRenderer;
 use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spheres::soma_sphere;

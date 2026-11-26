@@ -9,6 +9,7 @@ use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::VoltmeterRange;
 use crate::measurement::Meter;
+use crate::note::{self, Annotation, Link, NoteSize};
 use crate::stimuli::alternating_current::AlternatingCurrent;
 use crate::stimuli::poisson_generator::PoissonGenerator;
 use crate::stimuli::receptive_field::{beside_the_picture, ReceptiveField, ReceptiveFieldCell};
@@ -212,22 +213,22 @@ fn element(node: &LegacyNode) -> EntityBuilder {
             meter.add_bundle((range, size));
             meter
         }
-        "annotations/NextTutorial.qml" => builder((
-            Position {
-                position: convert_position(
-                    node.x + NEXT_TUTORIAL_PIXELS / 2.0,
-                    node.y + NEXT_TUTORIAL_PIXELS / 2.0,
-                ),
-            },
-            Annotation {
-                text: NEXT_TUTORIAL.to_string(),
-            },
-            LINK_SIZE,
-            Link {
-                example: node.target.clone().unwrap_or_default(),
-            },
-            Deletable {},
-        )),
+        "annotations/NextTutorial.qml" => {
+            let mut link = note::builder(convert_position(
+                node.x + NEXT_TUTORIAL_PIXELS / 2.0,
+                node.y + NEXT_TUTORIAL_PIXELS / 2.0,
+            ));
+            link.add_bundle((
+                Annotation {
+                    text: NEXT_TUTORIAL.to_string(),
+                },
+                LINK_SIZE,
+                Link {
+                    example: node.target.clone().unwrap_or_default(),
+                },
+            ));
+            link
+        }
         "annotations/Note.qml" => {
             let text = node.text.clone().unwrap_or_default();
             let default_size = NoteSize::default();
@@ -238,14 +239,14 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                 .height
                 .unwrap_or((default_size.height * PIXELS_PER_UNIT).into());
             // QML places an item by its top left corner, but a note is drawn around its position
-            let center = Position {
-                position: convert_position(node.x + width / 2.0, node.y + height / 2.0),
-            };
+            let center = convert_position(node.x + width / 2.0, node.y + height / 2.0);
             let size = NoteSize {
                 width: width as f32 / PIXELS_PER_UNIT,
                 height: height as f32 / PIXELS_PER_UNIT,
             };
-            builder((center, Annotation { text }, size, Deletable {}))
+            let mut note = note::builder(center);
+            note.add_bundle((Annotation { text }, size));
+            note
         }
         _ => builder((pos,)),
     }

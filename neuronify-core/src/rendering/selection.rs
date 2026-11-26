@@ -7,7 +7,7 @@ use crate::components::*;
 use crate::constants::{COMPARTMENT_SPHERE_SCALE, ERASE_RADIUS, NODE_RADIUS};
 use crate::measurement::frame::{Corner, Frame};
 use crate::measurement::Meter;
-use crate::rendering::bounds::note_corners;
+use crate::note::{self, NoteSize};
 use crate::rendering::colors::Palette;
 use crate::rendering::connection_rings::ringed_selection;
 use crate::rendering::cylinders::compartment_radii;
@@ -99,7 +99,7 @@ fn rectangle(world: &World, entity: Entity) -> Option<[Vec3; 2]> {
     }
     let position = world.get::<&Position>(entity).ok()?;
     let size = world.get::<&NoteSize>(entity).ok()?;
-    Some(note_corners(position.position, &size))
+    Some(note::corners(position.position, &size))
 }
 
 pub fn element_radius(

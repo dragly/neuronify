@@ -2,6 +2,7 @@ use glam::Vec3;
 use hecs::{Entity, EntityBuilder, World};
 
 use crate::components::*;
+use crate::note;
 use crate::simulation::model::cable_between;
 use crate::stimuli::Stimulus;
 
@@ -50,14 +51,7 @@ impl Element {
                     .build(),
             ),
             Element::Stimulus(stimulus) => stimulus.spawn(world, position.position),
-            Element::Note => world.spawn((
-                position,
-                Annotation {
-                    text: "New note".to_string(),
-                },
-                NoteSize::default(),
-                Deletable {},
-            )),
+            Element::Note => note::spawn(world, position.position),
         }
     }
 }

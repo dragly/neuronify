@@ -11,6 +11,7 @@ use crate::measurement::voltmeter::{
     RollingWindow, VoltageMeasurement, VoltageSeries, Voltmeter, VoltmeterRange,
 };
 use crate::measurement::SpikeTrain;
+use crate::note::{Annotation, Link, NoteSize};
 use crate::stimuli::alternating_current::AlternatingCurrent;
 use crate::stimuli::poisson_generator::PoissonGenerator;
 use crate::stimuli::receptive_field::{ReceptiveField, ReceptiveFieldCell};

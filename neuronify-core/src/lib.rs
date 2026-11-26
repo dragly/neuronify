@@ -17,6 +17,7 @@ pub mod legacy;
 pub mod library;
 pub mod links;
 pub mod measurement;
+pub mod note;
 pub mod rendering;
 pub mod serialization;
 pub mod settings;

@@ -1001,7 +1001,7 @@ fn undo_in_a_label_never_brings_back_the_label_of_another_neuron() {
 
 #[test]
 fn undo_in_a_note_never_brings_back_the_text_of_another_note() {
-    use crate::components::Annotation;
+    use crate::note::Annotation;
     let mut world = World::new();
     let first = Element::Note.spawn(&mut world, Vec3::ZERO);
     let second = Element::Note.spawn(&mut world, Vec3::new(0.0, 0.0, 20.0));

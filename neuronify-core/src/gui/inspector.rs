@@ -14,6 +14,7 @@ use crate::dendrites::compartment_tree;
 use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
 use crate::measurement::Meter;
+use crate::note;
 use crate::rendering::Theme;
 use crate::settings::Setting;
 use crate::simulation::model::has_dendrites;
@@ -31,7 +32,6 @@ pub const DELETE: &str = "inspector_delete";
 pub const REVERSE: &str = "inspector_reverse";
 pub const CLOSE: &str = "inspector_close";
 pub const LABEL: &str = "inspector_label";
-const NOTE: &str = "inspector_note";
 const PADDING: i8 = 14;
 const ROOM_BELOW: f32 = 80.0;
 const SHEET_PADDING: i8 = 16;
@@ -294,12 +294,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         Tool::Place(Element::Stimulus(stimulus))
     } else if let Some(meter) = Meter::of(world, entity) {
         Tool::Meter(meter)
-    } else if world.get::<&Link>(entity).is_ok() {
-        return Some((Tool::Place(Element::Note), "Link"));
-    } else if world.get::<&Annotation>(entity).is_ok() {
-        Tool::Place(Element::Note)
     } else {
-        return None;
+        return Some((Tool::Place(Element::Note), note::gui::title(world, entity)?));
     };
     Some((tool, tool.name()))
 }
@@ -858,16 +854,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             milliseconds,
         );
     }
-    if let Ok(mut annotation) = world.get::<&mut Annotation>(entity) {
-        heading(ui, chrome, "Text", 0.0);
-        let id = Id::new(NOTE);
-        changed |= text_field(ui, id, &mut annotation.text, Lines::Many, |edit| {
-            edit.desired_rows(4)
-                .desired_width(f32::INFINITY)
-                .margin(Margin::same(8))
-        });
-        ui.add_space(8.0);
-    }
+    changed |= note::gui::parameters(ui, chrome, world, entity);
     let ending =
         axon_ending(world, entity).and_then(|ending| world.get::<&mut Connection>(ending).ok());
     if let Some(mut ending) = ending {

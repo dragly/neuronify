@@ -12,7 +12,6 @@ pub mod halos;
 pub mod labels;
 pub mod lighting;
 pub mod meter_backgrounds;
-pub mod notes;
 pub mod paths;
 pub mod scene;
 pub mod scene_renderer;
@@ -34,7 +33,6 @@ pub use ghost::{Ghost, LandingGhost};
 pub use gpu_types::{
     ArcData, ConnectionData, CylinderData, LineData, MeshInstanceData, Sphere, TorusData,
 };
-pub use notes::NoteRenderer;
 pub use paths::{connection_paths, distance_to_segment, ConnectionPath};
 pub use scene::{collect_scene, Scene};
 pub use scene_renderer::{EditorMarks, SceneRenderer};

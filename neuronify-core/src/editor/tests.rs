@@ -4,6 +4,7 @@ use crate::input::DWELL;
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::{VoltageSeries, Voltmeter};
 use crate::measurement::Meter;
+use crate::note::Annotation;
 use crate::simulation::{fire_nearby, step_physics, step_simulation, Engine};
 use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
 use std::collections::HashMap;
@@ -2154,7 +2155,7 @@ fn selected_notes_are_resized_by_their_corners() {
             .unwrap()
     };
     let corners = |world: &World| {
-        note_corners(
+        crate::note::corners(
             world.get::<&Position>(note).unwrap().position,
             &world.get::<&NoteSize>(note).unwrap(),
         )
@@ -3122,7 +3123,7 @@ fn undo_puts_back_a_resized_note() {
             .unwrap()
     };
     let before = size(&world);
-    let [_, top_right] = note_corners(at(0.0, 0.0), &world.get::<&NoteSize>(note).unwrap());
+    let [_, top_right] = crate::note::corners(at(0.0, 0.0), &world.get::<&NoteSize>(note).unwrap());
     drag(
         &mut editor,
         &mut world,

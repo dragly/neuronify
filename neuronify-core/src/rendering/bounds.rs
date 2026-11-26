@@ -2,6 +2,7 @@ use glam::Vec3;
 
 use crate::components::*;
 use crate::measurement::frame::{Corner, Frame};
+use crate::note::{self, NoteSize};
 use crate::rendering::colors::Theme;
 use crate::rendering::connections::{arc_points, collect_meter_wires};
 use crate::rendering::scene::collect_scene;
@@ -34,7 +35,7 @@ pub fn circuit_bounds(world: &hecs::World) -> Option<Bounds> {
 pub fn canvas_bounds(world: &hecs::World) -> Option<Bounds> {
     let mut points = circuit_points(world);
     for (position, size) in world.query::<(&Position, &NoteSize)>().iter() {
-        points.extend(note_corners(position.position, size));
+        points.extend(note::corners(position.position, size));
     }
     bounds_around(&points)
 }
@@ -88,14 +89,10 @@ fn footprint(center: Vec3, radius: f32) -> [Vec3; 2] {
     [center - reach, center + reach]
 }
 
-pub fn note_corners(center: Vec3, size: &NoteSize) -> [Vec3; 2] {
-    let half_extent = Vec3::new(size.height * 0.5, 0.0, size.width * 0.5);
-    [center - half_extent, center + half_extent]
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::note::Annotation;
     use crate::rendering::shapes::PAD_RADIUS;
     use crate::stimuli::CurrentClamp;
 

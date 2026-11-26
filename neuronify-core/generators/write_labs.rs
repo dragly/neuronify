@@ -7,14 +7,15 @@ use neuronify_core::elements::Element;
 use neuronify_core::measurement::frame::RowOrder;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
 use neuronify_core::measurement::Meter;
-use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::note::drawing::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::note::{Annotation, NoteSize};
 use neuronify_core::stimuli::poisson_generator::PoissonGenerator;
 use neuronify_core::stimuli::receptive_field::{ReceptiveField, ReceptiveFieldCell};
 use neuronify_core::stimuli::visual_input::{spawn_picture_wire, Pattern, VisualInput};
 use neuronify_core::stimuli::{CurrentClamp, Stimulus};
 use neuronify_core::{
-    Annotation, Connection, ConnectionView, CurrentSynapse, Deletable, Hertz, Label, MeterSize,
-    Milliseconds, Nanoamperes, NeuronDisplay, NeuronType, NoteSize, Selected, Setting,
+    Connection, ConnectionView, CurrentSynapse, Deletable, Hertz, Label, MeterSize, Milliseconds,
+    Nanoamperes, NeuronDisplay, NeuronType, Selected, Setting,
 };
 
 const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(2.0);
