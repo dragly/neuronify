@@ -15,21 +15,23 @@ and letting one visual input feed several receptive fields 40.
 
 The meters are done (see "Where the code is" in `current.md`).
 Before, a meter's name appeared in 13 to 18 files outside `measurement`.
-Now the voltmeter appears in 3 (`components`, `legacy::convert`, `simulation::engine`),
-the spike detector and the rate plot in 2 or 3,
-and the loudspeaker in 9, four of them the sound it makes in `app` and `audio`.
+Now it appears in 3 to 5, outside tests:
+the undo list in `editor/history`, `legacy::convert` and the current save version for each of them,
+`components` and `simulation::engine` for the voltmeter,
+and `app` and `audio` for the sound the loudspeaker makes.
 A new meter needs its file and folder, a variant in `Meter` and `Meter::ALL`,
-and an arm in each of the 13 matches in `measurement.rs`, `measurement/gui.rs` and `measurement/drawing.rs`.
-The compiler points at each match, but not at a meter left out of `Meter::ALL`.
+and an arm in each of the 16 matches in `measurement.rs`, `measurement/gui.rs` and `measurement/drawing.rs`.
 
 Still outside the meters' folders:
 
 - the names and descriptions of their settings, in the one `Setting` table in `settings.rs`,
-- wire rows and labels in `rendering::connections` and `rendering::labels`,
-  and the loudspeaker's pad radius in `rendering::selection`,
 - what Neuronify 1 files become, in `legacy::convert`,
+  which starts each meter from `Meter::builder` and wires it through `Meter::of`,
 - the voltmeter probes and `Fingerprint::of` in `simulation::engine`,
 - the save schema, which still takes a new version for a new meter.
+
+The last three stay where they are,
+since they follow formats from outside (Neuronify 1 files and older saves) or the engine's layout.
 
 The inputs would come next, since `Element` already lists them
 (current sources, generators, the touch sensor, the receptive field and the picture),

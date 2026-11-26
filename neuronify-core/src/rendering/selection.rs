@@ -6,10 +6,10 @@ use hecs::{Entity, World};
 use crate::components::*;
 use crate::constants::{COMPARTMENT_SPHERE_SCALE, ERASE_RADIUS, NODE_RADIUS};
 use crate::measurement::frame::{Corner, Frame};
-use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::visual_input::{
     receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
 };
+use crate::measurement::Meter;
 use crate::rendering::bounds::note_corners;
 use crate::rendering::colors::Palette;
 use crate::rendering::connection_rings::ringed_selection;
@@ -116,7 +116,9 @@ pub fn element_radius(
     entity: Entity,
     compartment_radii: &HashMap<Entity, f32>,
 ) -> f32 {
-    if world.satisfies::<hecs::Or<&TouchSensor, hecs::Or<&CurrentClamp, &Loudspeaker>>>(entity) {
+    if let Some(radius) = Meter::of(world, entity).and_then(Meter::radius) {
+        radius
+    } else if world.satisfies::<hecs::Or<&TouchSensor, &CurrentClamp>>(entity) {
         PAD_RADIUS
     } else if world.get::<&GeneratorDynamics>(entity).is_ok() {
         GENERATOR_RING_RADIUS + GENERATOR_RING_THICKNESS
@@ -134,7 +136,6 @@ pub fn element_radius(
 mod tests {
     use super::*;
     use crate::elements::{spawn_compartment, Element};
-    use crate::measurement::Meter;
     use crate::rendering::bounds::circuit_bounds;
     use crate::rendering::colors::Theme;
 

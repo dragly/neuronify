@@ -4,15 +4,13 @@ use glam::Vec3;
 use hecs::{DynamicBundle, Entity, EntityBuilder, World};
 
 use crate::components::*;
-use crate::measurement::firing_rate::{RatePlot, RateSeries};
-use crate::measurement::frame::RowOrder;
-use crate::measurement::is_meter;
+use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::visual_input::{
     beside_the_picture, spawn_picture_wire, ReceptiveField, ReceptiveFieldCell, VisualInput,
 };
-use crate::measurement::voltmeter::{Voltmeter, VoltmeterRange};
+use crate::measurement::voltmeter::VoltmeterRange;
 use crate::measurement::Meter;
 use crate::{Connection, Deletable, NeuronType, Position};
 
@@ -160,13 +158,9 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                     .map_or(SpikeDetector::default().time_range, from_seconds),
                 ..Default::default()
             };
-            builder((
-                left_middle,
-                detector,
-                RowOrder::default(),
-                size,
-                Deletable {},
-            ))
+            let mut meter = Meter::SpikeDetector.builder(left_middle);
+            meter.add_bundle((detector, size));
+            meter
         }
         "sensors/Retina.qml" => {
             let field = ReceptiveFieldCell {
@@ -191,7 +185,9 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                 sound: Sound::from_legacy(node.source.as_deref().unwrap_or_default()),
                 ..Default::default()
             };
-            builder((pos, speaker, Deletable {}))
+            let mut meter = Meter::Loudspeaker.builder(pos.position);
+            meter.add(speaker);
+            meter
         }
         "meters/RatePlot.qml" => {
             let (left_middle, size) = meter_frame(node);
@@ -204,7 +200,9 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                 minimum: node.minimum_value.map_or(default.minimum, Hertz),
                 maximum: node.maximum_value.map_or(default.maximum, Hertz),
             };
-            builder((left_middle, plot, RateSeries::default(), size, Deletable {}))
+            let mut meter = Meter::RatePlot.builder(left_middle);
+            meter.add_bundle((plot, size));
+            meter
         }
         "meters/Voltmeter.qml" => {
             let (left_middle, size) = meter_frame(node);
@@ -213,7 +211,9 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                 minimum: node.minimum_value.map_or(default_range.minimum, Millivolts),
                 maximum: node.maximum_value.map_or(default_range.maximum, Millivolts),
             };
-            builder((left_middle, Voltmeter {}, size, range, Deletable {}))
+            let mut meter = Meter::Voltmeter.builder(left_middle);
+            meter.add_bundle((range, size));
+            meter
         }
         "annotations/NextTutorial.qml" => builder((
             Position {
@@ -254,18 +254,6 @@ fn element(node: &LegacyNode) -> EntityBuilder {
     }
 }
 
-fn wire_meter(world: &mut World, meter: Entity, neuron: Entity) {
-    if world.get::<&SpikeDetector>(meter).is_ok() {
-        Meter::SpikeDetector.wire(world, neuron, meter);
-    } else if world.get::<&RatePlot>(meter).is_ok() {
-        Meter::RatePlot.wire(world, neuron, meter);
-    } else if world.get::<&Loudspeaker>(meter).is_ok() {
-        Meter::Loudspeaker.wire(world, neuron, meter);
-    } else {
-        Meter::Voltmeter.wire(world, neuron, meter);
-    }
-}
-
 fn receptive_field(node: &LegacyNode) -> ReceptiveField {
     let property = |name: &str| {
         node.kernel_properties
@@ -292,12 +280,10 @@ fn receptive_field(node: &LegacyNode) -> ReceptiveField {
     }
 }
 
-fn meter_frame(node: &LegacyNode) -> (Position, MeterSize) {
+fn meter_frame(node: &LegacyNode) -> (Vec3, MeterSize) {
     let width = node.width.unwrap_or(LEGACY_METER_WIDTH);
     let height = node.height.unwrap_or(LEGACY_METER_HEIGHT);
-    let left_middle = Position {
-        position: convert_position(node.x, node.y + height / 2.0),
-    };
+    let left_middle = convert_position(node.x, node.y + height / 2.0);
     let size = MeterSize {
         width: width as f32 / PIXELS_PER_UNIT,
         height: height as f32 / PIXELS_PER_UNIT,
@@ -392,12 +378,10 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
         directional: true,
     };
 
-    let meter_and_neuron = if is_meter(world, from) {
-        Some((from, to))
-    } else if is_meter(world, to) {
-        Some((to, from))
+    let meter_and_neuron = if let Some(meter) = Meter::of(world, from) {
+        Some((meter, from, to))
     } else {
-        None
+        Meter::of(world, to).map(|meter| (meter, to, from))
     };
     match edge.filename.as_str() {
         "edges/CurrentSynapse.qml" => {
@@ -417,8 +401,8 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             world.spawn((connection, ImmediateFireSynapse, Deletable {}));
         }
         "edges/MeterEdge.qml" | "Edge.qml" if meter_and_neuron.is_some() => {
-            if let Some((meter, neuron)) = meter_and_neuron {
-                wire_meter(world, meter, neuron);
+            if let Some((kind, meter, neuron)) = meter_and_neuron {
+                kind.wire(world, neuron, meter);
             }
         }
         "edges/MeterEdge.qml" => {

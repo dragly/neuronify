@@ -8,9 +8,8 @@ use visula::{
 
 use crate::components::{Cable, Connection, Label, MeterSize, NoteSize, Position};
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS};
-use crate::measurement::firing_rate::RatePlot;
-use crate::measurement::frame::{measured, Corner, Frame};
-use crate::measurement::loudspeaker::Loudspeaker;
+use crate::measurement::frame::{measured, Frame};
+use crate::measurement::meters;
 use crate::measurement::visual_input::{
     receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
 };
@@ -512,55 +511,28 @@ fn placed_labels(
             (text, Placement::Beside(side), anchor)
         })
         .collect();
-    for (_, (plot, position, size)) in world
-        .query::<(Entity, (&RatePlot, &Position, &MeterSize))>()
-        .iter()
-    {
-        let corner = Frame::new(position.position, size).corner(Corner::TopLeft);
-        placed.push((
-            format!("{:.0} Hz", plot.maximum.0),
-            Placement::TopLeft,
-            corner,
-        ));
-    }
-    for meter in world
-        .query::<Entity>()
-        .with::<&MeterSize>()
-        .without::<&RatePlot>()
-        .iter()
-    {
-        let Some(frame) = Frame::of(world, meter) else {
-            continue;
-        };
-        let measured = measured(world, meter);
-        for (row, (_, target)) in measured.iter().enumerate() {
-            let Ok(label) = world.get::<&Label>(*target) else {
-                continue;
-            };
-            if label.text.is_empty() {
-                continue;
+    for (meter, kind) in meters(world) {
+        let empty = measured(world, meter).is_empty();
+        match Frame::of(world, meter) {
+            Some(frame) => {
+                for (text, corner) in kind.titles(world, meter, &frame) {
+                    placed.push((text, Placement::TopLeft, corner));
+                }
+                if empty {
+                    let center = frame.point(0.5, 0.5);
+                    placed.push((EMPTY_METER_HINT.to_string(), Placement::Center, center));
+                }
             }
-            let corner = frame.row(row, measured.len()).corner(Corner::TopLeft);
-            placed.push((label.text.clone(), Placement::TopLeft, corner));
-        }
-    }
-    for (meter, (position, size)) in world.query::<(Entity, (&Position, &MeterSize))>().iter() {
-        if measured(world, meter).is_empty() {
-            let center = Frame::new(position.position, size).point(0.5, 0.5);
-            placed.push((EMPTY_METER_HINT.to_string(), Placement::Center, center));
-        }
-    }
-    for (speaker, position) in world
-        .query::<(Entity, &Position)>()
-        .with::<&Loudspeaker>()
-        .iter()
-    {
-        if measured(world, speaker).is_empty() {
-            placed.push((
-                EMPTY_METER_HINT.to_string(),
-                Placement::Beside(Side::Above),
-                position.position,
-            ));
+            None if empty => {
+                if let Ok(position) = world.get::<&Position>(meter) {
+                    placed.push((
+                        EMPTY_METER_HINT.to_string(),
+                        Placement::Beside(Side::Above),
+                        position.position,
+                    ));
+                }
+            }
+            None => {}
         }
     }
     placed
@@ -601,6 +573,7 @@ mod tests {
     use super::*;
     use crate::components::{ConnectionView, Selected, Setting};
     use crate::elements::{spawn_synapse, Element};
+    use crate::measurement::frame::Corner;
     use crate::measurement::Meter;
     use crate::rendering::colors::Theme;
     use crate::rendering::scene::shown_paths;

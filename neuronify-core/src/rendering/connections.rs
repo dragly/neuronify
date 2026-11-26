@@ -5,9 +5,8 @@ use glam::{Quat, Vec2, Vec3};
 
 use crate::components::*;
 use crate::constants::NODE_RADIUS;
-use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::frame::{measured, Frame};
-use crate::measurement::loudspeaker::Loudspeaker;
+use crate::measurement::meters;
 use crate::measurement::visual_input::VisualInput;
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::{ArcData, ConnectionData};
@@ -103,13 +102,13 @@ fn collect_wires(
     corners: impl FnOnce(&[Meter], &[Vec3]) -> Vec<Vec<Vec<Vec3>>>,
 ) -> Vec<ArcData> {
     let hidden = hidden_connections(world);
-    let meters: Vec<Meter> = world
+    let framed: Vec<Meter> = world
         .query::<Entity>()
         .with::<&MeterSize>()
         .iter()
         .filter_map(|meter| Meter::of(world, meter, &hidden))
         .collect();
-    let mut wires: Vec<ArcData> = corners(&meters, &obstacles(world))
+    let mut wires: Vec<ArcData> = corners(&framed, &obstacles(world))
         .iter()
         .flatten()
         .flat_map(|corners| rounded(corners, palette.neutral))
@@ -117,12 +116,14 @@ fn collect_wires(
     for corners in picture_wire_corners(world).values() {
         wires.extend(rounded(corners, palette.neutral));
     }
-    for (speaker, position) in world
-        .query::<(Entity, &Position)>()
-        .with::<&Loudspeaker>()
-        .iter()
-    {
-        for (connection, neuron) in measured(world, speaker) {
+    for (meter, _) in meters(world) {
+        if Frame::of(world, meter).is_some() {
+            continue;
+        }
+        let Ok(position) = world.get::<&Position>(meter) else {
+            continue;
+        };
+        for (connection, neuron) in measured(world, meter) {
             if hidden.contains(&connection) {
                 continue;
             }
@@ -166,11 +167,7 @@ impl Meter {
     ) -> Option<Meter> {
         let frame = Frame::of(world, meter)?;
         let measured = measured(world, meter);
-        let rows = if world.satisfies::<&RatePlot>(meter) {
-            1
-        } else {
-            measured.len()
-        };
+        let rows = crate::measurement::Meter::of(world, meter)?.rows(measured.len());
         let starts = measured
             .iter()
             .enumerate()
