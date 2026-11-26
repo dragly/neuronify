@@ -392,7 +392,7 @@ fn the_add_heading_folds_the_elements_behind_an_add_button() {
 #[test]
 fn pressing_outside_closes_the_flyout() {
     let mut harness = Harness::new(true);
-    harness.click_text("Inputs");
+    harness.click_text("Stimuli");
     assert!(harness.shows("Touch sensor"));
     harness.click(pos2(700.0, 400.0));
     assert!(!harness.shows("Touch sensor"));
@@ -476,7 +476,7 @@ fn the_stroke_button_beside_the_rail_picks_a_stroke_that_stays_for_other_tools()
 }
 
 #[test]
-fn placing_neurons_and_inputs_offers_the_stroke_but_dendrites_do_not() {
+fn placing_neurons_and_stimuli_offers_the_stroke_but_dendrites_do_not() {
     let mut harness = Harness::new(true);
     for (tool, offered) in [
         (Tool::Place(Element::ExcitatoryNeuron), true),
@@ -510,16 +510,16 @@ fn phones_pick_the_stroke_from_a_button_above_add() {
 }
 
 #[test]
-fn the_inputs_say_how_to_connect_them() {
-    let hint = "Press and drag to place an input and connect it to a neuron.";
+fn the_stimuli_say_how_to_connect_them() {
+    let hint = "Press and drag to place a stimulus and connect it to a neuron.";
     let mut harness = Harness::new(true);
-    harness.click_text("Inputs");
+    harness.click_text("Stimuli");
     assert!(harness.shows(hint));
 
     let mut harness = Harness::phone(false, World::new(), None);
     harness.click_text("Add");
     let height = |harness: &Harness, text: &str| harness.text_position(text).unwrap().y;
-    assert!(height(&harness, "INPUTS") < height(&harness, hint));
+    assert!(height(&harness, "STIMULI") < height(&harness, hint));
     assert!(height(&harness, hint) < height(&harness, "Current source"));
 }
 

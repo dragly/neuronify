@@ -56,7 +56,7 @@ const CARD_GAP: f32 = 6.0;
 const CARD_PICTURE: Vec2 = vec2(80.0, 40.0);
 const TOUCH_CURRENTS: (RangeInclusive<Nanoamperes>, Nanoamperes) =
     (Nanoamperes(0.0)..=Nanoamperes(1.0), Nanoamperes(0.01));
-const INPUT_HINT: &str = "Press and drag to place an input and connect it to a neuron.";
+const STIMULUS_HINT: &str = "Press and drag to place a stimulus and connect it to a neuron.";
 const MORPHOLOGIES: [(bool, &str, &str); 2] = [
     (
         false,
@@ -471,7 +471,7 @@ impl Rail {
                             &mut editor.compartments,
                             ROW_INSET,
                         ),
-                        ToolGroup::Stimuli => hint(ui, chrome, INPUT_HINT, ROW_INSET),
+                        ToolGroup::Stimuli => hint(ui, chrome, STIMULUS_HINT, ROW_INSET),
                         ToolGroup::Connections | ToolGroup::Meters => {}
                     }
                     for &tool in group.tools() {
@@ -759,7 +759,9 @@ impl Rail {
                                         &mut editor.compartments,
                                         0.0,
                                     ),
-                                    Some(ToolGroup::Stimuli) => hint(ui, chrome, INPUT_HINT, 0.0),
+                                    Some(ToolGroup::Stimuli) => {
+                                        hint(ui, chrome, STIMULUS_HINT, 0.0)
+                                    }
                                     _ => {}
                                 }
                                 for row in tools.chunks(TILES_PER_ROW) {
