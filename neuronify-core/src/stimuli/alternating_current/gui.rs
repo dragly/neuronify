@@ -5,12 +5,12 @@ use hecs::{Entity, World};
 use neuronify_engine::units::{Hertz, Nanoamperes};
 
 use super::AlternatingCurrent;
+use super::{AMPLITUDE, FREQUENCY};
 use crate::gui::icons::{linear, sine_wave, Glyph, CREAM};
 use crate::gui::inspector::{hertz, logarithmic_parameter, picoamperes};
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
 use crate::rendering::colors::yellow;
-use crate::settings::Setting;
 
 const AMPLITUDES: (RangeInclusive<Nanoamperes>, Nanoamperes) =
     (Nanoamperes(0.0)..=Nanoamperes(1.0), Nanoamperes(0.01));
@@ -37,7 +37,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let amplitude = logarithmic_parameter(
         ui,
         chrome,
-        Setting::Amplitude,
+        AMPLITUDE,
         &mut alternating.amplitude,
         AMPLITUDES,
         picoamperes,
@@ -45,7 +45,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let frequency = logarithmic_parameter(
         ui,
         chrome,
-        Setting::AlternatingFrequency,
+        FREQUENCY,
         &mut alternating.frequency,
         ALTERNATING_FREQUENCIES,
         hertz,

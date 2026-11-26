@@ -5,14 +5,14 @@ use hecs::{Entity, World};
 use neuronify_engine::units::Hertz;
 
 use super::{Pattern, VisualInput};
+use super::{PHASE, PICTURE, PICTURE_ANGLE, REVERSE, SPEED};
 use crate::gui::icons::{linear, Glyph, Icon, CREAM, SINE_STEPS};
 use crate::gui::inspector::{
-    choice, description, logarithmic_parameter, parameter, row_button, REVERSE,
+    self, choice, description, logarithmic_parameter, parameter, row_button,
 };
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
 use crate::rendering::colors::orange;
-use crate::settings::Setting;
 use crate::stimuli::gui::{degrees, HALF_TURN};
 
 const PICTURE_SPEEDS: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(50.0), Hertz(0.1));
@@ -50,13 +50,13 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     let mut changed = false;
     heading(ui, chrome, "Picture", 0.0);
     let patterns = Pattern::ALL.map(|pattern| (pattern, pattern.name()));
-    changed |= choice(ui, chrome, Setting::Picture, &mut input.pattern, &patterns);
+    changed |= choice(ui, chrome, PICTURE, &mut input.pattern, &patterns);
     if row_button(
         ui,
         chrome,
-        REVERSE,
+        inspector::REVERSE,
         Icon::Reverse,
-        Setting::Reverse.label(),
+        REVERSE.label,
         chrome.text,
     )
     .clicked()
@@ -64,32 +64,27 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
         input.reverse();
         changed = true;
     }
-    description(ui, chrome, Setting::Reverse.description());
+    description(ui, chrome, REVERSE.description);
     ui.add_space(8.0);
     changed |= parameter(
         ui,
         chrome,
-        Setting::PictureAngle,
+        PICTURE_ANGLE,
         &mut input.pattern_angle,
         HALF_TURN,
         degrees,
     );
     let mut speed = input.speed.abs();
-    if logarithmic_parameter(
-        ui,
-        chrome,
-        Setting::PictureSpeed,
-        &mut speed,
-        PICTURE_SPEEDS,
-        |speed| format!("{:.1} Hz", speed.0),
-    ) {
+    if logarithmic_parameter(ui, chrome, SPEED, &mut speed, PICTURE_SPEEDS, |speed| {
+        format!("{:.1} Hz", speed.0)
+    }) {
         input.speed = Hertz(speed.0.copysign(input.speed.0));
         changed = true;
     }
     changed |= parameter(
         ui,
         chrome,
-        Setting::PicturePhase,
+        PHASE,
         &mut input.phase,
         PICTURE_PHASES,
         |phase| format!("{:.0}\u{b0}", phase * 360.0),

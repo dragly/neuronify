@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::components::{Connection, Deletable, Position};
 use crate::measurement::frame::{Corner, Frame};
 use crate::serialization::bounds::{turned, within};
+use crate::settings::Setting;
 use crate::stimuli::receptive_field::ReceptiveFieldCell;
 use crate::stimuli::About;
 
@@ -28,6 +29,31 @@ pub const ABOUT: About = About {
     name: "Visual input",
     description: "Shows a moving picture. Connect it to receptive fields to let them see it.",
     size: Some(VISUAL_INPUT_SIZE),
+};
+
+pub const PICTURE: Setting = Setting {
+    label: "Picture",
+    description: "What the visual input looks at.",
+};
+
+pub const PICTURE_ANGLE: Setting = Setting {
+    label: "Picture angle",
+    description: "Which way the picture is turned.",
+};
+
+pub const SPEED: Setting = Setting {
+    label: "Speed",
+    description: "How many times a second the picture runs through its motion. Zero stops it.",
+};
+
+pub const REVERSE: Setting = Setting {
+    label: "Reverse",
+    description: "Sends the picture back the way it came.",
+};
+
+pub const PHASE: Setting = Setting {
+    label: "Phase",
+    description: "How far the picture is through its motion. Drag it to move the picture by hand.",
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]

@@ -13,6 +13,7 @@ use crate::components::*;
 use crate::measurement::frame::measured;
 use crate::measurement::{keep_recent, About, SpikeTrain};
 use crate::serialization::bounds::within;
+use crate::settings::Setting;
 
 pub const RATE_WINDOWS: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1e6);
 pub const PLOTTED_RATES: RangeInclusive<Hertz> = Hertz(0.0)..=Hertz(1e6);
@@ -26,6 +27,26 @@ pub const ABOUT: About = About {
         height: 5.0,
     }),
     offset: Vec3::X,
+};
+
+pub const WINDOW: Setting = Setting {
+    label: "Window",
+    description: "Only spikes this recent count toward the rate.",
+};
+
+pub const KERNEL_WIDTH: Setting = Setting {
+    label: "Smoothing",
+    description: "How long each spike counts. More gives a smoother but slower curve.",
+};
+
+pub const HIGHEST_RATE: Setting = Setting {
+    label: "Highest rate",
+    description: "The rate at the top of the plot.",
+};
+
+pub const LOWEST_RATE: Setting = Setting {
+    label: "Lowest rate",
+    description: "The rate at the bottom of the plot.",
 };
 
 pub fn bound(world: &mut World) {

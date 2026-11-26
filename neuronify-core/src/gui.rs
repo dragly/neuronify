@@ -685,7 +685,7 @@ fn menu(
                             inspector::choice(
                                 ui,
                                 chrome,
-                                crate::settings::Setting::Channels,
+                                crate::settings::Setting::CHANNELS,
                                 &mut chosen,
                                 &[
                                     (Preparation::Squid, "Squid"),
@@ -695,7 +695,7 @@ fn menu(
                             inspector::parameter(
                                 ui,
                                 chrome,
-                                crate::settings::Setting::Temperature,
+                                crate::settings::Setting::TEMPERATURE,
                                 &mut temperature.celsius,
                                 preparation.temperatures(),
                                 |celsius: Celsius| format!("{:.1} °C", celsius.0),

@@ -13,6 +13,7 @@ use crate::components::MeterSize;
 use crate::constants::VOLTMETER_MEASUREMENTS;
 use crate::measurement::About;
 use crate::serialization::bounds::within;
+use crate::settings::Setting;
 use crate::simulation::engine::ProbeSamples;
 use crate::simulation::Spike;
 
@@ -23,6 +24,16 @@ pub const ABOUT: About = About {
     description: "Press a neuron to plot its voltage over time.",
     size: Some(MeterSize::DEFAULT),
     offset: Vec3::X,
+};
+
+pub const HIGHEST_VOLTAGE: Setting = Setting {
+    label: "Highest voltage",
+    description: "The voltage at the top of each plot.",
+};
+
+pub const LOWEST_VOLTAGE: Setting = Setting {
+    label: "Lowest voltage",
+    description: "The voltage at the bottom of each plot.",
 };
 
 pub fn bound(world: &mut World) {

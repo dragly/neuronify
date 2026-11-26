@@ -536,7 +536,7 @@ fn slider_row<Q: Quantity>(
     ui.painter().text(
         row.left_center(),
         Align2::LEFT_CENTER,
-        setting.label(),
+        setting.label,
         FontId::proportional(12.5),
         chrome.subtext,
     );
@@ -547,7 +547,7 @@ fn slider_row<Q: Quantity>(
         FontId::monospace(12.5),
         chrome.text,
     );
-    description(ui, chrome, setting.description());
+    description(ui, chrome, setting.description);
     ui.add_space(8.0);
     changed
 }
@@ -587,7 +587,7 @@ fn reading(ui: &mut Ui, chrome: &Chrome, label: &str, value: String, size: f32) 
 
 fn label_field(ui: &mut Ui, chrome: &Chrome, text: &mut String) -> bool {
     ui.label(
-        RichText::new(Setting::Label.label())
+        RichText::new(Setting::LABEL.label)
             .size(12.5)
             .color(chrome.subtext),
     );
@@ -595,7 +595,7 @@ fn label_field(ui: &mut Ui, chrome: &Chrome, text: &mut String) -> bool {
         edit.desired_width(f32::INFINITY)
             .margin(Margin::symmetric(8, 6))
     });
-    description(ui, chrome, Setting::Label.description());
+    description(ui, chrome, Setting::LABEL.description);
     ui.add_space(8.0);
     changed
 }
@@ -609,10 +609,10 @@ pub(crate) fn choice<T: PartialEq + Copy>(
 ) -> bool {
     let mut changed = false;
     let size = 12.5;
-    let label = RichText::new(setting.label())
+    let label = RichText::new(setting.label)
         .size(size)
         .color(chrome.subtext);
-    let beside = text_width(ui, setting.label(), size)
+    let beside = text_width(ui, setting.label, size)
         + ui.spacing().item_spacing.x
         + segmented_width(ui, options)
         <= ui.available_width();
@@ -631,7 +631,7 @@ pub(crate) fn choice<T: PartialEq + Copy>(
         ui.label(label);
         changed = segmented(ui, chrome, setting, value, options);
     }
-    description(ui, chrome, setting.description());
+    description(ui, chrome, setting.description);
     ui.add_space(8.0);
     changed
 }
@@ -644,7 +644,7 @@ pub(crate) fn type_switch(ui: &mut Ui, chrome: &Chrome, world: &World, entity: E
     choice(
         ui,
         chrome,
-        Setting::Type,
+        Setting::TYPE,
         &mut chosen,
         &[
             (NeuronType::Inhibitory, "Inhibitory"),
@@ -674,7 +674,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
         changed |= parameter(
             ui,
             chrome,
-            Setting::SpikeThreshold,
+            Setting::SPIKE_THRESHOLD,
             &mut soma.threshold,
             POTENTIALS,
             millivolts,
@@ -683,7 +683,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
             changed |= parameter(
                 ui,
                 chrome,
-                Setting::RestingPotential,
+                Setting::RESTING_POTENTIAL,
                 &mut neuron.resting_potential,
                 POTENTIALS,
                 millivolts,
@@ -699,7 +699,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
         changed |= logarithmic_parameter(
             ui,
             chrome,
-            Setting::Adaptation,
+            Setting::ADAPTATION,
             &mut adaptation.adaptation,
             ADAPTATIONS,
             |conductance| format!("{:.1} nS", conductance.in_nanosiemens()),
@@ -707,7 +707,7 @@ fn neuron_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity
         changed |= parameter(
             ui,
             chrome,
-            Setting::AdaptationTimeConstant,
+            Setting::ADAPTATION_TIME_CONSTANT,
             &mut adaptation.time_constant,
             ADAPTATION_TIME_CONSTANTS,
             milliseconds,
@@ -722,7 +722,7 @@ fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) 
         changed |= parameter(
             ui,
             chrome,
-            Setting::RefractoryPeriod,
+            Setting::REFRACTORY_PERIOD,
             &mut neuron.refractory_period,
             REFRACTORY_PERIODS,
             milliseconds,
@@ -733,7 +733,7 @@ fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) 
         let threshold = parameter(
             ui,
             chrome,
-            Setting::Threshold,
+            Setting::THRESHOLD,
             &mut neuron.threshold,
             POTENTIALS,
             millivolts,
@@ -746,7 +746,7 @@ fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) 
         let reset = parameter(
             ui,
             chrome,
-            Setting::Reset,
+            Setting::RESET,
             &mut neuron.initial_potential,
             POTENTIALS,
             millivolts,
@@ -760,7 +760,7 @@ fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) 
         changed |= parameter(
             ui,
             chrome,
-            Setting::RestingPotential,
+            Setting::RESTING_POTENTIAL,
             &mut neuron.resting_potential,
             POTENTIALS,
             millivolts,
@@ -779,7 +779,7 @@ fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) 
         changed |= logarithmic_parameter(
             ui,
             chrome,
-            Setting::Resistance,
+            Setting::RESISTANCE,
             &mut leak.resistance,
             RESISTANCES,
             |resistance| format!("{:.0} M\u{3a9}", resistance.0),
@@ -787,7 +787,7 @@ fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) 
         changed |= logarithmic_parameter(
             ui,
             chrome,
-            Setting::Capacitance,
+            Setting::CAPACITANCE,
             &mut neuron.capacitance,
             CAPACITANCES,
             |capacitance| format!("{:.0} pF", capacitance.in_picofarads()),
@@ -795,11 +795,11 @@ fn rule_parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) 
         reading(
             ui,
             chrome,
-            Setting::TimeConstant.label(),
+            Setting::TIME_CONSTANT.label,
             milliseconds(leak.resistance * neuron.capacitance),
             12.5,
         );
-        description(ui, chrome, Setting::TimeConstant.description());
+        description(ui, chrome, Setting::TIME_CONSTANT.description);
         ui.add_space(8.0);
     }
     changed
@@ -809,7 +809,7 @@ fn soma_diameter(ui: &mut Ui, chrome: &Chrome, neuron: &mut LeakyNeuron) -> bool
     logarithmic_parameter(
         ui,
         chrome,
-        Setting::SomaDiameter,
+        Setting::SOMA_DIAMETER,
         &mut neuron.soma_diameter,
         SOMA_DIAMETERS,
         |diameter| format!("{:.0} \u{b5}m", diameter.0),
@@ -832,7 +832,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            Setting::MaximumCurrent,
+            Setting::MAXIMUM_CURRENT,
             &mut synapse.maximum_current,
             SYNAPSE_CURRENTS,
             nanoamperes,
@@ -840,7 +840,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            Setting::SynapseTimeConstant,
+            Setting::SYNAPSE_TIME_CONSTANT,
             &mut synapse.tau,
             SYNAPSE_TIME_CONSTANTS,
             milliseconds,
@@ -848,7 +848,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            Setting::Delay,
+            Setting::DELAY,
             &mut synapse.delay,
             DELAYS,
             milliseconds,
@@ -862,7 +862,7 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
         changed |= parameter(
             ui,
             chrome,
-            Setting::Strength,
+            Setting::STRENGTH,
             &mut ending.strength,
             STRENGTHS,
             |strength| format!("{strength:.2}"),

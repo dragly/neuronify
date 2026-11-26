@@ -9,11 +9,14 @@ use crate::components::{
 };
 use crate::constants::{DEFAULT_SPEED, STIMULATION_CURRENT};
 use crate::elements::{spawn_cable, spawn_compartment, Element};
-use crate::measurement::Meter;
+use crate::measurement::{firing_rate, loudspeaker, spike_detector, voltmeter, Meter};
 use crate::settings::Setting;
 use crate::stimuli::alternating_current::AlternatingCurrent;
 use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
-use crate::stimuli::{CurrentClamp, Stimulus};
+use crate::stimuli::{
+    alternating_current, current_source, receptive_field, regular_spike_generator, visual_input,
+    CurrentClamp, Stimulus,
+};
 use crate::tools::{ConnectionMode, Tool};
 use rail::STROKE_ID;
 
@@ -657,12 +660,12 @@ fn the_inspector_explains_each_setting() {
     let (world, neuron) = one_neuron();
     let harness = Harness::with(true, world, Some(neuron));
     for setting in [
-        Setting::Threshold,
-        Setting::RestingPotential,
-        Setting::Capacitance,
+        Setting::THRESHOLD,
+        Setting::RESTING_POTENTIAL,
+        Setting::CAPACITANCE,
     ] {
-        assert!(harness.shows(setting.label()));
-        assert!(harness.shows(setting.description()));
+        assert!(harness.shows(setting.label));
+        assert!(harness.shows(setting.description));
     }
 }
 
@@ -682,7 +685,10 @@ fn spike_generators_reach_a_thousand_spikes_a_second() {
     let mut world = World::new();
     let generator = Stimulus::RegularSpikeGenerator.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(generator));
-    let slider = harness.text_position(Setting::Frequency.label()).unwrap() + vec2(0.0, 22.0);
+    let slider = harness
+        .text_position(regular_spike_generator::FREQUENCY.label)
+        .unwrap()
+        + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
     let frequency = harness
         .world
@@ -697,7 +703,10 @@ fn current_sources_reach_thirty_nanoamperes() {
     let mut world = World::new();
     let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(source));
-    let slider = harness.text_position(Setting::Current.label()).unwrap() + vec2(0.0, 22.0);
+    let slider = harness
+        .text_position(current_source::CURRENT.label)
+        .unwrap()
+        + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
     let current = harness
         .world
@@ -714,12 +723,9 @@ fn a_neuron_with_dendrites_sets_its_soma_diameter_instead_of_resistance_and_capa
     crate::dendrites::spawn_dendrites(&mut world, neuron);
     world.remove_one::<CompartmentSoma>(neuron).unwrap();
     let mut harness = Harness::with(true, world, Some(neuron));
-    assert!(!harness.shows(Setting::Resistance.label()));
-    assert!(!harness.shows(Setting::Capacitance.label()));
-    let slider = harness
-        .text_position(Setting::SomaDiameter.label())
-        .unwrap()
-        + vec2(0.0, 22.0);
+    assert!(!harness.shows(Setting::RESISTANCE.label));
+    assert!(!harness.shows(Setting::CAPACITANCE.label));
+    let slider = harness.text_position(Setting::SOMA_DIAMETER.label).unwrap() + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
     let diameter = harness
         .world
@@ -736,18 +742,18 @@ fn a_compartment_soma_sets_its_spike_threshold_instead_of_the_firing_rule() {
     crate::dendrites::spawn_dendrites(&mut world, neuron);
     let mut harness = Harness::with(true, world, Some(neuron));
     for hidden in [
-        Setting::Threshold,
-        Setting::Reset,
-        Setting::RefractoryPeriod,
-        Setting::Resistance,
-        Setting::Capacitance,
+        Setting::THRESHOLD,
+        Setting::RESET,
+        Setting::REFRACTORY_PERIOD,
+        Setting::RESISTANCE,
+        Setting::CAPACITANCE,
     ] {
-        assert!(!harness.shows(hidden.label()), "{}", hidden.label());
+        assert!(!harness.shows(hidden.label), "{}", hidden.label);
     }
-    assert!(harness.shows(Setting::RestingPotential.label()));
-    assert!(harness.shows(Setting::SomaDiameter.label()));
+    assert!(harness.shows(Setting::RESTING_POTENTIAL.label));
+    assert!(harness.shows(Setting::SOMA_DIAMETER.label));
     let slider = harness
-        .text_position(Setting::SpikeThreshold.label())
+        .text_position(Setting::SPIKE_THRESHOLD.label)
         .unwrap()
         + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
@@ -815,32 +821,32 @@ fn the_inspector_shows_every_neuron_setting_from_neuronify_1() {
     let leaky = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
     let harness = Harness::with(true, world, Some(leaky));
     for setting in [
-        Setting::Type,
-        Setting::RefractoryPeriod,
-        Setting::Threshold,
-        Setting::Reset,
-        Setting::RestingPotential,
-        Setting::Resistance,
-        Setting::Capacitance,
-        Setting::TimeConstant,
+        Setting::TYPE,
+        Setting::REFRACTORY_PERIOD,
+        Setting::THRESHOLD,
+        Setting::RESET,
+        Setting::RESTING_POTENTIAL,
+        Setting::RESISTANCE,
+        Setting::CAPACITANCE,
+        Setting::TIME_CONSTANT,
     ] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
     assert!(harness.shows("20.0 ms"));
-    assert!(!harness.shows(Setting::Adaptation.label()));
+    assert!(!harness.shows(Setting::ADAPTATION.label));
 
     let (world, adaptive) = one_neuron();
     let harness = Harness::with(true, world, Some(adaptive));
-    assert!(harness.shows(Setting::Adaptation.label()));
-    assert!(harness.shows(Setting::AdaptationTimeConstant.label()));
+    assert!(harness.shows(Setting::ADAPTATION.label));
+    assert!(harness.shows(Setting::ADAPTATION_TIME_CONSTANT.label));
 }
 
 #[test]
 fn the_threshold_stays_above_the_reset() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));
-    let slider = harness.text_position(Setting::Threshold.label()).unwrap() + vec2(0.0, 22.0);
+    let slider = harness.text_position(Setting::THRESHOLD.label).unwrap() + vec2(0.0, 22.0);
     harness.drag(slider, slider - vec2(400.0, 0.0));
     let neuron = harness.world.get::<&LeakyNeuron>(neuron).unwrap();
     assert!(neuron.threshold > neuron.initial_potential);
@@ -852,7 +858,7 @@ fn undoing_a_refractory_period_leaves_the_voltage_alone() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));
     let slider = harness
-        .text_position(Setting::RefractoryPeriod.label())
+        .text_position(Setting::REFRACTORY_PERIOD.label)
         .unwrap()
         + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(120.0, 0.0));
@@ -883,12 +889,12 @@ fn a_selected_synapse_shows_its_settings_and_undoes_them() {
     let mut harness = Harness::with(true, world, Some(synapse));
     assert!(harness.shows("Synapse"));
     for setting in [
-        Setting::MaximumCurrent,
-        Setting::SynapseTimeConstant,
-        Setting::Delay,
+        Setting::MAXIMUM_CURRENT,
+        Setting::SYNAPSE_TIME_CONSTANT,
+        Setting::DELAY,
     ] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
     let maximum_current = |harness: &Harness| {
         harness
@@ -898,7 +904,7 @@ fn a_selected_synapse_shows_its_settings_and_undoes_them() {
             .maximum_current
     };
     let slider = harness
-        .text_position(Setting::MaximumCurrent.label())
+        .text_position(Setting::MAXIMUM_CURRENT.label)
         .unwrap()
         + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
@@ -930,12 +936,12 @@ fn a_voltmeter_sets_the_voltages_at_the_top_and_bottom_of_its_plots() {
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
     let voltmeter = Meter::Voltmeter.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(voltmeter));
-    for setting in [Setting::HighestVoltage, Setting::LowestVoltage] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+    for setting in [voltmeter::HIGHEST_VOLTAGE, voltmeter::LOWEST_VOLTAGE] {
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
     let slider = harness
-        .text_position(Setting::LowestVoltage.label())
+        .text_position(voltmeter::LOWEST_VOLTAGE.label)
         .unwrap()
         + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
@@ -959,7 +965,7 @@ fn a_voltmeter_sets_the_voltages_at_the_top_and_bottom_of_its_plots() {
 fn a_neuron_gets_a_label_that_undo_takes_back() {
     let (world, neuron) = one_neuron();
     let mut harness = Harness::with(true, world, Some(neuron));
-    assert!(harness.shows(Setting::Label.description()));
+    assert!(harness.shows(Setting::LABEL.description));
     harness.click_button(inspector::LABEL);
     harness.frame(vec![Event::Text("Output".to_string())]);
     harness.frame(vec![]);
@@ -1040,11 +1046,14 @@ fn an_alternating_current_source_sets_its_amplitude_and_frequency() {
     let source = Stimulus::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
     let harness = Harness::with(true, world, Some(source));
     assert!(harness.shows("Alternating current"));
-    for setting in [Setting::Amplitude, Setting::AlternatingFrequency] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+    for setting in [
+        alternating_current::AMPLITUDE,
+        alternating_current::FREQUENCY,
+    ] {
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
-    assert!(!harness.shows(Setting::Current.label()));
+    assert!(!harness.shows(current_source::CURRENT.label));
 }
 
 #[test]
@@ -1052,8 +1061,8 @@ fn the_sliders_of_an_alternating_current_source_are_logarithmic() {
     let mut world = World::new();
     let source = Stimulus::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(source));
-    harness.press_the_middle_of_slider(Setting::Amplitude.label(), "300 pA");
-    harness.press_the_middle_of_slider(Setting::AlternatingFrequency.label(), "50 Hz");
+    harness.press_the_middle_of_slider(alternating_current::AMPLITUDE.label, "300 pA");
+    harness.press_the_middle_of_slider(alternating_current::FREQUENCY.label, "50 Hz");
     let alternating = harness.world.get::<&AlternatingCurrent>(source).unwrap();
     assert!((alternating.amplitude / Nanoamperes(0.1) - 1.0).abs() < 0.05);
     assert!((alternating.frequency / Hertz(200.0_f64.sqrt()) - 1.0).abs() < 0.05);
@@ -1066,8 +1075,11 @@ fn a_spike_detector_sets_its_time_range() {
     let detector = Meter::SpikeDetector.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(detector));
     assert!(harness.shows("Spike detector"));
-    assert!(harness.shows(Setting::TimeRange.description()));
-    let slider = harness.text_position(Setting::TimeRange.label()).unwrap() + vec2(0.0, 22.0);
+    assert!(harness.shows(spike_detector::TIME_RANGE.description));
+    let slider = harness
+        .text_position(spike_detector::TIME_RANGE.label)
+        .unwrap()
+        + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
     let time_range = |harness: &Harness| {
         harness
@@ -1088,7 +1100,7 @@ fn a_spike_detector_orders_its_rows_by_height_or_connection() {
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
     let detector = Meter::SpikeDetector.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(detector));
-    assert!(harness.shows(Setting::RowOrder.description()));
+    assert!(harness.shows(spike_detector::ROW_ORDER.description));
     let order = |harness: &Harness| *harness.world.get::<&RowOrder>(detector).unwrap();
     assert_eq!(order(&harness), RowOrder::Height);
     harness.click_text("Connection");
@@ -1105,16 +1117,19 @@ fn a_rate_plot_sets_its_window_smoothing_and_range() {
     let mut harness = Harness::with(true, world, Some(plot));
     assert!(harness.shows("Firing rate plot"));
     for setting in [
-        Setting::Window,
-        Setting::KernelWidth,
-        Setting::HighestRate,
-        Setting::LowestRate,
+        firing_rate::WINDOW,
+        firing_rate::KERNEL_WIDTH,
+        firing_rate::HIGHEST_RATE,
+        firing_rate::LOWEST_RATE,
     ] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
     harness.scroll_inspector_to_the_end();
-    let slider = harness.text_position(Setting::LowestRate.label()).unwrap() + vec2(0.0, 22.0);
+    let slider = harness
+        .text_position(firing_rate::LOWEST_RATE.label)
+        .unwrap()
+        + vec2(0.0, 22.0);
     harness.drag(slider, slider + vec2(400.0, 0.0));
     let plot = harness
         .world
@@ -1130,9 +1145,9 @@ fn a_loudspeaker_picks_its_sound_volume_and_mute() {
     let neuron = Element::ExcitatoryNeuron.spawn(&mut world, Vec3::ZERO);
     let speaker = Meter::Loudspeaker.spawn_measuring(&mut world, neuron, Vec3::Z * 3.0);
     let mut harness = Harness::with(true, world, Some(speaker));
-    for setting in [Setting::Sound, Setting::Volume, Setting::Mute] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+    for setting in [loudspeaker::SOUND, loudspeaker::VOLUME, loudspeaker::MUTE] {
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
     harness.click_text(Sound::Tone.name());
     harness.click_text("On");
@@ -1155,15 +1170,15 @@ fn a_visual_input_picks_its_picture() {
     let mut harness = Harness::with(true, world, Some(input));
     assert!(harness.shows("Visual input"));
     for setting in [
-        Setting::Picture,
-        Setting::PictureAngle,
-        Setting::PictureSpeed,
-        Setting::PicturePhase,
+        visual_input::PICTURE,
+        visual_input::PICTURE_ANGLE,
+        visual_input::SPEED,
+        visual_input::PHASE,
     ] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
-    assert!(!harness.shows(Setting::ReceptiveField.label()));
+    assert!(!harness.shows(receptive_field::FIELD.label));
     harness.click_text(Pattern::Dot.name());
     let pattern = |harness: &Harness| harness.world.get::<&VisualInput>(input).unwrap().pattern;
     assert_eq!(pattern(&harness), Pattern::Dot);
@@ -1177,7 +1192,7 @@ fn the_reverse_button_turns_the_picture_around_and_undo_turns_it_back() {
     let mut world = World::new();
     let input = Stimulus::VisualInput.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(false, world, Some(input));
-    assert!(harness.shows(Setting::Reverse.description()));
+    assert!(harness.shows(visual_input::REVERSE.description));
     let speed = |harness: &Harness| harness.world.get::<&VisualInput>(input).unwrap().speed;
     let forward = speed(&harness);
     harness.click_button(inspector::REVERSE);
@@ -1207,16 +1222,16 @@ fn a_receptive_field_picks_its_field_and_sensitivity() {
     let mut harness = Harness::with(true, world, Some(cell));
     assert!(harness.shows("Receptive field"));
     for setting in [
-        Setting::ReceptiveField,
-        Setting::FieldAngle,
-        Setting::FieldSideways,
-        Setting::FieldUpDown,
-        Setting::Sensitivity,
+        receptive_field::FIELD,
+        receptive_field::FIELD_ANGLE,
+        receptive_field::FIELD_SIDEWAYS,
+        receptive_field::FIELD_UP_DOWN,
+        receptive_field::SENSITIVITY,
     ] {
-        assert!(harness.shows(setting.label()), "{setting:?}");
-        assert!(harness.shows(setting.description()), "{setting:?}");
+        assert!(harness.shows(setting.label), "{setting:?}");
+        assert!(harness.shows(setting.description), "{setting:?}");
     }
-    assert!(!harness.shows(Setting::Picture.label()));
+    assert!(!harness.shows(visual_input::PICTURE.label));
     harness.click_text("Center");
     let field = |harness: &Harness| {
         harness
@@ -1233,7 +1248,7 @@ fn a_receptive_field_picks_its_field_and_sensitivity() {
             y: 0.0
         }
     );
-    assert!(harness.shows(Setting::OffCenter.label()));
+    assert!(harness.shows(receptive_field::OFF_CENTER.label));
     harness.press(Modifiers::COMMAND, Key::Z);
     assert_eq!(field(&harness), ReceptiveField::default());
 }
@@ -1251,8 +1266,14 @@ fn two_on_off_rows_in_the_inspector_switch_only_themselves() {
         };
         context.run_ui(input, |ui| {
             let on_off = [(true, "On"), (false, "Off")];
-            inspector::choice(ui, chrome, Setting::OffCenter, &mut rows.0, &on_off);
-            inspector::choice(ui, chrome, Setting::Mute, &mut rows.1, &on_off);
+            inspector::choice(
+                ui,
+                chrome,
+                receptive_field::OFF_CENTER,
+                &mut rows.0,
+                &on_off,
+            );
+            inspector::choice(ui, chrome, loudspeaker::MUTE, &mut rows.1, &on_off);
         })
     };
     let output = frame(vec![], &mut rows);
@@ -1673,7 +1694,7 @@ fn undo_takes_back_a_change_of_temperature() {
     );
     let before = Temperature::of(&harness.world).celsius;
     harness.press_the_middle_of_slider(
-        crate::settings::Setting::Temperature.label(),
+        crate::settings::Setting::TEMPERATURE.label,
         &format!("{before:.1}"),
     );
     let warmed = Temperature::of(&harness.world).celsius;
@@ -1837,15 +1858,9 @@ fn a_visual_input_stops_at_zero_speed_and_takes_a_phase_set_by_hand() {
     let mut world = World::new();
     let input = Stimulus::VisualInput.spawn(&mut world, Vec3::ZERO);
     let mut harness = Harness::with(true, world, Some(input));
-    let speed = harness
-        .text_position(Setting::PictureSpeed.label())
-        .unwrap()
-        + vec2(0.0, 22.0);
+    let speed = harness.text_position(visual_input::SPEED.label).unwrap() + vec2(0.0, 22.0);
     harness.drag(speed, speed - vec2(400.0, 0.0));
-    let phase = harness
-        .text_position(Setting::PicturePhase.label())
-        .unwrap()
-        + vec2(0.0, 22.0);
+    let phase = harness.text_position(visual_input::PHASE.label).unwrap() + vec2(0.0, 22.0);
     harness.drag(phase, phase + vec2(400.0, 0.0));
     let input = harness.world.get::<&VisualInput>(input).unwrap();
     assert_eq!(input.speed, Hertz(0.0));

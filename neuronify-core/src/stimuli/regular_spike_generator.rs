@@ -5,12 +5,18 @@ use neuronify_engine::units::Hertz;
 use serde::{Deserialize, Serialize};
 
 use crate::serialization::bounds::within;
+use crate::settings::Setting;
 use crate::stimuli::{About, SPIKE_RATES};
 
 pub const ABOUT: About = About {
     name: "Regular spikes",
     description: "Sends spikes at a steady beat.",
     size: None,
+};
+
+pub const FREQUENCY: Setting = Setting {
+    label: "Frequency",
+    description: "How many spikes it sends each second.",
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

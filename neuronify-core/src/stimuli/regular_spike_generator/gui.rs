@@ -2,11 +2,11 @@ use egui::Ui;
 use hecs::{Entity, World};
 
 use super::RegularSpikeGenerator;
+use super::FREQUENCY;
 use crate::gui::icons::Glyph;
 use crate::gui::inspector::{hertz, logarithmic_parameter, type_switch};
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
-use crate::settings::Setting;
 use crate::stimuli::gui::{generator_icon, SPIKE_RATES};
 
 pub fn icon(glyph: &Glyph) {
@@ -20,7 +20,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
         changed |= logarithmic_parameter(
             ui,
             chrome,
-            Setting::Frequency,
+            FREQUENCY,
             &mut generator.frequency,
             SPIKE_RATES,
             hertz,

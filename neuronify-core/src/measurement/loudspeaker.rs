@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::components::*;
 use crate::measurement::About;
 use crate::serialization::bounds::within;
+use crate::settings::Setting;
 use crate::simulation::Spike;
 
 pub const VOLUMES: RangeInclusive<f64> = 0.0..=1.0;
@@ -23,6 +24,21 @@ pub const ABOUT: About = About {
                   Connect more neurons to hear them too.",
     size: None,
     offset: Vec3::new(3.0, 0.0, 0.0),
+};
+
+pub const SOUND: Setting = Setting {
+    label: "Sound",
+    description: "What it plays each time a connected neuron fires.",
+};
+
+pub const VOLUME: Setting = Setting {
+    label: "Volume",
+    description: "How loud it plays.",
+};
+
+pub const MUTE: Setting = Setting {
+    label: "Mute",
+    description: "Silences it without disconnecting it.",
 };
 
 pub fn bound(world: &mut World) {

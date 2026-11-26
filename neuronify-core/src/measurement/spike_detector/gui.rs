@@ -5,12 +5,12 @@ use hecs::{Entity, World};
 use neuronify_engine::units::Milliseconds;
 
 use super::SpikeDetector;
+use super::{ROW_ORDER, TIME_RANGE};
 use crate::gui::icons::Glyph;
 use crate::gui::inspector::{choice, milliseconds, parameter};
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
 use crate::measurement::frame::RowOrder;
-use crate::settings::Setting;
 
 const TIME_RANGES: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1000.0);
 
@@ -37,7 +37,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
         changed |= parameter(
             ui,
             chrome,
-            Setting::TimeRange,
+            TIME_RANGE,
             &mut detector.time_range,
             TIME_RANGES,
             milliseconds,
@@ -47,7 +47,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
         changed |= choice(
             ui,
             chrome,
-            Setting::RowOrder,
+            ROW_ORDER,
             &mut *order,
             &[
                 (RowOrder::Height, "Height"),

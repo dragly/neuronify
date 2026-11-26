@@ -440,7 +440,7 @@ flowchart TB
 
 Each meter keeps all of it in `measurement`, one layer per file,
 as in `voltmeter.rs` for Model (`ABOUT` with its name and size,
-then components, recording and bounds),
+the wording of its settings, then components, recording and bounds),
 `voltmeter/gui.rs` for Screens (icon, inspector rows and readout)
 and `voltmeter/drawing.rs` for Rendering.
 `Meter` reaches them with one `match` for each thing a meter does,
@@ -471,6 +471,8 @@ and a few modules reach past the arrows:
   and `simulation::model` for radii and ending scales.
 - `serialization`: `tools` for `ConnectionMode`, which files keep from version 18.
 - `measurement`: the engine's spikes and probes, and `within` from `serialization::bounds`.
+- `measurement` and `stimuli`: `Setting` from `settings`, for the wording of their settings,
+  while `settings` keeps the wording that several kinds share (neurons, synapses, channels, temperature).
 - `stimuli`: the engine, to set receptive field rates,
   and `within`, `turned` and `elapsed` from `serialization::bounds`.
 - `simulation::model`: temperature ranges from `serialization::bounds`.

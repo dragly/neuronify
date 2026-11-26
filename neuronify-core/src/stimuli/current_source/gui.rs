@@ -4,12 +4,12 @@ use egui::{Shape, Ui};
 use hecs::{Entity, World};
 use neuronify_engine::units::Nanoamperes;
 
+use super::CURRENT;
 use crate::gui::icons::{linear, Glyph, CREAM};
 use crate::gui::inspector::{logarithmic_parameter, nanoamperes};
 use crate::gui::style::Chrome;
 use crate::gui::widgets::heading;
 use crate::rendering::colors::yellow;
-use crate::settings::Setting;
 use crate::stimuli::CurrentClamp;
 
 const CURRENTS: (RangeInclusive<Nanoamperes>, Nanoamperes) =
@@ -41,7 +41,7 @@ pub fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -
     logarithmic_parameter(
         ui,
         chrome,
-        Setting::Current,
+        CURRENT,
         &mut clamp.current_output,
         CURRENTS,
         nanoamperes,

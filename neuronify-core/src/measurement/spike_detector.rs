@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::components::*;
 use crate::measurement::About;
 use crate::serialization::bounds::within;
+use crate::settings::Setting;
 
 pub const TIME_RANGES: RangeInclusive<Milliseconds> = Milliseconds(1.0)..=Milliseconds(1e6);
 
@@ -23,6 +24,17 @@ pub const ABOUT: About = About {
         height: 6.0,
     }),
     offset: Vec3::X,
+};
+
+pub const TIME_RANGE: Setting = Setting {
+    label: "Time range",
+    description: "How far back in time the plot reaches.",
+};
+
+pub const ROW_ORDER: Setting = Setting {
+    label: "Row order",
+    description:
+        "Sorts the rows by the height of their neurons or by the order they were connected in.",
 };
 
 pub fn bound(world: &mut World) {
