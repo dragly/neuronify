@@ -91,6 +91,14 @@ impl Frame {
         }
     }
 
+    pub fn square(center: Vec3, size: f32) -> Frame {
+        Frame {
+            bottom_left: center - Vec3::new(size, 0.0, size) * 0.5,
+            width: size,
+            height: size,
+        }
+    }
+
     pub fn of(world: &hecs::World, voltmeter: Entity) -> Option<Frame> {
         let position = world.get::<&Position>(voltmeter).ok()?;
         let size = world.get::<&MeterSize>(voltmeter).ok()?;

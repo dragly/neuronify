@@ -7,11 +7,14 @@ use crate::components::*;
 use crate::measurement::firing_rate::RatePlot;
 use crate::measurement::loudspeaker::{Loudspeaker, Sound};
 use crate::measurement::spike_detector::SpikeDetector;
-use crate::measurement::visual_input::{
-    beside_the_picture, spawn_picture_wire, ReceptiveField, ReceptiveFieldCell, VisualInput,
-};
 use crate::measurement::voltmeter::VoltmeterRange;
 use crate::measurement::Meter;
+use crate::stimuli::alternating_current::AlternatingCurrent;
+use crate::stimuli::poisson_generator::PoissonGenerator;
+use crate::stimuli::receptive_field::{beside_the_picture, ReceptiveField, ReceptiveFieldCell};
+use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use crate::stimuli::visual_input::spawn_picture_wire;
+use crate::stimuli::{CurrentClamp, Stimulus};
 use crate::{Connection, Deletable, NeuronType, Position};
 
 const MILLI: f64 = 1e3;
@@ -70,19 +73,17 @@ fn spawn_node(world: &mut World, node: &LegacyNode) -> Entity {
     }
     let entity = world.spawn(element.build());
     if node.filename == "sensors/Retina.qml" {
-        let picture = world.spawn((retina_center(node), VisualInput::default(), Deletable {}));
+        let picture = Stimulus::VisualInput.spawn(world, retina_center(node));
         spawn_picture_wire(world, picture, entity);
     }
     entity
 }
 
-fn retina_center(node: &LegacyNode) -> Position {
-    Position {
-        position: convert_position(
-            node.x + LEGACY_RETINA_SIZE / 2.0,
-            node.y + LEGACY_RETINA_SIZE / 2.0,
-        ),
-    }
+fn retina_center(node: &LegacyNode) -> Vec3 {
+    convert_position(
+        node.x + LEGACY_RETINA_SIZE / 2.0,
+        node.y + LEGACY_RETINA_SIZE / 2.0,
+    )
 }
 
 fn builder(components: impl DynamicBundle) -> EntityBuilder {
@@ -111,13 +112,11 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                 .engine
                 .current_output
                 .map_or(Nanoamperes(2.0), |current| Nanoamperes(current * NANO));
-            builder((
-                pos,
-                CurrentClamp {
-                    current_output: current,
-                },
-                Deletable {},
-            ))
+            let mut source = Stimulus::CurrentSource.builder(pos.position);
+            source.add(CurrentClamp {
+                current_output: current,
+            });
+            source
         }
         "generators/ACClamp.qml" => {
             let default = AlternatingCurrent::default();
@@ -128,28 +127,31 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                     .map_or(default.amplitude, |amplitude| Nanoamperes(amplitude * NANO)),
                 frequency: node.engine.frequency.map_or(default.frequency, Hertz),
             };
-            let clamp = CurrentClamp {
-                current_output: Nanoamperes::ZERO,
-            };
-            builder((pos, clamp, alternating, Deletable {}))
+            let mut source = Stimulus::AlternatingCurrentSource.builder(pos.position);
+            source.add(alternating);
+            source
         }
-        "generators/RegularSpikeGenerator.qml" => spike_generator(
-            node,
-            pos,
-            RegularSpikeGenerator {
-                frequency: node.engine.rate.map_or(LEGACY_GENERATOR_RATE, Hertz),
-            },
-        ),
-        "generators/IrregularSpikeGenerator.qml" => spike_generator(
-            node,
-            pos,
-            PoissonGenerator {
-                rate: node.engine.rate.map_or(LEGACY_GENERATOR_RATE, Hertz),
-            },
-        ),
-        "sensors/TouchSensor.qml" => {
-            builder((pos, TouchSensor, GeneratorDynamics::default(), Deletable {}))
+        "generators/RegularSpikeGenerator.qml" => {
+            let mut generator = Stimulus::RegularSpikeGenerator.builder(pos.position);
+            generator.add_bundle((
+                RegularSpikeGenerator {
+                    frequency: node.engine.rate.map_or(LEGACY_GENERATOR_RATE, Hertz),
+                },
+                legacy_type(node.inhibitory),
+            ));
+            generator
         }
+        "generators/IrregularSpikeGenerator.qml" => {
+            let mut generator = Stimulus::PoissonGenerator.builder(pos.position);
+            generator.add_bundle((
+                PoissonGenerator {
+                    rate: node.engine.rate.map_or(LEGACY_GENERATOR_RATE, Hertz),
+                },
+                legacy_type(node.inhibitory),
+            ));
+            generator
+        }
+        "sensors/TouchSensor.qml" => Stimulus::TouchSensor.builder(pos.position),
         "meters/SpikeDetector.qml" => {
             let (left_middle, size) = meter_frame(node);
             let detector = SpikeDetector {
@@ -170,15 +172,10 @@ fn element(node: &LegacyNode) -> EntityBuilder {
                     .map_or(ReceptiveFieldCell::default().sensitivity, Hertz),
                 ..Default::default()
             };
-            builder((
-                Position {
-                    position: beside_the_picture(retina_center(node).position),
-                },
-                field,
-                GeneratorDynamics::default(),
-                legacy_type(node.inhibitory),
-                Deletable {},
-            ))
+            let mut cell =
+                Stimulus::ReceptiveField.builder(beside_the_picture(retina_center(node)));
+            cell.add_bundle((field, legacy_type(node.inhibitory)));
+            cell
         }
         "meters/Loudspeaker.qml" => {
             let speaker = Loudspeaker {
@@ -291,20 +288,6 @@ fn meter_frame(node: &LegacyNode) -> (Vec3, MeterSize) {
     (left_middle, size)
 }
 
-fn spike_generator(
-    node: &LegacyNode,
-    pos: Position,
-    generator: impl hecs::Component,
-) -> EntityBuilder {
-    builder((
-        pos,
-        generator,
-        GeneratorDynamics::default(),
-        legacy_type(node.inhibitory),
-        Deletable {},
-    ))
-}
-
 fn legacy_type(inhibitory: bool) -> NeuronType {
     if inhibitory {
         NeuronType::Inhibitory
@@ -412,7 +395,7 @@ fn spawn_edge(world: &mut World, edge: &LegacyEdge, node_entities: &[Entity]) {
             if world.get::<&LeakyNeuron>(to).is_err() {
                 return;
             }
-            if world.get::<&CurrentClamp>(from).is_ok() {
+            if world.satisfies::<&CurrentClamp>(from) {
                 world.spawn((connection, Deletable {}));
                 return;
             }

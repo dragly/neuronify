@@ -10,11 +10,12 @@ use neuronify_core::examples::{find, EXAMPLE_CATEGORIES};
 use neuronify_core::rendering::canvas_bounds;
 use neuronify_core::simulation::model::prepare;
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
+use neuronify_core::stimuli::touch_sensor::TouchSensor;
+use neuronify_core::stimuli::CurrentClamp;
 use neuronify_core::{
-    Annotation, Connection, CurrentClamp, LeakyNeuron, Link, Milliseconds, Millivolts, Nanoamperes,
-    NeuronDisplay, NeuronType, NodeState, NoteSize, Position, Preparation, Setting, TouchSensor,
-    DEFAULT_SPEED, DT, NODE_RADIUS, SEGMENT_LENGTH, SIMULATION_STEPS_PER_SECOND,
-    TERMINAL_THRESHOLD,
+    Annotation, Connection, LeakyNeuron, Link, Milliseconds, Millivolts, Nanoamperes,
+    NeuronDisplay, NeuronType, NodeState, NoteSize, Position, Preparation, Setting, DEFAULT_SPEED,
+    DT, NODE_RADIUS, SEGMENT_LENGTH, SIMULATION_STEPS_PER_SECOND, TERMINAL_THRESHOLD,
 };
 
 const STEPS_PER_SECOND: f64 = DEFAULT_SPEED * SIMULATION_STEPS_PER_SECOND.0;

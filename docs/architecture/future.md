@@ -33,9 +33,12 @@ Still outside the meters' folders:
 The last three stay where they are,
 since they follow formats from outside (Neuronify 1 files and older saves) or the engine's layout.
 
-The inputs would come next, since `Element` already lists them
-(current sources, generators, the touch sensor, the receptive field and the picture),
-then notes, then neurons.
+The stimuli are done the same way (`Element::Stimulus` wraps a `Stimulus` for the rail and the editor).
+A stimulus still appears outside `stimuli` in the undo list, `legacy::convert`, the current save version
+and `simulation::engine`, for the same reasons as a meter,
+in `editor` for what pressing a touch sensor and wiring a picture to a field do,
+and in `simulation::stimulation` for touch sensors.
+Notes would come next, then neurons.
 A neuron's kind is a combination (`LeakyNeuron` plus maybe `AdaptationCurrent`,
 `BurstCurrent` or an inhibitory `NeuronType`),
 so it would help to store the kind, which takes a save version.

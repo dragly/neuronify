@@ -10,15 +10,13 @@ use crate::components::{Cable, Connection, Label, MeterSize, NoteSize, Position}
 use crate::constants::{CONNECTION_WIDTH_PER_STRENGTH, NODE_RADIUS};
 use crate::measurement::frame::{measured, Frame};
 use crate::measurement::meters;
-use crate::measurement::visual_input::{
-    receptive_field_frame, visual_input_frame, ReceptiveFieldCell, VisualInput,
-};
 use crate::rendering::colors::{srgb, Theme};
 use crate::rendering::connection_rings::ring_edges;
 use crate::rendering::gpu_types::ArcData;
 use crate::rendering::notes::{note_plane, shifted, translated, NOTE_FONT_DATA, NOTE_TEXT_Y};
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::selection::element_radius;
+use crate::stimuli::Stimulus;
 use hecs::Entity;
 
 pub const LABEL_HEIGHT: f32 = 0.8;
@@ -224,14 +222,10 @@ impl Obstacles {
                     on_screen(position),
                     0.5 * Vec2::new(size.width, size.height),
                 ));
-            } else if world.satisfies::<&VisualInput>(entity) {
-                obstacles
-                    .areas
-                    .push(Area::of(&visual_input_frame(position)));
-            } else if world.satisfies::<&ReceptiveFieldCell>(entity) {
-                obstacles
-                    .areas
-                    .push(Area::of(&receptive_field_frame(position)));
+            } else if let Some(frame) =
+                Stimulus::of(world, entity).and_then(|stimulus| stimulus.frame(position))
+            {
+                obstacles.areas.push(Area::of(&frame));
             } else {
                 obstacles.strokes.push(Stroke::dot(
                     position,

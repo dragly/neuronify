@@ -13,6 +13,7 @@ use crate::rendering::gpu_types::{CylinderData, TorusData};
 use crate::rendering::scene::Scene;
 use crate::rendering::selection::element_radius;
 use crate::rendering::shapes::glyph_color;
+use crate::stimuli::{CurrentClamp, GeneratorDynamics};
 
 const GAP: f32 = 0.3 * NODE_RADIUS;
 const SELECTED_THICKNESS: f32 = 0.07 * NODE_RADIUS;
@@ -257,6 +258,7 @@ mod tests {
     use crate::rendering::colors::Theme;
     use crate::rendering::connections::collect_meter_wires;
     use crate::rendering::selection::collect_selection;
+    use crate::stimuli::Stimulus;
 
     struct Circuit {
         world: World,
@@ -453,7 +455,7 @@ mod tests {
             .find(|(_, connection)| connection.to == detector)
             .map(|(wire, _)| wire)
             .unwrap();
-        let sensor = Element::TouchSensor.spawn(&mut world, Vec3::X * -3.0);
+        let sensor = Stimulus::TouchSensor.spawn(&mut world, Vec3::X * -3.0);
         let touch = spawn_synapse(&mut world, sensor, cell);
         let hidden = hidden_connections(&world);
         assert!(!hidden.contains(&wire) && !hidden.contains(&touch));

@@ -7,14 +7,19 @@ use indexmap::IndexMap;
 use neuronify_core::measurement::firing_rate::RatePlot;
 use neuronify_core::measurement::loudspeaker::Loudspeaker;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
-use neuronify_core::measurement::visual_input::{ReceptiveFieldCell, VisualInput};
 use neuronify_core::measurement::voltmeter::Voltmeter;
 use neuronify_core::serialization::{load, load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
+use neuronify_core::stimuli::alternating_current::AlternatingCurrent;
+use neuronify_core::stimuli::poisson_generator::PoissonGenerator;
+use neuronify_core::stimuli::receptive_field::ReceptiveFieldCell;
+use neuronify_core::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use neuronify_core::stimuli::touch_sensor::TouchSensor;
+use neuronify_core::stimuli::visual_input::VisualInput;
+use neuronify_core::stimuli::CurrentClamp;
 use neuronify_core::{
-    neuron_type, AdaptationCurrent, AlternatingCurrent, Annotation, BurstCurrent, Compartment,
-    ConductanceSynapse, CurrentClamp, CurrentSynapse, Dendrite, Label, LeakyNeuron, Link,
-    NeuronType, PoissonGenerator, Position, RegularSpikeGenerator, Seconds, TouchSensor,
+    neuron_type, AdaptationCurrent, Annotation, BurstCurrent, Compartment, ConductanceSynapse,
+    CurrentSynapse, Dendrite, Label, LeakyNeuron, Link, NeuronType, Position, Seconds,
     DEFAULT_SPEED, SIMULATION_STEPS_PER_SECOND,
 };
 use serde::{Deserialize, Serialize};

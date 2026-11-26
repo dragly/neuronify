@@ -7,9 +7,9 @@ use crate::components::*;
 use crate::constants::NODE_RADIUS;
 use crate::measurement::frame::{measured, Frame};
 use crate::measurement::meters;
-use crate::measurement::visual_input::VisualInput;
 use crate::rendering::colors::Palette;
 use crate::rendering::gpu_types::{ArcData, ConnectionData};
+use crate::stimuli::GeneratorDynamics;
 use hecs::Entity;
 
 mod picture_wires;
@@ -146,7 +146,6 @@ fn obstacles(world: &hecs::World) -> Vec<Vec3> {
         world
             .query::<&Position>()
             .with::<&GeneratorDynamics>()
-            .without::<&VisualInput>()
             .iter()
             .map(|position| position.position),
     );

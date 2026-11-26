@@ -11,16 +11,17 @@ use neuronify_core::constants::DT;
 use neuronify_core::editor::Editor;
 use neuronify_core::measurement::frame::measured;
 use neuronify_core::measurement::spike_detector::SpikeDetector;
-use neuronify_core::measurement::visual_input::{
-    direction_badge, watched_picture, ReceptiveFieldCell, VisualInput,
-};
 use neuronify_core::rendering::halos::collect_halos;
 use neuronify_core::rendering::{canvas_bounds, Theme};
 use neuronify_core::serialization::{load_from_bytes, save, Meta};
 use neuronify_core::simulation::{fire_nearby, step_simulation, Engine};
+use neuronify_core::stimuli::receptive_field::{watched_picture, ReceptiveFieldCell};
+use neuronify_core::stimuli::touch_sensor::TouchSensor;
+use neuronify_core::stimuli::visual_input::{direction_badge, VisualInput};
+use neuronify_core::stimuli::CurrentClamp;
 use neuronify_core::{
-    neuron_type, Connection, ConnectionView, CurrentClamp, Hertz, Label, LeakyNeuron, Milliseconds,
-    Nanoamperes, NeuronType, NoteSize, Position, Selected, Setting, TouchSensor, NODE_RADIUS,
+    neuron_type, Connection, ConnectionView, Hertz, Label, LeakyNeuron, Milliseconds, Nanoamperes,
+    NeuronType, NoteSize, Position, Selected, Setting, NODE_RADIUS,
 };
 
 const STEPS_PER_CALL: u32 = 40;

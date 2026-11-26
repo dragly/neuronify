@@ -13,11 +13,11 @@ use crate::constants::MAX_ENDING_STRENGTH;
 use crate::dendrites::compartment_tree;
 use crate::editor::Editor;
 use crate::elements::{axon_ending, Element};
-use crate::measurement::visual_input::{Pattern, ReceptiveField, ReceptiveFieldCell, VisualInput};
 use crate::measurement::Meter;
 use crate::rendering::Theme;
 use crate::settings::Setting;
 use crate::simulation::model::has_dendrites;
+use crate::stimuli::Stimulus;
 use crate::tools::Tool;
 
 use super::icons::{paint_icon, paint_tool, Icon};
@@ -60,21 +60,9 @@ const ADAPTATIONS: (RangeInclusive<Microsiemens>, Microsiemens) =
     (Microsiemens(0.0)..=Microsiemens(0.1), Microsiemens(0.0001));
 const ADAPTATION_TIME_CONSTANTS: RangeInclusive<Milliseconds> =
     Milliseconds(0.0)..=Milliseconds(600.0);
-const HALF_TURN: RangeInclusive<f64> = 0.0..=std::f64::consts::PI;
-const PICTURE_SPEEDS: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(50.0), Hertz(0.1));
-const PICTURE_PHASES: RangeInclusive<f64> = 0.0..=1.0;
-const OFFSETS: RangeInclusive<f64> = -0.5..=0.5;
-const SENSITIVITIES: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(10_000.0), Hertz(10.0));
 const SYNAPSE_CURRENTS: RangeInclusive<Nanoamperes> = Nanoamperes(0.0)..=Nanoamperes(10.0);
 const SYNAPSE_TIME_CONSTANTS: RangeInclusive<Milliseconds> = Milliseconds(0.1)..=Milliseconds(6.0);
 const DELAYS: RangeInclusive<Milliseconds> = Milliseconds(0.0)..=Milliseconds(30.0);
-const AMPLITUDES: (RangeInclusive<Nanoamperes>, Nanoamperes) =
-    (Nanoamperes(0.0)..=Nanoamperes(1.0), Nanoamperes(0.01));
-const ALTERNATING_FREQUENCIES: (RangeInclusive<Hertz>, Hertz) =
-    (Hertz(0.0)..=Hertz(200.0), Hertz(1.0));
-const CURRENTS: (RangeInclusive<Nanoamperes>, Nanoamperes) =
-    (Nanoamperes(0.0)..=Nanoamperes(30.0), Nanoamperes(0.01));
-const SPIKE_RATES: (RangeInclusive<Hertz>, Hertz) = (Hertz(0.0)..=Hertz(1000.0), Hertz(1.0));
 const STRENGTHS: RangeInclusive<f64> = 0.0..=MAX_ENDING_STRENGTH;
 
 enum Action {
@@ -302,20 +290,8 @@ fn kind(world: &World, entity: Entity) -> Option<(Tool, &'static str)> {
         return Some((Tool::StaticConnection, "Synapse"));
     } else if world.get::<&Connection>(entity).is_ok() {
         return Some((Tool::StaticConnection, "Connection"));
-    } else if world.get::<&AlternatingCurrent>(entity).is_ok() {
-        Tool::Place(Element::AlternatingCurrentSource)
-    } else if world.get::<&CurrentClamp>(entity).is_ok() {
-        Tool::Place(Element::CurrentSource)
-    } else if world.get::<&TouchSensor>(entity).is_ok() {
-        Tool::Place(Element::TouchSensor)
-    } else if world.get::<&RegularSpikeGenerator>(entity).is_ok() {
-        Tool::Place(Element::RegularSpikeGenerator)
-    } else if world.get::<&PoissonGenerator>(entity).is_ok() {
-        Tool::Place(Element::PoissonGenerator)
-    } else if world.get::<&VisualInput>(entity).is_ok() {
-        Tool::Place(Element::VisualInput)
-    } else if world.get::<&ReceptiveFieldCell>(entity).is_ok() {
-        Tool::Place(Element::ReceptiveField)
+    } else if let Some(stimulus) = Stimulus::of(world, entity) {
+        Tool::Place(Element::Stimulus(stimulus))
     } else if let Some(meter) = Meter::of(world, entity) {
         Tool::Meter(meter)
     } else if world.get::<&Link>(entity).is_ok() {
@@ -396,7 +372,7 @@ fn delete_button(ui: &mut Ui, chrome: &Chrome) -> Response {
     row_button(ui, chrome, DELETE, Icon::Trash, "Delete", chrome.danger)
 }
 
-fn row_button(
+pub(crate) fn row_button(
     ui: &mut Ui,
     chrome: &Chrome,
     id: &str,
@@ -484,11 +460,11 @@ pub(crate) fn milliseconds(duration: Milliseconds) -> String {
     format!("{:.1} ms", duration.0)
 }
 
-fn nanoamperes(current: Nanoamperes) -> String {
+pub(crate) fn nanoamperes(current: Nanoamperes) -> String {
     format!("{:.2} nA", current.0)
 }
 
-fn picoamperes(current: Nanoamperes) -> String {
+pub(crate) fn picoamperes(current: Nanoamperes) -> String {
     format!("{:.0} pA", current.in_picoamperes())
 }
 
@@ -522,7 +498,7 @@ pub(crate) fn parameter<Q: Quantity>(
     )
 }
 
-pub(super) fn logarithmic_parameter<Q: Quantity>(
+pub(crate) fn logarithmic_parameter<Q: Quantity>(
     ui: &mut Ui,
     chrome: &Chrome,
     setting: Setting,
@@ -580,7 +556,7 @@ fn slider_row<Q: Quantity>(
     changed
 }
 
-fn description(ui: &mut Ui, chrome: &Chrome, text: &str) {
+pub(crate) fn description(ui: &mut Ui, chrome: &Chrome, text: &str) {
     let galley = ui.painter().layout(
         text.to_owned(),
         FontId::proportional(DESCRIPTION_SIZE),
@@ -664,7 +640,7 @@ pub(crate) fn choice<T: PartialEq + Copy>(
     changed
 }
 
-fn type_switch(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
+pub(crate) fn type_switch(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
     let Some(current) = world.get::<&NeuronType>(entity).ok().map(|t| *t) else {
         return false;
     };
@@ -844,113 +820,6 @@ fn soma_diameter(ui: &mut Ui, chrome: &Chrome, neuron: &mut LeakyNeuron) -> bool
     )
 }
 
-fn picture_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut VisualInput) -> bool {
-    let mut changed = false;
-    heading(ui, chrome, "Picture", 0.0);
-    let patterns = Pattern::ALL.map(|pattern| (pattern, pattern.name()));
-    changed |= choice(ui, chrome, Setting::Picture, &mut input.pattern, &patterns);
-    if row_button(
-        ui,
-        chrome,
-        REVERSE,
-        Icon::Reverse,
-        Setting::Reverse.label(),
-        chrome.text,
-    )
-    .clicked()
-    {
-        input.reverse();
-        changed = true;
-    }
-    description(ui, chrome, Setting::Reverse.description());
-    ui.add_space(8.0);
-    changed |= parameter(
-        ui,
-        chrome,
-        Setting::PictureAngle,
-        &mut input.pattern_angle,
-        HALF_TURN,
-        degrees,
-    );
-    let mut speed = input.speed.abs();
-    if logarithmic_parameter(
-        ui,
-        chrome,
-        Setting::PictureSpeed,
-        &mut speed,
-        PICTURE_SPEEDS,
-        |speed| format!("{:.1} Hz", speed.0),
-    ) {
-        input.speed = Hertz(speed.0.copysign(input.speed.0));
-        changed = true;
-    }
-    changed |= parameter(
-        ui,
-        chrome,
-        Setting::PicturePhase,
-        &mut input.phase,
-        PICTURE_PHASES,
-        |phase| format!("{:.0}\u{b0}", phase * 360.0),
-    );
-    changed
-}
-
-fn field_parameters(ui: &mut Ui, chrome: &Chrome, input: &mut ReceptiveFieldCell) -> bool {
-    let mut changed = false;
-    heading(ui, chrome, "Receptive field", 0.0);
-    let kinds = ReceptiveField::KINDS.map(|kind| kind.name());
-    let mut kind = ReceptiveField::KINDS
-        .iter()
-        .position(|kind| kind.same_kind(input.field))
-        .unwrap_or_default();
-    let options: Vec<(usize, &str)> = kinds.iter().copied().enumerate().collect();
-    if choice(ui, chrome, Setting::ReceptiveField, &mut kind, &options) {
-        input.field = ReceptiveField::KINDS[kind];
-        changed = true;
-    }
-    let offset = |value: f64| format!("{:.1}", value * 10.0).replace('-', "\u{2212}");
-    match &mut input.field {
-        ReceptiveField::Orientation { angle, x, y } => {
-            changed |= parameter(ui, chrome, Setting::FieldAngle, angle, HALF_TURN, degrees);
-            changed |= parameter(ui, chrome, Setting::FieldSideways, x, OFFSETS, offset);
-            changed |= parameter(ui, chrome, Setting::FieldUpDown, y, OFFSETS, offset);
-        }
-        ReceptiveField::CenterSurround { off_center, x, y } => {
-            changed |= choice(
-                ui,
-                chrome,
-                Setting::OffCenter,
-                off_center,
-                &[(true, "On"), (false, "Off")],
-            );
-            changed |= parameter(ui, chrome, Setting::FieldSideways, x, OFFSETS, offset);
-            changed |= parameter(ui, chrome, Setting::FieldUpDown, y, OFFSETS, offset);
-        }
-        ReceptiveField::Edge { angle } => {
-            let quarters = [0.0, 0.5, 1.0, 1.5].map(|turn| turn * std::f64::consts::PI);
-            let options = quarters.map(|quarter| (quarter, degrees(quarter)));
-            let options: Vec<(f64, &str)> = options
-                .iter()
-                .map(|(quarter, name)| (*quarter, name.as_str()))
-                .collect();
-            changed |= choice(ui, chrome, Setting::FieldAngle, angle, &options);
-        }
-    }
-    changed |= logarithmic_parameter(
-        ui,
-        chrome,
-        Setting::Sensitivity,
-        &mut input.sensitivity,
-        SENSITIVITIES,
-        hertz,
-    );
-    changed
-}
-
-fn degrees(radians: f64) -> String {
-    format!("{:.0}\u{b0}", radians.to_degrees())
-}
-
 fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bool {
     let mut changed = false;
     if world.get::<&LeakyNeuron>(entity).is_ok() {
@@ -959,11 +828,8 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
     if let Some(meter) = Meter::of(world, entity) {
         changed |= meter.parameters(ui, chrome, world, entity);
     }
-    if let Ok(mut input) = world.get::<&mut VisualInput>(entity) {
-        changed |= picture_parameters(ui, chrome, &mut input);
-    }
-    if let Ok(mut field) = world.get::<&mut ReceptiveFieldCell>(entity) {
-        changed |= field_parameters(ui, chrome, &mut field);
+    if let Some(stimulus) = Stimulus::of(world, entity) {
+        changed |= stimulus.parameters(ui, chrome, world, entity);
     }
     if let Ok(mut synapse) = world.get::<&mut CurrentSynapse>(entity) {
         heading(ui, chrome, "Parameters", 0.0);
@@ -990,63 +856,6 @@ fn parameters(ui: &mut Ui, chrome: &Chrome, world: &World, entity: Entity) -> bo
             &mut synapse.delay,
             DELAYS,
             milliseconds,
-        );
-    }
-    if let Ok(mut alternating) = world.get::<&mut AlternatingCurrent>(entity) {
-        heading(ui, chrome, "Parameters", 0.0);
-        changed |= logarithmic_parameter(
-            ui,
-            chrome,
-            Setting::Amplitude,
-            &mut alternating.amplitude,
-            AMPLITUDES,
-            picoamperes,
-        );
-        changed |= logarithmic_parameter(
-            ui,
-            chrome,
-            Setting::AlternatingFrequency,
-            &mut alternating.frequency,
-            ALTERNATING_FREQUENCIES,
-            hertz,
-        );
-    } else if let Ok(mut clamp) = world.get::<&mut CurrentClamp>(entity) {
-        heading(ui, chrome, "Parameters", 0.0);
-        changed |= logarithmic_parameter(
-            ui,
-            chrome,
-            Setting::Current,
-            &mut clamp.current_output,
-            CURRENTS,
-            nanoamperes,
-        );
-    }
-    if world.get::<&RegularSpikeGenerator>(entity).is_ok() {
-        heading(ui, chrome, "Parameters", 0.0);
-        changed |= type_switch(ui, chrome, world, entity);
-    }
-    if let Ok(mut generator) = world.get::<&mut RegularSpikeGenerator>(entity) {
-        changed |= logarithmic_parameter(
-            ui,
-            chrome,
-            Setting::Frequency,
-            &mut generator.frequency,
-            SPIKE_RATES,
-            hertz,
-        );
-    }
-    if world.get::<&PoissonGenerator>(entity).is_ok() {
-        heading(ui, chrome, "Parameters", 0.0);
-        changed |= type_switch(ui, chrome, world, entity);
-    }
-    if let Ok(mut generator) = world.get::<&mut PoissonGenerator>(entity) {
-        changed |= logarithmic_parameter(
-            ui,
-            chrome,
-            Setting::Rate,
-            &mut generator.rate,
-            SPIKE_RATES,
-            hertz,
         );
     }
     if let Ok(mut annotation) = world.get::<&mut Annotation>(entity) {
@@ -1107,24 +916,12 @@ mod tests {
             ADAPTATION_TIME_CONSTANTS,
             bounds::ADAPTATION_TIME_CONSTANTS
         ));
-        assert!(inside(HALF_TURN, bounds::ANGLES));
-        assert!(inside(PICTURE_SPEEDS.0, bounds::PICTURE_SPEEDS));
-        assert!(inside(PICTURE_PHASES, bounds::PICTURE_PHASES));
-        assert!(inside(OFFSETS, bounds::OFFSETS));
-        assert!(inside(SENSITIVITIES.0, bounds::SENSITIVITIES));
         assert!(inside(SYNAPSE_CURRENTS, bounds::SYNAPSE_CURRENTS));
         assert!(inside(
             SYNAPSE_TIME_CONSTANTS,
             bounds::SYNAPSE_TIME_CONSTANTS
         ));
         assert!(inside(DELAYS, bounds::DELAYS));
-        assert!(inside(AMPLITUDES.0, bounds::AMPLITUDES));
-        assert!(inside(
-            ALTERNATING_FREQUENCIES.0,
-            bounds::ALTERNATING_FREQUENCIES
-        ));
-        assert!(inside(CURRENTS.0, bounds::CURRENTS));
-        assert!(inside(SPIKE_RATES.0, bounds::SPIKE_RATES));
         assert!(inside(STRENGTHS, bounds::STRENGTHS));
     }
 }

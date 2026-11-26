@@ -3,19 +3,18 @@ use std::collections::BTreeMap;
 use glam::Vec3;
 use hecs::Entity;
 
-use crate::components::{
-    AlternatingCurrent, Connection, CurrentClamp, Milliseconds, Nanoamperes, Picocoulombs,
-};
+use crate::components::{Connection, Milliseconds, Nanoamperes, Picocoulombs};
 use crate::constants::NODE_RADIUS;
 use crate::rendering::colors::current_color;
 use crate::rendering::gpu_types::Sphere;
 use crate::rendering::paths::ConnectionPath;
+use crate::stimuli::{alternating_current, CurrentClamp, Stimulus};
 
 const PARTICLE_SPACING: f32 = 0.7 * NODE_RADIUS;
 const PARTICLE_RADIUS_PER_PATH_RADIUS: f32 = 1.6;
 const PARTICLE_WHITENESS: f32 = 0.55;
 const DISTANCE_PER_PICOCOULOMB: f64 = 0.24;
-const FASTEST_SHOWN_CURRENT: Nanoamperes = Nanoamperes(2.0);
+pub const FASTEST_SHOWN_CURRENT: Nanoamperes = Nanoamperes(2.0);
 
 pub fn collect_current_flow(
     world: &hecs::World,
@@ -42,12 +41,19 @@ fn shown_charge(
     current: Nanoamperes,
     time: Milliseconds,
 ) -> Picocoulombs {
-    match world.get::<&AlternatingCurrent>(source) {
-        Ok(alternating) => {
-            let slowdown = (FASTEST_SHOWN_CURRENT / alternating.amplitude.abs()).min(1.0);
-            alternating.charge_until(time) * slowdown
+    match Stimulus::of(world, source) {
+        Some(Stimulus::AlternatingCurrentSource) => {
+            alternating_current::drawing::charge(world, source, time)
         }
-        Err(_) => current.clamp(-FASTEST_SHOWN_CURRENT, FASTEST_SHOWN_CURRENT) * time,
+        Some(
+            Stimulus::CurrentSource
+            | Stimulus::TouchSensor
+            | Stimulus::RegularSpikeGenerator
+            | Stimulus::PoissonGenerator
+            | Stimulus::VisualInput
+            | Stimulus::ReceptiveField,
+        )
+        | None => current.clamp(-FASTEST_SHOWN_CURRENT, FASTEST_SHOWN_CURRENT) * time,
     }
 }
 
@@ -78,13 +84,14 @@ mod tests {
     use crate::elements::{spawn_synapse, Element};
     use crate::rendering::paths::connection_paths;
     use crate::rendering::Theme;
+    use crate::stimuli::alternating_current::AlternatingCurrent;
     use std::collections::HashMap;
 
     const STEP: Milliseconds = Milliseconds(0.1);
 
     fn source_and_paths(current: f64) -> (hecs::World, BTreeMap<Entity, ConnectionPath>) {
         let mut world = hecs::World::new();
-        let source = Element::CurrentSource.spawn(&mut world, Vec3::ZERO);
+        let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::ZERO);
         world
             .get::<&mut CurrentClamp>(source)
             .unwrap()
@@ -127,7 +134,7 @@ mod tests {
     #[test]
     fn particles_of_an_alternating_source_follow_the_charge_it_has_delivered() {
         let mut world = hecs::World::new();
-        let source = Element::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
+        let source = Stimulus::AlternatingCurrentSource.spawn(&mut world, Vec3::ZERO);
         let alternating = (*world.get::<&AlternatingCurrent>(source).unwrap()).clone();
         let angular_frequency = std::f64::consts::TAU * alternating.frequency.to_kilohertz();
         let scale = alternating.amplitude * (1.0 / angular_frequency);

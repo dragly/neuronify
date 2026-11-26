@@ -5,11 +5,7 @@ use egui::{pos2, vec2, Color32, Painter, Pos2, Rect, Shape, Stroke, StrokeKind, 
 use glam::Vec3;
 
 use crate::elements::Element;
-use crate::rendering::colors::{
-    adaptation_gauge_color, blue, burst_gauge_color, orange, paler, rate_color, terminal_color,
-    yellow,
-};
-use crate::rendering::shapes::hand_outline;
+use crate::rendering::colors::{adaptation_gauge_color, burst_gauge_color, paler, terminal_color};
 use crate::rendering::Theme;
 use crate::tools::{ConnectionMode, Tool};
 
@@ -393,7 +389,7 @@ fn shade(color: Color32, factor: f32) -> Color32 {
     Color32::from_rgb(r as u8, g as u8, b as u8)
 }
 
-fn sphere(painter: &Painter, center: Pos2, radius: f32, color: Color32) {
+pub(crate) fn sphere(painter: &Painter, center: Pos2, radius: f32, color: Color32) {
     let rim = shade(color, 0.78);
     painter.circle_filled(center, radius, rim);
     let mut mesh = Mesh::default();
@@ -411,7 +407,7 @@ fn sphere(painter: &Painter, center: Pos2, radius: f32, color: Color32) {
     painter.add(Shape::mesh(mesh));
 }
 
-fn arc(center: Pos2, radius: f32, from: f32, to: f32) -> Vec<Pos2> {
+pub(crate) fn arc(center: Pos2, radius: f32, from: f32, to: f32) -> Vec<Pos2> {
     (0..=SPHERE_STEPS)
         .map(|step| {
             let angle = from + (to - from) * step as f32 / SPHERE_STEPS as f32;
@@ -483,7 +479,7 @@ fn beads(painter: &Painter, points: &[Pos2], scale: f32, color: Color32) {
     }
 }
 
-fn sine_wave() -> impl Iterator<Item = (f32, f32)> {
+pub(crate) fn sine_wave() -> impl Iterator<Item = (f32, f32)> {
     (0..=SINE_STEPS).map(|step| {
         let x = 2.0 * step as f32 / SINE_STEPS as f32 - 1.0;
         (x, (x * PI).sin())
@@ -613,83 +609,12 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 linear(burst_gauge_color()),
             );
         }
-        Tool::Place(Element::CurrentSource) => {
-            painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(yellow()));
-            let arrow = stroke(2.4, CREAM);
-            painter.line_segment([at(16.0, 22.5), at(16.0, 9.8)], arrow);
-            painter.add(Shape::line(
-                vec![at(11.8, 14.0), at(16.0, 9.8), at(20.2, 14.0)],
-                arrow,
-            ));
-        }
-        Tool::Place(Element::AlternatingCurrentSource) => {
-            painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(yellow()));
-            let wave = sine_wave()
-                .map(|(x, y)| at(16.0 + 7.5 * x, 16.0 - 5.0 * y))
-                .collect();
-            painter.add(Shape::line(wave, stroke(2.4, CREAM)));
-        }
-        Tool::Place(Element::VisualInput) => {
-            painter.rect_filled(
-                Rect::from_center_size(at(16.0, 16.0), Vec2::splat(23.0 * scale)),
-                5.0 * scale,
-                linear(orange()),
-            );
-            let lid = |sign: f32| {
-                (0..=SINE_STEPS)
-                    .map(|step| {
-                        let x = 2.0 * step as f32 / SINE_STEPS as f32 - 1.0;
-                        at(16.0 + 8.5 * x, 16.0 + sign * 5.0 * (1.0 - x * x))
-                    })
-                    .collect::<Vec<Pos2>>()
-            };
-            painter.add(Shape::line(lid(1.0), stroke(1.6, CREAM)));
-            painter.add(Shape::line(lid(-1.0), stroke(1.6, CREAM)));
-            painter.circle_filled(at(16.0, 16.0), 2.8 * scale, CREAM);
-        }
-        Tool::Place(Element::ReceptiveField) => {
-            painter.rect_filled(
-                Rect::from_center_size(at(16.0, 16.0), Vec2::splat(23.0 * scale)),
-                5.0 * scale,
-                linear(blue()),
-            );
-            painter.circle_filled(at(16.0, 16.0), 7.0 * scale, linear(rate_color()));
-        }
-        Tool::Place(Element::TouchSensor) => {
-            painter.circle_filled(at(16.0, 16.0), 11.5 * scale, linear(orange()));
-            let hand = hand_outline();
-            let reach = hand
-                .iter()
-                .map(|point| point.abs().max_element())
-                .fold(0.0, f32::max);
-            let size = 7.0 * scale / reach;
-            let points: Vec<Pos2> = hand
-                .iter()
-                .map(|point| at(16.0, 16.0) + vec2(point.x, -point.y) * size)
-                .collect();
-            let line = stroke(1.4, CREAM);
-            for (index, &point) in points.iter().enumerate() {
-                let next = points[(index + 1) % points.len()];
-                painter.line_segment([point, next], line);
-                painter.circle_filled(point, line.width / 2.0, CREAM);
-            }
-        }
-        Tool::Place(Element::RegularSpikeGenerator) | Tool::Place(Element::PoissonGenerator) => {
-            let generator = linear(orange());
-            sphere(painter, at(16.0, 16.0), 7.0 * scale, generator);
-            let ring = arc(at(16.0, 16.0), 12.0 * scale, 0.0, TAU);
-            if tool == Tool::Place(Element::PoissonGenerator) {
-                painter.extend(Shape::dashed_line(
-                    &ring,
-                    stroke(2.6, generator),
-                    3.4 * scale,
-                    2.6 * scale,
-                ));
-            } else {
-                let closed = ring[..ring.len() - 1].to_vec();
-                painter.add(Shape::closed_line(closed, stroke(2.6, generator)));
-            }
-        }
+        Tool::Place(Element::Stimulus(stimulus)) => stimulus.icon(&Glyph {
+            painter,
+            chrome,
+            scale,
+            origin,
+        }),
         Tool::Meter(meter) => meter.icon(&Glyph {
             painter,
             chrome,

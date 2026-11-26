@@ -2,10 +2,8 @@ use std::collections::HashMap;
 
 use hecs::{Entity, World};
 
-use crate::components::{
-    Compartment, Connection, CurrentClamp, GeneratorDynamics, LeakyNeuron, NodeState, Position,
-    Seconds,
-};
+use crate::components::{Compartment, Connection, LeakyNeuron, NodeState, Position, Seconds};
+use crate::stimuli::{CurrentClamp, GeneratorDynamics};
 use crate::tools::Tool;
 
 const LATE: Seconds = Seconds(8.0);
@@ -153,6 +151,7 @@ fn somas(world: &World) -> HashMap<Entity, Entity> {
 
 #[cfg(test)]
 mod tests {
+    use crate::stimuli::Stimulus;
     use glam::Vec3;
 
     use super::*;
@@ -239,7 +238,7 @@ mod tests {
         assert_eq!(pulse_after(&lone, 20.0), None);
 
         let (mut fed, _, _) = connected_pair();
-        Element::TouchSensor.spawn(&mut fed, at(-10.0, 0.0));
+        Stimulus::TouchSensor.spawn(&mut fed, at(-10.0, 0.0));
         assert_eq!(pulse_after(&fed, 20.0), None);
     }
 

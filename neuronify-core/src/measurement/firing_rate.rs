@@ -159,6 +159,8 @@ pub fn record_rates(world: &mut World, time: Milliseconds) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+    use crate::stimuli::Stimulus;
 
     #[test]
     fn a_steady_rate_reads_as_itself_on_average() {
@@ -206,9 +208,9 @@ mod tests {
         use crate::measurement::Meter;
         use crate::simulation::{step_simulation, Engine};
         let mut world = World::new();
-        let source = Element::RegularSpikeGenerator.spawn(&mut world, glam::Vec3::ZERO);
+        let source = Stimulus::RegularSpikeGenerator.spawn(&mut world, glam::Vec3::ZERO);
         world
-            .get::<&mut crate::components::RegularSpikeGenerator>(source)
+            .get::<&mut RegularSpikeGenerator>(source)
             .unwrap()
             .frequency = Hertz(40.0);
         let neuron = Element::ExcitatoryNeuron.spawn(&mut world, glam::Vec3::Z * 5.0);

@@ -4,20 +4,16 @@ use glam::Vec3;
 use hecs::Entity;
 
 use crate::components::{hidden_connections, Connection, Milliseconds};
-use crate::measurement::visual_input::is_picture_wire;
 use crate::rendering::colors::Palette;
 use crate::rendering::connection_rings::collect_connection_rings;
 use crate::rendering::current_flow::collect_current_flow;
 use crate::rendering::cylinders::{collect_cylinders, compartment_radii};
 use crate::rendering::gpu_types::{CylinderData, HaloData, Sphere, TileData, TorusData};
 use crate::rendering::paths::{connection_paths, ConnectionPath};
-use crate::rendering::shapes::{collect_rings, collect_shapes};
 use crate::rendering::signals::collect_signals;
 use crate::rendering::spheres::collect_spheres;
 use crate::rendering::transmitter::{collect_transmitter, Landings};
-use crate::rendering::visual_input::{
-    collect_direction_badges, collect_field_tiles, collect_visual_input_tiles,
-};
+use crate::stimuli::visual_input::is_picture_wire;
 
 /// The shapes of the 3D view. The example previews draw the solid ones from above.
 #[derive(Default)]
@@ -89,10 +85,10 @@ pub fn collect_scene_along(
     let mut scene = Scene {
         spheres: collect_spheres(world, radii, paths, palette, hidden),
         cylinders: collect_cylinders(world, radii, paths, palette),
-        rings: collect_rings(world, palette),
+        rings: Vec::new(),
         transmitter: Vec::new(),
-        discs: collect_visual_input_tiles(world),
-        squircles: collect_field_tiles(world, palette),
+        discs: Vec::new(),
+        squircles: Vec::new(),
     };
     scene.extend(collect_transmitter(
         world, paths, radii, palette, time, landings,
@@ -101,9 +97,9 @@ pub fn collect_scene_along(
         .spheres
         .extend(collect_current_flow(world, paths, time));
     scene.extend(collect_signals(world, paths, palette, time));
-    scene.extend(collect_shapes(world, palette));
+    crate::stimuli::drawing::shapes(world, palette, &mut scene);
+    crate::measurement::drawing::shapes(world, palette, &mut scene);
     scene.extend(collect_connection_rings(world, palette));
-    scene.extend(collect_direction_badges(world));
     scene
 }
 

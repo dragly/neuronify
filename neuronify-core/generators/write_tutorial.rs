@@ -9,10 +9,11 @@ use neuronify_core::elements::{
 use neuronify_core::measurement::Meter;
 use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
 use neuronify_core::serialization;
+use neuronify_core::stimuli::{CurrentClamp, Stimulus};
 use neuronify_core::{
-    Annotation, Connection, CurrentClamp, CurrentSynapse, Link, MeterSize, Milliseconds,
-    Millivolts, Nanoamperes, NeuronDisplay, NeuronType, NodeState, NoteSize, Position, Setting,
-    Tool, ToolGroup, DEFAULT_SPEED, INTERNODE_LENGTH, SEGMENT_LENGTH,
+    Annotation, Connection, CurrentSynapse, Link, MeterSize, Milliseconds, Millivolts, Nanoamperes,
+    NeuronDisplay, NeuronType, NodeState, NoteSize, Position, Setting, Tool, ToolGroup,
+    DEFAULT_SPEED, INTERNODE_LENGTH, SEGMENT_LENGTH,
 };
 
 const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(6.0);
@@ -195,7 +196,7 @@ impl Canvas {
     }
 
     fn current(&mut self, to: Entity, current: Nanoamperes, right: f32, up: f32) {
-        let source = self.add(Element::CurrentSource, right, up);
+        let source = self.add(Element::Stimulus(Stimulus::CurrentSource), right, up);
         self.world
             .get::<&mut CurrentClamp>(source)
             .expect("current sources spawn with a CurrentClamp")
@@ -307,7 +308,7 @@ fn spikes() -> World {
          signals that can travel along the connection to other neurons to stimulate them too.",
     );
     let up = canvas.row(2.4);
-    let hand = canvas.add(Element::TouchSensor, 2.0, up);
+    let hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 2.0, up);
     let first = canvas.add(Element::ExcitatoryNeuron, 12.0, up);
     let second = canvas.add(Element::ExcitatoryNeuron, 21.0, up);
     canvas.connect(hand, first);
@@ -329,7 +330,7 @@ fn leaks() -> World {
          For this neuron, one press is not enough to make it fire.",
     );
     let up = canvas.row(5.0);
-    let hand = canvas.add(Element::TouchSensor, 1.5, up);
+    let hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.5, up);
     let neuron = canvas.add(Element::ExcitatoryNeuron, 7.5, up);
     canvas.synapse(hand, neuron, Nanoamperes(1.0), Milliseconds(2.0));
     canvas.voltmeter(
@@ -365,9 +366,9 @@ fn push_and_pull() -> World {
     let up = canvas.row(15.0) + 1.5;
     let middle = canvas.add(Element::ExcitatoryNeuron, 11.0, up);
     canvas.current(middle, Nanoamperes(0.3), 11.0, up - 7.0);
-    let push_hand = canvas.add(Element::TouchSensor, 1.0, up + 4.0);
+    let push_hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, up + 4.0);
     let push = canvas.add(Element::ExcitatoryNeuron, 6.0, up + 4.0);
-    let pull_hand = canvas.add(Element::TouchSensor, 1.0, up - 4.0);
+    let pull_hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, up - 4.0);
     let pull = canvas.add(Element::InhibitoryNeuron, 6.0, up - 4.0);
     canvas.connect(push_hand, push);
     canvas.connect(pull_hand, pull);
@@ -412,8 +413,8 @@ fn choosing() -> World {
     for synapse in cross {
         canvas.delay(synapse, Milliseconds(1.0));
     }
-    let left_hand = canvas.add(Element::TouchSensor, 4.5, up - 7.0);
-    let right_hand = canvas.add(Element::TouchSensor, 19.5, up - 7.0);
+    let left_hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 4.5, up - 7.0);
+    let right_hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 19.5, up - 7.0);
     canvas.synapse(
         left_hand,
         left_partner,
@@ -512,7 +513,7 @@ fn keeping_a_rhythm() -> World {
     for pair in ring.windows(2) {
         canvas.connect(pair[0], pair[1]);
     }
-    let hand = canvas.add(Element::TouchSensor, 2.0, up + 3.5);
+    let hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 2.0, up + 3.5);
     canvas.connect(hand, ring[0]);
     canvas.text("Add a connection and press the touch sensor.");
     canvas.text("A loop is one of the simplest ways a brain keeps something going.");
@@ -527,7 +528,7 @@ fn axons() -> World {
          That can be modeled as a long thin cable.",
     );
     let up = canvas.row(15.0) + 2.0;
-    let hand = canvas.add(Element::TouchSensor, 1.0, up + 2.0);
+    let hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, up + 2.0);
     let sender = canvas.add(Element::ExcitatoryNeuron, 6.0, up + 2.0);
     let near = canvas.add(Element::ExcitatoryNeuron, 13.0, up + 5.0);
     let far = canvas.add(Element::ExcitatoryNeuron, 22.0, up + 5.0);
@@ -553,7 +554,7 @@ fn myelin() -> World {
          Myelination makes spikes jump from gap to gap instead of creeping along the whole cable.",
     );
     let up = canvas.row(28.0);
-    let hand = canvas.add(Element::TouchSensor, 8.0, up + 12.5);
+    let hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 8.0, up + 12.5);
     let sender = canvas.add(Element::ExcitatoryNeuron, 12.0, up + 12.5);
     let plain = canvas.add(Element::ExcitatoryNeuron, 5.5, up - 13.2);
     let myelinated = canvas.add(Element::ExcitatoryNeuron, 18.5, up - 13.2);
@@ -575,7 +576,7 @@ fn dendrites() -> World {
          but you need to draw an axon first.",
     );
     let up = canvas.row(25.0);
-    let hand = canvas.add(Element::TouchSensor, 1.0, up + 2.0);
+    let hand = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, up + 2.0);
     let sender = canvas.add(Element::ExcitatoryNeuron, 5.0, up + 2.0);
     canvas.connect(hand, sender);
     let receiver = canvas.add(Element::ExcitatoryNeuron, 17.0, up - 4.5);
@@ -610,9 +611,9 @@ fn coincidence() -> World {
     let lower = canvas.add(Element::ExcitatoryNeuron, right - 6.0, up - 4.5);
     canvas.weak_axon(upper, branch, 0.25);
     canvas.weak_axon(lower, branch, 0.25);
-    let top = canvas.add(Element::TouchSensor, 1.0, up + 4.5);
-    let middle = canvas.add(Element::TouchSensor, 1.0, up);
-    let bottom = canvas.add(Element::TouchSensor, 1.0, up - 4.5);
+    let top = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, up + 4.5);
+    let middle = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, up);
+    let bottom = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, up - 4.5);
     canvas.connect(top, upper);
     canvas.connect(middle, upper);
     canvas.connect(middle, lower);
@@ -659,8 +660,8 @@ fn inhibition_on_a_branch() -> World {
     let lower = canvas.add(Element::ExcitatoryNeuron, basal_right - 6.0, basal_up);
     canvas.axon(upper, &[], tuft);
     canvas.axon(lower, &[], basal);
-    let top = canvas.add(Element::TouchSensor, 1.0, tuft_up);
-    let bottom = canvas.add(Element::TouchSensor, 1.0, basal_up);
+    let top = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, tuft_up);
+    let bottom = canvas.add(Element::Stimulus(Stimulus::TouchSensor), 1.0, basal_up);
     canvas.connect(top, upper);
     canvas.connect(bottom, lower);
     let (_, trunk_up) = position(&canvas, trunk);

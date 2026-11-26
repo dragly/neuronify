@@ -39,6 +39,7 @@ mod tests {
     use super::*;
     use crate::elements::Element;
     use crate::rendering::Theme;
+    use crate::stimuli::Stimulus;
 
     fn spheres(world: &World, selected: Option<Entity>, pulled: Option<Entity>) -> usize {
         collect_tip(world, &Theme::Light.palette(), selected, pulled)
@@ -48,9 +49,9 @@ mod tests {
 
     #[test]
     fn the_tip_of_a_selected_receptive_field_is_drawn_outside_its_frame() {
-        use crate::measurement::visual_input::RECEPTIVE_FIELD_SIZE;
+        use crate::stimuli::receptive_field::RECEPTIVE_FIELD_SIZE;
         let mut world = World::new();
-        let field = Element::ReceptiveField.spawn(&mut world, Vec3::ZERO);
+        let field = Stimulus::ReceptiveField.spawn(&mut world, Vec3::ZERO);
         let scene = collect_tip(&world, &Theme::Dark.palette(), Some(field), None);
         let inside =
             |point: Vec3| point.x.abs().max(point.z.abs()) < RECEPTIVE_FIELD_SIZE * 0.5 - 1e-4;

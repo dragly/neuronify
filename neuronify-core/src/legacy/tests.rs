@@ -2,6 +2,10 @@ use super::convert::spawn_legacy_simulation;
 use super::*;
 use crate::components::*;
 use crate::simulation::{step_simulation, Engine};
+use crate::stimuli::alternating_current::AlternatingCurrent;
+use crate::stimuli::poisson_generator::PoissonGenerator;
+use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use crate::stimuli::{CurrentClamp, GeneratorDynamics};
 use hecs::Entity;
 
 struct SpikeRecord {
@@ -744,9 +748,8 @@ fn loudspeakers_play_the_closest_sound_for_each_neuron_wired_to_them() {
 
 #[test]
 fn retinas_become_pictures_watched_by_their_receptive_fields() {
-    use crate::measurement::visual_input::{
-        watched_picture, ReceptiveField, ReceptiveFieldCell, VisualInput,
-    };
+    use crate::stimuli::receptive_field::{watched_picture, ReceptiveField, ReceptiveFieldCell};
+    use crate::stimuli::visual_input::VisualInput;
     let sim = parse_legacy_nfy(include_str!("fixtures/visualInput.nfy")).unwrap();
     let mut world = hecs::World::new();
     let entities = spawn_legacy_simulation(&mut world, &sim);
@@ -817,11 +820,10 @@ fn bundled_neuronify_1_files() -> Vec<(String, String)> {
 }
 
 fn converted(world: &hecs::World, entity: hecs::Entity) -> bool {
-    use crate::measurement::{is_meter, visual_input::VisualInput};
-    world.satisfies::<hecs::Or<
-        &LeakyNeuron,
-        hecs::Or<&CurrentClamp, hecs::Or<&GeneratorDynamics, hecs::Or<&VisualInput, &Annotation>>>,
-    >>(entity)
+    use crate::measurement::is_meter;
+    use crate::stimuli::Stimulus;
+    world.satisfies::<hecs::Or<&LeakyNeuron, &Annotation>>(entity)
+        || Stimulus::of(world, entity).is_some()
         || is_meter(world, entity)
 }
 
@@ -843,9 +845,7 @@ fn every_bundled_neuronify_1_file_loads_with_nothing_dropped() {
         let connections: Vec<(hecs::Entity, hecs::Entity)> = world
             .query::<&Connection>()
             .iter()
-            .filter(|connection| {
-                !crate::measurement::visual_input::is_picture_wire(&world, connection)
-            })
+            .filter(|connection| !crate::stimuli::visual_input::is_picture_wire(&world, connection))
             .map(|connection| (connection.from, connection.to))
             .collect();
         for edge in &sim.edges {

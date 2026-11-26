@@ -13,10 +13,13 @@ use neuronify_engine::{
 use super::model::*;
 use crate::components::*;
 use crate::constants::*;
-use crate::measurement::visual_input::{
-    is_picture_wire, ReceptiveFieldCell, VisualInput, FRAME_INTERVAL,
-};
 use crate::measurement::voltmeter::VoltageSeries;
+use crate::stimuli::alternating_current::AlternatingCurrent;
+use crate::stimuli::poisson_generator::PoissonGenerator;
+use crate::stimuli::receptive_field::ReceptiveFieldCell;
+use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+use crate::stimuli::touch_sensor::TouchSensor;
+use crate::stimuli::{CurrentClamp, GeneratorDynamics};
 
 const D_LAMBDA: f64 = 0.3;
 
@@ -1250,55 +1253,6 @@ pub fn pulse_interval(current: Nanoamperes) -> Option<Milliseconds> {
     Some(neuron.refractory_period + time_constant * rise)
 }
 
-pub fn visual_inputs(
-    world: &mut World,
-    engine: &mut Engine,
-    time: Milliseconds,
-    duration: Milliseconds,
-) {
-    for input in world.query_mut::<&mut VisualInput>() {
-        input.phase = (input.phase + input.speed.cycles_in(duration)).rem_euclid(1.0);
-    }
-    let watched: HashMap<Entity, Entity> = world
-        .query::<&Connection>()
-        .iter()
-        .filter(|connection| is_picture_wire(world, connection))
-        .map(|connection| (connection.to, connection.from))
-        .collect();
-    let stale: Vec<(Entity, Option<Vec<f64>>)> = world
-        .query::<(Entity, &ReceptiveFieldCell)>()
-        .iter()
-        .filter(|(_, field)| {
-            field
-                .seen_at
-                .is_none_or(|seen_at| !(seen_at..seen_at + FRAME_INTERVAL).contains(&time))
-        })
-        .map(|(cell, _)| {
-            let picture = watched.get(&cell).and_then(|&picture| {
-                world
-                    .get::<&VisualInput>(picture)
-                    .ok()
-                    .map(|input| input.picture())
-            });
-            (cell, picture)
-        })
-        .collect();
-    for (cell, picture) in stale {
-        if let Ok(mut field) = world.get::<&mut ReceptiveFieldCell>(cell) {
-            field.response = picture.map_or(0.0, |picture| field.respond(&picture));
-            field.seen_at = Some(time);
-        }
-    }
-    let rates: Vec<(Entity, Hertz)> = world
-        .query::<(Entity, &ReceptiveFieldCell)>()
-        .iter()
-        .map(|(cell, field)| (cell, (field.sensitivity * field.response).max(Hertz::ZERO)))
-        .collect();
-    for (cell, rate) in rates {
-        engine.set_rate(cell, rate);
-    }
-}
-
 pub fn run_headless(world: &mut World, duration: Milliseconds) -> Vec<Spike> {
     let mut engine = Engine::default();
     let mut time = Milliseconds::ZERO;
@@ -1319,6 +1273,7 @@ mod tests {
     use crate::elements::{spawn_cable, spawn_compartment, spawn_internode, Element};
     use crate::examples::EXAMPLE_CATEGORIES;
     use crate::simulation::step_simulation;
+    use crate::stimuli::Stimulus;
     use glam::Vec3;
 
     const WEAK: f64 = 0.25;
@@ -1673,7 +1628,7 @@ mod tests {
                     world.remove_one::<AdaptationCurrent>(neuron).unwrap();
                 }
             }
-            let source = Element::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
+            let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
             crate::elements::spawn_connection(&mut world, source, neuron);
             run_headless(&mut world, Milliseconds(500.0))
                 .iter()
@@ -1693,7 +1648,7 @@ mod tests {
             let neuron = soma(&mut world, Vec3::ZERO);
             crate::dendrites::spawn_dendrites(&mut world, neuron);
             world.get::<&mut LeakyNeuron>(neuron).unwrap().soma_diameter = diameter;
-            let source = Element::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
+            let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
             crate::elements::spawn_connection(&mut world, source, neuron);
             run_headless(&mut world, Milliseconds(200.0))
                 .iter()
@@ -1710,7 +1665,7 @@ mod tests {
 
     fn drive(world: &mut World, neuron: Entity) {
         let at = world.get::<&Position>(neuron).unwrap().position;
-        let source = Element::CurrentSource.spawn(world, at + Vec3::Z * -5.0);
+        let source = Stimulus::CurrentSource.spawn(world, at + Vec3::Z * -5.0);
         crate::elements::spawn_connection(world, source, neuron);
     }
 
@@ -2012,7 +1967,7 @@ mod tests {
     fn busy_circuit() -> (World, Vec<Entity>) {
         let mut world = World::new();
         let (neuron, axon, target) = neuron_with_axon(&mut world, 12);
-        let poisson = Element::PoissonGenerator.spawn(&mut world, Vec3::X * -5.0);
+        let poisson = Stimulus::PoissonGenerator.spawn(&mut world, Vec3::X * -5.0);
         world.get::<&mut PoissonGenerator>(poisson).unwrap().rate = Hertz(200.0);
         crate::elements::spawn_synapse(&mut world, poisson, neuron);
         let adaptive = Element::AdaptiveNeuron.spawn(&mut world, Vec3::X * 5.0);
@@ -2123,7 +2078,7 @@ mod tests {
     fn driven(element: Element) -> World {
         let mut world = World::new();
         let neuron = element.spawn(&mut world, Vec3::ZERO);
-        let source = Element::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
+        let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
         crate::elements::spawn_connection(&mut world, source, neuron);
         world
     }
@@ -2153,7 +2108,7 @@ mod tests {
             .next()
             .unwrap()
             .0;
-        let sensor = Element::TouchSensor.spawn(&mut world, Vec3::X * -5.0);
+        let sensor = Stimulus::TouchSensor.spawn(&mut world, Vec3::X * -5.0);
         crate::elements::spawn_connection(&mut world, sensor, neuron);
         continues_unbroken_when_saved_while_pending(world, Some(sensor), |target| {
             matches!(target, Target::Fire { .. })

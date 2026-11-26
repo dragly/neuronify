@@ -30,11 +30,11 @@ use crate::rendering::notes::NoteRenderer;
 use crate::rendering::scene::{collect_scene_along, shown_paths};
 use crate::rendering::selection::{collect_selection, eraser_outline};
 use crate::rendering::spheres::soma_sphere;
+use crate::rendering::tiles::create_tiles;
 use crate::rendering::tips::{collect_dangling, collect_tip};
 use crate::rendering::transmitter::Landings;
-use crate::rendering::visual_input::{
-    collect_visual_input_lines, create_tiles, FIELD_SQUIRCLES, PICTURE_DOTS,
-};
+use crate::stimuli::receptive_field::drawing::FIELD_SQUIRCLES;
+use crate::stimuli::visual_input::drawing::PICTURE_DOTS;
 
 pub struct EditorMarks<'a> {
     pub drawn_connection: &'a [Vec3],
@@ -346,7 +346,7 @@ impl SceneRenderer {
                 .and_then(|(start, end)| axon_waiting(start, end, &palette)),
         );
         connections.extend(crate::measurement::drawing::lines(world, &palette));
-        connections.extend(collect_visual_input_lines(world, &palette));
+        connections.extend(crate::stimuli::drawing::lines(world, &palette));
 
         self.sphere_buffer
             .update(&application.device, &application.queue, &scene.spheres);

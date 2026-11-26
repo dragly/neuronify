@@ -4,7 +4,6 @@ use hecs::World;
 
 use crate::components::Milliseconds;
 use crate::constants::CONNECTION_WIDTH_PER_STRENGTH;
-use crate::rendering::visual_input::collect_visual_input_lines;
 use crate::rendering::{
     arc_points, collect_meter_wires, collect_scene, Bounds, ConnectionData, CylinderData, Palette,
 };
@@ -78,7 +77,7 @@ pub fn top_down_shapes(
     shapes.extend(joined_voltmeter_traces(
         crate::measurement::drawing::lines(world, palette)
             .into_iter()
-            .chain(collect_visual_input_lines(world, palette))
+            .chain(crate::stimuli::drawing::lines(world, palette))
             .collect(),
         scale,
         to_screen,

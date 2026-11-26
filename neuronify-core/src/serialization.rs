@@ -435,8 +435,12 @@ mod tests {
     use crate::measurement::frame::measured;
     use crate::measurement::loudspeaker::{Loudspeaker, Sound};
     use crate::measurement::spike_detector::SpikeDetector;
-    use crate::measurement::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
     use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+    use crate::stimuli::poisson_generator::PoissonGenerator;
+    use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
+    use crate::stimuli::touch_sensor::TouchSensor;
+    use crate::stimuli::visual_input::{VisualInput, DEFAULT_PICTURE_SPEED};
+    use crate::stimuli::{CurrentClamp, GeneratorDynamics, Stimulus};
     use crate::tools::ConnectionMode;
     use hecs::Entity;
     use std::any::TypeId;
@@ -1111,7 +1115,7 @@ mod tests {
 
     #[test]
     fn version_15_edge_fields_keep_the_side_they_face() {
-        use crate::measurement::visual_input::{watched_picture, ReceptiveFieldCell};
+        use crate::stimuli::receptive_field::{watched_picture, ReceptiveFieldCell};
         let bytes = include_bytes!("serialization/fixtures/v15.neuronify");
         let old = v15::deserialize(&bytes[MAGIC.len() + 4 + 16..]).unwrap();
         let new = load(bytes).unwrap().world;
@@ -1175,7 +1179,7 @@ mod tests {
 
     #[test]
     fn upgrading_version_18_splits_each_visual_input_into_a_picture_and_a_wired_field() {
-        use crate::measurement::visual_input::{watched_picture, ReceptiveFieldCell};
+        use crate::stimuli::receptive_field::{watched_picture, ReceptiveFieldCell};
         let world = load(include_bytes!("serialization/fixtures/v18.neuronify"))
             .unwrap()
             .world;
@@ -1657,8 +1661,8 @@ mod tests {
             crate::legacy::convert::spawn_legacy_simulation(&mut world, &simulation);
         }
         let position = |x: f32| glam::Vec3::new(x, 0.0, 30.0);
-        Element::RegularSpikeGenerator.spawn(&mut world, position(0.0));
-        Element::PoissonGenerator.spawn(&mut world, position(3.0));
+        Stimulus::RegularSpikeGenerator.spawn(&mut world, position(0.0));
+        Stimulus::PoissonGenerator.spawn(&mut world, position(3.0));
         let neuron = world
             .query::<(Entity, &LeakyNeuron)>()
             .iter()

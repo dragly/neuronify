@@ -10,6 +10,7 @@ use crate::rendering::gpu_types::{CylinderData, Sphere};
 use crate::rendering::paths::ConnectionPath;
 use crate::rendering::scene::Scene;
 use crate::rendering::transmitter::crossing_time;
+use crate::stimuli::GeneratorDynamics;
 
 const ACTION_POTENTIAL: [(Milliseconds, Millivolts); 31] = [
     (Milliseconds(-1.0), Millivolts(0.1)),

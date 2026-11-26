@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 pub use neuronify_engine::units::*;
 
-use crate::measurement::visual_input::is_picture_wire;
 use crate::measurement::voltmeter::VoltageSeries;
+use crate::stimuli::visual_input::is_picture_wire;
 
 pub trait Setting: hecs::Component + Copy + Default {
     fn of(world: &World) -> Self {
@@ -180,48 +180,6 @@ impl Default for BurstCurrent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CurrentClamp {
-    pub current_output: Nanoamperes,
-}
-
-impl Default for CurrentClamp {
-    fn default() -> Self {
-        Self {
-            current_output: Nanoamperes(2.0),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AlternatingCurrent {
-    pub amplitude: Nanoamperes,
-    pub frequency: Hertz,
-}
-
-impl Default for AlternatingCurrent {
-    fn default() -> Self {
-        Self {
-            amplitude: Nanoamperes(0.3),
-            frequency: Hertz(50.0),
-        }
-    }
-}
-
-impl AlternatingCurrent {
-    pub fn at(&self, time: Milliseconds) -> Nanoamperes {
-        self.amplitude * (std::f64::consts::TAU * self.frequency.cycles_in(time)).sin()
-    }
-
-    pub fn charge_until(&self, time: Milliseconds) -> Picocoulombs {
-        let angular_frequency = std::f64::consts::TAU * self.frequency.to_kilohertz();
-        if angular_frequency == Kilohertz::ZERO {
-            return Picocoulombs::ZERO;
-        }
-        self.amplitude * (1.0 - (angular_frequency * time).cos()) * (1.0 / angular_frequency)
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CurrentSynapse {
     pub tau: Milliseconds,
     pub maximum_current: Nanoamperes,
@@ -268,9 +226,6 @@ pub struct PendingEvents {
     pub fire: Vec<Milliseconds>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct TouchSensor;
-
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct MeterSize {
     pub width: f32,
@@ -311,43 +266,6 @@ impl Default for NoteSize {
             width: 7.2,
             height: 4.8,
         }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct GeneratorDynamics {
-    pub time_since_fire: Milliseconds,
-}
-
-impl Default for GeneratorDynamics {
-    fn default() -> Self {
-        Self {
-            time_since_fire: Milliseconds::INFINITY,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct RegularSpikeGenerator {
-    pub frequency: Hertz,
-}
-
-impl Default for RegularSpikeGenerator {
-    fn default() -> Self {
-        Self {
-            frequency: Hertz(20.0),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PoissonGenerator {
-    pub rate: Hertz,
-}
-
-impl Default for PoissonGenerator {
-    fn default() -> Self {
-        Self { rate: Hertz(20.0) }
     }
 }
 

@@ -21,6 +21,7 @@ pub mod rendering;
 pub mod serialization;
 pub mod settings;
 pub mod simulation;
+pub mod stimuli;
 pub mod third_party;
 pub mod tips;
 pub mod tools;
