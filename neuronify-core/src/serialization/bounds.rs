@@ -60,11 +60,6 @@ pub fn bound(world: &mut World) {
         size.width = bounded_f32(size.width, FRAME_SIZES, default.width);
         size.height = bounded_f32(size.height, FRAME_SIZES, default.height);
     }
-    for size in world.query_mut::<&mut NoteSize>() {
-        let default = NoteSize::default();
-        size.width = bounded_f32(size.width, FRAME_SIZES, default.width);
-        size.height = bounded_f32(size.height, FRAME_SIZES, default.height);
-    }
     for neuron in world.query_mut::<&mut LeakyNeuron>() {
         bound_neuron(neuron);
     }
@@ -161,6 +156,7 @@ pub fn bound(world: &mut World) {
             preparation.celsius(),
         );
     }
+    crate::note::bound(world);
     crate::stimuli::bound(world);
     crate::measurement::bound(world);
 }
@@ -251,7 +247,7 @@ fn without_negative_zero(value: f64) -> f64 {
     value + 0.0
 }
 
-fn bounded_f32(value: f32, range: RangeInclusive<f32>, fallback: f32) -> f32 {
+pub fn bounded_f32(value: f32, range: RangeInclusive<f32>, fallback: f32) -> f32 {
     if value.is_nan() {
         fallback
     } else {

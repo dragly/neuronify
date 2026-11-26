@@ -6,7 +6,7 @@ use hecs::{Entity, World};
 use crate::components::*;
 use crate::constants::SELECTION_RANGE;
 use crate::measurement::frame::{Corner, Frame};
-use crate::rendering::bounds::note_corners;
+use crate::note::{self, Annotation, NoteSize};
 use crate::rendering::cylinders::sheath_radius;
 use crate::rendering::{compartment_radii, element_radius};
 
@@ -179,7 +179,7 @@ impl Targets {
             self.notes
                 .iter()
                 .find(|&&(note, _, _)| note == entity)
-                .map(|(_, center, size)| note_corners(*center, size))
+                .map(|(_, center, size)| note::corners(*center, size))
         };
         if let Some(corners) = framed.or_else(noted) {
             return Some(Shape::Rectangle(corners));

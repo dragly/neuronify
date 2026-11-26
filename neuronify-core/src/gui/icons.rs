@@ -682,18 +682,12 @@ fn paint_glyph(painter: &Painter, tool: Tool, rect: Rect, theme: Theme, color: C
                 painter.circle_filled(at(x, y), 1.5 * scale, dendrite);
             }
         }
-        Tool::Place(Element::Note) => {
-            painter.rect(
-                Rect::from_min_max(at(6.0, 6.0), at(26.0, 26.0)),
-                3.0 * scale,
-                chrome.panel,
-                stroke(1.5, chrome.border),
-                StrokeKind::Inside,
-            );
-            for (y, end) in [(12.0, 22.0), (16.0, 22.0), (20.0, 17.0)] {
-                painter.line_segment([at(10.0, y), at(end, y)], stroke(1.6, chrome.subtext));
-            }
-        }
+        Tool::Place(Element::Note) => crate::note::gui::icon(&Glyph {
+            painter,
+            chrome,
+            scale,
+            origin,
+        }),
         Tool::View | Tool::Edit | Tool::Stimulate | Tool::Erase => {}
     }
 }

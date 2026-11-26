@@ -239,34 +239,9 @@ impl MeterSize {
     };
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Annotation {
-    pub text: String,
-}
-
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct Label {
     pub text: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct NoteSize {
-    pub width: f32,
-    pub height: f32,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Link {
-    pub example: String,
-}
-
-impl Default for NoteSize {
-    fn default() -> Self {
-        Self {
-            width: 7.2,
-            height: 4.8,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]

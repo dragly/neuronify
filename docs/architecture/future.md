@@ -38,7 +38,12 @@ A stimulus still appears outside `stimuli` in the undo list, `legacy::convert`, 
 and `simulation::engine`, for the same reasons as a meter,
 in `editor` for what pressing a touch sensor and wiring a picture to a field do,
 and in `simulation::stimulation` for touch sensors.
-Notes would come next, then neurons.
+Notes are done as well, in `note` without an enum, since there is one kind.
+A note still appears outside it in the undo list, `legacy::convert` and the current save version,
+in `editor` and `editor::targets` for resizing and picking it,
+in `rendering::bounds`, `rendering::labels` and `rendering::selection`, which use its size as they use `MeterSize`,
+and in `app`, which opens the example a link points to.
+Neurons would come next.
 A neuron's kind is a combination (`LeakyNeuron` plus maybe `AdaptationCurrent`,
 `BurstCurrent` or an inhibitory `NeuronType`),
 so it would help to store the kind, which takes a save version.

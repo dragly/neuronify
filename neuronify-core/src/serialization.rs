@@ -436,6 +436,9 @@ mod tests {
     use crate::measurement::loudspeaker::{Loudspeaker, Sound};
     use crate::measurement::spike_detector::SpikeDetector;
     use crate::measurement::voltmeter::{VoltageSeries, Voltmeter, VoltmeterRange};
+    use crate::note::Annotation;
+    use crate::note::Link;
+    use crate::note::NoteSize;
     use crate::stimuli::poisson_generator::PoissonGenerator;
     use crate::stimuli::regular_spike_generator::RegularSpikeGenerator;
     use crate::stimuli::touch_sensor::TouchSensor;

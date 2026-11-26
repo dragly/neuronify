@@ -7,13 +7,14 @@ use neuronify_core::elements::{
     spawn_cable, spawn_compartment, spawn_internode, spawn_synapse, Element,
 };
 use neuronify_core::measurement::Meter;
-use neuronify_core::rendering::notes::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::note::drawing::{NOTE_FONT_DATA, NOTE_MARGIN, NOTE_TEXT_HEIGHT};
+use neuronify_core::note::{Annotation, Link, NoteSize};
 use neuronify_core::serialization;
 use neuronify_core::stimuli::{CurrentClamp, Stimulus};
 use neuronify_core::{
-    Annotation, Connection, CurrentSynapse, Link, MeterSize, Milliseconds, Millivolts, Nanoamperes,
-    NeuronDisplay, NeuronType, NodeState, NoteSize, Position, Setting, Tool, ToolGroup,
-    DEFAULT_SPEED, INTERNODE_LENGTH, SEGMENT_LENGTH,
+    Connection, CurrentSynapse, MeterSize, Milliseconds, Millivolts, Nanoamperes, NeuronDisplay,
+    NeuronType, NodeState, Position, Setting, Tool, ToolGroup, DEFAULT_SPEED, INTERNODE_LENGTH,
+    SEGMENT_LENGTH,
 };
 
 const CURRENT_DRAWN_AT_FULL_STRENGTH: Nanoamperes = Nanoamperes(6.0);

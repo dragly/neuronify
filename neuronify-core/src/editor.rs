@@ -13,7 +13,7 @@ use crate::elements::{
 };
 use crate::measurement::frame::{measured, Corner, Frame};
 use crate::measurement::Meter;
-use crate::rendering::bounds::note_corners;
+use crate::note::{self, NoteSize};
 use crate::rendering::{compartment_radii, connection_paths, distance_to_segment, Theme};
 use crate::simulation::{touch_sensor_near, Touch};
 use crate::stimuli::receptive_field::{watched_picture, ReceptiveFieldCell, RECEPTIVE_FIELD_SIZE};
@@ -1777,7 +1777,7 @@ fn resizable(world: &World, entity: Entity) -> Option<Frame> {
     }
     let note = world.get::<&Position>(entity).ok()?;
     let size = world.get::<&NoteSize>(entity).ok()?;
-    let [bottom_left, _] = note_corners(note.position, &size);
+    let [bottom_left, _] = note::corners(note.position, &size);
     Some(Frame {
         bottom_left,
         width: size.width,

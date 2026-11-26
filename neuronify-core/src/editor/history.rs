@@ -8,6 +8,7 @@ use crate::measurement::frame::RowOrder;
 use crate::measurement::loudspeaker::Loudspeaker;
 use crate::measurement::spike_detector::SpikeDetector;
 use crate::measurement::voltmeter::VoltmeterRange;
+use crate::note::{Annotation, NoteSize};
 use crate::stimuli::alternating_current::AlternatingCurrent;
 use crate::stimuli::poisson_generator::PoissonGenerator;
 use crate::stimuli::receptive_field::ReceptiveFieldCell;
