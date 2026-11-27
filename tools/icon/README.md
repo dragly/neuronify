@@ -4,8 +4,9 @@ After a change, rebuild them all from the repository root with:
     uv run tools/icon/build.py
 
 This needs uv and Inkscape.
-It overwrites `icon.svg`, `icon.png`, `favicon.ico` and `macos.iconset/` in `neuronify-core/assets/`,
-or writes them to the folder given as the first argument instead.
+It overwrites `icon.svg`, `icon.png`, `favicon.ico` and `macos.iconset/` in `neuronify-core/assets/`
+and `neuron-icon.js` in `neuronify/`,
+or writes them all to the folder given as the first argument instead.
 The shipped files were rendered with Inkscape 1.2,
 so another version may change a few pixels even when the drawing is the same.
 
@@ -20,6 +21,11 @@ so moving a point keeps the rounding consistent.
 The `SMALL_` values describe the bolder drawing used for the macOS 16 and 32 px files.
 
 The colours, the shadows, the rounded tile and the macOS grid are at the top of `build.py`.
+
+`neuron-icon.js` holds what the loading screen needs to draw the neuron:
+the colours, the shadow and the outline as rings of points.
+Each point is stored in quarter units as the step from the point before,
+and the arcs are cut into straight pieces of at most 9 degrees.
 
 The 16 and 32 px favicon sizes are pixel art in `pixel-16.png` and `pixel-32.png`.
 They are edited by hand (Aseprite works well) and copied into `favicon.ico` as they are.
