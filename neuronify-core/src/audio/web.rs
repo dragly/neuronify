@@ -54,22 +54,24 @@ impl Output {
         if RESUMING_ON_RELEASE.replace(true) {
             return;
         }
-        let context = self.context.clone();
-        let resume = Closure::once_into_js(move || {
-            RESUMING_ON_RELEASE.set(false);
-            let _ = context.resume();
-        });
         let once = AddEventListenerOptions::new();
         once.set_once(true);
-        let listening = web_sys::window().map(|window| {
-            window.add_event_listener_with_callback_and_add_event_listener_options(
-                "pointerup",
-                resume.unchecked_ref(),
-                &once,
-            )
-        });
-        if !matches!(listening, Some(Ok(()))) {
-            RESUMING_ON_RELEASE.set(false);
+        for kind in ["pointerup", "keydown"] {
+            let context = self.context.clone();
+            let resume = Closure::once_into_js(move || {
+                RESUMING_ON_RELEASE.set(false);
+                let _ = context.resume();
+            });
+            let listening = web_sys::window().map(|window| {
+                window.add_event_listener_with_callback_and_add_event_listener_options(
+                    kind,
+                    resume.unchecked_ref(),
+                    &once,
+                )
+            });
+            if !matches!(listening, Some(Ok(()))) {
+                RESUMING_ON_RELEASE.set(false);
+            }
         }
     }
 
