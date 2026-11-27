@@ -20,6 +20,7 @@ use egui::{
     Order, Pos2, Rect, Response, RichText, ScrollArea, Sense, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use hecs::{Entity, World};
+use visula::winit::dpi::PhysicalPosition;
 
 use crate::components::{
     Celsius, ConnectionDirection, ConnectionView, Hertz, Milliseconds, NeuronDisplay, Preparation,
@@ -342,6 +343,20 @@ pub fn canvas_area(screen: Rect, rail_shown: bool) -> Rect {
         area.max.y -= MARGIN + BAR_HEIGHT;
     }
     area
+}
+
+pub fn takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
+    let context = application.egui_renderer.state.egui_ctx();
+    let point = pos2(position.x as f32, position.y as f32) / context.pixels_per_point();
+    let radius = context.global_style().interaction.interact_radius;
+    context.memory(|memory| {
+        memory.areas().visible_layer_ids().into_iter().any(|layer| {
+            layer.order != Order::Background
+                && memory
+                    .area_rect(layer.id)
+                    .is_some_and(|rect| rect.distance_to_pos(point) <= radius)
+        })
+    })
 }
 
 fn warm(

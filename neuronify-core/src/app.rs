@@ -83,18 +83,6 @@ pub struct Neuronify {
     loupe_focus: Option<(LoupeFocus, Seconds)>,
 }
 
-fn ground_under(
-    application: &visula::Application,
-    context: &egui::Context,
-) -> impl Fn(egui::Pos2) -> Vec3 {
-    let ground = camera::positions_at_height(application, 0.0);
-    let pixels_per_point = context.pixels_per_point();
-    move |point| {
-        let pixel = |coordinate: f32| f64::from(coordinate * pixels_per_point);
-        ground(PhysicalPosition::new(pixel(point.x), pixel(point.y)))
-    }
-}
-
 #[cfg(target_arch = "wasm32")]
 fn debug_view() -> Option<String> {
     crate::web::debug_view()
@@ -248,20 +236,6 @@ fn is_press(event: &Event<CustomEvent>) -> bool {
             ..
         }
     )
-}
-
-fn gui_takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
-    let context = application.egui_renderer.state.egui_ctx();
-    let point = egui::pos2(position.x as f32, position.y as f32) / context.pixels_per_point();
-    let radius = context.global_style().interaction.interact_radius;
-    context.memory(|memory| {
-        memory.areas().visible_layer_ids().into_iter().any(|layer| {
-            layer.order != egui::Order::Background
-                && memory
-                    .area_rect(layer.id)
-                    .is_some_and(|rect| rect.distance_to_pos(point) <= radius)
-        })
-    })
 }
 
 impl Neuronify {
@@ -439,7 +413,7 @@ impl Neuronify {
             .filter(|_| self.touch_input && self.mouse.left_down);
         let hover = self
             .hover
-            .filter(|&hover| !gui_takes_press(application, hover));
+            .filter(|&hover| !gui::takes_press(application, hover));
         let pointer = finger.or(hover)?;
         Some(camera::ground_position(application, pointer))
     }
@@ -502,7 +476,7 @@ impl Neuronify {
         };
         let hover = self
             .hover
-            .filter(|&hover| element.is_neuron() && !gui_takes_press(application, hover))?;
+            .filter(|&hover| element.is_neuron() && !gui::takes_press(application, hover))?;
         let ground = camera::ground_position(application, hover);
         if !self.editor.empty_at(&self.world, ground) {
             return None;
@@ -513,7 +487,7 @@ impl Neuronify {
 
     fn paint_hitboxes(&self, application: &visula::Application, context: &egui::Context) {
         let targets = Targets::new(&self.world);
-        let to_ground = ground_under(application, context);
+        let to_ground = camera::ground_under(application, context);
         let tiles = RefCell::new(HashMap::new());
         gui::paint_hitboxes(context, |point| {
             let tile = (point.to_vec2() / HITBOX_TILE).floor();
@@ -576,7 +550,7 @@ impl Neuronify {
         let pixels_per_point = context.pixels_per_point();
         let per_point = camera::ground_length(application, f64::from(pixels_per_point));
         let gap = per_point * look.gap(shape.thickness() / per_point);
-        let to_ground = ground_under(application, context);
+        let to_ground = camera::ground_under(application, context);
         let to_screen = |position: Vec3| {
             let pixel = camera::screen_position(application, position);
             egui::pos2(pixel.x as f32, pixel.y as f32) / pixels_per_point
@@ -1370,7 +1344,7 @@ impl visula::Simulation for Neuronify {
                 self.hover = None;
                 self.touch_input = true;
                 if touch.phase == TouchPhase::Started {
-                    if gui_takes_press(application, touch.location) {
+                    if gui::takes_press(application, touch.location) {
                         self.touches.forget_tap();
                         return;
                     }

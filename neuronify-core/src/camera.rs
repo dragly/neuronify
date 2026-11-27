@@ -69,6 +69,18 @@ pub fn positions_at_height(
     }
 }
 
+pub fn ground_under(
+    application: &visula::Application,
+    context: &egui::Context,
+) -> impl Fn(egui::Pos2) -> Vec3 {
+    let ground = positions_at_height(application, 0.0);
+    let pixels_per_point = context.pixels_per_point();
+    move |point| {
+        let pixel = |coordinate: f32| f64::from(coordinate * pixels_per_point);
+        ground(PhysicalPosition::new(pixel(point.x), pixel(point.y)))
+    }
+}
+
 pub fn screen_position(application: &visula::Application, position: Vec3) -> PhysicalPosition<f64> {
     let width = application.config.width as f32;
     let height = application.config.height as f32;
