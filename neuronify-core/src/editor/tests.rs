@@ -2727,6 +2727,25 @@ fn stretched_axons_grow_compartments() {
 }
 
 #[test]
+fn stretching_a_very_long_axon_spreads_a_bounded_number_of_compartments_along_it() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 10_000.0));
+    crate::elements::spawn_axon_cable(&mut world, source, target, false);
+
+    drag(
+        &mut editor(Tool::Edit),
+        &mut world,
+        &[at(0.0, 0.0), at(0.0, -10.0)],
+    );
+
+    let stretched = chain(&world, source, target).unwrap();
+    assert_eq!(stretched.len(), super::drag::MOST_SEGMENTS + 1);
+    let spacing = 10_010.0 / super::drag::MOST_SEGMENTS as f32;
+    assert!(spaced_by(&world, &stretched, spacing));
+}
+
+#[test]
 fn axons_drawn_fast_fill_the_gaps_with_compartments() {
     let mut world = World::new();
     let source = neuron(&mut world, at(0.0, 0.0));
