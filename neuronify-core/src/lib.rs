@@ -7,6 +7,7 @@ pub mod dendrites;
 pub mod editor;
 pub mod elements;
 pub mod examples;
+pub mod feedback;
 pub mod fire_hint;
 pub mod frame_clock;
 pub mod gui;
