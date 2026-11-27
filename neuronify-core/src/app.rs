@@ -1125,6 +1125,9 @@ impl visula::Simulation for Neuronify {
         if let Some(landing) = &mut self.landing {
             landing.update(elapsed, physics_steps);
         }
+        if !shown {
+            self.inertia.stop();
+        }
         if let Some((from, to)) = self.inertia.step(input::now()) {
             camera::slide(application, from, to);
         }
