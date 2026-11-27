@@ -53,6 +53,7 @@ export default function () {
   const reveal = trace.parentElement;
   const percent = document.getElementById("percent");
   trace.innerHTML = `<svg viewBox="0 0 1000 100" preserveAspectRatio="none"><path d="${membraneTrace()}" /></svg>`;
+  import("./neuron-tile.js").then((tile) => tile.default());
   let shownPercent = 0;
   return {
     onProgress({ current, total }) {

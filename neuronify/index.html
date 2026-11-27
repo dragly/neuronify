@@ -7,6 +7,10 @@
     <link data-trunk rel="rust" data-bin="neuronify" data-initializer="loading.js" />
     <link data-trunk rel="icon" href="../neuronify-core/assets/favicon.ico" />
     <link data-trunk rel="copy-dir" href="../neuronify-core/examples" />
+    <link data-trunk rel="copy-file" href="neuron-tile.js" />
+    <link data-trunk rel="copy-file" href="neuron-icon.js" />
+    <link rel="modulepreload" href="neuron-tile.js" />
+    <link rel="modulepreload" href="neuron-icon.js" />
     <script>
       if (new URLSearchParams(location.search).has("file")) {
         document.documentElement.classList.add("scene");
@@ -18,14 +22,9 @@
         --surface: #ffffff;
         --placeholder: rgba(76, 79, 105, 0.13);
         --scene: #f2f5fc;
-        --accent: #1e66f5;
         --stack-middle: #f2f4f8;
         --stack-back: #f9fafc;
-        --panel: #ffffff;
-        --border: #d0d5e0;
         --shadow: rgba(0, 0, 0, 0.16);
-        --text: #4c4f69;
-        --subtext: #5c5f77;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -33,14 +32,9 @@
           --surface: #313244;
           --placeholder: rgba(205, 214, 244, 0.1);
           --scene: #383a51;
-          --accent: #89b4fa;
           --stack-middle: #242535;
           --stack-back: #2b2b3d;
-          --panel: #1e1e2e;
-          --border: #45475a;
           --shadow: rgba(0, 0, 0, 0.38);
-          --text: #cdd6f4;
-          --subtext: #a6adc8;
         }
       }
       html,
@@ -75,14 +69,42 @@
         place-items: center;
         padding: 24px;
       }
+      .tile {
+        --size: min(100vw - 72px, 400px, (100vh - 210px) * 1.1);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: var(--size);
+        border-radius: calc(0.225 * var(--size));
+        background: linear-gradient(#327dda, #1b64c2);
+        box-shadow: 0 22px 56px -8px var(--shadow), 0 4px 14px var(--shadow);
+      }
+      @supports (height: 1dvh) {
+        .tile {
+          --size: min(100vw - 72px, 400px, (100dvh - 210px) * 1.1);
+        }
+      }
+      #neuron {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 200ms ease-out;
+      }
+      #neuron.shown {
+        opacity: 1;
+      }
+      .icon {
+        width: 100%;
+        aspect-ratio: 1;
+        margin: -6% 0 -14%;
+      }
       .panel {
-        width: min(100%, 340px);
-        box-sizing: border-box;
-        padding: 14px 16px 12px;
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        background: var(--panel);
-        box-shadow: 0 6px 20px var(--shadow);
+        position: relative;
+        width: 78%;
+        margin-bottom: 11%;
       }
       .plot {
         position: relative;
@@ -111,7 +133,7 @@
       }
       .inner path {
         fill: none;
-        stroke: var(--accent);
+        stroke: #ffffff;
         stroke-width: 2;
         stroke-linejoin: round;
         vector-effect: non-scaling-stroke;
@@ -122,12 +144,12 @@
         align-items: baseline;
         margin-top: 10px;
         padding-top: 9px;
-        border-top: 1px solid var(--border);
-        color: var(--subtext);
+        border-top: 1px solid rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.84);
         font: 300 13px Ubuntu, system-ui, -apple-system, "Segoe UI", sans-serif;
       }
       #percent {
-        color: var(--text);
+        color: #ffffff;
         font: 12.5px Hack, ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
         font-variant-numeric: tabular-nums;
       }
@@ -400,11 +422,15 @@
         </div>
       </div>
       <div class="center" aria-hidden="true">
-        <div class="panel">
-          <div class="plot">
-            <div class="window"><div class="inner" id="trace"></div></div>
+        <div class="tile">
+          <canvas id="neuron"></canvas>
+          <div class="icon"></div>
+          <div class="panel">
+            <div class="plot">
+              <div class="window"><div class="inner" id="trace"></div></div>
+            </div>
+            <div class="status"><span>Loading</span><span id="percent">0 %</span></div>
           </div>
-          <div class="status"><span>Loading</span><span id="percent">0 %</span></div>
         </div>
       </div>
     </div>
