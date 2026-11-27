@@ -26,6 +26,7 @@ The colours, the shadows, the rounded tile and the macOS grid are at the top of 
 the colours, the shadow and the outline as rings of points.
 Each point is stored in quarter units as the step from the point before,
 and the arcs are cut into straight pieces of at most 9 degrees.
+The tile behind it in `neuronify/index.html` repeats the two background colours.
 
 The 16 and 32 px favicon sizes are pixel art in `pixel-16.png` and `pixel-32.png`.
 They are edited by hand (Aseprite works well) and copied into `favicon.ico` as they are.
