@@ -4,7 +4,7 @@ use crate::input::now;
 const FPS_LOW_PASS_FACTOR: f64 = 0.05;
 #[cfg(not(target_arch = "wasm32"))]
 const TARGET_FRAME_TIME: Seconds = Seconds(0.016);
-const LONGEST_STEPPED_FRAME: Seconds = Seconds(0.1);
+pub(crate) const LONGEST_STEPPED_FRAME: Seconds = Seconds(0.1);
 
 pub struct FrameClock {
     last_frame: Seconds,
@@ -45,6 +45,10 @@ impl FrameClock {
     }
 }
 
+pub fn stepped(elapsed: Seconds) -> Seconds {
+    elapsed.clamp(Seconds::ZERO, LONGEST_STEPPED_FRAME)
+}
+
 #[derive(Default)]
 pub struct StepClock {
     pending_steps: f64,
@@ -52,8 +56,7 @@ pub struct StepClock {
 
 impl StepClock {
     pub fn steps(&mut self, elapsed: Seconds, steps_per_second: Hertz) -> u32 {
-        let pending = self.pending_steps
-            + elapsed.clamp(Seconds::ZERO, LONGEST_STEPPED_FRAME) * steps_per_second;
+        let pending = self.pending_steps + stepped(elapsed) * steps_per_second;
         if !pending.is_finite() {
             return 0;
         }

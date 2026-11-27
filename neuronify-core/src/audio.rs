@@ -7,6 +7,7 @@ use std::f32::consts::TAU;
 
 use neuronify_engine::units::{Milliseconds, Seconds};
 
+use crate::frame_clock::stepped;
 use crate::measurement::loudspeaker::Sound;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -68,7 +69,7 @@ pub fn schedule(
         .map(|(sound, volume, time)| {
             let span = (end - start).max(Milliseconds(f64::EPSILON));
             let progress = ((time - start) / span).clamp(0.0, 1.0);
-            (sound, volume, progress * elapsed)
+            (sound, volume, progress * stepped(elapsed))
         })
         .collect()
 }
@@ -147,6 +148,22 @@ mod tests {
         assert_eq!(plays[0], (Sound::Click, 1.0, Seconds::ZERO));
         assert_eq!(plays[1].0, Sound::Pop);
         assert!((plays[1].2 - Seconds(0.01)).abs() < Seconds(1e-9));
+    }
+
+    #[test]
+    fn sounds_after_a_stall_play_within_the_steps_that_caught_up() {
+        let heard = vec![
+            (Sound::Click, 1.0, Milliseconds(1000.0)),
+            (Sound::Pop, 0.5, Milliseconds(1100.0)),
+        ];
+        let plays = schedule(
+            heard,
+            Milliseconds(1000.0),
+            Milliseconds(1100.0),
+            Seconds(5.0),
+        );
+        assert_eq!(plays[0].2, Seconds::ZERO);
+        assert_eq!(plays[1].2, crate::frame_clock::LONGEST_STEPPED_FRAME);
     }
 
     #[test]
