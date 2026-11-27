@@ -53,11 +53,19 @@ export default function () {
   const reveal = trace.parentElement;
   const percent = document.getElementById("percent");
   trace.innerHTML = `<svg viewBox="0 0 1000 100" preserveAspectRatio="none"><path d="${membraneTrace()}" /></svg>`;
-  import("./neuron-tile.js").then((tile) => tile.default());
   let shownPercent = 0;
+  let fraction = 0;
+  let lens = null;
+  import("./neuron-tile.js")
+    .then((tile) => tile.default())
+    .then((started) => {
+      lens = started;
+      lens?.progress(fraction);
+    });
   return {
     onProgress({ current, total }) {
-      const fraction = Math.min(1, current / total);
+      fraction = Math.min(1, current / total);
+      lens?.progress(fraction);
       reveal.style.transform = `translateX(${(fraction - 1) * 100}%)`;
       trace.style.transform = `translateX(${(1 - fraction) * 100}%)`;
       const rounded = Math.floor(fraction * 100);
