@@ -44,6 +44,7 @@ fn copy_edited(entity: EntityRef) -> EntityBuilder {
     copy::<AlternatingCurrent>(entity, &mut edited);
     copy::<VisualInput>(entity, &mut edited);
     copy::<Cable>(entity, &mut edited);
+    copy::<ConductanceSynapse>(entity, &mut edited);
     copy::<Membrane>(entity, &mut edited);
     copy::<Preparation>(entity, &mut edited);
     copy::<Temperature>(entity, &mut edited);

@@ -2571,14 +2571,26 @@ fn membranes(world: &World) -> Vec<Membrane> {
     world.query::<&Membrane>().iter().cloned().collect()
 }
 
+fn ending_delays(world: &World) -> Vec<Milliseconds> {
+    world
+        .query::<&ConductanceSynapse>()
+        .iter()
+        .map(|ending| ending.delay)
+        .collect()
+}
+
 #[test]
 fn switching_the_channels_is_undone_in_one_step() {
     let (mut world, _) = axon_between_two_neurons();
     let squid = membranes(&world);
+    let squid_delays = ending_delays(&world);
+    assert!(!squid_delays.is_empty());
     let mut editor = editor(Tool::Edit);
     editor.prepare(&mut world, Preparation::Mammal);
     let mammal = membranes(&world);
+    let mammal_delays = ending_delays(&world);
     assert_ne!(mammal, squid);
+    assert_ne!(mammal_delays, squid_delays);
     assert_eq!(
         Temperature::of(&world).celsius,
         Preparation::Mammal.celsius()
@@ -2586,6 +2598,7 @@ fn switching_the_channels_is_undone_in_one_step() {
 
     editor.undo(&mut world);
     assert_eq!(membranes(&world), squid);
+    assert_eq!(ending_delays(&world), squid_delays);
     assert_eq!(Preparation::of(&world), Preparation::Squid);
     assert_eq!(
         Temperature::of(&world).celsius,
@@ -2594,6 +2607,7 @@ fn switching_the_channels_is_undone_in_one_step() {
 
     editor.redo(&mut world);
     assert_eq!(membranes(&world), mammal);
+    assert_eq!(ending_delays(&world), mammal_delays);
     assert_eq!(Preparation::of(&world), Preparation::Mammal);
 }
 

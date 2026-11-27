@@ -519,7 +519,10 @@ impl Editor {
         let prepared: Vec<Entity> = world
             .iter()
             .filter(|entity| {
-                entity.has::<Cable>() || entity.has::<Preparation>() || entity.has::<Temperature>()
+                entity.has::<Cable>()
+                    || entity.has::<ConductanceSynapse>()
+                    || entity.has::<Preparation>()
+                    || entity.has::<Temperature>()
             })
             .map(|entity| entity.entity())
             .collect();
