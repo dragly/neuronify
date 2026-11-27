@@ -235,6 +235,12 @@ fn is_press(event: &Event<CustomEvent>) -> bool {
             event: WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 ..
+            } | WindowEvent::KeyboardInput {
+                event: visula::winit::event::KeyEvent {
+                    state: ElementState::Pressed,
+                    ..
+                },
+                ..
             } | WindowEvent::Touch(visula::winit::event::Touch {
                 phase: TouchPhase::Started,
                 ..
