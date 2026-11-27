@@ -10,6 +10,8 @@ use crate::elements::{spawn_axon_cable, spawn_compartment, spawn_dendrite_compar
 
 use super::history::Recording;
 
+pub(super) const MOST_SEGMENTS: usize = 1000;
+
 pub struct Drag {
     entity: Entity,
     offset: Vec3,
@@ -437,7 +439,7 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
         true => INTERNODE_LENGTH,
         false => SEGMENT_LENGTH,
     };
-    let segments = ((length / spacing).round() as usize).max(fewest);
+    let segments = ((length / spacing).round() as usize).clamp(fewest, MOST_SEGMENTS);
     if segments == chain.len() {
         return false;
     }
