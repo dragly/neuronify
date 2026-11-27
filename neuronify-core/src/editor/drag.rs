@@ -82,6 +82,7 @@ struct Cable {
     entity: Entity,
     from: Entity,
     to: Entity,
+    ending: bool,
 }
 
 struct Cables {
@@ -110,7 +111,7 @@ impl Cables {
             for end in [connection.from, connection.to] {
                 *cables.connections_at.entry(end).or_default() += 1;
             }
-            if cable.is_some() {
+            if let Some(cable) = cable {
                 for end in [connection.from, connection.to] {
                     cables.at.entry(end).or_default().push(cables.all.len());
                 }
@@ -118,6 +119,7 @@ impl Cables {
                     entity,
                     from: connection.from,
                     to: connection.to,
+                    ending: matches!(cable, hecs::Or::Right(_)),
                 });
             }
         }
@@ -176,7 +178,9 @@ impl Reached {
         let mut queue = VecDeque::from([entity]);
         while let Some(node) = queue.pop_front() {
             for &cable in cables.at.get(&node).into_iter().flatten() {
-                let Cable { from, to, .. } = cables.all[cable];
+                let Cable {
+                    from, to, ending, ..
+                } = cables.all[cable];
                 let other = if from == node { to } else { from };
                 if index.contains_key(&other) {
                     continue;
@@ -184,7 +188,8 @@ impl Reached {
                 if !world.satisfies::<&Position>(other) {
                     continue;
                 }
-                let moves = world.satisfies::<&SpatialDynamics>(other);
+                let into_target = ending && other == to;
+                let moves = !into_target && world.satisfies::<&SpatialDynamics>(other);
                 if moves {
                     queue.push_back(other);
                 }
@@ -425,6 +430,9 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
         2
     };
     let myelinated = chain.iter().any(|&cable| world.satisfies::<&Myelin>(cable));
+    let axon = chain
+        .iter()
+        .any(|&cable| world.satisfies::<&ConductanceSynapse>(cable));
     let spacing = match myelinated {
         true => INTERNODE_LENGTH,
         false => SEGMENT_LENGTH,
@@ -444,7 +452,7 @@ fn resample(world: &mut World, recording: &mut Recording, chain: &[Entity]) -> b
     let mut added = Vec::new();
     for _ in kept + 1..segments {
         let neighbour = compartments.last().copied().unwrap_or(nodes[kept]);
-        let compartment = spawn_compartment_like(world, [neighbour, end]);
+        let compartment = spawn_compartment_like(world, [neighbour, end], axon);
         compartments.push(compartment);
         added.push(compartment);
     }
@@ -493,14 +501,15 @@ fn point_along(points: &[Vec3], distance: f32) -> Vec3 {
     points[points.len() - 1]
 }
 
-fn spawn_compartment_like(world: &mut World, neighbours: [Entity; 2]) -> Entity {
+fn spawn_compartment_like(world: &mut World, neighbours: [Entity; 2], axon: bool) -> Entity {
     let neuron_type = neighbours
         .into_iter()
         .find_map(|neighbour| world.get::<&NeuronType>(neighbour).ok().map(|t| *t))
         .unwrap_or_default();
-    let dendrite = neighbours
-        .into_iter()
-        .any(|neighbour| world.satisfies::<&Dendrite>(neighbour));
+    let dendrite = !axon
+        && neighbours
+            .into_iter()
+            .any(|neighbour| world.satisfies::<&Dendrite>(neighbour));
     match dendrite {
         true => spawn_dendrite_compartment(world, Vec3::ZERO, neuron_type),
         false => spawn_compartment(world, Vec3::ZERO, neuron_type),
