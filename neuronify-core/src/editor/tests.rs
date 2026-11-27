@@ -1267,6 +1267,40 @@ fn an_axon_ending_on_a_drawn_dendrite_makes_its_neuron_fire() {
 }
 
 #[test]
+fn dragging_a_neuron_stretches_its_axon_and_leaves_the_dendrite_it_ends_on() {
+    let mut world = World::new();
+    let source = neuron(&mut world, at(0.0, 0.0));
+    let target = neuron(&mut world, at(0.0, 30.0));
+    let path = straight(at(0.0, 30.0), at(0.0, 20.0));
+    drag(&mut editor(Tool::Dendrite), &mut world, &path);
+    let (_, tip) = positions_with::<Dendrite>(&world)
+        .into_iter()
+        .min_by(|(_, a), (_, b)| a.z.total_cmp(&b.z))
+        .unwrap();
+    drag(
+        &mut editor(Tool::Axon),
+        &mut world,
+        &straight(Vec3::ZERO, tip),
+    );
+    let dendrites = positions_with::<Dendrite>(&world);
+    let before = chain(&world, source, single_ending(&world).from)
+        .unwrap()
+        .len();
+
+    drag_in_steps(&mut world, at(0.0, 0.5), at(0.0, -29.5));
+
+    let ending = single_ending(&world);
+    assert!(compartment_tree(&world, target).contains(&ending.to));
+    let axon = chain(&world, source, ending.from).unwrap();
+    assert!(axon.len() > before, "{} {before}", axon.len());
+    assert!(axon.iter().all(|&node| !world.satisfies::<&Dendrite>(node)));
+    for (dendrite, previous) in dendrites {
+        let moved = position(&world, dendrite).distance(previous);
+        assert!(moved < 1e-4, "moved {moved}");
+    }
+}
+
+#[test]
 fn connections_start_only_near_a_source() {
     let mut world = World::new();
     neuron(&mut world, at(0.0, 0.0));
