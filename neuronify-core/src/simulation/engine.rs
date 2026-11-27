@@ -1064,6 +1064,7 @@ impl Engine {
                 dynamics.time_since_fire = self.network.generators[generator].since;
             }
         }
+        self.store_adaptations(world);
         if self.conductances.is_empty() && self.currents.is_empty() {
             return;
         }
@@ -1127,16 +1128,7 @@ impl Engine {
                 synapse.triggers = self.network.pending(Target::Current(index));
             }
         }
-        for &(entity, index) in &self.adaptations {
-            if let Ok(mut adaptation) = world.get::<&mut AdaptationCurrent>(entity) {
-                adaptation.conductance = self.network.adaptations[index].conductance;
-            }
-        }
-        for &(entity, index) in &self.bursts {
-            if let Ok(mut burst) = world.get::<&mut BurstCurrent>(entity) {
-                burst.boost = self.network.bursts[index].boost;
-            }
-        }
+        self.store_adaptations(world);
         for &(entity, generator) in &self.generators {
             if let Ok(mut dynamics) = world.get::<&mut GeneratorDynamics>(entity) {
                 dynamics.time_since_fire = self.network.generators[generator].since;
@@ -1147,6 +1139,19 @@ impl Engine {
             state: self.network.random_state(),
         }
         .set_in(world);
+    }
+
+    fn store_adaptations(&self, world: &mut World) {
+        for &(entity, index) in &self.adaptations {
+            if let Ok(mut adaptation) = world.get::<&mut AdaptationCurrent>(entity) {
+                adaptation.conductance = self.network.adaptations[index].conductance;
+            }
+        }
+        for &(entity, index) in &self.bursts {
+            if let Ok(mut burst) = world.get::<&mut BurstCurrent>(entity) {
+                burst.boost = self.network.bursts[index].boost;
+            }
+        }
     }
 
     fn store_pending_events(&self, world: &mut World) {

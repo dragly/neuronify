@@ -268,4 +268,32 @@ mod tests {
         burst.boost = burst.peak;
         assert_eq!(burst_level(&burst), 1.0);
     }
+
+    #[test]
+    fn gauges_fill_while_a_driven_neuron_runs() {
+        use crate::elements::{spawn_connection, Element};
+        use crate::simulation::{step_simulation, Engine};
+        use crate::stimuli::Stimulus;
+        use crate::Milliseconds;
+
+        let mut world = hecs::World::new();
+        let adaptive = Element::AdaptiveNeuron.spawn(&mut world, Vec3::ZERO);
+        let bursting = Element::BurstNeuron.spawn(&mut world, Vec3::X * 10.0);
+        for neuron in [adaptive, bursting] {
+            let source = Stimulus::CurrentSource.spawn(&mut world, Vec3::Z * -5.0);
+            spawn_connection(&mut world, source, neuron);
+        }
+        let mut engine = Engine::default();
+        let mut time = Milliseconds::ZERO;
+        let (mut adaptation, mut burst) = (0.0f32, 0.0f32);
+        for _ in 0..200 {
+            step_simulation(&mut world, &mut engine, &mut time, 20, None);
+            adaptation = adaptation.max(adaptation_level(
+                &world.get::<&AdaptationCurrent>(adaptive).unwrap(),
+            ));
+            burst = burst.max(burst_level(&world.get::<&BurstCurrent>(bursting).unwrap()));
+        }
+        assert!(adaptation > 0.1, "{adaptation}");
+        assert!(burst > 0.1, "{burst}");
+    }
 }
