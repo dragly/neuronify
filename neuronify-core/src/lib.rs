@@ -26,6 +26,8 @@ pub mod stimuli;
 pub mod third_party;
 pub mod tips;
 pub mod tools;
+
+mod app_icon;
 #[cfg(target_arch = "wasm32")]
 mod web;
 #[cfg(not(target_arch = "wasm32"))]
