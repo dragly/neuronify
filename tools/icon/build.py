@@ -35,6 +35,8 @@ MACOS_SHADOW_OPACITY = 0.5
 MACOS_SHADOW_BLUR = 14
 MACOS_SHADOW_DROP = 12
 
+WINDOWS_SIZES = (16, 24, 32, 48, 64, 256)
+
 OUTLINE_STEP = math.radians(9)
 OUTLINE_TOLERANCE = 0.2
 
@@ -208,9 +210,12 @@ def main():
     (web / "neuron-icon.js").write_text(loading_module(drawing))
     with tempfile.TemporaryDirectory() as directory:
         render = Renderer(directory)
-        render.tile(document(*master), 256).save(out / "icon.png")
+        icon = render.tile(document(*master), 256)
+        icon.save(out / "icon.png")
         pixel_art = [Image.open(HERE / f"pixel-{size}.png") for size in (16, 32)]
         render.tile(document(*master), 48).save(out / "favicon.ico", format="ICO", sizes=[(48, 48), (32, 32), (16, 16)], append_images=pixel_art)
+        windows = [render.tile(document(*small_sizes[16]), 24)] + [render.tile(document(*master), size) for size in (48, 64)]
+        icon.save(out / "windows.ico", format="ICO", sizes=[(size, size) for size in WINDOWS_SIZES], append_images=pixel_art + windows)
         render.tile(document(*master), 512).save(out / "icon-512.png", optimize=True)
         render(document(*master), 512).convert("RGB").save(out / "icon-maskable-512.png", optimize=True)
         render(document(*master), 180).convert("RGB").save(out / "apple-touch-icon.png", optimize=True)

@@ -8,6 +8,8 @@ const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 pub fn name(window: &Window) {
     window.set_title(TITLE);
     window.set_window_icon(icon());
+    #[cfg(windows)]
+    visula::winit::platform::windows::WindowExtWindows::set_taskbar_icon(window, icon());
 }
 
 fn icon() -> Option<Icon> {
