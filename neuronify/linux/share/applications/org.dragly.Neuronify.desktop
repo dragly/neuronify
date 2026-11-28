@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Neuronify
+Comment=Educational neural network app
+Exec=neuronify
+Icon=org.dragly.Neuronify
+Terminal=false
+Categories=Education;Biology;
+Keywords=neuronify;neural;networks;neuron;neuroscience;biology;science;
+StartupWMClass=neuronify
