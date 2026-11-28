@@ -4,7 +4,8 @@ After a change, rebuild them all from the repository root with:
     uv run tools/icon/build.py
 
 This needs uv and Inkscape.
-It overwrites `icon.svg`, `icon.png`, `favicon.ico`, the web icons and `macos.iconset/` in `neuronify-core/assets/`
+It overwrites `icon.svg`, `icon.png`, `favicon.ico`, `windows.ico`, the web icons
+and `macos.iconset/` in `neuronify-core/assets/`
 and `neuron-icon.js` in `neuronify/`,
 or writes them all to the folder given as the first argument instead.
 The shipped files were rendered with Inkscape 1.2,
@@ -36,4 +37,6 @@ and the arcs are cut into straight pieces of at most 9 degrees.
 The tile behind it in `neuronify/index.html` repeats the two background colours.
 
 The 16 and 32 px favicon sizes are pixel art in `pixel-16.png` and `pixel-32.png`.
-They are edited by hand (Aseprite works well) and copied into `favicon.ico` as they are.
+They are edited by hand (Aseprite works well) and copied into `favicon.ico` and `windows.ico` as they are.
+`windows.ico` goes into the Windows exe through `neuronify/build.rs`.
+Its 24 px size is drawn from the bolder small drawing and the larger ones from the master.
