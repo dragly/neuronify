@@ -14,6 +14,14 @@ Neuronify 1 was originally written in C++, while Neuronify 2 is written in Rust.
 
 Each release on GitHub has builds for Linux, Windows and macOS,
 and a web build that can be put in any folder on a web server.
+
+The Linux build also holds a menu entry and icons in `share/`.
+To add Neuronify to the application menu, copy the program and that folder into your home folder:
+
+    cp neuronify ~/.local/bin/
+    cp -r share ~/.local/
+
+The menu entry starts `neuronify` from your `PATH`, so `~/.local/bin` needs to be on it.
 To run Neuronify from the source code instead, run `cargo run --release -p neuronify`.
 
 To run Neuronify in the browser,
