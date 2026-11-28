@@ -1,19 +1,15 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::f32::consts::TAU;
 
 use crate::audio::{schedule, Speakers};
 use crate::camera;
-use crate::components::{Milliseconds, NeuronType, Position, Seconds};
+use crate::components::{Milliseconds, NeuronType, Position};
 use crate::constants::{DEFAULT_SPEED, PHYSICS_STEPS_PER_SECOND, SIMULATION_STEPS_PER_SECOND};
-use crate::editor::{Editor, Pan, PlacedNeuron, Targets};
-use crate::elements::Element;
+use crate::editor::{Editor, Pan, Targets};
+use crate::feedback::{self, Feedback, Pointer};
 use crate::fire_hint::FireHint;
 use crate::frame_clock::{FrameClock, StepClock};
-use crate::gui::{
-    self, AttachBurst, AttachRing, FileError, Gui, HoldRing, Look, LoupeCorner, LoupeFocus,
-    LoupeView, MenuChoice, Saving, Subject, LOUPE_DELAY, LOUPE_SNAP, WAITING,
-};
+use crate::gui::{self, FileError, Gui, MenuChoice, Saving};
 use crate::inertia::Inertia;
 use crate::landing::about::{AboutChoice, AboutScreen};
 use crate::landing::{LandingChoice, LandingScreen};
@@ -21,8 +17,7 @@ use crate::library::{Autosave, Library, UNTITLED};
 use crate::measurement::loudspeaker::{take_heard, Loudspeaker};
 use crate::measurement::Meter;
 use crate::note::Link;
-use crate::rendering::ghost::{self, GHOST_HEIGHT};
-use crate::rendering::{canvas_bounds, EditorMarks, Ghost, LandingGhost, SceneRenderer, Theme};
+use crate::rendering::{canvas_bounds, EditorMarks, SceneRenderer, Theme};
 use crate::serialization::{Meta, SavedWorld};
 use glam::Vec3;
 use visula::winit::dpi::PhysicalPosition;
@@ -37,7 +32,6 @@ use hecs::Entity;
 #[cfg(target_arch = "wasm32")]
 const SAVED_NAME: &str = "circuit.neuronify";
 const HITBOX_TILE: f32 = 32.0;
-const RING_POINTS: usize = 96;
 const FIRE_HINT_LIFT: f32 = 18.0;
 
 pub struct Neuronify {
@@ -59,8 +53,6 @@ pub struct Neuronify {
     touches: Touches,
     inertia: Inertia,
     caught: bool,
-    ghost: Option<Ghost>,
-    landing_ghosts: Vec<LandingGhost>,
     fire_hint: FireHint,
     renderer: SceneRenderer,
     frame_clock: FrameClock,
@@ -75,24 +67,7 @@ pub struct Neuronify {
     autosave: Autosave,
     hitboxes: bool,
     touch_reach: f64,
-    hold_ring: Option<HoldRing>,
-    attach_ring: Option<AttachRing>,
-    attach_burst: Option<AttachBurst>,
-    loupe_snap: Option<Seconds>,
-    loupe: Option<LoupeCorner>,
-    loupe_focus: Option<(LoupeFocus, Seconds)>,
-}
-
-fn ground_under(
-    application: &visula::Application,
-    context: &egui::Context,
-) -> impl Fn(egui::Pos2) -> Vec3 {
-    let ground = camera::positions_at_height(application, 0.0);
-    let pixels_per_point = context.pixels_per_point();
-    move |point| {
-        let pixel = |coordinate: f32| f64::from(coordinate * pixels_per_point);
-        ground(PhysicalPosition::new(pixel(point.x), pixel(point.y)))
-    }
+    feedback: Feedback,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -114,30 +89,6 @@ fn sharing() -> bool {
 fn sharing() -> bool {
     false
 }
-
-#[cfg(target_arch = "wasm32")]
-fn tick() {
-    crate::web::tick();
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn tick() {}
-
-#[cfg(target_arch = "wasm32")]
-fn thump() {
-    crate::web::thump();
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn thump() {}
-
-#[cfg(target_arch = "wasm32")]
-fn snap() {
-    crate::web::snap();
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn snap() {}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn file_stem(path: &std::path::Path) -> String {
@@ -250,20 +201,6 @@ fn is_press(event: &Event<CustomEvent>) -> bool {
     )
 }
 
-fn gui_takes_press(application: &visula::Application, position: PhysicalPosition<f64>) -> bool {
-    let context = application.egui_renderer.state.egui_ctx();
-    let point = egui::pos2(position.x as f32, position.y as f32) / context.pixels_per_point();
-    let radius = context.global_style().interaction.interact_radius;
-    context.memory(|memory| {
-        memory.areas().visible_layer_ids().into_iter().any(|layer| {
-            layer.order != egui::Order::Background
-                && memory
-                    .area_rect(layer.id)
-                    .is_some_and(|rect| rect.distance_to_pos(point) <= radius)
-        })
-    })
-}
-
 impl Neuronify {
     pub fn new(application: &mut visula::Application, version: &'static str) -> Neuronify {
         #[cfg(not(target_arch = "wasm32"))]
@@ -298,8 +235,6 @@ impl Neuronify {
             touches: Touches::default(),
             inertia: Inertia::default(),
             caught: false,
-            ghost: None,
-            landing_ghosts: Vec::new(),
             fire_hint: FireHint::default(),
             renderer,
             frame_clock: FrameClock::default(),
@@ -313,12 +248,7 @@ impl Neuronify {
             autosave: Autosave::copy_of(UNTITLED, ""),
             hitboxes: debug_view().as_deref() == Some("hitboxes"),
             touch_reach: input::TOUCH_REACH,
-            hold_ring: None,
-            attach_ring: None,
-            attach_burst: None,
-            loupe_snap: None,
-            loupe: None,
-            loupe_focus: None,
+            feedback: Feedback::default(),
         };
         match opened {
             Some(Ok((origin, file))) => neuronify.open_saved(origin, file),
@@ -377,7 +307,7 @@ impl Neuronify {
             if self.editor.touch().is_none()
                 && self.editor.reverse_picture_at(&mut self.world, position)
             {
-                tick();
+                feedback::tick();
             } else if self.editor.touch().is_none() && self.editor.empty_at(&self.world, position) {
                 self.tapped_background = true;
             } else {
@@ -439,81 +369,14 @@ impl Neuronify {
             .filter(|_| self.touch_input && self.mouse.left_down);
         let hover = self
             .hover
-            .filter(|&hover| !gui_takes_press(application, hover));
+            .filter(|&hover| !gui::takes_press(application, hover));
         let pointer = finger.or(hover)?;
         Some(camera::ground_position(application, pointer))
     }
 
-    fn dangle_ghost(&mut self, application: &visula::Application, elapsed: Seconds) {
-        let painting = self
-            .editor
-            .painting()
-            .filter(|_| self.editing() && self.mouse.moved_while_pressed());
-        if painting.is_none() {
-            if let Some((element, anchor)) = self.hover_anchor(application) {
-                self.ghost
-                    .get_or_insert_with(|| Ghost::new(element, anchor))
-                    .follow(element, anchor, 1.0, false, elapsed.0 as f32);
-                return;
-            }
-        }
-        let (Some(element), Some(pointer)) = (painting, self.mouse.position) else {
-            self.ghost = None;
-            return;
-        };
-        let offset = ghost::offset_points(self.touch_input) * application.window.scale_factor();
-        let above = PhysicalPosition::new(pointer.x, pointer.y - offset);
-        let anchor = camera::position_at_height(application, above, GHOST_HEIGHT);
-        let way = self.way_to_next(application).unwrap_or(0.0);
-        self.ghost
-            .get_or_insert_with(|| Ghost::new(element, anchor))
-            .follow(element, anchor, way, self.touch_input, elapsed.0 as f32);
-    }
-
-    fn land_placed(&mut self) {
-        let now = input::now();
-        self.landing_ghosts
-            .retain(|landing| landing.progress(now) < 1.0);
-        let Some(PlacedNeuron { neuron, painted }) = self.editor.take_placed_neuron() else {
-            return;
-        };
-        if painted {
-            tick();
-        }
-        let from = self
-            .ghost
-            .and_then(|ghost| ghost.sphere(&self.theme.palette()));
-        self.landing_ghosts
-            .extend(from.map(|from| LandingGhost::new(neuron, from, now)));
-    }
-
-    fn landing_flash(&self) -> f32 {
-        let now = input::now();
-        let latest = self.landing_ghosts.last();
-        latest.map_or(0.0, |landing| 1.0 - landing.progress(now))
-    }
-
-    fn hover_anchor(&self, application: &visula::Application) -> Option<(Element, Vec3)> {
-        if self.touch_input || self.mouse.left_down {
-            return None;
-        }
-        let Tool::Place(element) = self.editor.tool else {
-            return None;
-        };
-        let hover = self
-            .hover
-            .filter(|&hover| element.is_neuron() && !gui_takes_press(application, hover))?;
-        let ground = camera::ground_position(application, hover);
-        if !self.editor.empty_at(&self.world, ground) {
-            return None;
-        }
-        let anchor = camera::position_at_height(application, hover, GHOST_HEIGHT);
-        Some((element, anchor))
-    }
-
     fn paint_hitboxes(&self, application: &visula::Application, context: &egui::Context) {
         let targets = Targets::new(&self.world);
-        let to_ground = ground_under(application, context);
+        let to_ground = camera::ground_under(application, context);
         let tiles = RefCell::new(HashMap::new());
         gui::paint_hitboxes(context, |point| {
             let tile = (point.to_vec2() / HITBOX_TILE).floor();
@@ -542,60 +405,6 @@ impl Neuronify {
         });
     }
 
-    fn paint_rings(&self, application: &visula::Application, context: &egui::Context) {
-        let now = input::now();
-        let hold = self
-            .hold_ring
-            .and_then(|ring| Some((ring.target(), ring.look(now)?)));
-        let attach = self
-            .attach_ring
-            .and_then(|ring| Some((ring.target(), ring.look(now)?)));
-        let burst = self
-            .attach_burst
-            .and_then(|burst| Some((burst.target, burst.look(now)?)));
-        let waiting = self
-            .editor
-            .axon_waiting(&self.world)
-            .map(|(soma, _, _)| (soma, WAITING));
-        let rings = hold.into_iter().chain(attach).chain(burst).chain(waiting);
-        for (target, look) in rings {
-            self.paint_ring(application, context, target, look);
-        }
-    }
-
-    fn paint_ring(
-        &self,
-        application: &visula::Application,
-        context: &egui::Context,
-        target: hecs::Entity,
-        look: Look,
-    ) {
-        let Some(shape) = Targets::new(&self.world).shape(target) else {
-            return;
-        };
-        let pixels_per_point = context.pixels_per_point();
-        let per_point = camera::ground_length(application, f64::from(pixels_per_point));
-        let gap = per_point * look.gap(shape.thickness() / per_point);
-        let to_ground = ground_under(application, context);
-        let to_screen = |position: Vec3| {
-            let pixel = camera::screen_position(application, position);
-            egui::pos2(pixel.x as f32, pixel.y as f32) / pixels_per_point
-        };
-        let center = to_screen(shape.center());
-        let directions: Vec<Vec3> = (0..RING_POINTS)
-            .map(|index| {
-                let angle = TAU * index as f32 / RING_POINTS as f32;
-                let beside = center + egui::vec2(angle.sin(), -angle.cos());
-                (to_ground(beside) - to_ground(center)).normalize_or_zero()
-            })
-            .collect();
-        let [inner, outer] = [0.0, gap].map(|gap| {
-            let outline = shape.outline(gap, directions.iter().copied());
-            outline.into_iter().map(to_screen).collect::<Vec<_>>()
-        });
-        gui::paint_hold_ring(context, self.theme, &inner, &outer, &look);
-    }
-
     fn paint_fire_hint(&self, application: &visula::Application, context: &egui::Context) {
         let Some((tapped, shown)) = self.fire_hint.answer(&self.world, input::now()) else {
             return;
@@ -617,38 +426,27 @@ impl Neuronify {
         hint.filter(|_| self.editing())
     }
 
-    fn follow_ending(&mut self) {
-        let ending = self.editor.ending();
-        let shown = self.attach_ring.and_then(AttachRing::shown);
-        let entered = ending.is_some() && shown.is_none();
-        let left = ending.is_none() && shown.is_some() && self.mouse.left_down;
-        let now = input::now();
-        if entered {
-            tick();
-        }
-        if left {
-            snap();
-            self.loupe_snap = Some(now);
-        }
-        let progress = self.dwell_progress(now);
-        self.attach_ring = AttachRing::next(self.attach_ring, ending, progress, entered, now);
-    }
-
-    fn dwell_progress(&self, now: Seconds) -> Option<f32> {
-        let dwell = self.editor.connection_mode(&self.world).dwell();
-        let held_for = self.editor.dwelling(&self.world, now)?;
-        Some(gui::dwell_progress(held_for, dwell))
+    fn pointer_feedback(&mut self) -> (&mut Feedback, Pointer<'_>) {
+        let pointer = Pointer {
+            editor: &self.editor,
+            world: &self.world,
+            mouse: &self.mouse,
+            hover: self.hover,
+            touch_input: self.touch_input,
+        };
+        (&mut self.feedback, pointer)
     }
 
     fn handle_tool(&mut self, application: &mut visula::Application) {
         self.use_tool(application);
-        self.follow_ending();
+        let (feedback, pointer) = self.pointer_feedback();
+        feedback.follow_ending(&pointer);
     }
 
     fn use_tool(&mut self, application: &mut visula::Application) {
         if !self.mouse.left_down {
             if let Some(target) = self.editor.lift(&mut self.world) {
-                self.attached(target, input::now());
+                self.feedback.attached(target, input::now());
             }
             return;
         }
@@ -672,140 +470,6 @@ impl Neuronify {
         if self.editor.pressed_background() {
             self.inertia.track(input::now(), screen_position);
         }
-    }
-
-    fn shows_loupe(&self) -> bool {
-        let carrying = self.mouse.moved_while_pressed() || self.mouse.has_held();
-        let aiming = carrying && self.editor.aims();
-        self.touch_input && (aiming || self.loupe_candidate().is_some())
-    }
-
-    fn loupe_candidate(&self) -> Option<hecs::Entity> {
-        let (_, held_for) = self.mouse.pending_hold(input::now())?;
-        if !self.touch_input || held_for < LOUPE_DELAY {
-            return None;
-        }
-        match self.hold_ring {
-            Some(HoldRing::Holding { target, .. }) => Some(target),
-            _ => self.editor.picked(),
-        }
-    }
-
-    fn attached(&mut self, target: hecs::Entity, now: Seconds) {
-        thump();
-        self.attach_ring = None;
-        self.loupe_snap = None;
-        self.attach_burst = Some(AttachBurst { target, since: now });
-    }
-
-    fn loupe_rim(&self, application: &visula::Application) -> (Option<f32>, f32) {
-        let now = input::now();
-        match self.hold_ring {
-            Some(HoldRing::Holding { held_for, .. }) => {
-                let progress = (held_for - LOUPE_DELAY) / (input::HOLD - LOUPE_DELAY);
-                return (Some(progress.clamp(0.0, 1.0) as f32), 0.0);
-            }
-            Some(ring @ HoldRing::Grabbed { .. }) => {
-                let flash = ring.look(now).map_or(0.0, |look| look.opacity);
-                return (None, flash);
-            }
-            _ => {}
-        }
-        let progress = self
-            .dwell_progress(now)
-            .or_else(|| self.way_to_next(application));
-        let flash = self
-            .attach_burst
-            .and_then(|burst| burst.look(now))
-            .map_or(0.0, |look| look.opacity);
-        (progress, flash.max(self.landing_flash()))
-    }
-
-    fn way_to_next(&self, application: &visula::Application) -> Option<f32> {
-        let position = camera::ground_position(application, self.mouse.position?);
-        let way = self.editor.way_to_next(&self.world, position)?;
-        Some(way.clamp(0.0, 1.0))
-    }
-
-    fn loupe_subject(
-        &self,
-        application: &visula::Application,
-        pixels_per_point: f32,
-    ) -> Option<Subject> {
-        let candidate = self.loupe_candidate();
-        let subject = candidate.or_else(|| self.editor.picked())?;
-        let shape = Targets::new(&self.world).shape(subject)?;
-        let per_point = camera::ground_length(application, f64::from(pixels_per_point));
-        let center = camera::screen_position(application, shape.center());
-        Some(Subject {
-            center: egui::pos2(center.x as f32, center.y as f32) / pixels_per_point,
-            size: shape.size() / per_point,
-            lifted: candidate.is_none(),
-        })
-    }
-
-    fn prepare_loupe(&self, application: &mut visula::Application) {
-        if self.shows_loupe() {
-            gui::prepare_loupe(application);
-        }
-    }
-
-    fn paint_loupe(&mut self, application: &visula::Application, context: &egui::Context) {
-        let finger = self.mouse.position.filter(|_| self.shows_loupe());
-        let Some(finger) = finger else {
-            self.loupe = None;
-            self.loupe_focus = None;
-            return;
-        };
-        let pixels_per_point = context.pixels_per_point();
-        let finger = egui::pos2(finger.x as f32, finger.y as f32) / pixels_per_point;
-        let subject = self.loupe_subject(application, pixels_per_point);
-        let target = LoupeFocus::of(finger, subject);
-        let now = input::now();
-        let focus = match self.loupe_focus {
-            Some((previous, at)) => target.eased(previous, (now - at).0 as f32),
-            None => target,
-        };
-        self.loupe_focus = Some((focus, now));
-        let size = egui::vec2(
-            application.config.width as f32,
-            application.config.height as f32,
-        );
-        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size / pixels_per_point);
-        let corner = LoupeCorner::next(self.loupe, finger, screen);
-        self.loupe = Some(corner);
-        let (progress, flash) = self.loupe_rim(application);
-        let snap = self
-            .loupe_snap
-            .map(|since| ((now - since) / LOUPE_SNAP) as f32)
-            .filter(|&snap| snap < 1.0);
-        if snap.is_none() {
-            self.loupe_snap = None;
-        }
-        let view = LoupeView {
-            corner,
-            finger,
-            focus,
-            screen,
-            srgb_target: application.config.format.is_srgb(),
-            attached: self.editor.ending().is_some(),
-            progress,
-            flash,
-            snap,
-        };
-        gui::paint_loupe(context, self.theme, view);
-    }
-
-    fn paint_cursor_ring(&self, application: &visula::Application, context: &egui::Context) {
-        let pointer = self
-            .mouse
-            .position
-            .filter(|_| !self.touch_input && self.mouse.moved_while_pressed());
-        let (Some(pointer), Some(way)) = (pointer, self.way_to_next(application)) else {
-            return;
-        };
-        let center = egui::pos2(pointer.x as f32, pointer.y as f32) / context.pixels_per_point();
-        gui::paint_cursor_ring(context, self.theme, center, way, self.landing_flash());
     }
 
     fn saved(&mut self) -> Result<Vec<u8>, String> {
@@ -928,13 +592,7 @@ impl Neuronify {
         self.editor.forget_world();
         self.gui.forget_world();
         self.fire_hint.forget_world();
-        self.ghost = None;
-        self.landing_ghosts.clear();
-        self.hold_ring = None;
-        self.attach_ring = None;
-        self.attach_burst = None;
-        self.loupe_snap = None;
-        self.loupe = None;
+        self.feedback = Feedback::default();
         self.landing = None;
         self.frame_scene_requested = true;
     }
@@ -1085,23 +743,13 @@ impl visula::Simulation for Neuronify {
                 grabbed = self.editor.hold(&self.world, position, select);
             }
         }
-        if grabbed {
-            tick();
-        }
-        let pending = self.mouse.pending_hold(now).filter(|_| holds);
-        let pending = pending.and_then(|(start, held_for)| {
-            let position = camera::ground_position(application, start);
-            let (target, _) = self.editor.hold_candidate(&self.world, position)?;
-            Some((target, held_for))
-        });
-        self.hold_ring = HoldRing::next(self.hold_ring, pending, grabbed, now);
+        let (feedback, pointer) = self.pointer_feedback();
+        feedback.follow_hold(&pointer, application, holds, grabbed, now);
         if let Some(target) = self.editor.dwell(&mut self.world, now) {
-            self.attached(target, now);
+            self.feedback.attached(target, now);
         }
-        self.attach_burst = self.attach_burst.filter(|burst| burst.look(now).is_some());
-        let progress = self.dwell_progress(now);
-        self.attach_ring =
-            AttachRing::next(self.attach_ring, self.editor.ending(), progress, false, now);
+        let (feedback, pointer) = self.pointer_feedback();
+        feedback.follow_dwell(&pointer, now);
         for position in self.editor.take_presses() {
             simulation::fire_nearby(&mut self.world, &mut self.engine, position);
         }
@@ -1154,10 +802,15 @@ impl visula::Simulation for Neuronify {
             camera::frame(application, canvas_bounds(&self.world), free);
         }
 
-        self.land_placed();
-        self.dangle_ghost(application, elapsed);
         self.fire_hint.update(&self.world, input::now());
-        self.prepare_loupe(application);
+        self.feedback
+            .land_placed(self.editor.take_placed_neuron(), self.theme);
+        let (feedback, pointer) = self.pointer_feedback();
+        feedback.dangle_ghost(&pointer, application, elapsed);
+        feedback.prepare_loupe(&pointer, application);
+        let candidate = feedback
+            .candidate(&pointer)
+            .filter(|&candidate| Some(candidate) != pointer.editor.selection);
         let cable = self.editor.cable_being_drawn(&self.world);
         let wire = self.editor.connection_being_drawn(&self.world);
         let hint = self.connection_hint();
@@ -1187,12 +840,10 @@ impl visula::Simulation for Neuronify {
                 ending: self.editor.new_ending(&self.world),
                 bead: self.editor.bead(&self.world),
                 dendrite: self.editor.dendrite_being_grown(),
-                ghost: self.ghost,
-                landing_ghosts: &self.landing_ghosts,
+                ghost: self.feedback.ghost(),
+                landing_ghosts: self.feedback.landing_ghosts(),
                 selection: self.editor.selection,
-                candidate: self
-                    .loupe_candidate()
-                    .filter(|&candidate| Some(candidate) != self.editor.selection),
+                candidate,
                 eraser: self.eraser(application),
                 pulled: self.editor.pulled_tip(),
             },
@@ -1258,7 +909,8 @@ impl visula::Simulation for Neuronify {
             return;
         }
         gui::file_error(context, &mut self.file_error);
-        let drawing = self.shows_loupe();
+        let (feedback, pointer) = self.pointer_feedback();
+        let drawing = feedback.shows_loupe(&pointer);
         let speed = self.speed;
         let stimulate_pulse = self.fire_hint.pulse(self.editor.tool, input::now());
         let controls = gui::Controls {
@@ -1302,9 +954,9 @@ impl visula::Simulation for Neuronify {
             gui::reach_slider(context, &mut self.touch_reach);
             self.paint_hitboxes(application, context);
         }
-        self.paint_rings(application, context);
-        self.paint_loupe(application, context);
-        self.paint_cursor_ring(application, context);
+        let theme = self.theme;
+        let (feedback, pointer) = self.pointer_feedback();
+        feedback.paint(&pointer, application, context, theme);
     }
 
     fn handle_event(&mut self, application: &mut visula::Application, event: &Event<CustomEvent>) {
@@ -1370,7 +1022,7 @@ impl visula::Simulation for Neuronify {
                 self.hover = None;
                 self.touch_input = true;
                 if touch.phase == TouchPhase::Started {
-                    if gui_takes_press(application, touch.location) {
+                    if gui::takes_press(application, touch.location) {
                         self.touches.forget_tap();
                         return;
                     }

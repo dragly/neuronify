@@ -431,7 +431,7 @@ flowchart TB
 | Layer | Modules |
 | --- | --- |
 | Shell | `app` (owns the `World`, `Engine`, time, speed, library and autosave), `web`, `frame_clock`, `audio`, `window` |
-| Screens | `input`, `camera`, `inertia`, `gui` (rail, inspector, menu, phone sheets, rings, loupe, empty-scene hints and text fields), `fire_hint`, `settings`, `landing` (with About), `third_party`, `links` |
+| Screens | `input`, `camera`, `inertia`, `gui` (rail, inspector, menu, phone sheets, rings, loupe, empty-scene hints and text fields), `feedback`, `fire_hint`, `settings`, `landing` (with About), `third_party`, `links` |
 | Editing | `editor` (with `targets`, `attach`, `drag` and `history`), `tools`, `tips`, `elements`, `dendrites` |
 | Simulation | `simulation` (`engine`, `model`, `mammal`, `stimulation`, `firing_rate`, `spatial`) |
 | Rendering | `rendering` (`World` to `Scene`, drawn by `SceneRenderer`) |
@@ -530,9 +530,17 @@ and on each redraw it calls `update`, renders, and calls `gui` last.
    and steps the physics,
 9. steps the visible landing previews,
 10. glides the camera after a pan or pinch, or frames a newly opened circuit instead,
-11. lands the ghost on each neuron just placed, swings the ghost under the pointer,
-    times the hint that points at Stimulate when connected neurons stay silent,
+11. times the hint that points at Stimulate when connected neurons stay silent,
+    lands the ghost on each neuron just placed, swings the ghost under the pointer,
     prepares the loupe and hands the `World` to `SceneRenderer::update`.
+
+`Feedback` in `feedback.rs` keeps what the pointer leaves on screen between frames:
+the hold and attach rings, the loupe, the ghost and the neurons it lands on,
+along with the ticks a phone gives for them.
+It reads the editor, the `World` and the mouse through a `Pointer` of shared references,
+so it can't change them, and `app` passes in what the editor did,
+such as a grab, a neuron placed or an ending attached.
+`gui::paint_loupe` and `paint_hold_ring` draw what it decides.
 
 `LandingScreen::show` and `Gui::show` return what was picked for `app` to carry out,
 so a choice shows from the next frame.
