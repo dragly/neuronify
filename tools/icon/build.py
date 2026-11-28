@@ -219,7 +219,7 @@ def main():
         render.tile(document(*master), 512).save(out / "icon-512.png", optimize=True)
         render(document(*master), 512).convert("RGB").save(out / "icon-maskable-512.png", optimize=True)
         render(document(*master), 180).convert("RGB").save(out / "apple-touch-icon.png", optimize=True)
-        images ={size: render(macos(*small_sizes.get(size, master), size), size) for size in (16, 32, 64, 128, 256, 512, 1024)}
+        images = {size: render(macos(*small_sizes.get(size, master), size), size) for size in (16, 32, 64, 128, 256, 512, 1024)}
     for size in (16, 32, 128, 256, 512):
         images[size].save(iconset / f"icon_{size}x{size}.png", optimize=True)
         images[size * 2].save(iconset / f"icon_{size}x{size}@2x.png", optimize=True)
