@@ -431,7 +431,7 @@ flowchart TB
 | Layer | Modules |
 | --- | --- |
 | Shell | `app` (owns the `World`, `Engine`, time, speed, library and autosave), `web`, `frame_clock`, `audio`, `window` |
-| Screens | `input`, `camera`, `inertia`, `gui` (rail, inspector, menu, phone sheets, rings, loupe, empty-scene hints and text fields), `fire_hint`, `settings`, `landing` (with About), `third_party`, `links` |
+| Screens | `input`, `camera`, `inertia`, `gui` (rail, inspector, menu, phone sheets, rings, loupe, empty-scene hints and text fields), `fire_hint`, `settings`, `landing` (with About), `app_icon`, `third_party`, `links` |
 | Editing | `editor` (with `targets`, `attach`, `drag` and `history`), `tools`, `tips`, `elements`, `dendrites` |
 | Simulation | `simulation` (`engine`, `model`, `mammal`, `stimulation`, `firing_rate`, `spatial`) |
 | Rendering | `rendering` (`World` to `Scene`, drawn by `SceneRenderer`) |

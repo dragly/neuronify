@@ -87,10 +87,10 @@ getrandom = { version = "0.2", features = ["js"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cpal = "0.18.2"
 egui-winit = { version = "0.34", default-features = false, features = ["links"] }
-png = "0.18"
 
 [build-dependencies]
 miniz_oxide = "0.8"
+png = "0.18"
 
 [dev-dependencies]
 indexmap = { version = "2", features = ["serde"] }
