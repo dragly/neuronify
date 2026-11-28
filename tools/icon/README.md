@@ -4,7 +4,7 @@ After a change, rebuild them all from the repository root with:
     uv run tools/icon/build.py
 
 This needs uv and Inkscape.
-It overwrites `icon.svg`, `icon.png`, `favicon.ico` and `macos.iconset/` in `neuronify-core/assets/`
+It overwrites `icon.svg`, `icon.png`, `favicon.ico`, the web icons and `macos.iconset/` in `neuronify-core/assets/`
 and `neuron-icon.js` in `neuronify/`,
 or writes them all to the folder given as the first argument instead.
 The shipped files were rendered with Inkscape 1.2,
@@ -21,6 +21,13 @@ so moving a point keeps the rounding consistent.
 The `SMALL_` values describe the bolder drawing used for the macOS 16 and 32 px files.
 
 The colours, the shadows, the rounded tile and the macOS grid are at the top of `build.py`.
+
+The web icons are for phones that put the page on their home screen.
+`apple-touch-icon.png` is for iOS and `icon-512.png` and `icon-maskable-512.png` are listed
+in `neuronify/manifest.webmanifest` for Android.
+The iOS and maskable files fill the whole square,
+since the phone cuts its own shape out of them,
+and the neuron stays inside the circle in the middle 80% that Android keeps for maskable icons.
 
 `neuron-icon.js` holds what the loading screen needs to draw the neuron:
 the colours, the shadow and the outline as rings of points.

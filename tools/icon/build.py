@@ -211,6 +211,9 @@ def main():
         render.tile(document(*master), 256).save(out / "icon.png")
         pixel_art = [Image.open(HERE / f"pixel-{size}.png") for size in (16, 32)]
         render.tile(document(*master), 48).save(out / "favicon.ico", format="ICO", sizes=[(48, 48), (32, 32), (16, 16)], append_images=pixel_art)
+        render.tile(document(*master), 512).save(out / "icon-512.png", optimize=True)
+        render(document(*master), 512).convert("RGB").save(out / "icon-maskable-512.png", optimize=True)
+        render(document(*master), 180).convert("RGB").save(out / "apple-touch-icon.png", optimize=True)
         images = {size: render(macos(*small_sizes.get(size, master), size), size) for size in (16, 32, 64, 128, 256, 512, 1024)}
     for size in (16, 32, 128, 256, 512):
         images[size].save(iconset / f"icon_{size}x{size}.png", optimize=True)
