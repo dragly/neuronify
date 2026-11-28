@@ -1,9 +1,8 @@
-use std::io::Cursor;
-
 use visula::winit::window::{Icon, Window};
 
+use crate::app_icon;
+
 const TITLE: &str = "Neuronify";
-const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 pub fn name(window: &Window) {
     window.set_title(TITLE);
@@ -13,10 +12,9 @@ pub fn name(window: &Window) {
 }
 
 fn icon() -> Option<Icon> {
-    let mut reader = png::Decoder::new(Cursor::new(ICON_PNG)).read_info().ok()?;
-    let mut rgba = vec![0; reader.output_buffer_size()?];
-    let info = reader.next_frame(&mut rgba).ok()?;
-    Icon::from_rgba(rgba, info.width, info.height).ok()
+    let pixels = app_icon::decode()?;
+    let size = pixels.size as u32;
+    Icon::from_rgba(pixels.rgba, size, size).ok()
 }
 
 #[cfg(test)]

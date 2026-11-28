@@ -1,11 +1,17 @@
-use egui::{CursorIcon, Key, Response, RichText, ScrollArea, Sense, Ui, WidgetInfo, WidgetType};
+use egui::emath::GuiRounding;
+use egui::{
+    pos2, Color32, CursorIcon, Key, Rect, Response, RichText, ScrollArea, Sense, TextureHandle,
+    TextureOptions, Ui, Vec2, WidgetInfo, WidgetType,
+};
 
 use super::{back, text_button, Colors, PAGE_MARGIN};
+use crate::app_icon;
 use crate::links;
 use crate::rendering::Theme;
 use crate::third_party::{self, ThirdParty};
 
 const MAX_WIDTH: f32 = 720.0;
+const ICON_SIZE: f32 = 64.0;
 const TITLE_SIZE: f32 = 34.0;
 const HEADING_SIZE: f32 = 20.0;
 const BODY_SIZE: f32 = 15.0;
@@ -52,6 +58,7 @@ pub struct AboutScreen {
     license_shown: bool,
     third_party: Option<Result<ThirdParty, String>>,
     opened: Option<usize>,
+    icon: Option<(usize, TextureHandle)>,
 }
 
 impl AboutScreen {
@@ -61,6 +68,7 @@ impl AboutScreen {
             license_shown: false,
             third_party: None,
             opened: None,
+            icon: None,
         }
     }
 
@@ -96,7 +104,9 @@ impl AboutScreen {
     fn contents(&mut self, ui: &mut Ui, colors: &Colors) -> bool {
         ui.add_space(16.0);
         let back = back(ui, colors).clicked();
-        ui.add_space(4.0);
+        ui.add_space(12.0);
+        self.icon(ui);
+        ui.add_space(8.0);
         ui.label(
             RichText::new("Neuronify")
                 .size(TITLE_SIZE)
@@ -176,6 +186,29 @@ impl AboutScreen {
         }
         ui.add_space(40.0);
         back
+    }
+
+    fn icon(&mut self, ui: &mut Ui) {
+        let (rect, _) = ui.allocate_exact_size(Vec2::splat(ICON_SIZE), Sense::hover());
+        let pixels_per_point = ui.ctx().pixels_per_point();
+        let pixels = (ICON_SIZE * pixels_per_point).round() as usize;
+        if self.icon.as_ref().is_none_or(|(size, _)| *size != pixels) {
+            self.icon = app_icon::image(pixels).map(|image| {
+                let texture = ui
+                    .ctx()
+                    .load_texture("app icon", image, TextureOptions::LINEAR);
+                (pixels, texture)
+            });
+        }
+        if let Some((_, texture)) = &self.icon {
+            let shown = Rect::from_min_size(
+                rect.min.round_to_pixels(pixels_per_point),
+                Vec2::splat(pixels as f32 / pixels_per_point),
+            );
+            let whole_texture = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+            ui.painter()
+                .image(texture.id(), shown, whole_texture, Color32::WHITE);
+        }
     }
 }
 
@@ -314,6 +347,29 @@ mod tests {
                     _ => None,
                 })
         }
+    }
+
+    #[test]
+    fn shows_the_app_icon_above_the_title() {
+        let page = Page::open();
+        let icon = page
+            .output
+            .shapes
+            .iter()
+            .find_map(|clipped| match &clipped.shape {
+                Shape::Mesh(mesh) if mesh.texture_id != egui::TextureId::default() => {
+                    Some(mesh.calc_bounds())
+                }
+                _ => None,
+            })
+            .expect("the app icon is on screen");
+        let title = page
+            .texts()
+            .find(|(shown, _)| *shown == "Neuronify")
+            .expect("the title is on screen")
+            .1;
+        assert_eq!(icon.size(), Vec2::splat(ICON_SIZE));
+        assert!(icon.bottom() <= title.top());
     }
 
     #[test]
