@@ -46,6 +46,7 @@ jobs:
         run: |
           mkdir -p package/neuronify
           cp target/release/neuronify LICENSE README.md package/neuronify/
+          cp -r neuronify/linux/share package/neuronify/
           tar -czf neuronify-linux-x86_64.tar.gz -C package neuronify
       - uses: actions/upload-artifact@v7
         with:

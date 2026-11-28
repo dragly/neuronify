@@ -6,7 +6,7 @@ After a change, rebuild them all from the repository root with:
 This needs uv and Inkscape.
 It overwrites `icon.svg`, `icon.png`, `favicon.ico`, `windows.ico`, the web icons
 and `macos.iconset/` in `neuronify-core/assets/`
-and `neuron-icon.js` in `neuronify/`,
+and `neuron-icon.js` and the Linux icons in `neuronify/`,
 or writes them all to the folder given as the first argument instead.
 The shipped files were rendered with Inkscape 1.2,
 so another version may change a few pixels even when the drawing is the same.
@@ -40,3 +40,5 @@ The 16 and 32 px favicon sizes are pixel art in `pixel-16.png` and `pixel-32.png
 They are edited by hand (Aseprite works well) and copied into `favicon.ico` and `windows.ico` as they are.
 `windows.ico` goes into the Windows exe through `neuronify/build.rs`.
 Its 24 px size is drawn from the bolder small drawing and the larger ones from the master.
+The Linux icons in `neuronify/linux/share/icons/` are the six sizes of `windows.ico` as separate files,
+named after the app id that the menu entry in `neuronify/linux/share/applications/` uses.
